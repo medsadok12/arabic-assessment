@@ -1,0 +1,609 @@
+/* ====== متغيرات الألوان ====== */
+:root {
+  --primary:    #1a237e;
+  --primary-l:  #3949ab;
+  --secondary:  #e65100;
+  --success:    #2e7d32;
+  --danger:     #c62828;
+  --bg:         #f5f7fa;
+  --card-bg:    #ffffff;
+  --border:     #e0e0e0;
+  --text:       #212121;
+  --text-light: #616161;
+  --radius:     12px;
+  --shadow:     0 4px 20px rgba(0,0,0,0.10);
+}
+
+/* ====== أساسيات ====== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Tajawal', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  color: var(--text);
+  direction: rtl;
+}
+
+/* ====== التطبيق الرئيسي ====== */
+.app {
+  max-width: 780px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg);
+  box-shadow: 0 0 60px rgba(0,0,0,0.25);
+}
+
+/* ====== الرأس ====== */
+.app-header {
+  background: linear-gradient(135deg, var(--primary) 0%, #283593 100%);
+  color: white;
+  padding: 28px 30px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-logo { font-size: 2.8rem; line-height: 1; }
+
+.header-text h1 {
+  font-size: 1.6rem;
+  font-weight: 900;
+  margin-bottom: 4px;
+}
+
+.header-text p {
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+/* ====== شريط التقدم الكلي ====== */
+.global-progress {
+  background: #e8eaf6;
+  padding: 12px 24px;
+  border-bottom: 2px solid var(--border);
+}
+
+.gp-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+.gp-bar {
+  height: 8px;
+  background: #c5cae9;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.gp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--success), #00bcd4);
+  border-radius: 10px;
+  transition: width 0.4s ease;
+}
+
+/* ====== المحتوى الرئيسي ====== */
+.app-main { flex: 1; }
+
+.page-content {
+  padding: 32px 28px;
+  animation: fadeUp 0.35s ease;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ====== عناوين الصفحات ====== */
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--primary);
+  margin-bottom: 6px;
+}
+
+.page-subtitle {
+  color: var(--text-light);
+  font-size: 0.95rem;
+  margin-bottom: 28px;
+}
+
+/* ====== النماذج ====== */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 13px 16px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  font-family: 'Tajawal', sans-serif;
+  font-size: 1rem;
+  color: var(--text);
+  background: white;
+  transition: border-color 0.25s, box-shadow 0.25s;
+  outline: none;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(26,35,126,0.12);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ====== أزرار ====== */
+button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
+
+.btn-primary {
+  width: 100%;
+  padding: 15px 32px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-l));
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 800;
+  border-radius: var(--radius);
+  margin-top: 10px;
+  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+  box-shadow: 0 4px 12px rgba(26,35,126,0.25);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(26,35,126,0.35);
+}
+
+.btn-primary:disabled { cursor: not-allowed; }
+
+.btn-secondary {
+  width: 100%;
+  padding: 14px 32px;
+  background: white;
+  color: var(--primary);
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: var(--radius);
+  border: 2px solid var(--primary);
+  margin-top: 10px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.btn-secondary:hover {
+  background: var(--primary);
+  color: white;
+}
+
+/* ====== رسائل الخطأ ====== */
+.error-msg {
+  background: #ffebee;
+  color: var(--danger);
+  border-right: 4px solid var(--danger);
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  margin: 12px 0;
+  font-size: 0.95rem;
+}
+
+/* ====== بطاقات المعلومات ====== */
+.info-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.info-card {
+  background: #e8eaf6;
+  border-radius: 10px;
+  padding: 14px 10px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--primary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-icon { font-size: 1.5rem; }
+
+/* ====== صفحة الأسئلة ====== */
+.assessment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.level-badge {
+  background: var(--primary);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.question-counter {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+.progress-bar {
+  height: 10px;
+  background: var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--success), #00bcd4);
+  border-radius: 10px;
+  transition: width 0.35s ease;
+}
+
+.skill-tag {
+  margin-bottom: 16px;
+}
+
+.skill-tag span {
+  display: inline-block;
+  background: #fff3e0;
+  color: var(--secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid #ffe0b2;
+}
+
+.question-box {
+  background: #f8f9ff;
+  border: 2px solid #e8eaf6;
+  border-right: 5px solid var(--secondary);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  margin-bottom: 20px;
+}
+
+.question-number {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--secondary);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.question-text {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+  background: white;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: right;
+  font-size: 0.97rem;
+}
+
+.option:hover {
+  border-color: var(--primary-l);
+  background: #e8eaf6;
+  transform: translateX(-2px);
+}
+
+.option-selected {
+  border-color: var(--primary);
+  background: #e8eaf6;
+}
+
+.option-correct {
+  border-color: var(--success) !important;
+  background: #e8f5e9 !important;
+}
+
+.option-wrong {
+  border-color: var(--danger) !important;
+  background: #ffebee !important;
+}
+
+.option-letter {
+  width: 32px;
+  height: 32px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.option-selected .option-letter { background: var(--primary-l); }
+.option-correct .option-letter  { background: var(--success); }
+.option-wrong .option-letter    { background: var(--danger); }
+
+.option-text { flex: 1; font-weight: 600; color: var(--text); }
+
+/* ====== صفحة الانتقال ====== */
+.transition-page { text-align: center; padding: 48px 28px; }
+
+.transition-icon { font-size: 5rem; margin-bottom: 20px; }
+
+.transition-title {
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: var(--primary);
+  margin-bottom: 24px;
+}
+
+.transition-score {
+  background: linear-gradient(135deg, var(--primary), var(--primary-l));
+  color: white;
+  border-radius: 16px;
+  padding: 24px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.score-num {
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.score-label {
+  font-size: 0.9rem;
+  opacity: 0.85;
+  margin-top: 6px;
+}
+
+.transition-info {
+  background: #e8f5e9;
+  border-right: 4px solid var(--success);
+  padding: 16px 20px;
+  border-radius: 10px;
+  margin-bottom: 28px;
+  font-weight: 600;
+  color: #1b5e20;
+  text-align: right;
+}
+
+/* ====== صفحة النتائج ====== */
+.results-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.results-icon { font-size: 4rem; margin-bottom: 12px; }
+
+.results-header h2 {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--primary);
+  margin-bottom: 6px;
+}
+
+.results-header p { color: var(--text-light); font-size: 1rem; }
+
+.score-card {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  border: 3px solid;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  background: white;
+  box-shadow: var(--shadow);
+}
+
+.score-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.score-big { font-size: 1.6rem; font-weight: 900; color: white; }
+
+.score-details { flex: 1; }
+
+.grade-label {
+  font-size: 1.4rem;
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+
+.stars { font-size: 1.3rem; margin-bottom: 8px; }
+
+.level-result {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ====== مسار القفز ====== */
+.jump-path {
+  background: #e8eaf6;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.jump-path h3 {
+  font-size: 1rem;
+  color: var(--primary);
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.path-steps { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+
+.path-step { font-weight: 700; color: var(--primary); font-size: 0.95rem; }
+
+.path-arrow { color: var(--secondary); font-weight: 900; }
+
+/* ====== المهارات ====== */
+.skills-section { margin-bottom: 24px; }
+
+.skills-section h3 {
+  font-size: 1.1rem;
+  color: var(--primary);
+  font-weight: 800;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border);
+}
+
+.skill-row { margin-bottom: 18px; }
+
+.skill-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.skill-name { font-weight: 700; color: var(--text); font-size: 0.95rem; }
+.skill-pct  { font-weight: 800; font-size: 0.95rem; }
+
+.skill-bar-bg {
+  height: 10px;
+  background: #e0e0e0;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.skill-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.5s ease;
+}
+
+.skill-meta { font-size: 0.78rem; color: var(--text-light); }
+
+/* ====== التوصيات ====== */
+.recommendations {
+  background: #f8f9ff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.recommendations h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 12px;
+}
+
+.rec-good {
+  color: var(--success);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.rec-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rec-list li {
+  background: #fff3e0;
+  border-right: 3px solid var(--secondary);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+/* ====== أزرار النتائج ====== */
+.result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ====== الذيل ====== */
+.app-footer {
+  background: var(--primary);
+  color: rgba(255,255,255,0.7);
+  text-align: center;
+  padding: 16px;
+  font-size: 0.82rem;
+}
+
+/* ====== الطباعة ====== */
+@media print {
+  body { background: white; }
+  .app { box-shadow: none; }
+  .app-header { background: var(--primary) !important; -webkit-print-color-adjust: exact; }
+  .btn-primary, .btn-secondary, .result-actions { display: none; }
+  .global-progress { display: none; }
+}
+
+/* ====== الجوّال ====== */
+@media (max-width: 600px) {
+  .page-content { padding: 20px 16px; }
+  .app-header   { padding: 20px 16px; }
+  .header-logo  { font-size: 2rem; }
+  .header-text h1 { font-size: 1.2rem; }
+  .form-row     { grid-template-columns: 1fr; }
+  .info-cards   { grid-template-columns: repeat(2, 1fr); }
+  .score-card   { flex-direction: column; text-align: center; }
+  .score-circle { width: 80px; height: 80px; }
+  .score-big    { font-size: 1.3rem; }
+}
