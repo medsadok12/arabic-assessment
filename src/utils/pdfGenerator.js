@@ -94,7 +94,7 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel) {
   await new Promise(r => setTimeout(r, 400));
 
   const canvas = await html2canvas(el, {
-    scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff',
+    scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff',
   });
 
   document.body.removeChild(el);

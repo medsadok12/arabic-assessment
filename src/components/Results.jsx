@@ -15,16 +15,25 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, on
     setEmailStatus('sending');
     setErrorMsg('');
     try {
-      const pdfBase64 = await generateAssessmentPDF(studentInfo, scores, finalLevel);
+      let pdfBase64 = null;
+      try {
+        pdfBase64 = await generateAssessmentPDF(studentInfo, scores, finalLevel);
+        // تجاهل PDF إذا تجاوز 3.5MB لتفادي رفض Vercel للطلبات الكبيرة
+        if (pdfBase64 && pdfBase64.length > 4_700_000) {
+          pdfBase64 = null;
+        }
+      } catch (_) {
+        pdfBase64 = null;
+      }
 
       const res = await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          parentEmail: studentInfo.email,
-          studentName: studentInfo.name,
-          studentAge:  studentInfo.age,
-          studentType: studentInfo.type,
+          parentEmail:  studentInfo.email,
+          studentName:  studentInfo.name,
+          studentAge:   studentInfo.age,
+          studentType:  studentInfo.type,
           pdfBase64,
           overallScore: scores.overall,
           finalLevel:   levelInfo?.name,
@@ -40,7 +49,12 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, on
       }
     } catch (err) {
       setEmailStatus('error');
-      setErrorMsg(err.message);
+      const msg = err.message || '';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setErrorMsg('تعذّر الاتصال بالخادم، تحقق من اتصالك بالإنترنت');
+      } else {
+        setErrorMsg(msg || 'حدث خطأ غير متوقع');
+      }
     }
   }
 
