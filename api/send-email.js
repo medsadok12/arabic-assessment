@@ -8,8 +8,12 @@ export default async function handler(req, res) {
   try {
     const { parentEmail, studentName, studentAge, studentType, pdfBase64, overallScore, finalLevel, bySkill } = req.body;
 
+    if (!parentEmail || !studentName) {
+      return res.status(400).json({ error: 'بيانات الطالب مفقودة' });
+    }
+
     if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-      return res.status(500).json({ error: 'Email service not configured' });
+      return res.status(500).json({ error: 'خدمة البريد غير مُهيَّأة' });
     }
 
     const transporter = nodemailer.createTransport({
@@ -20,10 +24,13 @@ export default async function handler(req, res) {
       },
     });
 
-    const pdfBuffer = Buffer.from(
-      pdfBase64.replace(/^data:application\/pdf;base64,/, ''),
-      'base64'
-    );
+    let pdfBuffer = null;
+    if (pdfBase64 && pdfBase64.length > 0) {
+      const base64Data = pdfBase64.replace(/^data:application\/pdf;base64,/, '');
+      if (base64Data.length > 0) {
+        pdfBuffer = Buffer.from(base64Data, 'base64');
+      }
+    }
 
     const dateStr = new Date().toLocaleDateString('ar-SA', {
       year: 'numeric', month: 'long', day: 'numeric',
@@ -132,28 +139,24 @@ export default async function handler(req, res) {
       `;
     }
 
+    const attachment = pdfBuffer
+      ? [{ filename: `تقرير_${studentName}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }]
+      : [];
+
     await transporter.sendMail({
-      from: `أكاديمية عارم 🎓 <${process.env.GMAIL_USER}>`,
+      from: `اكاديمية عارم <${process.env.GMAIL_USER}>`,
       to: parentEmail,
       subject: `تقرير تقييم اللغة العربية — ${studentName}`,
       html: buildHTML(true),
-      attachments: [{
-        filename: `تقرير_${studentName}.pdf`,
-        content: pdfBuffer,
-        contentType: 'application/pdf',
-      }],
+      attachments: attachment,
     });
 
     await transporter.sendMail({
-      from: `أكاديمية عارم 🎓 <${process.env.GMAIL_USER}>`,
+      from: `اكاديمية عارم <${process.env.GMAIL_USER}>`,
       to: 'gandouzimohamed9@gmail.com',
       subject: `[إدارة] تقييم جديد — ${studentName} — ${Math.round(overallScore)}%`,
       html: buildHTML(false),
-      attachments: [{
-        filename: `تقرير_${studentName}.pdf`,
-        content: pdfBuffer,
-        contentType: 'application/pdf',
-      }],
+      attachments: attachment,
     });
 
     return res.status(200).json({ success: true });
