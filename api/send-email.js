@@ -28,10 +28,8 @@ export default async function handler(req, res) {
       },
     });
 
-    const pdfBuffer = Buffer.from(
-      pdfBase64.replace(/^data:application\/pdf;base64,/, ''),
-      'base64'
-    );
+    const base64Data = pdfBase64.includes(',') ? pdfBase64.split(',')[1] : pdfBase64;
+    const pdfBuffer = Buffer.from(base64Data, 'base64');
 
     const dateStr = new Date().toLocaleDateString('ar-SA', {
       year: 'numeric', month: 'long', day: 'numeric',
