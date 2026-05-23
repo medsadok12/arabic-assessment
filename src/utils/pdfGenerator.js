@@ -94,22 +94,22 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel) {
   await new Promise(r => setTimeout(r, 400));
 
   const canvas = await html2canvas(el, {
-    scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff',
+    scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff',
   });
 
   document.body.removeChild(el);
 
   const pdf      = new jsPDF('p', 'mm', 'a4');
-  const imgData  = canvas.toDataURL('image/png');
+  const imgData  = canvas.toDataURL('image/jpeg', 0.7);
   const imgW     = 210;
   const imgH     = (canvas.height / canvas.width) * imgW;
 
-  pdf.addImage(imgData, 'PNG', 0, 0, imgW, imgH);
+  pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH);
 
   let remaining = imgH - 297;
   while (remaining > 0) {
     pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 0, -(imgH - remaining), imgW, imgH);
+    pdf.addImage(imgData, 'JPEG', 0, -(imgH - remaining), imgW, imgH);
     remaining -= 297;
   }
 
