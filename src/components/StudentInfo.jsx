@@ -68,7 +68,6 @@ export default function StudentInfo({ onStart }) {
           <option value="">اختر نوع المتعلم</option>
           <option value="native">ناطق باللغة العربية</option>
           <option value="non-native">غير ناطق باللغة العربية</option>
-          <option value="heritage">متعلم تراثي (لغة الأسرة)</option>
         </select>
       </div>
 
