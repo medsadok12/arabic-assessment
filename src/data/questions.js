@@ -63,6 +63,16 @@ export const questionsBank = {
     ],
     vocabulary: [
       {
+        id: 'V1_MATCH',
+        type: 'matching',
+        text: 'صِل كل حيوان باسمه الصحيح',
+        pairs: [
+          { id: 'giraffe',  emoji: '🦒', name: 'زَرَافَة' },
+          { id: 'lion',     emoji: '🦁', name: 'أَسَد'    },
+          { id: 'elephant', emoji: '🐘', name: 'فِيل'     },
+        ],
+      },
+      {
         id: 'V1_1',
         text: 'ما معنى كلمة "قمر"؟',
         options: [
@@ -663,12 +673,17 @@ export function getLevelQuestions(levelId) {
   const levelData = questionsBank[key];
   if (!levelData) return [];
 
-  const questions = [];
+  const matching = [];
+  const regular  = [];
   for (const skill of SKILLS) {
     const skillQuestions = levelData[skill.id] || [];
-    skillQuestions.forEach(q => questions.push({ ...q, skill: skill.id }));
+    skillQuestions.forEach(q => {
+      const withSkill = { ...q, skill: skill.id };
+      if (q.type === 'matching') matching.push(withSkill);
+      else regular.push(withSkill);
+    });
   }
-  return questions;
+  return [...matching, ...regular];
 }
 
 export function shuffle(array) {

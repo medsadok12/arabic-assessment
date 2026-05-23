@@ -10,7 +10,10 @@ import './App.css';
 const PAGES = { INFO: 'info', ASSESSMENT: 'assessment', TRANSITION: 'transition', RESULTS: 'results' };
 
 function buildLevelData(levelId) {
-  return { questions: shuffle(getLevelQuestions(levelId)), answers: [] };
+  const all      = getLevelQuestions(levelId);
+  const matching = all.filter(q => q.type === 'matching');
+  const regular  = shuffle(all.filter(q => q.type !== 'matching'));
+  return { questions: [...matching, ...regular], answers: [] };
 }
 
 export default function App() {
