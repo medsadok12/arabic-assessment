@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import StudentInfo     from './components/StudentInfo.jsx';
 import Assessment      from './components/Assessment.jsx';
 import LevelTransition from './components/LevelTransition.jsx';
@@ -7,7 +7,23 @@ import { getLevelQuestions, shuffle } from './data/questions.js';
 import { calculateLevelScore, applyJumpLogic, saveToLocalStorage } from './utils/scoring.js';
 import './App.css';
 
-const PAGES = { INFO: 'info', ASSESSMENT: 'assessment', TRANSITION: 'transition', RESULTS: 'results' };
+const PAGES       = { INFO: 'info', ASSESSMENT: 'assessment', TRANSITION: 'transition', RESULTS: 'results' };
+const SESSION_KEY = 'areem_session';
+
+function saveSession(state) {
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(state)); } catch (_) {}
+}
+
+function loadSession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+
+function clearSession() {
+  try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+}
 
 function buildLevelData(levelId) {
   const all      = getLevelQuestions(levelId);
@@ -16,21 +32,35 @@ function buildLevelData(levelId) {
   return { questions: [...matching, ...regular], answers: [] };
 }
 
+const saved = loadSession();
+
 export default function App() {
-  const [page, setPage]               = useState(PAGES.INFO);
-  const [studentInfo, setStudentInfo] = useState(null);
-  const [currentLevel, setCurrentLevel] = useState(1);
-  const [levelData, setLevelData]     = useState(null);
-  const [questionIdx, setQuestionIdx] = useState(0);
-  const [allAnswers, setAllAnswers]   = useState([]);
-  const [levelPath, setLevelPath]     = useState([]);
+  const [page, setPage]               = useState(saved?.page ?? PAGES.INFO);
+  const [studentInfo, setStudentInfo] = useState(saved?.studentInfo ?? null);
+  const [currentLevel, setCurrentLevel] = useState(saved?.currentLevel ?? 1);
+  const [levelData, setLevelData]     = useState(saved?.levelData ?? null);
+  const [questionIdx, setQuestionIdx] = useState(saved?.questionIdx ?? 0);
+  const [allAnswers, setAllAnswers]   = useState(saved?.allAnswers ?? []);
+  const [levelPath, setLevelPath]     = useState(saved?.levelPath ?? []);
 
-  const [transitionFrom, setTransitionFrom]   = useState(null);
-  const [transitionTo, setTransitionTo]       = useState(null);
-  const [transitionScore, setTransitionScore] = useState(0);
+  const [transitionFrom, setTransitionFrom]   = useState(saved?.transitionFrom ?? null);
+  const [transitionTo, setTransitionTo]       = useState(saved?.transitionTo ?? null);
+  const [transitionScore, setTransitionScore] = useState(saved?.transitionScore ?? 0);
 
-  const [finalScores, setFinalScores] = useState(null);
-  const [finalLevel, setFinalLevel]   = useState(1);
+  const [finalScores, setFinalScores] = useState(saved?.finalScores ?? null);
+  const [finalLevel, setFinalLevel]   = useState(saved?.finalLevel ?? 1);
+
+  // حفظ الجلسة عند كل تغيير في الحالة
+  useEffect(() => {
+    if (page === PAGES.INFO) { clearSession(); return; }
+    saveSession({
+      page, studentInfo, currentLevel, levelData,
+      questionIdx, allAnswers, levelPath,
+      transitionFrom, transitionTo, transitionScore,
+      finalScores, finalLevel,
+    });
+  }, [page, studentInfo, currentLevel, levelData, questionIdx, allAnswers, levelPath,
+      transitionFrom, transitionTo, transitionScore, finalScores, finalLevel]);
 
   function handleStart(info) {
     const data = buildLevelData(1);
@@ -53,7 +83,7 @@ export default function App() {
       return;
     }
 
-    // Level finished
+    // انتهى المستوى
     const accumulated = [...allAnswers, ...newAnswers];
     const scores      = calculateLevelScore(accumulated);
     const nextLevel   = applyJumpLogic(scores.overall, currentLevel);
@@ -81,8 +111,8 @@ export default function App() {
   }
 
   function finalize(answers, level, path) {
-    const scores      = calculateLevelScore(answers);
-    const determined  = applyJumpLogic(scores.overall, level);
+    const scores     = calculateLevelScore(answers);
+    const determined = applyJumpLogic(scores.overall, level);
     setFinalScores(scores);
     setFinalLevel(determined);
     saveToLocalStorage({ studentInfo, scores, finalLevel: determined, levelPath: path });
@@ -90,6 +120,7 @@ export default function App() {
   }
 
   function handleRestart() {
+    clearSession();
     setPage(PAGES.INFO);
     setStudentInfo(null);
     setCurrentLevel(1);
@@ -99,6 +130,9 @@ export default function App() {
     setLevelPath([]);
     setFinalScores(null);
     setFinalLevel(1);
+    setTransitionFrom(null);
+    setTransitionTo(null);
+    setTransitionScore(0);
   }
 
   const answered       = allAnswers.length + (levelData?.answers?.length || 0) + (page === PAGES.ASSESSMENT ? questionIdx : 0);
