@@ -25,13 +25,16 @@ function clearSession() {
   try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
 }
 
+const PINNED = new Set(['matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill']);
+
 function buildLevelData(levelId) {
   const all      = getLevelQuestions(levelId);
   const matching = all.filter(q => q.type === 'matching');
   const speaking = all.filter(q => q.type === 'speaking');
   const photoWr  = all.filter(q => q.type === 'photo-writing');
-  const regular  = shuffle(all.filter(q => q.type !== 'matching' && q.type !== 'speaking' && q.type !== 'photo-writing'));
-  return { questions: [...matching, ...speaking, ...photoWr, ...regular], answers: [] };
+  const newTypes = all.filter(q => ['word-order', 'correction', 'fill'].includes(q.type));
+  const regular  = shuffle(all.filter(q => !PINNED.has(q.type ?? '')));
+  return { questions: [...matching, ...speaking, ...photoWr, ...newTypes, ...regular], answers: [] };
 }
 
 const saved = loadSession();

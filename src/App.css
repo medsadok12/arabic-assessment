@@ -852,6 +852,140 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   box-shadow: 0 4px 12px rgba(26,16,82,0.25);
 }
 
+/* ====== ترتيب الكلمات ====== */
+.wo-answer-area {
+  min-height: 52px;
+  border: 2px dashed var(--primary-l);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  background: #f3f0ff;
+  margin-bottom: 14px;
+}
+.wo-placeholder {
+  color: #9e9e9e;
+  font-size: 0.85rem;
+}
+.wo-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.wo-chip {
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.wo-chip-pool {
+  background: linear-gradient(135deg, var(--primary), var(--primary-l));
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(26,16,82,0.2);
+}
+.wo-chip-pool:hover  { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(26,16,82,0.3); }
+.wo-chip-placed {
+  background: var(--secondary);
+  color: white;
+  border-color: var(--secondary-l);
+}
+.wo-chip-placed:hover { transform: translateY(-1px); }
+.wo-result {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-top: 10px;
+  line-height: 1.6;
+}
+.wo-correct { background: #e8f5e9; color: #2e7d32; border: 1px solid #66bb6a; }
+.wo-wrong   { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+
+/* ====== تصحيح الأخطاء ====== */
+.cq-wrong-box {
+  background: #fff8e1;
+  border: 1px solid #ffca28;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 12px 0;
+}
+.cq-wrong-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #7b6000;
+  display: block;
+  margin-bottom: 6px;
+}
+.cq-wrong-sentence {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #c62828;
+  margin: 0;
+  direction: rtl;
+  text-decoration: underline wavy #c62828;
+}
+.cq-hint {
+  font-size: 0.82rem;
+  color: var(--text-light);
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  background: #f5f5f5;
+  border-radius: 6px;
+}
+.cq-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 1rem;
+  direction: rtl;
+  resize: none;
+  margin-top: 6px;
+  transition: border-color 0.2s;
+}
+.cq-input:focus { outline: none; border-color: var(--primary-l); }
+
+/* ====== إكمال الجملة ====== */
+.fq-sentence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  background: #f3f0ff;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 12px 0;
+  line-height: 2;
+}
+.fq-blank {
+  border: none;
+  border-bottom: 3px solid var(--primary-l);
+  background: transparent;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--primary);
+  width: 100px;
+  text-align: center;
+  padding: 2px 4px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.fq-blank:focus   { border-color: var(--secondary); }
+.fq-blank:disabled { color: var(--text-light); }
+
 /* ====== تدريب الكتابة ====== */
 .wq-instruction-box {
   background: #fffde7;
