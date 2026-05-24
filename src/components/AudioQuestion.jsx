@@ -6,11 +6,12 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
   const [ttsState,  setTtsState]  = useState('idle');     // idle | playing
   const [recState,  setRecState]  = useState('idle');     // idle | recording | done
   const [recTime,   setRecTime]   = useState(0);
-  const [saving,    setSaving]    = useState(false);
-  const [saved,     setSaved]     = useState(false);
-  const [micError,  setMicError]  = useState(false);
-  const [noSupport, setNoSupport] = useState(false);
-  const [audioUrl,  setAudioUrl]  = useState(null);
+  const [saving,      setSaving]      = useState(false);
+  const [saved,       setSaved]       = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const [micError,    setMicError]    = useState(false);
+  const [noSupport,   setNoSupport]   = useState(false);
+  const [audioUrl,    setAudioUrl]    = useState(null);
 
   const recRef    = useRef(null);
   const chunksRef = useRef([]);
@@ -91,21 +92,32 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
   async function handleSubmit() {
     if (!blobRef.current) return;
     setSaving(true);
+    setUploadError(null);
     try {
       const reader = new FileReader();
       reader.readAsDataURL(blobRef.current);
       reader.onloadend = async () => {
         try {
-          await fetch('/api/save-recording', {
-            method: 'POST',
+          const res  = await fetch('/api/save-recording', {
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body:    JSON.stringify({
               audioBase64: reader.result,
               studentName: studentInfo?.name || 'طالب',
               questionId:  question.id,
             }),
           });
-        } catch (_) {}
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            setUploadError(data.error || 'فشل الرفع إلى Drive');
+            setSaving(false);
+            return;
+          }
+        } catch (err) {
+          setUploadError(err.message || 'تعذّر الاتصال بالخادم');
+          setSaving(false);
+          return;
+        }
         setSaving(false);
         setSaved(true);
         setTimeout(() => onAnswer({
@@ -182,14 +194,23 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
         )}
       </div>
 
-      {recState === 'done' && (
+      {uploadError && (
+        <div style={{ marginTop: 8 }}>
+          <p className="aq-error">⚠️ {uploadError}</p>
+          <button className="btn-primary" onClick={handleSubmit} style={{ marginTop: 6 }}>
+            🔄 إعادة المحاولة
+          </button>
+        </div>
+      )}
+
+      {recState === 'done' && !uploadError && (
         <button
           className="btn-primary"
           onClick={handleSubmit}
           disabled={saving || saved}
           style={{ opacity: saving || saved ? 0.75 : 1, marginTop: 8 }}
         >
-          {saving ? '⏳ جاري الإرسال...' : saved ? '✅ تم الإرسال بنجاح!' : 'إرسال التسجيل ✓'}
+          {saving ? '⏳ جاري الرفع إلى Drive...' : saved ? '✅ تم الحفظ في Drive!' : 'إرسال التسجيل ✓'}
         </button>
       )}
     </div>
