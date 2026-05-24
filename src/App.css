@@ -43,6 +43,26 @@
   100% { transform: translateY(0px)   translateX(0px)  rotate(0deg);  }
 }
 
+/* صورة الولد — جانب اليمين */
+.bg-boy {
+  position: absolute;
+  right: 3.5%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: clamp(130px, 14vw, 210px);
+  opacity: 0.88;
+  filter: drop-shadow(0 12px 40px rgba(212,149,42,0.18)) drop-shadow(0 4px 16px rgba(0,0,0,0.10));
+  animation: floatBoy 8s ease-in-out infinite;
+  pointer-events: none;
+  user-select: none;
+}
+
+@keyframes floatBoy {
+  0%, 100% { transform: translateY(calc(-50% + 0px));   }
+  45%       { transform: translateY(calc(-50% - 22px));  }
+  80%       { transform: translateY(calc(-50% - 10px));  }
+}
+
 /* إخفاء على الشاشات الضيقة حيث لا تظهر الجوانب */
 @media (max-width: 860px) { .bg-letters { display: none; } }
 
