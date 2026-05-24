@@ -142,9 +142,10 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <span className="header-logo" style={{ color: '#d4952a', fontFamily: 'serif' }}>ع</span>
+        <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="عارم أكاديمي" className="header-logo-img" />
         <div className="header-text">
           <h1>عارم أكاديمي</h1>
+          <span className="header-en">AREM ACADEMY</span>
           <p>نظام التقييم الذكي — تقييم شامل لمهارات اللغة العربية</p>
         </div>
       </header>
