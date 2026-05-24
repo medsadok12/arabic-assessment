@@ -46,46 +46,40 @@
 /* إخفاء على الشاشات الضيقة حيث لا تظهر الجوانب */
 @media (max-width: 860px) { .bg-letters { display: none; } }
 
-/* ====== شريط التواصل الاجتماعي ====== */
-.social-sidebar {
-  position: fixed;
-  right: 22px;
-  top: 50%;
-  transform: translateY(-50%);
+/* ====== أيقونات التواصل في الـ header ====== */
+.header-en-row {
   display: flex;
-  flex-direction: column;
-  gap: 14px;
-  z-index: 10;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
 }
 
-.social-btn {
-  width: 46px;
-  height: 46px;
+.header-social {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.hsoc-btn {
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  opacity: 0.92;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  transition: transform 0.2s, opacity 0.2s;
+  flex-shrink: 0;
 }
 
-.social-btn:hover {
-  transform: scale(1.18);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
-}
+.hsoc-btn:hover { transform: scale(1.18); opacity: 1; }
+.hsoc-btn svg   { width: 13px; height: 13px; fill: #ffffff; }
 
-.social-btn svg {
-  width: 22px;
-  height: 22px;
-  fill: #ffffff;
-}
-
-.social-fb { background: #1877F2; }
-.social-ig { background: linear-gradient(135deg, #833AB4 0%, #E1306C 50%, #F77737 100%); }
-.social-wa { background: #25D366; }
-
-@media (max-width: 860px) { .social-sidebar { display: none; } }
+.hsoc-fb { background: #1877F2; }
+.hsoc-ig { background: linear-gradient(135deg, #833AB4 0%, #E1306C 55%, #F77737 100%); }
+.hsoc-wa { background: #25D366; }
 
 /* ====== أساسيات ====== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -141,12 +135,11 @@ body {
 }
 
 .header-en {
-  display: block;
+  display: inline;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 3px;
   color: rgba(212,149,42,0.6);
-  margin-bottom: 6px;
   direction: ltr;
   text-align: right;
 }
