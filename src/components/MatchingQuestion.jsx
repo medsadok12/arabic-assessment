@@ -103,8 +103,8 @@ export default function MatchingQuestion({ question, onAnswer }) {
             {COLORS.map((color, i) => (
               <marker key={i} id={`arr-${i}`}
                 markerWidth="8" markerHeight="8"
-                refX="1" refY="3" orient="auto">
-                <path d="M8,0 L8,6 L0,3 z" fill={color} />
+                refX="7" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L8,3 z" fill={color} />
               </marker>
             ))}
           </defs>
