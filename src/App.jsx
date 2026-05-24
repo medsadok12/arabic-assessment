@@ -29,8 +29,9 @@ function buildLevelData(levelId) {
   const all      = getLevelQuestions(levelId);
   const matching = all.filter(q => q.type === 'matching');
   const speaking = all.filter(q => q.type === 'speaking');
-  const regular  = shuffle(all.filter(q => q.type !== 'matching' && q.type !== 'speaking'));
-  return { questions: [...matching, ...speaking, ...regular], answers: [] };
+  const photoWr  = all.filter(q => q.type === 'photo-writing');
+  const regular  = shuffle(all.filter(q => q.type !== 'matching' && q.type !== 'speaking' && q.type !== 'photo-writing'));
+  return { questions: [...matching, ...speaking, ...photoWr, ...regular], answers: [] };
 }
 
 const saved = loadSession();

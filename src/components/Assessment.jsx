@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SKILLS, LEVELS } from '../data/questions.js';
 import MatchingQuestion from './MatchingQuestion.jsx';
 import AudioQuestion    from './AudioQuestion.jsx';
+import WritingQuestion  from './WritingQuestion.jsx';
 
 export default function Assessment({ questions, currentLevel, questionIndex, studentInfo, onAnswer }) {
   const [selected, setSelected] = useState(null);
@@ -42,10 +43,12 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
 
   if (!question) return null;
 
-  if (question.type === 'matching' || question.type === 'speaking') {
+  if (question.type === 'matching' || question.type === 'speaking' || question.type === 'photo-writing') {
     const Inner = question.type === 'matching'
       ? <MatchingQuestion question={question} onAnswer={onAnswer} />
-      : <AudioQuestion    question={question} studentInfo={studentInfo} onAnswer={onAnswer} />;
+      : question.type === 'speaking'
+      ? <AudioQuestion    question={question} studentInfo={studentInfo} onAnswer={onAnswer} />
+      : <WritingQuestion  question={question} studentInfo={studentInfo} onAnswer={onAnswer} />;
     return (
       <div className="page-content">
         <div className="assessment-header">
