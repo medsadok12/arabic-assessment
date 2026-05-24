@@ -3,14 +3,16 @@ import { useState, useRef, useEffect } from 'react';
 const MAX_SECS = 60;
 
 export default function AudioQuestion({ question, studentInfo, onAnswer }) {
-  const [ttsState,  setTtsState]  = useState('idle');     // idle | playing
-  const [recState,  setRecState]  = useState('idle');     // idle | recording | done
-  const [recTime,   setRecTime]   = useState(0);
-  const [saving,    setSaving]    = useState(false);
-  const [saved,     setSaved]     = useState(false);
-  const [micError,  setMicError]  = useState(false);
-  const [noSupport, setNoSupport] = useState(false);
-  const [audioUrl,  setAudioUrl]  = useState(null);
+  const [ttsState,    setTtsState]    = useState('idle');   // idle | playing
+  const [recState,    setRecState]    = useState('idle');   // idle | recording | done
+  const [recTime,     setRecTime]     = useState(0);
+  const [saving,      setSaving]      = useState(false);
+  const [saved,       setSaved]       = useState(false);
+  const [savedUrl,    setSavedUrl]    = useState(null);
+  const [uploadError, setUploadError] = useState(null);
+  const [micError,    setMicError]    = useState(false);
+  const [noSupport,   setNoSupport]   = useState(false);
+  const [audioUrl,    setAudioUrl]    = useState(null);
 
   const recRef    = useRef(null);
   const chunksRef = useRef([]);
@@ -51,6 +53,9 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
 
   async function startRec() {
     setMicError(false);
+    setUploadError(null);
+    setSaved(false);
+    setSavedUrl(null);
     if (!navigator.mediaDevices?.getUserMedia) { setNoSupport(true); return; }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -91,34 +96,45 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
   async function handleSubmit() {
     if (!blobRef.current) return;
     setSaving(true);
-    try {
-      const reader = new FileReader();
-      reader.readAsDataURL(blobRef.current);
-      reader.onloadend = async () => {
-        try {
-          await fetch('/api/save-recording', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              audioBase64: reader.result,
-              studentName: studentInfo?.name || 'طالب',
-              questionId:  question.id,
-            }),
-          });
-        } catch (_) {}
+    setUploadError(null);
+
+    const reader = new FileReader();
+    reader.readAsDataURL(blobRef.current);
+    reader.onloadend = async () => {
+      try {
+        const res  = await fetch('/api/save-recording', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            audioBase64: reader.result,
+            studentName: studentInfo?.name || 'طالب',
+            questionId:  question.id,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setUploadError(data.error || 'فشل رفع التسجيل');
+          setSaving(false);
+          return;
+        }
         setSaving(false);
         setSaved(true);
+        setSavedUrl(data.url);
         setTimeout(() => onAnswer({
           questionId: question.id,
           skill:      question.skill,
           answer:     0,
           isCorrect:  true,
-        }), 1400);
-      };
-    } catch (_) {
+        }), 2000);
+      } catch (err) {
+        setUploadError(err.message || 'تعذّر الاتصال بالخادم');
+        setSaving(false);
+      }
+    };
+    reader.onerror = () => {
+      setUploadError('تعذّر قراءة ملف التسجيل');
       setSaving(false);
-      onAnswer({ questionId: question.id, skill: question.skill, answer: 0, isCorrect: true });
-    }
+    };
   }
 
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -172,7 +188,7 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
         )}
 
         {recState !== 'recording' ? (
-          <button className="aq-btn-rec" onClick={startRec}>
+          <button className="aq-btn-rec" onClick={startRec} disabled={saving}>
             🎙️ {recState === 'done' ? 'إعادة التسجيل' : 'ابدأ التسجيل'}
           </button>
         ) : (
@@ -182,14 +198,38 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
         )}
       </div>
 
-      {recState === 'done' && (
+      {/* ── خطأ الرفع ── */}
+      {uploadError && (
+        <div style={{ marginTop: 10 }}>
+          <p className="aq-error">⚠️ {uploadError}</p>
+          <button className="btn-primary" onClick={handleSubmit} style={{ marginTop: 6 }}>
+            🔄 إعادة المحاولة
+          </button>
+        </div>
+      )}
+
+      {/* ── نجاح الرفع ── */}
+      {saved && savedUrl && (
+        <div style={{ marginTop: 10, padding: '10px 14px', background: '#e8f5e9', borderRadius: 8, border: '1px solid #66bb6a' }}>
+          <p style={{ margin: 0, color: '#2e7d32', fontWeight: 'bold', fontSize: 14 }}>
+            ✅ تم حفظ التسجيل بنجاح
+          </p>
+          <a href={savedUrl} target="_blank" rel="noreferrer"
+            style={{ color: '#1a1052', fontSize: 12, wordBreak: 'break-all' }}>
+            {savedUrl}
+          </a>
+        </div>
+      )}
+
+      {/* ── زر الإرسال ── */}
+      {recState === 'done' && !uploadError && !saved && (
         <button
           className="btn-primary"
           onClick={handleSubmit}
-          disabled={saving || saved}
-          style={{ opacity: saving || saved ? 0.75 : 1, marginTop: 8 }}
+          disabled={saving}
+          style={{ opacity: saving ? 0.75 : 1, marginTop: 8 }}
         >
-          {saving ? '⏳ جاري الإرسال...' : saved ? '✅ تم الإرسال بنجاح!' : 'إرسال التسجيل ✓'}
+          {saving ? '⏳ جاري الرفع...' : 'إرسال التسجيل ✓'}
         </button>
       )}
     </div>
