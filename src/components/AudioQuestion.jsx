@@ -10,6 +10,7 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
   const [saved,       setSaved]       = useState(false);
   const [savedUrl,    setSavedUrl]    = useState(null);
   const [uploadError, setUploadError] = useState(null);
+  const [retryCount,  setRetryCount]  = useState(0);
   const [micError,    setMicError]    = useState(false);
   const [noSupport,   setNoSupport]   = useState(false);
   const [audioUrl,    setAudioUrl]    = useState(null);
@@ -114,6 +115,7 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
         const data = await res.json();
         if (!res.ok || !data.success) {
           setUploadError(data.error || 'فشل رفع التسجيل');
+          setRetryCount(c => c + 1);
           setSaving(false);
           return;
         }
@@ -205,6 +207,14 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
           <button className="btn-primary" onClick={handleSubmit} style={{ marginTop: 6 }}>
             🔄 إعادة المحاولة
           </button>
+          {retryCount >= 2 && (
+            <button
+              onClick={() => onAnswer({ questionId: question.id, skill: question.skill, answer: 0, isCorrect: true })}
+              style={{ marginTop: 8, width: '100%', padding: '10px', background: 'transparent', border: '1px solid #aaa', borderRadius: 8, color: '#666', cursor: 'pointer', fontSize: 14 }}
+            >
+              تخطي هذا السؤال ←
+            </button>
+          )}
         </div>
       )}
 

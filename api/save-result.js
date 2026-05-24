@@ -47,24 +47,6 @@ async function appendRow(token, sheetId, row) {
 }
 
 export default async function handler(req, res) {
-  // GET: اختبار الاتصال بالشيت
-  if (req.method === 'GET') {
-    try {
-      if (!process.env.SHEETS_ID || !process.env.GOOGLE_SA_KEY)
-        return res.status(200).json({ ok: false, reason: 'env vars missing', SHEETS_ID: !!process.env.SHEETS_ID, SA_KEY: !!process.env.GOOGLE_SA_KEY });
-      const { token, email } = await getToken();
-      const testRes = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${process.env.SHEETS_ID}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const testData = await testRes.json();
-      if (!testRes.ok) return res.status(200).json({ ok: false, error: testData.error?.message, serviceAccount: email });
-      return res.status(200).json({ ok: true, sheet: testData.properties?.title, serviceAccount: email });
-    } catch (err) {
-      return res.status(200).json({ ok: false, error: err.message });
-    }
-  }
-
   if (req.method !== 'POST')
     return res.status(405).json({ error: 'Method not allowed' });
 

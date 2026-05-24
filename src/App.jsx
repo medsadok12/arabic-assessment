@@ -36,6 +36,16 @@ function buildLevelData(levelId) {
 const saved = loadSession();
 
 export default function App() {
+  const [offline, setOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const on  = () => setOffline(false);
+    const off = () => setOffline(true);
+    window.addEventListener('online',  on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+
   const [page, setPage]               = useState(saved?.page ?? PAGES.INFO);
   const [studentInfo, setStudentInfo] = useState(saved?.studentInfo ?? null);
   const [currentLevel, setCurrentLevel] = useState(saved?.currentLevel ?? 1);
@@ -121,6 +131,7 @@ export default function App() {
   }
 
   function handleRestart() {
+    if (!window.confirm('هل تريد بدء تقييم جديد؟ سيتم مسح نتائج هذا التقييم.')) return;
     clearSession();
     setPage(PAGES.INFO);
     setStudentInfo(null);
@@ -136,12 +147,17 @@ export default function App() {
     setTransitionScore(0);
   }
 
-  const answered       = allAnswers.length + (levelData?.answers?.length || 0) + (page === PAGES.ASSESSMENT ? questionIdx : 0);
-  const totalPossible  = 60;
+  const answered       = allAnswers.length + (page === PAGES.ASSESSMENT ? questionIdx : 0);
+  const totalPossible  = allAnswers.length + (levelData?.questions?.length || 60);
   const globalProgress = Math.min(Math.round((answered / totalPossible) * 100), 100);
 
   return (
     <div className="app">
+      {offline && (
+        <div style={{ background: '#c62828', color: 'white', textAlign: 'center', padding: '8px', fontSize: 14, fontWeight: 'bold' }}>
+          ⚠️ انقطع الاتصال بالإنترنت — لا تغلق الصفحة، سيتم استئناف التقييم عند العودة
+        </div>
+      )}
       <header className="app-header">
         <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="عارم أكاديمي" className="header-logo-img" />
         <div className="header-text">

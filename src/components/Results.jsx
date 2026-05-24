@@ -8,6 +8,10 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, on
   const [errorMsg,    setErrorMsg]    = useState('');
 
   useEffect(() => {
+    // منع الحفظ المزدوج عند إعادة تحميل الصفحة
+    const key = `sheets_saved_${studentInfo.name}_${Math.round(scores.overall)}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
     fetch('/api/save-result', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
