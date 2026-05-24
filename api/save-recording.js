@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     const audioBuffer = Buffer.from(base64Data, 'base64');
 
     const blob = await put(fileName, audioBuffer, {
-      access:      'public',
+      access:      'private',
       contentType: 'audio/webm',
     });
 
