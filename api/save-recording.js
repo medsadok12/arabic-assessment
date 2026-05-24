@@ -12,7 +12,16 @@ function sanitize(val, max = 80) {
 }
 
 function getAuth() {
-  const credentials = JSON.parse(process.env.GOOGLE_SA_KEY);
+  let credentials;
+  try {
+    credentials = JSON.parse(process.env.GOOGLE_SA_KEY);
+  } catch {
+    throw new Error('GOOGLE_SA_KEY is not valid JSON');
+  }
+  // Vercel escapes newlines in env vars — restore them for the PEM private key
+  if (credentials.private_key) {
+    credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+  }
   return new google.auth.GoogleAuth({
     credentials,
     scopes: ['https://www.googleapis.com/auth/drive.file'],
