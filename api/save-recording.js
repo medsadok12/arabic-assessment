@@ -5,7 +5,7 @@ export const config = {
   api: { bodyParser: { sizeLimit: '10mb' } },
 };
 
-const FOLDER_ID = '19O3jRyBOLcmInmIsk0k7GiWjDavA8hHQ';
+const FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || '19O3jRyBOLcmInmIsk0k7GiWjDavA8hHQ';
 
 function sanitize(val, max = 80) {
   return String(val ?? '').replace(/[<>&"'`/\\]/g, '').trim().slice(0, max);
