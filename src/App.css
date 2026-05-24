@@ -15,6 +15,36 @@
   --shadow:     0 4px 20px rgba(0,0,0,0.10);
 }
 
+/* ====== حروف خلفية طافية ====== */
+.bg-letters {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bg-letter {
+  position: absolute;
+  color: #ffffff;
+  font-family: 'Tajawal', sans-serif;
+  font-weight: 900;
+  line-height: 1;
+  user-select: none;
+  animation: floatLetter ease-in-out infinite;
+}
+
+@keyframes floatLetter {
+  0%   { transform: translateY(0px)   translateX(0px)  rotate(0deg);  }
+  25%  { transform: translateY(-28px) translateX(6px)  rotate(5deg);  }
+  55%  { transform: translateY(-12px) translateX(-5px) rotate(-3deg); }
+  80%  { transform: translateY(-22px) translateX(3px)  rotate(2deg);  }
+  100% { transform: translateY(0px)   translateX(0px)  rotate(0deg);  }
+}
+
+/* إخفاء على الشاشات الضيقة حيث لا تظهر الجوانب */
+@media (max-width: 860px) { .bg-letters { display: none; } }
+
 /* ====== أساسيات ====== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -35,6 +65,8 @@ body {
   flex-direction: column;
   background: var(--card-bg);
   box-shadow: 0 0 60px rgba(0,0,0,0.25);
+  position: relative;
+  z-index: 1;
 }
 
 /* ====== الرأس ====== */

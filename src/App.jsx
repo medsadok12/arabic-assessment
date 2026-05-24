@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, Fragment } from 'react';
 import StudentInfo     from './components/StudentInfo.jsx';
 import Assessment      from './components/Assessment.jsx';
 import LevelTransition from './components/LevelTransition.jsx';
@@ -36,6 +36,17 @@ function buildLevelData(levelId) {
   const regular  = shuffle(all.filter(q => !PINNED.has(q.type ?? '')));
   return { questions: [...matching, ...speaking, ...photoWr, ...newTypes, ...regular], answers: [] };
 }
+
+const BG_LETTERS = [
+  { char: 'ع', style: { left: '3%',  top: '10%', fontSize: '9rem',  opacity: 0.07, animationDuration: '18s', animationDelay: '0s'  } },
+  { char: 'ر', style: { left: '8%',  top: '45%', fontSize: '12rem', opacity: 0.05, animationDuration: '24s', animationDelay: '5s'  } },
+  { char: 'م', style: { left: '2%',  top: '72%', fontSize: '8rem',  opacity: 0.06, animationDuration: '20s', animationDelay: '9s'  } },
+  { char: 'ب', style: { left: '11%', top: '28%', fontSize: '10rem', opacity: 0.04, animationDuration: '27s', animationDelay: '2s'  } },
+  { char: 'ا', style: { left: '88%', top: '15%', fontSize: '11rem', opacity: 0.05, animationDuration: '22s', animationDelay: '1s'  } },
+  { char: 'ي', style: { left: '93%', top: '50%', fontSize: '9rem',  opacity: 0.07, animationDuration: '25s', animationDelay: '7s'  } },
+  { char: 'ة', style: { left: '86%', top: '76%', fontSize: '8rem',  opacity: 0.04, animationDuration: '19s', animationDelay: '4s'  } },
+  { char: 'ل', style: { left: '91%', top: '33%', fontSize: '10rem', opacity: 0.06, animationDuration: '23s', animationDelay: '11s' } },
+];
 
 const saved = loadSession();
 
@@ -156,6 +167,12 @@ export default function App() {
   const globalProgress = Math.min(Math.round((answered / totalPossible) * 100), 100);
 
   return (
+    <Fragment>
+    <div className="bg-letters" aria-hidden="true">
+      {BG_LETTERS.map((l, i) => (
+        <span key={i} className="bg-letter" style={l.style}>{l.char}</span>
+      ))}
+    </div>
     <div className="app">
       {offline && (
         <div style={{ background: '#c62828', color: 'white', textAlign: 'center', padding: '8px', fontSize: 14, fontWeight: 'bold' }}>
@@ -220,5 +237,6 @@ export default function App() {
         <p>© 2026 أكاديمية عارم — gandouzimohamed9@gmail.com</p>
       </footer>
     </div>
+    </Fragment>
   );
 }
