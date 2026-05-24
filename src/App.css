@@ -722,6 +722,136 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   .global-progress { display: none; }
 }
 
+/* ====== سؤال الكلام الصوتي ====== */
+.aq-listen-box {
+  background: linear-gradient(135deg, #0d0833 0%, #1a1052 100%);
+  border-radius: 14px;
+  padding: 22px 20px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.aq-listen-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(212,149,42,0.7);
+  margin-bottom: 10px;
+}
+
+.aq-text-display {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #fff;
+  direction: rtl;
+  margin-bottom: 18px;
+  line-height: 1.6;
+  background: rgba(212,149,42,0.1);
+  border: 1px solid rgba(212,149,42,0.25);
+  border-radius: 10px;
+  padding: 14px 20px;
+}
+
+.aq-play-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #d4952a, #e8b84a);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 28px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 14px rgba(212,149,42,0.35);
+}
+
+.aq-play-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(212,149,42,0.45); }
+.aq-play-btn.aq-playing { background: rgba(255,255,255,0.15); cursor: default; box-shadow: none; }
+
+.aq-play-icon { font-size: 1.2rem; }
+
+.aq-record-box {
+  background: #f8f9ff;
+  border: 2px solid #e8eaf6;
+  border-radius: 14px;
+  padding: 22px 20px;
+  margin-bottom: 14px;
+  transition: all 0.3s;
+}
+
+.aq-rec-active {
+  background: #fff8e1;
+  border-color: #d4952a;
+}
+
+.aq-record-title { font-weight: 800; color: var(--primary); font-size: 1rem; margin-bottom: 4px; }
+.aq-record-hint  { font-size: 0.82rem; color: var(--text-light); margin-bottom: 16px; }
+
+.aq-error { color: var(--danger); font-size: 0.88rem; margin-bottom: 12px; font-weight: 700; }
+
+.aq-rec-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.aq-rec-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: aq-blink 1s infinite;
+}
+
+.aq-rec-time { font-size: 1.4rem; font-weight: 900; color: var(--danger); }
+.aq-rec-max  { font-size: 0.82rem; color: var(--text-light); }
+
+@keyframes aq-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.2; }
+}
+
+.aq-playback { margin-bottom: 14px; }
+.aq-playback-label { font-size: 0.85rem; color: var(--success); font-weight: 700; margin-bottom: 8px; }
+
+.aq-btn-rec {
+  width: 100%;
+  padding: 13px 20px;
+  background: linear-gradient(135deg, #c62828, #e53935);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Tajawal', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(198,40,40,0.25);
+}
+
+.aq-btn-rec:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(198,40,40,0.35); }
+
+.aq-btn-stop {
+  width: 100%;
+  padding: 13px 20px;
+  background: linear-gradient(135deg, #1a1052, #2d1b69);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Tajawal', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(26,16,82,0.25);
+}
+
 /* ====== سؤال الربط ====== */
 .matching-layout {
   overflow-x: auto;

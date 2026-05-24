@@ -21,6 +21,13 @@ export const questionsBank = {
   level1: {
     listening: [
       {
+        id:        'L1_SPEAK',
+        type:      'speaking',
+        text:      'استمع إلى الجملة التالية ثم سجّل ردّك بصوتك',
+        audioText: 'مرحبًا بك. كيف حالك؟',
+        prompt:    'كيف تردّ على هذه التحية بالعربية؟',
+      },
+      {
         id: 'L1_1',
         text: 'استمع: "تُفَّاحَة". ما هي هذه الكلمة؟',
         options: [

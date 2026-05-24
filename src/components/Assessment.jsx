@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { SKILLS, LEVELS } from '../data/questions.js';
 import MatchingQuestion from './MatchingQuestion.jsx';
+import AudioQuestion    from './AudioQuestion.jsx';
 
-export default function Assessment({ questions, currentLevel, questionIndex, onAnswer }) {
+export default function Assessment({ questions, currentLevel, questionIndex, studentInfo, onAnswer }) {
   const [selected, setSelected] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -41,7 +42,10 @@ export default function Assessment({ questions, currentLevel, questionIndex, onA
 
   if (!question) return null;
 
-  if (question.type === 'matching') {
+  if (question.type === 'matching' || question.type === 'speaking') {
+    const Inner = question.type === 'matching'
+      ? <MatchingQuestion question={question} onAnswer={onAnswer} />
+      : <AudioQuestion    question={question} studentInfo={studentInfo} onAnswer={onAnswer} />;
     return (
       <div className="page-content">
         <div className="assessment-header">
@@ -56,7 +60,7 @@ export default function Assessment({ questions, currentLevel, questionIndex, onA
         {skillInfo && (
           <div className="skill-tag"><span>📌 {skillInfo.name}</span></div>
         )}
-        <MatchingQuestion question={question} onAnswer={onAnswer} />
+        {Inner}
       </div>
     );
   }

@@ -28,8 +28,9 @@ function clearSession() {
 function buildLevelData(levelId) {
   const all      = getLevelQuestions(levelId);
   const matching = all.filter(q => q.type === 'matching');
-  const regular  = shuffle(all.filter(q => q.type !== 'matching'));
-  return { questions: [...matching, ...regular], answers: [] };
+  const speaking = all.filter(q => q.type === 'speaking');
+  const regular  = shuffle(all.filter(q => q.type !== 'matching' && q.type !== 'speaking'));
+  return { questions: [...matching, ...speaking, ...regular], answers: [] };
 }
 
 const saved = loadSession();
@@ -172,6 +173,7 @@ export default function App() {
             questions={levelData.questions}
             currentLevel={currentLevel}
             questionIndex={questionIdx}
+            studentInfo={studentInfo}
             onAnswer={handleAnswer}
           />
         )}
