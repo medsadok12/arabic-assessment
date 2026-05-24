@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vercel/blob": "^2.4.0",
     "googleapis": "^172.0.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
