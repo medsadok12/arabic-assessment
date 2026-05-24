@@ -1,11 +1,12 @@
 /* ====== متغيرات الألوان ====== */
 :root {
-  --primary:    #1a237e;
-  --primary-l:  #3949ab;
-  --secondary:  #e65100;
+  --primary:    #1a1052;
+  --primary-l:  #2d1b69;
+  --secondary:  #d4952a;
+  --secondary-l: #e8b84a;
   --success:    #2e7d32;
   --danger:     #c62828;
-  --bg:         #f5f7fa;
+  --bg:         #f5f5f0;
   --card-bg:    #ffffff;
   --border:     #e0e0e0;
   --text:       #212121;
@@ -19,7 +20,7 @@
 
 body {
   font-family: 'Tajawal', sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0d0833 0%, #2d1b69 100%);
   min-height: 100vh;
   color: var(--text);
   direction: rtl;
@@ -38,7 +39,7 @@ body {
 
 /* ====== الرأس ====== */
 .app-header {
-  background: linear-gradient(135deg, var(--primary) 0%, #283593 100%);
+  background: linear-gradient(135deg, #130a3e 0%, #1a1052 100%);
   color: white;
   padding: 28px 30px;
   display: flex;
@@ -61,7 +62,7 @@ body {
 
 /* ====== شريط التقدم الكلي ====== */
 .global-progress {
-  background: #e8eaf6;
+  background: #e8e0f0;
   padding: 12px 24px;
   border-bottom: 2px solid var(--border);
 }
@@ -77,14 +78,14 @@ body {
 
 .gp-bar {
   height: 8px;
-  background: #c5cae9;
+  background: #d0c0e0;
   border-radius: 10px;
   overflow: hidden;
 }
 
 .gp-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--success), #00bcd4);
+  background: linear-gradient(90deg, #d4952a, #e8b84a);
   border-radius: 10px;
   transition: width 0.4s ease;
 }
@@ -161,19 +162,19 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 .btn-primary {
   width: 100%;
   padding: 15px 32px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-l));
+  background: linear-gradient(135deg, #d4952a, #e8b84a);
   color: white;
   font-size: 1.1rem;
   font-weight: 800;
   border-radius: var(--radius);
   margin-top: 10px;
   transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
-  box-shadow: 0 4px 12px rgba(26,35,126,0.25);
+  box-shadow: 0 4px 12px rgba(212,149,42,0.25);
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(26,35,126,0.35);
+  box-shadow: 0 8px 20px rgba(212,149,42,0.35);
 }
 
 .btn-primary:disabled { cursor: not-allowed; }
@@ -240,7 +241,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 }
 
 .level-badge {
-  background: var(--primary);
+  background: var(--secondary);
   color: white;
   padding: 6px 16px;
   border-radius: 20px;
@@ -264,7 +265,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--success), #00bcd4);
+  background: linear-gradient(90deg, #d4952a, #e8b84a);
   border-radius: 10px;
   transition: width 0.35s ease;
 }
@@ -353,7 +354,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 .option-letter {
   width: 32px;
   height: 32px;
-  background: var(--primary);
+  background: var(--secondary);
   color: white;
   border-radius: 50%;
   display: flex;
@@ -682,7 +683,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 
 /* ====== الذيل ====== */
 .app-footer {
-  background: var(--primary);
+  background: #130a3e;
   color: rgba(255,255,255,0.7);
   text-align: center;
   padding: 16px;
