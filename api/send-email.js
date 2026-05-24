@@ -60,10 +60,10 @@ export default async function handler(req, res) {
         <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,sans-serif;">
           <div style="max-width:600px;margin:20px auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
 
-            <div style="background:linear-gradient(135deg,#1a237e,#283593);color:white;padding:32px;text-align:center;">
-              <div style="font-size:44px;margin-bottom:10px;">🎓</div>
-              <h1 style="margin:0 0 6px;font-size:22px;font-weight:900;">أكاديمية عارم</h1>
-              <p style="margin:0;opacity:0.9;font-size:14px;">نظام التقييم الذكي للغة العربية</p>
+            <div style="background:linear-gradient(135deg,#1a1052,#2d1b69);color:white;padding:32px;text-align:center;">
+              <div style="font-size:44px;margin-bottom:10px;color:#d4952a;font-family:serif;">ع</div>
+              <h1 style="margin:0 0 6px;font-size:22px;font-weight:900;">عارم أكاديمي</h1>
+              <p style="margin:0;opacity:0.9;font-size:14px;">AREM ACADEMY | تعليم اللغة العربية</p>
             </div>
 
             <div style="padding:30px;">
@@ -74,50 +74,50 @@ export default async function handler(req, res) {
               ${isParent ? `
               <p style="font-size:15px;color:#555;line-height:1.8;margin-bottom:20px;">
                 نشكركم على ثقتكم بأكاديمية عارم. يسعدنا إرسال تقرير تقييم اللغة العربية
-                للطالب/ة <strong style="color:#1a237e;">${studentName}</strong>.
+                للطالب/ة <strong style="color:#1a1052;">${studentName}</strong>.
                 يمكنكم الاطلاع على التقرير التفصيلي الكامل في الملف المرفق.
               </p>
               ` : `
               <p style="font-size:15px;color:#555;line-height:1.8;margin-bottom:20px;">
-                هذا إشعار بتقييم جديد للطالب/ة <strong style="color:#1a237e;">${studentName}</strong>.
+                هذا إشعار بتقييم جديد للطالب/ة <strong style="color:#1a1052;">${studentName}</strong>.
                 التقرير التفصيلي مرفق أدناه.
               </p>
               `}
 
               <div style="background:#e8eaf6;border-radius:10px;padding:20px;margin-bottom:20px;">
-                <h3 style="color:#1a237e;margin:0 0 14px;font-size:15px;">ملخص النتائج</h3>
+                <h3 style="color:#1a1052;margin:0 0 14px;font-size:15px;">ملخص النتائج</h3>
                 <table style="width:100%;border-collapse:collapse;">
                   <tr>
                     <td style="padding:7px 0;color:#555;font-size:14px;">الطالب/ة</td>
-                    <td style="padding:7px 0;font-weight:bold;color:#1a237e;font-size:14px;">${studentName}</td>
+                    <td style="padding:7px 0;font-weight:bold;color:#1a1052;font-size:14px;">${studentName}</td>
                   </tr>
                   <tr>
                     <td style="padding:7px 0;color:#555;font-size:14px;">العمر</td>
-                    <td style="padding:7px 0;font-weight:bold;color:#1a237e;font-size:14px;">${studentAge} سنة</td>
+                    <td style="padding:7px 0;font-weight:bold;color:#1a1052;font-size:14px;">${studentAge} سنة</td>
                   </tr>
                   <tr>
                     <td style="padding:7px 0;color:#555;font-size:14px;">النتيجة الإجمالية</td>
-                    <td style="padding:7px 0;font-weight:bold;color:#1a237e;font-size:18px;">${Math.round(overallScore)}%</td>
+                    <td style="padding:7px 0;font-weight:bold;color:#1a1052;font-size:18px;">${Math.round(overallScore)}%</td>
                   </tr>
                   <tr>
                     <td style="padding:7px 0;color:#555;font-size:14px;">المستوى النهائي</td>
-                    <td style="padding:7px 0;font-weight:bold;color:#1a237e;font-size:14px;">${finalLevel}</td>
+                    <td style="padding:7px 0;font-weight:bold;color:#1a1052;font-size:14px;">${finalLevel}</td>
                   </tr>
                   <tr>
                     <td style="padding:7px 0;color:#555;font-size:14px;">التاريخ</td>
-                    <td style="padding:7px 0;font-weight:bold;color:#1a237e;font-size:14px;">${dateStr}</td>
+                    <td style="padding:7px 0;font-weight:bold;color:#1a1052;font-size:14px;">${dateStr}</td>
                   </tr>
                 </table>
               </div>
 
               ${skillsTable ? `
               <div style="margin-bottom:20px;">
-                <h3 style="color:#1a237e;margin:0 0 12px;font-size:15px;">تفاصيل المهارات</h3>
+                <h3 style="color:#1a1052;margin:0 0 12px;font-size:15px;">تفاصيل المهارات</h3>
                 <table style="width:100%;border-collapse:collapse;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;">
                   <tr style="background:#f5f7fa;">
-                    <th style="padding:10px 12px;text-align:right;font-size:13px;color:#1a237e;">المهارة</th>
-                    <th style="padding:10px 12px;font-size:13px;color:#1a237e;">النسبة</th>
-                    <th style="padding:10px 12px;font-size:13px;color:#1a237e;">الإجابات</th>
+                    <th style="padding:10px 12px;text-align:right;font-size:13px;color:#1a1052;">المهارة</th>
+                    <th style="padding:10px 12px;font-size:13px;color:#1a1052;">النسبة</th>
+                    <th style="padding:10px 12px;font-size:13px;color:#1a1052;">الإجابات</th>
                   </tr>
                   ${skillsTable}
                 </table>
