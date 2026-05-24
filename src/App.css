@@ -47,11 +47,11 @@
 @media (max-width: 860px) { .bg-letters { display: none; } }
 
 /* ====== أيقونات التواصل في الـ header ====== */
-.header-en-row {
+.header-h1-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
+  gap: 16px;
+  margin-bottom: 4px;
 }
 
 .header-social {
@@ -135,11 +135,12 @@ body {
 }
 
 .header-en {
-  display: inline;
+  display: block;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 3px;
   color: rgba(212,149,42,0.6);
+  margin-bottom: 6px;
   direction: ltr;
   text-align: right;
 }
