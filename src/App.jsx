@@ -133,6 +133,7 @@ export default function App() {
         )}
         {page === PAGES.ASSESSMENT && levelData && (
           <Assessment
+            key={questionIdx}
             questions={levelData.questions}
             currentLevel={currentLevel}
             questionIndex={questionIdx}

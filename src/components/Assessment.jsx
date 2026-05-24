@@ -6,7 +6,17 @@ export default function Assessment({ questions, currentLevel, questionIndex, onA
   const [selected, setSelected] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
 
-  const question      = questions[questionIndex];
+  const question = questions[questionIndex];
+
+  const [shuffledOptions] = useState(() => {
+    if (!question?.options) return [];
+    const arr = question.options.map((opt, i) => ({ ...opt, origIdx: i }));
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  });
   const total         = questions.length;
   const progress      = ((questionIndex + 1) / total) * 100;
   const levelInfo     = LEVELS.find((l) => l.id === currentLevel);
@@ -19,7 +29,7 @@ export default function Assessment({ questions, currentLevel, questionIndex, onA
 
   function handleNext() {
     if (selected === null) return;
-    const isCorrect = question.options[selected].correct;
+    const isCorrect = shuffledOptions[selected].correct;
     setShowFeedback(true);
 
     setTimeout(() => {
@@ -77,7 +87,7 @@ export default function Assessment({ questions, currentLevel, questionIndex, onA
         <p className="question-text">{question.text}</p>
 
         <div className="options-list">
-          {question.options.map((opt, idx) => {
+          {shuffledOptions.map((opt, idx) => {
             let cls = 'option';
             if (showFeedback && idx === selected) {
               cls += opt.correct ? ' option-correct' : ' option-wrong';
@@ -85,7 +95,7 @@ export default function Assessment({ questions, currentLevel, questionIndex, onA
               cls += ' option-selected';
             }
             return (
-              <button key={idx} className={cls} onClick={() => handleSelect(idx)}>
+              <button key={opt.origIdx} className={cls} onClick={() => handleSelect(idx)}>
                 <span className="option-letter">{['أ', 'ب', 'ج', 'د'][idx]}</span>
                 <span className="option-text">{opt.text}</span>
               </button>
