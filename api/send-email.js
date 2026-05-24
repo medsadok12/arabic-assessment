@@ -8,13 +8,19 @@ export const config = {
   },
 };
 
+function sanitize(val, maxLen = 100) {
+  return String(val ?? '').replace(/[<>&"'`]/g, '').trim().slice(0, maxLen);
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { parentEmail, studentName, studentAge, studentType, pdfBase64, overallScore, finalLevel, bySkill } = req.body;
+    const { parentEmail, studentName: rawName, studentAge: rawAge, studentType, pdfBase64, overallScore, finalLevel, bySkill } = req.body;
+    const studentName = sanitize(rawName);
+    const studentAge  = sanitize(rawAge, 10);
 
     if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
       return res.status(500).json({ error: 'Email service not configured' });

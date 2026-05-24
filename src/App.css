@@ -698,6 +698,13 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   .global-progress { display: none; }
 }
 
+/* ====== سؤال الربط ====== */
+.matching-layout {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+
 /* ====== الجوّال ====== */
 @media (max-width: 600px) {
   .page-content { padding: 20px 16px; }
@@ -709,4 +716,5 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   .score-card   { flex-direction: column; text-align: center; }
   .score-circle { width: 80px; height: 80px; }
   .score-big    { font-size: 1.3rem; }
+  .matching-layout { justify-content: center; }
 }

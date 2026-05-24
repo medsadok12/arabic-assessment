@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SKILLS, LEVELS } from '../data/questions.js';
+import MatchingQuestion from './MatchingQuestion.jsx';
 
 export default function Assessment({ questions, currentLevel, questionIndex, onAnswer }) {
   const [selected, setSelected] = useState(null);
@@ -29,6 +30,26 @@ export default function Assessment({ questions, currentLevel, questionIndex, onA
   }
 
   if (!question) return null;
+
+  if (question.type === 'matching') {
+    return (
+      <div className="page-content">
+        <div className="assessment-header">
+          <div className="level-badge">
+            {levelInfo?.icon} المستوى {currentLevel} — {levelInfo?.name}
+          </div>
+          <div className="question-counter">{questionIndex + 1} / {total}</div>
+        </div>
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: `${progress}%` }} />
+        </div>
+        {skillInfo && (
+          <div className="skill-tag"><span>📌 {skillInfo.name}</span></div>
+        )}
+        <MatchingQuestion question={question} onAnswer={onAnswer} />
+      </div>
+    );
+  }
 
   return (
     <div className="page-content">
