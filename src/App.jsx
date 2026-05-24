@@ -38,10 +38,16 @@ function buildLevelData(levelId) {
 }
 
 const BG_LETTERS = [
-  { char: 'ع', style: { left: '6%',  top: '10%', fontSize: '9rem',  opacity: 0.08, animationDuration: '18s', animationDelay: '0s'  } },
-  { char: 'ر', style: { left: '10%', top: '45%', fontSize: '12rem', opacity: 0.06, animationDuration: '24s', animationDelay: '5s'  } },
-  { char: 'م', style: { left: '6%',  top: '72%', fontSize: '8rem',  opacity: 0.07, animationDuration: '20s', animationDelay: '9s'  } },
-  { char: 'ب', style: { left: '13%', top: '28%', fontSize: '10rem', opacity: 0.05, animationDuration: '27s', animationDelay: '2s'  } },
+  // الجانب الأيسر
+  { char: 'ع', style: { left: '4%',  top: '8%',  fontSize: '10rem', opacity: 0.14, animationDuration: '20s', animationDelay: '0s'  } },
+  { char: 'ر', style: { left: '9%',  top: '32%', fontSize: '9rem',  opacity: 0.11, animationDuration: '25s', animationDelay: '4s'  } },
+  { char: 'م', style: { left: '5%',  top: '58%', fontSize: '11rem', opacity: 0.13, animationDuration: '22s', animationDelay: '8s'  } },
+  { char: 'ب', style: { left: '10%', top: '80%', fontSize: '8rem',  opacity: 0.10, animationDuration: '18s', animationDelay: '2s'  } },
+  // الجانب الأيمن
+  { char: 'ا', style: { left: '82%', top: '14%', fontSize: '11rem', opacity: 0.13, animationDuration: '23s', animationDelay: '6s'  } },
+  { char: 'ي', style: { left: '86%', top: '42%', fontSize: '9rem',  opacity: 0.11, animationDuration: '19s', animationDelay: '1s'  } },
+  { char: 'ة', style: { left: '81%', top: '66%', fontSize: '10rem', opacity: 0.14, animationDuration: '26s', animationDelay: '10s' } },
+  { char: 'ل', style: { left: '85%', top: '86%', fontSize: '8rem',  opacity: 0.10, animationDuration: '21s', animationDelay: '3s'  } },
 ];
 
 function SocialSidebar() {

@@ -26,12 +26,13 @@
 
 .bg-letter {
   position: absolute;
-  color: #ffffff;
-  font-family: 'Amiri', serif;
+  color: #d4952a;
+  font-family: 'Scheherazade New', serif;
   font-weight: 700;
   line-height: 1;
   user-select: none;
   animation: floatLetter ease-in-out infinite;
+  text-shadow: 0 0 50px rgba(212,149,42,0.25), 0 0 100px rgba(212,149,42,0.10);
 }
 
 @keyframes floatLetter {
