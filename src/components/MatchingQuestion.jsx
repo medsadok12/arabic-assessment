@@ -57,9 +57,10 @@ export default function MatchingQuestion({ question, onAnswer }) {
       <div className="question-number">سؤال</div>
       <p className="question-text" style={{ textAlign: 'right' }}>{question.text}</p>
 
+      <div className="matching-layout" style={{ margin: '20px auto', overflowX: 'auto' }}>
       <div style={{
         display: 'flex', alignItems: 'flex-start',
-        direction: 'ltr', margin: '20px auto', width: 'fit-content', gap: 0,
+        direction: 'ltr', margin: '0 auto', width: 'fit-content', gap: 0,
       }}>
 
         {/* ── Emoji column ── */}
@@ -150,6 +151,7 @@ export default function MatchingQuestion({ question, onAnswer }) {
             );
           })}
         </div>
+      </div>
       </div>
 
       {selected && !checked && (

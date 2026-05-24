@@ -286,6 +286,16 @@ export const questionsBank = {
     ],
     vocabulary: [
       {
+        id: 'V2_MATCH',
+        type: 'matching',
+        text: 'صِل كل مكان باسمه الصحيح',
+        pairs: [
+          { id: 'school',   emoji: '🏫', name: 'مَدْرَسَة'   },
+          { id: 'hospital', emoji: '🏥', name: 'مُسْتَشْفَى' },
+          { id: 'market',   emoji: '🏪', name: 'سُوق'        },
+        ],
+      },
+      {
         id: 'V2_1',
         text: 'ما معنى كلمة "عميق" في جملة "البحر عميق جداً"؟',
         options: [
@@ -498,6 +508,16 @@ export const questionsBank = {
       },
     ],
     vocabulary: [
+      {
+        id: 'V3_MATCH',
+        type: 'matching',
+        text: 'صِل كل مهنة برمزها الصحيح',
+        pairs: [
+          { id: 'doctor',   emoji: '🩺', name: 'طَبِيب'   },
+          { id: 'teacher',  emoji: '📖', name: 'مُعَلِّم' },
+          { id: 'engineer', emoji: '⚙️', name: 'مُهَنْدِس' },
+        ],
+      },
       {
         id: 'V3_1',
         text: 'ما المعنى الدقيق لكلمة "الاستقلالية" في السياق الفكري؟',

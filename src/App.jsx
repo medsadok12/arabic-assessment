@@ -159,7 +159,7 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        <p>© 2024 أكاديمية عارم — gandouzimohamed9@gmail.com</p>
+        <p>© 2026 أكاديمية عارم — gandouzimohamed9@gmail.com</p>
       </footer>
     </div>
   );
