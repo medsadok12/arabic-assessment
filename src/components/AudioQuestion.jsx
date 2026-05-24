@@ -209,15 +209,11 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
       )}
 
       {/* ── نجاح الرفع ── */}
-      {saved && savedUrl && (
+      {saved && (
         <div style={{ marginTop: 10, padding: '10px 14px', background: '#e8f5e9', borderRadius: 8, border: '1px solid #66bb6a' }}>
           <p style={{ margin: 0, color: '#2e7d32', fontWeight: 'bold', fontSize: 14 }}>
             ✅ تم حفظ التسجيل بنجاح
           </p>
-          <a href={savedUrl} target="_blank" rel="noreferrer"
-            style={{ color: '#1a1052', fontSize: 12, wordBreak: 'break-all' }}>
-            {savedUrl}
-          </a>
         </div>
       )}
 
