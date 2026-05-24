@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getGradeInfo } from '../utils/scoring.js';
 import { generateAssessmentPDF } from '../utils/pdfGenerator.js';
 import { LEVELS, SKILLS } from '../data/questions.js';
@@ -6,6 +6,23 @@ import { LEVELS, SKILLS } from '../data/questions.js';
 export default function Results({ studentInfo, finalLevel, scores, levelPath, onRestart }) {
   const [emailStatus, setEmailStatus] = useState('idle'); // idle | sending | success | error
   const [errorMsg,    setErrorMsg]    = useState('');
+
+  useEffect(() => {
+    fetch('/api/save-result', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        studentName:  studentInfo.name,
+        age:          studentInfo.age,
+        email:        studentInfo.email,
+        learnerType:  studentInfo.type,
+        overallScore: scores.overall,
+        finalLevel:   finalLevel,
+        levelPath:    levelPath.join(' ← '),
+        bySkill:      scores.bySkill,
+      }),
+    }).catch(() => {});
+  }, []);
 
   const grade     = getGradeInfo(scores.overall);
   const levelInfo = LEVELS.find(l => l.id === finalLevel);
