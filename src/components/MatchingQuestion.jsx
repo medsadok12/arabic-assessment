@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const COLORS = ['#e53935', '#1e88e5', '#43a047'];
+const COLORS = ['#1b5e20', '#2e7d32', '#66bb6a'];
 const ITEM_H  = 80;
 const GAP     = 12;
 const ROW     = ITEM_H + GAP;
@@ -63,62 +63,7 @@ export default function MatchingQuestion({ question, onAnswer }) {
         direction: 'ltr', margin: '0 auto', width: 'fit-content', gap: 0,
       }}>
 
-        {/* ── Emoji column ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
-          {question.pairs.map((pair, i) => {
-            const isSel  = selected === pair.id;
-            const conn   = connections[pair.id];
-            const color  = conn !== undefined ? COLORS[i] : null;
-            return (
-              <div
-                key={pair.id}
-                onClick={() => clickEmoji(pair.id)}
-                style={{
-                  width: ITEM_H, height: ITEM_H, borderRadius: 14,
-                  border: `3px solid ${isSel ? '#1a237e' : color ?? '#ddd'}`,
-                  background: isSel ? '#e8eaf6' : color ? color + '22' : '#fafafa',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 44, cursor: 'pointer',
-                  boxShadow: isSel ? '0 0 0 3px #90caf9' : 'none',
-                  transition: 'all 0.2s', userSelect: 'none',
-                }}
-              >
-                {pair.emoji}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ── SVG arrows ── */}
-        <svg width={SVG_W} height={svgH} style={{ flexShrink: 0, overflow: 'visible' }}>
-          <defs>
-            {COLORS.map((color, i) => (
-              <marker key={i} id={`arr-${i}`}
-                markerWidth="8" markerHeight="8"
-                refX="7" refY="3" orient="auto">
-                <path d="M0,0 L0,6 L8,3 z" fill={color} />
-              </marker>
-            ))}
-          </defs>
-
-          {question.pairs.map((pair, emojiIdx) => {
-            const nameId = connections[pair.id];
-            if (!nameId) return null;
-            const nameIdx = shuffledNames.findIndex(p => p.id === nameId);
-            const color   = COLORS[emojiIdx];
-            const y1 = emojiIdx * ROW + ITEM_H / 2;
-            const y2 = nameIdx  * ROW + ITEM_H / 2;
-            return (
-              <line key={pair.id}
-                x1={4} y1={y1} x2={SVG_W - 4} y2={y2}
-                stroke={color} strokeWidth={2.5}
-                markerEnd={`url(#arr-${emojiIdx})`}
-              />
-            );
-          })}
-        </svg>
-
-        {/* ── Names column ── */}
+        {/* ── Names column (يسار) ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
           {shuffledNames.map((pair) => {
             const srcId  = Object.keys(connections).find(k => connections[k] === pair.id);
@@ -129,8 +74,8 @@ export default function MatchingQuestion({ question, onAnswer }) {
 
             let borderColor = '#ddd';
             let bg          = '#fafafa';
-            if (isConn)       { borderColor = color;    bg = color + '22'; }
-            else if (isTgt)   { borderColor = '#90caf9'; bg = '#e3f2fd';   }
+            if (isConn)     { borderColor = color;    bg = color + '22'; }
+            else if (isTgt) { borderColor = '#a5d6a7'; bg = '#f1f8e9';   }
 
             return (
               <div
@@ -147,6 +92,61 @@ export default function MatchingQuestion({ question, onAnswer }) {
                 }}
               >
                 {pair.name}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── SVG أسهم (يمين ← يسار) ── */}
+        <svg width={SVG_W} height={svgH} style={{ flexShrink: 0, overflow: 'visible' }}>
+          <defs>
+            {COLORS.map((color, i) => (
+              <marker key={i} id={`arr-${i}`}
+                markerWidth="8" markerHeight="8"
+                refX="1" refY="3" orient="auto">
+                <path d="M8,0 L8,6 L0,3 z" fill={color} />
+              </marker>
+            ))}
+          </defs>
+
+          {question.pairs.map((pair, emojiIdx) => {
+            const nameId = connections[pair.id];
+            if (!nameId) return null;
+            const nameIdx = shuffledNames.findIndex(p => p.id === nameId);
+            const color   = COLORS[emojiIdx];
+            const y1 = emojiIdx * ROW + ITEM_H / 2;
+            const y2 = nameIdx  * ROW + ITEM_H / 2;
+            return (
+              <line key={pair.id}
+                x1={SVG_W - 4} y1={y1} x2={4} y2={y2}
+                stroke={color} strokeWidth={2.5}
+                markerEnd={`url(#arr-${emojiIdx})`}
+              />
+            );
+          })}
+        </svg>
+
+        {/* ── Emoji column (يمين) ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
+          {question.pairs.map((pair, i) => {
+            const isSel  = selected === pair.id;
+            const conn   = connections[pair.id];
+            const color  = conn !== undefined ? COLORS[i] : null;
+            return (
+              <div
+                key={pair.id}
+                onClick={() => clickEmoji(pair.id)}
+                style={{
+                  width: ITEM_H, height: ITEM_H, borderRadius: 14,
+                  border: `3px solid ${isSel ? '#1a237e' : color ?? '#ddd'}`,
+                  background: isSel ? '#e8eaf6' : color ? color + '22' : '#fafafa',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 44, cursor: 'pointer',
+                  boxShadow: isSel ? '0 0 0 3px #a5d6a7' : 'none',
+                  transition: 'all 0.2s', userSelect: 'none',
+                }}
+              >
+                {pair.emoji}
               </div>
             );
           })}
