@@ -38,16 +38,11 @@ function buildLevelData(levelId) {
 }
 
 const BG_LETTERS = [
-  // الجانب الأيسر
-  { char: 'ع', style: { left: '4%',  top: '8%',  fontSize: '10rem', opacity: 0.14, animationDuration: '20s', animationDelay: '0s'  } },
-  { char: 'ر', style: { left: '9%',  top: '32%', fontSize: '9rem',  opacity: 0.11, animationDuration: '25s', animationDelay: '4s'  } },
-  { char: 'م', style: { left: '5%',  top: '58%', fontSize: '11rem', opacity: 0.13, animationDuration: '22s', animationDelay: '8s'  } },
-  { char: 'ب', style: { left: '10%', top: '80%', fontSize: '8rem',  opacity: 0.10, animationDuration: '18s', animationDelay: '2s'  } },
-  // الجانب الأيمن
-  { char: 'ا', style: { left: '82%', top: '14%', fontSize: '11rem', opacity: 0.13, animationDuration: '23s', animationDelay: '6s'  } },
-  { char: 'ي', style: { left: '86%', top: '42%', fontSize: '9rem',  opacity: 0.11, animationDuration: '19s', animationDelay: '1s'  } },
-  { char: 'ة', style: { left: '81%', top: '66%', fontSize: '10rem', opacity: 0.14, animationDuration: '26s', animationDelay: '10s' } },
-  { char: 'ل', style: { left: '85%', top: '86%', fontSize: '8rem',  opacity: 0.10, animationDuration: '21s', animationDelay: '3s'  } },
+  // الجانب الأيسر فقط
+  { char: 'ع', style: { left: '4%',  top: '8%',  fontSize: '10rem', opacity: 0.14, animationDuration: '20s', animationDelay: '0s' } },
+  { char: 'ر', style: { left: '9%',  top: '32%', fontSize: '9rem',  opacity: 0.11, animationDuration: '25s', animationDelay: '4s' } },
+  { char: 'م', style: { left: '5%',  top: '58%', fontSize: '11rem', opacity: 0.13, animationDuration: '22s', animationDelay: '8s' } },
+  { char: 'ب', style: { left: '10%', top: '80%', fontSize: '8rem',  opacity: 0.10, animationDuration: '18s', animationDelay: '2s' } },
 ];
 
 const saved = loadSession();
@@ -174,6 +169,12 @@ export default function App() {
       {BG_LETTERS.map((l, i) => (
         <span key={i} className="bg-letter" style={l.style}>{l.char}</span>
       ))}
+      <img
+        src={`${import.meta.env.BASE_URL}boy-mascot.svg`}
+        className="bg-boy"
+        alt=""
+        draggable="false"
+      />
     </div>
     <div className="app">
       {offline && (
