@@ -113,7 +113,7 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel) {
     remaining -= 297;
   }
 
-  return pdf.output('base64');
+  return pdf.output('datauristring');
 }
 
 function buildRecommendation(scores, levelName) {
