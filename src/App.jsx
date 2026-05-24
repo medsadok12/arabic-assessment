@@ -38,14 +38,14 @@ function buildLevelData(levelId) {
 }
 
 const BG_LETTERS = [
-  { char: 'ع', style: { left: '3%',  top: '10%', fontSize: '9rem',  opacity: 0.07, animationDuration: '18s', animationDelay: '0s'  } },
-  { char: 'ر', style: { left: '8%',  top: '45%', fontSize: '12rem', opacity: 0.05, animationDuration: '24s', animationDelay: '5s'  } },
-  { char: 'م', style: { left: '2%',  top: '72%', fontSize: '8rem',  opacity: 0.06, animationDuration: '20s', animationDelay: '9s'  } },
-  { char: 'ب', style: { left: '11%', top: '28%', fontSize: '10rem', opacity: 0.04, animationDuration: '27s', animationDelay: '2s'  } },
-  { char: 'ا', style: { left: '88%', top: '15%', fontSize: '11rem', opacity: 0.05, animationDuration: '22s', animationDelay: '1s'  } },
-  { char: 'ي', style: { left: '93%', top: '50%', fontSize: '9rem',  opacity: 0.07, animationDuration: '25s', animationDelay: '7s'  } },
-  { char: 'ة', style: { left: '86%', top: '76%', fontSize: '8rem',  opacity: 0.04, animationDuration: '19s', animationDelay: '4s'  } },
-  { char: 'ل', style: { left: '91%', top: '33%', fontSize: '10rem', opacity: 0.06, animationDuration: '23s', animationDelay: '11s' } },
+  { char: 'ع', style: { left: '6%',  top: '10%', fontSize: '9rem',  opacity: 0.08, animationDuration: '18s', animationDelay: '0s'  } },
+  { char: 'ر', style: { left: '10%', top: '45%', fontSize: '12rem', opacity: 0.06, animationDuration: '24s', animationDelay: '5s'  } },
+  { char: 'م', style: { left: '6%',  top: '72%', fontSize: '8rem',  opacity: 0.07, animationDuration: '20s', animationDelay: '9s'  } },
+  { char: 'ب', style: { left: '13%', top: '28%', fontSize: '10rem', opacity: 0.05, animationDuration: '27s', animationDelay: '2s'  } },
+  { char: 'ا', style: { left: '82%', top: '15%', fontSize: '11rem', opacity: 0.06, animationDuration: '22s', animationDelay: '1s'  } },
+  { char: 'ي', style: { left: '86%', top: '50%', fontSize: '9rem',  opacity: 0.08, animationDuration: '25s', animationDelay: '7s'  } },
+  { char: 'ة', style: { left: '80%', top: '76%', fontSize: '8rem',  opacity: 0.05, animationDuration: '19s', animationDelay: '4s'  } },
+  { char: 'ل', style: { left: '84%', top: '33%', fontSize: '10rem', opacity: 0.07, animationDuration: '23s', animationDelay: '11s' } },
 ];
 
 const saved = loadSession();
