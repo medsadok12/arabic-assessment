@@ -1,0 +1,6 @@
+{
+  "functions": {
+    "api/save-recording.js": { "maxDuration": 30 },
+    "api/send-email.js":     { "maxDuration": 30 }
+  }
+}
