@@ -74,7 +74,7 @@ export default function StudentInfo({ onStart }) {
       {error && <div className="error-msg">⚠️ {error}</div>}
 
       <button className="btn-primary" onClick={handleStart}>
-        ابدأ التقييم ←
+        ابدأ رحلة التميز ←
       </button>
 
     </div>
