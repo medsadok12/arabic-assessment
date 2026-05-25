@@ -187,6 +187,32 @@
 .wa-chat-send:hover { background: #1da851; }
 .wa-chat-send svg { width: 18px; height: 18px; fill: #fff; transform: rotate(180deg); }
 
+/* حالة الإرسال الناجح */
+.wa-chat-sent {
+  padding: 24px 16px;
+  background: #f0fdf4;
+  text-align: center;
+  direction: rtl;
+}
+.wa-sent-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: #25D366;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+}
+.wa-chat-sent p {
+  font-size: 0.85rem;
+  color: #166534;
+  line-height: 1.6;
+  margin: 0;
+}
+
 /* صورة الولد — جانب اليمين */
 .bg-boy {
   position: absolute;
