@@ -4,6 +4,7 @@ const MAX_SECS = 60;
 
 export default function AudioQuestion({ question, studentInfo, onAnswer }) {
   const [ttsState,    setTtsState]    = useState('idle');   // idle | playing
+  const [playCount,   setPlayCount]   = useState(0);        // 1..3 أثناء التشغيل
   const [recState,    setRecState]    = useState('idle');   // idle | recording | done
   const [recTime,     setRecTime]     = useState(0);
   const [saving,      setSaving]      = useState(false);
@@ -15,13 +16,16 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
   const [noSupport,   setNoSupport]   = useState(false);
   const [audioUrl,    setAudioUrl]    = useState(null);
 
-  const recRef    = useRef(null);
-  const chunksRef = useRef([]);
-  const timerRef  = useRef(null);
-  const blobRef   = useRef(null);
+  const recRef       = useRef(null);
+  const chunksRef    = useRef([]);
+  const timerRef     = useRef(null);
+  const blobRef      = useRef(null);
+  const ttsTimeoutRef = useRef(null);
+  const playCountRef  = useRef(0);
 
   useEffect(() => () => {
     clearInterval(timerRef.current);
+    clearTimeout(ttsTimeoutRef.current);
     window.speechSynthesis?.cancel();
     if (audioUrl) URL.revokeObjectURL(audioUrl);
   }, []);
@@ -30,16 +34,31 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
     const synth = window.speechSynthesis;
     if (!synth) return;
     synth.cancel();
-    const u = new SpeechSynthesisUtterance(question.audioText);
-    u.lang = 'ar-SA';
-    u.rate  = 0.78;
-    u.pitch = 1;
-    u.volume = 1;
-    u.onstart = () => setTtsState('playing');
-    u.onend   = () => setTtsState('idle');
-    u.onerror = () => setTtsState('idle');
+    clearTimeout(ttsTimeoutRef.current);
 
-    const trySpeak = () => {
+    playCountRef.current = 1;
+    setPlayCount(1);
+    setTtsState('playing');
+
+    const doSpeak = () => {
+      const u = new SpeechSynthesisUtterance(question.audioText);
+      u.lang   = 'ar-SA';
+      u.rate   = 1.0;
+      u.pitch  = 1;
+      u.volume = 1;
+
+      u.onend = () => {
+        if (playCountRef.current < 3) {
+          playCountRef.current += 1;
+          setPlayCount(playCountRef.current);
+          ttsTimeoutRef.current = setTimeout(doSpeak, 700);
+        } else {
+          setTtsState('idle');
+          setPlayCount(0);
+        }
+      };
+      u.onerror = () => { setTtsState('idle'); setPlayCount(0); };
+
       const voices  = synth.getVoices();
       const arVoice = voices.find(v => v.lang.startsWith('ar'));
       if (arVoice) u.voice = arVoice;
@@ -47,9 +66,8 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
     };
 
     const voices = synth.getVoices();
-    if (voices.length > 0) { trySpeak(); }
-    else { synth.onvoiceschanged = trySpeak; synth.speak(u); }
-    setTtsState('playing');
+    if (voices.length > 0) { doSpeak(); }
+    else { synth.onvoiceschanged = doSpeak; }
   }
 
   async function startRec() {
@@ -158,7 +176,9 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
           disabled={ttsState === 'playing'}
         >
           <span className="aq-play-icon">{ttsState === 'playing' ? '🔊' : '▶'}</span>
-          {ttsState === 'playing' ? 'جاري التشغيل...' : 'استمع للنص'}
+          {ttsState === 'playing'
+            ? `جاري التشغيل... (${playCount}/3)`
+            : 'استمع للنص ×3'}
         </button>
       </div>
 
