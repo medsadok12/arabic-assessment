@@ -1314,10 +1314,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 }
 
 .welcome-name {
-  background: linear-gradient(90deg, #b8760e, #d4952a, #f7e4a8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #b8620a;
   display: inline-block;
 }
 
