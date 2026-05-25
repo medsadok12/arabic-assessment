@@ -169,12 +169,6 @@ export default function App() {
       {BG_LETTERS.map((l, i) => (
         <span key={i} className="bg-letter" style={l.style}>{l.char}</span>
       ))}
-      <img
-        src={`${import.meta.env.BASE_URL}boy-mascot.svg`}
-        className="bg-boy"
-        alt=""
-        draggable="false"
-      />
     </div>
     <div className="app">
       {offline && (
