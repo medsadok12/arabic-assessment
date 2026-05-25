@@ -1291,6 +1291,72 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   padding-bottom: 4px;
 }
 
+/* ====== صفحة الترحيب الشخصية ====== */
+.welcome-page {
+  text-align: center;
+  padding: 44px 28px 36px;
+  animation: slideUp 0.3s ease;
+}
+
+.welcome-emoji {
+  font-size: 3.2rem;
+  margin-bottom: 18px;
+  display: block;
+  animation: floatLetter 6s ease-in-out infinite;
+}
+
+.welcome-greeting {
+  font-size: clamp(1.5rem, 5vw, 2.2rem);
+  color: #1a1052;
+  margin: 0 0 12px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.welcome-name {
+  background: linear-gradient(90deg, #b8760e, #d4952a, #f7e4a8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+}
+
+.welcome-question {
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  color: #3d2a7a;
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.welcome-meta {
+  font-size: 0.88rem;
+  color: #888;
+  margin: 0 0 30px;
+}
+
+.welcome-features {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 34px;
+}
+
+.wf-item {
+  background: rgba(212, 149, 42, 0.08);
+  border: 1px solid rgba(212, 149, 42, 0.28);
+  border-radius: 20px;
+  padding: 8px 18px;
+  font-size: 0.9rem;
+  color: #5c3d0e;
+}
+
+.welcome-btn {
+  width: auto !important;
+  padding: 14px 40px !important;
+  font-size: 1.05rem !important;
+}
+
 /* ====== الجوّال ====== */
 @media (max-width: 600px) {
   .page-content { padding: 20px 16px; }
