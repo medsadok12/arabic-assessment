@@ -212,6 +212,25 @@
   line-height: 1.6;
   margin: 0;
 }
+.wa-chat-error {
+  margin-top: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  text-align: center;
+}
+.wa-chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
+.wa-spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* صورة الولد — جانب اليمين */
 .bg-boy {
