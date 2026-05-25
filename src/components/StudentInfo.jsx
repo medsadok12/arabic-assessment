@@ -77,24 +77,6 @@ export default function StudentInfo({ onStart }) {
         ابدأ التقييم ←
       </button>
 
-      <div className="info-cards">
-        <div className="info-card">
-          <span className="info-icon">📋</span>
-          <span>60 سؤال شامل</span>
-        </div>
-        <div className="info-card">
-          <span className="info-icon">⏱️</span>
-          <span>~30 دقيقة</span>
-        </div>
-        <div className="info-card">
-          <span className="info-icon">🧠</span>
-          <span>نظام ذكي تكييفي</span>
-        </div>
-        <div className="info-card">
-          <span className="info-icon">💾</span>
-          <span>حفظ تلقائي</span>
-        </div>
-      </div>
     </div>
   );
 }
