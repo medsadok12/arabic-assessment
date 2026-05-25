@@ -75,6 +75,15 @@ export default function App() {
   const [showAbout, setShowAbout]     = useState(false);
   const [showWaChat, setShowWaChat]   = useState(false);
   const [waMsg, setWaMsg]             = useState('');
+  const [waSent, setWaSent]           = useState(false);
+
+  function handleWaSend() {
+    const url = `https://wa.me/447400755914${waMsg.trim() ? `?text=${encodeURIComponent(waMsg.trim())}` : ''}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setWaSent(true);
+    setWaMsg('');
+    setTimeout(() => { setWaSent(false); setShowWaChat(false); }, 3000);
+  }
 
   // حفظ الجلسة عند كل تغيير في الحالة
   useEffect(() => {
@@ -297,30 +306,38 @@ export default function App() {
             </div>
             <button className="wa-chat-close" onClick={() => setShowWaChat(false)} aria-label="إغلاق">✕</button>
           </div>
-          <div className="wa-chat-body">
-            <div className="wa-chat-msg">
-              مرحباً بك 👋<br/>كيف يمكننا مساعدتك؟ اكتب رسالتك وسنرد عليك فوراً.
+          {waSent ? (
+            <div className="wa-chat-sent">
+              <span className="wa-sent-icon">✓</span>
+              <p>شكراً! فُتح واتساب في تبويب جديد.<br/>أرسل رسالتك من هناك.</p>
             </div>
-          </div>
-          <div className="wa-chat-input-row">
-            <textarea
-              className="wa-chat-input"
-              placeholder="اكتب رسالتك هنا..."
-              value={waMsg}
-              onChange={e => setWaMsg(e.target.value)}
-              rows={2}
-              dir="rtl"
-            />
-            <a
-              className="wa-chat-send"
-              href={`https://wa.me/447400755914${waMsg.trim() ? `?text=${encodeURIComponent(waMsg.trim())}` : ''}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="إرسال عبر واتساب"
-            >
-              <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-            </a>
-          </div>
+          ) : (
+            <>
+              <div className="wa-chat-body">
+                <div className="wa-chat-msg">
+                  مرحباً بك 👋<br/>كيف يمكننا مساعدتك؟ اكتب رسالتك وسنرد عليك فوراً.
+                </div>
+              </div>
+              <div className="wa-chat-input-row">
+                <textarea
+                  className="wa-chat-input"
+                  placeholder="اكتب رسالتك هنا..."
+                  value={waMsg}
+                  onChange={e => setWaMsg(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleWaSend(); } }}
+                  rows={2}
+                  dir="rtl"
+                />
+                <button
+                  className="wa-chat-send"
+                  onClick={handleWaSend}
+                  aria-label="إرسال عبر واتساب"
+                >
+                  <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
       <button
