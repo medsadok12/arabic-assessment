@@ -43,6 +43,28 @@
   100% { transform: translateY(0px)   translateX(0px)  rotate(0deg);  }
 }
 
+/* صورة الولد — جانب اليمين */
+.bg-boy {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  /* الصورة 1280x832 والولد يشغل الجزء الأيمن منها (~60%)
+     نوسّع الصورة بحيث يملأ الولد الجانب الأيمن المتاح */
+  width: clamp(300px, 32vw, 520px);
+  opacity: 0.93;
+  filter: drop-shadow(-8px 12px 30px rgba(212,149,42,0.20));
+  animation: floatBoy 9s ease-in-out infinite;
+  pointer-events: none;
+  user-select: none;
+}
+
+@keyframes floatBoy {
+  0%, 100% { transform: translateY(calc(-50% + 0px));  }
+  45%       { transform: translateY(calc(-50% - 18px)); }
+  75%       { transform: translateY(calc(-50% - 8px));  }
+}
+
 /* إخفاء على الشاشات الضيقة حيث لا تظهر الجوانب */
 @media (max-width: 860px) { .bg-letters { display: none; } }
 
