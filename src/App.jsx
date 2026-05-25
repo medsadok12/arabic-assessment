@@ -7,7 +7,7 @@ import { getLevelQuestions, shuffle } from './data/questions.js';
 import { calculateLevelScore, applyJumpLogic, saveToLocalStorage } from './utils/scoring.js';
 import './App.css';
 
-const PAGES       = { INFO: 'info', ASSESSMENT: 'assessment', TRANSITION: 'transition', RESULTS: 'results' };
+const PAGES       = { INFO: 'info', WELCOME: 'welcome', ASSESSMENT: 'assessment', TRANSITION: 'transition', RESULTS: 'results' };
 const SESSION_KEY = 'areem_session';
 
 function saveSession(state) {
@@ -94,6 +94,10 @@ export default function App() {
     setQuestionIdx(0);
     setAllAnswers([]);
     setLevelPath([1]);
+    setPage(PAGES.WELCOME);
+  }
+
+  function handleWelcomeContinue() {
     setPage(PAGES.ASSESSMENT);
   }
 
@@ -194,7 +198,7 @@ export default function App() {
         </div>
       </header>
 
-      {page !== PAGES.INFO && (
+      {page !== PAGES.INFO && page !== PAGES.WELCOME && (
         <div className="global-progress">
           <div className="gp-info">
             <span>التقدم الكلي</span>
@@ -209,6 +213,30 @@ export default function App() {
       <main className="app-main">
         {page === PAGES.INFO && (
           <StudentInfo onStart={handleStart} />
+        )}
+        {page === PAGES.WELCOME && studentInfo && (
+          <div className="page-content welcome-page">
+            <div className="welcome-emoji">🌟</div>
+            <h2 className="welcome-greeting">
+              أهلاً <span className="welcome-name">{studentInfo.name}</span>!
+            </h2>
+            <p className="welcome-question">
+              هل أنت مستعد لاكتشاف مهاراتك في اللغة العربية؟
+            </p>
+            <p className="welcome-meta">
+              {studentInfo.type === 'native' ? 'ناطق باللغة العربية' : 'غير ناطق باللغة العربية'}
+              {' · '}
+              {studentInfo.age} سنة
+            </p>
+            <div className="welcome-features">
+              <div className="wf-item">📝 أسئلة متنوعة</div>
+              <div className="wf-item">🎯 تقييم دقيق</div>
+              <div className="wf-item">📊 تقرير شامل</div>
+            </div>
+            <button className="btn-primary welcome-btn" onClick={handleWelcomeContinue}>
+              أنا مستعد! ابدأ التقييم ←
+            </button>
+          </div>
         )}
         {page === PAGES.ASSESSMENT && levelData && (
           <Assessment
