@@ -75,14 +75,29 @@ export default function App() {
   const [showAbout, setShowAbout]     = useState(false);
   const [showWaChat, setShowWaChat]   = useState(false);
   const [waMsg, setWaMsg]             = useState('');
+  const [waSending, setWaSending]     = useState(false);
   const [waSent, setWaSent]           = useState(false);
+  const [waError, setWaError]         = useState(false);
 
-  function handleWaSend() {
-    const url = `https://wa.me/447400755914${waMsg.trim() ? `?text=${encodeURIComponent(waMsg.trim())}` : ''}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-    setWaSent(true);
-    setWaMsg('');
-    setTimeout(() => { setWaSent(false); setShowWaChat(false); }, 3000);
+  async function handleWaSend() {
+    if (!waMsg.trim() || waSending) return;
+    setWaSending(true);
+    setWaError(false);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: waMsg.trim() }),
+      });
+      if (!res.ok) throw new Error();
+      setWaSent(true);
+      setWaMsg('');
+      setTimeout(() => { setWaSent(false); setShowWaChat(false); }, 3500);
+    } catch {
+      setWaError(true);
+    } finally {
+      setWaSending(false);
+    }
   }
 
   // حفظ الجلسة عند كل تغيير في الحالة
@@ -309,31 +324,39 @@ export default function App() {
           {waSent ? (
             <div className="wa-chat-sent">
               <span className="wa-sent-icon">✓</span>
-              <p>شكراً! فُتح واتساب في تبويب جديد.<br/>أرسل رسالتك من هناك.</p>
+              <p>وصلت رسالتك! سنتواصل معك قريباً على واتساب.</p>
             </div>
           ) : (
             <>
               <div className="wa-chat-body">
                 <div className="wa-chat-msg">
-                  مرحباً بك 👋<br/>كيف يمكننا مساعدتك؟ اكتب رسالتك وسنرد عليك فوراً.
+                  مرحباً بك 👋<br/>اكتب رسالتك وسنرد عليك عبر واتساب.
                 </div>
+                {waError && (
+                  <div className="wa-chat-error">تعذّر الإرسال، حاول مجدداً.</div>
+                )}
               </div>
               <div className="wa-chat-input-row">
                 <textarea
                   className="wa-chat-input"
                   placeholder="اكتب رسالتك هنا..."
                   value={waMsg}
-                  onChange={e => setWaMsg(e.target.value)}
+                  onChange={e => { setWaMsg(e.target.value); setWaError(false); }}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleWaSend(); } }}
                   rows={2}
                   dir="rtl"
+                  disabled={waSending}
                 />
                 <button
                   className="wa-chat-send"
                   onClick={handleWaSend}
-                  aria-label="إرسال عبر واتساب"
+                  disabled={!waMsg.trim() || waSending}
+                  aria-label="إرسال الرسالة"
                 >
-                  <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                  {waSending
+                    ? <span className="wa-spinner"/>
+                    : <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                  }
                 </button>
               </div>
             </>
