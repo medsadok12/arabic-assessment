@@ -1301,16 +1301,14 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   margin-bottom: 16px;
 }
 
-/* wrapper: يحمل perspective حتى يبدو القلب ثلاثي الأبعاد */
 .vc-wrapper {
   perspective: 900px;
 }
 
-/* البطاقة نفسها — تدور عند الضغط */
 .vc-card {
   position: relative;
   width: 100%;
-  padding-bottom: 105%;  /* نسبة الارتفاع للعرض */
+  padding-bottom: 82%;
   transform-style: preserve-3d;
   transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
   cursor: pointer;
@@ -1321,7 +1319,6 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   transform: rotateY(180deg);
 }
 
-/* الوجهان — يملآن البطاقة بالكامل */
 .vc-face {
   position: absolute;
   inset: 0;
@@ -1335,53 +1332,46 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   overflow: hidden;
 }
 
-/* الوجه الأمامي — مظلم مع علامة ؟ */
+/* الوجه الأمامي — ؟ فقط */
 .vc-front {
   background: linear-gradient(145deg, #120840 0%, #1a1052 50%, #2d1b69 100%);
   border: 2px solid rgba(212, 149, 42, 0.45);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  gap: 4px;
 }
 
 .vc-q-mark {
   font-family: 'Scheherazade New', serif;
-  font-size: clamp(2rem, 5.5vw, 3.2rem);
+  font-size: clamp(2.2rem, 6vw, 3.6rem);
   font-weight: 900;
   color: #d4952a;
   line-height: 1;
 }
 
-.vc-front-label {
-  font-family: 'Scheherazade New', serif;
-  font-size: clamp(0.7rem, 2vw, 1rem);
-  color: rgba(212, 149, 42, 0.5);
-}
-
-/* الوجه الخلفي — فاتح مع الحركات */
+/* الوجه الخلفي — 3 دوائر أفقية */
 .vc-back {
   transform: rotateY(180deg);
   background: #fffdf5;
   border: 2px solid #d4952a;
   box-shadow: 0 4px 18px rgba(212, 149, 42, 0.18);
-  padding: 8px 6px;
+  padding: 8px;
 }
 
-/* شبكة الدوائر الثلاث */
+/* الدوائر الثلاث — flex أفقي حتى تتوزع بالتساوي */
 .vc-circles {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
+  display: flex;
+  gap: 6px;
   width: 100%;
-  height: 100%;
 }
 
 .vc-circle {
+  flex: 1;
+  min-width: 0;
   aspect-ratio: 1;
   border-radius: 50%;
-  border: 2px solid #d4952a;
+  border: 2.5px solid #d4952a;
   background: #ffffff;
   font-family: 'Scheherazade New', serif;
-  font-size: clamp(1.6rem, 3.8vw, 2.4rem);
+  font-size: clamp(1.5rem, 3.8vw, 2.2rem);
   font-weight: 700;
   color: #1a1052;
   cursor: pointer;
@@ -1412,8 +1402,9 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
-  .vc-card { padding-bottom: 110%; }
-  .vc-circle { font-size: clamp(1.4rem, 9vw, 1.8rem); }
+  .vc-card    { padding-bottom: 88%; }
+  .vc-circle  { font-size: clamp(1.4rem, 8.5vw, 1.9rem); }
+  .vc-circles { gap: 5px; }
 }
 
 /* ====== تدريب التعرف على الحروف ====== */

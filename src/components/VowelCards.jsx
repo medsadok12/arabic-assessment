@@ -73,10 +73,9 @@ export default function VowelCards({ question, onAnswer }) {
                 aria-pressed={isFlipped}
                 aria-label={`بطاقة حرف ${card.label}`}
               >
-                {/* ── الوجه الأمامي ── */}
+                {/* ── الوجه الأمامي — مقلوب (؟ فقط) ── */}
                 <div className="vc-face vc-front">
                   <span className="vc-q-mark">؟</span>
-                  <span className="vc-front-label">{card.label}</span>
                 </div>
 
                 {/* ── الوجه الخلفي ── */}
