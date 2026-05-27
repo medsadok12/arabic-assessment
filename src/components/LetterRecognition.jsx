@@ -38,8 +38,7 @@ export default function LetterRecognition({ question, onAnswer }) {
   return (
     <div className="question-box lr-box">
       <div className="lr-instructions">
-        <p className="lr-ar">اقْرَأِ الْحُرُوفَ</p>
-        <p className="lr-en">Read the letters</p>
+        <p className="lr-title">اقْرَأِ الْحُرُوفَ <span className="lr-sep">|</span> Read the letters</p>
         <p className="lr-hint">اضغط على الحرف إذا قرأه الطالب بشكل صحيح ✓</p>
       </div>
 

@@ -118,8 +118,7 @@ export default function VowelLong({ question, onAnswer }) {
 
       {/* ── التعليمة ── */}
       <div className="lr-instructions">
-        <p className="lr-ar">اقْرَأْ ثُمَّ صَنِّفْ</p>
-        <p className="lr-en">Read and Sort</p>
+        <p className="lr-title">اقْرَأْ ثُمَّ صَنِّفْ <span className="lr-sep">|</span> Read and Sort</p>
         <p className="lr-hint">اضغط مقطعاً لاختياره ← ثم اضغط المنطاد المناسب، أو اسحبه مباشرةً</p>
       </div>
 

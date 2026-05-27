@@ -1350,23 +1350,29 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   display: block;
 }
 
-/* المقاطع المودَعة داخل المنطاد */
+/* المقاطع المودَعة داخل المنطاد — شبكة 3×2 */
 .vl-b-inside {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  width: 100%;
+  margin-top: 6px;
 }
 
 .vl-chip {
   font-family: 'Scheherazade New', serif;
-  font-size: clamp(0.85rem, 2vw, 1.1rem);
-  font-weight: 700;
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  font-weight: 900;
   color: #fff;
   background: var(--bc);
-  border-radius: 14px;
-  padding: 2px 9px;
-  line-height: 1.5;
+  border-radius: 50%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  line-height: 1;
+  min-width: 32px;
 }
 
 /* عقدة المنطاد */
@@ -1629,18 +1635,24 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   text-align: center;
   margin-bottom: 16px;
 }
-.lr-ar {
-  font-size: 1.5rem;
+.lr-title {
+  font-size: 1.4rem;
   font-weight: 800;
   color: #1a1052;
-  margin: 0 0 2px;
-  font-family: 'Scheherazade New', serif;
-}
-.lr-en {
-  font-size: 0.85rem;
-  color: #888;
   margin: 0 0 6px;
-  letter-spacing: 0.5px;
+  font-family: 'Scheherazade New', serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.lr-sep {
+  font-size: 1.1rem;
+  color: #bbb;
+  font-family: sans-serif;
+  font-weight: 400;
+  line-height: 1;
 }
 .lr-hint {
   font-size: 0.82rem;
