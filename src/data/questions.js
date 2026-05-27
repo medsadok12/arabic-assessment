@@ -81,6 +81,11 @@ export const questionsBank = {
         text: 'اقْرَأِ الْحُرُوفَ',
       },
       {
+        id:   'L1_VC',
+        type: 'vowel-cards',
+        text: 'اقْرَأِ الْحُرُوفَ بِالْحَرَكَاتِ',
+      },
+      {
         id: 'R1_1',
         text: 'اختر الكتابة الصحيحة لكلمة "مكان التعليم":',
         options: [

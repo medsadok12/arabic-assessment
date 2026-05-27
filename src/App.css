@@ -1291,6 +1291,139 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   padding-bottom: 4px;
 }
 
+/* ====== تدريب البطاقات المقلوبة (الحركات القصيرة) ====== */
+.vc-box { padding: 20px 18px 18px; }
+
+.vc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* wrapper: يحمل perspective حتى يبدو القلب ثلاثي الأبعاد */
+.vc-wrapper {
+  perspective: 900px;
+}
+
+/* البطاقة نفسها — تدور عند الضغط */
+.vc-card {
+  position: relative;
+  width: 100%;
+  padding-bottom: 105%;  /* نسبة الارتفاع للعرض */
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
+  cursor: pointer;
+  border-radius: 16px;
+}
+
+.vc-card.vc-flipped {
+  transform: rotateY(180deg);
+}
+
+/* الوجهان — يملآن البطاقة بالكامل */
+.vc-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* الوجه الأمامي — مظلم مع علامة ؟ */
+.vc-front {
+  background: linear-gradient(145deg, #120840 0%, #1a1052 50%, #2d1b69 100%);
+  border: 2px solid rgba(212, 149, 42, 0.45);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  gap: 4px;
+}
+
+.vc-q-mark {
+  font-family: 'Scheherazade New', serif;
+  font-size: clamp(2rem, 5.5vw, 3.2rem);
+  font-weight: 900;
+  color: #d4952a;
+  line-height: 1;
+}
+
+.vc-front-label {
+  font-family: 'Scheherazade New', serif;
+  font-size: clamp(0.7rem, 2vw, 1rem);
+  color: rgba(212, 149, 42, 0.5);
+}
+
+/* الوجه الخلفي — فاتح مع الحركات */
+.vc-back {
+  transform: rotateY(180deg);
+  background: #fffdf5;
+  border: 2px solid #d4952a;
+  box-shadow: 0 4px 18px rgba(212, 149, 42, 0.18);
+  padding: 8px 6px 10px;
+  gap: 8px;
+}
+
+.vc-back-title {
+  font-family: 'Scheherazade New', serif;
+  font-size: clamp(1rem, 2.5vw, 1.4rem);
+  font-weight: 800;
+  color: #1a1052;
+  line-height: 1;
+}
+
+/* شبكة الدوائر الثلاث */
+.vc-circles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  width: 100%;
+}
+
+.vc-circle {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid #d4952a;
+  background: #ffffff;
+  font-family: 'Scheherazade New', serif;
+  font-size: clamp(1.3rem, 3.2vw, 1.9rem);
+  font-weight: 700;
+  color: #1a1052;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  user-select: none;
+  transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.13s, box-shadow 0.18s;
+}
+
+.vc-circle:hover:not(.vc-done) {
+  background: #fff3dc;
+  transform: scale(1.1);
+}
+
+.vc-circle.vc-done {
+  background: #2e7d32;
+  border-color: #2e7d32;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(46, 125, 50, 0.45);
+  transform: scale(1.05);
+}
+
+@media (max-width: 500px) {
+  .vc-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .vc-card { padding-bottom: 110%; }
+  .vc-circle { font-size: clamp(1.4rem, 9vw, 1.8rem); }
+}
+
 /* ====== تدريب التعرف على الحروف ====== */
 .lr-box { padding: 20px 18px 18px; }
 
