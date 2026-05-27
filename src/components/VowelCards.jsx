@@ -1,17 +1,16 @@
 import { useState } from 'react';
 
+/* 6 حروف × 3 حركات = 18 صوتاً */
 const CARDS = [
-  { id: 'a', label: 'أ', vowels: ['أَ', 'أُ', 'إِ'] },
-  { id: 'b', label: 'ب', vowels: ['بَ', 'بُ', 'بِ'] },
-  { id: 'j', label: 'ج', vowels: ['جَ', 'جُ', 'جِ'] },
-  { id: 'd', label: 'د', vowels: ['دَ', 'دُ', 'دِ'] },
-  { id: 'r', label: 'ر', vowels: ['رَ', 'رُ', 'رِ'] },
-  { id: 's', label: 'س', vowels: ['سَ', 'سُ', 'سِ'] },
-  { id: 'f', label: 'ف', vowels: ['فَ', 'فُ', 'فِ'] },
-  { id: 'm', label: 'م', vowels: ['مَ', 'مُ', 'مِ'] },
+  { id: 'b', vowels: ['بَ', 'بُ', 'بِ'] },
+  { id: 'j', vowels: ['جَ', 'جُ', 'جِ'] },
+  { id: 'd', vowels: ['دَ', 'دُ', 'دِ'] },
+  { id: 'r', vowels: ['رَ', 'رُ', 'رِ'] },
+  { id: 's', vowels: ['سَ', 'سُ', 'سِ'] },
+  { id: 'm', vowels: ['مَ', 'مُ', 'مِ'] },
 ];
 
-const TOTAL = CARDS.length * 3; // 24
+const TOTAL = CARDS.length * 3; // 18
 
 export default function VowelCards({ question, onAnswer }) {
   const [flipped,  setFlipped]  = useState(new Set());
@@ -47,7 +46,7 @@ export default function VowelCards({ question, onAnswer }) {
       questionId: question.id,
       skill:      question.skill ?? 'reading',
       answer:     correct.size,
-      isCorrect:  correct.size >= 18,
+      isCorrect:  correct.size >= 14,
     });
   }
 
@@ -71,18 +70,17 @@ export default function VowelCards({ question, onAnswer }) {
                 onClick={() => toggleCard(ci)}
                 role="button"
                 aria-pressed={isFlipped}
-                aria-label={`بطاقة حرف ${card.label}`}
               >
-                {/* ── الوجه الأمامي — مقلوب (؟ فقط) ── */}
+                {/* ── وجه أمامي: علامة ؟ فقط ── */}
                 <div className="vc-face vc-front">
                   <span className="vc-q-mark">؟</span>
                 </div>
 
-                {/* ── الوجه الخلفي ── */}
+                {/* ── وجه خلفي: 3 دوائر أفقية ── */}
                 <div className="vc-face vc-back">
                   <div className="vc-circles">
-                    {card.vowels.map((v, vi) => {
-                      const key   = `${ci}-${vi}`;
+                    {card.vowels.map((vowel, vi) => {
+                      const key    = `${ci}-${vi}`;
                       const isDone = correct.has(key);
                       return (
                         <button
@@ -90,9 +88,8 @@ export default function VowelCards({ question, onAnswer }) {
                           className={`vc-circle${isDone ? ' vc-done' : ''}`}
                           onClick={e => toggleVowel(e, ci, vi)}
                           aria-pressed={isDone}
-                          aria-label={v}
                         >
-                          {v}
+                          <span className="vc-vowel-inner">{vowel}</span>
                         </button>
                       );
                     })}
