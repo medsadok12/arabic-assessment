@@ -9,6 +9,7 @@ import FillQuestion          from './FillQuestion.jsx';
 import LetterRecognition     from './LetterRecognition.jsx';
 import VowelCards            from './VowelCards.jsx';
 import VowelLong             from './VowelLong.jsx';
+import SukunCards            from './SukunCards.jsx';
 
 export default function Assessment({ questions, currentLevel, questionIndex, studentInfo, onAnswer }) {
   const [selected, setSelected] = useState(null);
@@ -49,13 +50,14 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
 
   if (!question) return null;
 
-  const SPECIAL_TYPES = ['letter-recognition', 'vowel-cards', 'vowel-long', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill'];
+  const SPECIAL_TYPES = ['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill'];
 
   if (SPECIAL_TYPES.includes(question.type)) {
     const Inner =
       question.type === 'letter-recognition' ? <LetterRecognition question={question} onAnswer={onAnswer} /> :
       question.type === 'vowel-cards'   ? <VowelCards         question={question} onAnswer={onAnswer} /> :
       question.type === 'vowel-long'    ? <VowelLong          question={question} onAnswer={onAnswer} /> :
+      question.type === 'sukun-cards'  ? <SukunCards         question={question} onAnswer={onAnswer} /> :
       question.type === 'matching'      ? <MatchingQuestion   question={question} onAnswer={onAnswer} /> :
       question.type === 'speaking'    ? <AudioQuestion      question={question} studentInfo={studentInfo} onAnswer={onAnswer} /> :
       question.type === 'photo-writing' ? <WritingQuestion  question={question} studentInfo={studentInfo} onAnswer={onAnswer} /> :

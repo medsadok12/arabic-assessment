@@ -1510,6 +1510,119 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   .vl-pool { gap: 8px; padding: 10px 8px; }
 }
 
+/* ====== تدريب المقطع الساكن (السكون) ====== */
+.sk-box { padding: 20px 18px 18px; }
+
+.sk-parent-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(255, 246, 210, 0.75);
+  border: 1px solid #e8c84a;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  direction: rtl;
+  text-align: right;
+}
+
+.sk-note-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+
+.sk-parent-note p {
+  font-size: 0.8rem;
+  color: #7a5500;
+  margin: 0;
+  line-height: 1.55;
+  font-family: 'Scheherazade New', serif;
+}
+
+.sk-note-label { font-weight: 800; }
+
+.sk-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 18px 0 14px;
+}
+
+.sk-card-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.sk-card {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #fff;
+  border: 2.5px solid #d8d0ef;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.07);
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  overflow: visible;
+}
+
+.sk-card-wrap.sk-done .sk-card {
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  border-color: #66bb6a;
+  box-shadow: 0 0 22px rgba(76,175,80,0.32), 0 4px 14px rgba(76,175,80,0.18);
+}
+
+.sk-syllable {
+  font-family: 'Scheherazade New', serif;
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  font-weight: 900;
+  color: #1a1052;
+  line-height: 1.7;
+  display: block;
+  text-align: center;
+  overflow: visible;
+  transition: color 0.3s ease;
+}
+
+.sk-card-wrap.sk-done .sk-syllable { color: #2e7d32; }
+
+.sk-check-btn {
+  font-size: 1.45rem;
+  background: #f4f2ff;
+  border: 2px solid #d8d0ef;
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.18s, border-color 0.2s, background 0.2s;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: grayscale(1) opacity(0.45);
+}
+
+.sk-check-btn:hover {
+  transform: scale(1.15);
+  filter: grayscale(0) opacity(1);
+  border-color: #4caf50;
+  background: rgba(76,175,80,0.1);
+}
+
+.sk-card-wrap.sk-done .sk-check-btn {
+  filter: grayscale(0) opacity(1);
+  border-color: #4caf50;
+  background: rgba(76,175,80,0.12);
+}
+
+@media (max-width: 520px) {
+  .sk-grid { gap: 10px; }
+  .sk-syllable { font-size: clamp(2rem, 9vw, 3rem); }
+  .sk-check-btn { width: 36px; height: 36px; font-size: 1.2rem; }
+}
+
 /* ====== تدريب البطاقات المقلوبة (الحركات القصيرة) ====== */
 .vc-box { padding: 20px 18px 18px; }
 
