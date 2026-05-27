@@ -96,6 +96,11 @@ export const questionsBank = {
         text: 'قِرَاءَةُ المَقْطَعِ السَّاكِنِ',
       },
       {
+        id:   'L1_TW',
+        type: 'tanween-cards',
+        text: 'أَصْوَاتُ التَّنْوِينِ',
+      },
+      {
         id: 'R1_1',
         text: 'اختر الكتابة الصحيحة لكلمة "مكان التعليم":',
         options: [
