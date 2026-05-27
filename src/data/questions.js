@@ -91,6 +91,11 @@ export const questionsBank = {
         text: 'اقْرَأْ ثُمَّ صَنِّفْ',
       },
       {
+        id:   'L1_SK',
+        type: 'sukun-cards',
+        text: 'قِرَاءَةُ المَقْطَعِ السَّاكِنِ',
+      },
+      {
         id: 'R1_1',
         text: 'اختر الكتابة الصحيحة لكلمة "مكان التعليم":',
         options: [

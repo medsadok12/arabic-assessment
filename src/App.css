@@ -1314,7 +1314,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 /* جسم المنطاد */
 .vl-balloon-body {
   width: 100%;
-  min-height: 130px;
+  min-height: 160px;
   background: var(--bb);
   border: 3px solid var(--bc);
   border-radius: 50% 50% 50% 50% / 38% 38% 62% 62%;
@@ -1322,12 +1322,12 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 14px 8px 18px;
+  padding: 10px 8px 14px;
   cursor: pointer;
   position: relative;
   box-shadow: 0 5px 18px rgba(0,0,0,0.13);
   transition: transform 0.18s, box-shadow 0.18s;
-  gap: 8px;
+  gap: 0;
 }
 
 .vl-balloon-body:hover {
@@ -1340,33 +1340,58 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   box-shadow: 0 12px 28px rgba(0,0,0,0.25);
 }
 
+/* حاوية رمز المد — ارتفاع ثابت يحمي نقاط الياء */
+.vl-b-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-height: 64px;
+  padding-bottom: 4px;
+}
+
 /* رمز حرف المد */
 .vl-b-symbol {
   font-family: 'Scheherazade New', serif;
   font-size: clamp(2rem, 5.5vw, 3.2rem);
   font-weight: 900;
   color: var(--bc);
-  line-height: 1;
+  line-height: 1.6;
   display: block;
+  overflow: visible;
 }
 
-/* المقاطع المودَعة داخل المنطاد */
+/* المقاطع المودَعة داخل المنطاد — شبكة 3×2 */
 .vl-b-inside {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  width: 100%;
+  place-items: center;
 }
 
 .vl-chip {
   font-family: 'Scheherazade New', serif;
-  font-size: clamp(0.85rem, 2vw, 1.1rem);
-  font-weight: 700;
+  font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+  font-weight: 900;
   color: #fff;
   background: var(--bc);
-  border-radius: 14px;
-  padding: 2px 9px;
-  line-height: 1.5;
+  border-radius: 50%;
+  width: min(100%, 36px);
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  line-height: 1;
+}
+
+.vl-chip-text {
+  line-height: 1;
+  display: block;
+  transform: translateY(-5%);
+  overflow: visible;
 }
 
 /* عقدة المنطاد */
@@ -1477,11 +1502,125 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 /* ── جوّال ── */
 @media (max-width: 520px) {
   .vl-balloons { gap: 8px; }
-  .vl-balloon-body { min-height: 110px; padding: 10px 6px 14px; }
+  .vl-balloon-body { min-height: 140px; padding: 8px 6px 12px; }
+  .vl-b-top { min-height: 52px; }
   .vl-b-symbol { font-size: clamp(1.6rem, 8vw, 2.2rem); }
   .vl-syl { width: 66px; height: 66px; }
   .vl-syl-text { font-size: clamp(1.4rem, 8.5vw, 1.8rem); }
   .vl-pool { gap: 8px; padding: 10px 8px; }
+}
+
+/* ====== تدريب المقطع الساكن (السكون) ====== */
+.sk-box { padding: 20px 18px 18px; }
+
+.sk-parent-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(255, 246, 210, 0.75);
+  border: 1px solid #e8c84a;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  direction: rtl;
+  text-align: right;
+}
+
+.sk-note-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+
+.sk-parent-note p {
+  font-size: 0.8rem;
+  color: #7a5500;
+  margin: 0;
+  line-height: 1.55;
+  font-family: 'Scheherazade New', serif;
+}
+
+.sk-note-label { font-weight: 800; }
+
+.sk-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 18px 0 14px;
+}
+
+.sk-card-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.sk-card {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #fff;
+  border: 2.5px solid #d8d0ef;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.07);
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  overflow: visible;
+}
+
+.sk-card-wrap.sk-done .sk-card {
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  border-color: #66bb6a;
+  box-shadow: 0 0 22px rgba(76,175,80,0.32), 0 4px 14px rgba(76,175,80,0.18);
+}
+
+.sk-syllable {
+  font-family: 'Scheherazade New', serif;
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  font-weight: 900;
+  color: #1a1052;
+  line-height: 1.7;
+  display: block;
+  text-align: center;
+  overflow: visible;
+  transition: color 0.3s ease;
+}
+
+.sk-card-wrap.sk-done .sk-syllable { color: #2e7d32; }
+
+.sk-check-btn {
+  font-size: 1.45rem;
+  background: #f4f2ff;
+  border: 2px solid #d8d0ef;
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.18s, border-color 0.2s, background 0.2s;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: grayscale(1) opacity(0.45);
+}
+
+.sk-check-btn:hover {
+  transform: scale(1.15);
+  filter: grayscale(0) opacity(1);
+  border-color: #4caf50;
+  background: rgba(76,175,80,0.1);
+}
+
+.sk-card-wrap.sk-done .sk-check-btn {
+  filter: grayscale(0) opacity(1);
+  border-color: #4caf50;
+  background: rgba(76,175,80,0.12);
+}
+
+@media (max-width: 520px) {
+  .sk-grid { gap: 10px; }
+  .sk-syllable { font-size: clamp(2rem, 9vw, 3rem); }
+  .sk-check-btn { width: 36px; height: 36px; font-size: 1.2rem; }
 }
 
 /* ====== تدريب البطاقات المقلوبة (الحركات القصيرة) ====== */
@@ -1629,18 +1768,24 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   text-align: center;
   margin-bottom: 16px;
 }
-.lr-ar {
-  font-size: 1.5rem;
+.lr-title {
+  font-size: 1.4rem;
   font-weight: 800;
   color: #1a1052;
-  margin: 0 0 2px;
-  font-family: 'Scheherazade New', serif;
-}
-.lr-en {
-  font-size: 0.85rem;
-  color: #888;
   margin: 0 0 6px;
-  letter-spacing: 0.5px;
+  font-family: 'Scheherazade New', serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.lr-sep {
+  font-size: 1.1rem;
+  color: #bbb;
+  font-family: sans-serif;
+  font-weight: 400;
+  line-height: 1;
 }
 .lr-hint {
   font-size: 0.82rem;

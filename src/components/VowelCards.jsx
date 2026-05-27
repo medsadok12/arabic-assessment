@@ -55,8 +55,7 @@ export default function VowelCards({ question, onAnswer }) {
   return (
     <div className="question-box vc-box">
       <div className="lr-instructions">
-        <p className="lr-ar">اقْرَأِ الْحُرُوفَ بِالْحَرَكَاتِ</p>
-        <p className="lr-en">Read the letters with vowels</p>
+        <p className="lr-title">اقْرَأِ الْحُرُوفَ بِالْحَرَكَاتِ <span className="lr-sep">|</span> Read with vowels</p>
         <p className="lr-hint">اضغط البطاقة لقلبها ← ثم اضغط على الدائرة عند النطق الصحيح</p>
       </div>
 
