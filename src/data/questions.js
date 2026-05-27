@@ -76,6 +76,11 @@ export const questionsBank = {
     ],
     reading: [
       {
+        id:   'L1_LR',
+        type: 'letter-recognition',
+        text: 'اقْرَأِ الْحُرُوفَ',
+      },
+      {
         id: 'R1_1',
         text: 'اختر الكتابة الصحيحة لكلمة "مكان التعليم":',
         options: [
