@@ -1348,6 +1348,11 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   color: var(--bc);
   line-height: 1;
   display: block;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  padding-bottom: 10px;
+  overflow: visible;
 }
 
 /* المقاطع المودَعة داخل المنطاد — شبكة 3×2 */
@@ -1356,7 +1361,9 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
   width: 100%;
-  margin-top: 6px;
+  margin-top: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .vl-chip {
@@ -1484,7 +1491,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 @media (max-width: 520px) {
   .vl-balloons { gap: 8px; }
   .vl-balloon-body { min-height: 110px; padding: 10px 6px 14px; }
-  .vl-b-symbol { font-size: clamp(1.6rem, 8vw, 2.2rem); }
+  .vl-b-symbol { font-size: clamp(1.6rem, 8vw, 2.2rem); padding-bottom: 8px; }
   .vl-syl { width: 66px; height: 66px; }
   .vl-syl-text { font-size: clamp(1.4rem, 8.5vw, 1.8rem); }
   .vl-pool { gap: 8px; padding: 10px 8px; }
