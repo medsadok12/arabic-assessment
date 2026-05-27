@@ -1294,10 +1294,11 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 /* ====== تدريب البطاقات المقلوبة (الحركات القصيرة) ====== */
 .vc-box { padding: 20px 18px 18px; }
 
+/* 6 بطاقات في صفين × 3 أعمدة */
 .vc-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
   margin-bottom: 16px;
 }
 
@@ -1308,7 +1309,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 .vc-card {
   position: relative;
   width: 100%;
-  padding-bottom: 82%;
+  padding-bottom: 78%;
   transform-style: preserve-3d;
   transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
   cursor: pointer;
@@ -1319,6 +1320,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   transform: rotateY(180deg);
 }
 
+/* الوجهان — يملآن البطاقة */
 .vc-face {
   position: absolute;
   inset: 0;
@@ -1329,7 +1331,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  /* لا overflow: hidden حتى لا تُقطع الحركات */
 }
 
 /* الوجه الأمامي — ؟ فقط */
@@ -1337,32 +1339,39 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   background: linear-gradient(145deg, #120840 0%, #1a1052 50%, #2d1b69 100%);
   border: 2px solid rgba(212, 149, 42, 0.45);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 .vc-q-mark {
   font-family: 'Scheherazade New', serif;
-  font-size: clamp(2.2rem, 6vw, 3.6rem);
+  font-size: clamp(2.4rem, 7vw, 4rem);
   font-weight: 900;
   color: #d4952a;
   line-height: 1;
 }
 
-/* الوجه الخلفي — 3 دوائر أفقية */
+/* الوجه الخلفي */
 .vc-back {
   transform: rotateY(180deg);
   background: #fffdf5;
   border: 2px solid #d4952a;
   box-shadow: 0 4px 18px rgba(212, 149, 42, 0.18);
-  padding: 8px;
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 10px;
 }
 
-/* الدوائر الثلاث — flex أفقي حتى تتوزع بالتساوي */
+/* الدوائر الثلاث — flex أفقي */
 .vc-circles {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
+  align-items: center;
+  justify-content: center;
 }
 
+/* الدائرة نفسها — لا overflow: hidden لمنع قطع الحركات */
 .vc-circle {
   flex: 1;
   min-width: 0;
@@ -1370,42 +1379,55 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   border-radius: 50%;
   border: 2.5px solid #d4952a;
   background: #ffffff;
-  font-family: 'Scheherazade New', serif;
-  font-size: clamp(1.5rem, 3.8vw, 2.2rem);
-  font-weight: 700;
-  color: #1a1052;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  line-height: 1;
+  overflow: visible;         /* السماح للحركات بالظهور دون قطع */
   user-select: none;
-  transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.13s, box-shadow 0.18s;
+  transition: background 0.18s, border-color 0.18s, transform 0.13s, box-shadow 0.18s;
+  position: relative;
+  z-index: 1;
+}
+
+/* النص الداخلي — حرف + حركة مثبتان في المركز */
+.vc-vowel-inner {
+  font-family: 'Scheherazade New', serif;
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  font-weight: 700;
+  color: #1a1052;
+  line-height: 1;
+  display: block;
+  text-align: center;
+  /* إزاحة خفيفة لأعلى لتوسيط الحرف بصرياً مع حركته */
+  transform: translateY(-6%);
 }
 
 .vc-circle:hover:not(.vc-done) {
   background: #fff3dc;
-  transform: scale(1.1);
+  transform: scale(1.08);
 }
 
 .vc-circle.vc-done {
   background: #2e7d32;
   border-color: #2e7d32;
-  color: #ffffff;
-  box-shadow: 0 0 10px rgba(46, 125, 50, 0.45);
+  box-shadow: 0 0 12px rgba(46, 125, 50, 0.5);
   transform: scale(1.05);
 }
 
-@media (max-width: 500px) {
-  .vc-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-  .vc-card    { padding-bottom: 88%; }
-  .vc-circle  { font-size: clamp(1.4rem, 8.5vw, 1.9rem); }
-  .vc-circles { gap: 5px; }
+.vc-circle.vc-done .vc-vowel-inner {
+  color: #ffffff;
 }
+
+/* جوّال */
+@media (max-width: 500px) {
+  .vc-grid   { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .vc-card   { padding-bottom: 82%; }
+  .vc-circles { gap: 6px; }
+  .vc-vowel-inner { font-size: clamp(1.5rem, 9.5vw, 2rem); }
+}
+
 
 /* ====== تدريب التعرف على الحروف ====== */
 .lr-box { padding: 20px 18px 18px; }
