@@ -1314,7 +1314,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 /* جسم المنطاد */
 .vl-balloon-body {
   width: 100%;
-  min-height: 130px;
+  min-height: 160px;
   background: var(--bb);
   border: 3px solid var(--bc);
   border-radius: 50% 50% 50% 50% / 38% 38% 62% 62%;
@@ -1322,12 +1322,12 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 14px 8px 18px;
+  padding: 10px 8px 14px;
   cursor: pointer;
   position: relative;
   box-shadow: 0 5px 18px rgba(0,0,0,0.13);
   transition: transform 0.18s, box-shadow 0.18s;
-  gap: 8px;
+  gap: 0;
 }
 
 .vl-balloon-body:hover {
@@ -1340,18 +1340,25 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   box-shadow: 0 12px 28px rgba(0,0,0,0.25);
 }
 
+/* حاوية رمز المد — ارتفاع ثابت يحمي نقاط الياء */
+.vl-b-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-height: 64px;
+  padding-bottom: 4px;
+}
+
 /* رمز حرف المد */
 .vl-b-symbol {
   font-family: 'Scheherazade New', serif;
   font-size: clamp(2rem, 5.5vw, 3.2rem);
   font-weight: 900;
   color: var(--bc);
-  line-height: 1;
+  line-height: 1.6;
   display: block;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 2;
-  padding-bottom: 10px;
   overflow: visible;
 }
 
@@ -1361,25 +1368,30 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
   width: 100%;
-  margin-top: 0;
-  position: relative;
-  z-index: 1;
+  place-items: center;
 }
 
 .vl-chip {
   font-family: 'Scheherazade New', serif;
-  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  font-size: clamp(0.85rem, 2.2vw, 1.05rem);
   font-weight: 900;
   color: #fff;
   background: var(--bc);
   border-radius: 50%;
+  width: min(100%, 36px);
   aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: visible;
   line-height: 1;
-  min-width: 32px;
+}
+
+.vl-chip-text {
+  line-height: 1;
+  display: block;
+  transform: translateY(-5%);
+  overflow: visible;
 }
 
 /* عقدة المنطاد */
@@ -1490,8 +1502,9 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 /* ── جوّال ── */
 @media (max-width: 520px) {
   .vl-balloons { gap: 8px; }
-  .vl-balloon-body { min-height: 110px; padding: 10px 6px 14px; }
-  .vl-b-symbol { font-size: clamp(1.6rem, 8vw, 2.2rem); padding-bottom: 8px; }
+  .vl-balloon-body { min-height: 140px; padding: 8px 6px 12px; }
+  .vl-b-top { min-height: 52px; }
+  .vl-b-symbol { font-size: clamp(1.6rem, 8vw, 2.2rem); }
   .vl-syl { width: 66px; height: 66px; }
   .vl-syl-text { font-size: clamp(1.4rem, 8.5vw, 1.8rem); }
   .vl-pool { gap: 8px; padding: 10px 8px; }

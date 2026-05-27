@@ -62,19 +62,16 @@ export default function VowelLong({ question, onAnswer }) {
     }
   }
 
-  /* ── نقر المقطع ── */
   function handleSylClick(id) {
     if (placed.has(id)) return;
     setSelected(prev => prev === id ? null : id);
   }
 
-  /* ── نقر المنطاد ── */
   function handleBalloonClick(balloonId) {
     if (!selected) return;
     attemptPlace(selected, balloonId);
   }
 
-  /* ── HTML5 DnD ── */
   function onDragStart(e, id) {
     setDragging(id);
     setSelected(null);
@@ -146,17 +143,23 @@ export default function VowelLong({ question, onAnswer }) {
                 role="button"
                 aria-label={b.name}
               >
-                <span className="vl-b-symbol">{b.symbol}</span>
+                {/* رمز الحرف — في حاوية منفصلة مع ارتفاع ثابت */}
+                <div className="vl-b-top">
+                  <span className="vl-b-symbol">{b.symbol}</span>
+                </div>
+
+                {/* شبكة المقاطع المودَعة — تحت الرمز مباشرة */}
                 {inside.length > 0 && (
                   <div className="vl-b-inside">
                     {inside.map(s => (
                       <span key={s.id} className="vl-chip" style={{ '--bc': b.color }}>
-                        {s.text}
+                        <span className="vl-chip-text">{s.text}</span>
                       </span>
                     ))}
                   </div>
                 )}
               </div>
+
               {/* عقدة + خيط */}
               <div className="vl-knot" style={{ borderTopColor: b.color }} />
               <div className="vl-string" style={{ background: b.color }} />
