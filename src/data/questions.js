@@ -86,6 +86,11 @@ export const questionsBank = {
         text: 'اقْرَأِ الْحُرُوفَ بِالْحَرَكَاتِ',
       },
       {
+        id:   'L1_VL',
+        type: 'vowel-long',
+        text: 'اقْرَأْ ثُمَّ صَنِّفْ',
+      },
+      {
         id: 'R1_1',
         text: 'اختر الكتابة الصحيحة لكلمة "مكان التعليم":',
         options: [
