@@ -1291,6 +1291,121 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   padding-bottom: 4px;
 }
 
+/* ====== تدريب التعرف على الحروف ====== */
+.lr-box { padding: 20px 18px 18px; }
+
+.lr-instructions {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.lr-ar {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1a1052;
+  margin: 0 0 2px;
+  font-family: 'Scheherazade New', serif;
+}
+.lr-en {
+  font-size: 0.85rem;
+  color: #888;
+  margin: 0 0 6px;
+  letter-spacing: 0.5px;
+}
+.lr-hint {
+  font-size: 0.82rem;
+  color: #b8620a;
+  margin: 0;
+  background: rgba(212, 149, 42, 0.08);
+  border-radius: 8px;
+  padding: 4px 12px;
+  display: inline-block;
+}
+
+.lr-grid-box {
+  border: 2px solid #e0d5b0;
+  border-radius: 14px;
+  background: #fffdf5;
+  padding: 16px 12px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.lr-circle {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid #d4952a;
+  background: #ffffff;
+  font-family: 'Scheherazade New', serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: #1a1052;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.13s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  user-select: none;
+}
+.lr-circle:hover:not(.lr-done) {
+  background: #fff8e6;
+  transform: scale(1.1);
+}
+.lr-circle.lr-done {
+  background: #2e7d32;
+  border-color: #2e7d32;
+  color: #ffffff;
+  transform: scale(1.05);
+}
+
+.lr-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0 4px;
+  border-top: 1px solid #f0ead8;
+}
+.lr-counter {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.95rem;
+  flex-wrap: wrap;
+}
+.lr-counter-label { color: #555; }
+.lr-counter-val   { font-size: 1.3rem; font-weight: 800; color: #2e7d32; }
+.lr-counter-of    { color: #888; }
+.lr-counter-pct   { color: #b8620a; font-size: 0.85rem; font-weight: 600; }
+
+.lr-reset-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid #d4952a;
+  border-radius: 20px;
+  padding: 6px 14px;
+  color: #b8620a;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.18s;
+  white-space: nowrap;
+}
+.lr-reset-btn:hover { background: #fff3dc; }
+
+@media (max-width: 540px) {
+  .lr-grid-box {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 12px 8px;
+  }
+  .lr-circle { font-size: 1.55rem; }
+  .lr-footer { flex-direction: column; align-items: flex-start; gap: 8px; }
+}
+
 /* ====== صفحة الترحيب الشخصية ====== */
 .welcome-page {
   text-align: center;
