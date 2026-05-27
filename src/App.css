@@ -1363,16 +1363,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   background: #fffdf5;
   border: 2px solid #d4952a;
   box-shadow: 0 4px 18px rgba(212, 149, 42, 0.18);
-  padding: 8px 6px 10px;
-  gap: 8px;
-}
-
-.vc-back-title {
-  font-family: 'Scheherazade New', serif;
-  font-size: clamp(1rem, 2.5vw, 1.4rem);
-  font-weight: 800;
-  color: #1a1052;
-  line-height: 1;
+  padding: 8px 6px;
 }
 
 /* شبكة الدوائر الثلاث */
@@ -1381,6 +1372,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
   width: 100%;
+  height: 100%;
 }
 
 .vc-circle {
@@ -1389,7 +1381,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   border: 2px solid #d4952a;
   background: #ffffff;
   font-family: 'Scheherazade New', serif;
-  font-size: clamp(1.3rem, 3.2vw, 1.9rem);
+  font-size: clamp(1.6rem, 3.8vw, 2.4rem);
   font-weight: 700;
   color: #1a1052;
   cursor: pointer;

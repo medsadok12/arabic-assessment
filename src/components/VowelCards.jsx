@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 const CARDS = [
-  { id: 'a', label: 'أ', vowels: ['أَ', 'أُ', 'أِ'] },
+  { id: 'a', label: 'أ', vowels: ['أَ', 'أُ', 'إِ'] },
   { id: 'b', label: 'ب', vowels: ['بَ', 'بُ', 'بِ'] },
   { id: 'j', label: 'ج', vowels: ['جَ', 'جُ', 'جِ'] },
   { id: 'd', label: 'د', vowels: ['دَ', 'دُ', 'دِ'] },
@@ -81,7 +81,6 @@ export default function VowelCards({ question, onAnswer }) {
 
                 {/* ── الوجه الخلفي ── */}
                 <div className="vc-face vc-back">
-                  <span className="vc-back-title">{card.label}</span>
                   <div className="vc-circles">
                     {card.vowels.map((v, vi) => {
                       const key   = `${ci}-${vi}`;
