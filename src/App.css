@@ -1948,54 +1948,33 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 /* ====== التدريب السادس: اسْتَمِعْ وَاخْتَرْ ====== */
 .lc-box { padding: 20px 18px 18px; }
 
-/* بطاقات الاختيار — كل بطاقة: زر تشغيل + نص الكلمة */
-.lc-options {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 16px 0;
-  direction: rtl;
-}
-
-.lc-option-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: #fff;
-  border: 2.5px solid #d8d0ef;
+/* منطقة أزرار الصوت — صندوق مستقل */
+.lc-audio-zone {
+  background: linear-gradient(135deg, #f0eeff, #e8e4f8);
+  border: 2px solid #c5bcf0;
   border-radius: 16px;
-  padding: 12px 16px;
-  cursor: pointer;
-  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
-  direction: rtl;
-  min-height: 68px;
+  padding: 14px 12px 18px;
+  margin: 14px 0;
+  text-align: center;
 }
 
-.lc-option-card:hover { border-color: #a090d0; background: #f8f6ff; }
-
-.lc-option-card.lc-selected {
-  border-color: #5c4dd0;
-  background: #ede9ff;
-  box-shadow: 0 0 0 3px rgba(92, 77, 208, 0.15);
-}
-
-/* نص الكلمة */
-.lc-word-text {
+.lc-zone-label {
   font-family: 'Scheherazade New', serif;
-  font-size: clamp(1.6rem, 5.5vw, 2.4rem);
+  font-size: 0.85rem;
   font-weight: 700;
-  color: #1a1052;
-  line-height: 1.6;
-  flex: 1;
-  overflow: visible;
-  text-align: right;
+  color: #6050a0;
+  margin: 0 0 12px;
 }
 
-/* زر التشغيل المستقل لكل كلمة */
-.lc-word-play {
-  flex-shrink: 0;
-  width: 50px;
-  height: 50px;
+.lc-audio-btns {
+  display: flex;
+  gap: 22px;
+  justify-content: center;
+}
+
+.lc-play-btn {
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   background: linear-gradient(135deg, #1a1052, #3a2090);
   border: none;
@@ -2003,55 +1982,108 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   cursor: pointer;
-  box-shadow: 0 3px 12px rgba(26, 16, 82, 0.3);
-  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s, background 0.2s;
+  box-shadow: 0 4px 16px rgba(26, 16, 82, 0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
-.lc-word-play:hover:not(:disabled) {
-  transform: scale(1.1);
-  box-shadow: 0 5px 18px rgba(26, 16, 82, 0.42);
+.lc-play-btn:hover:not(:disabled) {
+  transform: scale(1.09);
+  box-shadow: 0 6px 24px rgba(26, 16, 82, 0.44);
 }
 
-.lc-word-play:active:not(:disabled) { transform: scale(0.94); }
+.lc-play-btn:active:not(:disabled) { transform: scale(0.94); }
 
-.lc-word-play:disabled {
-  background: linear-gradient(135deg, #4caf50, #388e3c);
-  opacity: 0.85;
-  cursor: default;
-  box-shadow: none;
-}
-
-.lc-word-play-icon {
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
-.lc-word-count {
-  font-size: 0.58rem;
-  color: rgba(255,255,255,0.85);
-  font-family: sans-serif;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.2px;
-}
-
-/* حالة التشغيل النشط */
-.lc-word-play.lc-word-playing {
+.lc-play-btn.lc-playing {
   background: linear-gradient(135deg, #c0396a, #e06520);
   animation: lc-pulse 0.9s ease-in-out infinite;
+  cursor: default;
+}
+
+.lc-play-btn.lc-maxed {
+  background: linear-gradient(135deg, #388e3c, #4caf50);
+  box-shadow: none;
+  opacity: 0.75;
+  cursor: default;
 }
 
 @keyframes lc-pulse {
-  0%, 100% { box-shadow: 0 3px 12px rgba(192, 57, 106, 0.3); }
-  50%       { box-shadow: 0 4px 22px rgba(192, 57, 106, 0.65); transform: scale(1.04); }
+  0%, 100% { box-shadow: 0 4px 14px rgba(192, 57, 106, 0.3); }
+  50%       { box-shadow: 0 4px 26px rgba(192, 57, 106, 0.62); transform: scale(1.05); }
+}
+
+.lc-play-icon {
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.lc-play-num {
+  font-size: 0.68rem;
+  font-family: sans-serif;
+  font-weight: 700;
+  color: rgba(255,255,255,0.82);
+  line-height: 1;
+}
+
+/* فاصل بصري بين المنطقتين */
+.lc-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #d8d0ef 40%, #d8d0ef 60%, transparent);
+  margin: 6px 0 10px;
+}
+
+/* منطقة الاختيار — كلمات نقية بلا أي مؤشر */
+.lc-choice-zone { text-align: center; }
+
+.lc-choice-lbl {
+  color: #b8620a !important;
+  background: rgba(212, 149, 42, 0.08);
+  border-radius: 8px;
+  padding: 4px 14px;
+  display: inline-block;
+  margin-bottom: 14px;
+}
+
+.lc-options {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  direction: rtl;
+  margin-bottom: 6px;
+}
+
+.lc-option {
+  font-family: 'Scheherazade New', serif;
+  font-size: clamp(1.5rem, 5.5vw, 2.2rem);
+  font-weight: 700;
+  color: #1a1052;
+  background: #fff;
+  border: 2.5px solid #d8d0ef;
+  border-radius: 14px;
+  padding: 10px 22px;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+  line-height: 1.6;
+  min-width: 90px;
+  overflow: visible;
+}
+
+.lc-option:hover { border-color: #a090d0; background: #f4f2ff; }
+
+.lc-option.lc-selected {
+  border-color: #5c4dd0;
+  background: #ede9ff;
+  box-shadow: 0 0 0 3px rgba(92, 77, 208, 0.15);
 }
 
 @media (max-width: 520px) {
-  .lc-option-card { padding: 10px 12px; gap: 10px; }
-  .lc-word-play   { width: 44px; height: 44px; }
+  .lc-audio-btns { gap: 14px; }
+  .lc-play-btn   { width: 60px; height: 60px; }
+  .lc-option     { padding: 8px 14px; min-width: 76px; }
 }
+
 
 /* ====== التدريب السابع: رَتِّبْ مَقَاطِعَ الكَلِمَةِ ====== */
 .so-box { padding: 20px 18px 18px; }
