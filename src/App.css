@@ -2546,6 +2546,119 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   .wc-emoji { font-size: 2.4rem; }
 }
 
+/* ===== التدريب العاشر — أَسْمِعْنِي صَوْتَكَ (oa-) ===== */
+.oa-box { padding: 16px 18px 20px; }
+
+/* رأس خاص بالولي */
+.oa-parent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.oa-parent-title {
+  font-family: 'Scheherazade New', serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #6050a0;
+  margin: 0;
+}
+
+.oa-progress {
+  background: #ede9ff;
+  border-radius: 20px;
+  padding: 3px 14px;
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #5c4dd0;
+}
+
+/* منطقة الصورة الكبيرة — ما يراه الطفل */
+.oa-image-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0 28px;
+  min-height: 200px;
+}
+
+.oa-emoji {
+  font-size: clamp(7rem, 32vw, 13rem);
+  line-height: 1;
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.10));
+  user-select: none;
+}
+
+/* لوحة تحكم الولي — مفصولة بصرياً */
+.oa-parent-controls {
+  border-top: 2px dashed #d8d0ef;
+  padding-top: 14px;
+  margin-top: 4px;
+}
+
+.oa-controls-label {
+  font-family: 'Scheherazade New', serif;
+  font-size: 0.76rem;
+  color: #9888c0;
+  text-align: center;
+  margin: 0 0 12px;
+}
+
+.oa-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.oa-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border-radius: 16px;
+  padding: 14px 18px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  min-width: 100px;
+  font-family: 'Scheherazade New', serif;
+}
+
+.oa-btn:hover  { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14); }
+.oa-btn:active { transform: scale(0.95); }
+
+.oa-btn-correct {
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  border: 2px solid #a5d6a7;
+  color: #2e7d32;
+}
+
+.oa-btn-hesitated {
+  background: linear-gradient(135deg, #fff8e1, #ffecb3);
+  border: 2px solid #ffe082;
+  color: #e65100;
+}
+
+.oa-btn-unknown {
+  background: linear-gradient(135deg, #ffebee, #ffcdd2);
+  border: 2px solid #ef9a9a;
+  color: #c62828;
+}
+
+.oa-btn-icon  { font-size: 1.9rem; line-height: 1; }
+.oa-btn-label {
+  font-family: 'Scheherazade New', serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+@media (max-width: 520px) {
+  .oa-btn      { min-width: 82px; padding: 11px 12px; }
+  .oa-btn-icon { font-size: 1.6rem; }
+}
+
 /* ====== الجوّال ====== */
 @media (max-width: 600px) {
   .page-content { padding: 20px 16px; }
