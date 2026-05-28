@@ -2,6 +2,13 @@ import { useState, useRef, useEffect } from 'react';
 
 const MAX_PLAYS = 3;
 
+/* لون كل رتبة: خلفية + حدود + شارة */
+const RANK_STYLES = [
+  { bg: '#ede9ff', border: '#5c4dd0', badge: '#5c4dd0' }, // 1 — بنفسجي
+  { bg: '#fff8e1', border: '#c07d12', badge: '#c07d12' }, // 2 — ذهبي
+  { bg: '#e8f5e9', border: '#388e3c', badge: '#388e3c' }, // 3 — أخضر
+];
+
 function doShuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -15,63 +22,56 @@ export default function ListenChoose({ question, onAnswer }) {
   const opts = question.options || [];
   const n    = opts.length;
 
-  /* خلط الربط بين الزر والكلمة مرة واحدة عند التحميل
-     buttonOrder[i] = فهرس الكلمة التي يشغّلها الزر i
-     الطفل لا يعرف أي زر يقابل أي كلمة                */
+  /* buttonOrder[i] = فهرس الكلمة التي يشغّلها الزر i — مخفي عن الطفل */
   const [buttonOrder] = useState(() => doShuffle(opts.map((_, i) => i)));
 
   const [playCounts, setPlayCounts] = useState(() => Array(n).fill(0));
   const [playing,    setPlaying]    = useState(null);
-  const [selected,   setSelected]   = useState(null);
+  const [rankOrder,  setRankOrder]  = useState([]); // فهارس الكلمات بترتيب الاختيار
 
   const ttsRef = useRef(null);
 
-  useEffect(() => () => {
-    window.speechSynthesis?.cancel();
-  }, []);
+  useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
 
   function handlePlay(btnIdx) {
     if (playCounts[btnIdx] >= MAX_PLAYS) return;
-
     const synth = window.speechSynthesis;
     if (!synth) return;
-
-    /* إيقاف أي صوت جارٍ */
     synth.cancel();
     if (ttsRef.current) ttsRef.current.onend = null;
     setPlaying(btnIdx);
-
     const wordIdx = buttonOrder[btnIdx];
     const u = new SpeechSynthesisUtterance(opts[wordIdx]);
-    u.lang   = 'ar-SA';
-    u.rate   = 0.88;
-    u.pitch  = 1;
-    u.volume = 1;
-
-    u.onend   = () => setPlaying(null);
+    u.lang = 'ar-SA'; u.rate = 0.88; u.pitch = 1; u.volume = 1;
+    u.onend = () => setPlaying(null);
     u.onerror = () => setPlaying(null);
-
     ttsRef.current = u;
     setPlayCounts(prev => prev.map((c, i) => i === btnIdx ? c + 1 : c));
-
     const go = () => synth.speak(u);
-    if (synth.getVoices().length > 0) { go(); }
-    else { synth.onvoiceschanged = go; }
+    if (synth.getVoices().length > 0) { go(); } else { synth.onvoiceschanged = go; }
+  }
+
+  /* ضغطة على كلمة: إضافة إن لم تكن مختارة، إلغاء إن كانت */
+  function handleWordClick(idx) {
+    setRankOrder(prev => {
+      const pos = prev.indexOf(idx);
+      return pos === -1 ? [...prev, idx] : prev.filter(i => i !== idx);
+    });
   }
 
   function handleReset() {
     window.speechSynthesis?.cancel();
     setPlaying(null);
     setPlayCounts(Array(n).fill(0));
-    setSelected(null);
+    setRankOrder([]);
   }
 
   function handleConfirm() {
     onAnswer({
       questionId: question.id,
       skill:      question.skill ?? 'listening',
-      answer:     selected,
-      isCorrect:  selected === question.correct,
+      answer:     rankOrder,
+      isCorrect:  rankOrder[0] === question.correct,
     });
   }
 
@@ -84,11 +84,11 @@ export default function ListenChoose({ question, onAnswer }) {
           اسْتَمِعْ وَاخْتَرْ <span className="lr-sep">|</span> Listen and Choose
         </p>
         <p className="lr-hint">
-          اضغط أزرار الصوت للاستماع ← ثم اختر الكلمة التي تطابق ما سمعته
+          اسْتَمِعْ للأصوات ← اضغط الكلمات بالترتيب — اضغط مرة ثانية لإلغاء الاختيار
         </p>
       </div>
 
-      {/* ── منطقة أزرار الصوت — مستقلة تماماً عن الكلمات ── */}
+      {/* ── أزرار الصوت ── */}
       <div className="lc-audio-zone">
         <p className="lc-zone-label">أزرار الاستماع</p>
         <div className="lc-audio-btns">
@@ -115,22 +115,32 @@ export default function ListenChoose({ question, onAnswer }) {
         </div>
       </div>
 
-      {/* ── فاصل ── */}
       <div className="lc-divider" />
 
-      {/* ── منطقة الاختيار — نصوص فقط بلا أي مؤشر ── */}
+      {/* ── منطقة الاختيار التسلسلي ── */}
       <div className="lc-choice-zone">
-        <p className="lc-zone-label lc-choice-lbl">اختر الكلمة التي سمعتها</p>
+        <p className="lc-zone-label lc-choice-lbl">اختر الكلمات بالترتيب</p>
         <div className="lc-options">
-          {opts.map((opt, idx) => (
-            <button
-              key={idx}
-              className={`lc-option${selected === idx ? ' lc-selected' : ''}`}
-              onClick={() => setSelected(idx)}
-            >
-              {opt}
-            </button>
-          ))}
+          {opts.map((opt, idx) => {
+            const rank  = rankOrder.indexOf(idx);
+            const num   = rank === -1 ? null : rank + 1;
+            const col   = rank === -1 ? null : RANK_STYLES[rank] ?? RANK_STYLES[RANK_STYLES.length - 1];
+            return (
+              <button
+                key={idx}
+                className="lc-option lc-seq-opt"
+                style={col ? { background: col.bg, borderColor: col.border } : {}}
+                onClick={() => handleWordClick(idx)}
+              >
+                {num !== null && (
+                  <span className="lc-rank-badge" style={{ background: col.badge }}>
+                    {num}
+                  </span>
+                )}
+                {opt}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -142,8 +152,8 @@ export default function ListenChoose({ question, onAnswer }) {
       <button
         className="btn-primary"
         onClick={handleConfirm}
-        disabled={selected === null}
-        style={{ marginTop: 14, opacity: selected === null ? 0.5 : 1 }}
+        disabled={rankOrder.length === 0}
+        style={{ marginTop: 14, opacity: rankOrder.length === 0 ? 0.5 : 1 }}
       >
         تأكيد ←
       </button>
