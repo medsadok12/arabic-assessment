@@ -21,9 +21,8 @@ export default function ListenChoose({ question, onAnswer }) {
   const [buttonOrder] = useState(() => doShuffle(opts.map((_, i) => i)));
 
   const [playCounts, setPlayCounts] = useState(() => Array(n).fill(0));
-  const [playing,    setPlaying]    = useState(null); // فهرس الزر الذي يعمل
-  const [selected,   setSelected]   = useState(null); // فهرس الكلمة التي اختارها الطفل
-  const [locked,     setLocked]     = useState(false); // مُغلق بعد أول اختيار
+  const [playing,    setPlaying]    = useState(null);
+  const [selected,   setSelected]   = useState(null);
 
   const ttsRef = useRef(null);
 
@@ -65,16 +64,9 @@ export default function ListenChoose({ question, onAnswer }) {
     setPlaying(null);
     setPlayCounts(Array(n).fill(0));
     setSelected(null);
-    setLocked(false);
   }
 
-  function handleSelect(idx) {
-    if (locked) return;
-    setSelected(idx);
-    setLocked(true);
-  }
-
-  function handleNext() {
+  function handleConfirm() {
     onAnswer({
       questionId: question.id,
       skill:      question.skill ?? 'listening',
@@ -129,13 +121,12 @@ export default function ListenChoose({ question, onAnswer }) {
       {/* ── منطقة الاختيار — نصوص فقط بلا أي مؤشر ── */}
       <div className="lc-choice-zone">
         <p className="lc-zone-label lc-choice-lbl">اختر الكلمة التي سمعتها</p>
-        <div className={`lc-options${locked ? ' lc-locked' : ''}`}>
+        <div className="lc-options">
           {opts.map((opt, idx) => (
             <button
               key={idx}
               className={`lc-option${selected === idx ? ' lc-selected' : ''}`}
-              onClick={() => handleSelect(idx)}
-              disabled={locked}
+              onClick={() => setSelected(idx)}
             >
               {opt}
             </button>
@@ -148,11 +139,14 @@ export default function ListenChoose({ question, onAnswer }) {
         <button className="lr-reset-btn" onClick={handleReset}>إعادة تعيين 🔄</button>
       </div>
 
-      {locked && (
-        <button className="btn-primary" onClick={handleNext} style={{ marginTop: 14 }}>
-          التالي ←
-        </button>
-      )}
+      <button
+        className="btn-primary"
+        onClick={handleConfirm}
+        disabled={selected === null}
+        style={{ marginTop: 14, opacity: selected === null ? 0.5 : 1 }}
+      >
+        تأكيد ←
+      </button>
     </div>
   );
 }
