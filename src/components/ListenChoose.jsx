@@ -72,11 +72,14 @@ export default function ListenChoose({ question, onAnswer }) {
     if (locked) return;
     setSelected(idx);
     setLocked(true);
+  }
+
+  function handleNext() {
     onAnswer({
       questionId: question.id,
       skill:      question.skill ?? 'listening',
-      answer:     idx,
-      isCorrect:  idx === question.correct,
+      answer:     selected,
+      isCorrect:  selected === question.correct,
     });
   }
 
@@ -144,6 +147,12 @@ export default function ListenChoose({ question, onAnswer }) {
         <div />
         <button className="lr-reset-btn" onClick={handleReset}>إعادة تعيين 🔄</button>
       </div>
+
+      {locked && (
+        <button className="btn-primary" onClick={handleNext} style={{ marginTop: 14 }}>
+          التالي ←
+        </button>
+      )}
     </div>
   );
 }
