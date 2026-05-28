@@ -23,6 +23,7 @@ export default function ListenChoose({ question, onAnswer }) {
   const [playCounts, setPlayCounts] = useState(() => Array(n).fill(0));
   const [playing,    setPlaying]    = useState(null); // فهرس الزر الذي يعمل
   const [selected,   setSelected]   = useState(null); // فهرس الكلمة التي اختارها الطفل
+  const [locked,     setLocked]     = useState(false); // مُغلق بعد أول اختيار
 
   const ttsRef = useRef(null);
 
@@ -44,7 +45,7 @@ export default function ListenChoose({ question, onAnswer }) {
     const wordIdx = buttonOrder[btnIdx];
     const u = new SpeechSynthesisUtterance(opts[wordIdx]);
     u.lang   = 'ar-SA';
-    u.rate   = 1.0;
+    u.rate   = 0.88;
     u.pitch  = 1;
     u.volume = 1;
 
@@ -64,15 +65,18 @@ export default function ListenChoose({ question, onAnswer }) {
     setPlaying(null);
     setPlayCounts(Array(n).fill(0));
     setSelected(null);
+    setLocked(false);
   }
 
-  function handleSubmit() {
-    if (selected === null) return;
+  function handleSelect(idx) {
+    if (locked) return;
+    setSelected(idx);
+    setLocked(true);
     onAnswer({
       questionId: question.id,
       skill:      question.skill ?? 'listening',
-      answer:     selected,
-      isCorrect:  selected === question.correct,
+      answer:     idx,
+      isCorrect:  idx === question.correct,
     });
   }
 
@@ -122,12 +126,13 @@ export default function ListenChoose({ question, onAnswer }) {
       {/* ── منطقة الاختيار — نصوص فقط بلا أي مؤشر ── */}
       <div className="lc-choice-zone">
         <p className="lc-zone-label lc-choice-lbl">اختر الكلمة التي سمعتها</p>
-        <div className="lc-options">
+        <div className={`lc-options${locked ? ' lc-locked' : ''}`}>
           {opts.map((opt, idx) => (
             <button
               key={idx}
               className={`lc-option${selected === idx ? ' lc-selected' : ''}`}
-              onClick={() => setSelected(idx)}
+              onClick={() => handleSelect(idx)}
+              disabled={locked}
             >
               {opt}
             </button>
@@ -139,15 +144,6 @@ export default function ListenChoose({ question, onAnswer }) {
         <div />
         <button className="lr-reset-btn" onClick={handleReset}>إعادة تعيين 🔄</button>
       </div>
-
-      <button
-        className="btn-primary"
-        onClick={handleSubmit}
-        disabled={selected === null}
-        style={{ marginTop: 14, opacity: selected === null ? 0.5 : 1 }}
-      >
-        تأكيد ←
-      </button>
     </div>
   );
 }

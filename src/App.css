@@ -2078,6 +2078,11 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   box-shadow: 0 0 0 3px rgba(92, 77, 208, 0.15);
 }
 
+/* حالة الإغلاق بعد الاختيار الأول */
+.lc-options.lc-locked .lc-option { cursor: not-allowed; }
+.lc-options.lc-locked .lc-option:not(.lc-selected) { opacity: 0.35; }
+.lc-options.lc-locked .lc-option.lc-selected { opacity: 1; }
+
 @media (max-width: 520px) {
   .lc-audio-btns { gap: 14px; }
   .lc-play-btn   { width: 60px; height: 60px; }
