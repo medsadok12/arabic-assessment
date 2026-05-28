@@ -2434,12 +2434,6 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   align-items: center;
 }
 
-.wc-pool-done {
-  font-size: 1.6rem;
-  color: #388e3c;
-  font-weight: 700;
-}
-
 .wc-letter {
   background: linear-gradient(135deg, #1a1052, #3a2090);
   color: #fff;

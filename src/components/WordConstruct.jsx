@@ -150,9 +150,7 @@ export default function WordConstruct({ question, onAnswer }) {
 
               {/* بنك الحروف — أعلى البطاقة */}
               <div className="wc-pool">
-                {pool.length === 0
-                  ? <span className="wc-pool-done">✓</span>
-                  : pool.map(idx => (
+                {pool.map(idx => (
                     <button
                       key={idx}
                       className={[
@@ -167,8 +165,7 @@ export default function WordConstruct({ question, onAnswer }) {
                     >
                       <span className="wc-letter-text">{w.letters[idx]}</span>
                     </button>
-                  ))
-                }
+                ))}
               </div>
 
               <div className="wc-divider" />
