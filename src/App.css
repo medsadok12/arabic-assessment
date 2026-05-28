@@ -1945,6 +1945,219 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   font-size: 1.05rem !important;
 }
 
+/* ====== التدريب السادس: اسْتَمِعْ وَاخْتَرْ ====== */
+.lc-box { padding: 20px 18px 18px; }
+
+.lc-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0 26px;
+}
+
+.lc-play-btn {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1a1052, #3a2090);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(26, 16, 82, 0.35);
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+
+.lc-play-btn:hover:not(:disabled) {
+  transform: scale(1.08);
+  box-shadow: 0 6px 28px rgba(26, 16, 82, 0.45);
+}
+
+.lc-play-btn:active:not(:disabled) { transform: scale(0.96); }
+
+.lc-play-btn:disabled { opacity: 0.7; cursor: default; }
+
+.lc-play-icon { font-size: 2rem; line-height: 1; }
+
+.lc-play-hint {
+  font-family: 'Scheherazade New', serif;
+  font-size: 0.85rem;
+  color: #888;
+  text-align: center;
+}
+
+.lc-options {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  direction: rtl;
+}
+
+.lc-option {
+  font-family: 'Scheherazade New', serif;
+  font-size: clamp(1.4rem, 5vw, 2.1rem);
+  font-weight: 700;
+  color: #1a1052;
+  background: #fff;
+  border: 2.5px solid #d8d0ef;
+  border-radius: 14px;
+  padding: 10px 22px;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+  line-height: 1.6;
+  min-width: 88px;
+  text-align: center;
+  overflow: visible;
+}
+
+.lc-option:hover { border-color: #a090d0; background: #f4f2ff; }
+
+.lc-option.lc-selected {
+  border-color: #5c4dd0;
+  background: #ede9ff;
+  box-shadow: 0 0 0 3px rgba(92, 77, 208, 0.15);
+}
+
+/* ====== التدريب السابع: رَتِّبْ مَقَاطِعَ الكَلِمَةِ ====== */
+.so-box { padding: 20px 18px 18px; }
+
+.so-reference {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: linear-gradient(135deg, #f0eeff, #e8e4f8);
+  border: 2px solid #c5bcf0;
+  border-radius: 14px;
+  padding: 12px 22px;
+  margin-bottom: 10px;
+  direction: rtl;
+}
+
+.so-ref-label {
+  font-family: 'Scheherazade New', serif;
+  font-size: 1rem;
+  color: #7060b0;
+  font-weight: 700;
+}
+
+.so-ref-word {
+  font-family: 'Scheherazade New', serif;
+  font-size: clamp(2rem, 6vw, 3rem);
+  font-weight: 900;
+  color: #1a1052;
+  line-height: 1.7;
+  overflow: visible;
+}
+
+.so-slots {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin-bottom: 22px;
+  direction: rtl;
+}
+
+.so-slot {
+  width: 76px;
+  height: 76px;
+  border: 2.5px dashed #c0b8e8;
+  border-radius: 14px;
+  background: #faf9ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+  flex-shrink: 0;
+}
+
+.so-slot:hover { border-color: #9080d0; background: #f0eeff; }
+
+.so-slot.so-slot-ready {
+  border-color: #9080d0;
+  background: #eeeaff;
+  box-shadow: 0 0 0 2px rgba(144, 128, 208, 0.2);
+}
+
+.so-slot.so-filled {
+  border-style: solid;
+  border-color: #9080d0;
+  background: #eeeaff;
+}
+
+.so-slot-text {
+  font-family: 'Scheherazade New', serif;
+  font-size: clamp(1.5rem, 5.5vw, 2.2rem);
+  font-weight: 900;
+  color: #1a1052;
+  line-height: 1.7;
+  overflow: visible;
+  display: block;
+}
+
+.so-slot-empty {
+  font-size: 1rem;
+  color: #c0b8e8;
+  font-weight: 700;
+}
+
+.so-pool {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.so-syl {
+  width: 72px;
+  height: 72px;
+  border: 2.5px solid #d8d0ef;
+  border-radius: 14px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.07);
+  flex-shrink: 0;
+}
+
+.so-syl:hover {
+  border-color: #9080d0;
+  background: #f4f2ff;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 14px rgba(0,0,0,0.1);
+}
+
+.so-syl.so-sel {
+  border-color: #5c4dd0;
+  background: #ede9ff;
+  box-shadow: 0 0 0 3px rgba(92, 77, 208, 0.2), 0 5px 14px rgba(0,0,0,0.1);
+  transform: translateY(-3px);
+}
+
+.so-syl-text {
+  font-family: 'Scheherazade New', serif;
+  font-size: clamp(1.5rem, 5.5vw, 2.2rem);
+  font-weight: 900;
+  color: #1a1052;
+  line-height: 1.7;
+  overflow: visible;
+  display: block;
+}
+
+@media (max-width: 520px) {
+  .lc-option { padding: 8px 14px; min-width: 72px; }
+  .so-slot, .so-syl { width: 62px; height: 62px; }
+}
+
 /* ====== الجوّال ====== */
 @media (max-width: 600px) {
   .page-content { padding: 20px 16px; }
