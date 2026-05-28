@@ -117,9 +117,15 @@ export const questionsBank = {
         syllables: ['كُ', 'تُ', 'بٌ'],
       },
       {
-        id:   'L1_WL',
-        type: 'letter-position',
-        text: 'أَيْنَ مَكَانُ الحَرْفِ؟',
+        id:    'L1_WL',
+        type:  'letter-position',
+        text:  'أَيْنَ مَكَانُ الحَرْفِ؟',
+        skill: 'reading',
+      },
+      {
+        id:    'L1_WC',
+        type:  'word-construct',
+        text:  'رَكِّبِ الكَلِمَةَ',
         skill: 'reading',
       },
       {
