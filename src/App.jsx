@@ -25,7 +25,7 @@ function clearSession() {
   try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
 }
 
-const PINNED = new Set(['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill']);
+const PINNED = new Set(['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill']);
 
 function buildLevelData(levelId) {
   const all        = getLevelQuestions(levelId);
@@ -33,13 +33,15 @@ function buildLevelData(levelId) {
   const vowelCards = all.filter(q => q.type === 'vowel-cards');
   const vowelLong  = all.filter(q => q.type === 'vowel-long');
   const sukunCards   = all.filter(q => q.type === 'sukun-cards');
-  const tanweenCards = all.filter(q => q.type === 'tanween-cards');
-  const matching     = all.filter(q => q.type === 'matching');
+  const tanweenCards  = all.filter(q => q.type === 'tanween-cards');
+  const listenChoose  = all.filter(q => q.type === 'listen-choose');
+  const syllableOrder = all.filter(q => q.type === 'syllable-order');
+  const matching      = all.filter(q => q.type === 'matching');
   const speaking   = all.filter(q => q.type === 'speaking');
   const photoWr    = all.filter(q => q.type === 'photo-writing');
   const newTypes   = all.filter(q => ['word-order', 'correction', 'fill'].includes(q.type));
   const regular    = shuffle(all.filter(q => !PINNED.has(q.type ?? '')));
-  return { questions: [...letterRec, ...vowelCards, ...vowelLong, ...sukunCards, ...tanweenCards, ...matching, ...speaking, ...photoWr, ...newTypes, ...regular], answers: [] };
+  return { questions: [...letterRec, ...vowelCards, ...vowelLong, ...sukunCards, ...tanweenCards, ...listenChoose, ...syllableOrder, ...matching, ...speaking, ...photoWr, ...newTypes, ...regular], answers: [] };
 }
 
 const BG_LETTERS = [

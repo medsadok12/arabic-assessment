@@ -101,6 +101,22 @@ export const questionsBank = {
         text: 'أَصْوَاتُ التَّنْوِينِ',
       },
       {
+        id:        'L1_LC',
+        type:      'listen-choose',
+        text:      'اسْتَمِعْ وَاخْتَرْ',
+        word:      'كُتُبٌ',
+        audioText: 'كُتُبٌ',
+        options:   ['كَتَبَ', 'كُتِبَ', 'كُتُبٌ'],
+        correct:   2,
+      },
+      {
+        id:        'L1_SO',
+        type:      'syllable-order',
+        text:      'رَتِّبْ مَقَاطِعَ الكَلِمَةِ',
+        word:      'كُتُبٌ',
+        syllables: ['كُ', 'تُ', 'بٌ'],
+      },
+      {
         id: 'R1_1',
         text: 'اختر الكتابة الصحيحة لكلمة "مكان التعليم":',
         options: [
