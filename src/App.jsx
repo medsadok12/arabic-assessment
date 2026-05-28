@@ -39,11 +39,17 @@ function buildLevelData(levelId) {
   const letterPos      = all.filter(q => q.type === 'letter-position');
   const wordConstruct  = all.filter(q => q.type === 'word-construct');
   const oralAssessment = all.filter(q => q.type === 'oral-assessment');
-  const matching       = all.filter(q => q.type === 'matching');
-  const speaking   = all.filter(q => q.type === 'speaking');
-  const photoWr    = all.filter(q => q.type === 'photo-writing');
-  const newTypes   = all.filter(q => ['word-order', 'correction', 'fill'].includes(q.type));
-  const regular    = shuffle(all.filter(q => !PINNED.has(q.type ?? '')));
+  const matching    = all.filter(q => q.type === 'matching');
+  const speaking    = all.filter(q => q.type === 'speaking');
+  const photoWr     = all.filter(q => q.type === 'photo-writing');
+  const newTypes    = all.filter(q => ['word-order', 'correction', 'fill'].includes(q.type));
+  const regular     = shuffle(all.filter(q => !PINNED.has(q.type ?? '')));
+
+  /* المستوى الأول: التدريبات العشرة التشخيصية فقط */
+  if (levelId === 1) {
+    return { questions: [...letterRec, ...vowelCards, ...vowelLong, ...sukunCards, ...tanweenCards, ...listenChoose, ...syllableOrder, ...letterPos, ...wordConstruct, ...oralAssessment], answers: [] };
+  }
+
   return { questions: [...letterRec, ...vowelCards, ...vowelLong, ...sukunCards, ...tanweenCards, ...listenChoose, ...syllableOrder, ...letterPos, ...wordConstruct, ...oralAssessment, ...matching, ...speaking, ...photoWr, ...newTypes, ...regular], answers: [] };
 }
 
