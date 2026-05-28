@@ -19,61 +19,6 @@ export const REGRESSION_THRESHOLD = 70;
 
 export const questionsBank = {
   level1: {
-    listening: [
-      {
-        id:        'L1_SPEAK',
-        type:      'speaking',
-        text:      'استمع إلى الجملة التالية ثم سجّل ردّك بصوتك',
-        audioText: 'مرحبًا بك. كيف حالك؟',
-        prompt:    'كيف تردّ على هذه التحية بالعربية؟',
-      },
-      {
-        id: 'L1_1',
-        text: 'استمع: "تُفَّاحَة". ما هي هذه الكلمة؟',
-        options: [
-          { text: 'تفاحة',   correct: true  },
-          { text: 'موزة',    correct: false },
-          { text: 'برتقالة', correct: false },
-          { text: 'عنبة',    correct: false },
-        ],
-      },
-    ],
-    vocabulary: [
-      {
-        id: 'V1_MATCH',
-        type: 'matching',
-        text: 'صِل كل حيوان باسمه الصحيح',
-        pairs: [
-          { id: 'giraffe',  emoji: '🦒', name: 'زَرَافَة' },
-          { id: 'lion',     emoji: '🦁', name: 'أَسَد'    },
-          { id: 'elephant', emoji: '🐘', name: 'فِيل'     },
-        ],
-      },
-      {
-        id: 'V1_1',
-        text: 'ما معنى كلمة "قمر"؟',
-        options: [
-          { text: 'جسم مضيء يدور حول الأرض ليلاً', correct: true  },
-          { text: 'نجم صغير في السماء',              correct: false },
-          { text: 'كوكب بعيد جداً',                  correct: false },
-          { text: 'سحابة بيضاء',                     correct: false },
-        ],
-      },
-      {
-        id: 'FI1_1',
-        type: 'fill',
-        text: 'أكمل الجملة بالكلمة المناسبة:',
-        sentence: 'الشمس _____ كل صباح من الشرق',
-        answers: ['تشرق', 'تطلع'],
-      },
-      {
-        id: 'FI1_2',
-        type: 'fill',
-        text: 'أكمل الجملة بالكلمة المناسبة:',
-        sentence: 'الولد _____ كرة القدم كل يوم في الحديقة',
-        answers: ['يلعب', 'يمارس'],
-      },
-    ],
     reading: [
       {
         id:   'L1_LR',
@@ -133,75 +78,6 @@ export const questionsBank = {
         type:  'oral-assessment',
         text:  'أَسْمِعْنِي صَوْتَكَ',
         skill: 'speaking',
-      },
-      {
-        id: 'R1_1',
-        text: 'اختر الكتابة الصحيحة لكلمة "مكان التعليم":',
-        options: [
-          { text: 'مدرسة', correct: true  },
-          { text: 'مدرسه', correct: false },
-          { text: 'مدرسو', correct: false },
-          { text: 'مدرسي', correct: false },
-        ],
-      },
-      {
-        id: 'WO1_1',
-        type: 'word-order',
-        text: 'رتّب الكلمات لتكوين جملة صحيحة',
-        words:  ['يلعب', 'في', 'الطفل', 'الحديقة'],
-        answer: ['الطفل', 'يلعب', 'في', 'الحديقة'],
-      },
-    ],
-    grammar: [
-      {
-        id: 'G1_1',
-        text: 'اختر الجملة الصحيحة:',
-        options: [
-          { text: 'أنا اسمي محمد',    correct: true  },
-          { text: 'أنا يسمى محمد',    correct: false },
-          { text: 'أنا سمي محمد',     correct: false },
-          { text: 'اسمي أنا محمد هو', correct: false },
-        ],
-      },
-      {
-        id: 'WO1_2',
-        type: 'word-order',
-        text: 'رتّب الكلمات لتكوين جملة صحيحة',
-        words:  ['أنا', 'أذهب', 'إلى', 'المدرسة', 'كل', 'يوم'],
-        answer: ['أنا', 'أذهب', 'إلى', 'المدرسة', 'كل', 'يوم'],
-      },
-      {
-        id: 'CR1_1',
-        type: 'correction',
-        text: 'صحّح الجملة الآتية:',
-        wrongSentence: 'أنا يذهب إلى المدرسة',
-        correctAnswer: 'أنا أذهب إلى المدرسة',
-        hint: 'الفعل يجب أن يتطابق مع الضمير "أنا"',
-      },
-      {
-        id: 'CR1_2',
-        type: 'correction',
-        text: 'صحّح الجملة الآتية:',
-        wrongSentence: 'الطلاب يلعب في الملعب',
-        correctAnswer: 'الطلاب يلعبون في الملعب',
-        hint: 'الفعل يجب أن يوافق الجمع',
-      },
-    ],
-    writing: [
-      {
-        id: 'W1_PHOTO',
-        type: 'photo-writing',
-        text: 'اكتب فقرة تتحدث فيها عن رحلتك إلى حديقة الحيوانات في عطلة الصيف، ثم صوّر ما كتبتَه وأرسله',
-      },
-      {
-        id: 'W1_1',
-        text: 'أمامك صورة تفاحة حمراء. ما الكلمة التي تصف هذه الصورة؟',
-        options: [
-          { text: 'تفاحة حمراء', correct: true  },
-          { text: 'موزة صفراء',  correct: false },
-          { text: 'برتقالة',     correct: false },
-          { text: 'عنب أخضر',   correct: false },
-        ],
       },
     ],
   },
