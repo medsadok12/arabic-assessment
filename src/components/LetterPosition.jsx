@@ -101,7 +101,6 @@ export default function LetterPosition({ question, onAnswer }) {
               onDragEnd={onDragEnd}
             >
               <span className="wb-tile-text">{f.text}</span>
-              <span className="wb-tile-label">{f.label}</span>
             </button>
           ))}
         </div>
