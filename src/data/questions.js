@@ -117,6 +117,12 @@ export const questionsBank = {
         syllables: ['كُ', 'تُ', 'بٌ'],
       },
       {
+        id:   'L1_WL',
+        type: 'letter-position',
+        text: 'أَيْنَ مَكَانُ الحَرْفِ؟',
+        skill: 'reading',
+      },
+      {
         id: 'R1_1',
         text: 'اختر الكتابة الصحيحة لكلمة "مكان التعليم":',
         options: [
