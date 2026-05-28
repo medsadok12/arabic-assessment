@@ -15,6 +15,7 @@ import ListenChoose          from './ListenChoose.jsx';
 import SyllableOrder         from './SyllableOrder.jsx';
 import LetterPosition        from './LetterPosition.jsx';
 import WordConstruct         from './WordConstruct.jsx';
+import OralAssessment        from './OralAssessment.jsx';
 
 export default function Assessment({ questions, currentLevel, questionIndex, studentInfo, onAnswer }) {
   const [selected, setSelected] = useState(null);
@@ -55,7 +56,7 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
 
   if (!question) return null;
 
-  const SPECIAL_TYPES = ['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'letter-position', 'word-construct', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill'];
+  const SPECIAL_TYPES = ['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'letter-position', 'word-construct', 'oral-assessment', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill'];
 
   if (SPECIAL_TYPES.includes(question.type)) {
     const Inner =
@@ -67,8 +68,9 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
       question.type === 'listen-choose' ? <ListenChoose        question={question} onAnswer={onAnswer} /> :
       question.type === 'syllable-order'  ? <SyllableOrder    question={question} onAnswer={onAnswer} /> :
       question.type === 'letter-position' ? <LetterPosition  question={question} onAnswer={onAnswer} /> :
-      question.type === 'word-construct'  ? <WordConstruct   question={question} onAnswer={onAnswer} /> :
-      question.type === 'matching'        ? <MatchingQuestion question={question} onAnswer={onAnswer} /> :
+      question.type === 'word-construct'   ? <WordConstruct    question={question} onAnswer={onAnswer} /> :
+      question.type === 'oral-assessment' ? <OralAssessment   question={question} onAnswer={onAnswer} /> :
+      question.type === 'matching'        ? <MatchingQuestion  question={question} onAnswer={onAnswer} /> :
       question.type === 'speaking'    ? <AudioQuestion      question={question} studentInfo={studentInfo} onAnswer={onAnswer} /> :
       question.type === 'photo-writing' ? <WritingQuestion  question={question} studentInfo={studentInfo} onAnswer={onAnswer} /> :
       question.type === 'word-order'  ? <WordOrderQuestion  question={question} onAnswer={onAnswer} /> :

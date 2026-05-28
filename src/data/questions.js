@@ -129,6 +129,12 @@ export const questionsBank = {
         skill: 'reading',
       },
       {
+        id:    'L1_OA',
+        type:  'oral-assessment',
+        text:  'أَسْمِعْنِي صَوْتَكَ',
+        skill: 'speaking',
+      },
+      {
         id: 'R1_1',
         text: 'اختر الكتابة الصحيحة لكلمة "مكان التعليم":',
         options: [
