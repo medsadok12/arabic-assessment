@@ -1,63 +1,60 @@
 import { useState, useRef, useEffect } from 'react';
 
-export default function ListenChoose({ question, onAnswer }) {
-  const [ttsState,   setTtsState]  = useState('idle'); // 'idle' | 'playing'
-  const [playCount,  setPlayCount] = useState(0);
-  const [selected,   setSelected]  = useState(null);
+const MAX_PLAYS = 3;
 
-  const ttsTimeoutRef = useRef(null);
-  const playCountRef  = useRef(0);
+export default function ListenChoose({ question, onAnswer }) {
+  const opts = question.options || [];
+
+  /* عدد مرات التشغيل لكل خيار — مستقل تماماً */
+  const [playCounts, setPlayCounts] = useState(() => opts.map(() => 0));
+  const [playing,    setPlaying]    = useState(null); // فهرس الخيار الذي يُشغَّل حالياً
+  const [selected,   setSelected]   = useState(null); // فهرس الخيار الذي اختاره الطفل
+
+  const ttsRef = useRef(null); // مرجع الـ utterance الحالي
 
   useEffect(() => () => {
-    clearTimeout(ttsTimeoutRef.current);
     window.speechSynthesis?.cancel();
   }, []);
 
-  function playTTS() {
+  function playWord(idx) {
+    if (playCounts[idx] >= MAX_PLAYS) return;
+
     const synth = window.speechSynthesis;
     if (!synth) return;
+
+    /* إيقاف أي صوت جارٍ */
     synth.cancel();
-    clearTimeout(ttsTimeoutRef.current);
+    if (ttsRef.current) ttsRef.current.onend = null;
 
-    playCountRef.current = 1;
-    setPlayCount(1);
-    setTtsState('playing');
+    setPlaying(idx);
 
-    const doSpeak = () => {
-      const u    = new SpeechSynthesisUtterance(question.audioText || question.word);
-      u.lang     = 'ar-SA';
-      u.rate     = 1.0;
-      u.pitch    = 1;
-      u.volume   = 1;
+    const u    = new SpeechSynthesisUtterance(opts[idx]);
+    u.lang     = 'ar-SA';
+    u.rate     = 1.0;
+    u.pitch    = 1;
+    u.volume   = 1;
 
-      u.onend = () => {
-        if (playCountRef.current < 3) {
-          playCountRef.current += 1;
-          setPlayCount(playCountRef.current);
-          ttsTimeoutRef.current = setTimeout(doSpeak, 700);
-        } else {
-          setTtsState('idle');
-          setPlayCount(0);
-        }
-      };
-      u.onerror = () => { setTtsState('idle'); setPlayCount(0); };
+    u.onend   = () => setPlaying(null);
+    u.onerror = () => setPlaying(null);
 
-      const voices  = synth.getVoices();
-      const arVoice = voices.find(v => v.lang.startsWith('ar'));
-      if (arVoice) u.voice = arVoice;
-      synth.speak(u);
-    };
+    const voices  = synth.getVoices();
+    const arVoice = voices.find(v => v.lang.startsWith('ar'));
+    if (arVoice) u.voice = arVoice;
 
-    const voices = synth.getVoices();
-    if (voices.length > 0) { doSpeak(); }
-    else { synth.onvoiceschanged = doSpeak; }
+    ttsRef.current = u;
+
+    /* تحديث العداد فور الضغط */
+    setPlayCounts(prev => prev.map((c, i) => i === idx ? c + 1 : c));
+
+    const go = () => synth.speak(u);
+    if (synth.getVoices().length > 0) { go(); }
+    else { synth.onvoiceschanged = go; }
   }
 
   function handleReset() {
     window.speechSynthesis?.cancel();
-    clearTimeout(ttsTimeoutRef.current);
-    setTtsState('idle');
-    setPlayCount(0);
+    setPlaying(null);
+    setPlayCounts(opts.map(() => 0));
     setSelected(null);
   }
 
@@ -71,8 +68,6 @@ export default function ListenChoose({ question, onAnswer }) {
     });
   }
 
-  const isPlaying = ttsState === 'playing';
-
   return (
     <div className="question-box lc-box">
 
@@ -81,36 +76,50 @@ export default function ListenChoose({ question, onAnswer }) {
         <p className="lr-title">
           اسْتَمِعْ وَاخْتَرْ <span className="lr-sep">|</span> Listen and Choose
         </p>
+        <p className="lr-hint">
+          اضغط ▶ بجانب أي كلمة لسماعها (حتى 3 مرات) ← ثم اضغط على الكلمة التي تطابق ما سمعته
+        </p>
       </div>
 
-      {/* ── زر التشغيل ── */}
-      <div className="lc-player">
-        <button
-          className={`lc-play-btn${isPlaying ? ' lc-playing' : ''}`}
-          onClick={playTTS}
-          disabled={isPlaying}
-          aria-label="تشغيل الكلمة"
-        >
-          <span className="lc-play-icon">{isPlaying ? '🔊' : '▶'}</span>
-        </button>
-        <span className="lc-play-hint">
-          {isPlaying
-            ? `جاري التشغيل (${playCount}/3)...`
-            : 'اضغط لسماع الكلمة ثلاث مرات'}
-        </span>
-      </div>
-
-      {/* ── خيارات الإجابة — تقييم صامت بلا صح/خطأ ── */}
+      {/* ── بطاقات الخيارات ── */}
       <div className="lc-options">
-        {(question.options || []).map((opt, idx) => (
-          <button
-            key={idx}
-            className={`lc-option${selected === idx ? ' lc-selected' : ''}`}
-            onClick={() => setSelected(idx)}
-          >
-            {opt}
-          </button>
-        ))}
+        {opts.map((opt, idx) => {
+          const count     = playCounts[idx];
+          const isMaxed   = count >= MAX_PLAYS;
+          const isPlaying = playing === idx;
+          const isSelected = selected === idx;
+
+          return (
+            <div
+              key={idx}
+              className={`lc-option-card${isSelected ? ' lc-selected' : ''}`}
+              onClick={() => setSelected(idx)}
+              role="button"
+              aria-pressed={isSelected}
+            >
+              {/* نص الكلمة */}
+              <span className="lc-word-text">{opt}</span>
+
+              {/* زر التشغيل المستقل */}
+              <button
+                className={[
+                  'lc-word-play',
+                  isPlaying ? 'lc-word-playing' : '',
+                ].join(' ')}
+                onClick={e => { e.stopPropagation(); playWord(idx); }}
+                disabled={isMaxed || isPlaying}
+                aria-label={`استمع لـ ${opt}`}
+              >
+                <span className="lc-word-play-icon">
+                  {isPlaying ? '🔊' : isMaxed ? '✓' : '▶'}
+                </span>
+                {!isMaxed && count > 0 && (
+                  <span className="lc-word-count">{count}/{MAX_PLAYS}</span>
+                )}
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       <div className="lr-footer">

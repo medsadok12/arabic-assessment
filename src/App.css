@@ -1948,78 +1948,109 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 /* ====== التدريب السادس: اسْتَمِعْ وَاخْتَرْ ====== */
 .lc-box { padding: 20px 18px 18px; }
 
-.lc-player {
+/* بطاقات الاختيار — كل بطاقة: زر تشغيل + نص الكلمة */
+.lc-options {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  margin: 20px 0 26px;
+  gap: 12px;
+  margin: 16px 0;
+  direction: rtl;
 }
 
-.lc-play-btn {
-  width: 76px;
-  height: 76px;
+.lc-option-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #fff;
+  border: 2.5px solid #d8d0ef;
+  border-radius: 16px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+  direction: rtl;
+  min-height: 68px;
+}
+
+.lc-option-card:hover { border-color: #a090d0; background: #f8f6ff; }
+
+.lc-option-card.lc-selected {
+  border-color: #5c4dd0;
+  background: #ede9ff;
+  box-shadow: 0 0 0 3px rgba(92, 77, 208, 0.15);
+}
+
+/* نص الكلمة */
+.lc-word-text {
+  font-family: 'Scheherazade New', serif;
+  font-size: clamp(1.6rem, 5.5vw, 2.4rem);
+  font-weight: 700;
+  color: #1a1052;
+  line-height: 1.6;
+  flex: 1;
+  overflow: visible;
+  text-align: right;
+}
+
+/* زر التشغيل المستقل لكل كلمة */
+.lc-word-play {
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: linear-gradient(135deg, #1a1052, #3a2090);
   border: none;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(26, 16, 82, 0.35);
-  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  box-shadow: 0 3px 12px rgba(26, 16, 82, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s, background 0.2s;
 }
 
-.lc-play-btn:hover:not(:disabled) {
-  transform: scale(1.08);
-  box-shadow: 0 6px 28px rgba(26, 16, 82, 0.45);
+.lc-word-play:hover:not(:disabled) {
+  transform: scale(1.1);
+  box-shadow: 0 5px 18px rgba(26, 16, 82, 0.42);
 }
 
-.lc-play-btn:active:not(:disabled) { transform: scale(0.96); }
+.lc-word-play:active:not(:disabled) { transform: scale(0.94); }
 
-.lc-play-btn:disabled { opacity: 0.7; cursor: default; }
-
-.lc-play-icon { font-size: 2rem; line-height: 1; }
-
-.lc-play-hint {
-  font-family: 'Scheherazade New', serif;
-  font-size: 0.85rem;
-  color: #888;
-  text-align: center;
+.lc-word-play:disabled {
+  background: linear-gradient(135deg, #4caf50, #388e3c);
+  opacity: 0.85;
+  cursor: default;
+  box-shadow: none;
 }
 
-.lc-options {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-  direction: rtl;
+.lc-word-play-icon {
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
-.lc-option {
-  font-family: 'Scheherazade New', serif;
-  font-size: clamp(1.4rem, 5vw, 2.1rem);
-  font-weight: 700;
-  color: #1a1052;
-  background: #fff;
-  border: 2.5px solid #d8d0ef;
-  border-radius: 14px;
-  padding: 10px 22px;
-  cursor: pointer;
-  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
-  line-height: 1.6;
-  min-width: 88px;
-  text-align: center;
-  overflow: visible;
+.lc-word-count {
+  font-size: 0.58rem;
+  color: rgba(255,255,255,0.85);
+  font-family: sans-serif;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.2px;
 }
 
-.lc-option:hover { border-color: #a090d0; background: #f4f2ff; }
+/* حالة التشغيل النشط */
+.lc-word-play.lc-word-playing {
+  background: linear-gradient(135deg, #c0396a, #e06520);
+  animation: lc-pulse 0.9s ease-in-out infinite;
+}
 
-.lc-option.lc-selected {
-  border-color: #5c4dd0;
-  background: #ede9ff;
-  box-shadow: 0 0 0 3px rgba(92, 77, 208, 0.15);
+@keyframes lc-pulse {
+  0%, 100% { box-shadow: 0 3px 12px rgba(192, 57, 106, 0.3); }
+  50%       { box-shadow: 0 4px 22px rgba(192, 57, 106, 0.65); transform: scale(1.04); }
+}
+
+@media (max-width: 520px) {
+  .lc-option-card { padding: 10px 12px; gap: 10px; }
+  .lc-word-play   { width: 44px; height: 44px; }
 }
 
 /* ====== التدريب السابع: رَتِّبْ مَقَاطِعَ الكَلِمَةِ ====== */
