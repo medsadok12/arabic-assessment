@@ -1,41 +1,25 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 
-export async function middleware(request) {
-  let supabaseResponse = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll(); },
-        setAll(toSet) {
-          toSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({ request });
-          toSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
+export function middleware(request) {
   const { pathname } = request.nextUrl;
 
   const protectedPaths = ['/dashboard', '/assessment', '/library', '/admin'];
   const isProtected = protectedPaths.some(p => pathname.startsWith(p));
 
-  if (isProtected && !user) {
+  const projectId = 'uqspozzkzyytwwidojxv';
+  const hasSession = request.cookies.getAll().some(c =>
+    c.name.startsWith(`sb-${projectId}`) || c.name === 'sb-access-token'
+  );
+
+  if (isProtected && !hasSession) {
     return NextResponse.redirect(new URL('/auth/login', request.url));
   }
 
-  if (pathname.startsWith('/auth') && user) {
+  if (pathname.startsWith('/auth') && hasSession) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  return supabaseResponse;
+  return NextResponse.next();
 }
 
 export const config = {
