@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function LandingPage() {
   const features = [
-    { icon: '🎯', title: 'تقييم تشخيصي ذكي', desc: 'قياس مستوى الطالب في القراءة والكتابة والاستماع والتحدث عبر 10 تدريبات تشخيصية متنوعة.' },
+    { icon: '🎯', title: 'تقييم تشخيصي ذكي', desc: 'قياس مستوى الطالب في القراءة والكتابة والاستماع والتحدث عبر 10 تدريبات تشخيصية متنوعة.', href: '/auth/register' },
     { icon: '📊', title: 'تقارير تفصيلية', desc: 'تقارير PDF فورية لكل طالب تُرسل تلقائياً إلى ولي الأمر أو المعلم عبر البريد الإلكتروني.' },
     { icon: '🌍', title: 'للناطقين وغير الناطقين', desc: 'مناهج مُصمَّمة لفئتين: الناطقون باللغة العربية وغير الناطقين بها.' },
     { icon: '📱', title: 'يعمل على جميع الأجهزة', desc: 'واجهة متجاوبة تعمل على الحاسوب والجهاز اللوحي والهاتف الذكي.' },
@@ -31,8 +31,8 @@ export default function LandingPage() {
           <h1>نظام التقييم الذكي<br />لأكاديمية عارم 🌟</h1>
           <p>منصة متكاملة لتشخيص مستوى الطلاب في اللغة العربية وتتبع تقدمهم الدراسي</p>
           <div className="hero-btns">
-            <Link href="/auth/register" className="btn btn-accent btn-lg">ابدأ مجاناً ←</Link>
-            <Link href="/auth/login"    className="btn btn-outline btn-lg" style={{ borderColor: 'rgba(255,255,255,.6)', color: '#fff' }}>تسجيل الدخول</Link>
+            <Link href="/assessment" className="btn btn-accent btn-lg">🎯 ابدأ التقييم التشخيصي</Link>
+            <Link href="/auth/login" className="btn btn-outline btn-lg" style={{ borderColor: 'rgba(255,255,255,.6)', color: '#fff' }}>دخول المعلمين ←</Link>
           </div>
         </div>
       </section>
