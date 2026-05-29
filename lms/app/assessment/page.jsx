@@ -1,10 +1,4 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '../../lib/supabase-server';
-
-export default async function AssessmentPage() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/auth/login');
+export default function AssessmentPage() {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#fff', zIndex: 10 }}>
