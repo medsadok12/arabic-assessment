@@ -1,0 +1,115 @@
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { createClient } from '../../lib/supabase-server';
+import Navbar from '../../components/Navbar';
+
+export default async function DashboardPage() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/auth/login');
+
+  const { data: assessments } = await supabase
+    .from('assessments')
+    .select('id, level, score, completed_at, student_name')
+    .order('completed_at', { ascending: false })
+    .limit(5);
+
+  const { count: totalStudents } = await supabase
+    .from('assessments')
+    .select('id', { count: 'exact', head: true });
+
+  const stats = [
+    { icon: '👥', val: totalStudents ?? 0, lbl: 'إجمالي التقييمات' },
+    { icon: '📊', val: assessments?.length ?? 0, lbl: 'آخر 5 تقييمات' },
+    { icon: '⭐', val: assessments?.length
+        ? Math.round(assessments.reduce((s, a) => s + (a.score ?? 0), 0) / assessments.length) + '%'
+        : '—',
+      lbl: 'متوسط النتائج' },
+  ];
+
+  const actions = [
+    { icon: '🎯', title: 'بدء تقييم جديد', desc: 'قيِّم طالباً جديداً الآن', href: '/assessment' },
+    { icon: '📚', title: 'المكتبة التعليمية', desc: 'موارد ودروس للمعلمين', href: '/library' },
+    { icon: '📈', title: 'تقارير التقدم', desc: 'تتبع تطور الطلاب', href: '/admin' },
+  ];
+
+  const displayName = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'أستاذ';
+
+  return (
+    <>
+      <Navbar user={user} />
+      <main className="page-wrap">
+        <div className="container">
+          <h1 className="dash-welcome">مرحباً، {displayName} 👋</h1>
+
+          {/* Stats */}
+          <div className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+            {stats.map(s => (
+              <div key={s.lbl} className="stat-card">
+                <span className="stat-icon">{s.icon}</span>
+                <div>
+                  <div className="stat-val">{s.val}</div>
+                  <div className="stat-lbl">{s.lbl}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="dash-section">
+            <div className="dash-section-title">إجراءات سريعة</div>
+            <div className="card-grid">
+              {actions.map(a => (
+                <Link key={a.href} href={a.href} className="dash-action-card">
+                  <span className="dash-action-icon">{a.icon}</span>
+                  <div className="dash-action-title">{a.title}</div>
+                  <div className="dash-action-desc">{a.desc}</div>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Recent Assessments */}
+          <div className="dash-section">
+            <div className="dash-section-title">آخر التقييمات</div>
+            {assessments && assessments.length > 0 ? (
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>اسم الطالب</th>
+                      <th>المستوى</th>
+                      <th>النتيجة</th>
+                      <th>التاريخ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assessments.map(a => (
+                      <tr key={a.id}>
+                        <td>{a.student_name ?? '—'}</td>
+                        <td><span className="badge badge-blue">المستوى {a.level}</span></td>
+                        <td>
+                          <span className={`badge ${(a.score ?? 0) >= 70 ? 'badge-green' : 'badge-orange'}`}>
+                            {a.score ?? 0}%
+                          </span>
+                        </td>
+                        <td style={{ direction: 'ltr', textAlign: 'right' }}>
+                          {a.completed_at ? new Date(a.completed_at).toLocaleDateString('ar-SA') : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="empty-state card">
+                <span className="empty-icon">📋</span>
+                <p>لا توجد تقييمات بعد — <Link href="/assessment">ابدأ أول تقييم</Link></p>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+    </>
+  );
+}
