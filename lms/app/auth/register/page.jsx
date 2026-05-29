@@ -23,15 +23,19 @@ export default function RegisterPage() {
     const { error } = await supabase.auth.signUp({
       email:    form.email,
       password: form.password,
-      options:  { data: { full_name: form.name, role: form.role } },
+      options: {
+        data: { full_name: form.name, role: form.role },
+        emailRedirectTo: 'https://aarem-lms.vercel.app/auth/callback',
+      },
     });
     if (error) {
       setError(error.message === 'User already registered' ? 'هذا البريد مسجل مسبقاً' : error.message);
       setLoading(false);
       return;
     }
-    router.push('/dashboard');
-    router.refresh();
+    setError('');
+    setLoading(false);
+    alert('تم إنشاء الحساب! تحقق من بريدك الإلكتروني واضغط على رابط التأكيد.');
   }
 
   return (
