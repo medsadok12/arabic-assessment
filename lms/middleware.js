@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  const protectedPaths = ['/dashboard', '/assessment', '/library', '/admin'];
+  const protectedPaths = ['/dashboard', '/library', '/admin'];
   const isProtected = protectedPaths.some(p => pathname.startsWith(p));
 
   const projectId = 'uqspozzkzyytwwidojxv';
