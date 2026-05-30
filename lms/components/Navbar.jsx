@@ -31,9 +31,9 @@ function FacebookIcon() {
 }
 
 const socialLinks = [
-  { href: '#', icon: <WhatsAppIcon />,   label: 'واتساب',   color: '#25D366' },
-  { href: '#', icon: <InstagramIcon />,  label: 'انستغرام', color: '#E1306C' },
-  { href: '#', icon: <FacebookIcon />,   label: 'فيسبوك',   color: '#1877F2' },
+  { href: 'https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0', icon: <WhatsAppIcon />,  label: 'واتساب',   color: '#25D366' },
+  { href: 'https://www.instagram.com/aremacademy/',                                                icon: <InstagramIcon />, label: 'انستغرام', color: '#E1306C' },
+  { href: 'https://www.facebook.com/Aremacademy',                                                  icon: <FacebookIcon />,  label: 'فيسبوك',   color: '#1877F2' },
 ];
 
 function SocialIcons({ mobile = false }) {
