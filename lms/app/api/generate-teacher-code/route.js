@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto';
-import { createAdminClient } from '../../../lib/supabase-admin';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,13 +15,15 @@ function randomCode() {
   return `TEACH-${part}`;
 }
 
-export async function POST() {
-  const supabase = createAdminClient();
+function getClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // service role key bypasses RLS; anon key works if RLS is disabled on the table
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+}
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.error('[generate-teacher-code] SUPABASE_SERVICE_ROLE_KEY is not set');
-    return Response.json({ error: 'Server misconfiguration: missing service role key' }, { status: 500 });
-  }
+export async function POST() {
+  const supabase = getClient();
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = randomCode();
@@ -34,16 +36,22 @@ export async function POST() {
     if (!error && data?.code) return Response.json({ code: data.code });
 
     if (error) {
-      const isDuplicate = error.message.includes('unique') || error.message.includes('duplicate') || error.code === '23505';
+      const isDuplicate =
+        error.message.includes('unique') ||
+        error.message.includes('duplicate') ||
+        error.code === '23505';
       if (!isDuplicate) {
-        console.error('[generate-teacher-code] Supabase insert error:', error);
+        console.error('[generate-teacher-code] Supabase error:', error);
         return Response.json({ error: error.message }, { status: 500 });
       }
-      // duplicate → retry
+      // تضارب في الكود → أعد المحاولة
     } else {
-      // data is null with no error — RLS or table issue
-      console.error('[generate-teacher-code] Insert returned no data and no error');
-      return Response.json({ error: 'لم يتم حفظ الكود — تحقق من جدول teacher_invitation_codes وصلاحيات RLS' }, { status: 500 });
+      // data = null بدون خطأ ← RLS يمنع الإدراج
+      console.error('[generate-teacher-code] Insert blocked silently — RLS may be active');
+      return Response.json(
+        { error: 'الجدول يرفض الحفظ — شغّل SQL الإعداد في Supabase أولاً' },
+        { status: 500 },
+      );
     }
   }
 

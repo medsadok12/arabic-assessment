@@ -1,9 +1,15 @@
-import { createAdminClient } from '../../../lib/supabase-admin';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
+function getClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+}
+
 export async function GET() {
-  const supabase = createAdminClient();
+  const supabase = getClient();
   const { data, error } = await supabase
     .from('teacher_invitation_codes')
     .select('id, code, is_used, used_at, created_at')
