@@ -77,8 +77,9 @@ function AvatarCard({ user, onUserUpdate }) {
   const [nameMsg,    setNameMsg]    = useState('');
   const fileRef = useRef();
 
-  const fullName = user.user_metadata?.full_name ?? '—';
-  const role     = user.user_metadata?.role ?? 'student';
+  const fullName    = user.user_metadata?.full_name ?? '—';
+  const role        = user.user_metadata?.role ?? 'student';
+  const canEditName = role === 'admin' || role === 'teacher';
 
   async function handleAvatarUpload(e) {
     const file = e.target.files?.[0];
@@ -192,29 +193,45 @@ function AvatarCard({ user, onUserUpdate }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="form-group" style={{ margin: 0 }}>
           <label className="form-label">الاسم الكامل</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              className="form-input"
-              value={nameVal}
-              onChange={e => { setNameVal(e.target.value); setNameDirty(true); setNameMsg(''); }}
-              placeholder="الاسم الكامل"
-              style={{ flex: 1 }}
-            />
-            {nameDirty && (
-              <button
-                className="btn btn-primary"
-                onClick={handleNameSave}
-                disabled={nameSaving}
-                style={{ flexShrink: 0, padding: '0 16px' }}
-              >
-                {nameSaving ? <span className="spinner" /> : 'حفظ'}
-              </button>
-            )}
-          </div>
-          {nameMsg && (
-            <p style={{ fontSize: '.82rem', marginTop: 4, color: nameMsg.startsWith('✅') ? '#2e7d32' : '#c62828' }}>
-              {nameMsg}
-            </p>
+          {canEditName ? (
+            <>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className="form-input"
+                  value={nameVal}
+                  onChange={e => { setNameVal(e.target.value); setNameDirty(true); setNameMsg(''); }}
+                  placeholder="الاسم الكامل"
+                  style={{ flex: 1 }}
+                />
+                {nameDirty && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleNameSave}
+                    disabled={nameSaving}
+                    style={{ flexShrink: 0, padding: '0 16px' }}
+                  >
+                    {nameSaving ? <span className="spinner" /> : 'حفظ'}
+                  </button>
+                )}
+              </div>
+              {nameMsg && (
+                <p style={{ fontSize: '.82rem', marginTop: 4, color: nameMsg.startsWith('✅') ? '#2e7d32' : '#c62828' }}>
+                  {nameMsg}
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <input
+                className="form-input"
+                value={fullName}
+                readOnly
+                style={{ background: '#f5f5f5', color: '#888', cursor: 'not-allowed' }}
+              />
+              <p style={{ fontSize: '.78rem', color: '#aaa', marginTop: 3 }}>
+                🔒 لا يمكن تغيير الاسم — تواصل مع الإدارة إذا لزم الأمر
+              </p>
+            </>
           )}
         </div>
         <div className="form-group" style={{ margin: 0 }}>
