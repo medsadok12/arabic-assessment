@@ -25,29 +25,33 @@ function clearSession() {
   try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
 }
 
-const PINNED = new Set(['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'letter-position', 'word-construct', 'oral-assessment', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill']);
+const PINNED = new Set(['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'letter-position', 'word-construct', 'oral-assessment', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill', 'letter-listen-choose', 'syllable-reading', 'image-matching', 'listen-speak']);
 
 function buildLevelData(levelId) {
   const all        = getLevelQuestions(levelId);
-  const letterRec  = all.filter(q => q.type === 'letter-recognition');
-  const vowelCards = all.filter(q => q.type === 'vowel-cards');
-  const vowelLong  = all.filter(q => q.type === 'vowel-long');
-  const sukunCards   = all.filter(q => q.type === 'sukun-cards');
-  const tanweenCards  = all.filter(q => q.type === 'tanween-cards');
-  const listenChoose  = all.filter(q => q.type === 'listen-choose');
+  const llChoose       = all.filter(q => q.type === 'letter-listen-choose');
+  const sylReading     = all.filter(q => q.type === 'syllable-reading');
+  const imgMatching    = all.filter(q => q.type === 'image-matching');
+  const listenSpeak    = all.filter(q => q.type === 'listen-speak');
+  const letterRec      = all.filter(q => q.type === 'letter-recognition');
+  const vowelCards     = all.filter(q => q.type === 'vowel-cards');
+  const vowelLong      = all.filter(q => q.type === 'vowel-long');
+  const sukunCards     = all.filter(q => q.type === 'sukun-cards');
+  const tanweenCards   = all.filter(q => q.type === 'tanween-cards');
+  const listenChoose   = all.filter(q => q.type === 'listen-choose');
   const syllableOrder  = all.filter(q => q.type === 'syllable-order');
   const letterPos      = all.filter(q => q.type === 'letter-position');
   const wordConstruct  = all.filter(q => q.type === 'word-construct');
   const oralAssessment = all.filter(q => q.type === 'oral-assessment');
-  const matching    = all.filter(q => q.type === 'matching');
-  const speaking    = all.filter(q => q.type === 'speaking');
-  const photoWr     = all.filter(q => q.type === 'photo-writing');
-  const newTypes    = all.filter(q => ['word-order', 'correction', 'fill'].includes(q.type));
-  const regular     = shuffle(all.filter(q => !PINNED.has(q.type ?? '')));
+  const matching       = all.filter(q => q.type === 'matching');
+  const speaking       = all.filter(q => q.type === 'speaking');
+  const photoWr        = all.filter(q => q.type === 'photo-writing');
+  const newTypes       = all.filter(q => ['word-order', 'correction', 'fill'].includes(q.type));
+  const regular        = shuffle(all.filter(q => !PINNED.has(q.type ?? '')));
 
-  /* المستوى الأول: التدريبات العشرة التشخيصية فقط */
+  /* المستوى الأول: تدريبات ج1 أولاً ثم التدريبات التشخيصية */
   if (levelId === 1) {
-    return { questions: [...letterRec, ...vowelCards, ...vowelLong, ...sukunCards, ...tanweenCards, ...listenChoose, ...syllableOrder, ...letterPos, ...wordConstruct, ...oralAssessment], answers: [] };
+    return { questions: [...llChoose, ...sylReading, ...imgMatching, ...listenSpeak, ...letterRec, ...vowelCards, ...vowelLong, ...sukunCards, ...tanweenCards, ...listenChoose, ...syllableOrder, ...letterPos, ...wordConstruct, ...oralAssessment], answers: [] };
   }
 
   return { questions: [...letterRec, ...vowelCards, ...vowelLong, ...sukunCards, ...tanweenCards, ...listenChoose, ...syllableOrder, ...letterPos, ...wordConstruct, ...oralAssessment, ...matching, ...speaking, ...photoWr, ...newTypes, ...regular], answers: [] };
