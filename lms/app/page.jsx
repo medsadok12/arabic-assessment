@@ -33,7 +33,7 @@ export default function LandingPage() {
           <p>منصة متكاملة لتشخيص مستوى الطلاب في اللغة العربية وتتبع تقدمهم الدراسي</p>
           <div className="hero-btns">
             <Link href="/assessment" className="btn btn-accent btn-lg">🎯 ابدأ التقييم التشخيصي</Link>
-            <Link href="/auth/login" className="btn btn-outline btn-lg" style={{ borderColor: 'rgba(255,255,255,.6)', color: '#fff' }}>دخول المعلمين ←</Link>
+            <Link href="/auth/register" className="btn btn-outline btn-lg" style={{ borderColor: 'rgba(255,255,255,.6)', color: '#fff' }}>إنشاء حساب مجاناً ←</Link>
           </div>
         </div>
       </section>
@@ -60,6 +60,11 @@ export default function LandingPage() {
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 14 }}>جاهز للبدء؟</h2>
           <p style={{ opacity: .85, marginBottom: 28 }}>انضم إلى المعلمين الذين يستخدمون عارم لتطوير طلابهم</p>
           <Link href="/auth/register" className="btn btn-accent btn-lg">إنشاء حساب مجاناً ←</Link>
+          <div style={{ marginTop: 20 }}>
+            <Link href="/auth/login" style={{ color: 'rgba(255,255,255,.65)', fontSize: '.92rem', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+              لديك حساب بالفعل؟ دخول المعلمين ←
+            </Link>
+          </div>
         </div>
       </section>
 
