@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '../../lib/supabase-server';
 import Navbar from '../../components/Navbar';
+import ParentPanel from '../../components/ParentPanel';
 
 export default async function DashboardPage() {
   const supabase = createClient();
@@ -13,7 +14,7 @@ export default async function DashboardPage() {
     .select('id, level, score, completed_at, student_name')
     .eq('user_id', user.id)
     .order('completed_at', { ascending: false })
-    .limit(5);
+    .limit(50);
 
   const avgScore = assessments?.length
     ? Math.round(assessments.reduce((s, a) => s + (a.score ?? 0), 0) / assessments.length)
@@ -66,6 +67,9 @@ export default async function DashboardPage() {
             </div>
           </div>
 
+          {/* Parent Panel */}
+          <ParentPanel assessments={assessments ?? []} />
+
           {/* Recent Assessments */}
           <div className="dash-section">
             <div className="dash-section-title">آخر تقييماتي</div>
@@ -80,7 +84,7 @@ export default async function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {assessments.map(a => (
+                    {assessments.slice(0, 5).map(a => (
                       <tr key={a.id}>
                         <td><span className="badge badge-blue">المستوى {a.level}</span></td>
                         <td>
