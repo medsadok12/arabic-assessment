@@ -63,29 +63,29 @@ export default function ProfilePage() {
     setUploading(true);
     setUploadMsg('');
 
-    // Resize to 48×48 JPEG before storing — keeps JWT small enough for Vercel
-    const compressed = await new Promise(resolve => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        const SIZE = 48;
-        const canvas = document.createElement('canvas');
-        canvas.width = SIZE; canvas.height = SIZE;
-        const ctx = canvas.getContext('2d');
-        const minDim = Math.min(img.width, img.height);
-        const sx = (img.width  - minDim) / 2;
-        const sy = (img.height - minDim) / 2;
-        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, SIZE, SIZE);
-        URL.revokeObjectURL(url);
-        resolve(canvas.toDataURL('image/jpeg', 0.3));
-      };
-      img.src = url;
-    });
-
     const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ data: { avatar_url: compressed } });
-    if (error) { setUploadMsg('❌ فشل رفع الصورة، حاول مجدداً'); }
-    else        { setAvatarURL(compressed); setUploadMsg('✅ تم تحديث الصورة بنجاح'); }
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+    // Upload to Supabase Storage — only the URL is stored in user_metadata (keeps JWT small)
+    const ext      = file.name.split('.').pop() || 'jpg';
+    const filePath = `${currentUser.id}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, { upsert: true, contentType: file.type });
+
+    if (upErr) {
+      setUploadMsg('❌ فشل رفع الصورة — تأكد من إنشاء bucket باسم avatars في Supabase Storage');
+      setUploading(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    // Append timestamp to bust browser cache after re-upload
+    const urlWithBust = `${publicUrl}?t=${Date.now()}`;
+
+    const { error } = await supabase.auth.updateUser({ data: { avatar_url: urlWithBust } });
+    if (error) { setUploadMsg('❌ فشل تحديث الملف الشخصي، حاول مجدداً'); }
+    else        { setAvatarURL(urlWithBust); setUploadMsg('✅ تم تحديث الصورة بنجاح'); }
     setUploading(false);
   }
 
