@@ -19,6 +19,57 @@ export const REGRESSION_THRESHOLD = 70;
 
 export const questionsBank = {
   level1: {
+    listening: [
+      {
+        id:    'L1_EX1',
+        type:  'letter-listen-choose',
+        text:  'اسْتَمِعْ وَاخْتَرِ الحَرْفَ الصَّحِيح',
+        skill: 'listening',
+        items: [
+          { letter: 'ب', choices: ['ب', 'ن', 'ت'] },
+          { letter: 'ك', choices: ['ك', 'ق', 'ف'] },
+          { letter: 'ت', choices: ['ث', 'ت', 'ن'] },
+          { letter: 'ص', choices: ['ص', 'س', 'ض'] },
+          { letter: 'ط', choices: ['ظ', 'ط', 'ت'] },
+          { letter: 'خ', choices: ['ح', 'خ', 'ج'] },
+        ],
+      },
+      {
+        id:        'L1_EX2',
+        type:      'syllable-reading',
+        text:      'اقْرَأِ المَقَاطِعَ التَّالِيَة',
+        skill:     'reading',
+        syllables: ['غَ', 'عُ', 'قُ', 'طِ', 'ظُ', 'صَ'],
+      },
+      {
+        id:   'L1_EX3',
+        type: 'image-matching',
+        text: 'اِرْبِطِ الصُّورَةَ بِالْكَلِمَةِ الْمُنَاسِبَة',
+        skill: 'vocabulary',
+        pairs: [
+          { id: 'kitab',   emoji: '📚', name: 'كِتَاب'  },
+          { id: 'kursi',   emoji: '🪑', name: 'كُرْسِي' },
+          { id: 'qalam',   emoji: '✏️', name: 'قَلَم'   },
+          { id: 'sarir',   emoji: '🛏️', name: 'سَرِير'  },
+          { id: 'tuffah',  emoji: '🍎', name: 'تُفَّاح' },
+          { id: 'manzil',  emoji: '🏠', name: 'مَنْزِل' },
+        ],
+      },
+      {
+        id:    'L1_EX4',
+        type:  'listen-speak',
+        text:  'اسْتَمِعْ وَأَجِبْ شَفَهِيًّا',
+        skill: 'speaking',
+        items: [
+          { text: 'مَا اسْمُك؟' },
+          { text: 'كَمْ عُمْرُك؟' },
+          { text: 'أَيْنَ تَسْكُن؟' },
+          { text: 'فِي أَيِّ صَفٍّ تَدْرُس؟' },
+          { text: 'كَيْفَ حَالُك؟' },
+          { text: 'مَاذَا تُحِبّ؟' },
+        ],
+      },
+    ],
     reading: [
       {
         id:   'L1_LR',
