@@ -18,6 +18,11 @@ function randomCode() {
 export async function POST() {
   const supabase = createAdminClient();
 
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('[generate-teacher-code] SUPABASE_SERVICE_ROLE_KEY is not set');
+    return Response.json({ error: 'Server misconfiguration: missing service role key' }, { status: 500 });
+  }
+
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = randomCode();
     const { data, error } = await supabase
@@ -26,9 +31,19 @@ export async function POST() {
       .select('code')
       .single();
 
-    if (!error) return Response.json({ code: data.code });
-    if (!error.message.includes('unique') && !error.message.includes('duplicate')) {
-      return Response.json({ error: error.message }, { status: 500 });
+    if (!error && data?.code) return Response.json({ code: data.code });
+
+    if (error) {
+      const isDuplicate = error.message.includes('unique') || error.message.includes('duplicate') || error.code === '23505';
+      if (!isDuplicate) {
+        console.error('[generate-teacher-code] Supabase insert error:', error);
+        return Response.json({ error: error.message }, { status: 500 });
+      }
+      // duplicate → retry
+    } else {
+      // data is null with no error — RLS or table issue
+      console.error('[generate-teacher-code] Insert returned no data and no error');
+      return Response.json({ error: 'لم يتم حفظ الكود — تحقق من جدول teacher_invitation_codes وصلاحيات RLS' }, { status: 500 });
     }
   }
 

@@ -10,9 +10,9 @@ export default function TeacherCodes() {
   const [err,        setErr]        = useState('');
 
   const loadCodes = useCallback(async () => {
-    // cache: 'no-store' يمنع الـ browser من إعادة استخدام الاستجابة القديمة
     const res  = await fetch('/api/teacher-codes', { cache: 'no-store' });
     const data = await res.json();
+    if (data.error) setErr(data.error);
     setCodes(data.codes ?? []);
     setLoading(false);
   }, []);
@@ -23,22 +23,17 @@ export default function TeacherCodes() {
     setGenerating(true);
     setNewCode('');
     setErr('');
-    const res  = await fetch('/api/generate-teacher-code', { method: 'POST' });
-    const data = await res.json();
-    if (data.code) {
-      setNewCode(data.code);
-      // Optimistic update: أضف الكود فوراً أعلى القائمة
-      setCodes(prev => [{
-        id: crypto.randomUUID(),
-        code: data.code,
-        is_used: false,
-        used_at: null,
-        created_at: new Date().toISOString(),
-      }, ...prev]);
-      // ثم اجلب من الـ API لضمان التزامن مع قاعدة البيانات
-      loadCodes();
-    } else {
-      setErr(data.error ?? 'حدث خطأ، حاول مجدداً');
+    try {
+      const res  = await fetch('/api/generate-teacher-code', { method: 'POST' });
+      const data = await res.json();
+      if (data.code) {
+        setNewCode(data.code);
+        await loadCodes();
+      } else {
+        setErr(data.error ?? 'حدث خطأ، حاول مجدداً');
+      }
+    } catch (e) {
+      setErr('فشل الاتصال بالخادم — حاول مجدداً');
     }
     setGenerating(false);
   }
