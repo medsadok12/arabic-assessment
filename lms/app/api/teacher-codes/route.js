@@ -16,5 +16,10 @@ export async function GET() {
     .order('created_at', { ascending: false });
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ codes: data ?? [] });
+  return new Response(JSON.stringify({ codes: data ?? [] }), {
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+    },
+  });
 }
