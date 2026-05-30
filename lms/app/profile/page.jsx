@@ -58,21 +58,35 @@ export default function ProfilePage() {
   async function handleAvatarChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 1024 * 1024) { setUploadMsg('❌ الحد الأقصى لحجم الصورة هو 1 ميغابايت'); return; }
+    if (file.size > 5 * 1024 * 1024) { setUploadMsg('❌ الحد الأقصى لحجم الصورة هو 5 ميغابايت'); return; }
 
     setUploading(true);
     setUploadMsg('');
 
-    const reader = new FileReader();
-    reader.onload = async ev => {
-      const base64 = ev.target.result;
-      const supabase = createClient();
-      const { error } = await supabase.auth.updateUser({ data: { avatar_url: base64 } });
-      if (error) { setUploadMsg('❌ فشل رفع الصورة، حاول مجدداً'); }
-      else        { setAvatarURL(base64); setUploadMsg('✅ تم تحديث الصورة بنجاح'); }
-      setUploading(false);
-    };
-    reader.readAsDataURL(file);
+    // Resize to 48×48 JPEG before storing — keeps JWT small enough for Vercel
+    const compressed = await new Promise(resolve => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const SIZE = 48;
+        const canvas = document.createElement('canvas');
+        canvas.width = SIZE; canvas.height = SIZE;
+        const ctx = canvas.getContext('2d');
+        const minDim = Math.min(img.width, img.height);
+        const sx = (img.width  - minDim) / 2;
+        const sy = (img.height - minDim) / 2;
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, SIZE, SIZE);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg', 0.3));
+      };
+      img.src = url;
+    });
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({ data: { avatar_url: compressed } });
+    if (error) { setUploadMsg('❌ فشل رفع الصورة، حاول مجدداً'); }
+    else        { setAvatarURL(compressed); setUploadMsg('✅ تم تحديث الصورة بنجاح'); }
+    setUploading(false);
   }
 
   async function handlePasswordChange(e) {
