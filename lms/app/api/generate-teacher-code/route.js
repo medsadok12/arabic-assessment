@@ -1,10 +1,17 @@
+import { randomBytes } from 'crypto';
 import { createAdminClient } from '../../../lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
+// حروف آمنة: تجنّب الأحرف المتشابهة (0/O, 1/I/L)
+const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
 function randomCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const part  = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  const bytes = randomBytes(8);
+  const part  = Array.from(bytes)
+    .map(b => CHARS[b % CHARS.length])
+    .join('')
+    .slice(0, 8);
   return `TEACH-${part}`;
 }
 
