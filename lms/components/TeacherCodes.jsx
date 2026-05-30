@@ -10,7 +10,7 @@ export default function TeacherCodes() {
   const [err,        setErr]        = useState('');
 
   const loadCodes = useCallback(async () => {
-    const res  = await fetch(`/api/teacher-codes?t=${Date.now()}`, { cache: 'no-store' });
+    const res  = await fetch('/api/teacher-codes', { method: 'POST', cache: 'no-store' });
     const data = await res.json();
     if (data.error) setErr(data.error);
     setCodes(data.codes ?? []);

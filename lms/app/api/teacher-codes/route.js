@@ -8,7 +8,7 @@ function getClient() {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
-export async function GET() {
+async function fetchCodes() {
   const supabase = getClient();
   const { data, error } = await supabase
     .from('teacher_invitation_codes')
@@ -23,3 +23,9 @@ export async function GET() {
     },
   });
 }
+
+// POST: never cached by Vercel CDN (primary)
+export async function POST() { return fetchCodes(); }
+
+// GET: kept for backwards compatibility
+export async function GET() { return fetchCodes(); }
