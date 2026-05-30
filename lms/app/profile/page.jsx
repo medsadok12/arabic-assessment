@@ -1,0 +1,191 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '../../lib/supabase';
+import Navbar from '../../components/Navbar';
+
+function Initials({ name, size = 80 }) {
+  const letters = (name ?? '?')
+    .split(' ')
+    .map(w => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: 'linear-gradient(135deg, #185FA5, #1e88e5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.35, fontWeight: 800, color: '#fff',
+      flexShrink: 0,
+    }}>
+      {letters}
+    </div>
+  );
+}
+
+export default function ProfilePage() {
+  const supabase = createClient();
+  const router   = useRouter();
+
+  const [user,        setUser]        = useState(null);
+  const [avatarURL,   setAvatarURL]   = useState(null);
+  const [uploading,   setUploading]   = useState(false);
+  const [uploadMsg,   setUploadMsg]   = useState('');
+  const [pwForm,      setPwForm]      = useState({ current: '', next: '', confirm: '' });
+  const [pwMsg,       setPwMsg]       = useState('');
+  const [pwLoading,   setPwLoading]   = useState(false);
+  const fileRef = useRef();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { router.push('/auth/login'); return; }
+      setUser(user);
+      setAvatarURL(user.user_metadata?.avatar_url ?? null);
+    });
+  }, []);
+
+  async function handleAvatarChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 1024 * 1024) { setUploadMsg('❌ الحد الأقصى لحجم الصورة هو 1 ميغابايت'); return; }
+
+    setUploading(true);
+    setUploadMsg('');
+
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      const base64 = ev.target.result;
+      const { error } = await supabase.auth.updateUser({ data: { avatar_url: base64 } });
+      if (error) { setUploadMsg('❌ فشل رفع الصورة، حاول مجدداً'); }
+      else        { setAvatarURL(base64); setUploadMsg('✅ تم تحديث الصورة بنجاح'); }
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handlePasswordChange(e) {
+    e.preventDefault();
+    setPwMsg('');
+    if (pwForm.next !== pwForm.confirm) { setPwMsg('❌ كلمتا المرور غير متطابقتين'); return; }
+    if (pwForm.next.length < 6)         { setPwMsg('❌ كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; }
+    setPwLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: pwForm.next });
+    if (error) { setPwMsg('❌ ' + error.message); }
+    else        { setPwMsg('✅ تم تغيير كلمة المرور بنجاح'); setPwForm({ current: '', next: '', confirm: '' }); }
+    setPwLoading(false);
+  }
+
+  if (!user) return null;
+
+  const fullName = user.user_metadata?.full_name ?? '—';
+
+  return (
+    <>
+      <Navbar user={user} />
+      <main className="page-wrap">
+        <div className="container" style={{ maxWidth: 600 }}>
+          <h1 className="dash-welcome" style={{ marginBottom: 24 }}>الملف الشخصي</h1>
+
+          {/* Avatar + info */}
+          <div className="card" style={{ padding: '28px 24px', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24, flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => fileRef.current?.click()}>
+                {avatarURL
+                  ? <img src={avatarURL} alt="صورة شخصية"
+                      style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '3px solid #185FA5' }} />
+                  : <Initials name={fullName} />
+                }
+                <div style={{
+                  position: 'absolute', bottom: 0, right: 0,
+                  background: '#185FA5', borderRadius: '50%',
+                  width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, color: '#fff', border: '2px solid #fff',
+                }}>
+                  {uploading ? '…' : '📷'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1a237e' }}>{fullName}</div>
+                <div style={{ color: '#888', fontSize: '.9rem' }}>{user.email}</div>
+                <div style={{ color: '#aaa', fontSize: '.8rem', marginTop: 2 }}>طالب</div>
+              </div>
+            </div>
+
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+            {uploadMsg && <p style={{ fontSize: '.85rem', marginTop: -8, marginBottom: 12, color: uploadMsg.startsWith('✅') ? '#2e7d32' : '#c62828' }}>{uploadMsg}</p>}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">الاسم الكامل</label>
+                <input
+                  className="form-input"
+                  value={fullName}
+                  readOnly
+                  style={{ background: '#f5f5f5', color: '#888', cursor: 'not-allowed' }}
+                />
+                <p style={{ fontSize: '.78rem', color: '#aaa', marginTop: 3 }}>
+                  🔒 لا يمكن تغيير الاسم — تواصل مع الإدارة إذا لزم الأمر
+                </p>
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">البريد الإلكتروني</label>
+                <input
+                  className="form-input"
+                  value={user.email}
+                  readOnly
+                  style={{ background: '#f5f5f5', color: '#888', cursor: 'not-allowed' }}
+                  dir="ltr"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Password change */}
+          <div className="card" style={{ padding: '28px 24px' }}>
+            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1a237e', marginBottom: 18 }}>
+              🔑 تغيير كلمة المرور
+            </h2>
+            {pwMsg && (
+              <div className={`alert ${pwMsg.startsWith('✅') ? 'alert-success' : 'alert-error'}`} style={{ marginBottom: 14 }}>
+                {pwMsg}
+              </div>
+            )}
+            <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">كلمة المرور الجديدة</label>
+                <input
+                  className="form-input"
+                  type="password"
+                  value={pwForm.next}
+                  onChange={e => setPwForm(p => ({ ...p, next: e.target.value }))}
+                  placeholder="6 أحرف على الأقل"
+                  required
+                  dir="ltr"
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">تأكيد كلمة المرور الجديدة</label>
+                <input
+                  className="form-input"
+                  type="password"
+                  value={pwForm.confirm}
+                  onChange={e => setPwForm(p => ({ ...p, confirm: e.target.value }))}
+                  placeholder="أعد كتابة كلمة المرور"
+                  required
+                  dir="ltr"
+                />
+              </div>
+              <button type="submit" className="btn btn-primary" disabled={pwLoading}
+                style={{ marginTop: 4 }}>
+                {pwLoading ? <span className="spinner" /> : 'حفظ كلمة المرور ←'}
+              </button>
+            </form>
+          </div>
+
+        </div>
+      </main>
+    </>
+  );
+}
