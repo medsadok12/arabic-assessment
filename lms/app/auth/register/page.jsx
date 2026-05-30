@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '../../../lib/supabase';
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', role: 'teacher', code: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', code: '' });
   const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -42,7 +42,7 @@ export default function RegisterPage() {
       email:    form.email,
       password: form.password,
       options: {
-        data: { full_name: form.name, role: form.role },
+        data: { full_name: form.name, role: 'student' },
         emailRedirectTo: 'https://aarem-lms.vercel.app/auth/callback',
       },
     });
@@ -63,24 +63,17 @@ export default function RegisterPage() {
         <div className="auth-logo">
           <span className="logo-icon">📚</span>
           <h1>أكاديمية عارم</h1>
-          <p>إنشاء حساب جديد</p>
+          <p>إنشاء حساب طالب</p>
         </div>
         {error && <div className="alert alert-error">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label">الاسم الكامل</label>
-            <input className="form-input" type="text" value={form.name} onChange={e => set('name', e.target.value)} placeholder="محمد الغندوزي" required />
+            <input className="form-input" type="text" value={form.name} onChange={e => set('name', e.target.value)} placeholder="أدخل الاسم الكامل" required />
           </div>
           <div className="form-group">
             <label className="form-label">البريد الإلكتروني</label>
             <input className="form-input" type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="example@email.com" required dir="ltr" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">الدور</label>
-            <select className="form-input" value={form.role} onChange={e => set('role', e.target.value)}>
-              <option value="teacher">معلم</option>
-              <option value="admin">مدير أكاديمية</option>
-            </select>
           </div>
           <div className="form-group">
             <label className="form-label">كلمة المرور</label>
