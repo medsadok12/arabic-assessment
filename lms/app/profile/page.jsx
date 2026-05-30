@@ -25,6 +25,15 @@ function Initials({ name, size = 80 }) {
   );
 }
 
+// ترجمة أخطاء Supabase
+const PW_ERRORS = {
+  'New password should be different from the old password': 'يجب أن تكون كلمة المرور الجديدة مختلفة عن كلمة المرور الحالية',
+  'Password should be at least 6 characters.': 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+  'Auth session missing!': 'انتهت الجلسة، يرجى إعادة تسجيل الدخول',
+  'For security purposes, you can only request this once every 60 seconds': 'لأسباب أمنية، يمكنك المحاولة مرة واحدة كل دقيقة',
+};
+function translatePwError(msg) { return PW_ERRORS[msg] ?? msg; }
+
 export default function ProfilePage() {
   const supabase = createClient();
   const router   = useRouter();
@@ -68,11 +77,13 @@ export default function ProfilePage() {
   async function handlePasswordChange(e) {
     e.preventDefault();
     setPwMsg('');
+    // إذا لم يكتب المستخدم شيئاً، لا تفعل شيئاً
+    if (!pwForm.next && !pwForm.confirm) return;
     if (pwForm.next !== pwForm.confirm) { setPwMsg('❌ كلمتا المرور غير متطابقتين'); return; }
     if (pwForm.next.length < 6)         { setPwMsg('❌ كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; }
     setPwLoading(true);
     const { error } = await supabase.auth.updateUser({ password: pwForm.next });
-    if (error) { setPwMsg('❌ ' + error.message); }
+    if (error) { setPwMsg('❌ ' + translatePwError(error.message)); }
     else        { setPwMsg('✅ تم تغيير كلمة المرور بنجاح'); setPwForm({ current: '', next: '', confirm: '' }); }
     setPwLoading(false);
   }
@@ -161,7 +172,7 @@ export default function ProfilePage() {
                   value={pwForm.next}
                   onChange={e => setPwForm(p => ({ ...p, next: e.target.value }))}
                   placeholder="6 أحرف على الأقل"
-                  required
+                  autoComplete="new-password"
                   dir="ltr"
                 />
               </div>
@@ -173,13 +184,13 @@ export default function ProfilePage() {
                   value={pwForm.confirm}
                   onChange={e => setPwForm(p => ({ ...p, confirm: e.target.value }))}
                   placeholder="أعد كتابة كلمة المرور"
-                  required
+                  autoComplete="new-password"
                   dir="ltr"
                 />
               </div>
               <button type="submit" className="btn btn-primary" disabled={pwLoading}
                 style={{ marginTop: 4 }}>
-                {pwLoading ? <span className="spinner" /> : 'حفظ كلمة المرور ←'}
+                {pwLoading ? <span className="spinner" /> : 'حفظ التغييرات ←'}
               </button>
             </form>
           </div>
