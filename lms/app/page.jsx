@@ -1,9 +1,10 @@
 'use client';
 import Link from 'next/link';
+import Navbar from '../components/Navbar';
 
 export default function LandingPage() {
   const features = [
-    { icon: '🎯', title: 'تقييم تشخيصي ذكي', desc: 'قياس مستوى الطالب في القراءة والكتابة والاستماع والتحدث عبر 10 تدريبات تشخيصية متنوعة.', href: '/auth/register' },
+    { icon: '🎯', title: 'تقييم تشخيصي ذكي', desc: 'قياس مستوى الطالب في القراءة والكتابة والاستماع والتحدث عبر 10 تدريبات تشخيصية متنوعة.' },
     { icon: '📊', title: 'تقارير تفصيلية', desc: 'تقارير PDF فورية لكل طالب تُرسل تلقائياً إلى ولي الأمر أو المعلم عبر البريد الإلكتروني.' },
     { icon: '🌍', title: 'للناطقين وغير الناطقين', desc: 'مناهج مُصمَّمة لفئتين: الناطقون باللغة العربية وغير الناطقين بها.' },
     { icon: '📱', title: 'يعمل على جميع الأجهزة', desc: 'واجهة متجاوبة تعمل على الحاسوب والجهاز اللوحي والهاتف الذكي.' },
@@ -13,18 +14,7 @@ export default function LandingPage() {
 
   return (
     <>
-      {/* Header */}
-      <nav className="navbar">
-        <div className="container navbar-inner">
-          <Link href="/" className="navbar-brand">
-            <span>📚</span> أكاديمية عارم
-          </Link>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <Link href="/auth/login"    className="btn btn-outline btn-sm" style={{ color: '#fff', borderColor: 'rgba(255,255,255,.5)' }}>دخول</Link>
-            <Link href="/auth/register" className="btn btn-accent btn-sm">تسجيل</Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero */}
       <section className="hero">
@@ -62,7 +52,7 @@ export default function LandingPage() {
           <Link href="/auth/register" className="btn btn-accent btn-lg">إنشاء حساب مجاناً ←</Link>
           <div style={{ marginTop: 20 }}>
             <Link href="/auth/login" style={{ color: 'rgba(255,255,255,.65)', fontSize: '.92rem', textDecoration: 'underline', textUnderlineOffset: 3 }}>
-              لديك حساب بالفعل؟ دخول المعلمين ←
+              لديك حساب بالفعل؟ دخول ←
             </Link>
           </div>
         </div>
@@ -74,3 +64,4 @@ export default function LandingPage() {
     </>
   );
 }
+
