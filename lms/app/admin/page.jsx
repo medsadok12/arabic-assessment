@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase-server';
 import Navbar from '../../components/Navbar';
 import TeacherCodes from '../../components/TeacherCodes';
+import StudentCodes from '../../components/StudentCodes';
 
 export default async function AdminPage() {
   const supabase = createClient();
@@ -54,6 +55,9 @@ export default async function AdminPage() {
 
           {/* Teacher Codes */}
           <TeacherCodes />
+
+          {/* Student Codes */}
+          <StudentCodes />
 
           {/* Assessments Table */}
           <div className="dash-section-title">سجل التقييمات</div>
