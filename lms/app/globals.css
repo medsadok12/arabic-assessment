@@ -206,6 +206,36 @@ body {
   background: var(--border); vertical-align: middle; margin: 0 8px;
 }
 
+/* ── Auth Tabs (Student / Teacher) ── */
+.auth-tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 5px;
+  margin-bottom: 22px;
+}
+.auth-tab {
+  flex: 1;
+  padding: 10px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background .15s, color .15s, box-shadow .15s;
+}
+.auth-tab.active {
+  background: var(--card);
+  color: var(--primary);
+  box-shadow: 0 1px 5px rgba(0,0,0,.09);
+}
+.auth-tab:not(.active):hover { color: var(--text); }
+
 /* ── Landing page ── */
 .hero {
   background: linear-gradient(135deg, var(--primary) 0%, #0e3d70 100%);
