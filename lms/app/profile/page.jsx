@@ -63,14 +63,22 @@ export default function ProfilePage() {
   );
 }
 
+const ROLE_LABELS = { admin: 'مدير', teacher: 'معلم', student: 'طالب' };
+function roleLabel(role) { return ROLE_LABELS[role] ?? 'طالب'; }
+
 /* ── بطاقة الصورة الشخصية — معزولة تماماً ── */
 function AvatarCard({ user, onUserUpdate }) {
-  const [avatarURL, setAvatarURL] = useState(user.user_metadata?.avatar_url ?? null);
-  const [uploading, setUploading] = useState(false);
-  const [msg,       setMsg]       = useState('');
+  const [avatarURL,  setAvatarURL]  = useState(user.user_metadata?.avatar_url ?? null);
+  const [uploading,  setUploading]  = useState(false);
+  const [msg,        setMsg]        = useState('');
+  const [nameVal,    setNameVal]    = useState(user.user_metadata?.full_name ?? '');
+  const [nameDirty,  setNameDirty]  = useState(false);
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameMsg,    setNameMsg]    = useState('');
   const fileRef = useRef();
 
   const fullName = user.user_metadata?.full_name ?? '—';
+  const role     = user.user_metadata?.role ?? 'student';
 
   async function handleAvatarUpload(e) {
     const file = e.target.files?.[0];
@@ -116,6 +124,24 @@ function AvatarCard({ user, onUserUpdate }) {
     setUploading(false);
   }
 
+  async function handleNameSave() {
+    const trimmed = nameVal.trim();
+    if (!trimmed) { setNameMsg('❌ الاسم لا يمكن أن يكون فارغاً'); return; }
+    setNameSaving(true);
+    setNameMsg('');
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({ data: { full_name: trimmed } });
+    if (error) {
+      setNameMsg('❌ فشل حفظ الاسم، حاول مجدداً');
+    } else {
+      const { data: { user: refreshed } } = await supabase.auth.refreshSession();
+      if (refreshed) onUserUpdate(refreshed);
+      setNameDirty(false);
+      setNameMsg('✅ تم تحديث الاسم بنجاح');
+    }
+    setNameSaving(false);
+  }
+
   return (
     <div className="card" style={{ padding: '28px 24px', marginBottom: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24, flexWrap: 'wrap' }}>
@@ -139,9 +165,9 @@ function AvatarCard({ user, onUserUpdate }) {
           </div>
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1a237e' }}>{fullName}</div>
+          <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1a237e' }}>{nameVal || fullName}</div>
           <div style={{ color: '#888', fontSize: '.9rem' }}>{user.email}</div>
-          <div style={{ color: '#aaa', fontSize: '.8rem', marginTop: 2 }}>طالب</div>
+          <div style={{ color: '#aaa', fontSize: '.8rem', marginTop: 2 }}>{roleLabel(role)}</div>
         </div>
       </div>
 
@@ -166,15 +192,30 @@ function AvatarCard({ user, onUserUpdate }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="form-group" style={{ margin: 0 }}>
           <label className="form-label">الاسم الكامل</label>
-          <input
-            className="form-input"
-            value={fullName}
-            readOnly
-            style={{ background: '#f5f5f5', color: '#888', cursor: 'not-allowed' }}
-          />
-          <p style={{ fontSize: '.78rem', color: '#aaa', marginTop: 3 }}>
-            🔒 لا يمكن تغيير الاسم — تواصل مع الإدارة إذا لزم الأمر
-          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              className="form-input"
+              value={nameVal}
+              onChange={e => { setNameVal(e.target.value); setNameDirty(true); setNameMsg(''); }}
+              placeholder="الاسم الكامل"
+              style={{ flex: 1 }}
+            />
+            {nameDirty && (
+              <button
+                className="btn btn-primary"
+                onClick={handleNameSave}
+                disabled={nameSaving}
+                style={{ flexShrink: 0, padding: '0 16px' }}
+              >
+                {nameSaving ? <span className="spinner" /> : 'حفظ'}
+              </button>
+            )}
+          </div>
+          {nameMsg && (
+            <p style={{ fontSize: '.82rem', marginTop: 4, color: nameMsg.startsWith('✅') ? '#2e7d32' : '#c62828' }}>
+              {nameMsg}
+            </p>
+          )}
         </div>
         <div className="form-group" style={{ margin: 0 }}>
           <label className="form-label">البريد الإلكتروني</label>
