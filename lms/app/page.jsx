@@ -49,7 +49,7 @@ export default function LandingPage() {
         <div className="container">
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 14 }}>جاهز للبدء؟</h2>
           <p style={{ opacity: .85, marginBottom: 28 }}>انضم إلى المعلمين الذين يستخدمون عارم لتطوير طلابهم</p>
-          <Link href="/auth/register" className="btn btn-accent btn-lg">إنشاء حساب مجاناً ←</Link>
+          <Link href="/auth/register" className="btn btn-accent btn-lg">إنشاء حساب طالب مجاناً ←</Link>
           <div style={{ marginTop: 20 }}>
             <Link href="/auth/login" style={{ color: 'rgba(255,255,255,.65)', fontSize: '.92rem', textDecoration: 'underline', textUnderlineOffset: 3 }}>
               لديك حساب بالفعل؟ دخول ←
@@ -58,8 +58,23 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer style={{ background: '#0e3d70', color: 'rgba(255,255,255,.6)', textAlign: 'center', padding: '20px', fontSize: '.88rem' }}>
-        © 2026 أكاديمية عارم — جميع الحقوق محفوظة
+      <footer style={{ background: '#0e3d70', color: 'rgba(255,255,255,.6)', textAlign: 'center', padding: '24px 20px', fontSize: '.88rem' }}>
+        <p style={{ marginBottom: 12 }}>© 2026 أكاديمية عارم — جميع الحقوق محفوظة</p>
+        <p>
+          <Link
+            href="/auth/register/teacher"
+            style={{
+              color: 'rgba(255,255,255,.5)',
+              fontSize: '.82rem',
+              textDecoration: 'none',
+              borderBottom: '1px dashed rgba(255,255,255,.3)',
+              paddingBottom: 1,
+              transition: 'color .15s',
+            }}
+          >
+            👨‍🏫 هل أنت معلم؟ سجّل حسابك كمعلم من هنا
+          </Link>
+        </p>
       </footer>
     </>
   );

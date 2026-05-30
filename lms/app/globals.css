@@ -236,6 +236,32 @@ body {
 }
 .auth-tab:not(.active):hover { color: var(--text); }
 
+/* ── Teacher Register page ── */
+.teacher-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #e8f0fe;
+  border: 1px solid #c5d5fb;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: .88rem;
+  font-weight: 600;
+  color: #1a56c4;
+  margin-bottom: 20px;
+}
+.teacher-code-input {
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-family: 'Courier New', monospace;
+}
+.field-hint {
+  font-size: .79rem;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.auth-footer-links { margin-top: 4px; }
+
 /* ── Landing page ── */
 .hero {
   background: linear-gradient(135deg, var(--primary) 0%, #0e3d70 100%);
