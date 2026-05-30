@@ -35,19 +35,19 @@ const PW_ERRORS = {
 function translatePwError(msg) { return PW_ERRORS[msg] ?? msg; }
 
 export default function ProfilePage() {
-  const supabase = createClient();
-  const router   = useRouter();
+  const router = useRouter();
 
-  const [user,        setUser]        = useState(null);
-  const [avatarURL,   setAvatarURL]   = useState(null);
-  const [uploading,   setUploading]   = useState(false);
-  const [uploadMsg,   setUploadMsg]   = useState('');
-  const [pwForm,      setPwForm]      = useState({ current: '', next: '', confirm: '' });
-  const [pwMsg,       setPwMsg]       = useState('');
-  const [pwLoading,   setPwLoading]   = useState(false);
+  const [user,      setUser]      = useState(null);
+  const [avatarURL, setAvatarURL] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState('');
+  const [pwForm,    setPwForm]    = useState({ next: '', confirm: '' });
+  const [pwMsg,     setPwMsg]     = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
   const fileRef = useRef();
 
   useEffect(() => {
+    const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.push('/auth/login'); return; }
       setUser(user);
@@ -66,6 +66,7 @@ export default function ProfilePage() {
     const reader = new FileReader();
     reader.onload = async ev => {
       const base64 = ev.target.result;
+      const supabase = createClient();
       const { error } = await supabase.auth.updateUser({ data: { avatar_url: base64 } });
       if (error) { setUploadMsg('❌ فشل رفع الصورة، حاول مجدداً'); }
       else        { setAvatarURL(base64); setUploadMsg('✅ تم تحديث الصورة بنجاح'); }
@@ -77,14 +78,14 @@ export default function ProfilePage() {
   async function handlePasswordChange(e) {
     e.preventDefault();
     setPwMsg('');
-    // إذا لم يكتب المستخدم شيئاً، لا تفعل شيئاً
     if (!pwForm.next && !pwForm.confirm) return;
     if (pwForm.next !== pwForm.confirm) { setPwMsg('❌ كلمتا المرور غير متطابقتين'); return; }
     if (pwForm.next.length < 6)         { setPwMsg('❌ كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; }
     setPwLoading(true);
+    const supabase = createClient();
     const { error } = await supabase.auth.updateUser({ password: pwForm.next });
     if (error) { setPwMsg('❌ ' + translatePwError(error.message)); }
-    else        { setPwMsg('✅ تم تغيير كلمة المرور بنجاح'); setPwForm({ current: '', next: '', confirm: '' }); }
+    else        { setPwMsg('✅ تم تغيير كلمة المرور بنجاح'); setPwForm({ next: '', confirm: '' }); }
     setPwLoading(false);
   }
 
