@@ -71,15 +71,19 @@ function AvatarCard({ user, onUserUpdate }) {
   const [avatarURL,  setAvatarURL]  = useState(user.user_metadata?.avatar_url ?? null);
   const [uploading,  setUploading]  = useState(false);
   const [msg,        setMsg]        = useState('');
-  const [nameVal,    setNameVal]    = useState(user.user_metadata?.full_name ?? '');
-  const [nameDirty,  setNameDirty]  = useState(false);
-  const [nameSaving, setNameSaving] = useState(false);
-  const [nameMsg,    setNameMsg]    = useState('');
+  const [nameVal,     setNameVal]     = useState(user.user_metadata?.full_name ?? '');
+  const [nameDirty,   setNameDirty]   = useState(false);
+  const [nameSaving,  setNameSaving]  = useState(false);
+  const [nameMsg,     setNameMsg]     = useState('');
+  const [emailVal,    setEmailVal]    = useState(user.email ?? '');
+  const [emailDirty,  setEmailDirty]  = useState(false);
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailMsg,    setEmailMsg]    = useState('');
   const fileRef = useRef();
 
   const fullName    = user.user_metadata?.full_name ?? '—';
   const role        = user.user_metadata?.role ?? 'student';
-  const canEditName = role === 'admin' || role === 'teacher';
+  const canEdit     = role === 'admin' || role === 'teacher';
 
   async function handleAvatarUpload(e) {
     const file = e.target.files?.[0];
@@ -143,6 +147,23 @@ function AvatarCard({ user, onUserUpdate }) {
     setNameSaving(false);
   }
 
+  async function handleEmailSave() {
+    const trimmed = emailVal.trim().toLowerCase();
+    if (!trimmed) { setEmailMsg('❌ البريد لا يمكن أن يكون فارغاً'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) { setEmailMsg('❌ صيغة البريد غير صحيحة'); return; }
+    setEmailSaving(true);
+    setEmailMsg('');
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({ email: trimmed });
+    if (error) {
+      setEmailMsg('❌ فشل تحديث البريد: ' + error.message);
+    } else {
+      setEmailDirty(false);
+      setEmailMsg('✅ تم إرسال رابط تأكيد للبريد الجديد — تحقق من صندوقك');
+    }
+    setEmailSaving(false);
+  }
+
   return (
     <div className="card" style={{ padding: '28px 24px', marginBottom: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24, flexWrap: 'wrap' }}>
@@ -193,7 +214,7 @@ function AvatarCard({ user, onUserUpdate }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="form-group" style={{ margin: 0 }}>
           <label className="form-label">الاسم الكامل</label>
-          {canEditName ? (
+          {canEdit ? (
             <>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
@@ -236,13 +257,44 @@ function AvatarCard({ user, onUserUpdate }) {
         </div>
         <div className="form-group" style={{ margin: 0 }}>
           <label className="form-label">البريد الإلكتروني</label>
-          <input
-            className="form-input"
-            value={user.email}
-            readOnly
-            style={{ background: '#f5f5f5', color: '#888', cursor: 'not-allowed' }}
-            dir="ltr"
-          />
+          {canEdit ? (
+            <>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className="form-input"
+                  type="email"
+                  value={emailVal}
+                  onChange={e => { setEmailVal(e.target.value); setEmailDirty(true); setEmailMsg(''); }}
+                  placeholder="example@email.com"
+                  dir="ltr"
+                  style={{ flex: 1 }}
+                />
+                {emailDirty && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleEmailSave}
+                    disabled={emailSaving}
+                    style={{ flexShrink: 0, padding: '0 16px' }}
+                  >
+                    {emailSaving ? <span className="spinner" /> : 'حفظ'}
+                  </button>
+                )}
+              </div>
+              {emailMsg && (
+                <p style={{ fontSize: '.82rem', marginTop: 4, color: emailMsg.startsWith('✅') ? '#2e7d32' : '#c62828' }}>
+                  {emailMsg}
+                </p>
+              )}
+            </>
+          ) : (
+            <input
+              className="form-input"
+              value={user.email}
+              readOnly
+              style={{ background: '#f5f5f5', color: '#888', cursor: 'not-allowed' }}
+              dir="ltr"
+            />
+          )}
         </div>
       </div>
     </div>
