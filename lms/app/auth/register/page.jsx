@@ -2,14 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { createClient } from '../../../lib/supabase';
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', code: '' });
   const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   function set(k, v) { setForm(prev => ({ ...prev, [k]: v })); }
 
@@ -25,14 +23,13 @@ export default function RegisterPage() {
     const supabase = createClient();
 
     // التحقق من كود الأكاديمية
-    const { data: codeData } = await supabase
-      .from('academy_codes')
-      .select('id')
-      .eq('code', form.code.trim().toUpperCase())
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (!codeData) {
+    const res  = await fetch('/api/validate-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: form.code }),
+    });
+    const { valid } = await res.json();
+    if (!valid) {
       setError('كود الأكاديمية غير صحيح أو غير مفعّل — تواصل مع إدارة الأكاديمية للحصول على الكود');
       setLoading(false);
       return;
