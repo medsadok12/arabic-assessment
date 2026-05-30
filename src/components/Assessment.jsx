@@ -16,6 +16,10 @@ import SyllableOrder         from './SyllableOrder.jsx';
 import LetterPosition        from './LetterPosition.jsx';
 import WordConstruct         from './WordConstruct.jsx';
 import OralAssessment        from './OralAssessment.jsx';
+import LetterListenChoose   from './LetterListenChoose.jsx';
+import SyllableReading      from './SyllableReading.jsx';
+import ImageWordMatching    from './ImageWordMatching.jsx';
+import ListenSpeak          from './ListenSpeak.jsx';
 
 export default function Assessment({ questions, currentLevel, questionIndex, studentInfo, onAnswer }) {
   const [selected, setSelected] = useState(null);
@@ -56,26 +60,30 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
 
   if (!question) return null;
 
-  const SPECIAL_TYPES = ['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'letter-position', 'word-construct', 'oral-assessment', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill'];
+  const SPECIAL_TYPES = ['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'letter-position', 'word-construct', 'oral-assessment', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill', 'letter-listen-choose', 'syllable-reading', 'image-matching', 'listen-speak'];
 
   if (SPECIAL_TYPES.includes(question.type)) {
     const Inner =
-      question.type === 'letter-recognition' ? <LetterRecognition question={question} onAnswer={onAnswer} /> :
-      question.type === 'vowel-cards'   ? <VowelCards         question={question} onAnswer={onAnswer} /> :
-      question.type === 'vowel-long'    ? <VowelLong          question={question} onAnswer={onAnswer} /> :
-      question.type === 'sukun-cards'  ? <SukunCards         question={question} onAnswer={onAnswer} /> :
-      question.type === 'tanween-cards' ? <TanweenCards        question={question} onAnswer={onAnswer} /> :
-      question.type === 'listen-choose' ? <ListenChoose        question={question} onAnswer={onAnswer} /> :
-      question.type === 'syllable-order'  ? <SyllableOrder    question={question} onAnswer={onAnswer} /> :
-      question.type === 'letter-position' ? <LetterPosition  question={question} onAnswer={onAnswer} /> :
-      question.type === 'word-construct'   ? <WordConstruct    question={question} onAnswer={onAnswer} /> :
-      question.type === 'oral-assessment' ? <OralAssessment   question={question} onAnswer={onAnswer} /> :
-      question.type === 'matching'        ? <MatchingQuestion  question={question} onAnswer={onAnswer} /> :
-      question.type === 'speaking'    ? <AudioQuestion      question={question} studentInfo={studentInfo} onAnswer={onAnswer} /> :
-      question.type === 'photo-writing' ? <WritingQuestion  question={question} studentInfo={studentInfo} onAnswer={onAnswer} /> :
-      question.type === 'word-order'  ? <WordOrderQuestion  question={question} onAnswer={onAnswer} /> :
-      question.type === 'correction'  ? <CorrectionQuestion question={question} onAnswer={onAnswer} /> :
-                                        <FillQuestion       question={question} onAnswer={onAnswer} />;
+      question.type === 'letter-recognition'  ? <LetterRecognition  question={question} onAnswer={onAnswer} /> :
+      question.type === 'vowel-cards'          ? <VowelCards         question={question} onAnswer={onAnswer} /> :
+      question.type === 'vowel-long'           ? <VowelLong          question={question} onAnswer={onAnswer} /> :
+      question.type === 'sukun-cards'          ? <SukunCards         question={question} onAnswer={onAnswer} /> :
+      question.type === 'tanween-cards'        ? <TanweenCards       question={question} onAnswer={onAnswer} /> :
+      question.type === 'listen-choose'        ? <ListenChoose       question={question} onAnswer={onAnswer} /> :
+      question.type === 'syllable-order'       ? <SyllableOrder      question={question} onAnswer={onAnswer} /> :
+      question.type === 'letter-position'      ? <LetterPosition     question={question} onAnswer={onAnswer} /> :
+      question.type === 'word-construct'       ? <WordConstruct      question={question} onAnswer={onAnswer} /> :
+      question.type === 'oral-assessment'      ? <OralAssessment     question={question} onAnswer={onAnswer} /> :
+      question.type === 'matching'             ? <MatchingQuestion   question={question} onAnswer={onAnswer} /> :
+      question.type === 'speaking'             ? <AudioQuestion      question={question} studentInfo={studentInfo} onAnswer={onAnswer} /> :
+      question.type === 'photo-writing'        ? <WritingQuestion    question={question} studentInfo={studentInfo} onAnswer={onAnswer} /> :
+      question.type === 'word-order'           ? <WordOrderQuestion  question={question} onAnswer={onAnswer} /> :
+      question.type === 'correction'           ? <CorrectionQuestion question={question} onAnswer={onAnswer} /> :
+      question.type === 'letter-listen-choose' ? <LetterListenChoose question={question} onAnswer={onAnswer} /> :
+      question.type === 'syllable-reading'     ? <SyllableReading    question={question} onAnswer={onAnswer} /> :
+      question.type === 'image-matching'       ? <ImageWordMatching  question={question} onAnswer={onAnswer} /> :
+      question.type === 'listen-speak'         ? <ListenSpeak        question={question} onAnswer={onAnswer} /> :
+                                                 <FillQuestion       question={question} onAnswer={onAnswer} />;
     return (
       <div className="page-content">
         <div className="assessment-header">
