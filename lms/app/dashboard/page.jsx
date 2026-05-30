@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '../../lib/supabase-server';
 import Navbar from '../../components/Navbar';
+import ParentPanel from '../../components/ParentPanel';
 
 export default async function DashboardPage() {
   const supabase = createClient();
@@ -11,29 +12,34 @@ export default async function DashboardPage() {
   const { data: assessments } = await supabase
     .from('assessments')
     .select('id, level, score, completed_at, student_name')
+    .eq('user_id', user.id)
     .order('completed_at', { ascending: false })
-    .limit(5);
+    .limit(50);
 
-  const { count: totalStudents } = await supabase
-    .from('assessments')
-    .select('id', { count: 'exact', head: true });
+  const role      = user.user_metadata?.role ?? 'student';
+  const isStudent = role === 'student';
 
-  const stats = [
-    { icon: '👥', val: totalStudents ?? 0, lbl: 'إجمالي التقييمات' },
-    { icon: '📊', val: assessments?.length ?? 0, lbl: 'آخر 5 تقييمات' },
-    { icon: '⭐', val: assessments?.length
-        ? Math.round(assessments.reduce((s, a) => s + (a.score ?? 0), 0) / assessments.length) + '%'
-        : '—',
-      lbl: 'متوسط النتائج' },
-  ];
+  const avgScore = assessments?.length
+    ? Math.round(assessments.reduce((s, a) => s + (a.score ?? 0), 0) / assessments.length)
+    : null;
+
+  const stats = isStudent
+    ? [
+        { icon: '📊', val: assessments?.length ?? 0, lbl: 'عدد تقييماتي' },
+        { icon: '✅', val: assessments?.length ? 'مكتمل' : '—', lbl: 'حالة التقييم' },
+      ]
+    : [
+        { icon: '📊', val: assessments?.length ?? 0,          lbl: 'عدد تقييماتي' },
+        { icon: '⭐', val: avgScore != null ? avgScore + '%' : '—', lbl: 'متوسط نتائجي' },
+        { icon: '🏅', val: assessments?.[0]?.level ? `المستوى ${assessments[0].level}` : '—', lbl: 'آخر مستوى' },
+      ];
 
   const actions = [
-    { icon: '🎯', title: 'بدء تقييم جديد', desc: 'قيِّم طالباً جديداً الآن', href: '/assessment' },
-    { icon: '📚', title: 'المكتبة التعليمية', desc: 'موارد ودروس للمعلمين', href: '/library' },
-    { icon: '📈', title: 'تقارير التقدم', desc: 'تتبع تطور الطلاب', href: '/admin' },
+    { icon: '📚', title: 'المكتبة التعليمية', desc: 'تصفح المناهج والدروس المتاحة لك',                    href: '/library'  },
+    { icon: '📈', title: 'تقارير التقدم',      desc: 'شاهد نتيجة تقييمك التشخيصي ومستوى تقدمك', href: '/admin'    },
   ];
 
-  const displayName = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'أستاذ';
+  const displayName = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'طالب';
 
   return (
     <>
@@ -69,42 +75,68 @@ export default async function DashboardPage() {
             </div>
           </div>
 
+          {/* Parent Panel — teachers/admins only */}
+          {!isStudent && <ParentPanel assessments={assessments ?? []} />}
+
           {/* Recent Assessments */}
           <div className="dash-section">
-            <div className="dash-section-title">آخر التقييمات</div>
+            <div className="dash-section-title">آخر تقييماتي</div>
             {assessments && assessments.length > 0 ? (
-              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>اسم الطالب</th>
-                      <th>المستوى</th>
-                      <th>النتيجة</th>
-                      <th>التاريخ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {assessments.map(a => (
-                      <tr key={a.id}>
-                        <td>{a.student_name ?? '—'}</td>
-                        <td><span className="badge badge-blue">المستوى {a.level}</span></td>
-                        <td>
-                          <span className={`badge ${(a.score ?? 0) >= 70 ? 'badge-green' : 'badge-orange'}`}>
-                            {a.score ?? 0}%
-                          </span>
-                        </td>
-                        <td style={{ direction: 'ltr', textAlign: 'right' }}>
-                          {a.completed_at ? new Date(a.completed_at).toLocaleDateString('ar-SA') : '—'}
-                        </td>
+              isStudent ? (
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>المستوى</th>
+                        <th>الحالة</th>
+                        <th>التاريخ</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {assessments.slice(0, 5).map(a => (
+                        <tr key={a.id}>
+                          <td><span className="badge badge-blue">المستوى {a.level}</span></td>
+                          <td><span className="badge badge-green">تم الإرسال ✓</span></td>
+                          <td style={{ direction: 'ltr', textAlign: 'right' }}>
+                            {a.completed_at ? new Date(a.completed_at).toLocaleDateString('ar-SA') : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>المستوى</th>
+                        <th>النتيجة</th>
+                        <th>التاريخ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {assessments.slice(0, 5).map(a => (
+                        <tr key={a.id}>
+                          <td><span className="badge badge-blue">المستوى {a.level}</span></td>
+                          <td>
+                            <span className={`badge ${(a.score ?? 0) >= 70 ? 'badge-green' : 'badge-orange'}`}>
+                              {a.score ?? 0}%
+                            </span>
+                          </td>
+                          <td style={{ direction: 'ltr', textAlign: 'right' }}>
+                            {a.completed_at ? new Date(a.completed_at).toLocaleDateString('ar-SA') : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
             ) : (
               <div className="empty-state card">
                 <span className="empty-icon">📋</span>
-                <p>لا توجد تقييمات بعد — <Link href="/assessment">ابدأ أول تقييم</Link></p>
+                <p>لا توجد تقييمات بعد</p>
               </div>
             )}
           </div>
