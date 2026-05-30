@@ -33,7 +33,6 @@ export default function LoginPage() {
         <div className="auth-logo">
           <span className="logo-icon">📚</span>
           <h1>أكاديمية عارم</h1>
-          <p>نظام التقييم الذكي</p>
         </div>
         <h2 className="auth-title">تسجيل الدخول</h2>
         {error && <div className="alert alert-error">{error}</div>}
