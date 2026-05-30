@@ -482,7 +482,10 @@ body {
   .nav-hamburger { display: block; }
   .auth-card { padding: 28px 20px; }
   .stat-card { padding: 18px; }
+  .navbar-social-desktop { display: none !important; }
+  .navbar-about-link { display: none !important; }
 }
 @media (min-width: 769px) {
   .nav-mobile-menu { display: none !important; }
+  .navbar-social-desktop { display: flex; }
 }
