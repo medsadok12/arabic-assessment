@@ -1,7 +1,9 @@
 /**
- * Sequential alphabetical code generation.
- * Produces: TA → TB → ... → TZ → TAA → TAB → ...
+ * Sequential + random code generation.
+ * Format: {prefix}{seqLetters}-{random6}  e.g. TA-K8M3NP, TB-J2X5R7
  */
+
+const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars (0/O, 1/I/L)
 
 function nextSuffix(suffix) {
   const chars = suffix.split('').map(c => c.charCodeAt(0) - 65);
@@ -15,24 +17,33 @@ function nextSuffix(suffix) {
   return chars.map(c => String.fromCharCode(65 + c)).join('');
 }
 
+function randomPart(len = 6) {
+  let out = '';
+  for (let i = 0; i < len; i++) out += CHARS[Math.floor(Math.random() * CHARS.length)];
+  return out;
+}
+
 /**
- * @param {string} prefix  - e.g. 'T' for teacher codes, 'S' for student/assessment
- * @param {Array}  existing - array of code strings OR objects with .code property
- * @returns {string} next code e.g. 'TC' if 'TB' was the last
+ * @param {string} prefix   - 'T' for teachers, 'S' for students/assessment
+ * @param {Array}  existing - array of code strings or objects with .code
+ * @returns {string}  e.g. 'TC-K8M3NP'
  */
 export function nextSequentialCode(prefix, existing) {
   const codes = existing.map(c => (typeof c === 'string' ? c : c.code ?? '').toUpperCase());
 
+  // Extract only the sequential letters part (before '-' if present)
   const suffixes = codes
     .filter(c => c.startsWith(prefix))
-    .map(c => c.slice(prefix.length))
+    .map(c => c.slice(prefix.length).split('-')[0])
     .filter(s => s.length > 0 && /^[A-Z]+$/.test(s));
 
-  if (!suffixes.length) return prefix + 'A';
+  let seqSuffix = 'A';
+  if (suffixes.length) {
+    const maxSuffix = suffixes.reduce((max, s) =>
+      s.length > max.length || (s.length === max.length && s > max) ? s : max
+    );
+    seqSuffix = nextSuffix(maxSuffix);
+  }
 
-  const maxSuffix = suffixes.reduce((max, s) =>
-    s.length > max.length || (s.length === max.length && s > max) ? s : max
-  );
-
-  return prefix + nextSuffix(maxSuffix);
+  return `${prefix}${seqSuffix}-${randomPart(6)}`;
 }
