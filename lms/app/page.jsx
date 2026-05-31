@@ -6,8 +6,8 @@ import { Target, FileBarChart, Globe, Smartphone, Lock, Zap, Play, UserPlus, Log
 function PromoVideoSection() {
   const videoUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/promo.mp4`;
   return (
-    <section id="promo-video" style={{ background: '#f8faff', padding: '56px 16px' }}>
-      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+    <section id="promo-video" style={{ background: '#f8faff', padding: '48px 16px' }}>
+      <div style={{ maxWidth: 440, margin: '0 auto' }}>
         <h2 style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.55rem', color: 'var(--primary)', marginBottom: 6 }}>
           شاهد المنصة في دقيقتين
         </h2>
