@@ -3,6 +3,7 @@ import { createClient } from '../../lib/supabase-server';
 import Navbar from '../../components/Navbar';
 import TeacherCodes from '../../components/TeacherCodes';
 import StudentCodes from '../../components/StudentCodes';
+import GroupsManager from '../../components/GroupsManager';
 
 export default async function AdminPage() {
   const supabase = createClient();
@@ -58,6 +59,9 @@ export default async function AdminPage() {
 
           {/* Student Codes */}
           <StudentCodes />
+
+          {/* Groups Manager */}
+          <GroupsManager />
 
           {/* Assessments Table */}
           <div className="dash-section-title">سجل التقييمات</div>
