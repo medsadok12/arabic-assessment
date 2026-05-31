@@ -11,6 +11,7 @@ export default function StudentCodes() {
   const [err,        setErr]        = useState('');
   const [deleting,   setDeleting]   = useState(new Set());
   const [copiedId,   setCopiedId]   = useState(null);
+  const [hideUsed,   setHideUsed]   = useState(false);
 
   function handleCopy(code, id) {
     navigator.clipboard.writeText(code);
@@ -61,8 +62,9 @@ export default function StudentCodes() {
     setDeleting(prev => { const s = new Set(prev); s.delete(id); return s; });
   }
 
-  const available = codes.filter(c => !c.is_used).length;
-  const used      = codes.filter(c =>  c.is_used).length;
+  const available    = codes.filter(c => !c.is_used).length;
+  const used         = codes.filter(c =>  c.is_used).length;
+  const visibleCodes = hideUsed ? codes.filter(c => !c.is_used) : codes;
 
   return (
     <div className="dash-section">
@@ -71,6 +73,13 @@ export default function StudentCodes() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <button className="btn btn-primary" onClick={handleGenerate} disabled={generating}>
           {generating ? <span className="spinner" /> : '➕'} توليد كود طالب جديد
+        </button>
+        <button
+          className="btn"
+          onClick={() => setHideUsed(v => !v)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.85rem' }}
+        >
+          {hideUsed ? '👁 عرض الكل' : '🙈 إخفاء المستعملة'}
         </button>
         <div style={{ display: 'flex', gap: 8 }}>
           <span className="badge badge-green">● متاح: {available}</span>
@@ -104,10 +113,10 @@ export default function StudentCodes() {
         <div style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>
           <span className="spinner" style={{ display: 'inline-block' }} />
         </div>
-      ) : codes.length === 0 ? (
+      ) : visibleCodes.length === 0 ? (
         <div className="empty-state card">
           <span className="empty-icon">🔑</span>
-          <p>لا توجد أكواد — اضغط "توليد كود طالب جديد"</p>
+          <p>{codes.length === 0 ? 'لا توجد أكواد — اضغط "توليد كود طالب جديد"' : 'لا توجد أكواد متاحة — جميع الأكواد مستعملة'}</p>
         </div>
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -122,7 +131,7 @@ export default function StudentCodes() {
               </tr>
             </thead>
             <tbody>
-              {codes.map(c => (
+              {visibleCodes.map(c => (
                 <tr key={c.id}>
                   <td style={{ fontFamily: 'monospace', fontWeight: 700, letterSpacing: 2, fontSize: '.95rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

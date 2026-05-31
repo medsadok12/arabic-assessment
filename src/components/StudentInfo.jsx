@@ -3,14 +3,22 @@ import { useState } from 'react';
 const LMS_URL = 'https://aarem-lms.vercel.app';
 
 export default function StudentInfo({ onStart }) {
-  const [form,       setForm]       = useState({ name: '', age: '', email: '', type: '', code: '' });
-  const [error,      setError]      = useState('');
-  const [validating, setValidating] = useState(false);
+  const [form,           setForm]           = useState({ name: '', age: '', email: '', type: '', code: '' });
+  const [error,          setError]          = useState('');
+  const [validating,     setValidating]     = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockedUntil,    setLockedUntil]    = useState(null);
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
-  const setCode = (e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }));
+  const setCode = (e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase().replace(/\s/g, '') }));
 
   async function handleStart() {
+    if (lockedUntil && Date.now() < lockedUntil) {
+      const remaining = Math.ceil((lockedUntil - Date.now()) / 1000);
+      setError(`لقد تجاوزت عدد المحاولات المسموحة. يرجى الانتظار ${remaining} ثانية أو التواصل مع إدارة الأكاديمية.`);
+      return;
+    }
+
     const { name, age, email, type, code } = form;
 
     if (!name.trim() || !age || !email.trim() || !type || !code.trim()) {
@@ -26,7 +34,6 @@ export default function StudentInfo({ onStart }) {
       return;
     }
 
-    // Validate assessment code against admin-generated codes
     setValidating(true);
     setError('');
     try {
@@ -37,7 +44,15 @@ export default function StudentInfo({ onStart }) {
       });
       const data = await res.json();
       if (!data.valid) {
-        setError(data.error || 'عذراً، كود التقييم غير صحيح. يرجى مراجعة إدارة الأكاديمية.');
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
+        if (newAttempts >= 5) {
+          const lockTime = Date.now() + 120_000;
+          setLockedUntil(lockTime);
+          setError('لقد تجاوزت عدد المحاولات المسموحة (5 محاولات). يرجى الانتظار دقيقتين أو التواصل مع إدارة الأكاديمية.');
+        } else {
+          setError(`عذراً، كود التقييم غير صحيح. (المحاولة ${newAttempts}/5) يرجى مراجعة إدارة الأكاديمية.`);
+        }
         setValidating(false);
         return;
       }
@@ -111,10 +126,11 @@ export default function StudentInfo({ onStart }) {
 
       {error && <div className="error-msg">⚠️ {error}</div>}
 
-      <button className="btn-primary" onClick={handleStart} disabled={validating}
+      <button className="btn-primary" onClick={handleStart}
+        disabled={validating || (lockedUntil && Date.now() < lockedUntil)}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
         {validating && <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />}
-        {validating ? 'جارٍ التحقق من الكود...' : 'ابدأ رحلة التميز ←'}
+        {validating ? 'جارٍ التحقق من الكود...' : (lockedUntil && Date.now() < lockedUntil) ? '🔒 محظور مؤقتاً' : 'ابدأ رحلة التميز ←'}
       </button>
 
     </div>
