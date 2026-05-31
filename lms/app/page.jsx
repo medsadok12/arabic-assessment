@@ -6,12 +6,12 @@ import { Target, FileBarChart, Globe, Smartphone, Lock, Zap, Play, UserPlus, Log
 function PromoVideoSection() {
   const videoUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/promo.mp4`;
   return (
-    <section id="promo-video" style={{ background: '#f8faff', padding: '64px 0' }}>
-      <div className="container" style={{ maxWidth: 860 }}>
-        <h2 style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.7rem', color: 'var(--primary)', marginBottom: 8 }}>
+    <section id="promo-video" style={{ background: '#f8faff', padding: '56px 16px' }}>
+      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+        <h2 style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.55rem', color: 'var(--primary)', marginBottom: 6 }}>
           شاهد المنصة في دقيقتين
         </h2>
-        <p style={{ textAlign: 'center', color: 'var(--muted)', marginBottom: 32 }}>
+        <p style={{ textAlign: 'center', color: 'var(--muted)', marginBottom: 24, fontSize: '.95rem' }}>
           تعرّف على كيفية عمل نظام التقييم الذكي لأكاديمية عارم
         </p>
         <video
@@ -19,8 +19,10 @@ function PromoVideoSection() {
           controls
           playsInline
           style={{
-            width: '100%', borderRadius: 18, display: 'block',
-            boxShadow: '0 12px 48px rgba(13,79,161,.15)',
+            width: '100%',
+            borderRadius: 14,
+            display: 'block',
+            boxShadow: '0 4px 20px rgba(13,79,161,.10)',
           }}
           onError={e => {
             const sec = document.getElementById('promo-video');
