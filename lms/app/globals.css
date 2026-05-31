@@ -107,6 +107,17 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 20px;
 }
+.card-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .card-grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 580px) {
+  .card-grid-3 { grid-template-columns: 1fr; }
+}
 
 /* ── Buttons ── */
 .btn {

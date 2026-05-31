@@ -32,7 +32,7 @@ export default function LandingPage() {
       <section className="features">
         <div className="container">
           <h2>لماذا أكاديمية عارم؟</h2>
-          <div className="card-grid">
+          <div className="card-grid-3">
             {features.map(f => (
               <div key={f.title} className="feature-card">
                 <span className="feature-icon">{f.icon}</span>
