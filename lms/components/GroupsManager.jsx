@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 export default function GroupsManager() {
   const [groups,        setGroups]        = useState([]);
   const [students,      setStudents]      = useState([]);
-  const [selectedGroup, setSelectedGroup] = useState(null); // null = كل الطلاب
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [newName,       setNewName]       = useState('');
   const [creating,      setCreating]      = useState(false);
   const [loading,       setLoading]       = useState(true);
@@ -13,13 +13,21 @@ export default function GroupsManager() {
 
   const [dbReady, setDbReady] = useState(true);
 
+  // Group edit state
+  const [editingId,   setEditingId]   = useState(null);
+  const [editingName, setEditingName] = useState('');
+  const [savingEdit,  setSavingEdit]  = useState(false);
+
+  // Delete loading states
+  const [deletingGroupId,   setDeletingGroupId]   = useState(null);
+  const [deletingStudentId, setDeletingStudentId] = useState(null);
+
   const loadAll = useCallback(async () => {
     const [gRes, sRes] = await Promise.all([
       fetch('/api/admin/groups/list',     { method: 'POST', cache: 'no-store' }),
       fetch('/api/admin/groups/students', { method: 'POST', cache: 'no-store' }),
     ]);
     const [gData, sData] = await Promise.all([gRes.json(), sRes.json()]);
-    // إذا أعاد الـ API خطأ يشير لعدم وجود الجدول
     if (gData.error?.includes('exist') || gData.error?.includes('relation') || gData.error?.includes('42P01')) {
       setDbReady(false);
       setLoading(false);
@@ -49,7 +57,6 @@ export default function GroupsManager() {
   }
 
   async function handleAssign(userId, groupId) {
-    // Optimistic update
     setStudents(prev =>
       prev.map(s => s.user_id === userId ? { ...s, group_id: groupId || null } : s)
     );
@@ -60,7 +67,55 @@ export default function GroupsManager() {
     });
   }
 
-  const groupName  = id => groups.find(g => g.id === id)?.name ?? '—';
+  async function handleSaveRename(id) {
+    if (!editingName.trim()) return;
+    setSavingEdit(true);
+    const res  = await fetch('/api/admin/groups/rename', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, name: editingName.trim() }),
+    });
+    const data = await res.json();
+    if (data.error) { setErr(data.error); }
+    else {
+      setGroups(prev => prev.map(g => g.id === id ? { ...g, name: editingName.trim() } : g));
+      setEditingId(null);
+    }
+    setSavingEdit(false);
+  }
+
+  async function handleDeleteGroup(id, name) {
+    if (!window.confirm(`هل أنت متأكد من حذف مجموعة "${name}"؟\nسيتم إرجاع جميع الطلاب لحالة "غير معين".`)) return;
+    setDeletingGroupId(id);
+    const res  = await fetch('/api/admin/groups/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    if (data.error) setErr(data.error);
+    else {
+      if (selectedGroup === id) setSelectedGroup(null);
+      await loadAll();
+    }
+    setDeletingGroupId(null);
+  }
+
+  async function handleDeleteStudent(userId, name) {
+    if (!window.confirm(`هل أنت متأكد من حذف حساب الطالب "${name}" نهائياً؟\nسيتم حذف جميع بياناته وتقييماته ولا يمكن التراجع.`)) return;
+    setDeletingStudentId(userId);
+    const res  = await fetch('/api/admin/delete-student', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    const data = await res.json();
+    if (data.error) setErr(data.error);
+    else setStudents(prev => prev.filter(s => s.user_id !== userId));
+    setDeletingStudentId(null);
+  }
+
+  const groupName   = id => groups.find(g => g.id === id)?.name ?? '—';
   const memberCount = id => students.filter(s => s.group_id === id).length;
   const visible     = selectedGroup
     ? students.filter(s => s.group_id === selectedGroup)
@@ -131,7 +186,7 @@ ALTER TABLE student_group_assignments DISABLE ROW LEVEL SECURITY;`}</pre>
 
       {err && <div className="alert alert-error" style={{ marginBottom: 12 }}>{err}</div>}
 
-      {/* ── فلتر المجموعات ── */}
+      {/* ── فلتر المجموعات مع أزرار التعديل والحذف ── */}
       {groups.length > 0 && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
           <span style={{ fontSize: '.8rem', color: 'var(--muted)', marginLeft: 4 }}>عرض:</span>
@@ -146,19 +201,66 @@ ALTER TABLE student_group_assignments DISABLE ROW LEVEL SECURITY;`}</pre>
           >
             كل الطلاب ({students.length})
           </button>
+
           {groups.map(g => (
-            <button
-              key={g.id}
-              onClick={() => setSelectedGroup(selectedGroup === g.id ? null : g.id)}
-              style={{
-                padding: '4px 14px', borderRadius: 20, fontSize: '.82rem', fontWeight: 600,
-                cursor: 'pointer', border: 'none',
-                background: selectedGroup === g.id ? '#27ae60' : '#eee',
-                color:      selectedGroup === g.id ? '#fff'    : '#555',
-              }}
-            >
-              📁 {g.name} ({memberCount(g.id)})
-            </button>
+            <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {editingId === g.id ? (
+                <>
+                  <input
+                    className="form-input"
+                    style={{ padding: '3px 10px', fontSize: '.82rem', minWidth: 120, height: 30 }}
+                    value={editingName}
+                    onChange={e => setEditingName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveRename(g.id); if (e.key === 'Escape') setEditingId(null); }}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => handleSaveRename(g.id)}
+                    disabled={savingEdit}
+                    title="حفظ"
+                    style={{ background: '#27ae60', color: '#fff', border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: '.8rem' }}
+                  >
+                    {savingEdit ? <span className="spinner" style={{ width: 12, height: 12 }} /> : '✓'}
+                  </button>
+                  <button
+                    onClick={() => setEditingId(null)}
+                    title="إلغاء"
+                    style={{ background: '#eee', border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: '.8rem' }}
+                  >
+                    ✕
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setSelectedGroup(selectedGroup === g.id ? null : g.id)}
+                    style={{
+                      padding: '4px 14px', borderRadius: 20, fontSize: '.82rem', fontWeight: 600,
+                      cursor: 'pointer', border: 'none',
+                      background: selectedGroup === g.id ? '#27ae60' : '#eee',
+                      color:      selectedGroup === g.id ? '#fff'    : '#555',
+                    }}
+                  >
+                    📁 {g.name} ({memberCount(g.id)})
+                  </button>
+                  <button
+                    onClick={() => { setEditingId(g.id); setEditingName(g.name); setErr(''); }}
+                    title="تعديل الاسم"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '.9rem', padding: '2px 4px', lineHeight: 1 }}
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => handleDeleteGroup(g.id, g.name)}
+                    disabled={deletingGroupId === g.id}
+                    title="حذف المجموعة"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '.9rem', padding: '2px 4px', lineHeight: 1, opacity: deletingGroupId === g.id ? 0.4 : 1 }}
+                  >
+                    {deletingGroupId === g.id ? <span className="spinner" style={{ width: 12, height: 12 }} /> : '🗑️'}
+                  </button>
+                </>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -181,6 +283,7 @@ ALTER TABLE student_group_assignments DISABLE ROW LEVEL SECURITY;`}</pre>
                 <th>اسم الطالب</th>
                 <th>المجموعة الحالية</th>
                 <th>تعيين / تغيير المجموعة</th>
+                <th>الإجراءات</th>
               </tr>
             </thead>
             <tbody>
@@ -205,6 +308,21 @@ ALTER TABLE student_group_assignments DISABLE ROW LEVEL SECURITY;`}</pre>
                         <option key={g.id} value={g.id}>{g.name}</option>
                       ))}
                     </select>
+                  </td>
+                  <td>
+                    <button
+                      onClick={() => handleDeleteStudent(s.user_id, s.name)}
+                      disabled={deletingStudentId === s.user_id}
+                      title="حذف حساب الطالب نهائياً"
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: '1.1rem', padding: '2px 6px', borderRadius: 6,
+                        opacity: deletingStudentId === s.user_id ? 0.4 : 1,
+                        transition: 'opacity .2s',
+                      }}
+                    >
+                      {deletingStudentId === s.user_id ? <span className="spinner" style={{ width: 14, height: 14 }} /> : '🗑️'}
+                    </button>
                   </td>
                 </tr>
               ))}

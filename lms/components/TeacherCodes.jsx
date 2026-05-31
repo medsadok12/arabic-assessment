@@ -8,6 +8,7 @@ export default function TeacherCodes() {
   const [generating, setGenerating] = useState(false);
   const [newCode,    setNewCode]    = useState('');
   const [err,        setErr]        = useState('');
+  const [deleting,   setDeleting]   = useState(new Set());
 
   const loadCodes = useCallback(async () => {
     const res  = await fetch('/api/teacher-codes', { method: 'POST', cache: 'no-store' });
@@ -32,10 +33,24 @@ export default function TeacherCodes() {
       } else {
         setErr(data.error ?? 'حدث خطأ، حاول مجدداً');
       }
-    } catch (e) {
+    } catch {
       setErr('فشل الاتصال بالخادم — حاول مجدداً');
     }
     setGenerating(false);
+  }
+
+  async function handleDelete(id, code) {
+    if (!window.confirm(`هل أنت متأكد من حذف الكود "${code}"؟\nلا يمكن التراجع عن هذا الإجراء.`)) return;
+    setDeleting(prev => new Set(prev).add(id));
+    const res  = await fetch('/api/admin/delete-teacher-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    if (data.error) setErr(data.error);
+    else setCodes(prev => prev.filter(c => c.id !== id));
+    setDeleting(prev => { const s = new Set(prev); s.delete(id); return s; });
   }
 
   const available = codes.filter(c => !c.is_used).length;
@@ -45,23 +60,16 @@ export default function TeacherCodes() {
     <div className="dash-section">
       <div className="dash-section-title">🔑 أكواد تفعيل المعلمين</div>
 
-      {/* ── شريط الإجراءات ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <button
-          className="btn btn-primary"
-          onClick={handleGenerate}
-          disabled={generating}
-        >
+        <button className="btn btn-primary" onClick={handleGenerate} disabled={generating}>
           {generating ? <span className="spinner" /> : '➕'} توليد كود جديد
         </button>
-
         <div style={{ display: 'flex', gap: 8 }}>
           <span className="badge badge-green">● متاح: {available}</span>
           <span className="badge badge-orange">✓ مستخدم: {used}</span>
         </div>
       </div>
 
-      {/* ── الكود الجديد ── */}
       {newCode && (
         <div style={{
           background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: 12,
@@ -78,11 +86,8 @@ export default function TeacherCodes() {
         </div>
       )}
 
-      {err && (
-        <div className="alert alert-error" style={{ marginBottom: 12 }}>{err}</div>
-      )}
+      {err && <div className="alert alert-error" style={{ marginBottom: 12 }}>{err}</div>}
 
-      {/* ── الجدول ── */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>
           <span className="spinner" style={{ display: 'inline-block' }} />
@@ -101,6 +106,7 @@ export default function TeacherCodes() {
                 <th>الحالة</th>
                 <th>تاريخ الإنشاء</th>
                 <th>تاريخ الاستخدام</th>
+                <th>الإجراءات</th>
               </tr>
             </thead>
             <tbody>
@@ -119,6 +125,21 @@ export default function TeacherCodes() {
                   </td>
                   <td style={{ fontSize: '.85rem', color: 'var(--muted)', direction: 'ltr', textAlign: 'right' }}>
                     {c.used_at ? new Date(c.used_at).toLocaleDateString('ar-SA') : '—'}
+                  </td>
+                  <td>
+                    <button
+                      onClick={() => handleDelete(c.id, c.code)}
+                      disabled={deleting.has(c.id)}
+                      title="حذف الكود"
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: '1.1rem', padding: '2px 6px', borderRadius: 6,
+                        opacity: deleting.has(c.id) ? 0.4 : 1,
+                        transition: 'opacity .2s',
+                      }}
+                    >
+                      {deleting.has(c.id) ? <span className="spinner" style={{ width: 14, height: 14 }} /> : '🗑️'}
+                    </button>
                   </td>
                 </tr>
               ))}

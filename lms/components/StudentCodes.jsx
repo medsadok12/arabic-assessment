@@ -8,6 +8,7 @@ export default function StudentCodes() {
   const [generating, setGenerating] = useState(false);
   const [newCode,    setNewCode]    = useState('');
   const [err,        setErr]        = useState('');
+  const [deleting,   setDeleting]   = useState(new Set());
 
   const loadCodes = useCallback(async () => {
     const res  = await fetch('/api/student-codes', { method: 'POST', cache: 'no-store' });
@@ -38,6 +39,20 @@ export default function StudentCodes() {
     setGenerating(false);
   }
 
+  async function handleDelete(id, code) {
+    if (!window.confirm(`هل أنت متأكد من حذف الكود "${code}"؟\nلا يمكن التراجع عن هذا الإجراء.`)) return;
+    setDeleting(prev => new Set(prev).add(id));
+    const res  = await fetch('/api/admin/delete-student-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    if (data.error) setErr(data.error);
+    else setCodes(prev => prev.filter(c => c.id !== id));
+    setDeleting(prev => { const s = new Set(prev); s.delete(id); return s; });
+  }
+
   const available = codes.filter(c => !c.is_used).length;
   const used      = codes.filter(c =>  c.is_used).length;
 
@@ -46,14 +61,9 @@ export default function StudentCodes() {
       <div className="dash-section-title">🔑 أكواد تفعيل الطلاب</div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <button
-          className="btn btn-primary"
-          onClick={handleGenerate}
-          disabled={generating}
-        >
+        <button className="btn btn-primary" onClick={handleGenerate} disabled={generating}>
           {generating ? <span className="spinner" /> : '➕'} توليد كود طالب جديد
         </button>
-
         <div style={{ display: 'flex', gap: 8 }}>
           <span className="badge badge-green">● متاح: {available}</span>
           <span className="badge badge-orange">✓ مستخدم: {used}</span>
@@ -76,9 +86,7 @@ export default function StudentCodes() {
         </div>
       )}
 
-      {err && (
-        <div className="alert alert-error" style={{ marginBottom: 12 }}>{err}</div>
-      )}
+      {err && <div className="alert alert-error" style={{ marginBottom: 12 }}>{err}</div>}
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>
@@ -98,6 +106,7 @@ export default function StudentCodes() {
                 <th>الحالة</th>
                 <th>تاريخ الإنشاء</th>
                 <th>تاريخ الاستخدام</th>
+                <th>الإجراءات</th>
               </tr>
             </thead>
             <tbody>
@@ -116,6 +125,21 @@ export default function StudentCodes() {
                   </td>
                   <td style={{ fontSize: '.85rem', color: 'var(--muted)', direction: 'ltr', textAlign: 'right' }}>
                     {c.used_at ? new Date(c.used_at).toLocaleDateString('ar-SA') : '—'}
+                  </td>
+                  <td>
+                    <button
+                      onClick={() => handleDelete(c.id, c.code)}
+                      disabled={deleting.has(c.id)}
+                      title="حذف الكود"
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: '1.1rem', padding: '2px 6px', borderRadius: 6,
+                        opacity: deleting.has(c.id) ? 0.4 : 1,
+                        transition: 'opacity .2s',
+                      }}
+                    >
+                      {deleting.has(c.id) ? <span className="spinner" style={{ width: 14, height: 14 }} /> : '🗑️'}
+                    </button>
                   </td>
                 </tr>
               ))}
