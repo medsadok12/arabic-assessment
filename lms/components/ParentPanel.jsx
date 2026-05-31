@@ -55,7 +55,7 @@ export default function ParentPanel({ assessments }) {
         <div className="dash-section-title">👨‍👩‍👧 متابعة ولي الأمر</div>
         <div className="empty-state card">
           <span className="empty-icon">📊</span>
-          <p>سيظهر تقرير ولي الأمر بعد إجراء أول تقييم</p>
+          <p>سيظهر تقرير ولي الأمر بعد إجراء أول تقييم.</p>
         </div>
       </div>
     );

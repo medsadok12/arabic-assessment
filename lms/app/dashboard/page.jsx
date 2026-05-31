@@ -19,6 +19,9 @@ export default async function DashboardPage() {
   const role      = user.user_metadata?.role ?? 'student';
   const isStudent = role === 'student';
 
+  // المدير لا يحتاج لوحة الطالب — أعد توجيهه فوراً
+  if (role === 'admin') redirect('/admin');
+
   const avgScore = assessments?.length
     ? Math.round(assessments.reduce((s, a) => s + (a.score ?? 0), 0) / assessments.length)
     : null;
@@ -47,6 +50,15 @@ export default async function DashboardPage() {
       <main className="page-wrap">
         <div className="container">
           <h1 className="dash-welcome">مرحباً، {displayName} 👋</h1>
+
+          {/* زر لوحة الإدارة — للمعلمين فقط */}
+          {role === 'teacher' && (
+            <div style={{ marginBottom: 24 }}>
+              <Link href="/admin" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                ⚙️ الانتقال للوحة الإدارة
+              </Link>
+            </div>
+          )}
 
           {/* Stats */}
           <div className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
