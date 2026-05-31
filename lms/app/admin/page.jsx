@@ -5,6 +5,7 @@ import TeacherCodes from '../../components/TeacherCodes';
 import StudentCodes from '../../components/StudentCodes';
 import GroupsManager from '../../components/GroupsManager';
 import PromoVideoAdmin from '../../components/PromoVideoAdmin';
+import AssessmentCodes from '../../components/AssessmentCodes';
 
 export default async function AdminPage() {
   const supabase = createClient();
@@ -54,6 +55,9 @@ export default async function AdminPage() {
               </div>
             ))}
           </div>
+
+          {/* Assessment Codes */}
+          <AssessmentCodes />
 
           {/* Teacher Codes */}
           <TeacherCodes />
