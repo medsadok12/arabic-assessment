@@ -1,18 +1,7 @@
-import { randomBytes } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { nextSequentialCode } from '../../../lib/sequential-codes';
 
 export const dynamic = 'force-dynamic';
-
-const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
-function randomCode() {
-  const bytes = randomBytes(8);
-  const part  = Array.from(bytes)
-    .map(b => CHARS[b % CHARS.length])
-    .join('')
-    .slice(0, 8);
-  return `STUD-${part}`;
-}
 
 function getClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -23,8 +12,15 @@ function getClient() {
 export async function POST() {
   const supabase = getClient();
 
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const code = randomCode();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: existing, error: fetchErr } = await supabase
+      .from('student_invitation_codes')
+      .select('code');
+
+    if (fetchErr) return Response.json({ error: fetchErr.message }, { status: 500 });
+
+    const code = nextSequentialCode('S', existing ?? []);
+
     const { data, error } = await supabase
       .from('student_invitation_codes')
       .insert({ code })
@@ -32,23 +28,10 @@ export async function POST() {
       .single();
 
     if (!error && data?.code) return Response.json({ code: data.code });
-
-    if (error) {
-      const isDuplicate =
-        error.message.includes('unique') ||
-        error.message.includes('duplicate') ||
-        error.code === '23505';
-      if (!isDuplicate) {
-        console.error('[generate-student-code] Supabase error:', error);
-        return Response.json({ error: error.message }, { status: 500 });
-      }
-    } else {
-      return Response.json(
-        { error: 'الجدول يرفض الحفظ — شغّل SQL الإعداد في Supabase أولاً' },
-        { status: 500 },
-      );
-    }
+    if (error?.code === '23505') continue;
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'الجدول يرفض الحفظ — تحقق من إعداد Supabase' }, { status: 500 });
   }
 
-  return Response.json({ error: 'فشل توليد كود فريد، حاول مجدداً' }, { status: 500 });
+  return Response.json({ error: 'فشل توليد الكود، أعد المحاولة' }, { status: 500 });
 }

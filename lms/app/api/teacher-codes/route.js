@@ -12,7 +12,7 @@ async function fetchCodes() {
   const supabase = getClient();
   const { data, error } = await supabase
     .from('teacher_invitation_codes')
-    .select('id, code, is_used, used_at, created_at')
+    .select('id, code, is_used, used_by_name, used_at, created_at')
     .order('created_at', { ascending: false });
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
@@ -24,8 +24,5 @@ async function fetchCodes() {
   });
 }
 
-// POST: never cached by Vercel CDN (primary)
 export async function POST() { return fetchCodes(); }
-
-// GET: kept for backwards compatibility
-export async function GET() { return fetchCodes(); }
+export async function GET()  { return fetchCodes(); }

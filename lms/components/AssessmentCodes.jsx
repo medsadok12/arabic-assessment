@@ -159,7 +159,9 @@ ALTER TABLE assessment_codes DISABLE ROW LEVEL SECURITY;`}</pre>
           <table className="data-table">
             <thead>
               <tr>
+                <th style={{ width: 40, textAlign: 'center' }}>#</th>
                 <th>الكود</th>
+                <th>اسم المستخدم</th>
                 <th>الحالة</th>
                 <th>تاريخ الإنشاء</th>
                 <th>تاريخ الاستخدام</th>
@@ -167,8 +169,9 @@ ALTER TABLE assessment_codes DISABLE ROW LEVEL SECURITY;`}</pre>
               </tr>
             </thead>
             <tbody>
-              {visibleCodes.map(c => (
+              {visibleCodes.map((c, i) => (
                 <tr key={c.id}>
+                  <td style={{ textAlign: 'center', color: 'var(--muted)', fontSize: '.82rem', fontWeight: 600 }}>{i + 1}</td>
                   <td style={{ fontFamily: 'monospace', fontWeight: 700, letterSpacing: 2, fontSize: '.95rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span>{c.code}</span>
@@ -177,6 +180,9 @@ ALTER TABLE assessment_codes DISABLE ROW LEVEL SECURITY;`}</pre>
                       </button>
                       {copiedId === c.id && <span style={{ fontSize: '.72rem', color: '#27ae60', fontWeight: 600, whiteSpace: 'nowrap' }}>تم النسخ!</span>}
                     </div>
+                  </td>
+                  <td style={{ fontSize: '.88rem', color: c.used_by_name ? 'var(--text)' : 'var(--muted)', fontWeight: c.used_by_name ? 600 : 400 }}>
+                    {c.used_by_name || '—'}
                   </td>
                   <td>
                     <span className={`badge ${c.is_used ? 'badge-orange' : 'badge-green'}`}>
