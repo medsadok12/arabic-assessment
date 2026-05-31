@@ -56,14 +56,14 @@ export default async function AdminPage() {
             ))}
           </div>
 
-          {/* Assessment Codes */}
-          <AssessmentCodes />
-
           {/* Teacher Codes */}
           <TeacherCodes />
 
           {/* Student Codes */}
           <StudentCodes />
+
+          {/* Assessment Codes */}
+          <AssessmentCodes />
 
           {/* Groups Manager */}
           <GroupsManager />
