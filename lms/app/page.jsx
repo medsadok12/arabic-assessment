@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
-import { Target, FileBarChart, Globe, Smartphone, Lock, Zap, Play, UserPlus } from 'lucide-react';
+import { Target, FileBarChart, Globe, Smartphone, Lock, Zap, Play, UserPlus, LogIn } from 'lucide-react';
 
 export default function LandingPage() {
   const features = [
@@ -85,12 +85,12 @@ export default function LandingPage() {
         <div className="container">
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 14 }}>جاهز للبدء؟</h2>
           <p style={{ opacity: .85, marginBottom: 28 }}>انضم إلى المعلمين الذين يستخدمون عارم لتطوير طلابهم</p>
-          <Link href="/auth/register/teacher" className="btn btn-accent btn-lg">
-            سجّل حسابك كمعلم من هنا 🧑‍🏫
-          </Link>
-          <div style={{ marginTop: 20 }}>
-            <Link href="/auth/login" style={{ color: 'rgba(255,255,255,.65)', fontSize: '.92rem', textDecoration: 'underline', textUnderlineOffset: 3 }}>
-              لديك حساب بالفعل؟ دخول ←
+          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/auth/register/teacher" className="btn btn-accent btn-lg" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <UserPlus size={18} strokeWidth={2} /> تسجيل حساب معلم
+            </Link>
+            <Link href="/auth/login" className="btn btn-lg" style={{ background: 'rgba(255,255,255,.15)', color: '#fff', border: '2px solid rgba(255,255,255,.5)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <LogIn size={18} strokeWidth={2} /> دخول المعلم
             </Link>
           </div>
         </div>
