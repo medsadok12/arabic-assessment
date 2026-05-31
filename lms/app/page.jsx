@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
-import { Target, FileBarChart, Globe, Smartphone, Lock, Zap } from 'lucide-react';
+import { Target, FileBarChart, Globe, Smartphone, Lock, Zap, Play, UserPlus } from 'lucide-react';
 
 export default function LandingPage() {
   const features = [
@@ -20,11 +20,15 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="hero">
         <div className="container">
-          <h1>نظام التقييم الذكي<br />لأكاديمية عارم 🌟</h1>
-          <p>منصة متكاملة لتشخيص مستوى الطلاب في اللغة العربية وتتبع تقدمهم الدراسي</p>
+          <h1>نظام التقييم الذكي<br />لأكاديمية عارم</h1>
+          <p>منصتكم التعليمية المتكاملة أونلاين لتقييم وتطوير مهارات الطلاب في اللغة العربية بأساليب ذكية وتفاعلية.</p>
           <div className="hero-btns">
-            <Link href="/assessment" className="btn btn-accent btn-lg">🎯 ابدأ التقييم التشخيصي</Link>
-            <Link href="/auth/register" className="btn btn-outline btn-lg" style={{ borderColor: 'rgba(255,255,255,.6)', color: '#fff' }}>إنشاء حساب مجاناً ←</Link>
+            <Link href="/assessment" className="btn btn-accent btn-lg" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <Play size={18} strokeWidth={2} /> ابدأ التقييم التشخيصي
+            </Link>
+            <Link href="/auth/register" className="btn btn-outline btn-lg" style={{ borderColor: 'rgba(255,255,255,.6)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <UserPlus size={18} strokeWidth={2} /> إنشاء حساب مجاناً
+            </Link>
           </div>
         </div>
       </section>
