@@ -3,6 +3,35 @@ import Link from 'next/link';
 import Navbar from '../components/Navbar';
 import { Target, FileBarChart, Globe, Smartphone, Lock, Zap, Play, UserPlus, LogIn } from 'lucide-react';
 
+function PromoVideoSection() {
+  const videoUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/promo.mp4`;
+  return (
+    <section id="promo-video" style={{ background: '#f8faff', padding: '64px 0' }}>
+      <div className="container" style={{ maxWidth: 860 }}>
+        <h2 style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.7rem', color: 'var(--primary)', marginBottom: 8 }}>
+          شاهد المنصة في دقيقتين
+        </h2>
+        <p style={{ textAlign: 'center', color: 'var(--muted)', marginBottom: 32 }}>
+          تعرّف على كيفية عمل نظام التقييم الذكي لأكاديمية عارم
+        </p>
+        <video
+          src={videoUrl}
+          controls
+          playsInline
+          style={{
+            width: '100%', borderRadius: 18, display: 'block',
+            boxShadow: '0 12px 48px rgba(13,79,161,.15)',
+          }}
+          onError={e => {
+            const sec = document.getElementById('promo-video');
+            if (sec) sec.style.display = 'none';
+          }}
+        />
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
   const features = [
     { icon: Target,        title: 'تقييم تشخيصي ذكي',         desc: 'قياس مستوى الطالب في القراءة والكتابة والاستماع والتحدث عبر 10 تدريبات تشخيصية متنوعة.' },
@@ -32,6 +61,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Promo Video — hidden automatically if no video uploaded yet */}
+      <PromoVideoSection />
 
       {/* Features */}
       <section className="features">
