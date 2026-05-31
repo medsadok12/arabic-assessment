@@ -8,6 +8,7 @@ export default function StudentInfo({ onStart }) {
   const [validating, setValidating] = useState(false);
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const setCode = (e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }));
 
   async function handleStart() {
     const { name, age, email, type, code } = form;
@@ -103,15 +104,17 @@ export default function StudentInfo({ onStart }) {
           type="text"
           placeholder="أدخل كود التقييم الممنوح لك من الإدارة"
           value={form.code}
-          onChange={set('code')}
-          style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}
+          onChange={setCode}
+          style={{ letterSpacing: '0.08em', fontFamily: 'monospace', fontSize: '1rem' }}
         />
       </div>
 
       {error && <div className="error-msg">⚠️ {error}</div>}
 
-      <button className="btn-primary" onClick={handleStart} disabled={validating}>
-        {validating ? '⏳ جارٍ التحقق من الكود...' : 'ابدأ رحلة التميز ←'}
+      <button className="btn-primary" onClick={handleStart} disabled={validating}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+        {validating && <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />}
+        {validating ? 'جارٍ التحقق من الكود...' : 'ابدأ رحلة التميز ←'}
       </button>
 
     </div>
