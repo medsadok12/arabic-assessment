@@ -11,12 +11,20 @@ export default function GroupsManager() {
   const [loading,       setLoading]       = useState(true);
   const [err,           setErr]           = useState('');
 
+  const [dbReady, setDbReady] = useState(true);
+
   const loadAll = useCallback(async () => {
     const [gRes, sRes] = await Promise.all([
       fetch('/api/admin/groups/list',     { method: 'POST', cache: 'no-store' }),
       fetch('/api/admin/groups/students', { method: 'POST', cache: 'no-store' }),
     ]);
     const [gData, sData] = await Promise.all([gRes.json(), sRes.json()]);
+    // إذا أعاد الـ API خطأ يشير لعدم وجود الجدول
+    if (gData.error?.includes('exist') || gData.error?.includes('relation') || gData.error?.includes('42P01')) {
+      setDbReady(false);
+      setLoading(false);
+      return;
+    }
     setGroups(gData.groups   ?? []);
     setStudents(sData.students ?? []);
     setLoading(false);
@@ -57,6 +65,50 @@ export default function GroupsManager() {
   const visible     = selectedGroup
     ? students.filter(s => s.group_id === selectedGroup)
     : students;
+
+  if (!dbReady) return (
+    <div className="dash-section">
+      <div className="dash-section-title">📁 إدارة المجموعات</div>
+      <div className="card" style={{ padding: 24 }}>
+        <p style={{ marginBottom: 16, fontWeight: 600, color: 'var(--danger, #e74c3c)' }}>
+          ⚠️ جداول المجموعات غير موجودة في قاعدة البيانات.
+        </p>
+        <p style={{ marginBottom: 16, color: 'var(--muted)' }}>
+          شغّل الكود التالي مرة واحدة في Supabase SQL Editor:
+        </p>
+        <pre style={{
+          background: '#1e1e2e', color: '#cdd6f4', padding: '16px 20px',
+          borderRadius: 8, fontSize: '.82rem', overflowX: 'auto', lineHeight: 1.7,
+          marginBottom: 20, direction: 'ltr', textAlign: 'left',
+        }}>{`CREATE TABLE IF NOT EXISTS student_groups (
+  id         uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  name       text        NOT NULL UNIQUE,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE student_groups DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS student_group_assignments (
+  user_id    uuid        REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  group_id   uuid        REFERENCES student_groups(id) ON DELETE SET NULL,
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE student_group_assignments DISABLE ROW LEVEL SECURITY;`}</pre>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <a
+            href="https://supabase.com/dashboard/project/uqspozzkzyytwwidojxv/sql/new"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-primary"
+          >
+            🔗 افتح Supabase SQL Editor
+          </a>
+          <button className="btn" onClick={() => { setDbReady(true); setLoading(true); loadAll(); }}>
+            🔄 تحقق مجدداً
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="dash-section">
