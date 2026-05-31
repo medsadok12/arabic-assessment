@@ -1,15 +1,16 @@
 'use client';
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
+import { Target, FileBarChart, Globe, Smartphone, Lock, Zap } from 'lucide-react';
 
 export default function LandingPage() {
   const features = [
-    { icon: '🎯', title: 'تقييم تشخيصي ذكي', desc: 'قياس مستوى الطالب في القراءة والكتابة والاستماع والتحدث عبر 10 تدريبات تشخيصية متنوعة.' },
-    { icon: '📊', title: 'تقارير تفصيلية', desc: 'تقارير PDF فورية لكل طالب تُرسل تلقائياً إلى ولي الأمر أو المعلم عبر البريد الإلكتروني.' },
-    { icon: '🌍', title: 'للناطقين وغير الناطقين', desc: 'مناهج مُصمَّمة لفئتين: الناطقون باللغة العربية وغير الناطقين بها.' },
-    { icon: '📱', title: 'يعمل على جميع الأجهزة', desc: 'واجهة متجاوبة تعمل على الحاسوب والجهاز اللوحي والهاتف الذكي.' },
-    { icon: '🔒', title: 'آمن وخاص', desc: 'بيانات الطلاب محمية بالكامل. كل معلم يرى طلابه فقط.' },
-    { icon: '⚡', title: 'سريع وسهل الاستخدام', desc: 'أدِرْ تقييمات متعددة في وقت واحد مع واجهة بسيطة وسهلة.' },
+    { icon: Target,        title: 'تقييم تشخيصي ذكي',         desc: 'قياس مستوى الطالب في القراءة والكتابة والاستماع والتحدث عبر 10 تدريبات تشخيصية متنوعة.' },
+    { icon: FileBarChart,  title: 'تقارير تفصيلية',             desc: 'تقارير تفصيلية فورية تُرسل تلقائياً لولي الأمر لمتابعة مستوى الطالب وتطوره أولاً بأول.' },
+    { icon: Globe,         title: 'للناطقين وغير الناطقين',     desc: 'مناهج مُصمَّمة لفئتين: الناطقون باللغة العربية وغير الناطقين بها.' },
+    { icon: Smartphone,    title: 'يعمل على جميع الأجهزة',      desc: 'واجهة متجاوبة تعمل على الحاسوب والجهاز اللوحي والهاتف الذكي.' },
+    { icon: Lock,          title: 'آمن وخاص',                   desc: 'بيانات الطلاب محمية بالكامل وسرية تامة، لضمان خصوصية وبيئة تعلم آمنة لكل طالب.' },
+    { icon: Zap,           title: 'سريع وسهل الاستخدام',        desc: 'أدِرْ تقييمات متعددة في وقت واحد مع واجهة بسيطة وسهلة.' },
   ];
 
   return (
@@ -35,7 +36,9 @@ export default function LandingPage() {
           <div className="card-grid-3">
             {features.map(f => (
               <div key={f.title} className="feature-card">
-                <span className="feature-icon">{f.icon}</span>
+                <span className="feature-icon">
+                  <f.icon size={36} strokeWidth={1.6} />
+                </span>
                 <h3>{f.title}</h3>
                 <p>{f.desc}</p>
               </div>

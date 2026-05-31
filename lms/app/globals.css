@@ -296,7 +296,7 @@ body {
   transition: transform .2s, box-shadow .2s;
 }
 .feature-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
-.feature-icon { font-size: 2.4rem; margin-bottom: 14px; display: block; }
+.feature-icon { font-size: 2.4rem; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; color: var(--primary); }
 .feature-card h3 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
 .feature-card p  { font-size: .9rem; color: var(--muted); line-height: 1.6; }
 
