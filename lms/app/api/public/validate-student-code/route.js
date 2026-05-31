@@ -31,9 +31,9 @@ export async function POST(request) {
 
   const supabase = getClient();
 
-  // Find code — must exist and not yet used
+  // Find code in assessment_codes table — must exist and not yet used
   const { data, error } = await supabase
-    .from('student_invitation_codes')
+    .from('assessment_codes')
     .select('id, is_used')
     .eq('code', code)
     .single();
@@ -54,7 +54,7 @@ export async function POST(request) {
 
   // Mark code as used
   await supabase
-    .from('student_invitation_codes')
+    .from('assessment_codes')
     .update({ is_used: true, used_at: new Date().toISOString() })
     .eq('id', data.id);
 
