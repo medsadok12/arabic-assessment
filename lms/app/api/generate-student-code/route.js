@@ -1,17 +1,39 @@
-import { randomBytes } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-function randomCode() {
-  const bytes = randomBytes(8);
-  const part  = Array.from(bytes)
-    .map(b => CHARS[b % CHARS.length])
-    .join('')
-    .slice(0, 8);
-  return `STUD-${part}`;
+function randomPart() {
+  let out = '';
+  for (let i = 0; i < 6; i++) out += CHARS[Math.floor(Math.random() * CHARS.length)];
+  return out;
+}
+
+function nextSuffix(suffix) {
+  const chars = suffix.split('').map(c => c.charCodeAt(0) - 65);
+  let carry = 1;
+  for (let i = chars.length - 1; i >= 0 && carry; i--) {
+    const val = chars[i] + carry;
+    if (val >= 26) { chars[i] = 0; } else { chars[i] = val; carry = 0; }
+  }
+  if (carry) chars.unshift(0);
+  return chars.map(c => String.fromCharCode(65 + c)).join('');
+}
+
+function buildNextCode(prefix, existingCodes) {
+  const suffixes = existingCodes
+    .map(c => c.toUpperCase())
+    .filter(c => c.startsWith(prefix))
+    .map(c => c.slice(prefix.length).split('-')[0])
+    .filter(s => s.length > 0 && /^[A-Z]+$/.test(s));
+
+  const seqSuffix = suffixes.length
+    ? nextSuffix(suffixes.reduce((max, s) =>
+        s.length > max.length || (s.length === max.length && s > max) ? s : max))
+    : 'A';
+
+  return `${prefix}${seqSuffix}-${randomPart()}`;
 }
 
 function getClient() {
@@ -23,32 +45,23 @@ function getClient() {
 export async function POST() {
   const supabase = getClient();
 
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const code = randomCode();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: existing, error: fetchErr } = await supabase
+      .from('student_invitation_codes').select('code');
+
+    if (fetchErr) return Response.json({ error: fetchErr.message }, { status: 500 });
+
+    const code = buildNextCode('S', (existing ?? []).map(r => r.code));
+
     const { data, error } = await supabase
       .from('student_invitation_codes')
-      .insert({ code })
-      .select('code')
-      .single();
+      .insert({ code }).select('code').single();
 
     if (!error && data?.code) return Response.json({ code: data.code });
-
-    if (error) {
-      const isDuplicate =
-        error.message.includes('unique') ||
-        error.message.includes('duplicate') ||
-        error.code === '23505';
-      if (!isDuplicate) {
-        console.error('[generate-student-code] Supabase error:', error);
-        return Response.json({ error: error.message }, { status: 500 });
-      }
-    } else {
-      return Response.json(
-        { error: 'الجدول يرفض الحفظ — شغّل SQL الإعداد في Supabase أولاً' },
-        { status: 500 },
-      );
-    }
+    if (error?.code === '23505') continue;
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'الجدول يرفض الحفظ — تحقق من إعداد Supabase' }, { status: 500 });
   }
 
-  return Response.json({ error: 'فشل توليد كود فريد، حاول مجدداً' }, { status: 500 });
+  return Response.json({ error: 'فشل توليد الكود، أعد المحاولة' }, { status: 500 });
 }
