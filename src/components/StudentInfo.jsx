@@ -1,14 +1,18 @@
 import { useState } from 'react';
 
+const LMS_URL = 'https://aarem-lms.vercel.app';
+
 export default function StudentInfo({ onStart }) {
-  const [form, setForm] = useState({ name: '', age: '', email: '', type: '' });
-  const [error, setError] = useState('');
+  const [form,       setForm]       = useState({ name: '', age: '', email: '', type: '', code: '' });
+  const [error,      setError]      = useState('');
+  const [validating, setValidating] = useState(false);
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
-  function handleStart() {
-    const { name, age, email, type } = form;
-    if (!name.trim() || !age || !email.trim() || !type) {
+  async function handleStart() {
+    const { name, age, email, type, code } = form;
+
+    if (!name.trim() || !age || !email.trim() || !type || !code.trim()) {
       setError('يرجى ملء جميع الحقول المطلوبة');
       return;
     }
@@ -20,7 +24,29 @@ export default function StudentInfo({ onStart }) {
       setError('يرجى إدخال بريد إلكتروني صحيح');
       return;
     }
+
+    // Validate assessment code against admin-generated codes
+    setValidating(true);
     setError('');
+    try {
+      const res  = await fetch(`${LMS_URL}/api/public/validate-student-code`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ code: code.trim() }),
+      });
+      const data = await res.json();
+      if (!data.valid) {
+        setError(data.error || 'عذراً، كود التقييم غير صحيح. يرجى مراجعة إدارة الأكاديمية.');
+        setValidating(false);
+        return;
+      }
+    } catch {
+      setError('تعذّر التحقق من الكود. تأكد من اتصالك بالإنترنت وأعد المحاولة.');
+      setValidating(false);
+      return;
+    }
+
+    setValidating(false);
     onStart({ name: name.trim(), age: +age, email: email.trim(), type });
   }
 
@@ -71,10 +97,21 @@ export default function StudentInfo({ onStart }) {
         </select>
       </div>
 
+      <div className="form-group">
+        <label>كود التقييم *</label>
+        <input
+          type="text"
+          placeholder="أدخل كود التقييم الممنوح لك من الإدارة"
+          value={form.code}
+          onChange={set('code')}
+          style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}
+        />
+      </div>
+
       {error && <div className="error-msg">⚠️ {error}</div>}
 
-      <button className="btn-primary" onClick={handleStart}>
-        ابدأ رحلة التميز ←
+      <button className="btn-primary" onClick={handleStart} disabled={validating}>
+        {validating ? '⏳ جارٍ التحقق من الكود...' : 'ابدأ رحلة التميز ←'}
       </button>
 
     </div>
