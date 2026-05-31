@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+import { nextSequentialCode } from '../../../../../lib/sequential-codes';
+
 export const dynamic = 'force-dynamic';
 
 function getClient() {
@@ -7,19 +9,18 @@ function getClient() {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
-function genCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = 'EVAL-';
-  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
-  return code;
-}
-
 export async function POST() {
   const supabase = getClient();
 
-  // Try up to 5 times to avoid rare collisions
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const code = genCode();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: existing, error: fetchErr } = await supabase
+      .from('assessment_codes')
+      .select('code');
+
+    if (fetchErr) return Response.json({ error: fetchErr.message }, { status: 500 });
+
+    const code = nextSequentialCode('S', existing ?? []);
+
     const { data, error } = await supabase
       .from('assessment_codes')
       .insert({ code })
@@ -27,9 +28,10 @@ export async function POST() {
       .single();
 
     if (!error && data) return Response.json({ code: data.code });
-    if (error && !(error.code === '23505')) {
-      return Response.json({ error: error.message }, { status: 500 });
-    }
+    if (error?.code === '23505') continue;
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'الجدول يرفض الحفظ — تحقق من إعداد Supabase' }, { status: 500 });
   }
+
   return Response.json({ error: 'فشل توليد الكود، أعد المحاولة' }, { status: 500 });
 }

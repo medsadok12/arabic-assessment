@@ -12,7 +12,7 @@ async function fetchCodes() {
   const supabase = getClient();
   const { data, error } = await supabase
     .from('student_invitation_codes')
-    .select('id, code, is_used, used_at, created_at')
+    .select('id, code, is_used, used_by_name, used_at, created_at')
     .order('created_at', { ascending: false });
 
   if (error) return Response.json({ error: error.message }, { status: 500 });

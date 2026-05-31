@@ -40,7 +40,7 @@ export default function StudentInfo({ onStart }) {
       const res  = await fetch(`${LMS_URL}/api/public/validate-student-code`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ code: code.trim() }),
+        body:    JSON.stringify({ code: code.trim(), name: name.trim() }),
       });
       const data = await res.json();
       if (!data.valid) {

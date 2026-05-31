@@ -13,7 +13,6 @@ function getClient() {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
-// Handle CORS preflight
 export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS });
 }
@@ -25,13 +24,14 @@ export async function POST(request) {
   }
 
   const code = body.code?.trim().toUpperCase();
+  const name = body.name?.trim() || null;
+
   if (!code) {
     return Response.json({ valid: false, error: 'الكود مطلوب' }, { status: 400, headers: CORS });
   }
 
   const supabase = getClient();
 
-  // Find code in assessment_codes table — must exist and not yet used
   const { data, error } = await supabase
     .from('assessment_codes')
     .select('id, is_used')
@@ -52,10 +52,9 @@ export async function POST(request) {
     );
   }
 
-  // Mark code as used
   await supabase
     .from('assessment_codes')
-    .update({ is_used: true, used_at: new Date().toISOString() })
+    .update({ is_used: true, used_at: new Date().toISOString(), used_by_name: name })
     .eq('id', data.id);
 
   return Response.json({ valid: true }, { status: 200, headers: CORS });
