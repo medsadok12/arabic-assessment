@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { Copy, Check } from 'lucide-react';
 
 export default function StudentCodes() {
   const [codes,      setCodes]      = useState([]);
@@ -9,6 +10,13 @@ export default function StudentCodes() {
   const [newCode,    setNewCode]    = useState('');
   const [err,        setErr]        = useState('');
   const [deleting,   setDeleting]   = useState(new Set());
+  const [copiedId,   setCopiedId]   = useState(null);
+
+  function handleCopy(code, id) {
+    navigator.clipboard.writeText(code);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
 
   const loadCodes = useCallback(async () => {
     const res  = await fetch('/api/student-codes', { method: 'POST', cache: 'no-store' });
@@ -79,8 +87,12 @@ export default function StudentCodes() {
           <span style={{ fontSize: '1.1rem' }}>✅</span>
           <div>
             <div style={{ fontSize: '.8rem', color: '#388e3c', fontWeight: 600 }}>تم توليد كود طالب جديد:</div>
-            <div style={{ fontFamily: 'monospace', fontSize: '1.15rem', fontWeight: 800, color: '#1b5e20', letterSpacing: 3 }}>
-              {newCode}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontFamily: 'monospace', fontSize: '1.15rem', fontWeight: 800, color: '#1b5e20', letterSpacing: 3 }}>{newCode}</span>
+              <button onClick={() => handleCopy(newCode, 'new')} title="نسخ الكود" style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedId === 'new' ? '#27ae60' : '#388e3c', padding: 2 }}>
+                {copiedId === 'new' ? <Check size={16} /> : <Copy size={16} />}
+              </button>
+              {copiedId === 'new' && <span style={{ fontSize: '.78rem', color: '#27ae60', fontWeight: 600 }}>تم النسخ!</span>}
             </div>
           </div>
         </div>
@@ -113,7 +125,13 @@ export default function StudentCodes() {
               {codes.map(c => (
                 <tr key={c.id}>
                   <td style={{ fontFamily: 'monospace', fontWeight: 700, letterSpacing: 2, fontSize: '.95rem' }}>
-                    {c.code}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>{c.code}</span>
+                      <button onClick={() => handleCopy(c.code, c.id)} title="نسخ الكود" style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedId === c.id ? '#27ae60' : '#aaa', padding: 2, lineHeight: 1, flexShrink: 0 }}>
+                        {copiedId === c.id ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
+                      {copiedId === c.id && <span style={{ fontSize: '.72rem', color: '#27ae60', fontWeight: 600, whiteSpace: 'nowrap' }}>تم النسخ!</span>}
+                    </div>
                   </td>
                   <td>
                     <span className={`badge ${c.is_used ? 'badge-orange' : 'badge-green'}`}>
