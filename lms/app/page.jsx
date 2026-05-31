@@ -3,37 +3,6 @@ import Link from 'next/link';
 import Navbar from '../components/Navbar';
 import { Target, FileBarChart, Globe, Smartphone, Lock, Zap, Play, UserPlus, LogIn } from 'lucide-react';
 
-function PromoVideoSection() {
-  const videoUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/promo.mp4`;
-  return (
-    <section id="promo-video" style={{ background: '#f8faff', padding: '48px 16px' }}>
-      <div style={{ maxWidth: 440, margin: '0 auto' }}>
-        <h2 style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.55rem', color: 'var(--primary)', marginBottom: 6 }}>
-          شاهد المنصة في دقيقتين
-        </h2>
-        <p style={{ textAlign: 'center', color: 'var(--muted)', marginBottom: 24, fontSize: '.95rem' }}>
-          تعرّف على كيفية عمل نظام التقييم الذكي لأكاديمية عارم
-        </p>
-        <video
-          src={videoUrl}
-          controls
-          playsInline
-          style={{
-            width: '100%',
-            borderRadius: 14,
-            display: 'block',
-            boxShadow: '0 4px 20px rgba(13,79,161,.10)',
-          }}
-          onError={e => {
-            const sec = document.getElementById('promo-video');
-            if (sec) sec.style.display = 'none';
-          }}
-        />
-      </div>
-    </section>
-  );
-}
-
 export default function LandingPage() {
   const features = [
     { icon: Target,        title: 'تقييم تشخيصي ذكي',         desc: 'قياس مستوى الطالب في القراءة والكتابة والاستماع والتحدث عبر 10 تدريبات تشخيصية متنوعة.' },
@@ -43,6 +12,8 @@ export default function LandingPage() {
     { icon: Lock,          title: 'آمن وخاص',                   desc: 'بيانات الطلاب محمية بالكامل وسرية تامة، لضمان خصوصية وبيئة تعلم آمنة لكل طالب.' },
     { icon: Zap,           title: 'سريع وسهل الاستخدام',        desc: 'أدِرْ تقييمات متعددة في وقت واحد مع واجهة بسيطة وسهلة.' },
   ];
+
+  const videoUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/promo.mp4`;
 
   return (
     <>
@@ -64,33 +35,55 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Promo Video — hidden automatically if no video uploaded yet */}
-      <PromoVideoSection />
-
-      {/* Features */}
-      <section className="features">
+      {/* Features + Video — side by side */}
+      <section className="features" id="features-video">
         <div className="container">
-          <h2>لماذا أكاديمية عارم؟</h2>
-          <div className="card-grid-3">
-            {features.map(f => (
-              <div key={f.title} className="feature-card">
-                <span className="feature-icon">
-                  <f.icon size={36} strokeWidth={1.6} />
-                </span>
-                <h3>{f.title}</h3>
-                <p>{f.desc}</p>
+          <div style={{ display: 'flex', gap: 48, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+
+            {/* ── بطاقات الميزات (يمين) ── */}
+            <div style={{ flex: '1 1 460px', minWidth: 0 }}>
+              <h2 style={{ marginBottom: 24 }}>لماذا أكاديمية عارم؟</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+                {features.map(f => (
+                  <div key={f.title} className="feature-card" style={{ padding: '20px 16px' }}>
+                    <span className="feature-icon" style={{ marginBottom: 10 }}>
+                      <f.icon size={28} strokeWidth={1.6} />
+                    </span>
+                    <h3 style={{ fontSize: '.95rem', marginBottom: 6 }}>{f.title}</h3>
+                    <p style={{ fontSize: '.82rem' }}>{f.desc}</p>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* ── الفيديو (يسار) ── */}
+            <div id="promo-video" style={{ flex: '0 1 300px', minWidth: 260 }}>
+              <h3 style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary)', marginBottom: 8, textAlign: 'center' }}>
+                شاهد المنصة في دقيقتين
+              </h3>
+              <p style={{ fontSize: '.82rem', color: 'var(--muted)', marginBottom: 14, textAlign: 'center' }}>
+                تعرّف على كيفية عمل نظام التقييم الذكي
+              </p>
+              <video
+                src={videoUrl}
+                controls
+                playsInline
+                style={{ width: '100%', borderRadius: 12, display: 'block', boxShadow: '0 2px 12px rgba(0,0,0,.10)' }}
+                onError={e => {
+                  const el = document.getElementById('promo-video');
+                  if (el) el.style.display = 'none';
+                }}
+              />
+            </div>
+
           </div>
         </div>
       </section>
 
-      {/* About — مرتبط بـ /#about من الـ Navbar */}
+      {/* About */}
       <section id="about" style={{ background: '#f0f6ff', padding: '72px 0' }}>
         <div className="container">
-          <div style={{
-            maxWidth: 780, margin: '0 auto', textAlign: 'center',
-          }}>
+          <div style={{ maxWidth: 780, margin: '0 auto', textAlign: 'center' }}>
             <div style={{ fontSize: '2.4rem', marginBottom: 16 }}>🌱</div>
             <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary)', marginBottom: 8 }}>
               تعرّف على أكاديمية عارم
@@ -136,4 +129,3 @@ export default function LandingPage() {
     </>
   );
 }
-
