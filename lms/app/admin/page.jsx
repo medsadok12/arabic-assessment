@@ -4,6 +4,7 @@ import Navbar from '../../components/Navbar';
 import TeacherCodes from '../../components/TeacherCodes';
 import StudentCodes from '../../components/StudentCodes';
 import GroupsManager from '../../components/GroupsManager';
+import PromoVideoAdmin from '../../components/PromoVideoAdmin';
 
 export default async function AdminPage() {
   const supabase = createClient();
@@ -62,6 +63,9 @@ export default async function AdminPage() {
 
           {/* Groups Manager */}
           <GroupsManager />
+
+          {/* Promo Video */}
+          <PromoVideoAdmin />
 
           {/* Assessments Table */}
           <div className="dash-section-title">سجل التقييمات</div>

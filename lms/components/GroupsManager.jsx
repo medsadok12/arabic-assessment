@@ -22,6 +22,14 @@ export default function GroupsManager() {
   const [deletingGroupId,   setDeletingGroupId]   = useState(null);
   const [deletingStudentId, setDeletingStudentId] = useState(null);
 
+  // Student edit modal state
+  const [modal,        setModal]        = useState(null); // { user_id, name }
+  const [modalName,    setModalName]    = useState('');
+  const [modalEmail,   setModalEmail]   = useState('');
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalErr,     setModalErr]     = useState('');
+  const [savingStudent, setSavingStudent] = useState(false);
+
   const loadAll = useCallback(async () => {
     const [gRes, sRes] = await Promise.all([
       fetch('/api/admin/groups/list',     { method: 'POST', cache: 'no-store' }),
@@ -113,6 +121,43 @@ export default function GroupsManager() {
     if (data.error) setErr(data.error);
     else setStudents(prev => prev.filter(s => s.user_id !== userId));
     setDeletingStudentId(null);
+  }
+
+  async function openEditModal(student) {
+    setModal(student);
+    setModalName(student.name);
+    setModalEmail('');
+    setModalErr('');
+    setModalLoading(true);
+    const res  = await fetch('/api/admin/get-student-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: student.user_id }),
+    });
+    const data = await res.json();
+    setModalEmail(data.email ?? '');
+    setModalLoading(false);
+  }
+
+  async function handleSaveStudent() {
+    if (!modal) return;
+    setSavingStudent(true);
+    setModalErr('');
+    const res  = await fetch('/api/admin/update-student', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: modal.user_id, name: modalName, email: modalEmail }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      setModalErr(data.error);
+    } else {
+      setStudents(prev => prev.map(s =>
+        s.user_id === modal.user_id ? { ...s, name: modalName.trim() || s.name } : s
+      ));
+      setModal(null);
+    }
+    setSavingStudent(false);
   }
 
   const groupName   = id => groups.find(g => g.id === id)?.name ?? '—';
@@ -309,7 +354,17 @@ ALTER TABLE student_group_assignments DISABLE ROW LEVEL SECURITY;`}</pre>
                       ))}
                     </select>
                   </td>
-                  <td>
+                  <td style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <button
+                      onClick={() => openEditModal(s)}
+                      title="تعديل بيانات الطالب"
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: '1.1rem', padding: '2px 6px', borderRadius: 6,
+                      }}
+                    >
+                      ✏️
+                    </button>
                     <button
                       onClick={() => handleDeleteStudent(s.user_id, s.name)}
                       disabled={deletingStudentId === s.user_id}
@@ -328,6 +383,80 @@ ALTER TABLE student_group_assignments DISABLE ROW LEVEL SECURITY;`}</pre>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── مودال تعديل بيانات الطالب ── */}
+      {modal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: 16,
+          }}
+          onClick={e => { if (e.target === e.currentTarget) setModal(null); }}
+        >
+          <div className="card" style={{ padding: 28, minWidth: 340, maxWidth: 460, width: '100%' }}>
+            <div style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: 20 }}>
+              ✏️ تعديل بيانات الطالب
+            </div>
+
+            {modalLoading ? (
+              <div style={{ textAlign: 'center', padding: 24 }}>
+                <span className="spinner" style={{ display: 'inline-block' }} />
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: '.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--muted)' }}>
+                    الاسم الكامل
+                  </label>
+                  <input
+                    className="form-input"
+                    style={{ width: '100%' }}
+                    value={modalName}
+                    onChange={e => setModalName(e.target.value)}
+                    placeholder="الاسم الكامل للطالب"
+                  />
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: 'block', fontSize: '.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--muted)' }}>
+                    البريد الإلكتروني
+                  </label>
+                  <input
+                    className="form-input"
+                    style={{ width: '100%', direction: 'ltr', textAlign: 'left' }}
+                    type="email"
+                    value={modalEmail}
+                    onChange={e => setModalEmail(e.target.value)}
+                    placeholder="email@example.com"
+                  />
+                </div>
+
+                {modalErr && (
+                  <div className="alert alert-error" style={{ marginBottom: 14 }}>{modalErr}</div>
+                )}
+
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                  <button
+                    className="btn"
+                    onClick={() => setModal(null)}
+                    disabled={savingStudent}
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleSaveStudent}
+                    disabled={savingStudent}
+                  >
+                    {savingStudent ? <span className="spinner" /> : '💾'} حفظ التغييرات
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
