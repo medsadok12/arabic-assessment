@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { createClient } from '../../lib/supabase';
 import Navbar from '../../components/Navbar';
 import AssessmentCodes from '../../components/AssessmentCodes';
-import GroupsManager from '../../components/GroupsManager';
+import StudentCodes    from '../../components/StudentCodes';
+import TeacherCodes    from '../../components/TeacherCodes';
+import GroupsManager   from '../../components/GroupsManager';
 
 const SETUP_SQL = `-- تشغيل هذا SQL في Supabase SQL Editor لتهيئة الجداول اللازمة:
 
@@ -73,6 +75,9 @@ export default function BruteAdminPage() {
   // Promotion
   const [promoting, setPromoting]   = useState(false);
   const [promoMsg,  setPromoMsg]    = useState(null);
+
+  // Codes sub-tab
+  const [codesTab, setCodesTab] = useState('assessment');
 
   // Setup
   const [copied, setCopied] = useState(false);
@@ -199,7 +204,7 @@ export default function BruteAdminPage() {
 
   const TABS = [
     { id: 'overview',    label: '📊 نظرة عامة',         show: true },
-    { id: 'codes',       label: '🔑 أكواد التقييم',      show: true },
+    { id: 'codes',       label: '🔑 الأكواد',              show: true },
     { id: 'groups',      label: '👥 إدارة الطلاب',       show: true },
     { id: 'lexicon',     label: '📖 بنك الكلمات',         show: true },
     { id: 'recruitment', label: '📋 طلبات التوظيف',      show: isSuperAdmin },
@@ -288,7 +293,34 @@ export default function BruteAdminPage() {
           )}
 
           {/* ══════════════ Codes Tab ══════════════ */}
-          {tab === 'codes' && <AssessmentCodes />}
+          {tab === 'codes' && (
+            <div>
+              {/* Sub-tabs */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 24, background: 'var(--bg)', borderRadius: 12, padding: 6, width: 'fit-content' }}>
+                {[
+                  { id: 'assessment', label: '📋 أكواد التقييم' },
+                  { id: 'students',   label: '👤 أكواد الطلبة' },
+                  { id: 'teachers',   label: '👨‍🏫 أكواد المعلمين' },
+                ].map(st => (
+                  <button key={st.id} onClick={() => setCodesTab(st.id)}
+                    style={{
+                      padding: '8px 18px', borderRadius: 9, border: 'none', cursor: 'pointer',
+                      fontFamily: 'inherit', fontSize: '.88rem', fontWeight: 700,
+                      background: codesTab === st.id ? '#fff' : 'transparent',
+                      color: codesTab === st.id ? 'var(--primary)' : 'var(--muted)',
+                      boxShadow: codesTab === st.id ? '0 1px 6px rgba(0,0,0,.1)' : 'none',
+                      transition: 'all .15s',
+                    }}>
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+
+              {codesTab === 'assessment' && <AssessmentCodes />}
+              {codesTab === 'students'   && <StudentCodes />}
+              {codesTab === 'teachers'   && <TeacherCodes />}
+            </div>
+          )}
 
           {/* ══════════════ Groups Tab ══════════════ */}
           {tab === 'groups' && <GroupsManager />}
