@@ -17,15 +17,15 @@ export default function FloatingSidebar() {
   return (
     <div className={`fside ${open ? 'fside--open' : ''}`} aria-label="قائمة روابط سريعة">
 
-      {/* ── Tab handle ── */}
+      {/* ── Tab handle — amber colour, always readable ── */}
       <button className="fside-handle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
-        <span className="fside-handle-icon">{open ? '✕' : '◁'}</span>
-        {!open && <span className="fside-handle-label">روابط سريعة</span>}
+        <span className="fside-handle-icon">◁</span>
+        <span className="fside-handle-label">روابط سريعة</span>
       </button>
 
       {/* ── Sliding panel ── */}
       <div className="fside-panel" aria-hidden={!open}>
-        <p className="fside-panel-title">روابط سريعة</p>
+        <p className="fside-panel-title">🔗 روابط سريعة</p>
         {items.map(item =>
           item.type === 'link'
             ? (

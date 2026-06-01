@@ -647,106 +647,131 @@ body {
   flex-direction: row;
   align-items: flex-start;
   direction: rtl;
+  /* subtle entrance animation on load */
+  animation: fside-enter .6s .8s both;
+}
+@keyframes fside-enter {
+  from { transform: translateY(-50%) translateX(100%); opacity: 0; }
+  to   { transform: translateY(-50%) translateX(0);   opacity: 1; }
 }
 
-/* ── Vertical tab handle ── */
+/* ── Vertical tab handle ──
+   Amber/accent colour so it pops against any page background.
+   Wide enough to read the label comfortably. */
 .fside-handle {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  width: 36px;
-  min-height: 120px;
-  background: var(--primary);
+  gap: 8px;
+  width: 48px;
+  min-height: 148px;
+  background: var(--accent);        /* golden amber — high contrast */
   border: none;
-  border-radius: 10px 0 0 10px;
+  border-radius: 14px 0 0 14px;
   cursor: pointer;
-  color: #fff;
-  padding: 14px 0;
-  box-shadow: -3px 2px 12px rgba(0,0,0,.22);
-  transition: background .2s, width .2s;
+  color: #5a2d00;                   /* dark brown — readable on amber */
+  padding: 18px 0;
+  box-shadow: -4px 4px 18px rgba(0,0,0,.28);
+  transition: background .2s, width .2s, box-shadow .2s;
   flex-shrink: 0;
 }
-.fside-handle:hover { background: #0e3d70; width: 40px; }
-.fside-handle-icon { font-size: 1rem; line-height: 1; }
+.fside-handle:hover {
+  background: #f09410;
+  width: 54px;
+  box-shadow: -6px 6px 24px rgba(0,0,0,.32);
+}
+/* small arrow icon that flips on open */
+.fside-handle-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+  transition: transform .25s;
+}
+.fside--open .fside-handle-icon { transform: scaleX(-1); }
 .fside-handle-label {
-  font-size: .68rem;
-  font-weight: 700;
+  font-size: .75rem;
+  font-weight: 800;
   writing-mode: vertical-rl;
   text-orientation: mixed;
   transform: rotate(180deg);
-  letter-spacing: .04em;
-  opacity: .9;
+  letter-spacing: .05em;
   white-space: nowrap;
 }
 
 /* ── Sliding panel ── */
 .fside-panel {
   background: #fff;
-  border-radius: 12px 0 0 12px;
-  box-shadow: -4px 4px 24px rgba(0,0,0,.18);
-  padding: 14px 0 10px;
-  min-width: 210px;
+  border-radius: 14px 0 0 14px;
+  box-shadow: -6px 4px 28px rgba(0,0,0,.18);
   display: flex;
   flex-direction: column;
   gap: 2px;
-  /* slide closed by default */
+  /* slide closed */
   max-width: 0;
   overflow: hidden;
   opacity: 0;
-  transition: max-width .3s ease, opacity .25s ease, padding .3s ease;
+  transition: max-width .32s cubic-bezier(.4,0,.2,1),
+              opacity   .25s ease,
+              padding   .32s ease;
 }
 .fside--open .fside-panel {
-  max-width: 240px;
+  max-width: 260px;
   opacity: 1;
-  padding: 14px 0 10px;
+  padding: 16px 0 12px;
 }
 
+/* coloured top bar inside panel */
 .fside-panel-title {
-  font-size: .72rem;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  padding: 0 16px 8px;
-  border-bottom: 1px solid var(--border);
+  font-size: .78rem;
+  font-weight: 800;
+  color: var(--primary);
+  padding: 0 18px 10px;
+  border-bottom: 2px solid var(--accent);
   margin: 0 0 4px;
   white-space: nowrap;
+  letter-spacing: .03em;
 }
 
 .fside-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 16px;
+  gap: 11px;
+  padding: 13px 18px;
   color: var(--text);
   text-decoration: none;
-  font-size: .9rem;
+  font-size: .95rem;
   font-weight: 600;
   white-space: nowrap;
-  transition: background .15s, color .15s;
+  transition: background .15s, color .15s, padding-right .15s;
   border: none;
   background: none;
   cursor: pointer;
   width: 100%;
   text-align: right;
 }
-.fside-item:hover { background: var(--primary-lt); color: var(--primary); }
-.fside-item-icon { font-size: 1.1rem; flex-shrink: 0; }
+.fside-item:hover {
+  background: var(--primary-lt);
+  color: var(--primary);
+  padding-right: 22px;
+}
+.fside-item-icon { font-size: 1.2rem; flex-shrink: 0; }
 
-/* WhatsApp item gets a green accent */
-.fside-item-wa { color: #1a7c40; }
-.fside-item-wa:hover { background: #e6f4ec; color: #15652f; }
+/* WhatsApp — green accent row */
+.fside-item-wa { color: #15652f; font-weight: 700; }
+.fside-item-wa:hover { background: #e6f4ec; color: #0d4620; padding-right: 22px; }
 
-/* ── Mobile: anchor at bottom-right, smaller ── */
+/* ── Mobile: stick to bottom-right, slightly smaller ── */
 @media (max-width: 768px) {
   .fside {
     top: auto;
-    bottom: 24px;
+    bottom: 20px;
     transform: none;
+    animation-name: fside-enter-mobile;
   }
-  .fside-handle { min-height: 80px; }
-  .fside-panel { border-radius: 12px 0 0 12px; }
-  .fside--open .fside-panel { max-width: 220px; }
+  @keyframes fside-enter-mobile {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0);   opacity: 1; }
+  }
+  .fside-handle { width: 44px; min-height: 120px; border-radius: 12px 0 0 12px; }
+  .fside--open .fside-panel { max-width: 240px; }
 }
