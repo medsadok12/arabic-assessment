@@ -12,6 +12,9 @@ export default async function AdminPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/auth/login');
 
+  const role = user.user_metadata?.role;
+  if (role !== 'admin' && role !== 'super_admin') redirect('/dashboard');
+
   const { data: assessments, error } = await supabase
     .from('assessments')
     .select('*')
