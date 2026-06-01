@@ -156,6 +156,13 @@ export default function LandingPage() {
               🔑 دخول المعلم
             </Link>
           </div>
+          <p style={{ marginTop: 16, fontSize: '.88rem', color: 'rgba(255,255,255,.6)' }}>
+            مدرس ومهتم بالانضمام للفريق؟{' '}
+            <Link href="/apply"
+              style={{ color: 'rgba(255,255,255,.9)', textDecoration: 'underline', fontWeight: 700 }}>
+              سجل ترشحك كمعلم
+            </Link>
+          </p>
         </div>
       </section>
 

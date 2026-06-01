@@ -724,26 +724,42 @@ body {
 .fsr-cta:hover .fsr-icon  { background: var(--accent); color: #5a2d00; }
 .fsr-cta:hover .fsr-label { color: #b56a00; }
 
-/* thin divider between sections */
-.fsr::before {
-  content: '';
-  display: block;
-  height: 1px;
-  background: var(--border);
-  margin: 4px 10px;
-  order: 2; /* sits after second item */
-}
+/* ── Student-specific items ── */
+.fsr-reg .fsr-icon   { background: #e8f0fb; color: #185FA5; }
+.fsr-reg .fsr-label  { color: #185FA5; }
+.fsr-reg:hover .fsr-icon  { background: #185FA5; color: #fff; }
+.fsr-login .fsr-icon  { background: #f0f4f8; color: #475569; }
+.fsr-login .fsr-label { color: #475569; }
+.fsr-login:hover .fsr-icon { background: #475569; color: #fff; }
 
-/* ── Mobile: move to bottom-right, shrink slightly ── */
+/* ── Mobile: full-width fixed bottom navigation bar ── */
 @media (max-width: 768px) {
   .fsr {
     top: auto;
-    bottom: 16px;
+    right: 0;
+    left: 0;
+    bottom: 0;
     transform: none;
-    width: 62px;
-    border-radius: 14px 0 0 14px;
+    width: 100%;
+    border-radius: 18px 18px 0 0;
+    flex-direction: row;
+    justify-content: space-around;
+    border-left: none;
+    border-top: 3px solid var(--primary);
+    padding: 8px 4px max(8px, env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 24px rgba(24,95,165,.15);
+    gap: 0;
   }
-  .fsr-icon { width: 34px; height: 34px; border-radius: 8px; }
-  .fsr-label { font-size: .58rem; }
-  .fsr-item { padding: 8px 4px; gap: 4px; }
+  .fsr-item {
+    width: auto;
+    flex: 1;
+    margin: 0;
+    padding: 6px 4px;
+    border-radius: 10px;
+  }
+  .fsr-item:hover { transform: none; }
+  .fsr-icon { width: 32px; height: 32px; border-radius: 8px; }
+  .fsr-label { font-size: .6rem; }
+  .fsr::before { display: none; }
+  body { padding-bottom: 76px; }
 }
