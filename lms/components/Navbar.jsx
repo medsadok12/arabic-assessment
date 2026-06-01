@@ -138,8 +138,8 @@ export default function Navbar({ user: initialUser }) {
   const destPath  = dashboardPath(role);
 
   const navLinks = [
-    { href: '/dashboard', label: 'الرئيسية' },
-    { href: '/library',   label: 'المكتبة'  },
+    { href: destPath,   label: 'الرئيسية' },
+    { href: '/library', label: 'المكتبة'  },
     ...(role === 'admin' ? [{ href: '/admin', label: 'الإدارة' }] : []),
   ];
 
