@@ -1,14 +1,27 @@
 import { useState } from 'react';
 
+const LMS_URL = 'https://aarem-lms.vercel.app';
+
 export default function StudentInfo({ onStart }) {
-  const [form, setForm] = useState({ name: '', age: '', email: '', type: '' });
-  const [error, setError] = useState('');
+  const [form,           setForm]           = useState({ name: '', age: '', email: '', type: '', code: '' });
+  const [error,          setError]          = useState('');
+  const [validating,     setValidating]     = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockedUntil,    setLockedUntil]    = useState(null);
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const setCode = (e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase().replace(/\s/g, '') }));
 
-  function handleStart() {
-    const { name, age, email, type } = form;
-    if (!name.trim() || !age || !email.trim() || !type) {
+  async function handleStart() {
+    if (lockedUntil && Date.now() < lockedUntil) {
+      const remaining = Math.ceil((lockedUntil - Date.now()) / 1000);
+      setError(`لقد تجاوزت عدد المحاولات المسموحة. يرجى الانتظار ${remaining} ثانية أو التواصل مع إدارة الأكاديمية.`);
+      return;
+    }
+
+    const { name, age, email, type, code } = form;
+
+    if (!name.trim() || !age || !email.trim() || !type || !code.trim()) {
       setError('يرجى ملء جميع الحقول المطلوبة');
       return;
     }
@@ -20,7 +33,36 @@ export default function StudentInfo({ onStart }) {
       setError('يرجى إدخال بريد إلكتروني صحيح');
       return;
     }
+
+    setValidating(true);
     setError('');
+    try {
+      const res  = await fetch(`${LMS_URL}/api/public/validate-student-code`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ code: code.trim(), name: name.trim() }),
+      });
+      const data = await res.json();
+      if (!data.valid) {
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
+        if (newAttempts >= 5) {
+          const lockTime = Date.now() + 120_000;
+          setLockedUntil(lockTime);
+          setError('لقد تجاوزت عدد المحاولات المسموحة (5 محاولات). يرجى الانتظار دقيقتين أو التواصل مع إدارة الأكاديمية.');
+        } else {
+          setError(`عذراً، كود التقييم غير صحيح. (المحاولة ${newAttempts}/5) يرجى مراجعة إدارة الأكاديمية.`);
+        }
+        setValidating(false);
+        return;
+      }
+    } catch {
+      setError('تعذّر التحقق من الكود. تأكد من اتصالك بالإنترنت وأعد المحاولة.');
+      setValidating(false);
+      return;
+    }
+
+    setValidating(false);
     onStart({ name: name.trim(), age: +age, email: email.trim(), type });
   }
 
@@ -71,10 +113,24 @@ export default function StudentInfo({ onStart }) {
         </select>
       </div>
 
+      <div className="form-group">
+        <label>كود التقييم *</label>
+        <input
+          type="text"
+          placeholder="أدخل كود التقييم الممنوح لك من الإدارة"
+          value={form.code}
+          onChange={setCode}
+          style={{ letterSpacing: '0.08em', fontFamily: 'monospace', fontSize: '1rem' }}
+        />
+      </div>
+
       {error && <div className="error-msg">⚠️ {error}</div>}
 
-      <button className="btn-primary" onClick={handleStart}>
-        ابدأ رحلة التميز ←
+      <button className="btn-primary" onClick={handleStart}
+        disabled={validating || (lockedUntil && Date.now() < lockedUntil)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+        {validating && <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />}
+        {validating ? 'جارٍ التحقق من الكود...' : (lockedUntil && Date.now() < lockedUntil) ? '🔒 محظور مؤقتاً' : 'ابدأ رحلة التميز ←'}
       </button>
 
     </div>

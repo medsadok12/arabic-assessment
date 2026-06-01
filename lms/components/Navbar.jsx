@@ -226,12 +226,7 @@ export default function Navbar({ user: initialUser }) {
                 </div>
               )}
             </div>
-          ) : (
-            <div className="nav-auth-btns">
-              <Link href="/auth/login" className="btn btn-outline btn-sm nav-btn-ghost">دخول</Link>
-              <Link href="/auth/register" className="btn btn-accent btn-sm">تسجيل</Link>
-            </div>
-          )}
+          ) : null}
 
           {/* ── Hamburger (mobile) ── */}
           <button
@@ -282,9 +277,10 @@ export default function Navbar({ user: initialUser }) {
             </>
           ) : (
             <>
-              <Link href="/#about"        className="nav-mobile-item" onClick={() => setMenuOpen(false)}>تعرّف على أكاديمية عارم</Link>
-              <Link href="/auth/login"    className="nav-mobile-item" onClick={() => setMenuOpen(false)}>تسجيل الدخول</Link>
-              <Link href="/auth/register" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>إنشاء حساب مجاناً</Link>
+              <Link href="/#about" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>تعرّف على أكاديمية عارم</Link>
+              <a href="https://api.whatsapp.com/send/?phone=447400755914" target="_blank" rel="noopener noreferrer" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>
+                💬 تواصل مع الإدارة
+              </a>
             </>
           )}
         </div>

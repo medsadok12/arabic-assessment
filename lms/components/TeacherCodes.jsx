@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { Copy, Check } from 'lucide-react';
 
 export default function TeacherCodes() {
   const [codes,      setCodes]      = useState([]);
@@ -9,6 +10,14 @@ export default function TeacherCodes() {
   const [newCode,    setNewCode]    = useState('');
   const [err,        setErr]        = useState('');
   const [deleting,   setDeleting]   = useState(new Set());
+  const [copiedId,   setCopiedId]   = useState(null);
+  const [hideUsed,   setHideUsed]   = useState(false);
+
+  function handleCopy(code, id) {
+    navigator.clipboard.writeText(code);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
 
   const loadCodes = useCallback(async () => {
     const res  = await fetch('/api/teacher-codes', { method: 'POST', cache: 'no-store' });
@@ -53,8 +62,9 @@ export default function TeacherCodes() {
     setDeleting(prev => { const s = new Set(prev); s.delete(id); return s; });
   }
 
-  const available = codes.filter(c => !c.is_used).length;
-  const used      = codes.filter(c =>  c.is_used).length;
+  const available    = codes.filter(c => !c.is_used).length;
+  const used         = codes.filter(c =>  c.is_used).length;
+  const visibleCodes = hideUsed ? codes.filter(c => !c.is_used) : codes;
 
   return (
     <div className="dash-section">
@@ -63,6 +73,13 @@ export default function TeacherCodes() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <button className="btn btn-primary" onClick={handleGenerate} disabled={generating}>
           {generating ? <span className="spinner" /> : '➕'} توليد كود جديد
+        </button>
+        <button
+          className="btn"
+          onClick={() => setHideUsed(v => !v)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.85rem' }}
+        >
+          {hideUsed ? '👁 عرض الكل' : '🙈 إخفاء المستعملة'}
         </button>
         <div style={{ display: 'flex', gap: 8 }}>
           <span className="badge badge-green">● متاح: {available}</span>
@@ -79,8 +96,12 @@ export default function TeacherCodes() {
           <span style={{ fontSize: '1.1rem' }}>✅</span>
           <div>
             <div style={{ fontSize: '.8rem', color: '#388e3c', fontWeight: 600 }}>تم توليد كود جديد:</div>
-            <div style={{ fontFamily: 'monospace', fontSize: '1.15rem', fontWeight: 800, color: '#1b5e20', letterSpacing: 3 }}>
-              {newCode}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontFamily: 'monospace', fontSize: '1.15rem', fontWeight: 800, color: '#1b5e20', letterSpacing: 3 }}>{newCode}</span>
+              <button onClick={() => handleCopy(newCode, 'new')} title="نسخ الكود" style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedId === 'new' ? '#27ae60' : '#388e3c', padding: 2 }}>
+                {copiedId === 'new' ? <Check size={16} /> : <Copy size={16} />}
+              </button>
+              {copiedId === 'new' && <span style={{ fontSize: '.78rem', color: '#27ae60', fontWeight: 600 }}>تم النسخ!</span>}
             </div>
           </div>
         </div>
@@ -92,17 +113,19 @@ export default function TeacherCodes() {
         <div style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>
           <span className="spinner" style={{ display: 'inline-block' }} />
         </div>
-      ) : codes.length === 0 ? (
+      ) : visibleCodes.length === 0 ? (
         <div className="empty-state card">
           <span className="empty-icon">🔑</span>
-          <p>لا توجد أكواد — اضغط "توليد كود جديد"</p>
+          <p>{codes.length === 0 ? 'لا توجد أكواد — اضغط "توليد كود جديد"' : 'لا توجد أكواد متاحة — جميع الأكواد مستعملة'}</p>
         </div>
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <table className="data-table">
             <thead>
               <tr>
+                <th style={{ width: 40, textAlign: 'center' }}>#</th>
                 <th>الكود</th>
+                <th>اسم المستخدم</th>
                 <th>الحالة</th>
                 <th>تاريخ الإنشاء</th>
                 <th>تاريخ الاستخدام</th>
@@ -110,10 +133,20 @@ export default function TeacherCodes() {
               </tr>
             </thead>
             <tbody>
-              {codes.map(c => (
+              {visibleCodes.map((c, i) => (
                 <tr key={c.id}>
+                  <td style={{ textAlign: 'center', color: 'var(--muted)', fontSize: '.82rem', fontWeight: 600 }}>{i + 1}</td>
                   <td style={{ fontFamily: 'monospace', fontWeight: 700, letterSpacing: 2, fontSize: '.95rem' }}>
-                    {c.code}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>{c.code}</span>
+                      <button onClick={() => handleCopy(c.code, c.id)} title="نسخ الكود" style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedId === c.id ? '#27ae60' : '#aaa', padding: 2, lineHeight: 1, flexShrink: 0 }}>
+                        {copiedId === c.id ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
+                      {copiedId === c.id && <span style={{ fontSize: '.72rem', color: '#27ae60', fontWeight: 600, whiteSpace: 'nowrap' }}>تم النسخ!</span>}
+                    </div>
+                  </td>
+                  <td style={{ fontSize: '.88rem', color: c.used_by_name ? 'var(--text)' : 'var(--muted)', fontWeight: c.used_by_name ? 600 : 400 }}>
+                    {c.used_by_name || '—'}
                   </td>
                   <td>
                     <span className={`badge ${c.is_used ? 'badge-orange' : 'badge-green'}`}>

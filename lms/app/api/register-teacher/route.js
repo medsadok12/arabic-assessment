@@ -49,10 +49,10 @@ export async function POST(request) {
     return Response.json({ error: msg }, { status: 400 });
   }
 
-  // Record who consumed the code
+  // Record who consumed the code (user ID + full name)
   await supabase
     .from('teacher_invitation_codes')
-    .update({ used_by: created.user.id, used_at: new Date().toISOString() })
+    .update({ used_by: created.user.id, used_by_name: name, used_at: new Date().toISOString() })
     .eq('id', claimed.id);
 
   return Response.json({ success: true });
