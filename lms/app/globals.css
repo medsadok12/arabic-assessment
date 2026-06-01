@@ -336,7 +336,7 @@ body {
   gap: 24px;
 }
 .hero-content {
-  flex: 1 1 320px;
+  flex: 1 1 56%;
   min-width: 0;
   text-align: right;
   padding-bottom: 60px;
@@ -344,16 +344,26 @@ body {
 .hero h1 { font-size: 2.7rem; font-weight: 800; line-height: 1.28; margin-bottom: 18px; text-align: right; letter-spacing: -.01em; }
 .hero p  { font-size: 1.05rem; opacity: .88; margin: 0 0 34px; text-align: right; line-height: 1.75; }
 .hero-btns { display: flex; gap: 14px; justify-content: flex-end; flex-wrap: wrap; }
-/* image column: takes 56% of row, capped at 660px, extends past container left padding */
+/* image column anchors the photo to its right edge; the wide photo bleeds
+   left into the dead space and is clipped by the hero's overflow:hidden */
 .hero-image {
-  flex: 0 0 56%;
-  max-width: 660px;
+  flex: 0 0 44%;
+  min-width: 0;
   display: flex;
   align-items: flex-end;
-  justify-content: center;
+  justify-content: flex-start;
   background: transparent;
   align-self: flex-end;
-  margin-left: -20px;
+}
+/* photo is landscape (1408×768): size by a large width so it grows tall
+   enough to fill the column, bleed left, and sink under the white wave */
+.hero-photo {
+  width: clamp(560px, 64vw, 1040px);
+  height: auto;
+  max-width: none;
+  flex-shrink: 0;
+  margin-bottom: -52px;
+  filter: drop-shadow(0 14px 30px rgba(0,0,0,0.22));
 }
 .features { padding: 80px 0; background: #fff; }
 .features h2 {
@@ -591,11 +601,12 @@ body {
   .hero-main { padding: 44px 0 0; }
   .hero-topbar { font-size: .76rem; padding: 6px 16px; }
   .hero-layout { flex-direction: column-reverse; gap: 24px; }
-  .hero-content { text-align: center; padding-bottom: 32px; }
+  .hero-content { text-align: center; padding-bottom: 0; }
   .hero h1 { text-align: center; }
   .hero p  { text-align: center; }
   .hero-btns { justify-content: center; }
-  .hero-image { flex: none; width: 100%; max-width: 360px; margin: 0 auto; margin-left: auto; align-self: auto; }
+  .hero-image { flex: none; width: 100%; justify-content: center; align-self: auto; }
+  .hero-photo { width: 100%; max-width: 380px; margin-bottom: -24px; }
   .navbar-links-desktop { display: none !important; }
   .nav-auth-btns { display: none; }
   .nav-hamburger { display: block; }
