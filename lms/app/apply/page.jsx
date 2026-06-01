@@ -13,11 +13,11 @@ const SPECIALTIES = [
 ];
 
 export default function ApplyPage() {
-  const [form, setForm]       = useState({ name: '', email: '', phone: '', experience: '', specialty: '', notes: '' });
-  const [file, setFile]       = useState(null);
-  const [status, setStatus]   = useState('idle'); // idle | uploading | success | error
-  const [errMsg, setErrMsg]   = useState('');
-  const fileRef               = useRef();
+  const [form, setForm]     = useState({ name: '', email: '', phone: '', experience: '', specialty: '', notes: '' });
+  const [file, setFile]     = useState(null);
+  const [status, setStatus] = useState('idle'); // idle | uploading | success | error
+  const [errMsg, setErrMsg] = useState('');
+  const fileRef             = useRef();
 
   const set = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }));
 
@@ -25,7 +25,7 @@ export default function ApplyPage() {
     const f = e.target.files[0];
     if (!f) return;
     if (f.type !== 'application/pdf') { setErrMsg('يُقبل ملف PDF فقط'); return; }
-    if (f.size > 5 * 1024 * 1024)    { setErrMsg('حجم الملف يجب أن يكون أقل من 5 ميغابايت'); return; }
+    if (f.size > 3 * 1024 * 1024)    { setErrMsg('حجم الملف يجب أن يكون أقل من 3 ميغابايت'); return; }
     setErrMsg('');
     setFile(f);
   }
@@ -41,31 +41,22 @@ export default function ApplyPage() {
     setStatus('uploading'); setErrMsg('');
 
     try {
-      // Step 1: get presigned upload URL
-      const urlRes = await fetch('/api/recruitment/upload-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      // Convert PDF to base64 directly in the browser
+      const cvBase64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = () => reject(new Error('فشل قراءة الملف'));
+        reader.readAsDataURL(file);
       });
-      const urlData = await urlRes.json();
-      if (!urlRes.ok) throw new Error(urlData.error || 'فشل الحصول على رابط الرفع');
 
-      // Step 2: upload PDF directly to Supabase Storage
-      const uploadRes = await fetch(urlData.signedUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type, 'x-upsert': 'true' },
-        body: file,
-      });
-      if (!uploadRes.ok) throw new Error('فشل رفع الملف');
-
-      // Step 3: submit application metadata
-      const subRes = await fetch('/api/recruitment/submit', {
-        method: 'POST',
+      // Single API call — no storage bucket needed
+      const res  = await fetch('/api/recruitment/submit', {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, cvPath: urlData.path }),
+        body:    JSON.stringify({ ...form, cvBase64, cvFilename: file.name }),
       });
-      const subData = await subRes.json();
-      if (!subRes.ok) throw new Error(subData.error || 'فشل إرسال الطلب');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'فشل إرسال الطلب');
 
       setStatus('success');
     } catch (err) {
@@ -204,7 +195,7 @@ export default function ApplyPage() {
                 </div>
                 {!file && (
                   <div style={{ fontSize: '.76rem', color: 'var(--muted)', marginTop: 4 }}>
-                    الحد الأقصى: 5 ميغابايت
+                    الحد الأقصى: 3 ميغابايت
                   </div>
                 )}
               </div>

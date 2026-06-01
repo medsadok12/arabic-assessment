@@ -20,10 +20,15 @@ CREATE TABLE IF NOT EXISTS recruitment_applications (
   experience  TEXT,
   specialty   TEXT,
   notes       TEXT,
-  cv_path     TEXT,
+  cv_filename TEXT,
+  cv_base64   TEXT,
   status      TEXT        NOT NULL DEFAULT 'pending',
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- ترقية الجداول القديمة (آمن للتشغيل أكثر من مرة)
+ALTER TABLE recruitment_applications ADD COLUMN IF NOT EXISTS cv_filename TEXT;
+ALTER TABLE recruitment_applications ADD COLUMN IF NOT EXISTS cv_base64 TEXT;
 
 -- جدول بنك الكلمات
 CREATE TABLE IF NOT EXISTS lexicon_words (
@@ -38,10 +43,7 @@ CREATE TABLE IF NOT EXISTS lexicon_words (
   root       TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- bucket مخصص للسير الذاتية (شغّل من Storage في Supabase)
--- اسم الـ bucket: recruitment-cvs  |  نوع: private`;
+);`;
 
 const STATUS_LABELS = { pending: 'قيد المراجعة', reviewed: 'تمت المراجعة', accepted: 'مقبول', rejected: 'مرفوض' };
 const STATUS_COLORS = { pending: '#b56a00', reviewed: '#185FA5', accepted: '#1a7c40', rejected: '#e53e3e' };
@@ -71,6 +73,9 @@ export default function BruteAdminPage() {
   const [addingAdmin, setAddingAdmin]   = useState(false);
   const [adminMsg, setAdminMsg]         = useState(null);
   const [deletingId, setDeletingId]     = useState(null);
+
+  // CV download
+  const [downloadingCV, setDownloadingCV] = useState({});
 
   // Promotion
   const [promoting, setPromoting]   = useState(false);
@@ -116,9 +121,10 @@ export default function BruteAdminPage() {
 
   async function loadApps() {
     setAppsLoading(true);
+    // Exclude cv_base64 from list query (loaded on demand via download button)
     const { data } = await supabase
       .from('recruitment_applications')
-      .select('*')
+      .select('id, name, email, phone, experience, specialty, notes, cv_filename, status, created_at')
       .order('created_at', { ascending: false });
     setApps(data ?? []);
     setAppsLoading(false);
@@ -136,6 +142,26 @@ export default function BruteAdminPage() {
   async function updateAppStatus(id, status) {
     await supabase.from('recruitment_applications').update({ status }).eq('id', id);
     setApps(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+  }
+
+  async function downloadCV(id, filename) {
+    setDownloadingCV(p => ({ ...p, [id]: true }));
+    try {
+      const res  = await fetch(`/api/bogga/recruitment/${id}`);
+      const data = await res.json();
+      if (!res.ok || !data.cv_base64) {
+        alert(data.error || 'لا توجد سيرة ذاتية مرفقة بهذا الطلب');
+        return;
+      }
+      const link   = document.createElement('a');
+      link.href     = `data:application/pdf;base64,${data.cv_base64}`;
+      link.download = data.cv_filename || filename || 'cv.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } finally {
+      setDownloadingCV(p => ({ ...p, [id]: false }));
+    }
   }
 
   // ── Admins management ────────────────────────────────────────────
@@ -367,6 +393,17 @@ export default function BruteAdminPage() {
                             <div style={{ marginTop: 8, fontSize: '.83rem', color: '#475569', background: 'var(--bg)', padding: '8px 12px', borderRadius: 8 }}>
                               {app.notes}
                             </div>
+                          )}
+                          {app.cv_filename && (
+                            <button
+                              onClick={() => downloadCV(app.id, app.cv_filename)}
+                              disabled={downloadingCV[app.id]}
+                              className="btn btn-sm btn-outline"
+                              style={{ marginTop: 10, fontSize: '.8rem', gap: 6 }}>
+                              {downloadingCV[app.id]
+                                ? <><span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} />جارٍ التحميل...</>
+                                : '⬇️ تحميل السيرة الذاتية'}
+                            </button>
                           )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
