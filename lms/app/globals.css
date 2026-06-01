@@ -327,37 +327,42 @@ body {
   background: linear-gradient(135deg, var(--primary) 0%, #0e3d70 100%);
   color: #fff;
   overflow: hidden;
+  position: relative;  /* stacking root for all hero children */
+}
+/* z-index:2 → text stays readable above the photo (z-index:1) */
+.hero-main {
+  padding: 72px 0 120px;
   position: relative;
+  z-index: 2;
 }
-/* min-height tracks the absolute photo's height so it's never clipped at top */
-.hero-main { padding: 72px 0 0; position: relative; z-index: 1; min-height: min(27vw, 520px); }
-.hero-wave  { display: block; width: 100%; margin-top: -2px; line-height: 0; position: relative; z-index: 2; }
-.hero-layout {
-  display: flex;
-  align-items: center;
-  gap: 24px;
+/* z-index:3 → wave paints OVER the photo, hiding its cut lower edge */
+.hero-wave {
+  display: block;
+  width: 100%;
+  margin-top: -2px;
+  line-height: 0;
+  position: relative;
+  z-index: 3;
 }
-/* text block kept on the right half; the photo lives in the left half */
+/* text block on the right half */
 .hero-content {
-  flex: 1 1 100%;
-  min-width: 0;
   max-width: 540px;
   margin-left: auto;
   text-align: right;
-  padding-bottom: 40px;
 }
 .hero h1 { font-size: 2.7rem; font-weight: 800; line-height: 1.28; margin-bottom: 18px; text-align: right; letter-spacing: -.01em; }
 .hero p  { font-size: 1.05rem; opacity: .88; margin: 0 0 34px; text-align: right; line-height: 1.75; }
 .hero-btns { display: flex; gap: 14px; justify-content: flex-end; flex-wrap: wrap; }
-/* photo (landscape 1408×768) pinned full-bleed to the hero's left edge so it
-   shows in full; its base sits at the hero bottom and the wave (z-index 2)
-   paints over the lower body so the figures emerge from the section */
+
+/* photo: direct child of .hero → bottom:0 is relative to .hero, not hero-main.
+   z-index:1 sits between the background (0) and the wave (3), so the wave
+   paints over the cut lower edge giving a 3-D "emerging from section" look. */
 .hero-image {
   position: absolute;
   left: 0;
-  bottom: -1px;
-  width: min(46vw, 780px);
-  z-index: 0;
+  bottom: 0;
+  width: min(48vw, 800px);
+  z-index: 1;
   pointer-events: none;
 }
 .hero-photo {
@@ -599,16 +604,23 @@ body {
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .hero h1 { font-size: 1.9rem; }
-  .hero-main { padding: 44px 0 0; min-height: 0; }
+  /* Remove the large padding-bottom — photo is in normal flow on mobile */
+  .hero-main { padding: 32px 0 28px; }
   .hero-topbar { font-size: .76rem; padding: 6px 16px; }
-  .hero-layout { flex-direction: column-reverse; gap: 24px; }
-  .hero-content { flex: none; width: 100%; max-width: none; margin-left: 0; text-align: center; padding-bottom: 0; }
+  .hero-content { max-width: none; margin-left: 0; text-align: center; }
   .hero h1 { text-align: center; }
   .hero p  { text-align: center; }
   .hero-btns { justify-content: center; }
-  /* photo back into normal flow, centered above the text */
-  .hero-image { position: static; width: 100%; max-width: 360px; margin: 0 auto; }
-  .hero-photo { width: 100%; margin-bottom: -24px; }
+  /* Photo leaves absolute flow on mobile — sits in normal flow so it
+     never gets buried under the wave */
+  .hero-image {
+    position: static;
+    width: 100%;
+    max-width: 380px;
+    margin: 28px auto 0;
+    z-index: auto;
+  }
+  .hero-photo { width: 100%; margin-bottom: -28px; }
   .navbar-links-desktop { display: none !important; }
   .nav-auth-btns { display: none; }
   .nav-hamburger { display: block; }

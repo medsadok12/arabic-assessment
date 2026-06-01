@@ -39,48 +39,44 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Main content */}
+        {/* Main content — z-index:2 keeps text above the photo */}
         <div className="hero-main">
           <div className="container">
-            <div className="hero-layout">
-
-              {/* Right — Text + Buttons */}
-              <div className="hero-content">
-                <h1>نظام التقييم الذكي</h1>
-                <p>
-                  منصتكم التعليمية المتكاملة أونلاين<br />
-                  لتقييم وتطوير مهارات الطلاب في اللغة العربية بأساليب ذكية وتفاعلية.
-                </p>
-                <div className="hero-btns">
-                  <a href="https://arabic-assessment.vercel.app"
-                    className="btn btn-accent btn-lg"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    ابدأ التقييم التشخيصي ▷
-                  </a>
-                </div>
+            <div className="hero-content">
+              <h1>نظام التقييم الذكي</h1>
+              <p>
+                منصتكم التعليمية المتكاملة أونلاين<br />
+                لتقييم وتطوير مهارات الطلاب في اللغة العربية بأساليب ذكية وتفاعلية.
+              </p>
+              <div className="hero-btns">
+                <a href="https://arabic-assessment.vercel.app"
+                  className="btn btn-accent btn-lg"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  ابدأ التقييم التشخيصي ▷
+                </a>
               </div>
-
-              {/* Left — Teacher & student photo */}
-              <div className="hero-image">
-                <Image
-                  src="/teacher-student-hero.png"
-                  alt="معلم وطالب يستخدمان التطبيق"
-                  width={1408}
-                  height={768}
-                  priority
-                  sizes="(max-width: 768px) 92vw, 64vw"
-                  className="hero-photo"
-                />
-              </div>
-
             </div>
           </div>
         </div>
 
-        {/* Wave divider — transitions hero into white features section */}
+        {/* Photo — direct child of .hero so bottom:0 is relative to the section,
+            z-index:1 sits below the wave (z-index:3) which hides the cut base */}
+        <div className="hero-image">
+          <Image
+            src="/teacher-student-hero.png"
+            alt="معلم وطالب يستخدمان التطبيق"
+            width={1408}
+            height={768}
+            priority
+            sizes="(max-width: 768px) 92vw, 64vw"
+            className="hero-photo"
+          />
+        </div>
+
+        {/* Wave — z-index:3 paints over the photo's cut lower edge */}
         <svg className="hero-wave" xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 1440 72" preserveAspectRatio="none">
-          <path d="M0,72 L0,40 C200,72 400,8 720,40 C1040,72 1240,8 1440,40 L1440,72 Z" fill="#ffffff" />
+          viewBox="0 0 1440 80" preserveAspectRatio="none">
+          <path d="M0,80 L0,44 C240,80 480,8 720,44 C960,80 1200,8 1440,44 L1440,80 Z" fill="#ffffff" />
         </svg>
       </section>
 
