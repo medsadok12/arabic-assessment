@@ -62,8 +62,20 @@ body {
   font-size: 1.25rem;
   font-weight: 800;
   text-decoration: none;
+  flex-shrink: 0;
+  padding-left: 12px;
 }
 .navbar-brand span { font-size: 1.5rem; }
+.navbar-about-link {
+  font-size: .82rem;
+  color: rgba(255,255,255,.72);
+  text-decoration: none;
+  white-space: nowrap;
+  padding-left: 14px;
+  border-left: 1px solid rgba(255,255,255,.22);
+  transition: color .2s;
+}
+.navbar-about-link:hover { color: #fff; }
 .navbar-links {
   display: flex;
   align-items: center;
@@ -81,7 +93,7 @@ body {
 }
 .navbar-links a:hover,
 .navbar-links a.active { background: rgba(255,255,255,.18); color: #fff; }
-.navbar-user { display: flex; align-items: center; gap: 10px; color: #fff; font-size: .9rem; }
+.navbar-user { display: flex; align-items: center; gap: 16px; color: #fff; font-size: .9rem; flex-shrink: 0; }
 .btn-logout {
   background: rgba(255,255,255,.15);
   border: 1px solid rgba(255,255,255,.3);
@@ -283,45 +295,81 @@ body {
 .hero-topbar {
   background: rgba(0,0,0,0.22);
   border-bottom: 1px solid rgba(255,255,255,0.12);
-  padding: 8px 0;
+  padding: 9px 16px;
   font-size: .82rem;
   color: rgba(255,255,255,0.8);
   text-align: center;
 }
-.hero-topbar a {
+.hero-topbar-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.hero-topbar-label { white-space: nowrap; }
+.hero-topbar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--accent);
   text-decoration: none;
   font-weight: 700;
+  white-space: nowrap;
   transition: color .15s;
 }
-.hero-topbar a:hover { color: #ffd580; text-decoration: underline; }
+.hero-topbar-link:hover { color: #ffd580; text-decoration: underline; }
+/* keep the +44 number as one coherent LTR unit inside the RTL line */
+.hero-topbar-link bdi { direction: ltr; unicode-bidi: isolate; }
 
 /* ── Hero ── */
 .hero {
   background: linear-gradient(135deg, var(--primary) 0%, #0e3d70 100%);
   color: #fff;
   overflow: hidden;
+  position: relative;  /* stacking root for all hero children */
 }
-.hero-main { padding: 72px 0 56px; }
-.hero-wave  { display: block; width: 100%; margin-top: -2px; line-height: 0; }
-.hero-layout {
-  display: flex;
-  align-items: center;
-  gap: 48px;
+/* z-index:2 → text stays readable above the photo (z-index:1) */
+.hero-main {
+  padding: 72px 0 120px;
+  position: relative;
+  z-index: 2;
 }
+/* z-index:3 → wave paints OVER the photo, hiding its cut lower edge */
+.hero-wave {
+  display: block;
+  width: 100%;
+  margin-top: -2px;
+  line-height: 0;
+  position: relative;
+  z-index: 3;
+}
+/* text block on the right half */
 .hero-content {
-  flex: 1 1 420px;
+  max-width: 540px;
+  margin-left: auto;
   text-align: right;
 }
 .hero h1 { font-size: 2.7rem; font-weight: 800; line-height: 1.28; margin-bottom: 18px; text-align: right; letter-spacing: -.01em; }
 .hero p  { font-size: 1.05rem; opacity: .88; margin: 0 0 34px; text-align: right; line-height: 1.75; }
 .hero-btns { display: flex; gap: 14px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* photo: direct child of .hero → bottom:0 is relative to .hero, not hero-main.
+   z-index:1 sits between the background (0) and the wave (3), so the wave
+   paints over the cut lower edge giving a 3-D "emerging from section" look. */
 .hero-image {
-  flex: 0 1 400px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 260px;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: min(48vw, 800px);
+  z-index: 1;
+  pointer-events: none;
+}
+.hero-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 14px 30px rgba(0,0,0,0.22));
 }
 .features { padding: 80px 0; background: #fff; }
 .features h2 {
@@ -556,14 +604,23 @@ body {
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .hero h1 { font-size: 1.9rem; }
-  .hero-main { padding: 44px 0 36px; }
+  /* Remove the large padding-bottom — photo is in normal flow on mobile */
+  .hero-main { padding: 32px 0 28px; }
   .hero-topbar { font-size: .76rem; padding: 6px 16px; }
-  .hero-layout { flex-direction: column-reverse; gap: 24px; }
-  .hero-content { text-align: center; }
+  .hero-content { max-width: none; margin-left: 0; text-align: center; }
   .hero h1 { text-align: center; }
   .hero p  { text-align: center; }
   .hero-btns { justify-content: center; }
-  .hero-image { max-width: 240px; }
+  /* Photo leaves absolute flow on mobile — sits in normal flow so it
+     never gets buried under the wave */
+  .hero-image {
+    position: static;
+    width: 100%;
+    max-width: 380px;
+    margin: 28px auto 0;
+    z-index: auto;
+  }
+  .hero-photo { width: 100%; margin-bottom: -28px; }
   .navbar-links-desktop { display: none !important; }
   .nav-auth-btns { display: none; }
   .nav-hamburger { display: block; }
@@ -575,4 +632,118 @@ body {
 @media (min-width: 769px) {
   .nav-mobile-menu { display: none !important; }
   .navbar-social-desktop { display: flex; }
+}
+
+/* ══════════════════════════════════════
+   Floating Rail Sidebar — permanent right-edge nav
+   (inspired by clean icon-rail pattern)
+   ══════════════════════════════════════ */
+.fsr {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: #ffffff;
+  border-radius: 16px 0 0 16px;
+  /* left border strip in brand blue */
+  border-left: 3px solid var(--primary);
+  box-shadow: -6px 0 28px rgba(24, 95, 165, .13), -1px 0 0 rgba(0,0,0,.05);
+  padding: 6px 0;
+  width: 72px;
+  gap: 2px;
+}
+
+/* individual button / link */
+.fsr-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px 6px;
+  margin: 0 5px;
+  border-radius: 10px;
+  color: var(--text);
+  text-decoration: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: background .18s, color .18s, transform .15s;
+  width: calc(100% - 10px);
+}
+.fsr-item:hover {
+  background: var(--primary-lt);
+  color: var(--primary);
+  transform: translateX(-2px);
+}
+
+/* icon wrapper */
+.fsr-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--primary-lt);
+  color: var(--primary);
+  transition: background .18s, color .18s;
+  flex-shrink: 0;
+}
+.fsr-item:hover .fsr-icon {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* text label below icon */
+.fsr-label {
+  font-size: .62rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.35;
+  white-space: pre-line;
+  font-family: 'Tajawal', sans-serif;
+  transition: color .18s;
+}
+.fsr-item:hover .fsr-label { color: var(--primary); }
+
+/* ── WhatsApp item — green accent ── */
+.fsr-wa .fsr-icon  { background: #e6f4ec; color: #1a7c40; }
+.fsr-wa .fsr-label { color: #1a7c40; }
+.fsr-wa:hover .fsr-icon  { background: #1a7c40; color: #fff; }
+.fsr-wa:hover .fsr-label { color: #1a7c40; }
+
+/* ── Primary CTA item — amber accent ── */
+.fsr-cta .fsr-icon  { background: #fef3dc; color: #b56a00; }
+.fsr-cta .fsr-label { color: #b56a00; }
+.fsr-cta:hover .fsr-icon  { background: var(--accent); color: #5a2d00; }
+.fsr-cta:hover .fsr-label { color: #b56a00; }
+
+/* thin divider between sections */
+.fsr::before {
+  content: '';
+  display: block;
+  height: 1px;
+  background: var(--border);
+  margin: 4px 10px;
+  order: 2; /* sits after second item */
+}
+
+/* ── Mobile: move to bottom-right, shrink slightly ── */
+@media (max-width: 768px) {
+  .fsr {
+    top: auto;
+    bottom: 16px;
+    transform: none;
+    width: 62px;
+    border-radius: 14px 0 0 14px;
+  }
+  .fsr-icon { width: 34px; height: 34px; border-radius: 8px; }
+  .fsr-label { font-size: .58rem; }
+  .fsr-item { padding: 8px 4px; gap: 4px; }
 }
