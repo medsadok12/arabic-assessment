@@ -10,28 +10,19 @@ export async function POST(req) {
 
     const supabase = createAdminClient();
 
+    // Encode CV as JSON in the existing cv_path column — no schema changes required
+    const cvPath = cvBase64
+      ? JSON.stringify({ filename: cvFilename ?? 'cv.pdf', base64: cvBase64 })
+      : null;
+
     const { error } = await supabase
       .from('recruitment_applications')
-      .insert({
-        name,
-        email,
-        phone,
-        experience,
-        specialty,
-        notes,
-        cv_filename: cvFilename ?? null,
-        cv_base64:   cvBase64  ?? null,
-      });
+      .insert({ name, email, phone, experience, specialty, notes, cv_path: cvPath });
 
     if (error) {
       if (error.code === '42P01') {
         return NextResponse.json({
           error: 'جدول الطلبات غير موجود. يرجى تشغيل SQL التهيئة من لوحة /bogga ثم المحاولة مجدداً.',
-        }, { status: 503 });
-      }
-      if (error.code === '42703') {
-        return NextResponse.json({
-          error: 'قاعدة البيانات تحتاج تحديثاً. افتح /bogga ← إعداد وشغّل SQL التهيئة المحدّث ثم أعد المحاولة.',
         }, { status: 503 });
       }
       return NextResponse.json({ error: error.message }, { status: 500 });

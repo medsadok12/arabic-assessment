@@ -20,15 +20,10 @@ CREATE TABLE IF NOT EXISTS recruitment_applications (
   experience  TEXT,
   specialty   TEXT,
   notes       TEXT,
-  cv_filename TEXT,
-  cv_base64   TEXT,
+  cv_path     TEXT,
   status      TEXT        NOT NULL DEFAULT 'pending',
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
--- ترقية الجداول القديمة (آمن للتشغيل أكثر من مرة)
-ALTER TABLE recruitment_applications ADD COLUMN IF NOT EXISTS cv_filename TEXT;
-ALTER TABLE recruitment_applications ADD COLUMN IF NOT EXISTS cv_base64 TEXT;
 
 -- جدول بنك الكلمات
 CREATE TABLE IF NOT EXISTS lexicon_words (
@@ -121,10 +116,10 @@ export default function BruteAdminPage() {
 
   async function loadApps() {
     setAppsLoading(true);
-    // Exclude cv_base64 from list query (loaded on demand via download button)
+    // cv_path holds JSON {filename, base64} — fetched on demand via /api/bogga/recruitment/[id]
     const { data } = await supabase
       .from('recruitment_applications')
-      .select('id, name, email, phone, experience, specialty, notes, cv_filename, status, created_at')
+      .select('id, name, email, phone, experience, specialty, notes, status, created_at')
       .order('created_at', { ascending: false });
     setApps(data ?? []);
     setAppsLoading(false);
@@ -394,17 +389,15 @@ export default function BruteAdminPage() {
                               {app.notes}
                             </div>
                           )}
-                          {app.cv_filename && (
-                            <button
-                              onClick={() => downloadCV(app.id, app.cv_filename)}
-                              disabled={downloadingCV[app.id]}
-                              className="btn btn-sm btn-outline"
-                              style={{ marginTop: 10, fontSize: '.8rem', gap: 6 }}>
-                              {downloadingCV[app.id]
-                                ? <><span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} />جارٍ التحميل...</>
-                                : '⬇️ تحميل السيرة الذاتية'}
-                            </button>
-                          )}
+                          <button
+                            onClick={() => downloadCV(app.id, null)}
+                            disabled={downloadingCV[app.id]}
+                            className="btn btn-sm btn-outline"
+                            style={{ marginTop: 10, fontSize: '.8rem', gap: 6 }}>
+                            {downloadingCV[app.id]
+                              ? <><span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} />جارٍ التحميل...</>
+                              : '⬇️ تحميل السيرة الذاتية'}
+                          </button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
                           <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: '.78rem', fontWeight: 700, background: STATUS_COLORS[app.status] + '20', color: STATUS_COLORS[app.status] }}>
