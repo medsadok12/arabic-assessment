@@ -4,6 +4,8 @@ import Image from 'next/image';
 import Navbar from '../components/Navbar';
 import { Target, FileBarChart, Globe, Smartphone, Lock, Zap } from 'lucide-react';
 
+const WHATSAPP_HREF = 'https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0';
+
 export default function LandingPage() {
   const features = [
     { icon: Target,       title: 'تقييم تشخيصي ذكي',       desc: 'قياس مستوى الطالب في القراءة والكتابة والاستماع والتحدث عبر 10 تدريبات تشخيصية متنوعة.' },
