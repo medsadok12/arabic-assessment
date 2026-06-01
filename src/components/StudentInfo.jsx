@@ -122,6 +122,17 @@ export default function StudentInfo({ onStart }) {
           onChange={setCode}
           style={{ letterSpacing: '0.08em', fontFamily: 'monospace', fontSize: '1rem' }}
         />
+        <p style={{ fontSize: '.82rem', color: '#64748b', marginTop: 7, lineHeight: 1.6 }}>
+          للحصول على رمز التقييم، تواصل مع الإدارة عبر{' '}
+          <a
+            href="https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#1a7c40', fontWeight: 700, textDecoration: 'underline' }}
+          >
+            واتساب
+          </a>
+        </p>
       </div>
 
       {error && <div className="error-msg">⚠️ {error}</div>}
