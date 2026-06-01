@@ -1,51 +1,59 @@
 'use client';
-import { useState } from 'react';
 import Link from 'next/link';
+import { MessageCircle, ClipboardCheck, UserPlus, LogIn, BookOpen } from 'lucide-react';
 
 const WHATSAPP_HREF = 'https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0';
 
-const items = [
-  { type: 'a',    href: WHATSAPP_HREF, external: true,  icon: '💬', label: 'تواصل مع الإدارة',       cls: 'fside-item-wa'  },
-  { type: 'link', href: '/auth/register/teacher',        icon: '👨‍🏫', label: 'تسجيل حساب معلم',        cls: ''               },
-  { type: 'link', href: '/auth/login',                   icon: '🔑', label: 'دخول المعلم',             cls: ''               },
-  { type: 'a',    href: '/#about',                       icon: '🌱', label: 'تعرّف على أكاديمية عارم', cls: ''               },
+const ITEMS = [
+  {
+    type: 'a', href: WHATSAPP_HREF, external: true,
+    Icon: MessageCircle, label: 'تواصل\nمعنا', cls: 'fsr-wa',
+  },
+  {
+    type: 'a', href: 'https://arabic-assessment.vercel.app', external: false,
+    Icon: ClipboardCheck, label: 'ابدأ\nالتقييم', cls: 'fsr-cta',
+  },
+  {
+    type: 'link', href: '/auth/register/teacher',
+    Icon: UserPlus, label: 'تسجيل\nمعلم', cls: '',
+  },
+  {
+    type: 'link', href: '/auth/login',
+    Icon: LogIn, label: 'دخول\nالمعلم', cls: '',
+  },
+  {
+    type: 'a', href: '/#about', external: false,
+    Icon: BookOpen, label: 'تعرّف\nعلينا', cls: '',
+  },
 ];
 
-export default function FloatingSidebar() {
-  const [open, setOpen] = useState(false);
+function RailItem({ type, href, external, Icon, label, cls }) {
+  const inner = (
+    <>
+      <span className="fsr-icon"><Icon size={24} strokeWidth={1.7} /></span>
+      <span className="fsr-label">{label}</span>
+    </>
+  );
 
+  const shared = { className: `fsr-item ${cls}` };
+
+  if (type === 'link') {
+    return <Link href={href} {...shared}>{inner}</Link>;
+  }
   return (
-    <div className={`fside ${open ? 'fside--open' : ''}`} aria-label="قائمة روابط سريعة">
+    <a href={href}
+      target={external ? '_blank' : undefined}
+      rel={external ? 'noopener noreferrer' : undefined}
+      {...shared}>
+      {inner}
+    </a>
+  );
+}
 
-      {/* ── Tab handle — amber colour, always readable ── */}
-      <button className="fside-handle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
-        <span className="fside-handle-icon">◁</span>
-        <span className="fside-handle-label">روابط سريعة</span>
-      </button>
-
-      {/* ── Sliding panel ── */}
-      <div className="fside-panel" aria-hidden={!open}>
-        <p className="fside-panel-title">🔗 روابط سريعة</p>
-        {items.map(item =>
-          item.type === 'link'
-            ? (
-              <Link key={item.label} href={item.href} className={`fside-item ${item.cls}`}
-                onClick={() => setOpen(false)}>
-                <span className="fside-item-icon">{item.icon}</span>
-                {item.label}
-              </Link>
-            ) : (
-              <a key={item.label} href={item.href}
-                target={item.external ? '_blank' : undefined}
-                rel={item.external ? 'noopener noreferrer' : undefined}
-                className={`fside-item ${item.cls}`}
-                onClick={() => setOpen(false)}>
-                <span className="fside-item-icon">{item.icon}</span>
-                {item.label}
-              </a>
-            )
-        )}
-      </div>
-    </div>
+export default function FloatingSidebar() {
+  return (
+    <nav className="fsr" aria-label="روابط سريعة">
+      {ITEMS.map(item => <RailItem key={item.label} {...item} />)}
+    </nav>
   );
 }
