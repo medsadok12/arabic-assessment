@@ -62,8 +62,20 @@ body {
   font-size: 1.25rem;
   font-weight: 800;
   text-decoration: none;
+  flex-shrink: 0;
+  padding-left: 12px;
 }
 .navbar-brand span { font-size: 1.5rem; }
+.navbar-about-link {
+  font-size: .82rem;
+  color: rgba(255,255,255,.72);
+  text-decoration: none;
+  white-space: nowrap;
+  padding-left: 14px;
+  border-left: 1px solid rgba(255,255,255,.22);
+  transition: color .2s;
+}
+.navbar-about-link:hover { color: #fff; }
 .navbar-links {
   display: flex;
   align-items: center;
@@ -81,7 +93,7 @@ body {
 }
 .navbar-links a:hover,
 .navbar-links a.active { background: rgba(255,255,255,.18); color: #fff; }
-.navbar-user { display: flex; align-items: center; gap: 10px; color: #fff; font-size: .9rem; }
+.navbar-user { display: flex; align-items: center; gap: 16px; color: #fff; font-size: .9rem; flex-shrink: 0; }
 .btn-logout {
   background: rgba(255,255,255,.15);
   border: 1px solid rgba(255,255,255,.3);
@@ -283,18 +295,32 @@ body {
 .hero-topbar {
   background: rgba(0,0,0,0.22);
   border-bottom: 1px solid rgba(255,255,255,0.12);
-  padding: 8px 0;
+  padding: 9px 16px;
   font-size: .82rem;
   color: rgba(255,255,255,0.8);
   text-align: center;
 }
-.hero-topbar a {
+.hero-topbar-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.hero-topbar-label { white-space: nowrap; }
+.hero-topbar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--accent);
   text-decoration: none;
   font-weight: 700;
+  white-space: nowrap;
   transition: color .15s;
 }
-.hero-topbar a:hover { color: #ffd580; text-decoration: underline; }
+.hero-topbar-link:hover { color: #ffd580; text-decoration: underline; }
+/* keep the +44 number as one coherent LTR unit inside the RTL line */
+.hero-topbar-link bdi { direction: ltr; unicode-bidi: isolate; }
 
 /* ── Hero ── */
 .hero {

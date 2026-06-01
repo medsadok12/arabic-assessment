@@ -27,10 +27,14 @@ export default function LandingPage() {
 
         {/* Contact strip — integrated inside hero */}
         <div className="hero-topbar">
-          📞 للاستفسارات والدعم الفني مباشرة:&nbsp;
-          <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer">
-            💬 واتساب +44&nbsp;7400&nbsp;755914
-          </a>
+          <div className="hero-topbar-inner">
+            <span className="hero-topbar-label">📞 للاستفسارات والدعم الفني مباشرة:</span>
+            <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className="hero-topbar-link">
+              <span aria-hidden="true">💬</span>
+              <span>واتساب مباشرة:</span>
+              <bdi dir="ltr">+44 7400 755914</bdi>
+            </a>
+          </div>
         </div>
 
         {/* Main content */}

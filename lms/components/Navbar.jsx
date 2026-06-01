@@ -147,31 +147,12 @@ export default function Navbar({ user: initialUser }) {
     <nav className="navbar">
       <div className="container navbar-inner">
 
-        {/* ── الجانب الأيمن: الشعار + رابط تعريفي ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-          <Link href={user ? destPath : '/'} className="navbar-brand">
-            <span>📚</span> أكاديمية عارم
-          </Link>
-          <Link
-            href="/#about"
-            style={{
-              fontSize: '.78rem',
-              color: 'rgba(255,255,255,.7)',
-              textDecoration: 'none',
-              borderRight: '1px solid rgba(255,255,255,.25)',
-              paddingRight: 16,
-              whiteSpace: 'nowrap',
-              transition: 'color .2s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
-            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,.7)'}
-            className="navbar-about-link"
-          >
-            تعرّف على أكاديمية عارم
-          </Link>
-        </div>
+        {/* ── الجانب الأيمن: الشعار ── */}
+        <Link href={user ? destPath : '/'} className="navbar-brand">
+          <span>📚</span> أكاديمية عارم
+        </Link>
 
-        {/* ── روابط التنقل (desktop) — تظهر فقط عند تسجيل الدخول ── */}
+        {/* ── الوسط: روابط التنقل (desktop) — تظهر فقط عند تسجيل الدخول ── */}
         {user && (
           <ul className="navbar-links navbar-links-desktop">
             {navLinks.map(l => (
@@ -184,8 +165,13 @@ export default function Navbar({ user: initialUser }) {
           </ul>
         )}
 
-        {/* ── الجانب الأيسر: أيقونات التواصل + أزرار الدخول/الحساب ── */}
+        {/* ── الجانب الأيسر: رابط تعريفي + أيقونات التواصل + أزرار الدخول/الحساب ── */}
         <div className="navbar-user">
+
+          {/* رابط تعريفي — desktop فقط، محاذٍ لليسار بجانب أيقونات التواصل */}
+          <Link href="/#about" className="navbar-about-link">
+            تعرّف على أكاديمية عارم
+          </Link>
 
           {/* أيقونات التواصل الاجتماعي — desktop فقط */}
           <div className="navbar-social-desktop">
