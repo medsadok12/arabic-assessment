@@ -136,7 +136,7 @@ export default function BruteAdminPage() {
             <div style={{ marginRight: 'auto', display: 'flex', gap: 8 }}>
               <Link href="/bogga/lexicon" className="btn btn-outline btn-sm">📖 بنك الكلمات</Link>
               {isSuperAdmin && (
-                <Link href="/admin" className="btn btn-ghost btn-sm">← اللوحة القديمة</Link>
+                <Link href="/bogga/lexicon" className="btn btn-ghost btn-sm">📖 بنك الكلمات</Link>
               )}
             </div>
           </div>

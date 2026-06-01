@@ -39,7 +39,7 @@ export default async function DashboardPage() {
 
   const actions = [
     { icon: '📚', title: 'المكتبة التعليمية', desc: 'تصفح المناهج والدروس المتاحة لك',                    href: '/library'  },
-    { icon: '📈', title: 'تقارير التقدم',      desc: 'شاهد نتيجة تقييمك التشخيصي ومستوى تقدمك', href: '/admin'    },
+    { icon: '📈', title: 'تقارير التقدم',      desc: 'شاهد نتيجة تقييمك التشخيصي ومستوى تقدمك', href: '/dashboard' },
   ];
 
   const displayName = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'طالب';

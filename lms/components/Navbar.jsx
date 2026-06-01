@@ -95,7 +95,7 @@ function Initials({ name, size = 34 }) {
 const ROLE_LABELS = { admin: 'مدير', teacher: 'معلم', student: 'طالب' };
 
 function dashboardPath(role) {
-  if (role === 'admin')   return '/admin';
+  if (role === 'admin' || role === 'super_admin') return '/bogga';
   if (role === 'teacher') return '/dashboard';
   return '/dashboard';
 }
@@ -140,7 +140,7 @@ export default function Navbar({ user: initialUser }) {
   const navLinks = [
     { href: destPath,   label: 'الرئيسية' },
     { href: '/library', label: 'المكتبة'  },
-    ...(role === 'admin' ? [{ href: '/admin', label: 'الإدارة' }] : []),
+    ...(role === 'admin' || role === 'super_admin' ? [{ href: '/bogga', label: 'الإدارة' }] : []),
   ];
 
   return (
