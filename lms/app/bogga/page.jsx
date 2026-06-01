@@ -101,27 +101,35 @@ export default function BruteAdminPage() {
 
   // ── Data loaders ────────────────────────────────────────────────
   async function loadStats() {
-    const [{ count: assessCount }, { count: passCount }, { data: scoresData }, { count: appCount }] =
-      await Promise.all([
-        supabase.from('assessments').select('id', { count: 'exact', head: true }),
-        supabase.from('assessments').select('id', { count: 'exact', head: true }).gte('score', 70),
-        supabase.from('assessments').select('score'),
-        supabase.from('recruitment_applications').select('id', { count: 'exact', head: true }),
-      ]);
+    const [
+      { count: assessCount },
+      { count: passCount },
+      { data: scoresData },
+      appsRes,
+    ] = await Promise.all([
+      supabase.from('assessments').select('id', { count: 'exact', head: true }),
+      supabase.from('assessments').select('id', { count: 'exact', head: true }).gte('score', 70),
+      supabase.from('assessments').select('score'),
+      // Use admin-client API to bypass RLS on recruitment table
+      fetch('/api/bogga/recruitment').then(r => r.json()).catch(() => ({ applications: [] })),
+    ]);
     const avg = scoresData?.length
       ? Math.round(scoresData.reduce((s, a) => s + (a.score ?? 0), 0) / scoresData.length)
       : 0;
-    setStats({ assessments: assessCount ?? 0, pass: passCount ?? 0, avg, applications: appCount ?? 0 });
+    setStats({
+      assessments:  assessCount ?? 0,
+      pass:         passCount   ?? 0,
+      avg,
+      applications: appsRes.applications?.length ?? 0,
+    });
   }
 
   async function loadApps() {
     setAppsLoading(true);
-    // cv_path holds JSON {filename, base64} — fetched on demand via /api/bogga/recruitment/[id]
-    const { data } = await supabase
-      .from('recruitment_applications')
-      .select('id, name, email, phone, experience, specialty, notes, status, created_at')
-      .order('created_at', { ascending: false });
-    setApps(data ?? []);
+    // Use admin-client API route to bypass any RLS restrictions
+    const res  = await fetch('/api/bogga/recruitment');
+    const data = await res.json();
+    setApps(data.applications ?? []);
     setAppsLoading(false);
   }
 
@@ -135,7 +143,11 @@ export default function BruteAdminPage() {
 
   // ── Recruitment ──────────────────────────────────────────────────
   async function updateAppStatus(id, status) {
-    await supabase.from('recruitment_applications').update({ status }).eq('id', id);
+    await fetch('/api/bogga/recruitment', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ id, status }),
+    });
     setApps(prev => prev.map(a => a.id === id ? { ...a, status } : a));
   }
 
