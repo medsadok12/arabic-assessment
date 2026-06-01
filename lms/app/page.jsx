@@ -61,13 +61,14 @@ export default function LandingPage() {
                 <Image
                   src="/teacher-student-hero.png"
                   alt="معلم وطالب يستخدمان التطبيق"
-                  width={480}
-                  height={480}
+                  width={660}
+                  height={700}
                   priority
+                  sizes="(max-width: 768px) 360px, (max-width: 1100px) 52vw, 660px"
                   style={{
                     width: '100%',
                     height: 'auto',
-                    filter: 'drop-shadow(0px 10px 20px rgba(0,0,0,0.15))',
+                    filter: 'drop-shadow(0px 12px 28px rgba(0,0,0,0.18))',
                   }}
                 />
               </div>
