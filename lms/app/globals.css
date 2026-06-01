@@ -327,42 +327,43 @@ body {
   background: linear-gradient(135deg, var(--primary) 0%, #0e3d70 100%);
   color: #fff;
   overflow: hidden;
+  position: relative;
 }
-.hero-main { padding: 72px 0 0; }
-.hero-wave  { display: block; width: 100%; margin-top: -2px; line-height: 0; }
+/* min-height tracks the absolute photo's height so it's never clipped at top */
+.hero-main { padding: 72px 0 0; position: relative; z-index: 1; min-height: min(27vw, 520px); }
+.hero-wave  { display: block; width: 100%; margin-top: -2px; line-height: 0; position: relative; z-index: 2; }
 .hero-layout {
   display: flex;
   align-items: center;
   gap: 24px;
 }
+/* text block kept on the right half; the photo lives in the left half */
 .hero-content {
-  flex: 1 1 56%;
+  flex: 1 1 100%;
   min-width: 0;
+  max-width: 540px;
+  margin-left: auto;
   text-align: right;
-  padding-bottom: 60px;
+  padding-bottom: 40px;
 }
 .hero h1 { font-size: 2.7rem; font-weight: 800; line-height: 1.28; margin-bottom: 18px; text-align: right; letter-spacing: -.01em; }
 .hero p  { font-size: 1.05rem; opacity: .88; margin: 0 0 34px; text-align: right; line-height: 1.75; }
 .hero-btns { display: flex; gap: 14px; justify-content: flex-end; flex-wrap: wrap; }
-/* image column anchors the photo to its right edge; the wide photo bleeds
-   left into the dead space and is clipped by the hero's overflow:hidden */
+/* photo (landscape 1408×768) pinned full-bleed to the hero's left edge so it
+   shows in full; its base sits at the hero bottom and the wave (z-index 2)
+   paints over the lower body so the figures emerge from the section */
 .hero-image {
-  flex: 0 0 44%;
-  min-width: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-start;
-  background: transparent;
-  align-self: flex-end;
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: min(46vw, 780px);
+  z-index: 0;
+  pointer-events: none;
 }
-/* photo is landscape (1408×768): size by a large width so it grows tall
-   enough to fill the column, bleed left, and sink under the white wave */
 .hero-photo {
-  width: clamp(560px, 64vw, 1040px);
+  display: block;
+  width: 100%;
   height: auto;
-  max-width: none;
-  flex-shrink: 0;
-  margin-bottom: -52px;
   filter: drop-shadow(0 14px 30px rgba(0,0,0,0.22));
 }
 .features { padding: 80px 0; background: #fff; }
@@ -598,15 +599,16 @@ body {
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .hero h1 { font-size: 1.9rem; }
-  .hero-main { padding: 44px 0 0; }
+  .hero-main { padding: 44px 0 0; min-height: 0; }
   .hero-topbar { font-size: .76rem; padding: 6px 16px; }
   .hero-layout { flex-direction: column-reverse; gap: 24px; }
-  .hero-content { text-align: center; padding-bottom: 0; }
+  .hero-content { flex: none; width: 100%; max-width: none; margin-left: 0; text-align: center; padding-bottom: 0; }
   .hero h1 { text-align: center; }
   .hero p  { text-align: center; }
   .hero-btns { justify-content: center; }
-  .hero-image { flex: none; width: 100%; justify-content: center; align-self: auto; }
-  .hero-photo { width: 100%; max-width: 380px; margin-bottom: -24px; }
+  /* photo back into normal flow, centered above the text */
+  .hero-image { position: static; width: 100%; max-width: 360px; margin: 0 auto; }
+  .hero-photo { width: 100%; margin-bottom: -24px; }
   .navbar-links-desktop { display: none !important; }
   .nav-auth-btns { display: none; }
   .nav-hamburger { display: block; }
