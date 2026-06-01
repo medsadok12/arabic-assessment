@@ -621,3 +621,120 @@ body {
   .nav-mobile-menu { display: none !important; }
   .navbar-social-desktop { display: flex; }
 }
+
+/* ══════════════════════════════════════
+   Floating Sidebar (right-edge quick links)
+   ══════════════════════════════════════ */
+.fside {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 300;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  direction: rtl;
+}
+
+/* ── Vertical tab handle ── */
+.fside-handle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 36px;
+  min-height: 120px;
+  background: var(--primary);
+  border: none;
+  border-radius: 10px 0 0 10px;
+  cursor: pointer;
+  color: #fff;
+  padding: 14px 0;
+  box-shadow: -3px 2px 12px rgba(0,0,0,.22);
+  transition: background .2s, width .2s;
+  flex-shrink: 0;
+}
+.fside-handle:hover { background: #0e3d70; width: 40px; }
+.fside-handle-icon { font-size: 1rem; line-height: 1; }
+.fside-handle-label {
+  font-size: .68rem;
+  font-weight: 700;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  letter-spacing: .04em;
+  opacity: .9;
+  white-space: nowrap;
+}
+
+/* ── Sliding panel ── */
+.fside-panel {
+  background: #fff;
+  border-radius: 12px 0 0 12px;
+  box-shadow: -4px 4px 24px rgba(0,0,0,.18);
+  padding: 14px 0 10px;
+  min-width: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* slide closed by default */
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-width .3s ease, opacity .25s ease, padding .3s ease;
+}
+.fside--open .fside-panel {
+  max-width: 240px;
+  opacity: 1;
+  padding: 14px 0 10px;
+}
+
+.fside-panel-title {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 0 16px 8px;
+  border-bottom: 1px solid var(--border);
+  margin: 0 0 4px;
+  white-space: nowrap;
+}
+
+.fside-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: .9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background .15s, color .15s;
+  border: none;
+  background: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: right;
+}
+.fside-item:hover { background: var(--primary-lt); color: var(--primary); }
+.fside-item-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+/* WhatsApp item gets a green accent */
+.fside-item-wa { color: #1a7c40; }
+.fside-item-wa:hover { background: #e6f4ec; color: #15652f; }
+
+/* ── Mobile: anchor at bottom-right, smaller ── */
+@media (max-width: 768px) {
+  .fside {
+    top: auto;
+    bottom: 24px;
+    transform: none;
+  }
+  .fside-handle { min-height: 80px; }
+  .fside-panel { border-radius: 12px 0 0 12px; }
+  .fside--open .fside-panel { max-width: 220px; }
+}

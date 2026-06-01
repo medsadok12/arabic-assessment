@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '../components/Navbar';
+import FloatingSidebar from '../components/FloatingSidebar';
 import { Target, FileBarChart, Globe, Smartphone, Lock, Zap } from 'lucide-react';
 
 const WHATSAPP_HREF = 'https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0';
@@ -21,6 +22,7 @@ export default function LandingPage() {
   return (
     <>
       <Navbar />
+      <FloatingSidebar />
 
       {/* ── Hero ── */}
       <section className="hero">
@@ -44,18 +46,16 @@ export default function LandingPage() {
 
               {/* Right — Text + Buttons */}
               <div className="hero-content">
-                <h1>نظام التقييم الذكي<br />لأكاديمية عارم</h1>
-                <p>منصتكم التعليمية المتكاملة أونلاين لتقييم وتطوير مهارات الطلاب في اللغة العربية بأساليب ذكية وتفاعلية.</p>
+                <h1>نظام التقييم الذكي</h1>
+                <p>
+                  منصتكم التعليمية المتكاملة أونلاين<br />
+                  لتقييم وتطوير مهارات الطلاب في اللغة العربية بأساليب ذكية وتفاعلية.
+                </p>
                 <div className="hero-btns">
                   <a href="https://arabic-assessment.vercel.app"
                     className="btn btn-accent btn-lg"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                     ابدأ التقييم التشخيصي ▷
-                  </a>
-                  <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer"
-                    className="btn btn-lg"
-                    style={{ background: 'transparent', border: '2px solid rgba(255,255,255,.6)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    💬 تواصل مع الإدارة
                   </a>
                 </div>
               </div>
