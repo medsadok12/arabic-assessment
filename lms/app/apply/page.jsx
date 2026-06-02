@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import Navbar from '../../components/Navbar';
+import { UserPlus } from 'lucide-react';
 
 const SPECIALTIES = [
   'اللغة العربية للناطقين بها',
@@ -108,7 +109,16 @@ export default function ApplyPage() {
             <Link href="/" style={{ color: 'var(--primary)', fontSize: '.88rem', textDecoration: 'none' }}>
               ← العودة للصفحة الرئيسية
             </Link>
-            <div style={{ fontSize: '2.8rem', marginTop: 20, marginBottom: 10 }}>👨‍🏫</div>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 72, height: 72, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #e8f0fb 0%, #dbeafe 100%)',
+              border: '2px solid #b8d0f5',
+              marginTop: 20, marginBottom: 12,
+              boxShadow: '0 4px 16px rgba(24,95,165,.12)',
+            }}>
+              <UserPlus size={34} color="#185FA5" strokeWidth={1.6} />
+            </div>
             <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary)', marginBottom: 8 }}>
               انضم إلى فريق أكاديمية عارم
             </h1>
