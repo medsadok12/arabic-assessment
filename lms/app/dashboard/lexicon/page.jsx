@@ -1,4 +1,5 @@
 'use client';
+export const dynamic = 'force-dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Navbar from '../../../components/Navbar';
@@ -14,8 +15,6 @@ const TYPE_COLORS = {
 };
 
 export default function StudentLexiconPage() {
-  const supabase = createClient();
-
   const [user, setUser]     = useState(null);
   const [words, setWords]   = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,9 +29,9 @@ export default function StudentLexiconPage() {
   const [mediaCache, setMediaCache] = useState({});
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
+    // createClient() called here (client-side only) to avoid SSR Supabase init failure
+    createClient().auth.getUser().then(({ data: { user: u } }) => {
       setUser(u);
-      // Auto-apply grade filter from user metadata
       const grade = u?.user_metadata?.grade;
       if (grade) setFilterGrade(String(grade));
     });
@@ -54,8 +53,8 @@ export default function StudentLexiconPage() {
     if (activeCard === id) { setActiveCard(null); return; }
     setActiveCard(id);
 
-    // Lazy-load media only if the word has any
-    if ((word.has_image || word.has_audio) && !mediaCache[id]) {
+    // Always fetch media on first expand; API returns null for missing media
+    if (!mediaCache[id]) {
       setMediaCache(p => ({ ...p, [id]: { loading: true } }));
       try {
         const res  = await fetch(`/api/student/lexicon/${id}`);
@@ -223,9 +222,12 @@ export default function StudentLexiconPage() {
 
                         {/* Image */}
                         {media?.image && (
-                          <img src={media.image} alt={w.word}
-                            style={{ width: '100%', maxHeight: 140, objectFit: 'contain', borderRadius: 8,
-                                     marginBottom: 8, border: `1px solid ${colors.border}`, background: colors.bg }}
+                          <img
+                            src={media.image.startsWith('data:') ? media.image : `data:image/jpeg;base64,${media.image}`}
+                            alt={w.word}
+                            style={{ width: '100%', maxHeight: 160, objectFit: 'contain', borderRadius: 10,
+                                     marginBottom: 8, border: `1px solid ${colors.border}`, background: colors.bg,
+                                     display: 'block' }}
                             onClick={e => e.stopPropagation()} />
                         )}
 
