@@ -24,7 +24,7 @@ export default function RegisterPage() {
     const res  = await fetch('/api/validate-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: form.code }),
+      body: JSON.stringify({ code: form.code, name: form.name }),
     });
     const { valid } = await res.json();
     if (!valid) {
