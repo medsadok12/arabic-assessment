@@ -16,15 +16,18 @@ const TYPE_COLORS = {
 export default function StudentLexiconPage() {
   const supabase = createClient();
 
-  const [user, setUser]         = useState(null);
-  const [words, setWords]       = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [search, setSearch]     = useState('');
-  const [filterType, setFilterType]   = useState('');
+  const [user, setUser]     = useState(null);
+  const [words, setWords]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [filterType,  setFilterType]  = useState('');
   const [filterTopic, setFilterTopic] = useState('');
   const [filterGrade, setFilterGrade] = useState('');
   const [activeCard, setActiveCard]   = useState(null);
-  const [mode, setMode]               = useState('cards'); // cards | table
+  const [mode, setMode]     = useState('cards');
+
+  // Media cache: { [wordId]: { image, audio, loading } }
+  const [mediaCache, setMediaCache] = useState({});
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => setUser(u));
@@ -32,24 +35,41 @@ export default function StudentLexiconPage() {
   }, []);
 
   async function loadWords() {
-    const { data } = await supabase
-      .from('lexicon_words')
-      .select('*')
-      .order('word');
-    setWords(data ?? []);
+    // Use admin-client API route to bypass any RLS on lexicon_words
+    const res  = await fetch('/api/student/lexicon');
+    const data = await res.json();
+    setWords(data.words ?? []);
     setLoading(false);
+  }
+
+  async function toggleCard(id) {
+    const word = words.find(w => w.id === id);
+    if (!word) return;
+
+    if (activeCard === id) { setActiveCard(null); return; }
+    setActiveCard(id);
+
+    // Lazy-load media only if the word has any
+    if ((word.has_image || word.has_audio) && !mediaCache[id]) {
+      setMediaCache(p => ({ ...p, [id]: { loading: true } }));
+      try {
+        const res  = await fetch(`/api/student/lexicon/${id}`);
+        const data = await res.json();
+        setMediaCache(p => ({ ...p, [id]: { image: data.image, audio: data.audio, loading: false } }));
+      } catch {
+        setMediaCache(p => ({ ...p, [id]: { loading: false } }));
+      }
+    }
   }
 
   const topics = useMemo(() => [...new Set(words.map(w => w.topic).filter(Boolean))].sort(), [words]);
 
   const filtered = useMemo(() => words.filter(w =>
-    (!search || w.word.includes(search) || (w.sentence ?? '').includes(search)) &&
+    (!search     || w.word.includes(search) || (w.sentence ?? '').includes(search)) &&
     (!filterType  || w.word_type === filterType) &&
     (!filterTopic || w.topic === filterTopic) &&
     (!filterGrade || (+filterGrade >= w.grade_from && +filterGrade <= w.grade_to))
   ), [words, search, filterType, filterTopic, filterGrade]);
-
-  const card = activeCard ? words.find(w => w.id === activeCard) : null;
 
   return (
     <>
@@ -121,15 +141,18 @@ export default function StudentLexiconPage() {
               <span className="empty-icon">🔍</span>
               <p>لا توجد نتائج — جرّب البحث بكلمة أخرى</p>
             </div>
+
           ) : mode === 'cards' ? (
             /* ── Cards view ── */
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 16 }}>
               {filtered.map(w => {
-                const colors = TYPE_COLORS[w.word_type] ?? TYPE_COLORS['اسم'];
+                const colors  = TYPE_COLORS[w.word_type] ?? TYPE_COLORS['اسم'];
                 const isActive = activeCard === w.id;
+                const media    = mediaCache[w.id];
+
                 return (
                   <div key={w.id}
-                    onClick={() => setActiveCard(isActive ? null : w.id)}
+                    onClick={() => toggleCard(w.id)}
                     style={{
                       background: '#fff', borderRadius: 18,
                       border: `2.5px solid ${isActive ? colors.border : '#e8eef5'}`,
@@ -139,6 +162,7 @@ export default function StudentLexiconPage() {
                       transition: 'all .22s cubic-bezier(.34,1.56,.64,1)',
                       position: 'relative',
                     }}>
+
                     {/* Type badge */}
                     <span style={{
                       position: 'absolute', top: 10, right: 10,
@@ -149,26 +173,27 @@ export default function StudentLexiconPage() {
                       {w.word_type}
                     </span>
 
+                    {/* Media indicators (top-left) */}
+                    {(w.has_image || w.has_audio) && (
+                      <span style={{ position: 'absolute', top: 10, left: 10, fontSize: '.7rem', opacity: .55 }}>
+                        {w.has_image && '🖼️'}{w.has_audio && '🔊'}
+                      </span>
+                    )}
+
                     {/* Word */}
                     <div style={{
                       fontSize: '2.2rem', fontWeight: 900, color: '#1a2d4a',
                       lineHeight: 1.3, marginTop: 18, marginBottom: 10,
-                      textShadow: isActive ? '0 2px 8px rgba(24,95,165,.12)' : 'none',
                     }}>
                       {w.word}
                     </div>
 
-                    {/* Divider */}
                     <div style={{ width: 40, height: 2.5, background: colors.border, borderRadius: 2, margin: '0 auto 10px' }} />
 
-                    {/* Sentence */}
                     {w.sentence && (
-                      <div style={{ fontSize: '.76rem', color: '#64748b', lineHeight: 1.7 }}>
-                        {w.sentence}
-                      </div>
+                      <div style={{ fontSize: '.76rem', color: '#64748b', lineHeight: 1.7 }}>{w.sentence}</div>
                     )}
 
-                    {/* Grade + Topic */}
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
                       {w.topic && (
                         <span style={{ background: '#f1f5f9', color: '#475569', borderRadius: 12, padding: '2px 7px', fontSize: '.63rem', fontWeight: 700 }}>
@@ -180,9 +205,33 @@ export default function StudentLexiconPage() {
                       </span>
                     </div>
 
-                    {/* Expanded info */}
-                    {isActive && (w.syllables || w.root) && (
+                    {/* Expanded details */}
+                    {isActive && (
                       <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1.5px dashed ${colors.border}`, textAlign: 'right' }}>
+
+                        {/* Loading media */}
+                        {media?.loading && (
+                          <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                            <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderTopColor: colors.text, borderColor: colors.border }} />
+                          </div>
+                        )}
+
+                        {/* Image */}
+                        {media?.image && (
+                          <img src={media.image} alt={w.word}
+                            style={{ width: '100%', maxHeight: 140, objectFit: 'contain', borderRadius: 8,
+                                     marginBottom: 8, border: `1px solid ${colors.border}`, background: colors.bg }}
+                            onClick={e => e.stopPropagation()} />
+                        )}
+
+                        {/* Audio */}
+                        {media?.audio && (
+                          <div style={{ marginBottom: 8 }} onClick={e => e.stopPropagation()}>
+                            <audio controls src={media.audio} style={{ width: '100%', height: 36 }} />
+                          </div>
+                        )}
+
+                        {/* Syllables / Root */}
                         {w.syllables && (
                           <div style={{ fontSize: '.76rem', color: '#475569', marginBottom: 4 }}>
                             🎵 المقاطع: <strong>{w.syllables}</strong>
@@ -199,6 +248,7 @@ export default function StudentLexiconPage() {
                 );
               })}
             </div>
+
           ) : (
             /* ── Table view ── */
             <div style={{ overflowX: 'auto' }}>
@@ -221,11 +271,9 @@ export default function StudentLexiconPage() {
                       <tr key={w.id}>
                         <td style={{ fontWeight: 900, fontSize: '1.15rem' }}>{w.word}</td>
                         <td>
-                          <span style={{
-                            background: colors.bg, color: colors.text,
-                            padding: '2px 10px', borderRadius: 20,
-                            fontSize: '.78rem', fontWeight: 700,
-                          }}>{w.word_type}</span>
+                          <span style={{ background: colors.bg, color: colors.text, padding: '2px 10px', borderRadius: 20, fontSize: '.78rem', fontWeight: 700 }}>
+                            {w.word_type}
+                          </span>
                         </td>
                         <td style={{ color: 'var(--muted)', fontSize: '.85rem' }}>{w.topic}</td>
                         <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>{w.grade_from}–{w.grade_to}</td>
@@ -242,7 +290,7 @@ export default function StudentLexiconPage() {
             </div>
           )}
 
-          {/* Placeholder: Future phonetic exercises */}
+          {/* Placeholder: phonetic exercises */}
           <div style={{
             marginTop: 48, background: '#fff', borderRadius: 16,
             padding: '28px 24px', border: '2px dashed #d0e4f7', textAlign: 'center',
