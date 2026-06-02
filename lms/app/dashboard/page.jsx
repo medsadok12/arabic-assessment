@@ -37,9 +37,13 @@ export default async function DashboardPage() {
         { icon: '🏅', val: assessments?.[0]?.level ? `المستوى ${assessments[0].level}` : '—', lbl: 'آخر مستوى' },
       ];
 
+  const grade = user.user_metadata?.grade ?? null;
+  const lexiconHref = grade ? `/dashboard/lexicon?grade=${grade}` : '/dashboard/lexicon';
+
   const actions = [
-    { icon: '📚', title: 'المكتبة التعليمية', desc: 'تصفح المناهج والدروس المتاحة لك',                    href: '/library'  },
-    { icon: '📈', title: 'تقارير التقدم',      desc: 'شاهد نتيجة تقييمك التشخيصي ومستوى تقدمك', href: '/dashboard' },
+    { icon: '📚', title: 'المكتبة التعليمية',   desc: 'تصفح المناهج والدروس المتاحة لك',                        href: '/library'   },
+    { icon: '📖', title: 'بنك الكلمات الذكي',   desc: 'تعلّم الكلمات العربية المشكولة مع الصوت والصورة',       href: lexiconHref  },
+    { icon: '📈', title: 'تقارير التقدم',        desc: 'شاهد نتيجة تقييمك التشخيصي ومستوى تقدمك',              href: '/dashboard' },
   ];
 
   const displayName = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'طالب';

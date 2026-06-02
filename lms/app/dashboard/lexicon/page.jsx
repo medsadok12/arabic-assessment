@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '../../../components/Navbar';
 import { createClient } from '../../../lib/supabase';
@@ -15,6 +16,7 @@ const TYPE_COLORS = {
 
 export default function StudentLexiconPage() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
 
   const [user, setUser]     = useState(null);
   const [words, setWords]   = useState([]);
@@ -30,7 +32,14 @@ export default function StudentLexiconPage() {
   const [mediaCache, setMediaCache] = useState({});
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user: u } }) => setUser(u));
+    supabase.auth.getUser().then(({ data: { user: u } }) => {
+      setUser(u);
+      // Auto-apply grade filter: URL param takes priority, then user metadata
+      const urlGrade  = searchParams.get('grade');
+      const metaGrade = u?.user_metadata?.grade;
+      const resolved  = urlGrade || metaGrade || '';
+      if (resolved) setFilterGrade(String(resolved));
+    });
     loadWords();
   }, []);
 

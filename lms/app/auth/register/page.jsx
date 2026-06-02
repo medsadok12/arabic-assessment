@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { createClient } from '../../../lib/supabase';
 
 export default function RegisterPage() {
-  const [form, setForm]     = useState({ name: '', email: '', password: '', confirm: '', code: '' });
+  const [form, setForm]     = useState({ name: '', email: '', password: '', confirm: '', code: '', grade: '' });
   const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,7 +38,7 @@ export default function RegisterPage() {
       email:    form.email,
       password: form.password,
       options: {
-        data: { full_name: form.name, role: 'student' },
+        data: { full_name: form.name, role: 'student', grade: form.grade || null },
         emailRedirectTo: 'https://aarem-lms.vercel.app/auth/callback',
       },
     });
@@ -112,6 +112,19 @@ export default function RegisterPage() {
                   تواصل معنا
                 </a>
               </p>
+            </div>
+            <div className="form-group">
+              <label className="form-label">الصف الدراسي</label>
+              <select
+                className="form-input"
+                value={form.grade}
+                onChange={e => set('grade', e.target.value)}
+              >
+                <option value="">اختر الصف (اختياري)</option>
+                {[1,2,3,4,5,6,7].map(g => (
+                  <option key={g} value={g}>الصف {g}</option>
+                ))}
+              </select>
             </div>
             <button type="submit" className="btn btn-primary"
               style={{ width: '100%', marginTop: 8 }} disabled={loading}>
