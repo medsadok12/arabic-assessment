@@ -27,18 +27,28 @@ CREATE TABLE IF NOT EXISTS recruitment_applications (
 
 -- جدول بنك الكلمات
 CREATE TABLE IF NOT EXISTS lexicon_words (
-  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  word       TEXT        NOT NULL,
-  word_type  TEXT        NOT NULL,
-  sentence   TEXT,
-  topic      TEXT,
-  grade_from INT         NOT NULL DEFAULT 1,
-  grade_to   INT         NOT NULL DEFAULT 7,
-  syllables  TEXT,
-  root       TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);`;
+  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  word         TEXT        NOT NULL,
+  word_type    TEXT        NOT NULL,
+  sentence     TEXT,
+  topic        TEXT,
+  grade_from   INT         NOT NULL DEFAULT 1,
+  grade_to     INT         NOT NULL DEFAULT 7,
+  syllables    TEXT,
+  root         TEXT,
+  image_base64 TEXT,
+  audio_base64 TEXT,
+  has_image    BOOLEAN     NOT NULL DEFAULT FALSE,
+  has_audio    BOOLEAN     NOT NULL DEFAULT FALSE,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ترقية جدول الكلمات إن كان موجوداً بدون أعمدة الوسائط (آمن للتشغيل أكثر من مرة)
+ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS image_base64 TEXT;
+ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS audio_base64 TEXT;
+ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS has_image BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS has_audio BOOLEAN NOT NULL DEFAULT FALSE;`;
 
 const STATUS_LABELS = { pending: 'قيد المراجعة', reviewed: 'تمت المراجعة', accepted: 'مقبول', rejected: 'مرفوض' };
 const STATUS_COLORS = { pending: '#b56a00', reviewed: '#185FA5', accepted: '#1a7c40', rejected: '#e53e3e' };
