@@ -148,8 +148,15 @@ export default function Navbar({ user: initialUser }) {
       <div className="container navbar-inner">
 
         {/* ── الجانب الأيمن: الشعار ── */}
-        <Link href={user ? destPath : '/'} className="navbar-brand">
-          <span>📚</span> أكاديمية عارم
+        <Link href={user ? destPath : '/'} className="navbar-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+          <img
+            src="/logo.svg"
+            alt="أكاديمية عارم"
+            style={{ height: 42, width: 42, borderRadius: '50%', flexShrink: 0, display: 'block' }}
+          />
+          <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff', letterSpacing: '.3px' }}>
+            أكاديمية عارم
+          </span>
         </Link>
 
         {/* ── الوسط: روابط التنقل (desktop) — تظهر فقط عند تسجيل الدخول ── */}
