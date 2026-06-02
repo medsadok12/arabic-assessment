@@ -1,33 +1,99 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-/* ══════════════════════════════════════
-   TTS hook — Arabic speech synthesis
-══════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════
+   TTS hook — Arabic speech synthesis (optimised)
+   Priority: Google Arabic → Microsoft Arabic → any ar-SA → ar
+   Includes Chrome keep-alive fix (pausing bug on long text)
+══════════════════════════════════════════════════════════ */
 function useSpeech() {
-  const voices = useRef([]);
+  const voicesRef = useRef([]);
 
   useEffect(() => {
-    const load = () => { voices.current = window.speechSynthesis?.getVoices() ?? []; };
+    const load = () => {
+      const v = window.speechSynthesis?.getVoices() ?? [];
+      if (v.length) voicesRef.current = v;
+    };
     load();
     window.speechSynthesis?.addEventListener('voiceschanged', load);
-    return () => window.speechSynthesis?.removeEventListener('voiceschanged', load);
+    // Some browsers need a small delay before voices are ready
+    const t = setTimeout(load, 200);
+    return () => {
+      clearTimeout(t);
+      window.speechSynthesis?.removeEventListener('voiceschanged', load);
+    };
   }, []);
+
+  /** Pick the best Arabic voice available in the browser */
+  function pickVoice() {
+    const all = voicesRef.current;
+    if (!all.length) return null;
+
+    // Ordered preference — highest quality first
+    const checks = [
+      v => /Google.*Arab/i.test(v.name),                       // Chrome: Google Arabic
+      v => /Microsoft.*Naayf/i.test(v.name),                   // Windows: MSA male
+      v => /Microsoft.*Hoda/i.test(v.name),                    // Windows: MSA female
+      v => /Microsoft.*Zeina/i.test(v.name),                   // Windows: Egyptian
+      v => /Majed|Maged/i.test(v.name),                        // macOS Arabic
+      v => /Laila|Tarik|Amira/i.test(v.name),                  // other
+      v => v.lang === 'ar-SA' && v.localService,               // local ar-SA
+      v => v.lang === 'ar-AE' && v.localService,               // local ar-AE
+      v => v.lang === 'ar-SA',                                  // any ar-SA
+      v => v.lang?.startsWith('ar'),                           // any Arabic
+    ];
+
+    for (const test of checks) {
+      const found = all.find(test);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  /** Clean text before TTS — strip markdown & formatting chars */
+  function cleanForSpeech(text) {
+    return text
+      .replace(/[*_~`#>]/g, '')           // markdown symbols
+      .replace(/\s{2,}/g, ' ')            // multiple spaces
+      .trim();
+  }
 
   const speak = useCallback((text, { onEnd } = {}) => {
     if (!window.speechSynthesis) { onEnd?.(); return; }
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
+
+    const clean = cleanForSpeech(text);
+    const u = new SpeechSynthesisUtterance(clean);
     u.lang  = 'ar-SA';
-    u.rate  = 0.88;
-    u.pitch = 1.12;
-    const ar = voices.current.find(v => v.lang?.startsWith('ar'));
-    if (ar) u.voice = ar;
-    u.onend = onEnd;
+    u.rate  = 0.84;   // slightly slower — clear for children
+    u.pitch = 1.08;   // slightly warmer tone
+    u.volume = 1;
+
+    const voice = pickVoice();
+    if (voice) u.voice = voice;
+
+    // ── Chrome keep-alive fix ──
+    // Chrome pauses speechSynthesis when the tab loses focus or for long text.
+    // Pinging resume() every 5s prevents the silent cut-off.
+    let ping;
+    const startPing = () => {
+      ping = setInterval(() => {
+        if (!window.speechSynthesis.speaking) { clearInterval(ping); return; }
+        if (window.speechSynthesis.paused)    window.speechSynthesis.resume();
+      }, 5000);
+    };
+
+    u.onstart = startPing;
+    u.onend   = () => { clearInterval(ping); onEnd?.(); };
+    u.onerror = () => { clearInterval(ping); onEnd?.(); };
+
     window.speechSynthesis.speak(u);
   }, []);
 
-  const cancel = useCallback(() => { window.speechSynthesis?.cancel(); }, []);
+  const cancel = useCallback(() => {
+    window.speechSynthesis?.cancel();
+  }, []);
+
   return { speak, cancel };
 }
 
