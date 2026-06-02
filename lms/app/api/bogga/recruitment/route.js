@@ -22,6 +22,25 @@ export async function GET() {
   return NextResponse.json({ applications: data ?? [] });
 }
 
+// DELETE — remove an application permanently (super_admin only)
+export async function DELETE(req) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (guard(user)) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
+
+  const { id } = await req.json();
+  if (!id) return NextResponse.json({ error: 'معرّف غير صالح' }, { status: 400 });
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from('recruitment_applications')
+    .delete()
+    .eq('id', id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
+}
+
 // PATCH — update application status (super_admin only)
 export async function PATCH(req) {
   const supabase = createClient();

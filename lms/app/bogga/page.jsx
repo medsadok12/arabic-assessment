@@ -59,6 +59,7 @@ export default function BruteAdminPage() {
   // Recruitment
   const [apps, setApps]               = useState([]);
   const [appsLoading, setAppsLoading] = useState(false);
+  const [deletingApp, setDeletingApp] = useState(null);
 
   // Admins management
   const [admins, setAdmins]             = useState([]);
@@ -149,6 +150,23 @@ export default function BruteAdminPage() {
       body:    JSON.stringify({ id, status }),
     });
     setApps(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+  }
+
+  async function deleteApp(id, name) {
+    if (!confirm(`هل تريد حذف طلب "${name}" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+    setDeletingApp(id);
+    const res = await fetch('/api/bogga/recruitment', {
+      method:  'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ id }),
+    });
+    if (res.ok) {
+      setApps(prev => prev.filter(a => a.id !== id));
+    } else {
+      const data = await res.json();
+      alert(data.error || 'تعذر حذف الطلب');
+    }
+    setDeletingApp(null);
   }
 
   async function downloadCV(id, filename) {
@@ -419,6 +437,15 @@ export default function BruteAdminPage() {
                             style={{ fontSize: '.8rem', padding: '4px 8px', borderRadius: 8, border: '1.5px solid var(--border)', fontFamily: 'inherit' }}>
                             {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                           </select>
+                          <button
+                            onClick={() => deleteApp(app.id, app.name)}
+                            disabled={deletingApp === app.id}
+                            className="btn btn-sm btn-danger"
+                            style={{ fontSize: '.78rem' }}>
+                            {deletingApp === app.id
+                              ? <span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} />
+                              : '🗑️ حذف'}
+                          </button>
                         </div>
                       </div>
                       <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 10 }}>
