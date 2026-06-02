@@ -1,116 +1,91 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-/* ══════════════════════════════════════════════════════════
-   TTS hook — Arabic speech synthesis (optimised)
-   Priority: Google Arabic → Microsoft Arabic → any ar-SA → ar
-   Includes Chrome keep-alive fix (pausing bug on long text)
-══════════════════════════════════════════════════════════ */
-function useSpeech() {
-  const voicesRef = useRef([]);
+/* ── TTS helpers ── */
+function cleanText(text) {
+  return text
+    .replace(/[ؐ-ًؚ-ٰٟۖ-ۭ]/g, '') // harakat
+    .replace(/ـ/g, '')   // tatweel
+    .replace(/[*_~`#>•\-]/g, '') // markdown
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
 
-  useEffect(() => {
-    const load = () => {
-      const v = window.speechSynthesis?.getVoices() ?? [];
-      if (v.length) voicesRef.current = v;
-    };
-    load();
-    window.speechSynthesis?.addEventListener('voiceschanged', load);
-    // Some browsers need a small delay before voices are ready
-    const t = setTimeout(load, 200);
-    return () => {
-      clearTimeout(t);
-      window.speechSynthesis?.removeEventListener('voiceschanged', load);
-    };
+function chunkText(text) {
+  const chunks = [];
+  const sentences = text.split(/(?<=[.!?،؛\n])\s*/);
+  let cur = '';
+  for (const s of sentences) {
+    if ((cur + s).length > 180) {
+      if (cur) chunks.push(cur.trim());
+      cur = s;
+    } else {
+      cur += (cur ? ' ' : '') + s;
+    }
+  }
+  if (cur.trim()) chunks.push(cur.trim());
+  return chunks.length ? chunks : [text.slice(0, 180)];
+}
+
+/* ── TTS hook — Google Translate proxy, fallback to browser ── */
+function useSpeech() {
+  const audioRef  = useRef(null);
+  const cancelRef = useRef(false);
+
+  useEffect(() => () => {
+    cancelRef.current = true;
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
   }, []);
 
-  /** Pick the best Arabic voice available in the browser */
-  function pickVoice() {
-    const all = voicesRef.current;
-    if (!all.length) return null;
+  function playChunk(chunk) {
+    return new Promise(resolve => {
+      const src   = `/api/faheem/tts?t=${encodeURIComponent(chunk)}`;
+      const audio = new Audio(src);
+      audioRef.current = audio;
 
-    // Ordered preference — highest quality first
-    const checks = [
-      v => /Google.*Arab/i.test(v.name),                       // Chrome: Google Arabic
-      v => /Microsoft.*Naayf/i.test(v.name),                   // Windows: MSA male
-      v => /Microsoft.*Hoda/i.test(v.name),                    // Windows: MSA female
-      v => /Microsoft.*Zeina/i.test(v.name),                   // Windows: Egyptian
-      v => /Majed|Maged/i.test(v.name),                        // macOS Arabic
-      v => /Laila|Tarik|Amira/i.test(v.name),                  // other
-      v => v.lang === 'ar-SA' && v.localService,               // local ar-SA
-      v => v.lang === 'ar-AE' && v.localService,               // local ar-AE
-      v => v.lang === 'ar-SA',                                  // any ar-SA
-      v => v.lang?.startsWith('ar'),                           // any Arabic
-    ];
+      audio.onended = resolve;
+      audio.onerror = () => {
+        if (!window.speechSynthesis) { resolve(); return; }
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(chunk);
+        u.lang = 'ar-SA'; u.rate = 0.84; u.pitch = 1.05; u.volume = 1;
+        const arVoice =
+          window.speechSynthesis.getVoices()
+            .find(v => /Google.*Arab|Microsoft.*Naayf|Microsoft.*Hoda|Majed|Maged/i.test(v.name))
+          ?? window.speechSynthesis.getVoices().find(v => v.lang?.startsWith('ar'));
+        if (arVoice) u.voice = arVoice;
+        u.onend = resolve; u.onerror = resolve;
+        window.speechSynthesis.speak(u);
+      };
 
-    for (const test of checks) {
-      const found = all.find(test);
-      if (found) return found;
+      audio.play().catch(() => audio.onerror?.());
+    });
+  }
+
+  const speak = useCallback(async (text, { onEnd } = {}) => {
+    cancelRef.current = true;
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    window.speechSynthesis?.cancel();
+    cancelRef.current = false;
+
+    const chunks = chunkText(cleanText(text));
+    for (const chunk of chunks) {
+      if (cancelRef.current) break;
+      await playChunk(chunk);
     }
-    return null;
-  }
-
-  /** Clean text before TTS:
-   *  1. Strip ALL Arabic diacritical marks (harakat) — fatha, damma, kasra,
-   *     sukun, shadda, tanwin, tatweel — which cause TTS to mispronounce them
-   *     as separate phonemes instead of smooth Fusha.
-   *  2. Strip markdown formatting.
-   */
-  function cleanForSpeech(text) {
-    return text
-      // Arabic harakat & diacritics (U+0610–U+061A, U+064B–U+065F, U+0670, U+06D6–U+06ED)
-      .replace(/[ؐ-ًؚ-ٰٟۖ-ۭ]/g, '')
-      // Arabic tatweel (kashida)
-      .replace(/ـ/g, '')
-      // Markdown & formatting symbols
-      .replace(/[*_~`#>•\-]/g, '')
-      // Collapse multiple spaces
-      .replace(/\s{2,}/g, ' ')
-      .trim();
-  }
-
-  const speak = useCallback((text, { onEnd } = {}) => {
-    if (!window.speechSynthesis) { onEnd?.(); return; }
-    window.speechSynthesis.cancel();
-
-    const clean = cleanForSpeech(text);
-    const u = new SpeechSynthesisUtterance(clean);
-    u.lang  = 'ar-SA';
-    u.rate  = 0.84;   // slightly slower — clear for children
-    u.pitch = 1.08;   // slightly warmer tone
-    u.volume = 1;
-
-    const voice = pickVoice();
-    if (voice) u.voice = voice;
-
-    // ── Chrome keep-alive fix ──
-    // Chrome pauses speechSynthesis when the tab loses focus or for long text.
-    // Pinging resume() every 5s prevents the silent cut-off.
-    let ping;
-    const startPing = () => {
-      ping = setInterval(() => {
-        if (!window.speechSynthesis.speaking) { clearInterval(ping); return; }
-        if (window.speechSynthesis.paused)    window.speechSynthesis.resume();
-      }, 5000);
-    };
-
-    u.onstart = startPing;
-    u.onend   = () => { clearInterval(ping); onEnd?.(); };
-    u.onerror = () => { clearInterval(ping); onEnd?.(); };
-
-    window.speechSynthesis.speak(u);
+    if (!cancelRef.current) onEnd?.();
   }, []);
 
   const cancel = useCallback(() => {
+    cancelRef.current = true;
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     window.speechSynthesis?.cancel();
   }, []);
 
   return { speak, cancel };
 }
 
-/* ══════════════════════════════════════
-   SVG Faheem character face
-══════════════════════════════════════ */
+/* ── SVG Faheem character face ── */
 function FaheemFace({ phase, mouthOpen, blink, bob }) {
   const speaking = phase === 'speaking';
   const thinking = phase === 'thinking';
@@ -126,48 +101,45 @@ function FaheemFace({ phase, mouthOpen, blink, bob }) {
         filter: 'drop-shadow(0 6px 16px rgba(0,0,0,.22))',
       }}
     >
-      {/* ── Body ── */}
+      {/* Body */}
       <rect x="22" y="118" width="76" height="44" rx="18" fill="#1f2d5a" />
       <ellipse cx="60" cy="160" rx="34" ry="9" fill="#15213d" />
-      {/* Gold collar */}
       <path d="M40,120 L60,133 L80,120"
         fill="none" stroke="#d4952a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Academy badge */}
       <circle cx="60" cy="142" r="8" fill="#d4952a" />
       <text x="60" y="146.5" textAnchor="middle" fontSize="8.5"
         fill="#1f2d5a" fontFamily="serif" fontWeight="900">ع</text>
 
-      {/* ── Head ── */}
+      {/* Head */}
       <circle cx="60" cy="64" r="49" fill="#fce8c8" />
 
-      {/* ── Hair ── */}
+      {/* Hair */}
       <ellipse cx="60" cy="21" rx="49" ry="28" fill="#3d2510" />
       <ellipse cx="60" cy="16" rx="44" ry="22" fill="#4a2f15" />
-      {/* Strand */}
       <path d="M63,2 Q74,-4 72,14"
         fill="none" stroke="#3d2510" strokeWidth="5.5" strokeLinecap="round" />
 
-      {/* ── Ears ── */}
+      {/* Ears */}
       <ellipse cx="11" cy="66" rx="9" ry="12" fill="#f5c47e" />
       <ellipse cx="8.5" cy="66" rx="5" ry="7.5" fill="#e8a860" />
       <ellipse cx="109" cy="66" rx="9" ry="12" fill="#f5c47e" />
       <ellipse cx="111.5" cy="66" rx="5" ry="7.5" fill="#e8a860" />
 
-      {/* ── Left eye ── */}
+      {/* Left eye */}
       <ellipse cx="40" cy="63" rx="12" ry="14" fill="white" />
       <circle  cx="41" cy="65" r="8.5"  fill="#1a2d4a" />
       <circle  cx="41" cy="65" r="4.2"  fill="#080808" />
       <circle  cx="43.5" cy="62" r="2.5" fill="white" />
       {blink && <ellipse cx="40" cy="63" rx="12" ry="14" fill="#fce8c8" />}
 
-      {/* ── Right eye ── */}
+      {/* Right eye */}
       <ellipse cx="80" cy="63" rx="12" ry="14" fill="white" />
       <circle  cx="81" cy="65" r="8.5"  fill="#1a2d4a" />
       <circle  cx="81" cy="65" r="4.2"  fill="#080808" />
       <circle  cx="83.5" cy="62" r="2.5" fill="white" />
       {blink && <ellipse cx="80" cy="63" rx="12" ry="14" fill="#fce8c8" />}
 
-      {/* ── Eyebrows ── */}
+      {/* Eyebrows */}
       <path
         d={thinking ? 'M28,46 Q40,39 52,45' : 'M28,50 Q40,44 52,50'}
         fill="none" stroke="#3d2510" strokeWidth="3.2" strokeLinecap="round"
@@ -179,14 +151,14 @@ function FaheemFace({ phase, mouthOpen, blink, bob }) {
         style={{ transition: 'd .4s' }}
       />
 
-      {/* ── Nose ── */}
+      {/* Nose */}
       <circle cx="60" cy="79" r="2.8" fill="#d4956a" opacity=".45" />
 
-      {/* ── Cheeks ── */}
+      {/* Cheeks */}
       <circle cx="19" cy="82" r="10" fill="#f08070" opacity=".18" />
       <circle cx="101" cy="82" r="10" fill="#f08070" opacity=".18" />
 
-      {/* ── Mouth ── */}
+      {/* Mouth */}
       {speaking ? (
         <ellipse cx="60" cy="97" rx="13" ry={mouthOpen ? 9 : 4} fill="#c0392b" />
       ) : thinking ? (
@@ -197,7 +169,7 @@ function FaheemFace({ phase, mouthOpen, blink, bob }) {
           fill="none" stroke="#c0392b" strokeWidth="3" strokeLinecap="round" />
       )}
 
-      {/* ── Thinking bouncing dots above head ── */}
+      {/* Thinking bouncing dots above head */}
       {thinking && [0, 1, 2].map(i => (
         <circle key={i} cx={72 + i * 12} cy="16" r="4" fill="#d4952a" opacity=".85">
           <animate attributeName="cy" values="16;7;16" dur=".9s"
@@ -207,7 +179,7 @@ function FaheemFace({ phase, mouthOpen, blink, bob }) {
         </circle>
       ))}
 
-      {/* ── Listening wave ── */}
+      {/* Listening wave */}
       {phase === 'listening' && [0, 1, 2].map(i => (
         <circle key={i} cx="60" cy={108 + i * 0} r={6 + i * 4} fill="none"
           stroke="#d4952a" strokeWidth="1.5" opacity={.5 - i * .15}>
@@ -221,24 +193,19 @@ function FaheemFace({ phase, mouthOpen, blink, bob }) {
   );
 }
 
-/* ══════════════════════════════════════
-   Icon button style
-══════════════════════════════════════ */
 const iconBtn = {
   background: 'rgba(255,255,255,.13)', border: 'none', borderRadius: '50%',
   width: 30, height: 30, color: '#fff', cursor: 'pointer',
   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.8rem',
 };
 
-/* ══════════════════════════════════════
-   Main FaheemWidget component
-══════════════════════════════════════ */
+/* ── Main FaheemWidget component ── */
 export default function FaheemWidget({ studentName = 'بطل' }) {
   const { speak, cancel } = useSpeech();
 
   const [open,    setOpen]    = useState(false);
   const [greeted, setGreeted] = useState(false);
-  const [phase,   setPhase]   = useState('idle');   // idle | listening | thinking | speaking
+  const [phase,   setPhase]   = useState('idle');
   const [msgs,    setMsgs]    = useState([]);
   const [input,   setInput]   = useState('');
   const [isRec,   setIsRec]   = useState(false);
@@ -251,10 +218,8 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
   const endRef   = useRef(null);
   const mouthTid = useRef(null);
 
-  /* ── Scroll to bottom ── */
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
 
-  /* ── Bob (idle float) ── */
   useEffect(() => {
     let t;
     const tick = () => { setBob(b => b === 0 ? -5 : 0); t = setTimeout(tick, 1100); };
@@ -262,7 +227,6 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
     return () => clearTimeout(t);
   }, []);
 
-  /* ── Blink ── */
   useEffect(() => {
     let t;
     const schedule = () => {
@@ -276,7 +240,6 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
     return () => clearTimeout(t);
   }, []);
 
-  /* ── Mouth open/close when speaking ── */
   useEffect(() => {
     clearTimeout(mouthTid.current);
     if (phase === 'speaking') {
@@ -288,23 +251,20 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
     return () => clearTimeout(mouthTid.current);
   }, [phase]);
 
-  /* ── sayText ── */
   const sayText = useCallback((text) => {
     setPhase('speaking');
     speak(text, { onEnd: () => setPhase(p => p === 'speaking' ? 'idle' : p) });
   }, [speak]);
 
-  /* ── Auto-greeting ── */
   useEffect(() => {
     if (!open || greeted) return;
     setGreeted(true);
-    const g = `مرحباً بك يا ${studentName} في أكاديمية عارم! أنا صديقك ومرافقك الذكي فهيم. أخبرني يا بطل، ماذا تريد أن نتحدث عنه اليوم؟`;
+    const g = `مرحبا بك يا ${studentName} في اكاديمية عارم! انا صديقك ومرافقك الذكي فهيم. اخبرني يا بطل، ماذا تريد ان نتحدث عنه اليوم؟`;
     setMsgs([{ role: 'ai', text: g }]);
     const t = setTimeout(() => sayText(g), 700);
     return () => clearTimeout(t);
   }, [open, greeted, studentName, sayText]);
 
-  /* ── Send message to AI ── */
   async function sendMsg(text) {
     if (!text.trim() || phase === 'thinking') return;
     const t = text.trim();
@@ -320,22 +280,21 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
         body: JSON.stringify({ message: t, history: msgs }),
       });
       const json = await res.json();
-      const reply = json.reply || 'يا بطل، جرّب سؤالاً آخر من فضلك!';
+      const reply = json.reply || 'يا بطل، جرب سؤالا اخر من فضلك!';
       setMsgs(p => [...p, { role: 'ai', text: reply }]);
       sayText(reply);
     } catch {
-      const fb = 'يا صديقي، الاتصال بطيء قليلاً. هل تحاول مجدداً؟';
+      const fb = 'يا صديقي، الاتصال بطيء قليلا. هل تحاول مجددا؟';
       setMsgs(p => [...p, { role: 'ai', text: fb }]);
       sayText(fb);
     }
   }
 
-  /* ── STT ── */
   function startListen() {
     setSttErr('');
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
-      setSttErr('متصفحك لا يدعم الإدخال الصوتي — جرّب Google Chrome');
+      setSttErr('متصفحك لا يدعم الادخال الصوتي — جرب Google Chrome');
       return;
     }
     cancel();
@@ -354,8 +313,8 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
     r.onerror = e => {
       setIsRec(false);
       setPhase('idle');
-      if (e.error === 'not-allowed') setSttErr('يرجى السماح بالوصول إلى الميكروفون');
-      else setSttErr('لم أسمع شيئاً بوضوح — حاول مرة أخرى');
+      if (e.error === 'not-allowed') setSttErr('يرجى السماح بالوصول الى الميكروفون');
+      else setSttErr('لم اسمع شيئا بوضوح — حاول مرة اخرى');
     };
     r.onend = () => {
       setIsRec(false);
@@ -381,7 +340,6 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
 
   return (
     <>
-      {/* ── CSS ── */}
       <style>{`
         @keyframes fPulse {
           0%,100% { box-shadow: 0 8px 28px rgba(31,45,90,.38), 0 0 0 4px rgba(212,149,42,.22); }
@@ -397,7 +355,6 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
         }
       `}</style>
 
-      {/* ── Floating button (closed) ── */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
@@ -417,7 +374,6 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
         </button>
       )}
 
-      {/* ── Chat panel (open) ── */}
       {open && (
         <div style={{
           position: 'fixed', bottom: 16, right: 16, zIndex: 1000,
@@ -449,9 +405,9 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               {phase === 'speaking' && (
-                <button onClick={() => { cancel(); setPhase('idle'); }} style={iconBtn} title="إيقاف الصوت">🔇</button>
+                <button onClick={() => { cancel(); setPhase('idle'); }} style={iconBtn} title="ايقاف الصوت">🔇</button>
               )}
-              <button onClick={() => setOpen(false)} style={iconBtn} title="إغلاق">✕</button>
+              <button onClick={() => setOpen(false)} style={iconBtn} title="اغلاق">✕</button>
             </div>
           </div>
 
@@ -496,7 +452,6 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
               </div>
             ))}
 
-            {/* Thinking dots in chat */}
             {phase === 'thinking' && (
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <div style={{
@@ -517,7 +472,6 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
             <div ref={endRef} />
           </div>
 
-          {/* STT error */}
           {sttErr && (
             <div style={{
               background: '#fff3e0', color: '#e65100',
@@ -535,11 +489,10 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
             display: 'flex', gap: 8, alignItems: 'center',
             background: '#fafbfc', borderRadius: '0 0 24px 24px', flexShrink: 0,
           }}>
-            {/* Mic */}
             <button
               onClick={isRec ? stopListen : startListen}
               disabled={phase === 'thinking'}
-              title={isRec ? 'إيقاف التسجيل' : 'تحدث بالصوت'}
+              title={isRec ? 'ايقاف التسجيل' : 'تحدث بالصوت'}
               style={{
                 width: 38, height: 38, borderRadius: '50%', border: 'none',
                 background: isRec ? '#e53935' : 'linear-gradient(135deg,#1f2d5a,#2d4a8a)',
@@ -553,7 +506,6 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
               {isRec ? '⏹' : '🎤'}
             </button>
 
-            {/* Text input */}
             <input
               type="text"
               value={input}
@@ -572,7 +524,6 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
               }}
             />
 
-            {/* Send */}
             <button
               onClick={() => sendMsg(input)}
               disabled={!input.trim() || phase === 'thinking'}
