@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { createClient } from '../../lib/supabase-server';
 import Navbar from '../../components/Navbar';
 import ParentPanel from '../../components/ParentPanel';
+import FaheemWidget from '../../components/FaheemWidget';
 
 export default async function DashboardPage() {
   const supabase = createClient();
@@ -90,6 +91,9 @@ export default async function DashboardPage() {
 
           {/* Parent Panel — teachers/admins only */}
           {!isStudent && <ParentPanel assessments={assessments ?? []} />}
+
+          {/* Faheem AI companion — students only */}
+          {isStudent && <FaheemWidget studentName={displayName} />}
 
           {/* Recent Assessments */}
           <div className="dash-section">
