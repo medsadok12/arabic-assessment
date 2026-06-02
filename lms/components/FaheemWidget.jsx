@@ -50,11 +50,22 @@ function useSpeech() {
     return null;
   }
 
-  /** Clean text before TTS — strip markdown & formatting chars */
+  /** Clean text before TTS:
+   *  1. Strip ALL Arabic diacritical marks (harakat) — fatha, damma, kasra,
+   *     sukun, shadda, tanwin, tatweel — which cause TTS to mispronounce them
+   *     as separate phonemes instead of smooth Fusha.
+   *  2. Strip markdown formatting.
+   */
   function cleanForSpeech(text) {
     return text
-      .replace(/[*_~`#>]/g, '')           // markdown symbols
-      .replace(/\s{2,}/g, ' ')            // multiple spaces
+      // Arabic harakat & diacritics (U+0610–U+061A, U+064B–U+065F, U+0670, U+06D6–U+06ED)
+      .replace(/[ؐ-ًؚ-ٰٟۖ-ۭ]/g, '')
+      // Arabic tatweel (kashida)
+      .replace(/ـ/g, '')
+      // Markdown & formatting symbols
+      .replace(/[*_~`#>•\-]/g, '')
+      // Collapse multiple spaces
+      .replace(/\s{2,}/g, ' ')
       .trim();
   }
 
