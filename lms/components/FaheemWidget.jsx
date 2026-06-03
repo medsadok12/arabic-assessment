@@ -264,8 +264,12 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
     return () => clearTimeout(t);
   }, [open, greeted, studentName, isFemale, sayText]);
 
+  // Input lockdown: locked while thinking AND while speaking (TTS).
+  // Unlocks only when Faheem finishes talking and the audio engine is silent.
+  const locked = phase === 'thinking' || phase === 'speaking';
+
   async function sendMsg(text) {
-    if (!text.trim() || phase === 'thinking') return;
+    if (!text.trim() || locked) return;
     const t = text.trim();
     setMsgs(p => [...p, { role: 'user', text: t }]);
     setInput('');
@@ -474,11 +478,14 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
           }}>
             <button
               onClick={isRec ? stopListen : startListen}
-              disabled={phase === 'thinking'}
+              disabled={locked}
               style={{
                 width: 38, height: 38, borderRadius: '50%', border: 'none',
-                background: isRec ? '#e53935' : 'linear-gradient(135deg,#1f2d5a,#2d4a8a)',
-                color: '#fff', cursor: phase === 'thinking' ? 'not-allowed' : 'pointer',
+                background: isRec ? '#e53935'
+                          : locked ? '#c3cbd6'
+                          : 'linear-gradient(135deg,#1f2d5a,#2d4a8a)',
+                color: '#fff', cursor: locked ? 'not-allowed' : 'pointer',
+                opacity: locked ? .65 : 1,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '1rem', flexShrink: 0,
                 boxShadow: isRec ? '0 0 0 5px rgba(229,57,53,.22)' : 'none',
@@ -492,27 +499,34 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
               type="text"
               value={input}
               dir="rtl"
-              disabled={phase === 'thinking'}
+              disabled={locked}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(input); }
               }}
-              placeholder="اكْتُبْ سُؤَالَكَ لِفَهِيمٍ..."
+              placeholder={
+                phase === 'thinking' ? 'فَهِيمٌ يُفَكِّرُ... 💭'
+                : phase === 'speaking' ? 'فَهِيمٌ يَتَحَدَّثُ... 🔊'
+                : 'اكْتُبْ سُؤَالَكَ لِفَهِيمٍ...'
+              }
               style={{
                 flex: 1, border: '1.5px solid #e8eef5', borderRadius: 20,
                 padding: '8px 14px', fontSize: '.82rem',
-                outline: 'none', background: '#fff', color: '#1a2d4a',
+                outline: 'none',
+                background: locked ? '#f1f3f6' : '#fff',
+                color: '#1a2d4a',
+                cursor: locked ? 'not-allowed' : 'text',
                 fontFamily: 'inherit',
               }}
             />
 
             <button
               onClick={() => sendMsg(input)}
-              disabled={!input.trim() || phase === 'thinking'}
+              disabled={!input.trim() || locked}
               style={{
                 width: 38, height: 38, borderRadius: '50%', border: 'none',
-                background: input.trim() && phase !== 'thinking' ? '#d4952a' : '#e0e0e0',
-                color: '#fff', cursor: 'pointer',
+                background: input.trim() && !locked ? '#d4952a' : '#e0e0e0',
+                color: '#fff', cursor: input.trim() && !locked ? 'pointer' : 'not-allowed',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '1.1rem', flexShrink: 0, transition: 'background .2s',
               }}
