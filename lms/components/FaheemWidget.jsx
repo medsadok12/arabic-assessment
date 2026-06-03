@@ -469,8 +469,9 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
                   background: m.role === 'user' ? '#f1f5f9' : 'linear-gradient(135deg,#1f2d5a,#2d4a8a)',
                   color: m.role === 'user' ? '#1a2d4a' : '#fff',
                   borderRadius: m.role === 'user' ? '18px 18px 18px 4px' : '18px 18px 4px 18px',
-                  padding: '9px 13px', fontSize: '.82rem',
-                  lineHeight: 1.65, direction: 'rtl',
+                  padding: '10px 14px', fontSize: '1.05rem',
+                  lineHeight: 1.8, direction: 'rtl',
+                  fontFamily: "'Cairo', 'Tajawal', sans-serif",
                 }}>
                   {m.text}
                 </div>
@@ -548,12 +549,12 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
               }
               style={{
                 flex: 1, border: '1.5px solid #e8eef5', borderRadius: 20,
-                padding: '8px 14px', fontSize: '.82rem',
+                padding: '9px 14px', fontSize: '.95rem',
                 outline: 'none',
                 background: locked ? '#f1f3f6' : '#fff',
                 color: '#1a2d4a',
                 cursor: locked ? 'not-allowed' : 'text',
-                fontFamily: 'inherit',
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
               }}
             />
 
