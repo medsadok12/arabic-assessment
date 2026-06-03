@@ -36,10 +36,41 @@ function chunkText(text) {
   return chunks.length ? chunks : [text.slice(0, 180)];
 }
 
-/* ── TTS hook — Google Translate proxy, fallback to browser ── */
+/* ── Arabic voice picker — priority-ranked for best quality across platforms ──
+   Apple  : Laila (female, iOS/macOS) → Maged (male, macOS)  ← best quality
+   Windows: Naayf (male) → Hoda (female)  ← high quality
+   Chrome : Google Arabic built-in
+   Fallback: any ar-* voice                                                    */
+function pickArabicVoice() {
+  const voices = window.speechSynthesis?.getVoices() ?? [];
+  const priority = [
+    /\bLaila\b/i,
+    /\bMaged\b/i,
+    /\bMajed\b/i,
+    /Microsoft\s+Naayf/i,
+    /Microsoft\s+Hoda/i,
+    /Microsoft\s+Tarik/i,
+    /Google\s+.*Arab/i,
+    /Arab/i,
+  ];
+  for (const pattern of priority) {
+    const v = voices.find(v => pattern.test(v.name));
+    if (v) return v;
+  }
+  return voices.find(v => v.lang?.startsWith('ar')) ?? null;
+}
+
+/* ── TTS hook — Google Translate proxy (primary), browser Speech API (fallback) ── */
 function useSpeech() {
   const audioRef  = useRef(null);
   const cancelRef = useRef(false);
+
+  // Preload browser voices so they're available on first utterance
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  }, []);
 
   useEffect(() => () => {
     cancelRef.current = true;
@@ -54,15 +85,16 @@ function useSpeech() {
 
       audio.onended = resolve;
       audio.onerror = () => {
+        // Google Translate proxy failed → fall back to browser Speech API
         if (!window.speechSynthesis) { resolve(); return; }
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(chunk);
-        u.lang = 'ar-SA'; u.rate = 0.9; u.pitch = 1.1; u.volume = 1;
-        const arVoice =
-          window.speechSynthesis.getVoices()
-            .find(v => /Google.*Arab|Microsoft.*Naayf|Microsoft.*Hoda|Majed|Maged/i.test(v.name))
-          ?? window.speechSynthesis.getVoices().find(v => v.lang?.startsWith('ar'));
-        if (arVoice) u.voice = arVoice;
+        u.lang   = 'ar-SA';
+        u.rate   = 0.88;   // slightly slower — measured, teacher-like pace
+        u.pitch  = 1.0;    // natural pitch (1.1 sounds slightly robotic)
+        u.volume = 1;
+        const voice = pickArabicVoice();
+        if (voice) u.voice = voice;
         u.onend = resolve; u.onerror = resolve;
         window.speechSynthesis.speak(u);
       };
