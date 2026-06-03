@@ -61,14 +61,16 @@ async function tryAnthropic(anthropicKey, systemPrompt, recent, message) {
       }),
     }, 5000);
     if (!res.ok) {
-      console.error('[faheem] Anthropic HTTP', res.status);
+      const errText = await res.text().catch(() => '');
+      console.error(`[faheem] ✗ Anthropic HTTP ${res.status} — ${errText.slice(0, 200)}`);
       return null;
     }
     const json  = await res.json();
     const reply = json.content?.[0]?.text?.trim();
-    if (reply) { console.log('[faheem] Anthropic OK'); return reply; }
+    if (reply) { console.log(`[faheem] ✓ Anthropic OK len=${reply.length}`); return reply; }
+    console.error('[faheem] ✗ Anthropic empty reply:', JSON.stringify(json).slice(0, 150));
   } catch (e) {
-    console.error('[faheem] Anthropic exception:', e.name, e.message);
+    console.error(`[faheem] ✗ Anthropic EXCEPTION ${e.name}: ${e.message}`);
   }
   return null;
 }
@@ -94,6 +96,9 @@ export async function POST(req) {
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const systemPrompt = buildSystemPrompt(studentName, studentGender);
 
+  // Diagnostic log — visible in Vercel Function Logs
+  console.log(`[faheem] ▶ msg="${message.trim().slice(0,40)}" gemini=${!!geminiKey}(${geminiKey?.slice(0,8) ?? 'MISSING'}) anthropic=${!!anthropicKey}`);
+
   const contents = [
     ...recent.map(m => ({
       role:  m.role === 'user' ? 'user' : 'model',
@@ -107,56 +112,63 @@ export async function POST(req) {
     generationConfig: { maxOutputTokens: 2000, temperature: 0.85, topP: 0.92 },
   });
 
-  // ── Gemini models to try in order (3 models, 4s each = max 12s serial worst-case) ──
+  // Stable verified Gemini models — 2.5-flash → 2.0-flash → 2.0-flash-lite → 1.5-flash
   const GEMINI_MODELS = [
     'gemini-2.5-flash',
     'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
     'gemini-1.5-flash',
   ];
 
   if (geminiKey) {
     for (const model of GEMINI_MODELS) {
       try {
+        const t0 = Date.now();
         const res = await fetchWithTimeout(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
           { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: geminiBody },
-          4000
+          6000
         );
+        const elapsed = Date.now() - t0;
 
         if (!res.ok) {
           const errText = await res.text().catch(() => '');
-          console.error(`[faheem] Gemini ${model} HTTP ${res.status}`, errText.slice(0, 150));
+          console.error(`[faheem] ✗ ${model} HTTP ${res.status} (${elapsed}ms) — ${errText.slice(0, 200)}`);
           continue;
         }
 
         const rawText = await res.text();
         let json;
         try { json = JSON.parse(rawText); } catch {
-          console.error(`[faheem] ${model} JSON parse fail`);
+          console.error(`[faheem] ✗ ${model} JSON parse fail (${elapsed}ms)`);
           continue;
         }
 
         const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         if (reply) {
-          console.log(`[faheem] Gemini OK (${model}) len=${reply.length}`);
+          console.log(`[faheem] ✓ ${model} OK (${elapsed}ms) len=${reply.length}`);
           return NextResponse.json({ reply });
         }
-        console.error(`[faheem] ${model} empty, finishReason=${json.candidates?.[0]?.finishReason}`);
+        const reason = json.candidates?.[0]?.finishReason ?? 'unknown';
+        console.error(`[faheem] ✗ ${model} empty reply finishReason=${reason} (${elapsed}ms)`);
 
       } catch (e) {
-        console.error(`[faheem] ${model} exception: ${e.name} ${e.message}`);
+        console.error(`[faheem] ✗ ${model} EXCEPTION ${e.name}: ${e.message}`);
       }
     }
+  } else {
+    console.error('[faheem] ✗ GEMINI_API_KEY is not set in environment!');
   }
 
-  // ── Anthropic fallback — always tried if all Gemini models failed ──
-  {
-    const anthropicReply = await tryAnthropic(anthropicKey, systemPrompt, recent, message.trim());
-    if (anthropicReply) return NextResponse.json({ reply: anthropicReply });
+  // Anthropic fallback — always tried after all Gemini models fail
+  if (!anthropicKey) {
+    console.error('[faheem] ✗ ANTHROPIC_API_KEY is not set — no fallback available');
   }
+  const anthropicReply = await tryAnthropic(anthropicKey, systemPrompt, recent, message.trim());
+  if (anthropicReply) return NextResponse.json({ reply: anthropicReply });
 
-  // ── All failed — friendly cartoon message ──
-  console.error('[faheem] ALL AI calls failed. geminiKey:', !!geminiKey, 'anthropicKey:', !!anthropicKey);
+  // All failed
+  console.error('[faheem] ✗✗✗ ALL AI calls failed — returning fallback message');
   return NextResponse.json({
     reply: 'يَبْدُو أَنَّ هُنَاكَ زِحَامًا فِي الْغَابَةِ اللُّغَوِيَّةِ الآنَ يَا بَطَلُ! أَعِدِ الْمُحَاوَلَةَ بَعْدَ لَحْظَةٍ صَغِيرَةٍ 🎈',
   });
