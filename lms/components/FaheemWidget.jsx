@@ -80,37 +80,31 @@ function useSpeech() {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
   }, []);
 
-  // Fallback: Google Translate proxy voice (flat, but always available)
-  function playGoogle(chunk, resolve) {
-    const audio = new Audio(`/api/faheem/tts?t=${encodeURIComponent(chunk)}`);
-    audioRef.current = audio;
-    audio.onended = resolve;
-    audio.onerror = resolve;
-    audio.play().catch(resolve);
+  // Fallback: browser Speech API (system voice) — used only if the server audio fails
+  function playBrowser(chunk, resolve) {
+    const voice = pickArabicVoice();
+    if (!window.speechSynthesis || !voice) { resolve(); return; }
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(chunk);
+    u.voice  = voice;
+    u.lang   = voice.lang || 'ar-SA';
+    u.rate   = 0.94;   // articulate shadda/gemination
+    u.pitch  = 1.12;   // friendly but realistic
+    u.volume = 1;
+    u.onend  = resolve;
+    u.onerror = resolve;
+    window.speechSynthesis.speak(u);
   }
 
   function playChunk(chunk) {
     return new Promise(resolve => {
-      const voice = pickArabicVoice();
-
-      // Prefer the browser engine when a real Arabic voice is present — it lets
-      // us raise pitch for a merry, boy-like tone kids love, and tune the speed.
-      if (window.speechSynthesis && voice) {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(chunk);
-        u.voice  = voice;
-        u.lang   = voice.lang || 'ar-SA';
-        u.rate   = 0.94;   // a touch slower so shadda/gemination is articulated, not swallowed
-        u.pitch  = 1.12;   // gently bright & friendly, but realistic (1.35 sounded chipmunky/fake)
-        u.volume = 1;
-        u.onend  = resolve;
-        u.onerror = () => playGoogle(chunk, resolve);  // engine glitch → proxy
-        window.speechSynthesis.speak(u);
-        return;
-      }
-
-      // No browser Arabic voice → use Google Translate proxy
-      playGoogle(chunk, resolve);
+      // Primary: server proxy → Azure Neural (realistic, human Arabic voice).
+      // Browser system voice is only a fallback if the audio stream fails.
+      const audio = new Audio(`/api/faheem/tts?t=${encodeURIComponent(chunk)}`);
+      audioRef.current = audio;
+      audio.onended = resolve;
+      audio.onerror = () => playBrowser(chunk, resolve);
+      audio.play().catch(() => playBrowser(chunk, resolve));
     });
   }
 
