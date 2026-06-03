@@ -435,8 +435,14 @@ export default function BoggarAdminPage() {
     else {
       setAdmins(prev => [...prev, data.admin]);
       setShowAddModal(false); setAdminForm(EMPTY_ADMIN_FORM);
-      setAdminMsg({ type: 'success', text: `✅ تم إنشاء حساب "${data.admin.name}" وإرسال بيانات الدخول عبر الإيميل` });
-      setTimeout(() => setAdminMsg(null), 4000);
+      const emailNote = data.emailSent
+        ? `📧 تم إرسال بيانات الدخول إلى ${data.admin.email}`
+        : `⚠️ فشل إرسال الإيميل — احفظ كلمة المرور الآن: ${data.tempPassword}`;
+      setAdminMsg({
+        type: data.emailSent ? 'success' : 'error',
+        text: `✅ تم إنشاء حساب "${data.admin.name}" — ${emailNote}`,
+        tempPassword: data.emailSent ? null : data.tempPassword,
+      });
     }
     setAddingAdmin(false);
   }
@@ -811,7 +817,19 @@ export default function BoggarAdminPage() {
                 </button>
               </div>
               {admins.length >= 2 && <div className="alert alert-info" style={{ marginBottom: 18 }}>⚠️ وصلت للحد الأقصى (2 مشرفين).</div>}
-              {adminMsg && <div className={`alert alert-${adminMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 18 }}>{adminMsg.text}</div>}
+              {adminMsg && (
+                <div className={`alert alert-${adminMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 18 }}>
+                  {adminMsg.text}
+                  {adminMsg.tempPassword && (
+                    <div style={{ marginTop: 10, background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 8, padding: '10px 14px' }}>
+                      <strong>كلمة المرور المؤقتة:</strong>
+                      <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.05rem', marginRight: 8, letterSpacing: '.08em', userSelect: 'all', color: '#b56a00' }}>
+                        {adminMsg.tempPassword}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
               {adminsLoading ? (
                 <div style={{ textAlign: 'center', padding: 40 }}><span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} /></div>
               ) : admins.length === 0 ? (

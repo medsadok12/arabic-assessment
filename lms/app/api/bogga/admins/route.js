@@ -76,9 +76,13 @@ export async function POST(req) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 
+  let emailSent  = false;
+  let emailError = null;
   try {
     await sendWelcomeEmail({ to: email.trim(), name: name.trim(), password: tempPassword });
+    emailSent = true;
   } catch (e) {
+    emailError = e.message;
     console.error('[admins] welcome email failed:', e.message);
   }
 
@@ -90,6 +94,8 @@ export async function POST(req) {
       created_at: newUser.created_at,
       status:     'active',
     },
-    emailSent: true,
+    emailSent,
+    emailError,
+    tempPassword,
   }, { status: 201 });
 }
