@@ -70,7 +70,8 @@ function pickArabicVoice() {
   return voices.find(v => v.lang?.startsWith('ar')) ?? null;
 }
 
-/* ── TTS hook — Google Translate proxy (primary), browser Speech API (fallback) ── */
+/* ── TTS hook — browser Speech API (primary, cheerful & controllable),
+      Google Translate proxy (fallback when no Arabic voice exists) ── */
 function useSpeech() {
   const audioRef  = useRef(null);
   const cancelRef = useRef(false);
@@ -84,32 +85,41 @@ function useSpeech() {
 
   useEffect(() => () => {
     cancelRef.current = true;
+    window.speechSynthesis?.cancel();
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
   }, []);
 
+  // Fallback: Google Translate proxy voice (flat, but always available)
+  function playGoogle(chunk, resolve) {
+    const audio = new Audio(`/api/faheem/tts?t=${encodeURIComponent(chunk)}`);
+    audioRef.current = audio;
+    audio.onended = resolve;
+    audio.onerror = resolve;
+    audio.play().catch(resolve);
+  }
+
   function playChunk(chunk) {
     return new Promise(resolve => {
-      const src   = `/api/faheem/tts?t=${encodeURIComponent(chunk)}`;
-      const audio = new Audio(src);
-      audioRef.current = audio;
+      const voice = pickArabicVoice();
 
-      audio.onended = resolve;
-      audio.onerror = () => {
-        // Google Translate proxy failed → fall back to browser Speech API
-        if (!window.speechSynthesis) { resolve(); return; }
+      // Prefer the browser engine when a real Arabic voice is present — it lets
+      // us raise pitch for a merry, boy-like tone kids love, and tune the speed.
+      if (window.speechSynthesis && voice) {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(chunk);
-        u.lang   = 'ar-SA';
-        u.rate   = 1.02;   // natural conversational pace for students
-        u.pitch  = 1.0;    // natural pitch
+        u.voice  = voice;
+        u.lang   = voice.lang || 'ar-SA';
+        u.rate   = 1.1;    // lively, brisk — not sluggish
+        u.pitch  = 1.35;   // bright, cheerful, child-like — kids warm to it
         u.volume = 1;
-        const voice = pickArabicVoice();
-        if (voice) u.voice = voice;
-        u.onend = resolve; u.onerror = resolve;
+        u.onend  = resolve;
+        u.onerror = () => playGoogle(chunk, resolve);  // engine glitch → proxy
         window.speechSynthesis.speak(u);
-      };
+        return;
+      }
 
-      audio.play().catch(() => audio.onerror?.());
+      // No browser Arabic voice → use Google Translate proxy
+      playGoogle(chunk, resolve);
     });
   }
 
