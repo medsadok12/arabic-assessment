@@ -29,7 +29,7 @@ STRICT RULES — follow every rule in every response:
 }
 
 // Vercel Hobby timeout is 10s — keep each attempt under that
-function fetchWithTimeout(url, options, ms = 7000) {
+function fetchWithTimeout(url, options, ms = 8500) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), ms);
   return fetch(url, { ...options, signal: controller.signal })
@@ -52,7 +52,7 @@ async function tryAnthropic(anthropicKey, systemPrompt, recent, message) {
       },
       body: JSON.stringify({
         model:      'claude-haiku-4-5-20251001',
-        max_tokens: 600,
+        max_tokens: 1500,
         system:     systemPrompt,
         messages,
       }),
@@ -101,7 +101,7 @@ export async function POST(req) {
   const geminiBody = JSON.stringify({
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents,
-    generationConfig: { maxOutputTokens: 600, temperature: 0.85, topP: 0.92 },
+    generationConfig: { maxOutputTokens: 1500, temperature: 0.85, topP: 0.92 },
   });
 
   // ── Gemini models to try in order ──
