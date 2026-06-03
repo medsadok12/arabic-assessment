@@ -48,7 +48,7 @@ function useSpeech() {
         if (!window.speechSynthesis) { resolve(); return; }
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(chunk);
-        u.lang = 'ar-SA'; u.rate = 0.84; u.pitch = 1.05; u.volume = 1;
+        u.lang = 'ar-SA'; u.rate = 0.82; u.pitch = 1.1; u.volume = 1;
         const arVoice =
           window.speechSynthesis.getVoices()
             .find(v => /Google.*Arab|Microsoft.*Naayf|Microsoft.*Hoda|Majed|Maged/i.test(v.name))
@@ -264,7 +264,7 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
       const res  = await fetch('/api/faheem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: t, history: msgs }),
+        body: JSON.stringify({ message: t, history: msgs, studentName }),
       });
       const json = await res.json();
       const reply = json.reply || 'يَا بَطَلُ، جَرِّبْ سُؤَالاً آخَرَ مِنْ فَضْلِكَ!';
