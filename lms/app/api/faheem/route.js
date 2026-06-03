@@ -46,69 +46,51 @@ export async function POST(req) {
 
   console.log('[faheem] keys:', { gemini: !!geminiKey, anthropic: !!anthropicKey });
 
-  // ── 1. Gemini (primary — free tier) ──
+  // ── 1. Gemini (primary — free tier, try multiple models) ──
   if (geminiKey) {
-    try {
-      const contents = [
-        ...recent.map(m => ({
-          role:  m.role === 'user' ? 'user' : 'model',
-          parts: [{ text: m.text }],
-        })),
-        { role: 'user', parts: [{ text: message.trim() }] },
-      ];
+    const contents = [
+      ...recent.map(m => ({
+        role:  m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text }],
+      })),
+      { role: 'user', parts: [{ text: message.trim() }] },
+    ];
+    const genBody = JSON.stringify({
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents,
+      generationConfig: { maxOutputTokens: 250, temperature: 0.80, topP: 0.90 },
+    });
 
-      const res = await fetchWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`,
-        {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents,
-            generationConfig: {
-              maxOutputTokens: 250,
-              temperature:     0.80,
-              topP:            0.90,
-            },
-          }),
+    const MODELS = [
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-lite',
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-latest',
+    ];
+
+    for (const model of MODELS) {
+      try {
+        const res = await fetchWithTimeout(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: genBody }
+        );
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '');
+          console.error(`[faheem] Gemini ${model} HTTP ${res.status}`, errText.slice(0, 200));
+          if (res.status === 429 || res.status === 503) continue; // quota/overload → try next
+          if (res.status === 404) continue;                        // model not available → try next
+          break;
         }
-      );
-
-      if (!res.ok) {
-        const err = await res.text().catch(() => '');
-        console.error('[faheem] Gemini HTTP', res.status, err.slice(0, 300));
-
-        // Try fallback model if primary model not found
-        if (res.status === 404) {
-          const res2 = await fetchWithTimeout(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
-            {
-              method:  'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-                contents,
-                generationConfig: { maxOutputTokens: 250, temperature: 0.80, topP: 0.90 },
-              }),
-            }
-          );
-          if (res2.ok) {
-            const json2  = await res2.json();
-            const reply2 = json2.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-            if (reply2) return NextResponse.json({ reply: reply2 });
-          }
-        }
-      } else {
         const json  = await res.json();
         const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         if (reply) {
-          console.log('[faheem] Gemini OK, reply length:', reply.length);
+          console.log(`[faheem] Gemini OK (${model}), length: ${reply.length}`);
           return NextResponse.json({ reply });
         }
-        console.error('[faheem] Gemini empty reply:', JSON.stringify(json).slice(0, 300));
+        console.error(`[faheem] Gemini ${model} empty reply:`, JSON.stringify(json).slice(0, 200));
+      } catch (e) {
+        console.error(`[faheem] Gemini ${model} exception:`, e?.name, e?.message);
       }
-    } catch (e) {
-      console.error('[faheem] Gemini exception:', e?.name, e?.message);
     }
   }
 
