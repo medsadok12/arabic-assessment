@@ -63,7 +63,14 @@ export async function POST(req) {
       { role: 'user', parts: [{ text: message.trim() }] },
     ];
 
-    const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const MODELS = [
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite-preview-06-17',
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-lite',
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-latest',
+    ];
 
     for (const model of MODELS) {
       try {
@@ -152,8 +159,10 @@ export async function POST(req) {
     }
   }
 
-  // ── Return real error for debugging ──
+  // ── All AI calls failed — log real error, show friendly message ──
   const debugMsg = errors.join(' | ');
   console.error('[faheem] ALL FAILED:', debugMsg);
-  return NextResponse.json({ reply: `[خطأ تقني] ${debugMsg}` });
+  return NextResponse.json({
+    reply: 'يَبْدُو أَنَّ هُنَاكَ زِحَامًا فِي الْغَابَةِ اللُّغَوِيَّةِ الآنَ يَا بَطَلُ! أَعِدِ الْمُحَاوَلَةَ بَعْدَ لَحْظَةٍ صَغِيرَةٍ 🎈',
+  });
 }
