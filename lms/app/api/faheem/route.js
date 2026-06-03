@@ -59,7 +59,7 @@ async function tryAnthropic(anthropicKey, systemPrompt, recent, message) {
         system:     systemPrompt,
         messages,
       }),
-    });
+    }, 5000);
     if (!res.ok) {
       console.error('[faheem] Anthropic HTTP', res.status);
       return null;
@@ -107,37 +107,25 @@ export async function POST(req) {
     generationConfig: { maxOutputTokens: 2000, temperature: 0.85, topP: 0.92 },
   });
 
-  // ── Gemini models to try in order ──
+  // ── Gemini models to try in order (3 models, 4s each = max 12s serial worst-case) ──
   const GEMINI_MODELS = [
     'gemini-2.5-flash',
-    'gemini-2.5-flash-lite-preview-06-17',
     'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
     'gemini-1.5-flash',
-    'gemini-1.5-flash-latest',
   ];
-
-  let geminiOverloaded = false;
 
   if (geminiKey) {
     for (const model of GEMINI_MODELS) {
       try {
         const res = await fetchWithTimeout(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: geminiBody }
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: geminiBody },
+          4000
         );
 
         if (!res.ok) {
           const errText = await res.text().catch(() => '');
           console.error(`[faheem] Gemini ${model} HTTP ${res.status}`, errText.slice(0, 150));
-
-          // On overload/quota errors, immediately try Anthropic before other Gemini models
-          if ((res.status === 503 || res.status === 429) && !geminiOverloaded) {
-            geminiOverloaded = true;
-            console.log('[faheem] Gemini overloaded, trying Anthropic...');
-            const anthropicReply = await tryAnthropic(anthropicKey, systemPrompt, recent, message.trim());
-            if (anthropicReply) return NextResponse.json({ reply: anthropicReply });
-          }
           continue;
         }
 
@@ -157,18 +145,12 @@ export async function POST(req) {
 
       } catch (e) {
         console.error(`[faheem] ${model} exception: ${e.name} ${e.message}`);
-        // On timeout, try Anthropic immediately
-        if (e.name === 'AbortError' && !geminiOverloaded) {
-          geminiOverloaded = true;
-          const anthropicReply = await tryAnthropic(anthropicKey, systemPrompt, recent, message.trim());
-          if (anthropicReply) return NextResponse.json({ reply: anthropicReply });
-        }
       }
     }
   }
 
-  // ── Final Anthropic attempt (if not already tried) ──
-  if (!geminiOverloaded) {
+  // ── Anthropic fallback — always tried if all Gemini models failed ──
+  {
     const anthropicReply = await tryAnthropic(anthropicKey, systemPrompt, recent, message.trim());
     if (anthropicReply) return NextResponse.json({ reply: anthropicReply });
   }
