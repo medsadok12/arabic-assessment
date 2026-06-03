@@ -9,28 +9,21 @@ function buildSystemPrompt(studentName = 'صديقي') {
                   'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
   const dateStr = `${now.getUTCDate()} ${months[now.getUTCMonth()]} ${now.getUTCFullYear()}`;
 
-  return `أنت "فَهِيمٌ"، طفل كرتوني ذكي وفصيح عمرك 8 سنوات، والمرافق الصديق لكل أطفال أكاديمية عارم لتعليم اللغة العربية.
-اسم الطالب الذي تتحدث معه الآن: ${studentName}.
-تاريخ اليوم: ${dateStr}.
+  return `You are "فَهِيمٌ", a smart friendly AI companion for children at Aarem Arabic Academy.
+Student name: ${studentName}. Today: ${dateStr}.
 
-القواعد الثابتة — التزم بها في كل رد بدون استثناء:
-
-1. اجب على كل سؤال بمعلومات حقيقية مفيدة وممتعة. أضف قصة لطيفة أو معلومة مدهشة تناسب الأطفال عند كل إجابة.
-
-2. شكِّل كل حرف وكل كلمة في ردك تشكيلاً لغوياً كاملاً بالفتحة والضمة والكسرة والتنوين والشدة والسكون (بدون استثناء واحد)، لأن النص يُقرأ صوتياً وهذا ضروري للنطق الصحيح.
-
-3. استخدم إيموجيات بهيجة في كل جملة مثل 🌟 🎈 🚀 🦁 🌺 💡 🎉 ⭐ 🐘 🌍 لتضفي بهجة على الحديث.
-
-4. نادِ الطالب دائماً باسمه "${studentName}" مع ألقاب مشجعة مثل: يا ${studentName} الْبَطَلُ، يا نَجْمَ عَارِم، يا فَصِيحَ الْعَرَبِيَّةِ.
-
-5. الرد: 3 إلى 4 جمل كاملة وثرية بالمعلومات والبهجة. لا تُقصِّر الرد أبداً.
-
-6. ممنوع تماماً: النجمة (*) والشرطة (-) وأي تنسيق markdown.
-
-7. إذا سألك عن اسمك قل: أَنَا فَهِيمٌ مُرَافِقُكَ الذَّكِيُّ مِنْ أَكَادِيمِيَّةِ عَارِم! 🌟`;
+STRICT RULES — follow every rule in every response:
+1. Answer every question with real, accurate, rich educational information. Never refuse or deflect.
+2. Write every single word with FULL Arabic tashkeel (harakat: fatha, damma, kasra, tanwin, shadda, sukun) — no exceptions — the text is read aloud by TTS.
+3. Address the student by name every time: "يا ${studentName} البَطَلُ" or "يا نَجْمَ عَارِم".
+4. Add expressive child-friendly emojis every sentence: use 🌟 🎈 🚀 🦁 🌺 💡 🎉 ⭐ 🐘 🌍 freely.
+5. Respond in 3-4 complete, rich, informative Arabic sentences. Never give a one-word or one-phrase answer.
+6. Use simple Modern Standard Arabic suitable for ages 5-14.
+7. NO markdown: no asterisks, no hyphens, no bullet points.
+8. If asked your name: "أَنَا فَهِيمٌ مُرَافِقُكَ الذَّكِيُّ مِنْ أَكَادِيمِيَّةِ عَارِم! 🌟"`;
 }
 
-function fetchWithTimeout(url, options, ms = 9000) {
+function fetchWithTimeout(url, options, ms = 8000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), ms);
   return fetch(url, { ...options, signal: controller.signal })
@@ -44,19 +37,21 @@ export async function POST(req) {
 
   let body;
   try { body = await req.json(); } catch {
-    return NextResponse.json({ reply: 'تَفَضَّلْ يَا بَطَلُ، اسْأَلْنِي مَا تُرِيدُ! 🌟' });
+    return NextResponse.json({ reply: 'تَفَضَّلْ، اسْأَلْنِي مَا تُرِيدُ! 🌟' });
   }
 
   const { message, history = [], studentName = 'صديقي' } = body;
-  if (!message?.trim()) return NextResponse.json({ reply: 'تَفَضَّلْ يَا بَطَلُ، اسْأَلْنِي مَا تُرِيدُ! 🌟' });
+  if (!message?.trim()) return NextResponse.json({ reply: 'تَفَضَّلْ، اسْأَلْنِي مَا تُرِيدُ! 🌟' });
 
   const hist      = history.filter(m => m.text?.trim());
   const firstUser = hist.findIndex(m => m.role === 'user');
-  const recent    = (firstUser > 0 ? hist.slice(firstUser) : hist).slice(-6);
+  const recent    = (firstUser > 0 ? hist.slice(firstUser) : hist).slice(-4);
 
   const geminiKey    = process.env.GEMINI_API_KEY;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const systemPrompt = buildSystemPrompt(studentName);
+
+  const errors = [];
 
   // ── 1. Gemini ──
   if (geminiKey) {
@@ -68,51 +63,59 @@ export async function POST(req) {
       { role: 'user', parts: [{ text: message.trim() }] },
     ];
 
-    const MODELS = [
-      'gemini-2.5-flash',
-      'gemini-2.5-flash-lite-preview-06-17',
-      'gemini-2.0-flash',
-      'gemini-2.0-flash-lite',
-      'gemini-1.5-flash',
-    ];
-
-    const genBody = JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      contents,
-      generationConfig: {
-        maxOutputTokens: 800,
-        temperature:     0.85,
-        topP:            0.92,
-      },
-    });
+    const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
     for (const model of MODELS) {
       try {
         const res = await fetchWithTimeout(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: genBody }
+          {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              contents,
+              generationConfig: { maxOutputTokens: 600, temperature: 0.85, topP: 0.92 },
+            }),
+          }
         );
 
+        const rawText = await res.text();
+
         if (!res.ok) {
-          const errText = await res.text().catch(() => '');
-          console.error(`[faheem] Gemini ${model} HTTP ${res.status}`, errText.slice(0, 200));
-          continue; // always try next model on any HTTP error
+          const msg = `${model} HTTP ${res.status}: ${rawText.slice(0, 300)}`;
+          console.error('[faheem]', msg);
+          errors.push(msg);
+          continue;
         }
 
-        const json  = await res.json();
+        let json;
+        try { json = JSON.parse(rawText); } catch {
+          errors.push(`${model} JSON parse fail`);
+          continue;
+        }
+
         const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         if (reply) {
-          console.log(`[faheem] Gemini OK (${model}), length: ${reply.length}`);
+          console.log(`[faheem] OK (${model}) len=${reply.length}`);
           return NextResponse.json({ reply });
         }
-        console.error(`[faheem] Gemini ${model} empty:`, JSON.stringify(json).slice(0, 200));
+
+        const blocked = json.candidates?.[0]?.finishReason;
+        errors.push(`${model} empty reply, finishReason=${blocked}`);
+        console.error('[faheem]', errors.at(-1));
+
       } catch (e) {
-        console.error(`[faheem] Gemini ${model} exception:`, e?.name, e?.message);
+        const msg = `${model} exception: ${e.name} ${e.message}`;
+        console.error('[faheem]', msg);
+        errors.push(msg);
       }
     }
+  } else {
+    errors.push('GEMINI_API_KEY not set in Vercel env');
   }
 
-  // ── 2. Anthropic Claude (secondary) ──
+  // ── 2. Anthropic ──
   if (anthropicKey) {
     try {
       const messages = [
@@ -128,15 +131,16 @@ export async function POST(req) {
         },
         body: JSON.stringify({
           model:      'claude-haiku-4-5-20251001',
-          max_tokens: 800,
+          max_tokens: 600,
           system:     systemPrompt,
           messages,
         }),
       });
+      const raw = await res.text();
       if (!res.ok) {
-        console.error('[faheem] Anthropic HTTP', res.status);
+        errors.push(`Anthropic HTTP ${res.status}: ${raw.slice(0, 200)}`);
       } else {
-        const json  = await res.json();
+        const json  = JSON.parse(raw);
         const reply = json.content?.[0]?.text?.trim();
         if (reply) {
           console.log('[faheem] Anthropic OK');
@@ -144,12 +148,12 @@ export async function POST(req) {
         }
       }
     } catch (e) {
-      console.error('[faheem] Anthropic exception:', e?.name, e?.message);
+      errors.push(`Anthropic exception: ${e.name} ${e.message}`);
     }
   }
 
-  console.warn('[faheem] All AI calls failed');
-  return NextResponse.json({
-    reply: 'عُذْرًا يَا صَدِيقِي، لَمْ أَسْتَطِعِ الاِتِّصَالَ الآنَ. حَاوِلْ مَرَّةً أُخْرَى مِنْ فَضْلِكَ! 🌟',
-  });
+  // ── Return real error for debugging ──
+  const debugMsg = errors.join(' | ');
+  console.error('[faheem] ALL FAILED:', debugMsg);
+  return NextResponse.json({ reply: `[خطأ تقني] ${debugMsg}` });
 }
