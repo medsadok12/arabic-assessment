@@ -79,7 +79,7 @@ const IV_COLORS = {
   reschedule_requested: '#185FA5', rejected: '#e53e3e',
 };
 
-const EMPTY_ADMIN_FORM = { name: '', email: '', password: '' };
+const EMPTY_ADMIN_FORM = { name: '', email: '' };
 
 const SETUP_SQL = `-- تشغيل هذا SQL في Supabase SQL Editor لتهيئة جميع الجداول:
 
@@ -182,6 +182,8 @@ export default function BoggarAdminPage() {
   const [addingAdmin,   setAddingAdmin]   = useState(false);
   const [adminMsg,      setAdminMsg]      = useState(null);
   const [deletingId,    setDeletingId]    = useState(null);
+  const [suspendingId,  setSuspendingId]  = useState(null);
+  const [suspended,     setSuspended]     = useState(false);
 
   // ── Granular ACL ─────────────────────────────────────────────────────────
   // allPerms[adminId][tabKey] = bool — for super_admin popover UI
@@ -208,6 +210,7 @@ export default function BoggarAdminPage() {
       if (!u) { router.push('/auth/login'); return; }
       const r = u.user_metadata?.role ?? '';
       if (r !== 'admin' && r !== 'super_admin') { router.push('/dashboard'); return; }
+      if (r === 'admin' && u.user_metadata?.status === 'suspended') { setSuspended(true); setUser(u); setRole(r); return; }
       setUser(u); setRole(r);
     });
   }, []);
@@ -218,7 +221,10 @@ export default function BoggarAdminPage() {
     if (role === 'super_admin') { setMyPermissions({}); return; }
     fetch('/api/bogga/permissions/my')
       .then(r => r.json())
-      .then(d => setMyPermissions(d.permissions ?? {}))
+      .then(d => {
+        if (d.suspended) { setSuspended(true); return; }
+        setMyPermissions(d.permissions ?? {});
+      })
       .catch(() => setMyPermissions({}));
   }, [user, role]);
 
@@ -422,17 +428,32 @@ export default function BoggarAdminPage() {
     setAddingAdmin(true); setAdminMsg(null);
     const res  = await fetch('/api/bogga/admins', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(adminForm),
+      body: JSON.stringify({ name: adminForm.name, email: adminForm.email }),
     });
     const data = await res.json();
     if (!res.ok) { setAdminMsg({ type: 'error', text: data.error }); }
     else {
       setAdmins(prev => [...prev, data.admin]);
       setShowAddModal(false); setAdminForm(EMPTY_ADMIN_FORM);
-      setAdminMsg({ type: 'success', text: `✅ تم إنشاء حساب "${data.admin.name}" بنجاح` });
+      setAdminMsg({ type: 'success', text: `✅ تم إنشاء حساب "${data.admin.name}" وإرسال بيانات الدخول عبر الإيميل` });
       setTimeout(() => setAdminMsg(null), 4000);
     }
     setAddingAdmin(false);
+  }
+
+  async function handleSuspendAdmin(id, currentStatus) {
+    const action = currentStatus === 'suspended' ? 'activate' : 'suspend';
+    const label  = action === 'suspend' ? 'إيقاف' : 'تفعيل';
+    if (!confirm(`هل تريد ${label} حساب هذا المشرف؟`)) return;
+    setSuspendingId(id);
+    const res  = await fetch(`/api/bogga/admins/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    const data = await res.json();
+    if (res.ok) setAdmins(prev => prev.map(a => a.id === id ? { ...a, status: data.status } : a));
+    else setAdminMsg({ type: 'error', text: data.error ?? 'فشل تعديل حالة المشرف' });
+    setSuspendingId(null);
   }
 
   async function handleDeleteAdmin(id, name) {
@@ -464,10 +485,29 @@ export default function BoggarAdminPage() {
   }
 
   // ── Render guard ──────────────────────────────────────────────────────────
-  if (!user || myPermissions === null) {
+  if (!user || (myPermissions === null && !suspended)) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
         <span className="spinner" style={{ width: 30, height: 30, borderWidth: 3, borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} />
+      </div>
+    );
+  }
+
+  if (suspended) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', direction: 'rtl' }}>
+        <div style={{ textAlign: 'center', padding: '48px 36px', background: '#fff', borderRadius: 24, boxShadow: '0 8px 40px rgba(0,0,0,.12)', maxWidth: 420 }}>
+          <div style={{ fontSize: '3.5rem', marginBottom: 16 }}>🔒</div>
+          <h2 style={{ color: '#b91c1c', fontWeight: 800, marginBottom: 12, fontSize: '1.3rem' }}>حسابك معطل مؤقتاً</h2>
+          <p style={{ color: '#64748b', lineHeight: 1.8, marginBottom: 28 }}>تواصل مع المدير العام لإعادة تفعيل حسابك.</p>
+          <button
+            onClick={() => supabase.auth.signOut().then(() => router.push('/auth/login'))}
+            className="btn btn-ghost"
+            style={{ fontSize: '.9rem' }}
+          >
+            تسجيل الخروج
+          </button>
+        </div>
       </div>
     );
   }
@@ -779,17 +819,38 @@ export default function BoggarAdminPage() {
               ) : (
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                   <table className="data-table">
-                    <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>تاريخ الإنشاء</th><th>إجراء</th></tr></thead>
+                    <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الحالة</th><th>تاريخ الإنشاء</th><th>إجراءات</th></tr></thead>
                     <tbody>
                       {admins.map(a => (
                         <tr key={a.id}>
                           <td style={{ fontWeight: 700 }}>{a.name}</td>
                           <td style={{ direction: 'ltr', textAlign: 'right' }}>{a.email}</td>
+                          <td>
+                            <span style={{
+                              padding: '3px 10px', borderRadius: 20, fontSize: '.75rem', fontWeight: 700,
+                              background: a.status === 'suspended' ? '#fee2e2' : '#dcfce7',
+                              color:      a.status === 'suspended' ? '#b91c1c' : '#166534',
+                            }}>
+                              {a.status === 'suspended' ? '⏸ موقوف' : '✅ نشط'}
+                            </span>
+                          </td>
                           <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>{new Date(a.created_at).toLocaleDateString('ar-SA')}</td>
                           <td>
-                            <button onClick={() => handleDeleteAdmin(a.id, a.name)} disabled={deletingId === a.id} className="btn btn-sm btn-danger">
-                              {deletingId === a.id ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : '🗑️ حذف'}
-                            </button>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => handleSuspendAdmin(a.id, a.status ?? 'active')}
+                                disabled={suspendingId === a.id}
+                                className="btn btn-sm"
+                                style={{ background: a.status === 'suspended' ? '#1a7c40' : '#f59e0b', color: '#fff', border: 'none' }}
+                              >
+                                {suspendingId === a.id
+                                  ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                                  : a.status === 'suspended' ? '✅ تفعيل' : '⏸ إيقاف'}
+                              </button>
+                              <button onClick={() => handleDeleteAdmin(a.id, a.name)} disabled={deletingId === a.id} className="btn btn-sm btn-danger">
+                                {deletingId === a.id ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : '🗑️ حذف'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -988,10 +1049,8 @@ export default function BoggarAdminPage() {
                 <label className="form-label">البريد الإلكتروني *</label>
                 <input className="form-input" type="email" value={adminForm.email} required onChange={e => setAdminForm(p => ({ ...p, email: e.target.value }))} placeholder="admin@example.com" dir="ltr" />
               </div>
-              <div className="form-group">
-                <label className="form-label">كلمة المرور المؤقتة *</label>
-                <input className="form-input" type="password" value={adminForm.password} required onChange={e => setAdminForm(p => ({ ...p, password: e.target.value }))} placeholder="8 أحرف على الأقل" dir="ltr" />
-                <p className="form-help">سيتمكن المشرف من تغييرها لاحقاً</p>
+              <div className="alert alert-info" style={{ fontSize: '.85rem', marginBottom: 4 }}>
+                🔑 ستُنشأ كلمة مرور مؤقتة تلقائياً وتُرسل للمشرف عبر بريده الإلكتروني.
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
                 <button type="submit" className="btn btn-primary" disabled={addingAdmin} style={{ flex: 1, justifyContent: 'center', gap: 8 }}>

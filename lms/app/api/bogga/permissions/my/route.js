@@ -15,6 +15,9 @@ export async function GET() {
   if (user.user_metadata?.role !== 'admin') {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
   }
+  if (user.user_metadata?.status === 'suspended') {
+    return NextResponse.json({ error: 'حسابك معطل مؤقتاً', suspended: true }, { status: 403 });
+  }
 
   const adminClient = createAdminClient();
   const { data, error } = await adminClient

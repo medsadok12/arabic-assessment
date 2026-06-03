@@ -1,8 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { sendWelcomeEmail }  from '../../../../lib/email';
 
 const MAX_ADMINS = 2;
+
+function generateTempPassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
+  let pwd = '';
+  for (let i = 0; i < 12; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+  return pwd;
+}
 
 // GET — list all admin accounts (role: admin)
 export async function GET() {
@@ -23,6 +31,7 @@ export async function GET() {
       name:       u.user_metadata?.full_name ?? '—',
       email:      u.email,
       created_at: u.created_at,
+      status:     u.user_metadata?.status ?? 'active',
     }));
 
   return NextResponse.json({ admins });
@@ -36,12 +45,9 @@ export async function POST(req) {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
   }
 
-  const { name, email, password } = await req.json();
-  if (!name?.trim() || !email?.trim() || !password?.trim()) {
-    return NextResponse.json({ error: 'جميع الحقول مطلوبة' }, { status: 400 });
-  }
-  if (password.length < 8) {
-    return NextResponse.json({ error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' }, { status: 400 });
+  const { name, email } = await req.json();
+  if (!name?.trim() || !email?.trim()) {
+    return NextResponse.json({ error: 'الاسم والبريد الإلكتروني مطلوبان' }, { status: 400 });
   }
 
   const admin = createAdminClient();
@@ -55,11 +61,13 @@ export async function POST(req) {
     }, { status: 409 });
   }
 
+  const tempPassword = generateTempPassword();
+
   const { data: { user: newUser }, error } = await admin.auth.admin.createUser({
     email:         email.trim(),
-    password:      password.trim(),
+    password:      tempPassword,
     email_confirm: true,
-    user_metadata: { full_name: name.trim(), role: 'admin' },
+    user_metadata: { full_name: name.trim(), role: 'admin', status: 'active' },
   });
   if (error) {
     const msg = error.message.includes('already registered') || error.message.includes('already been registered')
@@ -68,12 +76,20 @@ export async function POST(req) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 
+  try {
+    await sendWelcomeEmail({ to: email.trim(), name: name.trim(), password: tempPassword });
+  } catch (e) {
+    console.error('[admins] welcome email failed:', e.message);
+  }
+
   return NextResponse.json({
     admin: {
       id:         newUser.id,
       name:       newUser.user_metadata?.full_name,
       email:      newUser.email,
       created_at: newUser.created_at,
+      status:     'active',
     },
+    emailSent: true,
   }, { status: 201 });
 }

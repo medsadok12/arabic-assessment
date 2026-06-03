@@ -80,6 +80,38 @@ export async function sendInterviewEmail({
   });
 }
 
+export async function sendWelcomeEmail({ to, name, password }) {
+  const html = baseHtml(`
+    <div class="card">
+      <div class="hdr">
+        <h1>🎓 أكاديمية عارم للتعليم</h1>
+        <p>مرحباً بك في منظومة الإدارة</p>
+      </div>
+      <div class="body">
+        <p>السلام عليكم ورحمة الله وبركاته،</p>
+        <p>يسعدنا ترحيبك <strong>${name}</strong> في فريق <strong>أكاديمية عارم</strong> بصفة مشرف مساعد. يمكنك الدخول إلى لوحة التحكم باستخدام البيانات التالية:</p>
+        <div class="info">
+          <div class="info-row"><span class="info-lbl">🔗 رابط المنصة</span><span><a href="https://aarem-lms.vercel.app" style="color:#185FA5">aarem-lms.vercel.app</a></span></div>
+          <div class="info-row"><span class="info-lbl">📧 البريد الإلكتروني</span><span dir="ltr">${to}</span></div>
+          <div class="info-row"><span class="info-lbl">🔑 كلمة المرور المؤقتة</span><span dir="ltr" style="font-family:monospace;letter-spacing:.05em;font-weight:800">${password}</span></div>
+        </div>
+        <p style="color:#b91c1c;font-weight:700;background:#fff5f5;padding:12px 16px;border-radius:10px;border-right:4px solid #b91c1c">
+          ⚠️ يُرجى تغيير كلمة المرور فور أول تسجيل دخول لحماية حسابك.
+        </p>
+        <p class="note">في حال وجود أي استفسار أو مشكلة في الدخول، تواصل مع مدير الأكاديمية مباشرةً.</p>
+      </div>
+      <div class="ftr">أكاديمية عارم للتعليم — جميع الحقوق محفوظة</div>
+    </div>
+  `);
+
+  await transport().sendMail({
+    from:    `"أكاديمية عارم" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: '🎓 مرحباً بك في أكاديمية عارم — بيانات دخولك',
+    html,
+  });
+}
+
 export async function sendRejectionEmail({ to, candidateName }) {
   const html = baseHtml(`
     <div class="card">
