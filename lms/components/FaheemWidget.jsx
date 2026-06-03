@@ -90,8 +90,8 @@ function useSpeech() {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(chunk);
         u.lang   = 'ar-SA';
-        u.rate   = 0.88;   // slightly slower — measured, teacher-like pace
-        u.pitch  = 1.0;    // natural pitch (1.1 sounds slightly robotic)
+        u.rate   = 1.02;   // natural conversational pace for students
+        u.pitch  = 1.0;    // natural pitch
         u.volume = 1;
         const voice = pickArabicVoice();
         if (voice) u.voice = voice;
