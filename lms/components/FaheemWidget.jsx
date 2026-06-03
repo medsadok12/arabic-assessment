@@ -4,10 +4,16 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 /* ── TTS helpers ── */
 function cleanText(text) {
   return text
-    .replace(/\p{Extended_Pictographic}/gu, '') // strip all emojis — TTS reads them aloud otherwise
-    .replace(/[‍️⃣]/g, '')       // strip ZWJ, variation selectors, keycap combiners
-    .replace(/ـ/g, '')                          // tatweel (no phonetic value)
-    .replace(/[*_~`#>]/g, '')                   // markdown symbols
+    // Extended pictographic (most emoji: faces, objects, symbols)
+    .replace(/\p{Extended_Pictographic}/gu, '')
+    // Regional indicator pairs = country flags (🇹🇳 🇫🇷 🇧🇷 etc.)
+    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '')
+    // Misc symbols & dingbats not covered above
+    .replace(/[\u{2600}-\u{27BF}]/gu, '')
+    // Variation selectors, ZWJ, combining enclosing keycap
+    .replace(/[︀-️‍⃣]/g, '')
+    .replace(/ـ/g, '')           // tatweel
+    .replace(/[*_~`#>]/g, '')    // markdown
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
@@ -265,7 +271,7 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
       const res  = await fetch('/api/faheem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: t, history: msgs, studentName }),
+        body: JSON.stringify({ message: t, history: msgs, studentName, studentGender: 'male' }),
       });
       const json = await res.json();
       const reply = json.reply || 'يَا بَطَلُ، جَرِّبْ سُؤَالاً آخَرَ مِنْ فَضْلِكَ!';
