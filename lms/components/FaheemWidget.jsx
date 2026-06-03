@@ -1,9 +1,9 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-/* ── TTS text cleaner — strips everything non-speakable so the voice
-      never reads "صاروخ" / "علم تونس" / "بالون". Visual chat keeps emojis.
-      ALSO reshapes tanwin for natural pronunciation (display text is untouched). ── */
+/* ── TTS text cleaner — strips only non-speakable glyphs (emojis, flags, markdown)
+      so the voice never reads "صاروخ" / "علم تونس". Arabic text + ALL harakat and
+      tanwin pass through UNTOUCHED — Gemini handles waqf/pausing linguistically. ── */
 function cleanText(text) {
   return text
     .replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '')   // regional indicators → country flags 🇹🇳
@@ -16,15 +16,6 @@ function cleanText(text) {
     .replace(/⃣/g, '')                    // combining enclosing keycap
     .replace(/‍/g, '')                    // zero-width joiner
     .replace(/ـ/g, '')                         // tatweel (no phonetic value)
-    // ── Tanwin reshaping for the voice engine (audio-only) ──
-    // 1. Waqf: dammatan/kasratan before punctuation or end → sukun (clean human stop)
-    .replace(/[ٌٍ](?=\s*[.،؛؟!:\n]|\s*$)/gu, 'ْ')
-    // 2. Waqf: fathatan before punctuation or end → drop the mark, keep the alif → natural mad (مرحباً → مرحبا)
-    .replace(/ً(?=\s*[.،؛؟!:\n]|\s*$)/gu, '')
-    // 3. Inside the sentence: strip ALL remaining tanwin marks so the engine
-    //    pronounces words smoothly instead of injecting a dry robotic "noon".
-    //    Other harakat (fatha/damma/kasra/shadda/sukun) are kept intact.
-    .replace(/[ًٌٍ]/gu, '')
     .replace(/[*_~`#>]/g, '')                  // markdown symbols
     .replace(/\s{2,}/g, ' ')
     .trim();
@@ -109,7 +100,7 @@ function useSpeech() {
         const u = new SpeechSynthesisUtterance(chunk);
         u.voice  = voice;
         u.lang   = voice.lang || 'ar-SA';
-        u.rate   = 1.1;    // lively, brisk — not sluggish
+        u.rate   = 1.0;    // standard, natural pace
         u.pitch  = 1.35;   // bright, cheerful, child-like — kids warm to it
         u.volume = 1;
         u.onend  = resolve;
