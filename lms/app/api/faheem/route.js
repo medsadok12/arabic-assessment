@@ -23,11 +23,46 @@ STRICT RULES — follow every rule in every response:
 8. If asked your name: "أَنَا فَهِيمٌ مُرَافِقُكَ الذَّكِيُّ مِنْ أَكَادِيمِيَّةِ عَارِم! 🌟"`;
 }
 
-function fetchWithTimeout(url, options, ms = 8000) {
+// Vercel Hobby timeout is 10s — keep each attempt under that
+function fetchWithTimeout(url, options, ms = 7000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), ms);
   return fetch(url, { ...options, signal: controller.signal })
     .finally(() => clearTimeout(id));
+}
+
+async function tryAnthropic(anthropicKey, systemPrompt, recent, message) {
+  if (!anthropicKey) return null;
+  try {
+    const messages = [
+      ...recent.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
+      { role: 'user', content: message },
+    ];
+    const res = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key':         anthropicKey,
+        'anthropic-version': '2023-06-01',
+        'content-type':      'application/json',
+      },
+      body: JSON.stringify({
+        model:      'claude-haiku-4-5-20251001',
+        max_tokens: 600,
+        system:     systemPrompt,
+        messages,
+      }),
+    });
+    if (!res.ok) {
+      console.error('[faheem] Anthropic HTTP', res.status);
+      return null;
+    }
+    const json  = await res.json();
+    const reply = json.content?.[0]?.text?.trim();
+    if (reply) { console.log('[faheem] Anthropic OK'); return reply; }
+  } catch (e) {
+    console.error('[faheem] Anthropic exception:', e.name, e.message);
+  }
+  return null;
 }
 
 export async function POST(req) {
@@ -51,117 +86,87 @@ export async function POST(req) {
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const systemPrompt = buildSystemPrompt(studentName);
 
-  const errors = [];
+  const contents = [
+    ...recent.map(m => ({
+      role:  m.role === 'user' ? 'user' : 'model',
+      parts: [{ text: m.text }],
+    })),
+    { role: 'user', parts: [{ text: message.trim() }] },
+  ];
+  const geminiBody = JSON.stringify({
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    contents,
+    generationConfig: { maxOutputTokens: 600, temperature: 0.85, topP: 0.92 },
+  });
 
-  // ── 1. Gemini ──
+  // ── Gemini models to try in order ──
+  const GEMINI_MODELS = [
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite-preview-06-17',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-latest',
+  ];
+
+  let geminiOverloaded = false;
+
   if (geminiKey) {
-    const contents = [
-      ...recent.map(m => ({
-        role:  m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.text }],
-      })),
-      { role: 'user', parts: [{ text: message.trim() }] },
-    ];
-
-    const MODELS = [
-      'gemini-2.5-flash',
-      'gemini-2.5-flash-lite-preview-06-17',
-      'gemini-2.0-flash',
-      'gemini-2.0-flash-lite',
-      'gemini-1.5-flash',
-      'gemini-1.5-flash-latest',
-    ];
-
-    for (const model of MODELS) {
+    for (const model of GEMINI_MODELS) {
       try {
         const res = await fetchWithTimeout(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
-          {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              systemInstruction: { parts: [{ text: systemPrompt }] },
-              contents,
-              generationConfig: { maxOutputTokens: 600, temperature: 0.85, topP: 0.92 },
-            }),
-          }
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: geminiBody }
         );
 
-        const rawText = await res.text();
-
         if (!res.ok) {
-          const msg = `${model} HTTP ${res.status}: ${rawText.slice(0, 300)}`;
-          console.error('[faheem]', msg);
-          errors.push(msg);
+          const errText = await res.text().catch(() => '');
+          console.error(`[faheem] Gemini ${model} HTTP ${res.status}`, errText.slice(0, 150));
+
+          // On overload/quota errors, immediately try Anthropic before other Gemini models
+          if ((res.status === 503 || res.status === 429) && !geminiOverloaded) {
+            geminiOverloaded = true;
+            console.log('[faheem] Gemini overloaded, trying Anthropic...');
+            const anthropicReply = await tryAnthropic(anthropicKey, systemPrompt, recent, message.trim());
+            if (anthropicReply) return NextResponse.json({ reply: anthropicReply });
+          }
           continue;
         }
 
+        const rawText = await res.text();
         let json;
         try { json = JSON.parse(rawText); } catch {
-          errors.push(`${model} JSON parse fail`);
+          console.error(`[faheem] ${model} JSON parse fail`);
           continue;
         }
 
         const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         if (reply) {
-          console.log(`[faheem] OK (${model}) len=${reply.length}`);
+          console.log(`[faheem] Gemini OK (${model}) len=${reply.length}`);
           return NextResponse.json({ reply });
         }
-
-        const blocked = json.candidates?.[0]?.finishReason;
-        errors.push(`${model} empty reply, finishReason=${blocked}`);
-        console.error('[faheem]', errors.at(-1));
+        console.error(`[faheem] ${model} empty, finishReason=${json.candidates?.[0]?.finishReason}`);
 
       } catch (e) {
-        const msg = `${model} exception: ${e.name} ${e.message}`;
-        console.error('[faheem]', msg);
-        errors.push(msg);
-      }
-    }
-  } else {
-    errors.push('GEMINI_API_KEY not set in Vercel env');
-  }
-
-  // ── 2. Anthropic ──
-  if (anthropicKey) {
-    try {
-      const messages = [
-        ...recent.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
-        { role: 'user', content: message.trim() },
-      ];
-      const res = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key':         anthropicKey,
-          'anthropic-version': '2023-06-01',
-          'content-type':      'application/json',
-        },
-        body: JSON.stringify({
-          model:      'claude-haiku-4-5-20251001',
-          max_tokens: 600,
-          system:     systemPrompt,
-          messages,
-        }),
-      });
-      const raw = await res.text();
-      if (!res.ok) {
-        errors.push(`Anthropic HTTP ${res.status}: ${raw.slice(0, 200)}`);
-      } else {
-        const json  = JSON.parse(raw);
-        const reply = json.content?.[0]?.text?.trim();
-        if (reply) {
-          console.log('[faheem] Anthropic OK');
-          return NextResponse.json({ reply });
+        console.error(`[faheem] ${model} exception: ${e.name} ${e.message}`);
+        // On timeout, try Anthropic immediately
+        if (e.name === 'AbortError' && !geminiOverloaded) {
+          geminiOverloaded = true;
+          const anthropicReply = await tryAnthropic(anthropicKey, systemPrompt, recent, message.trim());
+          if (anthropicReply) return NextResponse.json({ reply: anthropicReply });
         }
       }
-    } catch (e) {
-      errors.push(`Anthropic exception: ${e.name} ${e.message}`);
     }
   }
 
-  // ── All AI calls failed — log real error, show friendly message ──
-  const debugMsg = errors.join(' | ');
-  console.error('[faheem] ALL FAILED:', debugMsg);
+  // ── Final Anthropic attempt (if not already tried) ──
+  if (!geminiOverloaded) {
+    const anthropicReply = await tryAnthropic(anthropicKey, systemPrompt, recent, message.trim());
+    if (anthropicReply) return NextResponse.json({ reply: anthropicReply });
+  }
+
+  // ── All failed — friendly cartoon message ──
+  console.error('[faheem] ALL AI calls failed. geminiKey:', !!geminiKey, 'anthropicKey:', !!anthropicKey);
   return NextResponse.json({
     reply: 'يَبْدُو أَنَّ هُنَاكَ زِحَامًا فِي الْغَابَةِ اللُّغَوِيَّةِ الآنَ يَا بَطَلُ! أَعِدِ الْمُحَاوَلَةَ بَعْدَ لَحْظَةٍ صَغِيرَةٍ 🎈',
   });
