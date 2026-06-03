@@ -69,31 +69,25 @@ export async function POST(req) {
     ];
 
     const MODELS = [
-      { name: 'gemini-2.5-flash',                    thinking: true  },
-      { name: 'gemini-2.5-flash-lite-preview-06-17', thinking: true  },
-      { name: 'gemini-2.0-flash',                    thinking: false },
-      { name: 'gemini-2.0-flash-lite',               thinking: false },
-      { name: 'gemini-1.5-flash',                    thinking: false },
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite-preview-06-17',
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-lite',
+      'gemini-1.5-flash',
     ];
 
-    for (const { name: model, thinking } of MODELS) {
+    const genBody = JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents,
+      generationConfig: {
+        maxOutputTokens: 800,
+        temperature:     0.85,
+        topP:            0.92,
+      },
+    });
+
+    for (const model of MODELS) {
       try {
-        const generationConfig = {
-          maxOutputTokens: 800,
-          temperature:     0.85,
-          topP:            0.92,
-        };
-        // Disable internal thinking for 2.5 models so all tokens go to the response
-        if (thinking) {
-          generationConfig.thinkingConfig = { thinkingBudget: 0 };
-        }
-
-        const genBody = JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents,
-          generationConfig,
-        });
-
         const res = await fetchWithTimeout(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
           { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: genBody }
@@ -102,15 +96,13 @@ export async function POST(req) {
         if (!res.ok) {
           const errText = await res.text().catch(() => '');
           console.error(`[faheem] Gemini ${model} HTTP ${res.status}`, errText.slice(0, 200));
-          if (res.status === 429 || res.status === 503) continue;
-          if (res.status === 404) continue;
-          break;
+          continue; // always try next model on any HTTP error
         }
 
         const json  = await res.json();
         const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         if (reply) {
-          console.log(`[faheem] Gemini OK (${model}), tokens: ${reply.length}`);
+          console.log(`[faheem] Gemini OK (${model}), length: ${reply.length}`);
           return NextResponse.json({ reply });
         }
         console.error(`[faheem] Gemini ${model} empty:`, JSON.stringify(json).slice(0, 200));
