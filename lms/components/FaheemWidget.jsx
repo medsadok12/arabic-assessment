@@ -3,10 +3,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 /* ── TTS helpers ── */
 function cleanText(text) {
-  // Keep harakat — Google Translate TTS reads them correctly and they improve pronunciation
   return text
-    .replace(/ـ/g, '')             // tatweel only (no phonetic value)
-    .replace(/[*_~`#>]/g, '')           // markdown symbols
+    .replace(/\p{Extended_Pictographic}/gu, '') // strip all emojis — TTS reads them aloud otherwise
+    .replace(/[‍️⃣]/g, '')       // strip ZWJ, variation selectors, keycap combiners
+    .replace(/ـ/g, '')                          // tatweel (no phonetic value)
+    .replace(/[*_~`#>]/g, '')                   // markdown symbols
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
