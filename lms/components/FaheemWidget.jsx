@@ -2,7 +2,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 /* ── TTS text cleaner — strips everything non-speakable so the voice
-      never reads "صاروخ" / "علم تونس" / "بالون". Visual chat keeps emojis. ── */
+      never reads "صاروخ" / "علم تونس" / "بالون". Visual chat keeps emojis.
+      ALSO reshapes tanwin for natural pronunciation (display text is untouched). ── */
 function cleanText(text) {
   return text
     .replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '')   // regional indicators → country flags 🇹🇳
@@ -15,6 +16,15 @@ function cleanText(text) {
     .replace(/⃣/g, '')                    // combining enclosing keycap
     .replace(/‍/g, '')                    // zero-width joiner
     .replace(/ـ/g, '')                         // tatweel (no phonetic value)
+    // ── Tanwin reshaping for the voice engine (audio-only) ──
+    // 1. Waqf: dammatan/kasratan before punctuation or end → sukun (clean human stop)
+    .replace(/[ٌٍ](?=\s*[.،؛؟!:\n]|\s*$)/gu, 'ْ')
+    // 2. Waqf: fathatan before punctuation or end → drop the mark, keep the alif → natural mad (مرحباً → مرحبا)
+    .replace(/ً(?=\s*[.،؛؟!:\n]|\s*$)/gu, '')
+    // 3. Inside the sentence: strip ALL remaining tanwin marks so the engine
+    //    pronounces words smoothly instead of injecting a dry robotic "noon".
+    //    Other harakat (fatha/damma/kasra/shadda/sukun) are kept intact.
+    .replace(/[ًٌٍ]/gu, '')
     .replace(/[*_~`#>]/g, '')                  // markdown symbols
     .replace(/\s{2,}/g, ' ')
     .trim();
