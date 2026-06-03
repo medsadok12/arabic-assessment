@@ -1,116 +1,148 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useRouter }           from 'next/navigation';
-import Link                    from 'next/link';
-import { createClient }        from '../../lib/supabase';
-import Navbar                  from '../../components/Navbar';
-import AssessmentCodes         from '../../components/AssessmentCodes';
-import StudentCodes             from '../../components/StudentCodes';
-import TeacherCodes             from '../../components/TeacherCodes';
-import GroupsManager            from '../../components/GroupsManager';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter }                    from 'next/navigation';
+import Link                             from 'next/link';
+import { createClient }                 from '../../lib/supabase';
+import Navbar                           from '../../components/Navbar';
+import AssessmentCodes                  from '../../components/AssessmentCodes';
+import StudentCodes                     from '../../components/StudentCodes';
+import TeacherCodes                     from '../../components/TeacherCodes';
+import GroupsManager                    from '../../components/GroupsManager';
 
-// ── Time slots: 08:00 → 20:00 in 30-min increments (25 slots) ──
+// ── Time slots 08:00 → 20:00, 30-min increments (25 slots) ─────────────────
 const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
   const mins = 8 * 60 + i * 30;
-  const h    = Math.floor(mins / 60);
-  const m    = mins % 60;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 });
 
-const SETUP_SQL = `-- تشغيل هذا SQL في Supabase SQL Editor لتهيئة الجداول اللازمة:
-
--- جدول طلبات التوظيف
-CREATE TABLE IF NOT EXISTS recruitment_applications (
-  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  name        TEXT        NOT NULL,
-  email       TEXT        NOT NULL,
-  phone       TEXT,
-  experience  TEXT,
-  specialty   TEXT,
-  notes       TEXT,
-  cv_path     TEXT,
-  status      TEXT        NOT NULL DEFAULT 'pending',
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- جدول بنك الكلمات
-CREATE TABLE IF NOT EXISTS lexicon_words (
-  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  word         TEXT        NOT NULL,
-  word_type    TEXT        NOT NULL,
-  sentence     TEXT,
-  topic        TEXT,
-  grade_from   INT         NOT NULL DEFAULT 1,
-  grade_to     INT         NOT NULL DEFAULT 7,
-  syllables    TEXT,
-  root         TEXT,
-  image_base64 TEXT,
-  audio_base64 TEXT,
-  has_image    BOOLEAN     NOT NULL DEFAULT FALSE,
-  has_audio    BOOLEAN     NOT NULL DEFAULT FALSE,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- جدول المقابلات الوظيفية
-CREATE TABLE IF NOT EXISTS interviews (
-  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  application_id    UUID        NOT NULL REFERENCES recruitment_applications(id) ON DELETE CASCADE,
-  interviewer_name  TEXT        NOT NULL,
-  interview_date    DATE        NOT NULL,
-  start_time        TIME        NOT NULL,
-  candidate_response TEXT       NOT NULL DEFAULT 'pending'
-    CONSTRAINT valid_response CHECK (
-      candidate_response IN ('pending','confirmed','reschedule_requested','rejected')
-    ),
-  reschedule_reason TEXT,
-  response_token    UUID        NOT NULL DEFAULT gen_random_uuid(),
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- ترقية جدول الكلمات إن كان موجوداً بدون أعمدة الوسائط
-ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS image_base64 TEXT;
-ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS audio_base64 TEXT;
-ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS has_image BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS has_audio BOOLEAN NOT NULL DEFAULT FALSE;
-
-ALTER TABLE recruitment_applications DISABLE ROW LEVEL SECURITY;
-ALTER TABLE lexicon_words            DISABLE ROW LEVEL SECURITY;
-ALTER TABLE interviews               DISABLE ROW LEVEL SECURITY;
-
--- فهرس لفحص تعارض المواعيد
-CREATE INDEX IF NOT EXISTS interviews_slot_idx
-  ON interviews (interviewer_name, interview_date, start_time);`;
-
-const STATUS_LABELS = { pending: 'قيد المراجعة', reviewed: 'تمت المراجعة', accepted: 'مقبول', rejected: 'مرفوض' };
-const STATUS_COLORS = { pending: '#b56a00', reviewed: '#185FA5', accepted: '#1a7c40', rejected: '#e53e3e' };
-
-const IV_LABELS = {
-  pending:              '⏳ بانتظار الرد',
-  confirmed:            '✅ مؤكد',
-  reschedule_requested: '📅 طلب تعديل',
-  rejected:             '❌ اعتذر',
-};
-const IV_COLORS = {
-  pending:              '#b56a00',
-  confirmed:            '#1a7c40',
-  reschedule_requested: '#185FA5',
-  rejected:             '#e53e3e',
+// ── Tabs that assistant admins can be granted access to ─────────────────────
+const CONTROLLABLE = ['overview', 'codes', 'groups', 'lexicon', 'setup'];
+const TAB_NAMES = {
+  overview: 'نظرة عامة', codes: 'الأكواد', groups: 'إدارة الطلاب',
+  lexicon: 'بنك الكلمات', setup: 'الإعداد',
 };
 
+// ── Arabic month names ──────────────────────────────────────────────────────
 const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
                    'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-
 function fmtDate(iso) {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
   return `${parseInt(d)} ${MONTHS_AR[parseInt(m) - 1]} ${y}`;
 }
 
+// ── Quick contact helpers ───────────────────────────────────────────────────
+function waLink(phone) {
+  const digits = (phone ?? '').replace(/\D/g, '');
+  return digits ? `https://wa.me/${digits}` : null;
+}
+
+// ── Toggle Switch component ─────────────────────────────────────────────────
+function ToggleSwitch({ checked, onChange, disabled }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={onChange}
+      style={{
+        width: 42, height: 24, borderRadius: 12, border: 'none', padding: 0,
+        background: checked ? '#1a7c40' : '#d1d5db',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        transition: 'background .22s',
+        position: 'relative', flexShrink: 0,
+      }}
+    >
+      <span style={{
+        position: 'absolute', top: 3,
+        right: checked ? 3 : 'auto', left: checked ? 'auto' : 3,
+        width: 18, height: 18, borderRadius: '50%', background: '#fff',
+        boxShadow: '0 1px 4px rgba(0,0,0,.25)',
+        transition: 'right .22s, left .22s',
+        display: 'block',
+      }} />
+    </button>
+  );
+}
+
+const STATUS_LABELS = { pending: 'قيد المراجعة', reviewed: 'تمت المراجعة', accepted: 'مقبول', rejected: 'مرفوض' };
+const STATUS_COLORS = { pending: '#b56a00', reviewed: '#185FA5', accepted: '#1a7c40', rejected: '#e53e3e' };
+const IV_LABELS = {
+  pending: '⏳ بانتظار الرد', confirmed: '✅ مؤكد',
+  reschedule_requested: '📅 طلب تعديل', rejected: '❌ اعتذر',
+};
+const IV_COLORS = {
+  pending: '#b56a00', confirmed: '#1a7c40',
+  reschedule_requested: '#185FA5', rejected: '#e53e3e',
+};
+
 const EMPTY_ADMIN_FORM = { name: '', email: '', password: '' };
 
-export default function BruteAdminPage() {
+const SETUP_SQL = `-- تشغيل هذا SQL في Supabase SQL Editor لتهيئة جميع الجداول:
+
+-- 1. جدول طلبات التوظيف
+CREATE TABLE IF NOT EXISTS recruitment_applications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL, email TEXT NOT NULL, phone TEXT,
+  experience TEXT, specialty TEXT, notes TEXT, cv_path TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 2. جدول بنك الكلمات
+CREATE TABLE IF NOT EXISTS lexicon_words (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  word TEXT NOT NULL, word_type TEXT NOT NULL,
+  sentence TEXT, topic TEXT,
+  grade_from INT NOT NULL DEFAULT 1, grade_to INT NOT NULL DEFAULT 7,
+  syllables TEXT, root TEXT,
+  image_base64 TEXT, audio_base64 TEXT,
+  has_image BOOLEAN NOT NULL DEFAULT FALSE, has_audio BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 3. جدول المقابلات الوظيفية
+CREATE TABLE IF NOT EXISTS interviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  application_id UUID NOT NULL REFERENCES recruitment_applications(id) ON DELETE CASCADE,
+  interviewer_name TEXT NOT NULL,
+  interview_date DATE NOT NULL, start_time TIME NOT NULL,
+  candidate_response TEXT NOT NULL DEFAULT 'pending'
+    CONSTRAINT valid_response CHECK (
+      candidate_response IN ('pending','confirmed','reschedule_requested','rejected')
+    ),
+  reschedule_reason TEXT,
+  response_token UUID NOT NULL DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 4. جدول صلاحيات المساعدين (RLS مُفعَّل)
+CREATE TABLE IF NOT EXISTS admin_permissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id UUID NOT NULL, tab_key TEXT NOT NULL,
+  is_allowed BOOLEAN NOT NULL DEFAULT false,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (admin_id, tab_key)
+);
+ALTER TABLE admin_permissions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY IF NOT EXISTS "admins_read_own_permissions" ON admin_permissions
+  FOR SELECT USING (auth.uid() = admin_id);
+
+-- ترقيات آمنة للجداول القديمة
+ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS image_base64 TEXT;
+ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS audio_base64 TEXT;
+ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS has_image BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS has_audio BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE recruitment_applications DISABLE ROW LEVEL SECURITY;
+ALTER TABLE lexicon_words            DISABLE ROW LEVEL SECURITY;
+ALTER TABLE interviews               DISABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS interviews_slot_idx ON interviews (interviewer_name, interview_date, start_time);`;
+
+// ════════════════════════════════════════════════════════════════════════════
+export default function BoggarAdminPage() {
   const supabase = createClient();
   const router   = useRouter();
 
@@ -118,18 +150,21 @@ export default function BruteAdminPage() {
   const [role, setRole] = useState('');
   const [tab,  setTab]  = useState('overview');
 
+  // My permissions (non-super_admin only; null = loading, {} = no perms)
+  const [myPermissions, setMyPermissions] = useState(null);
+
   // Stats
   const [stats, setStats] = useState({ assessments: 0, pass: 0, avg: 0, applications: 0 });
 
   // Recruitment
-  const [apps,        setApps]        = useState([]);
-  const [appsLoading, setAppsLoading] = useState(false);
-  const [deletingApp, setDeletingApp] = useState(null);
+  const [apps,          setApps]          = useState([]);
+  const [appsLoading,   setAppsLoading]   = useState(false);
+  const [deletingApp,   setDeletingApp]   = useState(null);
   const [downloadingCV, setDownloadingCV] = useState({});
 
   // Interviews
-  const [interviewsMap,       setInterviewsMap]       = useState({}); // { [appId]: interview[] }
-  const [schedModal,          setSchedModal]           = useState(null); // app | null
+  const [interviewsMap,       setInterviewsMap]       = useState({});
+  const [schedModal,          setSchedModal]           = useState(null);
   const [schedDate,           setSchedDate]            = useState('');
   const [schedInterviewer,    setSchedInterviewer]     = useState('');
   const [schedTime,           setSchedTime]            = useState('');
@@ -139,7 +174,7 @@ export default function BruteAdminPage() {
   const [schedMsg,            setSchedMsg]             = useState(null);
   const [cancellingInterview, setCancellingInterview]  = useState(null);
 
-  // Admins management
+  // Admins
   const [admins,        setAdmins]        = useState([]);
   const [adminsLoading, setAdminsLoading] = useState(false);
   const [showAddModal,  setShowAddModal]  = useState(false);
@@ -147,6 +182,15 @@ export default function BruteAdminPage() {
   const [addingAdmin,   setAddingAdmin]   = useState(false);
   const [adminMsg,      setAdminMsg]      = useState(null);
   const [deletingId,    setDeletingId]    = useState(null);
+
+  // ── Granular ACL ─────────────────────────────────────────────────────────
+  // allPerms[adminId][tabKey] = bool — for super_admin popover UI
+  const [allPerms,     setAllPerms]     = useState({});
+  const [permsLoading, setPermsLoading] = useState(false);
+  // permPopover: { tabKey, top, left } or null
+  const [permPopover,  setPermPopover]  = useState(null);
+  const [permSaving,   setPermSaving]   = useState({});
+  const permPopoverRef = useRef(null);
 
   // Promotion
   const [promoting, setPromoting] = useState(false);
@@ -158,7 +202,7 @@ export default function BruteAdminPage() {
   // Setup
   const [copied, setCopied] = useState(false);
 
-  // ── Auth guard ─────────────────────────────────────────────────────
+  // ── Auth guard ────────────────────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       if (!u) { router.push('/auth/login'); return; }
@@ -168,63 +212,79 @@ export default function BruteAdminPage() {
     });
   }, []);
 
+  // ── Load own permissions (non-super_admin) ────────────────────────────────
   useEffect(() => {
     if (!user) return;
-    loadStats();
-    if (tab === 'recruitment' && role === 'super_admin') { loadApps(); loadInterviews(); }
-    if (tab === 'admins'      && role === 'super_admin') loadAdmins();
-  }, [user, tab]);
+    if (role === 'super_admin') { setMyPermissions({}); return; }
+    fetch('/api/bogga/permissions/my')
+      .then(r => r.json())
+      .then(d => setMyPermissions(d.permissions ?? {}))
+      .catch(() => setMyPermissions({}));
+  }, [user, role]);
 
-  // Fetch booked slots whenever date or interviewer changes (modal only)
+  // ── Redirect to first allowed tab after permissions load ─────────────────
+  useEffect(() => {
+    if (!myPermissions || role === 'super_admin') return;
+    const allowed = CONTROLLABLE.filter(t => myPermissions[t] === true);
+    if (!allowed.includes(tab) && allowed.length > 0) setTab(allowed[0]);
+  }, [myPermissions]);
+
+  // ── Data loaders ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user || myPermissions === null) return;
+    const isSA = role === 'super_admin';
+    loadStats();
+    if (tab === 'recruitment' && isSA) { loadApps(); loadInterviews(); }
+    if (tab === 'admins'      && isSA) loadAdmins();
+  }, [user, tab, myPermissions]);
+
+  // Booked slots (modal) — reload on date/interviewer change
   useEffect(() => {
     if (!schedModal || !schedDate || !schedInterviewer) { setBookedSlots([]); return; }
     setSlotsLoading(true);
     fetch(`/api/bogga/interviews?date=${schedDate}&interviewer=${encodeURIComponent(schedInterviewer)}`)
       .then(r => r.json())
-      .then(d => {
-        setBookedSlots((d.interviews ?? []).map(iv => iv.start_time?.slice(0, 5)));
-      })
+      .then(d => setBookedSlots((d.interviews ?? []).map(iv => iv.start_time?.slice(0, 5))))
       .catch(() => setBookedSlots([]))
       .finally(() => setSlotsLoading(false));
   }, [schedDate, schedInterviewer, schedModal]);
 
-  // ── Data loaders ───────────────────────────────────────────────────
+  // Close permission popover on outside click
+  useEffect(() => {
+    if (!permPopover) return;
+    function handler(e) {
+      if (permPopoverRef.current && !permPopoverRef.current.contains(e.target)) {
+        setPermPopover(null);
+      }
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [permPopover]);
+
   async function loadStats() {
     const [
-      { count: assessCount },
-      { count: passCount },
-      { data: scoresData },
-      appsRes,
+      { count: ac }, { count: pc }, { data: scores }, appsRes,
     ] = await Promise.all([
       supabase.from('assessments').select('id', { count: 'exact', head: true }),
       supabase.from('assessments').select('id', { count: 'exact', head: true }).gte('score', 70),
       supabase.from('assessments').select('score'),
       fetch('/api/bogga/recruitment').then(r => r.json()).catch(() => ({ applications: [] })),
     ]);
-    const avg = scoresData?.length
-      ? Math.round(scoresData.reduce((s, a) => s + (a.score ?? 0), 0) / scoresData.length)
-      : 0;
-    setStats({
-      assessments:  assessCount ?? 0,
-      pass:         passCount   ?? 0,
-      avg,
-      applications: appsRes.applications?.length ?? 0,
-    });
+    const avg = scores?.length ? Math.round(scores.reduce((s, a) => s + (a.score ?? 0), 0) / scores.length) : 0;
+    setStats({ assessments: ac ?? 0, pass: pc ?? 0, avg, applications: appsRes.applications?.length ?? 0 });
   }
 
   async function loadApps() {
     setAppsLoading(true);
-    const res  = await fetch('/api/bogga/recruitment');
-    const data = await res.json();
-    setApps(data.applications ?? []);
+    const res = await fetch('/api/bogga/recruitment');
+    setApps((await res.json()).applications ?? []);
     setAppsLoading(false);
   }
 
   async function loadInterviews() {
-    const res  = await fetch('/api/bogga/interviews');
-    const data = await res.json();
-    const map  = {};
-    (data.interviews ?? []).forEach(iv => {
+    const res = await fetch('/api/bogga/interviews');
+    const map = {};
+    ((await res.json()).interviews ?? []).forEach(iv => {
       if (!map[iv.application_id]) map[iv.application_id] = [];
       map[iv.application_id].push(iv);
     });
@@ -233,24 +293,22 @@ export default function BruteAdminPage() {
 
   async function loadAdmins() {
     setAdminsLoading(true);
-    const res  = await fetch('/api/bogga/admins');
-    const data = await res.json();
-    setAdmins(data.admins ?? []);
+    const res = await fetch('/api/bogga/admins');
+    setAdmins((await res.json()).admins ?? []);
     setAdminsLoading(false);
   }
 
-  // ── Recruitment ────────────────────────────────────────────────────
+  // ── Recruitment ───────────────────────────────────────────────────────────
   async function updateAppStatus(id, status) {
     await fetch('/api/bogga/recruitment', {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ id, status }),
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
     });
     setApps(prev => prev.map(a => a.id === id ? { ...a, status } : a));
   }
 
   async function deleteApp(id, name) {
-    if (!confirm(`هل تريد حذف طلب "${name}" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+    if (!confirm(`هل تريد حذف طلب "${name}" نهائياً؟`)) return;
     setDeletingApp(id);
     const res = await fetch('/api/bogga/recruitment', {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' },
@@ -260,8 +318,7 @@ export default function BruteAdminPage() {
       setApps(prev => prev.filter(a => a.id !== id));
       setInterviewsMap(prev => { const m = { ...prev }; delete m[id]; return m; });
     } else {
-      const data = await res.json();
-      alert(data.error || 'تعذر حذف الطلب');
+      alert((await res.json()).error || 'تعذر حذف الطلب');
     }
     setDeletingApp(null);
   }
@@ -271,59 +328,41 @@ export default function BruteAdminPage() {
     try {
       const res  = await fetch(`/api/bogga/recruitment/${id}`);
       const data = await res.json();
-      if (!res.ok || !data.cv_base64) { alert(data.error || 'لا توجد سيرة ذاتية مرفقة'); return; }
-      const link   = document.createElement('a');
-      link.href     = `data:application/pdf;base64,${data.cv_base64}`;
-      link.download = data.cv_filename || 'cv.pdf';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } finally {
-      setDownloadingCV(p => ({ ...p, [id]: false }));
-    }
+      if (!res.ok || !data.cv_base64) { alert(data.error || 'لا توجد سيرة ذاتية'); return; }
+      const a = document.createElement('a');
+      a.href = `data:application/pdf;base64,${data.cv_base64}`;
+      a.download = data.cv_filename || 'cv.pdf';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    } finally { setDownloadingCV(p => ({ ...p, [id]: false })); }
   }
 
-  // ── Interviews ─────────────────────────────────────────────────────
+  // ── Interviews ────────────────────────────────────────────────────────────
   function openScheduleModal(app) {
     const existing = (interviewsMap[app.id] ?? []).slice(-1)[0];
     setSchedModal(app);
     setSchedDate(existing?.interview_date ?? '');
-    setSchedInterviewer(
-      user?.user_metadata?.full_name || user?.email || 'المدير المطلق'
-    );
-    setSchedTime('');
-    setBookedSlots([]);
-    setSchedMsg(null);
+    setSchedInterviewer(user?.user_metadata?.full_name || user?.email || 'المدير المطلق');
+    setSchedTime(''); setBookedSlots([]); setSchedMsg(null);
   }
 
   async function handleSchedule() {
     if (!schedDate || !schedInterviewer.trim() || !schedTime || !schedModal) return;
-    setSchedulingBusy(true);
-    setSchedMsg(null);
-
+    setSchedulingBusy(true); setSchedMsg(null);
     const res  = await fetch('/api/bogga/interviews', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        application_id:   schedModal.id,
-        interviewer_name: schedInterviewer.trim(),
-        interview_date:   schedDate,
-        start_time:       schedTime,
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        application_id: schedModal.id, interviewer_name: schedInterviewer.trim(),
+        interview_date: schedDate, start_time: schedTime,
       }),
     });
     const data = await res.json();
-
     if (!res.ok) {
-      setSchedMsg({ type: 'error', text: data.error || 'حدث خطأ غير متوقع' });
+      setSchedMsg({ type: 'error', text: data.error || 'حدث خطأ' });
     } else {
-      const msg = data.emailSent
-        ? '✅ تمّ حجز الموعد وإرسال الدعوة للمترشح بنجاح!'
-        : '✅ تمّ حجز الموعد (تعذّر إرسال الإيميل — تحقق من إعداد البريد)';
-      setSchedMsg({ type: 'success', text: msg });
-      const iv = data.interview;
+      setSchedMsg({ type: 'success', text: data.emailSent ? '✅ تمّ حجز الموعد وإرسال الدعوة بنجاح!' : '✅ تمّ الحجز (تحقق من إعداد البريد)' });
       setInterviewsMap(prev => ({
         ...prev,
-        [schedModal.id]: [...(prev[schedModal.id] ?? []), iv],
+        [schedModal.id]: [...(prev[schedModal.id] ?? []), data.interview],
       }));
       setTimeout(() => { setSchedModal(null); setSchedMsg(null); }, 2200);
     }
@@ -337,16 +376,47 @@ export default function BruteAdminPage() {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: ivId }),
     });
-    if (res.ok) {
-      setInterviewsMap(prev => ({
-        ...prev,
-        [appId]: (prev[appId] ?? []).filter(iv => iv.id !== ivId),
-      }));
-    }
+    if (res.ok) setInterviewsMap(prev => ({ ...prev, [appId]: (prev[appId] ?? []).filter(iv => iv.id !== ivId) }));
     setCancellingInterview(null);
   }
 
-  // ── Admins management ──────────────────────────────────────────────
+  // ── Granular ACL ──────────────────────────────────────────────────────────
+  async function openPermPopover(tabKey, e) {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPermPopover({ tabKey, top: rect.bottom + 8, left: Math.max(8, rect.left - 180) });
+    setPermsLoading(true);
+    try {
+      const [adminsRes, permsRes] = await Promise.all([
+        admins.length === 0 ? fetch('/api/bogga/admins').then(r => r.json()) : null,
+        fetch('/api/bogga/permissions').then(r => r.json()),
+      ]);
+      if (adminsRes) setAdmins(adminsRes.admins ?? []);
+      const map = {};
+      (permsRes.permissions ?? []).forEach(p => {
+        if (!map[p.admin_id]) map[p.admin_id] = {};
+        map[p.admin_id][p.tab_key] = p.is_allowed;
+      });
+      setAllPerms(map);
+    } catch { /* silent */ }
+    setPermsLoading(false);
+  }
+
+  async function togglePerm(adminId, tabKey) {
+    const key     = `${adminId}_${tabKey}`;
+    const current = allPerms[adminId]?.[tabKey] ?? false;
+    const newVal  = !current;
+    setAllPerms(prev => ({ ...prev, [adminId]: { ...(prev[adminId] ?? {}), [tabKey]: newVal } }));
+    setPermSaving(p => ({ ...p, [key]: true }));
+    const res = await fetch('/api/bogga/permissions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ admin_id: adminId, tab_key: tabKey, is_allowed: newVal }),
+    });
+    if (!res.ok) setAllPerms(prev => ({ ...prev, [adminId]: { ...(prev[adminId] ?? {}), [tabKey]: current } }));
+    setPermSaving(p => { const n = { ...p }; delete n[key]; return n; });
+  }
+
+  // ── Admins ────────────────────────────────────────────────────────────────
   async function handleAddAdmin(e) {
     e.preventDefault();
     setAddingAdmin(true); setAdminMsg(null);
@@ -355,13 +425,11 @@ export default function BruteAdminPage() {
       body: JSON.stringify(adminForm),
     });
     const data = await res.json();
-    if (!res.ok) {
-      setAdminMsg({ type: 'error', text: data.error });
-    } else {
+    if (!res.ok) { setAdminMsg({ type: 'error', text: data.error }); }
+    else {
       setAdmins(prev => [...prev, data.admin]);
-      setShowAddModal(false);
-      setAdminForm(EMPTY_ADMIN_FORM);
-      setAdminMsg({ type: 'success', text: `✅ تم إنشاء حساب المشرف "${data.admin.name}" بنجاح` });
+      setShowAddModal(false); setAdminForm(EMPTY_ADMIN_FORM);
+      setAdminMsg({ type: 'success', text: `✅ تم إنشاء حساب "${data.admin.name}" بنجاح` });
       setTimeout(() => setAdminMsg(null), 4000);
     }
     setAddingAdmin(false);
@@ -377,9 +445,8 @@ export default function BruteAdminPage() {
     setDeletingId(null);
   }
 
-  // ── Promotion ──────────────────────────────────────────────────────
   async function handlePromote() {
-    if (!confirm('سيتم ترقية حسابك إلى مدير مطلق. هذا الإجراء لا يمكن التراجع عنه. هل تريد المتابعة؟')) return;
+    if (!confirm('سيتم ترقية حسابك إلى مدير مطلق. هذا الإجراء لا يمكن التراجع عنه.')) return;
     setPromoting(true); setPromoMsg(null);
     const res  = await fetch('/api/bogga/make-super-admin', { method: 'POST' });
     const data = await res.json();
@@ -387,49 +454,58 @@ export default function BruteAdminPage() {
       setPromoMsg({ type: 'success', text: '✅ تمت الترقية! سيتم تحديث الصفحة...' });
       await supabase.auth.refreshSession();
       setTimeout(() => window.location.reload(), 1500);
-    } else {
-      setPromoMsg({ type: 'error', text: data.error });
-    }
+    } else { setPromoMsg({ type: 'error', text: data.error }); }
     setPromoting(false);
   }
 
   function copySetupSql() {
     navigator.clipboard.writeText(SETUP_SQL);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
   }
 
-  if (!user) return null;
+  // ── Render guard ──────────────────────────────────────────────────────────
+  if (!user || myPermissions === null) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+        <span className="spinner" style={{ width: 30, height: 30, borderWidth: 3, borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} />
+      </div>
+    );
+  }
 
   const isSuperAdmin = role === 'super_admin';
 
+  // Build TABS with permission filtering
+  const canSee = t => isSuperAdmin || (CONTROLLABLE.includes(t) && myPermissions[t] === true);
   const TABS = [
-    { id: 'overview',    label: '📊 نظرة عامة',         show: true },
-    { id: 'codes',       label: '🔑 الأكواد',              show: true },
-    { id: 'groups',      label: '👥 إدارة الطلاب',       show: true },
-    { id: 'lexicon',     label: '📖 بنك الكلمات',         show: true },
-    { id: 'recruitment', label: '📋 طلبات التوظيف',      show: isSuperAdmin },
-    { id: 'admins',      label: '👑 إدارة المشرفين',     show: isSuperAdmin },
-    { id: 'setup',       label: '⚙️ إعداد',               show: true },
+    { id: 'overview',    label: '📊 نظرة عامة',        show: canSee('overview') },
+    { id: 'codes',       label: '🔑 الأكواد',            show: canSee('codes') },
+    { id: 'groups',      label: '👥 إدارة الطلاب',      show: canSee('groups') },
+    { id: 'lexicon',     label: '📖 بنك الكلمات',       show: canSee('lexicon') },
+    { id: 'recruitment', label: '📋 طلبات التوظيف',     show: isSuperAdmin },
+    { id: 'admins',      label: '👑 إدارة المشرفين',    show: isSuperAdmin },
+    { id: 'setup',       label: '⚙️ إعداد',              show: canSee('setup') },
   ].filter(t => t.show);
+
+  const activeTab = TABS.some(t => t.id === tab) ? tab : TABS[0]?.id ?? 'overview';
 
   return (
     <>
       <style>{`
-        .time-btn { transition: all .15s; }
         .time-btn:not(:disabled):hover { background: var(--primary-lt) !important; border-color: var(--primary) !important; }
+        .perm-icon { opacity:.55; transition:opacity .15s; }
+        .perm-icon:hover { opacity:1; }
+        .quick-link { text-decoration:none; transition:opacity .15s; }
+        .quick-link:hover { opacity:.75; }
       `}</style>
 
       <Navbar user={user} />
       <main className="page-wrap" dir="rtl">
         <div className="container">
 
-          {/* ── Header ── */}
+          {/* ── Header ─────────────────────────────────────────── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28, flexWrap: 'wrap' }}>
             <div>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>
-                🏰 حصن الإدارة
-              </h1>
+              <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>🏰 حصن الإدارة</h1>
               <p style={{ color: isSuperAdmin ? '#1a7c40' : 'var(--muted)', fontSize: '.88rem', fontWeight: isSuperAdmin ? 700 : 400 }}>
                 {isSuperAdmin ? '👑 مدير مطلق — صلاحيات كاملة' : '🛡️ مشرف مساعد — صلاحيات محدودة'}
               </p>
@@ -439,24 +515,51 @@ export default function BruteAdminPage() {
             </div>
           </div>
 
-          {/* ── Tabs ── */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 28, borderBottom: '2px solid var(--border)', paddingBottom: 14 }}>
+          {/* ── No permissions state ────────────────────────────── */}
+          {!isSuperAdmin && TABS.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: '56px 24px' }}>
+              <div style={{ fontSize: '3rem', marginBottom: 14 }}>🔒</div>
+              <h2 style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 10 }}>لا توجد لك صلاحيات بعد</h2>
+              <p style={{ color: 'var(--muted)' }}>تواصل مع المدير العام لمنحك صلاحيات الوصول إلى التبويبات المناسبة.</p>
+            </div>
+          ) : (
+            <>
+
+          {/* ── Tabs bar ────────────────────────────────────────── */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 28, borderBottom: '2px solid var(--border)', paddingBottom: 14, position: 'relative' }}>
             {TABS.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                style={{
-                  padding: '8px 16px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                  fontFamily: 'inherit', fontSize: '.88rem', fontWeight: 700,
-                  background: tab === t.id ? 'var(--primary)' : 'var(--bg)',
-                  color: tab === t.id ? '#fff' : 'var(--muted)',
-                  transition: 'all .15s',
-                }}>
-                {t.label}
-              </button>
+              <div key={t.id} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                <button
+                  onClick={() => setTab(t.id)}
+                  style={{
+                    padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                    fontFamily: 'inherit', fontSize: '.88rem', fontWeight: 700,
+                    background: activeTab === t.id ? 'var(--primary)' : 'var(--bg)',
+                    color: activeTab === t.id ? '#fff' : 'var(--muted)',
+                    transition: 'all .15s',
+                    paddingLeft: isSuperAdmin && CONTROLLABLE.includes(t.id) ? 8 : 14,
+                  }}>
+                  {t.label}
+                </button>
+                {isSuperAdmin && CONTROLLABLE.includes(t.id) && (
+                  <button
+                    onClick={e => openPermPopover(t.id, e)}
+                    className="perm-icon"
+                    title={`إدارة صلاحيات تبويب "${TAB_NAMES[t.id]}"`}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer', padding: '0 6px 0 4px',
+                      fontSize: '.72rem', lineHeight: 1, color: activeTab === t.id ? 'rgba(255,255,255,.7)' : 'var(--muted)',
+                      marginRight: -6,
+                    }}>
+                    🔒
+                  </button>
+                )}
+              </div>
             ))}
           </div>
 
-          {/* ══════════════ Overview Tab ══════════════ */}
-          {tab === 'overview' && (
+          {/* ══ Overview ══════════════════════════════════════════ */}
+          {activeTab === 'overview' && (
             <div>
               <div className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 32 }}>
                 {[
@@ -476,30 +579,30 @@ export default function BruteAdminPage() {
                   {isSuperAdmin ? '👑 صلاحيات المدير المطلق' : '🛡️ صلاحياتك كمشرف مساعد'}
                 </h3>
                 {isSuperAdmin ? (
-                  <ul style={{ paddingRight: 20, lineHeight: 2.2, color: 'var(--text)' }}>
+                  <ul style={{ paddingRight: 20, lineHeight: 2.2 }}>
                     <li>✅ تعديل وحذف أي شيء في المنصة</li>
-                    <li>✅ إدارة وإنشاء المشرفين المساعدين (حد أقصى 2)</li>
+                    <li>✅ إدارة المشرفين المساعدين وضبط صلاحياتهم</li>
                     <li>✅ جدولة مقابلات التوظيف وإرسال دعوات تفاعلية</li>
                     <li>✅ الاطلاع على طلبات التوظيف والسير الذاتية</li>
                     <li>✅ تعديل بنك الكلمات اللغوية</li>
-                    <li>✅ حذف حسابات الطلاب عند الضرورة</li>
                     <li>✅ توليد أكواد التقييم والدعوة</li>
                   </ul>
                 ) : (
-                  <ul style={{ paddingRight: 20, lineHeight: 2.2, color: 'var(--text)' }}>
-                    <li>✅ مراقبة الصفوف ومتابعة نتائج الطلاب</li>
-                    <li>✅ توليد وإصدار أكواد التقييم للطلاب</li>
-                    <li>✅ الاطلاع على بنك الكلمات</li>
-                    <li>🚫 لا يمكن حذف الحسابات أو تعديل المعجم</li>
-                    <li>🚫 لا يمكن الاطلاع على طلبات التوظيف</li>
+                  <ul style={{ paddingRight: 20, lineHeight: 2.2 }}>
+                    {Object.keys(myPermissions).filter(k => myPermissions[k]).map(k => (
+                      <li key={k}>✅ {TAB_NAMES[k] ?? k}</li>
+                    ))}
+                    {Object.keys(myPermissions).filter(k => myPermissions[k]).length === 0 && (
+                      <li style={{ color: 'var(--muted)' }}>لا توجد صلاحيات مُعيَّنة</li>
+                    )}
                   </ul>
                 )}
               </div>
             </div>
           )}
 
-          {/* ══════════════ Codes Tab ══════════════ */}
-          {tab === 'codes' && (
+          {/* ══ Codes ═════════════════════════════════════════════ */}
+          {activeTab === 'codes' && (
             <div>
               <div style={{ display: 'flex', gap: 8, marginBottom: 24, background: 'var(--bg)', borderRadius: 12, padding: 6, width: 'fit-content' }}>
                 {[
@@ -526,23 +629,21 @@ export default function BruteAdminPage() {
             </div>
           )}
 
-          {/* ══════════════ Groups Tab ══════════════ */}
-          {tab === 'groups' && <GroupsManager />}
+          {/* ══ Groups ════════════════════════════════════════════ */}
+          {activeTab === 'groups' && <GroupsManager />}
 
-          {/* ══════════════ Lexicon Tab ══════════════ */}
-          {tab === 'lexicon' && (
+          {/* ══ Lexicon ═══════════════════════════════════════════ */}
+          {activeTab === 'lexicon' && (
             <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
               <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📖</div>
               <h3 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 12 }}>بنك الكلمات اللغوية</h3>
-              <p style={{ color: 'var(--muted)', marginBottom: 24 }}>
-                إدارة الكلمات المشكولة وتعديلها وإضافة الجذور والمقاطع الصوتية لكل صف
-              </p>
+              <p style={{ color: 'var(--muted)', marginBottom: 24 }}>إدارة الكلمات المشكولة وتعديلها وإضافة الجذور والمقاطع الصوتية لكل صف</p>
               <Link href="/bogga/lexicon" className="btn btn-primary btn-lg">فتح لوحة بنك الكلمات</Link>
             </div>
           )}
 
-          {/* ══════════════ Recruitment Tab ══════════════ */}
-          {tab === 'recruitment' && isSuperAdmin && (
+          {/* ══ Recruitment ═══════════════════════════════════════ */}
+          {activeTab === 'recruitment' && isSuperAdmin && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <h2 style={{ fontWeight: 800, color: 'var(--primary)' }}>📋 طلبات الترشح للتوظيف</h2>
@@ -559,16 +660,34 @@ export default function BruteAdminPage() {
                   {apps.map(app => {
                     const ivList  = interviewsMap[app.id] ?? [];
                     const latestIv = ivList.slice(-1)[0];
+                    const wa = waLink(app.phone);
                     return (
                       <div key={app.id} className="card" style={{ padding: '20px 24px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
 
-                          {/* Left: candidate info */}
+                          {/* Candidate info */}
                           <div style={{ flex: '1 1 260px' }}>
-                            <div style={{ fontWeight: 800, fontSize: '1.05rem', marginBottom: 4 }}>{app.name}</div>
-                            <div style={{ fontSize: '.85rem', color: 'var(--muted)', lineHeight: 1.9 }}>
-                              📧 {app.email} &nbsp;|&nbsp; 📱 <bdi dir="ltr">{app.phone}</bdi><br />
-                              💼 {app.experience} &nbsp;|&nbsp; 🎓 {app.specialty}
+                            <div style={{ fontWeight: 800, fontSize: '1.05rem', marginBottom: 6 }}>{app.name}</div>
+                            <div style={{ fontSize: '.85rem', color: 'var(--muted)', lineHeight: 2 }}>
+                              {/* Mailto link */}
+                              📧&nbsp;
+                              <a className="quick-link" href={`mailto:${app.email}?subject=بخصوص طلبك في أكاديمية عارم`}
+                                style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                                {app.email}
+                              </a>
+                              &nbsp;|&nbsp;
+                              {/* WhatsApp link */}
+                              📱&nbsp;
+                              {wa ? (
+                                <a className="quick-link" href={wa} target="_blank" rel="noopener noreferrer"
+                                  style={{ color: '#1a7c40', fontWeight: 600 }}>
+                                  <bdi dir="ltr">{app.phone}</bdi>
+                                </a>
+                              ) : (
+                                <bdi dir="ltr">{app.phone}</bdi>
+                              )}
+                              <br />
+                              💼 {app.experience}&nbsp;|&nbsp;🎓 {app.specialty}
                             </div>
                             {app.notes && (
                               <div style={{ marginTop: 8, fontSize: '.83rem', color: '#475569', background: 'var(--bg)', padding: '8px 12px', borderRadius: 8 }}>
@@ -585,83 +704,46 @@ export default function BruteAdminPage() {
                                 : '⬇️ تحميل السيرة الذاتية'}
                             </button>
 
-                            {/* ── Interview Status Block ── */}
+                            {/* Interview status block */}
                             {latestIv && (
-                              <div style={{
-                                marginTop: 14, background: '#eef5ff',
-                                borderRadius: 10, padding: '11px 14px',
-                                fontSize: '.83rem', borderRight: '3px solid #185FA5',
-                              }}>
-                                <div style={{ fontWeight: 800, color: '#185FA5', marginBottom: 6, fontSize: '.88rem' }}>
-                                  📅 المقابلة المجدولة
-                                </div>
+                              <div style={{ marginTop: 14, background: '#eef5ff', borderRadius: 10, padding: '11px 14px', fontSize: '.83rem', borderRight: '3px solid #185FA5' }}>
+                                <div style={{ fontWeight: 800, color: '#185FA5', marginBottom: 6, fontSize: '.88rem' }}>📅 المقابلة المجدولة</div>
                                 <div style={{ color: '#1a2d4a', lineHeight: 1.8 }}>
-                                  📆 {fmtDate(latestIv.interview_date)}
-                                  &nbsp;·&nbsp;
-                                  ⏰ {latestIv.start_time?.slice(0, 5)}
-                                  &nbsp;·&nbsp;
-                                  👤 {latestIv.interviewer_name}
+                                  📆 {fmtDate(latestIv.interview_date)} · ⏰ {latestIv.start_time?.slice(0, 5)} · 👤 {latestIv.interviewer_name}
                                 </div>
                                 <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                                  <span style={{
-                                    padding: '3px 11px', borderRadius: 20,
-                                    fontSize: '.76rem', fontWeight: 700,
-                                    background: (IV_COLORS[latestIv.candidate_response] ?? '#6b7280') + '22',
-                                    color: IV_COLORS[latestIv.candidate_response] ?? '#6b7280',
-                                  }}>
+                                  <span style={{ padding: '3px 11px', borderRadius: 20, fontSize: '.76rem', fontWeight: 700, background: (IV_COLORS[latestIv.candidate_response] ?? '#6b7280') + '22', color: IV_COLORS[latestIv.candidate_response] ?? '#6b7280' }}>
                                     {IV_LABELS[latestIv.candidate_response] ?? latestIv.candidate_response}
                                   </span>
                                   {cancellingInterview === latestIv.id
                                     ? <span className="spinner" style={{ width: 13, height: 13, borderWidth: 2, borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} />
-                                    : (
-                                      <button
-                                        onClick={() => cancelInterview(latestIv.id, app.id)}
-                                        style={{ fontSize: '.76rem', background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
-                                        ✕ إلغاء المقابلة
-                                      </button>
-                                    )
+                                    : <button onClick={() => cancelInterview(latestIv.id, app.id)} style={{ fontSize: '.76rem', background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>✕ إلغاء</button>
                                   }
                                 </div>
                                 {latestIv.candidate_response === 'reschedule_requested' && latestIv.reschedule_reason && (
-                                  <div style={{
-                                    marginTop: 10, padding: '9px 12px',
-                                    background: '#fff8e1', borderRadius: 8,
-                                    border: '1px solid #ffe082',
-                                    color: '#7a4f00', fontSize: '.83rem', lineHeight: 1.7,
-                                  }}>
-                                    💬 <strong>سبب طلب التعديل:</strong> {latestIv.reschedule_reason}
+                                  <div style={{ marginTop: 10, padding: '9px 12px', background: '#fff8e1', borderRadius: 8, border: '1px solid #ffe082', color: '#7a4f00', fontSize: '.83rem', lineHeight: 1.7 }}>
+                                    💬 <strong>سبب التعديل:</strong> {latestIv.reschedule_reason}
                                   </div>
                                 )}
                               </div>
                             )}
                           </div>
 
-                          {/* Right: actions */}
+                          {/* Actions column */}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
-                            <span style={{
-                              padding: '4px 12px', borderRadius: 20, fontSize: '.78rem', fontWeight: 700,
-                              background: STATUS_COLORS[app.status] + '20', color: STATUS_COLORS[app.status],
-                            }}>
+                            <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: '.78rem', fontWeight: 700, background: STATUS_COLORS[app.status] + '20', color: STATUS_COLORS[app.status] }}>
                               {STATUS_LABELS[app.status] ?? app.status}
                             </span>
                             <select value={app.status} onChange={e => updateAppStatus(app.id, e.target.value)}
                               style={{ fontSize: '.8rem', padding: '4px 8px', borderRadius: 8, border: '1.5px solid var(--border)', fontFamily: 'inherit' }}>
                               {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                             </select>
-                            <button
-                              onClick={() => openScheduleModal(app)}
-                              className="btn btn-sm"
+                            <button onClick={() => openScheduleModal(app)} className="btn btn-sm"
                               style={{ background: '#e8f0fb', color: '#185FA5', border: '1.5px solid #b3ccee', fontSize: '.8rem', gap: 5 }}>
                               📅 {latestIv ? 'إعادة جدولة' : 'جدولة مقابلة'}
                             </button>
-                            <button
-                              onClick={() => deleteApp(app.id, app.name)}
-                              disabled={deletingApp === app.id}
-                              className="btn btn-sm btn-danger"
-                              style={{ fontSize: '.78rem' }}>
-                              {deletingApp === app.id
-                                ? <span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} />
-                                : '🗑️ حذف'}
+                            <button onClick={() => deleteApp(app.id, app.name)} disabled={deletingApp === app.id} className="btn btn-sm btn-danger" style={{ fontSize: '.78rem' }}>
+                              {deletingApp === app.id ? <span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} /> : '🗑️ حذف'}
                             </button>
                           </div>
                         </div>
@@ -676,47 +758,28 @@ export default function BruteAdminPage() {
             </div>
           )}
 
-          {/* ══════════════ Admins Management Tab ══════════════ */}
-          {tab === 'admins' && isSuperAdmin && (
+          {/* ══ Admins ════════════════════════════════════════════ */}
+          {activeTab === 'admins' && isSuperAdmin && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
                 <div>
                   <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>👑 إدارة المشرفين المساعدين</h2>
-                  <p style={{ color: 'var(--muted)', fontSize: '.88rem' }}>حد أقصى 2 مشرفين مساعدين — {admins.length}/2 مستخدَم</p>
+                  <p style={{ color: 'var(--muted)', fontSize: '.88rem' }}>حد أقصى 2 — {admins.length}/2 مستخدَم</p>
                 </div>
-                <button
-                  onClick={() => { setShowAddModal(true); setAdminMsg(null); }}
-                  disabled={admins.length >= 2}
-                  className="btn btn-primary"
-                  style={{ opacity: admins.length >= 2 ? .5 : 1 }}>
+                <button onClick={() => { setShowAddModal(true); setAdminMsg(null); }} disabled={admins.length >= 2} className="btn btn-primary" style={{ opacity: admins.length >= 2 ? .5 : 1 }}>
                   + إضافة مشرف مساعد جديد
                 </button>
               </div>
-              {admins.length >= 2 && (
-                <div className="alert alert-info" style={{ marginBottom: 18 }}>
-                  ⚠️ وصلت للحد الأقصى (2 مشرفين). احذف مشرفاً حالياً لإضافة آخر.
-                </div>
-              )}
-              {adminMsg && (
-                <div className={`alert alert-${adminMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 18 }}>
-                  {adminMsg.text}
-                </div>
-              )}
+              {admins.length >= 2 && <div className="alert alert-info" style={{ marginBottom: 18 }}>⚠️ وصلت للحد الأقصى (2 مشرفين).</div>}
+              {adminMsg && <div className={`alert alert-${adminMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 18 }}>{adminMsg.text}</div>}
               {adminsLoading ? (
-                <div style={{ textAlign: 'center', padding: 40 }}>
-                  <span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} />
-                </div>
+                <div style={{ textAlign: 'center', padding: 40 }}><span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} /></div>
               ) : admins.length === 0 ? (
-                <div className="empty-state card">
-                  <span className="empty-icon">👥</span>
-                  <p>لا يوجد مشرفون مساعدون بعد — أضف مشرفاً جديداً</p>
-                </div>
+                <div className="empty-state card"><span className="empty-icon">👥</span><p>لا يوجد مشرفون مساعدون بعد</p></div>
               ) : (
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                   <table className="data-table">
-                    <thead>
-                      <tr><th>الاسم</th><th>البريد الإلكتروني</th><th>تاريخ الإنشاء</th><th>إجراء</th></tr>
-                    </thead>
+                    <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>تاريخ الإنشاء</th><th>إجراء</th></tr></thead>
                     <tbody>
                       {admins.map(a => (
                         <tr key={a.id}>
@@ -737,18 +800,14 @@ export default function BruteAdminPage() {
             </div>
           )}
 
-          {/* ══════════════ Setup Tab ══════════════ */}
-          {tab === 'setup' && (
+          {/* ══ Setup ═════════════════════════════════════════════ */}
+          {activeTab === 'setup' && (
             <div>
               {!isSuperAdmin && (
                 <div className="card" style={{ marginBottom: 28, border: '2px solid #F5A623', background: '#fffbf0' }}>
                   <h3 style={{ fontWeight: 800, color: '#b56a00', marginBottom: 10, fontSize: '1.1rem' }}>👑 ترقية حسابك إلى مدير مطلق</h3>
-                  <p style={{ color: '#64748b', fontSize: '.9rem', lineHeight: 1.7, marginBottom: 16 }}>
-                    إذا كنت المدير الرئيسي للمنصة ولم يكن هناك مدير مطلق بعد، اضغط الزر أدناه لترقية حسابك.
-                  </p>
-                  {promoMsg && (
-                    <div className={`alert alert-${promoMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 14 }}>{promoMsg.text}</div>
-                  )}
+                  <p style={{ color: '#64748b', fontSize: '.9rem', lineHeight: 1.7, marginBottom: 16 }}>إذا كنت المدير الرئيسي ولم يكن هناك مدير مطلق بعد، اضغط الزر أدناه.</p>
+                  {promoMsg && <div className={`alert alert-${promoMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 14 }}>{promoMsg.text}</div>}
                   <button onClick={handlePromote} disabled={promoting} className="btn btn-accent btn-lg" style={{ gap: 10 }}>
                     {promoting ? <><span className="spinner" style={{ width: 18, height: 18, borderWidth: 2, borderTopColor: '#7A3800', borderColor: 'rgba(122,56,0,.2)' }} />جارٍ الترقية...</> : '👑 ترقية حسابي إلى مدير مطلق'}
                   </button>
@@ -758,7 +817,7 @@ export default function BruteAdminPage() {
                 <>
                   <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 16 }}>⚙️ تهيئة قاعدة البيانات</h2>
                   <div className="alert alert-info" style={{ marginBottom: 20 }}>
-                    افتح <strong>Supabase → SQL Editor</strong> ثم الصق هذا الكود وشغّله لإنشاء الجداول اللازمة للمنصة.
+                    افتح <strong>Supabase → SQL Editor</strong> ثم الصق هذا الكود وشغّله.
                   </div>
                   <div style={{ position: 'relative' }}>
                     <pre style={{ background: '#1a1a2e', color: '#e2e8f0', borderRadius: 14, padding: '24px 20px', fontSize: '.82rem', lineHeight: 1.8, overflowX: 'auto', whiteSpace: 'pre-wrap', fontFamily: "'Courier New', monospace" }}>
@@ -774,17 +833,71 @@ export default function BruteAdminPage() {
             </div>
           )}
 
+            </> /* end of tabs content */
+          )}
+
         </div>
       </main>
 
-      {/* ══════════════ Interview Schedule Modal ══════════════ */}
+      {/* ══ Permission Popover ══════════════════════════════════════════════ */}
+      {permPopover && (
+        <div
+          ref={permPopoverRef}
+          style={{
+            position: 'fixed', top: permPopover.top, left: permPopover.left,
+            zIndex: 800, background: '#fff', borderRadius: 14,
+            boxShadow: '0 8px 36px rgba(0,0,0,.18)', border: '1px solid var(--border)',
+            padding: '18px 20px', minWidth: 270, maxWidth: 330, direction: 'rtl',
+          }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div>
+              <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '.95rem' }}>
+                🔒 {TAB_NAMES[permPopover.tabKey]}
+              </div>
+              <div style={{ color: 'var(--muted)', fontSize: '.75rem', marginTop: 2 }}>صلاحيات المشرفين المساعدين</div>
+            </div>
+            <button onClick={() => setPermPopover(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '1.1rem', padding: 2, lineHeight: 1 }}>✕</button>
+          </div>
+
+          {permsLoading ? (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} />
+            </div>
+          ) : admins.length === 0 ? (
+            <p style={{ color: 'var(--muted)', fontSize: '.85rem', margin: 0 }}>
+              لا يوجد مشرفون مساعدون — أضف مشرفاً من تبويب <strong>إدارة المشرفين</strong> أولاً.
+            </p>
+          ) : (
+            admins.map(admin => {
+              const isAllowed = allPerms[admin.id]?.[permPopover.tabKey] ?? false;
+              const saving    = !!permSaving[`${admin.id}_${permPopover.tabKey}`];
+              return (
+                <div key={admin.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ overflow: 'hidden' }}>
+                    <div style={{ fontWeight: 700, fontSize: '.9rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{admin.name}</div>
+                    <div style={{ color: 'var(--muted)', fontSize: '.74rem' }}>{admin.email}</div>
+                  </div>
+                  {saving
+                    ? <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2, borderTopColor: '#1a7c40', borderColor: 'var(--border)', flexShrink: 0 }} />
+                    : <ToggleSwitch checked={isAllowed} onChange={() => togglePerm(admin.id, permPopover.tabKey)} />
+                  }
+                </div>
+              );
+            })
+          )}
+
+          <div style={{ marginTop: 12, padding: '8px 10px', background: '#f8faff', borderRadius: 8, fontSize: '.76rem', color: 'var(--muted)', lineHeight: 1.6 }}>
+            الوضع الافتراضي لأي تبويب: <strong style={{ color: '#b91c1c' }}>مخفي</strong> — لا يظهر لأي مساعد إلا بعد تفعيله يدوياً
+          </div>
+        </div>
+      )}
+
+      {/* ══ Interview Schedule Modal ════════════════════════════════════════ */}
       {schedModal && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600, padding: 16 }}
           onClick={e => { if (e.target === e.currentTarget && !schedulingBusy) setSchedModal(null); }}>
           <div style={{ background: '#fff', borderRadius: 22, padding: '28px 28px 24px', width: '100%', maxWidth: 520, direction: 'rtl', boxShadow: '0 24px 72px rgba(0,0,0,.28)', maxHeight: '92vh', overflowY: 'auto' }}>
-
-            {/* Modal header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
                 <h2 style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.15rem', margin: '0 0 4px' }}>📅 جدولة مقابلة</h2>
@@ -793,40 +906,19 @@ export default function BruteAdminPage() {
               <button onClick={() => { if (!schedulingBusy) setSchedModal(null); }} style={{ background: 'none', border: 'none', fontSize: '1.3rem', color: 'var(--muted)', cursor: 'pointer', lineHeight: 1, padding: 2 }}>✕</button>
             </div>
 
-            {schedMsg && (
-              <div className={`alert alert-${schedMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 16 }}>
-                {schedMsg.text}
-              </div>
-            )}
+            {schedMsg && <div className={`alert alert-${schedMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 16 }}>{schedMsg.text}</div>}
 
-            {/* Interviewer */}
             <div className="form-group">
               <label className="form-label">👤 المقابِل</label>
-              <input
-                className="form-input"
-                value={schedInterviewer}
-                onChange={e => setSchedInterviewer(e.target.value)}
-                placeholder="اسم من سيجري المقابلة"
-                disabled={schedulingBusy}
-              />
+              <input className="form-input" value={schedInterviewer} onChange={e => setSchedInterviewer(e.target.value)} placeholder="اسم من سيجري المقابلة" disabled={schedulingBusy} />
               <p className="form-help">سيظهر هذا الاسم في بريد الدعوة المرسل للمترشح</p>
             </div>
 
-            {/* Date picker */}
             <div className="form-group">
               <label className="form-label">📆 تاريخ المقابلة</label>
-              <input
-                className="form-input"
-                type="date"
-                value={schedDate}
-                min={new Date().toISOString().split('T')[0]}
-                onChange={e => { setSchedDate(e.target.value); setSchedTime(''); }}
-                disabled={schedulingBusy}
-                dir="ltr"
-              />
+              <input className="form-input" type="date" value={schedDate} min={new Date().toISOString().split('T')[0]} onChange={e => { setSchedDate(e.target.value); setSchedTime(''); }} disabled={schedulingBusy} dir="ltr" />
             </div>
 
-            {/* Start time grid */}
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 ⏰ ساعة الانطلاق
@@ -842,14 +934,11 @@ export default function BruteAdminPage() {
                     const booked   = bookedSlots.includes(slot);
                     const selected = schedTime === slot;
                     return (
-                      <button
-                        key={slot}
-                        disabled={booked || schedulingBusy}
-                        onClick={() => setSchedTime(slot)}
-                        className="time-btn"
+                      <button key={slot} disabled={booked || schedulingBusy} onClick={() => setSchedTime(slot)} className="time-btn"
                         style={{
                           padding: '8px 2px', borderRadius: 9, fontFamily: 'inherit',
-                          fontSize: '.8rem', fontWeight: selected ? 800 : 400, cursor: booked ? 'not-allowed' : 'pointer',
+                          fontSize: '.8rem', fontWeight: selected ? 800 : 400,
+                          cursor: booked ? 'not-allowed' : 'pointer',
                           border: selected ? '2px solid var(--primary)' : '1.5px solid var(--border)',
                           background: booked ? '#f8fafc' : selected ? 'var(--primary-lt)' : '#fff',
                           color: booked ? '#c4c8d0' : selected ? 'var(--primary)' : 'var(--text)',
@@ -864,12 +953,8 @@ export default function BruteAdminPage() {
               )}
             </div>
 
-            {/* Confirm button */}
             <div style={{ marginTop: 22, display: 'flex', gap: 10 }}>
-              <button
-                onClick={handleSchedule}
-                disabled={!schedDate || !schedInterviewer.trim() || !schedTime || schedulingBusy}
-                className="btn btn-primary"
+              <button onClick={handleSchedule} disabled={!schedDate || !schedInterviewer.trim() || !schedTime || schedulingBusy} className="btn btn-primary"
                 style={{ flex: 1, justifyContent: 'center', gap: 8, opacity: (!schedDate || !schedInterviewer.trim() || !schedTime) ? .55 : 1 }}>
                 {schedulingBusy
                   ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />جارٍ الحجز وإرسال الدعوة...</>
@@ -887,16 +972,13 @@ export default function BruteAdminPage() {
         </div>
       )}
 
-      {/* ══════════════ Add Admin Modal ══════════════ */}
+      {/* ══ Add Admin Modal ═════════════════════════════════════════════════ */}
       {showAddModal && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: 20 }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: 20 }}
           onClick={e => { if (e.target === e.currentTarget) setShowAddModal(false); }}>
           <div style={{ background: '#fff', borderRadius: 20, padding: '32px 28px', width: '100%', maxWidth: 440, direction: 'rtl', boxShadow: '0 20px 60px rgba(0,0,0,.25)' }}>
             <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 20, fontSize: '1.15rem' }}>+ إضافة مشرف مساعد جديد</h2>
-            {adminMsg && (
-              <div className={`alert alert-${adminMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 14 }}>{adminMsg.text}</div>
-            )}
+            {adminMsg && <div className={`alert alert-${adminMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 14 }}>{adminMsg.text}</div>}
             <form onSubmit={handleAddAdmin}>
               <div className="form-group">
                 <label className="form-label">الاسم الكامل *</label>
