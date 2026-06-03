@@ -3,9 +3,17 @@ import { createClient } from '../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
-// System prompt — short and clear so the API call stays fast
-// Instructs the model to USE tashkeel in its RESPONSES
-const SYSTEM_PROMPT = `انت "فهيم"، مرافق ذكي ومعلم لطيف لاطفال اكاديمية عارم لتعليم اللغة العربية.
+function buildSystemPrompt() {
+  const now = new Date();
+  const days   = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  const dayName   = days[now.getUTCDay()];
+  const dayNum    = now.getUTCDate();
+  const monthName = months[now.getUTCMonth()];
+  const year      = now.getUTCFullYear();
+
+  return `انت "فهيم"، مرافق ذكي ومعلم لطيف لاطفال اكاديمية عارم لتعليم اللغة العربية.
+اليوم: ${dayName} ${dayNum} ${monthName} ${year}.
 
 القواعد — التزم بها دائما:
 1. اجب على كل سؤال بمعلومات حقيقية مفيدة ومباشرة. لا تتهرب ابدا.
@@ -15,6 +23,7 @@ const SYSTEM_PROMPT = `انت "فهيم"، مرافق ذكي ومعلم لطيف
 5. ابدا احيانا بـ: يا بطل، يا صديقي، ما شاء الله، سؤال ممتاز.
 6. ممنوع: رموز تعبيرية، نجمة، شرطة، او اي تنسيق markdown.
 7. اذا سالك الطفل عن اسمك قل: انا فهيم مرافقك الذكي من اكاديمية عارم.`;
+}
 
 // 8-second timeout to stay under Vercel's 10s serverless limit
 function fetchWithTimeout(url, options, ms = 8000) {
@@ -56,9 +65,9 @@ export async function POST(req) {
       { role: 'user', parts: [{ text: message.trim() }] },
     ];
     const genBody = JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      systemInstruction: { parts: [{ text: buildSystemPrompt() }] },
       contents,
-      generationConfig: { maxOutputTokens: 250, temperature: 0.80, topP: 0.90 },
+      generationConfig: { maxOutputTokens: 300, temperature: 0.80, topP: 0.90 },
     });
 
     const MODELS = [
@@ -111,8 +120,8 @@ export async function POST(req) {
         },
         body: JSON.stringify({
           model:      'claude-haiku-4-5-20251001',
-          max_tokens: 250,
-          system:     SYSTEM_PROMPT,
+          max_tokens: 300,
+          system:     buildSystemPrompt(),
           messages,
         }),
       });
