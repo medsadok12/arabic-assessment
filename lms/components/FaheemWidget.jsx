@@ -100,8 +100,8 @@ function useSpeech() {
         const u = new SpeechSynthesisUtterance(chunk);
         u.voice  = voice;
         u.lang   = voice.lang || 'ar-SA';
-        u.rate   = 1.0;    // standard, natural pace
-        u.pitch  = 1.35;   // bright, cheerful, child-like — kids warm to it
+        u.rate   = 0.94;   // a touch slower so shadda/gemination is articulated, not swallowed
+        u.pitch  = 1.12;   // gently bright & friendly, but realistic (1.35 sounded chipmunky/fake)
         u.volume = 1;
         u.onend  = resolve;
         u.onerror = () => playGoogle(chunk, resolve);  // engine glitch → proxy
