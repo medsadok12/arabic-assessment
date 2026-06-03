@@ -14,7 +14,7 @@ export async function GET(req) {
   // Google Translate TTS — high-quality Arabic, no API key needed
   const url =
     `https://translate.google.com/translate_tts` +
-    `?ie=UTF-8&tl=ar&client=tw-ob&ttsspeed=0.85&q=${encodeURIComponent(text)}`;
+    `?ie=UTF-8&tl=ar&client=tw-ob&ttsspeed=0.9&q=${encodeURIComponent(text)}`;
 
   try {
     const res = await fetch(url, {

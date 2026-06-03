@@ -1,19 +1,21 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-/* ── TTS helpers ── */
+/* ── TTS text cleaner — strips everything non-speakable so the voice
+      never reads "صاروخ" / "علم تونس" / "بالون". Visual chat keeps emojis. ── */
 function cleanText(text) {
   return text
-    // Extended pictographic (most emoji: faces, objects, symbols)
-    .replace(/\p{Extended_Pictographic}/gu, '')
-    // Regional indicator pairs = country flags (🇹🇳 🇫🇷 🇧🇷 etc.)
-    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '')
-    // Misc symbols & dingbats not covered above
-    .replace(/[\u{2600}-\u{27BF}]/gu, '')
-    // Variation selectors, ZWJ, combining enclosing keycap
-    .replace(/[︀-️‍⃣]/g, '')
-    .replace(/ـ/g, '')           // tatweel
-    .replace(/[*_~`#>]/g, '')    // markdown
+    .replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '')   // regional indicators → country flags 🇹🇳
+    .replace(/[\u{1F3FB}-\u{1F3FF}]/gu, '')   // skin-tone modifiers (digits-safe)
+    .replace(/\p{Extended_Pictographic}/gu, '')// emoji: faces, objects, symbols 🌟🦁
+    .replace(/[\u{2190}-\u{21FF}]/gu, '')      // arrows
+    .replace(/[\u{2300}-\u{27BF}]/gu, '')      // misc technical, dingbats, symbols
+    .replace(/[\u{2B00}-\u{2BFF}]/gu, '')      // misc symbols & arrows (⭐ etc.)
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')      // variation selectors
+    .replace(/⃣/g, '')                    // combining enclosing keycap
+    .replace(/‍/g, '')                    // zero-width joiner
+    .replace(/ـ/g, '')                         // tatweel (no phonetic value)
+    .replace(/[*_~`#>]/g, '')                  // markdown symbols
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
@@ -55,7 +57,7 @@ function useSpeech() {
         if (!window.speechSynthesis) { resolve(); return; }
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(chunk);
-        u.lang = 'ar-SA'; u.rate = 0.82; u.pitch = 1.1; u.volume = 1;
+        u.lang = 'ar-SA'; u.rate = 0.9; u.pitch = 1.1; u.volume = 1;
         const arVoice =
           window.speechSynthesis.getVoices()
             .find(v => /Google.*Arab|Microsoft.*Naayf|Microsoft.*Hoda|Majed|Maged/i.test(v.name))
@@ -194,7 +196,8 @@ const iconBtn = {
 };
 
 /* ── Main FaheemWidget component ── */
-export default function FaheemWidget({ studentName = 'بطل' }) {
+export default function FaheemWidget({ studentName = 'بطل', studentGender = 'male' }) {
+  const isFemale = studentGender === 'female';
   const { speak, cancel } = useSpeech();
 
   const [open,      setOpen]    = useState(false);
@@ -253,11 +256,13 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
   useEffect(() => {
     if (!open || greeted) return;
     setGreeted(true);
-    const g = `مَرْحَبًا يَا ${studentName} فِي أَكَادِيمِيَّةِ عَارِم! أَنَا صَدِيقُكَ وَمُرَافِقُكَ الذَّكِيُّ فَهِيمٌ. أَخْبِرْنِي يَا بَطَلُ، مَاذَا تُرِيدُ أَنْ نَتَحَدَّثَ عَنْهُ الْيَوْمَ؟`;
+    const g = isFemale
+      ? `مَرْحَبًا يَا ${studentName} فِي أَكَادِيمِيَّةِ عَارِم! أَنَا صَدِيقُكِ وَمُرَافِقُكِ الذَّكِيُّ فَهِيمٌ. أَخْبِرِينِي يَا بَطَلَةُ، مَاذَا تُرِيدِينَ أَنْ نَتَحَدَّثَ عَنْهُ الْيَوْمَ؟`
+      : `مَرْحَبًا يَا ${studentName} فِي أَكَادِيمِيَّةِ عَارِم! أَنَا صَدِيقُكَ وَمُرَافِقُكَ الذَّكِيُّ فَهِيمٌ. أَخْبِرْنِي يَا بَطَلُ، مَاذَا تُرِيدُ أَنْ نَتَحَدَّثَ عَنْهُ الْيَوْمَ؟`;
     setMsgs([{ role: 'ai', text: g }]);
     const t = setTimeout(() => sayText(g), 700);
     return () => clearTimeout(t);
-  }, [open, greeted, studentName, sayText]);
+  }, [open, greeted, studentName, isFemale, sayText]);
 
   async function sendMsg(text) {
     if (!text.trim() || phase === 'thinking') return;
@@ -271,7 +276,7 @@ export default function FaheemWidget({ studentName = 'بطل' }) {
       const res  = await fetch('/api/faheem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: t, history: msgs, studentName, studentGender: 'male' }),
+        body: JSON.stringify({ message: t, history: msgs, studentName, studentGender }),
       });
       const json = await res.json();
       const reply = json.reply || 'يَا بَطَلُ، جَرِّبْ سُؤَالاً آخَرَ مِنْ فَضْلِكَ!';

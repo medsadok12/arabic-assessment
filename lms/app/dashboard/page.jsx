@@ -44,7 +44,8 @@ export default async function DashboardPage() {
     { icon: '📈', title: 'تقارير التقدم',        desc: 'شاهد نتيجة تقييمك التشخيصي ومستوى تقدمك',              href: '/dashboard'         },
   ];
 
-  const displayName = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'طالب';
+  const displayName    = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'طالب';
+  const studentGender  = user.user_metadata?.gender === 'female' ? 'female' : 'male';
 
   return (
     <>
@@ -93,7 +94,7 @@ export default async function DashboardPage() {
           {!isStudent && <ParentPanel assessments={assessments ?? []} />}
 
           {/* Faheem AI companion — students only */}
-          {isStudent && <FaheemWidget studentName={displayName} />}
+          {isStudent && <FaheemWidget studentName={displayName} studentGender={studentGender} />}
 
           {/* Recent Assessments */}
           <div className="dash-section">
