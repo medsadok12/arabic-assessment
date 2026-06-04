@@ -906,7 +906,7 @@ export default function BoggarAdminPage() {
               ) : (
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                   <table className="data-table">
-                    <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الحالة</th><th>الاتصال</th><th>تاريخ الإنشاء</th><th>إجراءات</th></tr></thead>
+                    <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>حالة الحساب</th><th>آخر نشاط</th><th>تاريخ الإنشاء</th><th>إجراءات</th></tr></thead>
                     <tbody>
                       {admins.map(a => (
                         <tr key={a.id}>
@@ -918,7 +918,7 @@ export default function BoggarAdminPage() {
                               background: a.status === 'suspended' ? '#fee2e2' : '#dcfce7',
                               color:      a.status === 'suspended' ? '#b91c1c' : '#166534',
                             }}>
-                              {a.status === 'suspended' ? '⏸ موقوف' : '✅ نشط'}
+                              {a.status === 'suspended' ? '🚫 موقوف' : '✅ مفعَّل'}
                             </span>
                           </td>
                           <td>
