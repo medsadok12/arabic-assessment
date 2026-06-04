@@ -185,6 +185,12 @@ export default function BoggarAdminPage() {
   const [suspendingId,  setSuspendingId]  = useState(null);
   const [suspended,     setSuspended]     = useState(false);
 
+  // Online status & activity
+  const [onlineStatus,    setOnlineStatus]    = useState({});
+  const [activityModal,   setActivityModal]   = useState(null);
+  const [activityData,    setActivityData]    = useState({ sessions: [], online: null });
+  const [activityLoading, setActivityLoading] = useState(false);
+
   // ── Granular ACL ─────────────────────────────────────────────────────────
   // allPerms[adminId][tabKey] = bool — for super_admin popover UI
   const [allPerms,     setAllPerms]     = useState({});
@@ -227,6 +233,15 @@ export default function BoggarAdminPage() {
       })
       .catch(() => setMyPermissions({}));
   }, [user, role]);
+
+  // ── Heartbeat ping every 2 minutes ───────────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    const ping = () => fetch('/api/bogga/activity', { method: 'POST' }).catch(() => {});
+    ping();
+    const iv = setInterval(ping, 2 * 60 * 1000);
+    return () => clearInterval(iv);
+  }, [user]);
 
   // ── Redirect to first allowed tab after permissions load ─────────────────
   useEffect(() => {
@@ -299,8 +314,14 @@ export default function BoggarAdminPage() {
 
   async function loadAdmins() {
     setAdminsLoading(true);
-    const res = await fetch('/api/bogga/admins');
-    setAdmins((await res.json()).admins ?? []);
+    const [adminsRes, onlineRes] = await Promise.all([
+      fetch('/api/bogga/admins').then(r => r.json()),
+      fetch('/api/bogga/activity').then(r => r.json()).catch(() => ({ online_status: [] })),
+    ]);
+    setAdmins(adminsRes.admins ?? []);
+    const map = {};
+    (onlineRes.online_status ?? []).forEach(s => { map[s.admin_id] = s; });
+    setOnlineStatus(map);
     setAdminsLoading(false);
   }
 
@@ -497,6 +518,26 @@ export default function BoggarAdminPage() {
   function copySetupSql() {
     navigator.clipboard.writeText(SETUP_SQL);
     setCopied(true); setTimeout(() => setCopied(false), 2000);
+  }
+
+  function getOnlineInfo(adminId) {
+    const s = onlineStatus[adminId];
+    if (!s) return { online: false, label: 'لم يُسجَّل دخول بعد', color: '#94a3b8' };
+    const diffMin = Math.floor((Date.now() - new Date(s.last_seen)) / 60000);
+    if (diffMin < 5)    return { online: true,  label: 'متصل الآن',                           color: '#16a34a' };
+    if (diffMin < 60)   return { online: false, label: `منذ ${diffMin} دقيقة`,                color: '#f59e0b' };
+    if (diffMin < 1440) return { online: false, label: `منذ ${Math.floor(diffMin/60)} ساعة`, color: '#94a3b8' };
+    return               { online: false, label: `منذ ${Math.floor(diffMin/1440)} يوم`,       color: '#94a3b8' };
+  }
+
+  async function openActivityModal(a) {
+    setActivityModal(a);
+    setActivityLoading(true);
+    setActivityData({ sessions: [], online: null });
+    const res  = await fetch(`/api/bogga/activity?admin_id=${a.id}`);
+    const data = await res.json();
+    setActivityData(data);
+    setActivityLoading(false);
   }
 
   // ── Render guard ──────────────────────────────────────────────────────────
@@ -865,7 +906,7 @@ export default function BoggarAdminPage() {
               ) : (
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                   <table className="data-table">
-                    <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الحالة</th><th>تاريخ الإنشاء</th><th>إجراءات</th></tr></thead>
+                    <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الحالة</th><th>الاتصال</th><th>تاريخ الإنشاء</th><th>إجراءات</th></tr></thead>
                     <tbody>
                       {admins.map(a => (
                         <tr key={a.id}>
@@ -880,9 +921,23 @@ export default function BoggarAdminPage() {
                               {a.status === 'suspended' ? '⏸ موقوف' : '✅ نشط'}
                             </span>
                           </td>
+                          <td>
+                            {(() => {
+                              const s = getOnlineInfo(a.id);
+                              return (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '.75rem', fontWeight: 700, color: s.color }}>
+                                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'inline-block', flexShrink: 0 }} />
+                                  {s.label}
+                                </span>
+                              );
+                            })()}
+                          </td>
                           <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>{new Date(a.created_at).toLocaleDateString('ar-SA')}</td>
                           <td>
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              <button onClick={() => openActivityModal(a)} className="btn btn-sm" style={{ background: '#eef5ff', color: '#185FA5', border: 'none' }}>
+                                📊 النشاط
+                              </button>
                               <button
                                 onClick={() => handleSuspendAdmin(a.id, a.status ?? 'active')}
                                 disabled={suspendingId === a.id}
@@ -945,6 +1000,85 @@ export default function BoggarAdminPage() {
 
         </div>
       </main>
+
+      {/* ══ Activity Modal ═════════════════════════════════════════════════ */}
+      {activityModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, padding: 16 }}
+          onClick={e => { if (e.target === e.currentTarget) setActivityModal(null); }}>
+          <div style={{ background: '#fff', borderRadius: 22, padding: '28px', width: '100%', maxWidth: 580, direction: 'rtl', boxShadow: '0 24px 72px rgba(0,0,0,.28)', maxHeight: '85vh', overflowY: 'auto' }}>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div>
+                <h2 style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.1rem', margin: '0 0 2px' }}>📊 سجل نشاط المشرف</h2>
+                <p style={{ color: 'var(--muted)', fontSize: '.85rem', margin: 0 }}>{activityModal.name} — {activityModal.email}</p>
+              </div>
+              <button onClick={() => setActivityModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.3rem', color: 'var(--muted)', cursor: 'pointer', lineHeight: 1, padding: 2 }}>✕</button>
+            </div>
+
+            {activityLoading ? (
+              <div style={{ textAlign: 'center', padding: 40 }}>
+                <span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} />
+              </div>
+            ) : (
+              <>
+                {/* Current connection status */}
+                {(() => {
+                  const s     = getOnlineInfo(activityModal.id);
+                  const now   = activityData.online;
+                  const curDur = now && s.online
+                    ? Math.floor((Date.now() - new Date(now.session_start)) / 60000)
+                    : null;
+                  return (
+                    <div style={{ background: s.online ? '#dcfce7' : '#f8faff', border: `1.5px solid ${s.online ? '#86efac' : '#e2e8f0'}`, borderRadius: 12, padding: '14px 18px', marginBottom: 22, display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{s.online ? '🟢' : '🔴'}</span>
+                      <div>
+                        <div style={{ fontWeight: 800, color: s.online ? '#15803d' : '#64748b', fontSize: '.95rem' }}>{s.label}</div>
+                        {now && (
+                          <div style={{ color: 'var(--muted)', fontSize: '.78rem', marginTop: 3 }}>
+                            {s.online
+                              ? `بدأت الجلسة: ${new Date(now.session_start).toLocaleString('ar-SA')} — مدة الجلسة الحالية: ${curDur} دقيقة`
+                              : `آخر ظهور: ${new Date(now.last_seen).toLocaleString('ar-SA')}`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Sessions list */}
+                <div style={{ fontWeight: 700, fontSize: '.88rem', color: 'var(--muted)', marginBottom: 12 }}>سجل الجلسات السابقة</div>
+                {activityData.sessions.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--muted)', fontSize: '.9rem' }}>لا توجد جلسات مسجّلة بعد</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {activityData.sessions.map(s => {
+                      const dur = s.duration_minutes ?? 0;
+                      const durLabel = dur >= 60 ? `${Math.floor(dur/60)}س ${dur%60}د` : `${dur} دقيقة`;
+                      return (
+                        <div key={s.id} style={{ background: '#f8faff', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '.88rem' }}>
+                              📅 {new Date(s.session_start).toLocaleDateString('ar-SA', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
+                            </div>
+                            <div style={{ color: 'var(--muted)', fontSize: '.78rem', marginTop: 3, display: 'flex', gap: 16 }}>
+                              <span>🕐 من: {new Date(s.session_start).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span>🕓 إلى: {new Date(s.session_end).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          </div>
+                          <div style={{ background: '#185FA5', color: '#fff', borderRadius: 20, padding: '4px 14px', fontSize: '.78rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                            ⏱ {durLabel}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ══ Permission Popover ══════════════════════════════════════════════ */}
       {permPopover && (
