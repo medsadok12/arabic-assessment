@@ -1,13 +1,9 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-function transport() {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
-    },
-  });
+const FROM = 'أكاديمية عارم <onboarding@resend.dev>';
+
+function resend() {
+  return new Resend(process.env.RESEND_API_KEY);
 }
 
 function baseHtml(content) {
@@ -72,12 +68,40 @@ export async function sendInterviewEmail({
     </div>
   `);
 
-  await transport().sendMail({
-    from:    `"أكاديمية عارم" <${process.env.GMAIL_USER}>`,
+  const { error } = await resend().emails.send({
+    from:    FROM,
     to,
     subject: `دعوة لمقابلة وظيفية — ${dateStr} الساعة ${startTime}`,
     html,
   });
+  if (error) throw new Error(error.message);
+}
+
+export async function sendRejectionEmail({ to, candidateName }) {
+  const html = baseHtml(`
+    <div class="card">
+      <div class="hdr">
+        <h1>🎓 أكاديمية عارم للتعليم</h1>
+        <p>نتيجة الطلب الوظيفي</p>
+      </div>
+      <div class="body">
+        <p>السلام عليكم ورحمة الله وبركاته،</p>
+        <p>شكراً جزيلاً لتقديمك طلبك للانضمام إلى فريق <strong>أكاديمية عارم</strong>، <strong>${candidateName}</strong>.</p>
+        <p>بعد مراجعة دقيقة لجميع الطلبات الواردة، نأسف لإبلاغك بأنه تمّ اختيار مرشحين آخرين تتوافق ملفاتهم بشكل أوسع مع متطلبات المرحلة الحالية.</p>
+        <p>نثمّن اهتمامك بالأكاديمية وحرصك على الانضمام إلى فريقها المتميز، ونتمنى لك دوام التوفيق والنجاح في مسيرتك المهنية.</p>
+        <p class="note">يسعدنا الاطلاع على ملفك مجدداً في حال توفر فرص مستقبلية تتناسب مع خبراتك ومؤهلاتك.</p>
+      </div>
+      <div class="ftr">أكاديمية عارم للتعليم — جميع الحقوق محفوظة</div>
+    </div>
+  `);
+
+  const { error } = await resend().emails.send({
+    from:    FROM,
+    to,
+    subject: 'شكراً لتقديمك — أكاديمية عارم',
+    html,
+  });
+  if (error) throw new Error(error.message);
 }
 
 export async function sendWelcomeEmail({ to, name, password }) {
@@ -104,36 +128,11 @@ export async function sendWelcomeEmail({ to, name, password }) {
     </div>
   `);
 
-  await transport().sendMail({
-    from:    `"أكاديمية عارم" <${process.env.GMAIL_USER}>`,
+  const { error } = await resend().emails.send({
+    from:    FROM,
     to,
     subject: '🎓 مرحباً بك في أكاديمية عارم — بيانات دخولك',
     html,
   });
-}
-
-export async function sendRejectionEmail({ to, candidateName }) {
-  const html = baseHtml(`
-    <div class="card">
-      <div class="hdr">
-        <h1>🎓 أكاديمية عارم للتعليم</h1>
-        <p>نتيجة الطلب الوظيفي</p>
-      </div>
-      <div class="body">
-        <p>السلام عليكم ورحمة الله وبركاته،</p>
-        <p>شكراً جزيلاً لتقديمك طلبك للانضمام إلى فريق <strong>أكاديمية عارم</strong>، <strong>${candidateName}</strong>.</p>
-        <p>بعد مراجعة دقيقة لجميع الطلبات الواردة، نأسف لإبلاغك بأنه تمّ اختيار مرشحين آخرين تتوافق ملفاتهم بشكل أوسع مع متطلبات المرحلة الحالية.</p>
-        <p>نثمّن اهتمامك بالأكاديمية وحرصك على الانضمام إلى فريقها المتميز، ونتمنى لك دوام التوفيق والنجاح في مسيرتك المهنية.</p>
-        <p class="note">يسعدنا الاطلاع على ملفك مجدداً في حال توفر فرص مستقبلية تتناسب مع خبراتك ومؤهلاتك.</p>
-      </div>
-      <div class="ftr">أكاديمية عارم للتعليم — جميع الحقوق محفوظة</div>
-    </div>
-  `);
-
-  await transport().sendMail({
-    from:    `"أكاديمية عارم" <${process.env.GMAIL_USER}>`,
-    to,
-    subject: 'شكراً لتقديمك — أكاديمية عارم',
-    html,
-  });
+  if (error) throw new Error(error.message);
 }
