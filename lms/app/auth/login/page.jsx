@@ -17,13 +17,14 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data: { user }, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
       setLoading(false);
       return;
     }
-    router.push('/dashboard');
+    const role = user?.user_metadata?.role;
+    router.push(role === 'admin' || role === 'super_admin' ? '/bogga' : '/dashboard');
     router.refresh();
   }
 
