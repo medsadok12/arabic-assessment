@@ -18,10 +18,10 @@ const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
 });
 
 // ── Tabs that assistant admins can be granted access to ─────────────────────
-const CONTROLLABLE = ['overview', 'codes', 'groups', 'lexicon', 'recruitment', 'setup'];
+const CONTROLLABLE = ['overview', 'codes', 'groups', 'results', 'lexicon', 'recruitment', 'setup'];
 const TAB_NAMES = {
   overview: 'نظرة عامة', codes: 'الأكواد', groups: 'إدارة الطلاب',
-  lexicon: 'بنك الكلمات', recruitment: 'طلبات التوظيف', setup: 'الإعداد',
+  results: 'نتائج الطلاب', lexicon: 'بنك الكلمات', recruitment: 'طلبات التوظيف', setup: 'الإعداد',
 };
 
 // ── Arabic month names ──────────────────────────────────────────────────────
@@ -210,6 +210,17 @@ export default function BoggarAdminPage() {
   // Setup
   const [copied, setCopied] = useState(false);
 
+  // Results tab
+  const [results,        setResults]        = useState([]);
+  const [resultsTotal,   setResultsTotal]   = useState(0);
+  const [resultsPage,    setResultsPage]    = useState(1);
+  const [resultsLoading, setResultsLoading] = useState(false);
+  const [resultsStats,   setResultsStats]   = useState({ total: 0, passed: 0, avg: 0 });
+  const [resultsSearch,  setResultsSearch]  = useState('');
+  const [resultsLevel,   setResultsLevel]   = useState('');
+  const [resultsMin,     setResultsMin]     = useState('');
+  const [resultsMax,     setResultsMax]     = useState('');
+
   // ── Auth guard ────────────────────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
@@ -257,7 +268,23 @@ export default function BoggarAdminPage() {
     loadStats();
     if (tab === 'recruitment') { loadApps(); if (isSA) loadInterviews(); }
     if (tab === 'admins'      && isSA) loadAdmins();
+    if (tab === 'results') loadResults(1, resultsSearch, resultsLevel, resultsMin, resultsMax);
   }, [user, tab, myPermissions]);
+
+  async function loadResults(page = 1, search = '', level = '', min = '', max = '') {
+    setResultsLoading(true);
+    const params = new URLSearchParams({ page });
+    if (search) params.set('search', search);
+    if (level)  params.set('level',  level);
+    if (min)    params.set('minScore', min);
+    if (max)    params.set('maxScore', max);
+    const data = await fetch(`/api/bogga/results?${params}`).then(r => r.json()).catch(() => ({}));
+    setResults(data.results ?? []);
+    setResultsTotal(data.total ?? 0);
+    setResultsPage(page);
+    if (data.stats) setResultsStats(data.stats);
+    setResultsLoading(false);
+  }
 
   // Booked slots (modal) — reload on date/interviewer change
   useEffect(() => {
@@ -576,6 +603,7 @@ export default function BoggarAdminPage() {
     { id: 'overview',    label: '📊 نظرة عامة',        show: canSee('overview') },
     { id: 'codes',       label: '🔑 الأكواد',            show: canSee('codes') },
     { id: 'groups',      label: '👥 إدارة الطلاب',      show: canSee('groups') },
+    { id: 'results',     label: '🏆 نتائج الطلاب',      show: canSee('results') },
     { id: 'lexicon',     label: '📖 بنك الكلمات',       show: canSee('lexicon') },
     { id: 'recruitment', label: '📋 طلبات التوظيف',     show: canSee('recruitment') },
     { id: 'admins',      label: '👑 إدارة المشرفين',    show: isSuperAdmin },
@@ -959,6 +987,145 @@ export default function BoggarAdminPage() {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ══ Results ═══════════════════════════════════════════ */}
+          {activeTab === 'results' && (
+            <div>
+              {/* Stats */}
+              <div className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', marginBottom: 24 }}>
+                {[
+                  { icon: '📋', val: resultsStats.total,          lbl: 'إجمالي التقييمات' },
+                  { icon: '✅', val: resultsStats.passed,         lbl: 'ناجحون (≥70%)' },
+                  { icon: '📊', val: (resultsStats.avg ?? 0) + '%', lbl: 'متوسط النتائج' },
+                  { icon: '❌', val: (resultsStats.total ?? 0) - (resultsStats.passed ?? 0), lbl: 'دون 70%' },
+                ].map(s => (
+                  <div key={s.lbl} className="stat-card">
+                    <span className="stat-icon">{s.icon}</span>
+                    <div><div className="stat-val">{s.val}</div><div className="stat-lbl">{s.lbl}</div></div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Filters */}
+              <div className="card" style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <label style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>🔍 بحث بالاسم</label>
+                    <input
+                      className="form-input" style={{ margin: 0 }}
+                      placeholder="اسم الطالب..."
+                      value={resultsSearch}
+                      onChange={e => setResultsSearch(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && loadResults(1, resultsSearch, resultsLevel, resultsMin, resultsMax)}
+                    />
+                  </div>
+                  <div style={{ flex: '0 1 130px' }}>
+                    <label style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>المستوى</label>
+                    <select className="form-input" style={{ margin: 0 }} value={resultsLevel} onChange={e => setResultsLevel(e.target.value)}>
+                      <option value="">كل المستويات</option>
+                      {[1,2,3,4,5,6,7].map(l => <option key={l} value={l}>المستوى {l}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ flex: '0 1 110px' }}>
+                    <label style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>الدرجة من</label>
+                    <input className="form-input" style={{ margin: 0 }} type="number" min="0" max="100" placeholder="0" value={resultsMin} onChange={e => setResultsMin(e.target.value)} />
+                  </div>
+                  <div style={{ flex: '0 1 110px' }}>
+                    <label style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>الدرجة إلى</label>
+                    <input className="form-input" style={{ margin: 0 }} type="number" min="0" max="100" placeholder="100" value={resultsMax} onChange={e => setResultsMax(e.target.value)} />
+                  </div>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => loadResults(1, resultsSearch, resultsLevel, resultsMin, resultsMax)}
+                    disabled={resultsLoading}
+                  >
+                    {resultsLoading ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : '🔍 بحث'}
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => {
+                      setResultsSearch(''); setResultsLevel(''); setResultsMin(''); setResultsMax('');
+                      loadResults(1, '', '', '', '');
+                    }}
+                  >
+                    مسح
+                  </button>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
+                        {['#', 'اسم الطالب', 'المستوى', 'الدرجة', 'الحالة', 'التاريخ'].map(h => (
+                          <th key={h} style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: 'var(--muted)', fontSize: '.82rem' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {resultsLoading ? (
+                        <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}><span className="spinner" /></td></tr>
+                      ) : results.length === 0 ? (
+                        <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>لا توجد نتائج</td></tr>
+                      ) : results.map((r, i) => {
+                        const passed = (r.score ?? 0) >= 70;
+                        const rowNum = (resultsPage - 1) * 50 + i + 1;
+                        return (
+                          <tr key={r.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background .1s' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                            onMouseLeave={e => e.currentTarget.style.background = ''}>
+                            <td style={{ padding: '11px 16px', color: 'var(--muted)', fontSize: '.82rem' }}>{rowNum}</td>
+                            <td style={{ padding: '11px 16px', fontWeight: 600 }}>{r.student_name ?? '—'}</td>
+                            <td style={{ padding: '11px 16px' }}>
+                              <span style={{ background: 'var(--primary-lt)', color: 'var(--primary)', borderRadius: 6, padding: '2px 10px', fontSize: '.82rem', fontWeight: 700 }}>
+                                المستوى {r.level ?? '—'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '11px 16px', fontWeight: 800, fontSize: '1rem', color: passed ? '#1a7c40' : '#b91c1c' }}>
+                              {r.score ?? 0}%
+                            </td>
+                            <td style={{ padding: '11px 16px' }}>
+                              <span style={{
+                                borderRadius: 6, padding: '3px 10px', fontSize: '.8rem', fontWeight: 700,
+                                background: passed ? '#dcfce7' : '#fee2e2',
+                                color:      passed ? '#15803d' : '#b91c1c',
+                              }}>
+                                {passed ? '✅ ناجح' : '❌ دون المعدل'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '11px 16px', color: 'var(--muted)', fontSize: '.85rem' }}>
+                              {r.completed_at ? new Date(r.completed_at).toLocaleDateString('ar-SA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {resultsTotal > 50 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: '1px solid var(--border)', fontSize: '.85rem' }}>
+                    <span style={{ color: 'var(--muted)' }}>
+                      عرض {(resultsPage - 1) * 50 + 1}–{Math.min(resultsPage * 50, resultsTotal)} من {resultsTotal}
+                    </span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-ghost btn-sm" disabled={resultsPage === 1}
+                        onClick={() => loadResults(resultsPage - 1, resultsSearch, resultsLevel, resultsMin, resultsMax)}>
+                        ← السابق
+                      </button>
+                      <button className="btn btn-ghost btn-sm" disabled={resultsPage * 50 >= resultsTotal}
+                        onClick={() => loadResults(resultsPage + 1, resultsSearch, resultsLevel, resultsMin, resultsMax)}>
+                        التالي →
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
