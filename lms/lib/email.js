@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 
-const FROM = 'أكاديمية عارم <onboarding@resend.dev>';
+const FROM = 'أكاديمية عارم <noreply@aarem.net>';
 
 function resend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -115,7 +115,7 @@ export async function sendWelcomeEmail({ to, name, password }) {
         <p>السلام عليكم ورحمة الله وبركاته،</p>
         <p>يسعدنا ترحيبك <strong>${name}</strong> في فريق <strong>أكاديمية عارم</strong> بصفة مشرف مساعد. يمكنك الدخول إلى لوحة التحكم باستخدام البيانات التالية:</p>
         <div class="info">
-          <div class="info-row"><span class="info-lbl">🔗 رابط المنصة</span><span><a href="https://aarem-lms.vercel.app" style="color:#185FA5">aarem-lms.vercel.app</a></span></div>
+          <div class="info-row"><span class="info-lbl">🔗 رابط المنصة</span><span><a href="https://aarem.net" style="color:#185FA5">aarem.net</a></span></div>
           <div class="info-row"><span class="info-lbl">📧 البريد الإلكتروني</span><span dir="ltr">${to}</span></div>
           <div class="info-row"><span class="info-lbl">🔑 كلمة المرور المؤقتة</span><span dir="ltr" style="font-family:monospace;letter-spacing:.05em;font-weight:800">${password}</span></div>
         </div>
