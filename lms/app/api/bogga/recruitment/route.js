@@ -6,30 +6,39 @@ import { createAdminClient }  from '../../../../lib/supabase-admin';
 import { sendRejectionEmail } from '../../../../lib/email';
 
 function guard(user) {
-  return !user || user.user_metadata?.role !== 'super_admin';
+  const role = user?.user_metadata?.role;
+  return !user || (role !== 'super_admin' && role !== 'admin');
 }
 
-// GET — list all applications (super_admin only)
-export async function GET() {
+function isSuperAdmin(user) {
+  return user?.user_metadata?.role === 'super_admin';
+}
+
+// GET — list applications; super_admin sees all, admin sees only visible ones
+export async function GET(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (guard(user)) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
+  if (user.user_metadata?.status === 'suspended') return NextResponse.json({ error: 'حسابك معطل' }, { status: 403 });
 
   const admin = createAdminClient();
-  const { data, error } = await admin
+  let q = admin
     .from('recruitment_applications')
-    .select('id, name, email, phone, experience, specialty, notes, status, created_at')
+    .select('id, name, email, phone, experience, specialty, notes, status, is_visible_to_assistants, created_at')
     .order('created_at', { ascending: false });
 
+  if (!isSuperAdmin(user)) q = q.eq('is_visible_to_assistants', true);
+
+  const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ applications: data ?? [] });
 }
 
-// DELETE — remove an application permanently
+// DELETE — remove an application permanently (super_admin only)
 export async function DELETE(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (guard(user)) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
+  if (!isSuperAdmin(user)) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
 
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: 'معرّف غير صالح' }, { status: 400 });
@@ -40,14 +49,29 @@ export async function DELETE(req) {
   return NextResponse.json({ success: true });
 }
 
-// PATCH — update application status; auto-sends rejection email on first rejection
+// PATCH — update status or visibility (super_admin only)
 export async function PATCH(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (guard(user)) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
+  if (!isSuperAdmin(user)) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
 
-  const { id, status } = await req.json();
-  if (!id || !status) return NextResponse.json({ error: 'بيانات غير مكتملة' }, { status: 400 });
+  const body = await req.json();
+  const { id } = body;
+  if (!id) return NextResponse.json({ error: 'بيانات غير مكتملة' }, { status: 400 });
+
+  // Visibility toggle
+  if ('is_visible_to_assistants' in body) {
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('recruitment_applications')
+      .update({ is_visible_to_assistants: body.is_visible_to_assistants })
+      .eq('id', id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
+  }
+
+  const { status } = body;
+  if (!status) return NextResponse.json({ error: 'بيانات غير مكتملة' }, { status: 400 });
 
   const admin = createAdminClient();
 

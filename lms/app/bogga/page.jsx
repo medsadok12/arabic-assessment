@@ -18,10 +18,10 @@ const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
 });
 
 // ── Tabs that assistant admins can be granted access to ─────────────────────
-const CONTROLLABLE = ['overview', 'codes', 'groups', 'lexicon', 'setup'];
+const CONTROLLABLE = ['overview', 'codes', 'groups', 'lexicon', 'recruitment', 'setup'];
 const TAB_NAMES = {
   overview: 'نظرة عامة', codes: 'الأكواد', groups: 'إدارة الطلاب',
-  lexicon: 'بنك الكلمات', setup: 'الإعداد',
+  lexicon: 'بنك الكلمات', recruitment: 'طلبات التوظيف', setup: 'الإعداد',
 };
 
 // ── Arabic month names ──────────────────────────────────────────────────────
@@ -240,7 +240,7 @@ export default function BoggarAdminPage() {
     if (!user || myPermissions === null) return;
     const isSA = role === 'super_admin';
     loadStats();
-    if (tab === 'recruitment' && isSA) { loadApps(); loadInterviews(); }
+    if (tab === 'recruitment') { loadApps(); if (isSA) loadInterviews(); }
     if (tab === 'admins'      && isSA) loadAdmins();
   }, [user, tab, myPermissions]);
 
@@ -462,6 +462,15 @@ export default function BoggarAdminPage() {
     setSuspendingId(null);
   }
 
+  async function toggleVisibility(id, current) {
+    setApps(prev => prev.map(a => a.id === id ? { ...a, is_visible_to_assistants: !current } : a));
+    const res = await fetch('/api/bogga/recruitment', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, is_visible_to_assistants: !current }),
+    });
+    if (!res.ok) setApps(prev => prev.map(a => a.id === id ? { ...a, is_visible_to_assistants: current } : a));
+  }
+
   async function handleDeleteAdmin(id, name) {
     if (!confirm(`هل تريد حذف حساب "${name}" نهائياً؟`)) return;
     setDeletingId(id);
@@ -527,7 +536,7 @@ export default function BoggarAdminPage() {
     { id: 'codes',       label: '🔑 الأكواد',            show: canSee('codes') },
     { id: 'groups',      label: '👥 إدارة الطلاب',      show: canSee('groups') },
     { id: 'lexicon',     label: '📖 بنك الكلمات',       show: canSee('lexicon') },
-    { id: 'recruitment', label: '📋 طلبات التوظيف',     show: isSuperAdmin },
+    { id: 'recruitment', label: '📋 طلبات التوظيف',     show: canSee('recruitment') },
     { id: 'admins',      label: '👑 إدارة المشرفين',    show: isSuperAdmin },
     { id: 'setup',       label: '⚙️ إعداد',              show: canSee('setup') },
   ].filter(t => t.show);
@@ -689,7 +698,7 @@ export default function BoggarAdminPage() {
           )}
 
           {/* ══ Recruitment ═══════════════════════════════════════ */}
-          {activeTab === 'recruitment' && isSuperAdmin && (
+          {activeTab === 'recruitment' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <h2 style={{ fontWeight: 800, color: 'var(--primary)' }}>📋 طلبات الترشح للتوظيف</h2>
@@ -713,7 +722,24 @@ export default function BoggarAdminPage() {
 
                           {/* Candidate info */}
                           <div style={{ flex: '1 1 260px' }}>
-                            <div style={{ fontWeight: 800, fontSize: '1.05rem', marginBottom: 6 }}>{app.name}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 800, fontSize: '1.05rem' }}>{app.name}</span>
+                              {isSuperAdmin && (
+                                <button
+                                  onClick={() => toggleVisibility(app.id, app.is_visible_to_assistants ?? true)}
+                                  title={app.is_visible_to_assistants !== false ? 'مرئي للمساعدين — انقر للإخفاء' : 'مخفي عن المساعدين — انقر للإظهار'}
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                                    padding: '3px 10px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                                    fontSize: '.73rem', fontWeight: 700,
+                                    background: app.is_visible_to_assistants !== false ? '#dcfce7' : '#f1f5f9',
+                                    color:      app.is_visible_to_assistants !== false ? '#166534' : '#64748b',
+                                  }}
+                                >
+                                  {app.is_visible_to_assistants !== false ? '👁️ مرئي' : '🙈 مخفي'}
+                                </button>
+                              )}
+                            </div>
                             <div style={{ fontSize: '.85rem', color: 'var(--muted)', lineHeight: 2 }}>
                               {/* Mailto link */}
                               📧&nbsp;
@@ -780,17 +806,19 @@ export default function BoggarAdminPage() {
                             <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: '.78rem', fontWeight: 700, background: STATUS_COLORS[app.status] + '20', color: STATUS_COLORS[app.status] }}>
                               {STATUS_LABELS[app.status] ?? app.status}
                             </span>
-                            <select value={app.status} onChange={e => updateAppStatus(app.id, e.target.value)}
-                              style={{ fontSize: '.8rem', padding: '4px 8px', borderRadius: 8, border: '1.5px solid var(--border)', fontFamily: 'inherit' }}>
-                              {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                            </select>
-                            <button onClick={() => openScheduleModal(app)} className="btn btn-sm"
-                              style={{ background: '#e8f0fb', color: '#185FA5', border: '1.5px solid #b3ccee', fontSize: '.8rem', gap: 5 }}>
-                              📅 {latestIv ? 'إعادة جدولة' : 'جدولة مقابلة'}
-                            </button>
-                            <button onClick={() => deleteApp(app.id, app.name)} disabled={deletingApp === app.id} className="btn btn-sm btn-danger" style={{ fontSize: '.78rem' }}>
-                              {deletingApp === app.id ? <span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} /> : '🗑️ حذف'}
-                            </button>
+                            {isSuperAdmin && <>
+                              <select value={app.status} onChange={e => updateAppStatus(app.id, e.target.value)}
+                                style={{ fontSize: '.8rem', padding: '4px 8px', borderRadius: 8, border: '1.5px solid var(--border)', fontFamily: 'inherit' }}>
+                                {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                              </select>
+                              <button onClick={() => openScheduleModal(app)} className="btn btn-sm"
+                                style={{ background: '#e8f0fb', color: '#185FA5', border: '1.5px solid #b3ccee', fontSize: '.8rem', gap: 5 }}>
+                                📅 {latestIv ? 'إعادة جدولة' : 'جدولة مقابلة'}
+                              </button>
+                              <button onClick={() => deleteApp(app.id, app.name)} disabled={deletingApp === app.id} className="btn btn-sm btn-danger" style={{ fontSize: '.78rem' }}>
+                                {deletingApp === app.id ? <span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} /> : '🗑️ حذف'}
+                              </button>
+                            </>}
                           </div>
                         </div>
                         <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 10 }}>
