@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const LMS_URL = 'https://aarem-lms.vercel.app';
+const LMS_URL = 'https://www.aarem.net';
 
 export default function StudentInfo({ onStart }) {
   const [form,           setForm]           = useState({ name: '', age: '', email: '', type: '', code: '' });
