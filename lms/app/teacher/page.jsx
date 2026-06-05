@@ -18,26 +18,36 @@ function fmtDate(iso) {
   return `${parseInt(d)} ${MONTHS_AR[parseInt(m) - 1]} ${y}`;
 }
 
-const EMPTY_FORM = { studentName: '', studentEmail: '', sessionDate: '', startTime: '', durationMinutes: '60', subject: '' };
+function sessionMessage(s, teacherName) {
+  return `📚 *دعوة حصة — أكاديمية عارم*\n\nالموضوع: ${s.subject || 'حصة عامة'}\nالمعلم: ${teacherName}\nالتاريخ: ${fmtDate(s.session_date)}\nالوقت: ${s.start_time?.slice(0,5)}\nالمدة: ${s.duration_minutes} دقيقة\n\n🎥 رابط الانضمام:\nhttps://meet.jit.si/${s.room_name}`;
+}
+
+const EMPTY_FORM   = { studentName: '', studentEmail: '', sessionDate: '', startTime: '', durationMinutes: '60', subject: '' };
+const EMPTY_INVITE = { studentName: '', studentEmail: '' };
 
 export default function TeacherPage() {
   const supabase = createClient();
   const router   = useRouter();
 
-  const [user,        setUser]        = useState(null);
-  const [sessions,    setSessions]    = useState([]);
-  const [students,    setStudents]    = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [showModal,   setShowModal]   = useState(false);
-  const [editSession, setEditSession] = useState(null);
-  const [form,        setForm]        = useState(EMPTY_FORM);
-  const [saving,      setSaving]      = useState(false);
-  const [msg,         setMsg]         = useState(null);
-  const [cancelling,  setCancelling]  = useState(null);
-  const [copied,      setCopied]      = useState(null);
-  const [activeTab,   setActiveTab]   = useState('sessions');
+  const [user,         setUser]         = useState(null);
+  const [sessions,     setSessions]     = useState([]);
+  const [students,     setStudents]     = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [showModal,    setShowModal]    = useState(false);
+  const [editSession,  setEditSession]  = useState(null);
+  const [form,         setForm]         = useState(EMPTY_FORM);
+  const [saving,       setSaving]       = useState(false);
+  const [msg,          setMsg]          = useState(null);
+  const [cancelling,   setCancelling]   = useState(null);
+  const [copied,       setCopied]       = useState(null);
+  const [activeTab,    setActiveTab]    = useState('sessions');
+  const [inviteFor,    setInviteFor]    = useState(null);   // session being invited to
+  const [inviteForm,   setInviteForm]   = useState(EMPTY_INVITE);
+  const [inviteSaving, setInviteSaving] = useState(false);
+  const [inviteMsg,    setInviteMsg]    = useState(null);
 
-  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
+  const set       = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
+  const setInv    = k => e => setInviteForm(p => ({ ...p, [k]: e.target.value }));
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
@@ -69,9 +79,8 @@ export default function TeacherPage() {
   const thisMonth  = upcoming.filter(s => s.session_date >= monthStart).length;
   const totalStudents = new Set(sessions.map(s => s.student_email || s.student_name)).size;
 
-  function openCreate() {
-    setForm(EMPTY_FORM); setEditSession(null); setShowModal(true); setMsg(null);
-  }
+  // ── Session modal ──
+  function openCreate() { setForm(EMPTY_FORM); setEditSession(null); setShowModal(true); setMsg(null); }
   function openEdit(s) {
     setForm({
       studentName: s.student_name, studentEmail: s.student_email ?? '',
@@ -87,7 +96,6 @@ export default function TeacherPage() {
       setMsg({ type: 'error', text: 'يرجى ملء الحقول المطلوبة' }); return;
     }
     setSaving(true); setMsg(null);
-
     const method = editSession ? 'PATCH' : 'POST';
     const body   = editSession
       ? { id: editSession.id, ...form, durationMinutes: parseInt(form.durationMinutes) || 60 }
@@ -95,7 +103,6 @@ export default function TeacherPage() {
 
     const res  = await fetch('/api/teacher/sessions', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await res.json();
-
     if (!res.ok) { setMsg({ type: 'error', text: data.error }); setSaving(false); return; }
 
     if (editSession) {
@@ -104,7 +111,7 @@ export default function TeacherPage() {
     } else {
       setSessions(prev => [...prev, data.session].sort((a, b) =>
         a.session_date.localeCompare(b.session_date) || a.start_time.localeCompare(b.start_time)));
-      setMsg({ type: 'success', text: '✅ تمّت جدولة الحصة بنجاح' + (form.studentEmail ? ' وأُرسل إيميل للطالب' : '') });
+      setMsg({ type: 'success', text: '✅ تمّت جدولة الحصة' + (form.studentEmail ? ' وأُرسل إيميل للطالب' : '') });
     }
     setShowModal(false); setSaving(false);
   }
@@ -117,10 +124,47 @@ export default function TeacherPage() {
     setCancelling(null);
   }
 
+  // ── Invite extra student ──
+  function openInvite(s) { setInviteFor(s); setInviteForm(EMPTY_INVITE); setInviteMsg(null); }
+
+  async function handleInvite(e) {
+    e.preventDefault();
+    if (!inviteForm.studentEmail) { setInviteMsg({ type: 'error', text: 'البريد مطلوب' }); return; }
+    setInviteSaving(true); setInviteMsg(null);
+    const s = inviteFor;
+    const res = await fetch('/api/teacher/invite', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        studentName: inviteForm.studentName || 'الطالب',
+        studentEmail: inviteForm.studentEmail,
+        teacherName: user.user_metadata?.full_name ?? user.email,
+        sessionDate: s.session_date, startTime: s.start_time,
+        durationMinutes: s.duration_minutes, subject: s.subject,
+        roomName: s.room_name,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) { setInviteMsg({ type: 'error', text: data.error }); setInviteSaving(false); return; }
+    setInviteMsg({ type: 'success', text: '✅ أُرسل الإيميل بنجاح' });
+    setInviteSaving(false);
+  }
+
+  // ── Copy / WhatsApp ──
   function copyLink(s) {
     navigator.clipboard.writeText(`https://meet.jit.si/${s.room_name}`);
-    setCopied(s.id);
+    setCopied(`link-${s.id}`);
     setTimeout(() => setCopied(null), 2000);
+  }
+
+  function copyMessage(s) {
+    navigator.clipboard.writeText(sessionMessage(s, user.user_metadata?.full_name ?? user.email));
+    setCopied(`msg-${s.id}`);
+    setTimeout(() => setCopied(null), 2000);
+  }
+
+  function shareWhatsApp(s) {
+    const text = encodeURIComponent(sessionMessage(s, user.user_metadata?.full_name ?? user.email));
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener');
   }
 
   if (!user) return null;
@@ -131,7 +175,7 @@ export default function TeacherPage() {
       <style>{`
         .tw { max-width: 900px; margin: 0 auto; padding: 32px 20px; direction: rtl; }
         .sc { background:#fff; border-radius:14px; border:1.5px solid var(--border);
-              padding:16px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+              padding:16px 20px; display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; }
         .sc:hover { box-shadow:0 4px 18px rgba(24,95,165,.10); }
         .si { flex:1; min-width:180px; }
         .ss { font-weight:800; font-size:.97rem; color:var(--text); margin-bottom:3px; }
@@ -157,6 +201,12 @@ export default function TeacherPage() {
         .icon-btn { background:transparent; border:none; cursor:pointer; font-size:1.05rem; padding:5px 7px;
                     border-radius:6px; transition:.15s; line-height:1; }
         .icon-btn:hover { background:#f0f4f8; }
+        .sc-actions { display:flex; gap:5px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; align-items:center; }
+        .action-row { display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
+        .invite-panel { margin-top:10px; background:#f0f7ff; border-radius:10px; padding:12px 14px;
+                        border:1px solid #bcd4f0; width:100%; }
+        .invite-row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; margin-top:8px; }
+        .invite-row input { flex:1; min-width:140px; }
       `}</style>
 
       <Navbar user={user} />
@@ -221,10 +271,10 @@ export default function TeacherPage() {
                   <p style={{ color:'var(--muted)' }}>لا توجد حصص قادمة — جدول حصة جديدة!</p>
                 </div>
               ) : (
-                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
                   {upcoming.map(s => (
                     <div key={s.id} className="sc">
-                      <div style={{ fontSize:'1.8rem' }}>🎥</div>
+                      <div style={{ fontSize:'1.8rem', paddingTop:2 }}>🎥</div>
                       <div className="si">
                         <div className="ss">{s.subject || 'حصة عامة'}</div>
                         <div className="sm">
@@ -234,28 +284,67 @@ export default function TeacherPage() {
                           <span>⏱️ {s.duration_minutes} دقيقة</span>
                         </div>
                         {s.student_email && <div className="se">✉️ {s.student_email}</div>}
+
+                        {/* Invite panel */}
+                        {inviteFor?.id === s.id && (
+                          <div className="invite-panel">
+                            <div style={{ fontSize:'.87rem', fontWeight:700, color:'var(--primary)', marginBottom:6 }}>
+                              📨 دعوة طالب إضافي لنفس الحصة
+                            </div>
+                            <form onSubmit={handleInvite}>
+                              <div className="invite-row">
+                                <input className="form-input" type="text" placeholder="اسم الطالب (اختياري)"
+                                  value={inviteForm.studentName} onChange={setInv('studentName')}
+                                  style={{ fontSize:'.85rem', padding:'7px 10px' }} />
+                                <input className="form-input" type="email" placeholder="البريد الإلكتروني *"
+                                  value={inviteForm.studentEmail} onChange={setInv('studentEmail')}
+                                  dir="ltr" style={{ fontSize:'.85rem', padding:'7px 10px' }} required />
+                                <button type="submit" className="btn btn-primary btn-sm" disabled={inviteSaving}>
+                                  {inviteSaving ? '...' : 'إرسال'}
+                                </button>
+                                <button type="button" className="btn btn-outline btn-sm" onClick={() => setInviteFor(null)}>×</button>
+                              </div>
+                              {inviteMsg && (
+                                <div style={{ marginTop:6, fontSize:'.83rem', color: inviteMsg.type === 'error' ? '#e53e3e' : '#1a7c40', fontWeight:600 }}>
+                                  {inviteMsg.text}
+                                </div>
+                              )}
+                            </form>
+                          </div>
+                        )}
                       </div>
-                      <div style={{ display:'flex', gap:6, flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end' }}>
-                        <button
-                          onClick={() => copyLink(s)}
-                          title="نسخ رابط الغرفة"
-                          className="icon-btn"
-                          style={{ color: copied === s.id ? '#1a7c40' : 'var(--muted)' }}>
-                          {copied === s.id ? '✅' : '📋'}
-                        </button>
-                        <button onClick={() => openEdit(s)} title="تعديل الحصة" className="icon-btn">✏️</button>
-                        <button
-                          onClick={() => window.open(`https://meet.jit.si/${s.room_name}`, '_blank', 'noopener')}
-                          className="btn btn-primary btn-sm">
-                          ابدأ الحصة 🎥
-                        </button>
-                        <button
-                          onClick={() => handleCancel(s.id)}
-                          disabled={cancelling === s.id}
-                          className="btn btn-outline btn-sm"
-                          style={{ color:'#e53e3e', borderColor:'#e53e3e' }}>
-                          {cancelling === s.id ? '...' : 'إلغاء'}
-                        </button>
+
+                      {/* Action buttons */}
+                      <div className="sc-actions">
+                        <div className="action-row">
+                          <button onClick={() => copyLink(s)} title="نسخ رابط الغرفة" className="icon-btn"
+                            style={{ color: copied === `link-${s.id}` ? '#1a7c40' : 'var(--muted)' }}>
+                            {copied === `link-${s.id}` ? '✅' : '🔗'}
+                          </button>
+                          <button onClick={() => copyMessage(s)} title="نسخ رسالة جاهزة" className="icon-btn"
+                            style={{ color: copied === `msg-${s.id}` ? '#1a7c40' : 'var(--muted)' }}>
+                            {copied === `msg-${s.id}` ? '✅' : '📋'}
+                          </button>
+                          <button onClick={() => shareWhatsApp(s)} title="مشاركة عبر واتساب" className="icon-btn">
+                            💬
+                          </button>
+                          <button onClick={() => inviteFor?.id === s.id ? setInviteFor(null) : openInvite(s)}
+                            title="دعوة طالب إضافي" className="icon-btn"
+                            style={{ color: inviteFor?.id === s.id ? 'var(--primary)' : 'var(--muted)' }}>
+                            📨
+                          </button>
+                          <button onClick={() => openEdit(s)} title="تعديل" className="icon-btn">✏️</button>
+                        </div>
+                        <div className="action-row" style={{ marginTop:4 }}>
+                          <button onClick={() => window.open(`https://meet.jit.si/${s.room_name}`, '_blank', 'noopener')}
+                            className="btn btn-primary btn-sm">
+                            ابدأ الحصة 🎥
+                          </button>
+                          <button onClick={() => handleCancel(s.id)} disabled={cancelling === s.id}
+                            className="btn btn-outline btn-sm" style={{ color:'#e53e3e', borderColor:'#e53e3e' }}>
+                            {cancelling === s.id ? '...' : 'إلغاء'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -349,7 +438,7 @@ export default function TeacherPage() {
         )}
       </div>
 
-      {/* Modal — Create / Edit */}
+      {/* ── Session Create/Edit Modal ── */}
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
           <div className="modal-box" dir="rtl">
