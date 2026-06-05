@@ -45,10 +45,23 @@ export async function POST(req) {
   if (!studentName || !sessionDate || !startTime)
     return NextResponse.json({ error: 'يرجى ملء جميع الحقول المطلوبة' }, { status: 400 });
 
+  const admin = createAdminClient();
+
+  // Conflict detection
+  const { data: conflicts } = await admin
+    .from('sessions')
+    .select('id')
+    .eq('teacher_id', teacher.id)
+    .eq('session_date', sessionDate)
+    .eq('start_time', startTime)
+    .eq('status', 'scheduled');
+
+  if (conflicts?.length > 0)
+    return NextResponse.json({ error: 'لديك حصة أخرى في نفس اليوم والوقت — اختر وقتاً مختلفاً' }, { status: 409 });
+
   const teacherName = teacher.user_metadata?.full_name ?? teacher.email;
   const roomName    = `aarem-${teacher.id.slice(0, 8)}-${sessionDate}-${startTime.replace(':', '')}`;
 
-  const admin = createAdminClient();
   const { data, error } = await admin
     .from('sessions')
     .insert({
@@ -63,11 +76,10 @@ export async function POST(req) {
 
   if (error) {
     if (error.code === '42P01')
-      return NextResponse.json({ error: 'جدول الحصص غير موجود. يرجى تشغيل SQL التهيئة من /bogga' }, { status: 503 });
+      return NextResponse.json({ error: 'جدول الحصص غير موجود — شغّل SQL التهيئة من /bogga' }, { status: 503 });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Send email to student (best-effort)
   if (studentEmail) {
     const joinUrl = `https://meet.jit.si/${roomName}`;
     sendSessionEmail({ to: studentEmail, studentName, teacherName, sessionDate, startTime, durationMinutes, subject, joinUrl }).catch(() => {});
@@ -75,6 +87,54 @@ export async function POST(req) {
 
   await notify('session', '📅 حصة جديدة مجدولة', `${teacherName} ← ${studentName}`, { sessionDate, startTime });
 
+  return NextResponse.json({ session: data });
+}
+
+// PATCH — edit session
+export async function PATCH(req) {
+  const teacher = await getTeacher();
+  if (!teacher) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+
+  let body;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 }); }
+
+  const { id, studentName, studentEmail, sessionDate, startTime, durationMinutes, subject } = body;
+  if (!id) return NextResponse.json({ error: 'معرّف الحصة مطلوب' }, { status: 400 });
+
+  const admin = createAdminClient();
+
+  // Conflict detection (exclude current session)
+  if (sessionDate && startTime) {
+    const { data: conflicts } = await admin
+      .from('sessions')
+      .select('id')
+      .eq('teacher_id', teacher.id)
+      .eq('session_date', sessionDate)
+      .eq('start_time', startTime)
+      .eq('status', 'scheduled')
+      .neq('id', id);
+
+    if (conflicts?.length > 0)
+      return NextResponse.json({ error: 'لديك حصة أخرى في نفس اليوم والوقت — اختر وقتاً مختلفاً' }, { status: 409 });
+  }
+
+  const updates = {};
+  if (studentName)            updates.student_name     = studentName;
+  if (studentEmail !== undefined) updates.student_email = studentEmail || null;
+  if (sessionDate)            updates.session_date     = sessionDate;
+  if (startTime)              updates.start_time       = startTime;
+  if (durationMinutes)        updates.duration_minutes = durationMinutes;
+  if (subject !== undefined)  updates.subject          = subject || null;
+
+  const { data, error } = await admin
+    .from('sessions')
+    .update(updates)
+    .eq('id', id)
+    .eq('teacher_id', teacher.id)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ session: data });
 }
 
