@@ -151,7 +151,7 @@ export default function LandingPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               👨‍🏫 تسجيل حساب معلم
             </Link>
-            <Link href="/auth/login" className="btn btn-lg"
+            <Link href="/auth/login?for=teacher" className="btn btn-lg"
               style={{ background: 'rgba(255,255,255,.15)', color: '#fff', border: '2px solid rgba(255,255,255,.5)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               🔑 دخول المعلم
             </Link>
