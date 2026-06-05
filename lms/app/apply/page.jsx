@@ -196,7 +196,7 @@ export default function ApplyPage() {
             {/* Country */}
             <div className="form-group">
               <label className="form-label">الدولة *</label>
-              <input className="form-input" type="text" placeholder="مثال: المملكة العربية السعودية"
+              <input className="form-input" type="text" placeholder=""
                 value={form.country} onChange={set('country')} required />
             </div>
 
