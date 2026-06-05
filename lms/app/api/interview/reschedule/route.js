@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse }      from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { notify }            from '../../../../lib/notify';
 
 export async function POST(req) {
   let body;
@@ -31,5 +32,8 @@ export async function POST(req) {
     .eq('id', iv.id);
 
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+
+  await notify('interview', '📅 مترشح طلب تعديل موعد المقابلة', reason.trim(), { interview_id: iv.id });
+
   return NextResponse.json({ success: true });
 }

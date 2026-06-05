@@ -136,10 +136,23 @@ ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS image_base64 TEXT;
 ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS audio_base64 TEXT;
 ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS has_image BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE lexicon_words ADD COLUMN IF NOT EXISTS has_audio BOOLEAN NOT NULL DEFAULT FALSE;
+-- 5. جدول الإشعارات
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT,
+  meta JSONB,
+  is_read BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 ALTER TABLE recruitment_applications DISABLE ROW LEVEL SECURITY;
 ALTER TABLE lexicon_words            DISABLE ROW LEVEL SECURITY;
 ALTER TABLE interviews               DISABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS interviews_slot_idx ON interviews (interviewer_name, interview_date, start_time);`;
+ALTER TABLE notifications            DISABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS interviews_slot_idx ON interviews (interviewer_name, interview_date, start_time);
+NOTIFY pgrst, 'reload schema';`;
 
 // ════════════════════════════════════════════════════════════════════════════
 export default function BoggarAdminPage() {
@@ -221,6 +234,12 @@ export default function BoggarAdminPage() {
   const [resultsMin,     setResultsMin]     = useState('');
   const [resultsMax,     setResultsMax]     = useState('');
 
+  // Notifications
+  const [notifications,  setNotifications]  = useState([]);
+  const [unreadCount,    setUnreadCount]    = useState(0);
+  const [bellOpen,       setBellOpen]       = useState(false);
+  const bellRef = useRef(null);
+
   // ── Auth guard ────────────────────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
@@ -285,6 +304,52 @@ export default function BoggarAdminPage() {
     if (data.stats) setResultsStats(data.stats);
     setResultsLoading(false);
   }
+
+  // ── Notifications ─────────────────────────────────────────────────────────
+  async function loadNotifications() {
+    const data = await fetch('/api/bogga/notifications').then(r => r.json()).catch(() => ({}));
+    if (data.notifications) {
+      setNotifications(data.notifications);
+      setUnreadCount(data.unread ?? 0);
+    }
+  }
+
+  useEffect(() => {
+    if (!user) return;
+    loadNotifications();
+    const iv = setInterval(loadNotifications, 30_000);
+    return () => clearInterval(iv);
+  }, [user]);
+
+  useEffect(() => {
+    if (!bellOpen) return;
+    function handler(e) {
+      if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [bellOpen]);
+
+  async function markAllRead() {
+    setUnreadCount(0);
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    await fetch('/api/bogga/notifications', { method: 'PATCH' });
+  }
+
+  function handleBellOpen() {
+    setBellOpen(o => !o);
+    if (!bellOpen && unreadCount > 0) markAllRead();
+  }
+
+  function relativeTime(iso) {
+    const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (diff < 60) return 'الآن';
+    if (diff < 3600) return `منذ ${Math.floor(diff / 60)} د`;
+    if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} س`;
+    return `منذ ${Math.floor(diff / 86400)} يوم`;
+  }
+
+  const NOTIF_ICONS = { recruitment: '📋', interview: '🗓️', assessment: '📝' };
 
   // Booked slots (modal) — reload on date/interviewer change
   useEffect(() => {
@@ -634,7 +699,76 @@ export default function BoggarAdminPage() {
                 {isSuperAdmin ? '👑 مدير مطلق — صلاحيات كاملة' : '🛡️ مشرف مساعد — صلاحيات محدودة'}
               </p>
             </div>
-            <div style={{ marginRight: 'auto' }}>
+            <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+              {/* ── Notification Bell ── */}
+              <div ref={bellRef} style={{ position: 'relative' }}>
+                <button
+                  onClick={handleBellOpen}
+                  title="الإشعارات"
+                  style={{
+                    position: 'relative', background: bellOpen ? 'var(--primary)' : 'var(--bg)',
+                    border: '1.5px solid var(--border)', borderRadius: 10,
+                    width: 40, height: 40, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1.2rem', transition: 'all .15s',
+                    color: bellOpen ? '#fff' : 'var(--text)',
+                  }}>
+                  🔔
+                  {unreadCount > 0 && (
+                    <span style={{
+                      position: 'absolute', top: -6, left: -6,
+                      background: '#e53e3e', color: '#fff',
+                      fontSize: '.65rem', fontWeight: 800,
+                      minWidth: 18, height: 18, borderRadius: 9,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '0 4px', lineHeight: 1,
+                    }}>{unreadCount > 99 ? '99+' : unreadCount}</span>
+                  )}
+                </button>
+
+                {bellOpen && (
+                  <div style={{
+                    position: 'absolute', top: 46, left: 0,
+                    width: 320, maxHeight: 420, overflowY: 'auto',
+                    background: '#fff', borderRadius: 14,
+                    boxShadow: '0 8px 32px rgba(24,95,165,.18)',
+                    border: '1px solid var(--border)', zIndex: 9999,
+                  }}>
+                    <div style={{
+                      padding: '14px 16px 10px', borderBottom: '1px solid var(--border)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    }}>
+                      <span style={{ fontWeight: 800, fontSize: '.95rem' }}>الإشعارات</span>
+                      {notifications.some(n => !n.is_read) && (
+                        <button onClick={markAllRead} style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: 'var(--primary)', fontSize: '.78rem', fontWeight: 700,
+                        }}>تحديد الكل كمقروء</button>
+                      )}
+                    </div>
+                    {notifications.length === 0 ? (
+                      <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--muted)', fontSize: '.88rem' }}>
+                        لا توجد إشعارات
+                      </div>
+                    ) : notifications.map(n => (
+                      <div key={n.id} style={{
+                        padding: '12px 16px', borderBottom: '1px solid var(--border)',
+                        background: n.is_read ? 'transparent' : 'rgba(24,95,165,.05)',
+                        display: 'flex', gap: 10, alignItems: 'flex-start',
+                      }}>
+                        <span style={{ fontSize: '1.2rem', lineHeight: 1.4 }}>{NOTIF_ICONS[n.type] ?? '🔔'}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: n.is_read ? 500 : 700, fontSize: '.88rem', color: 'var(--text)' }}>{n.title}</div>
+                          {n.body && <div style={{ fontSize: '.8rem', color: 'var(--muted)', marginTop: 2, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{n.body}</div>}
+                          <div style={{ fontSize: '.72rem', color: 'var(--muted)', marginTop: 4 }}>{relativeTime(n.created_at)}</div>
+                        </div>
+                        {!n.is_read && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0, marginTop: 5 }} />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <Link href="/bogga/lexicon" className="btn btn-outline btn-sm">📖 بنك الكلمات</Link>
             </div>
           </div>

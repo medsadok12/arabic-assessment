@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { notify }            from '../../../../lib/notify';
 
 export async function POST(req) {
   try {
@@ -27,6 +28,8 @@ export async function POST(req) {
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    await notify('recruitment', 'طلب توظيف جديد', `${name} — ${specialty ?? ''}`.trimEnd().replace(/—\s*$/, '').trim(), { name, email, phone, specialty });
 
     return NextResponse.json({ success: true });
   } catch (err) {

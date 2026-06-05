@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { notify }            from '../../../../lib/notify';
 
 const ACTIONS = {
   confirm: { value: 'confirmed',  label: 'تمّ تأكيد حضورك بنجاح' },
@@ -86,6 +87,9 @@ export async function GET(req) {
     ? 'شكراً لتأكيدك الحضور، نتطلع إلى لقائك في الموعد المحدد. سيتواصل معك فريقنا لتزويدك بأي تفاصيل إضافية.'
     : 'نقدّر إخبارك لنا مسبقاً، ونتمنى لك التوفيق في مسيرتك المهنية.';
   const color = action === 'confirm' ? '#1a7c40' : '#475569';
+
+  const notifTitle = action === 'confirm' ? '✅ مترشح أكّد حضوره' : '❌ مترشح اعتذر عن الحضور';
+  await notify('interview', notifTitle, null, { interview_id: iv.id, action });
 
   return html(page(icon, ACTIONS[action].label, body, color));
 }
