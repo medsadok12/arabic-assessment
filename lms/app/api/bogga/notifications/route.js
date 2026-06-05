@@ -1,13 +1,12 @@
 export const dynamic = 'force-dynamic';
 
-import { NextResponse }      from 'next/server';
-import { createServerClient } from '../../../../lib/supabase-server';
-import { createAdminClient }  from '../../../../lib/supabase-admin';
-import { cookies }            from 'next/headers';
+import { NextResponse }     from 'next/server';
+import { createClient }     from '../../../../lib/supabase-server';
+import { createAdminClient } from '../../../../lib/supabase-admin';
+import { cookies }           from 'next/headers';
 
 async function getRole() {
-  const cookieStore = cookies();
-  const supabase    = createServerClient(cookieStore);
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const role = user?.user_metadata?.role ?? '';
   return { user, role };
