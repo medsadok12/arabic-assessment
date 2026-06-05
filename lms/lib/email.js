@@ -104,6 +104,41 @@ export async function sendRejectionEmail({ to, candidateName }) {
   if (error) throw new Error(error.message);
 }
 
+export async function sendSessionEmail({ to, studentName, teacherName, sessionDate, startTime, durationMinutes, subject, joinUrl }) {
+  const html = baseHtml(`
+    <div class="card">
+      <div class="hdr">
+        <h1>🎓 أكاديمية عارم للتعليم</h1>
+        <p>موعد حصتك القادمة</p>
+      </div>
+      <div class="body">
+        <p>السلام عليكم ورحمة الله وبركاته،</p>
+        <p>تمّ جدولة حصة جديدة لك، <strong>${studentName}</strong>. إليك التفاصيل:</p>
+        <div class="info">
+          ${subject ? `<div class="info-row"><span class="info-lbl">📚 الموضوع</span><span>${subject}</span></div>` : ''}
+          <div class="info-row"><span class="info-lbl">👤 المعلم</span><span>${teacherName}</span></div>
+          <div class="info-row"><span class="info-lbl">📅 التاريخ</span><span>${sessionDate}</span></div>
+          <div class="info-row"><span class="info-lbl">⏰ الوقت</span><span>${startTime}</span></div>
+          <div class="info-row"><span class="info-lbl">⏱️ المدة</span><span>${durationMinutes} دقيقة</span></div>
+        </div>
+        <div class="actions">
+          <a href="${joinUrl}" class="btn btn-green">🎥 &nbsp; انضم للحصة</a>
+        </div>
+        <p class="note">احفظ هذا الرابط للدخول للحصة في الوقت المحدد. لا يحتاج تثبيت أي تطبيق — يعمل مباشرة في المتصفح.</p>
+      </div>
+      <div class="ftr">أكاديمية عارم للتعليم — جميع الحقوق محفوظة</div>
+    </div>
+  `);
+
+  const { error } = await resend().emails.send({
+    from:    FROM,
+    to,
+    subject: `📅 حصتك مع ${teacherName} — ${sessionDate} الساعة ${startTime}`,
+    html,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function sendApplicationConfirmationEmail({ to, candidateName, specialty }) {
   const html = baseHtml(`
     <div class="card">

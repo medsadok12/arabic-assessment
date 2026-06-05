@@ -22,6 +22,19 @@ export default async function DashboardPage() {
 
   // المدير والسوبر أدمن لا يحتاجان لوحة الطالب — أعد توجيههم فوراً
   if (role === 'admin' || role === 'super_admin') redirect('/bogga');
+  if (role === 'teacher') redirect('/teacher');
+
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: sessionsRaw, error: sessionsErr } = await supabase
+    .from('sessions')
+    .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name')
+    .eq('student_email', user.email)
+    .eq('status', 'scheduled')
+    .gte('session_date', today)
+    .order('session_date', { ascending: true })
+    .order('start_time',   { ascending: true })
+    .limit(5);
+  const upcomingSessions = sessionsErr ? [] : (sessionsRaw ?? []);
 
   const avgScore = assessments?.length
     ? Math.round(assessments.reduce((s, a) => s + (a.score ?? 0), 0) / assessments.length)
@@ -75,6 +88,35 @@ export default async function DashboardPage() {
               </div>
             ))}
           </div>
+
+          {/* Upcoming Sessions */}
+          {upcomingSessions.length > 0 && (
+            <div className="dash-section">
+              <div className="dash-section-title">📅 حصصي القادمة</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {upcomingSessions.map(s => (
+                  <div key={s.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 18px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '1.8rem' }}>🎥</span>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <div style={{ fontWeight: 800, fontSize: '.97rem', marginBottom: 3 }}>{s.subject || 'حصة عامة'}</div>
+                      <div style={{ fontSize: '.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                        <span>👤 {s.teacher_name}</span>
+                        <span>📅 {new Date(s.session_date).toLocaleDateString('ar-SA')}</span>
+                        <span>⏰ {s.start_time?.slice(0, 5)}</span>
+                        <span>⏱️ {s.duration_minutes} دقيقة</span>
+                      </div>
+                    </div>
+                    <a
+                      href={`https://meet.jit.si/${s.room_name}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="btn btn-primary btn-sm">
+                      انضم للحصة 🎥
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Quick Actions */}
           <div className="dash-section">

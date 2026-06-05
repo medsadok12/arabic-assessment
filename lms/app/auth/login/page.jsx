@@ -24,7 +24,7 @@ export default function LoginPage() {
       return;
     }
     const role = user?.user_metadata?.role;
-    router.push(role === 'admin' || role === 'super_admin' ? '/bogga' : '/dashboard');
+    router.push(role === 'admin' || role === 'super_admin' ? '/bogga' : role === 'teacher' ? '/teacher' : '/dashboard');
     router.refresh();
   }
 

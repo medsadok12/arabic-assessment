@@ -147,11 +147,31 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- 6. جدول حصص التدريس
+CREATE TABLE IF NOT EXISTS sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  teacher_id UUID NOT NULL,
+  teacher_name TEXT NOT NULL,
+  student_name TEXT NOT NULL,
+  student_email TEXT,
+  session_date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  duration_minutes INT NOT NULL DEFAULT 60,
+  subject TEXT,
+  room_name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'scheduled'
+    CONSTRAINT valid_status CHECK (status IN ('scheduled','completed','cancelled')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 ALTER TABLE recruitment_applications DISABLE ROW LEVEL SECURITY;
 ALTER TABLE lexicon_words            DISABLE ROW LEVEL SECURITY;
 ALTER TABLE interviews               DISABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications            DISABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions                 DISABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS interviews_slot_idx ON interviews (interviewer_name, interview_date, start_time);
+CREATE INDEX IF NOT EXISTS sessions_teacher_idx ON sessions (teacher_id, session_date);
+CREATE INDEX IF NOT EXISTS sessions_student_idx ON sessions (student_email, session_date);
 NOTIFY pgrst, 'reload schema';`;
 
 // ════════════════════════════════════════════════════════════════════════════
