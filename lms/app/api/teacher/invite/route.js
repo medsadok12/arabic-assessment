@@ -13,15 +13,15 @@ export async function POST(req) {
   let body;
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 }); }
 
-  const { studentName, studentEmail, teacherName, sessionDate, startTime, durationMinutes, subject, roomName } = body;
-  if (!studentEmail || !roomName)
-    return NextResponse.json({ error: 'البريد واسم الغرفة مطلوبان' }, { status: 400 });
+  const { studentName, studentEmail, teacherName, sessionDate, startTime, durationMinutes, subject, roomName, meetLink } = body;
+  if (!studentEmail || (!roomName && !meetLink))
+    return NextResponse.json({ error: 'البريد ورابط الحصة مطلوبان' }, { status: 400 });
 
   try {
     await sendSessionEmail({
       to: studentEmail, studentName: studentName || 'الطالب', teacherName,
       sessionDate, startTime, durationMinutes, subject,
-      joinUrl: `https://meet.jit.si/${roomName}`,
+      joinUrl: meetLink || `https://meet.jit.si/${roomName}`,
     });
     return NextResponse.json({ success: true });
   } catch (e) {

@@ -21,7 +21,7 @@ export default async function ProgressPage() {
       .order('completed_at', { ascending: true }),
     admin
       .from('sessions')
-      .select('id, teacher_name, session_date, start_time, subject, status, notes, rating')
+      .select('id, teacher_name, session_date, start_time, subject, status, notes, rating, recording_url')
       .eq('student_email', user.email)
       .or(`status.in.(completed,cancelled),and(status.eq.scheduled,session_date.lt.${today})`)
       .order('session_date', { ascending: false })

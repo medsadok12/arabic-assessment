@@ -28,8 +28,12 @@ function dayName(iso) {
   return DAYS_AR[new Date(iso).getDay()];
 }
 
+function joinLink(s) {
+  return s.meet_link || `https://meet.jit.si/${s.room_name}`;
+}
+
 function sessionMessage(s, teacherName) {
-  return `📚 *دعوة حصة — أكاديمية عارم*\n\nالموضوع: ${s.subject || 'حصة عامة'}\nالمعلم: ${teacherName}\nالتاريخ: ${fmtDate(s.session_date)}\nالوقت: ${s.start_time?.slice(0,5)}\nالمدة: ${s.duration_minutes} دقيقة\n\n🎥 رابط الانضمام:\nhttps://meet.jit.si/${s.room_name}`;
+  return `📚 *دعوة حصة — أكاديمية عارم*\n\nالموضوع: ${s.subject || 'حصة عامة'}\nالمعلم: ${teacherName}\nالتاريخ: ${fmtDate(s.session_date)}\nالوقت: ${s.start_time?.slice(0,5)}\nالمدة: ${s.duration_minutes} دقيقة\n\n🎥 رابط الانضمام:\n${joinLink(s)}`;
 }
 
 const EMPTY_FORM   = { studentName: '', studentEmail: '', sessionDate: '', startTime: '', durationMinutes: '60', subject: '' };
@@ -177,7 +181,7 @@ export default function TeacherPage() {
         studentName: inviteForm.studentName || 'الطالب', studentEmail: inviteForm.studentEmail,
         teacherName: user.user_metadata?.full_name ?? user.email,
         sessionDate: s.session_date, startTime: s.start_time,
-        durationMinutes: s.duration_minutes, subject: s.subject, roomName: s.room_name,
+        durationMinutes: s.duration_minutes, subject: s.subject, roomName: s.room_name, meetLink: s.meet_link,
       }),
     });
     const data = await res.json();
@@ -188,7 +192,7 @@ export default function TeacherPage() {
 
   // ── Copy / WhatsApp ──
   function copyLink(s) {
-    navigator.clipboard.writeText(`https://meet.jit.si/${s.room_name}`);
+    navigator.clipboard.writeText(joinLink(s));
     setCopied(`link-${s.id}`); setTimeout(() => setCopied(null), 2000);
   }
   function copyMessage(s) {
@@ -375,7 +379,7 @@ export default function TeacherPage() {
                           <button onClick={() => openEdit(s)} title="تعديل" className="icon-btn">✏️</button>
                         </div>
                         <div className="action-row" style={{ marginTop:4 }}>
-                          <button onClick={() => window.open(`https://meet.jit.si/${s.room_name}`, '_blank', 'noopener')}
+                          <button onClick={() => window.open(joinLink(s), '_blank', 'noopener')}
                             className="btn btn-primary btn-sm">ابدأ الحصة 🎥</button>
                           <button onClick={() => handleCancel(s.id)} disabled={cancelling === s.id}
                             className="btn btn-outline btn-sm" style={{ color:'#e53e3e', borderColor:'#e53e3e' }}>

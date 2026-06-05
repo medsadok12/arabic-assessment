@@ -27,7 +27,7 @@ export default async function DashboardPage() {
   const today = new Date().toISOString().slice(0, 10);
   const { data: sessionsRaw, error: sessionsErr } = await supabase
     .from('sessions')
-    .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name')
+    .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, meet_link')
     .eq('student_email', user.email)
     .eq('status', 'scheduled')
     .gte('session_date', today)
@@ -107,7 +107,7 @@ export default async function DashboardPage() {
                       </div>
                     </div>
                     <a
-                      href={`https://meet.jit.si/${s.room_name}`}
+                      href={s.meet_link || `https://meet.jit.si/${s.room_name}`}
                       target="_blank" rel="noopener noreferrer"
                       className="btn btn-primary btn-sm">
                       انضم للحصة 🎥

@@ -3,6 +3,7 @@ import { createClient }    from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { notify }           from '../../../../lib/notify';
 import { sendSessionEmail } from '../../../../lib/email';
+import { createMeetSession, deleteMeetEvent } from '../../../../lib/google-meet';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,6 +63,14 @@ export async function POST(req) {
   const teacherName = teacher.user_metadata?.full_name ?? teacher.email;
   const roomName    = `aarem-${teacher.id.slice(0, 8)}-${sessionDate}-${startTime.replace(':', '')}`;
 
+  // محاولة إنشاء رابط Google Meet (مع تسجيل تلقائي) — يرجع null عند غياب الإعداد
+  const meet = await createMeetSession({
+    summary:       subject ? `حصة: ${subject} — ${studentName}` : `حصة — ${studentName}`,
+    description:   `حصة من ${teacherName} للطالب ${studentName} عبر أكاديمية عارم`,
+    attendeeEmail: studentEmail || null,
+    sessionDate, startTime, durationMinutes,
+  });
+
   const { data, error } = await admin
     .from('sessions')
     .insert({
@@ -70,6 +79,8 @@ export async function POST(req) {
       session_date: sessionDate, start_time: startTime,
       duration_minutes: durationMinutes,
       subject: subject || null, room_name: roomName,
+      meet_link:     meet?.meetLink || null,
+      meet_event_id: meet?.eventId  || null,
     })
     .select()
     .single();
@@ -81,7 +92,7 @@ export async function POST(req) {
   }
 
   if (studentEmail) {
-    const joinUrl = `https://meet.jit.si/${roomName}`;
+    const joinUrl = meet?.meetLink || `https://meet.jit.si/${roomName}`;
     sendSessionEmail({ to: studentEmail, studentName, teacherName, sessionDate, startTime, durationMinutes, subject, joinUrl }).catch(() => {});
   }
 
@@ -148,6 +159,15 @@ export async function DELETE(req) {
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 }); }
 
   const admin = createAdminClient();
+
+  // اجلب الحدث لحذفه من تقويم Google (best-effort)
+  const { data: existing } = await admin
+    .from('sessions')
+    .select('meet_event_id')
+    .eq('id', body.id)
+    .eq('teacher_id', teacher.id)
+    .single();
+
   const { error } = await admin
     .from('sessions')
     .update({ status: 'cancelled' })
@@ -155,5 +175,8 @@ export async function DELETE(req) {
     .eq('teacher_id', teacher.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (existing?.meet_event_id) deleteMeetEvent(existing.meet_event_id).catch(() => {});
+
   return NextResponse.json({ success: true });
 }

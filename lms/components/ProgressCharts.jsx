@@ -181,6 +181,12 @@ export default function ProgressCharts({ assessments, pastSessions: initialSessi
                         📝 <strong>ملاحظة المعلم:</strong> {s.notes}
                       </div>
                     )}
+                    {s.recording_url && (
+                      <a href={s.recording_url} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '7px 14px', background: '#eef5ff', borderRadius: 8, fontSize: '.85rem', color: '#185FA5', fontWeight: 700, textDecoration: 'none' }}>
+                        🎬 مشاهدة تسجيل الحصة
+                      </a>
+                    )}
                   </div>
                   {s.status !== 'cancelled' && (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
