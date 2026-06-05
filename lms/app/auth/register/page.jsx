@@ -34,17 +34,24 @@ export default function RegisterPage() {
     }
 
     const supabase = createClient();
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email:    form.email,
       password: form.password,
       options: {
         data: { full_name: form.name, role: 'student', grade: form.grade || null },
-        emailRedirectTo: 'https://aarem-lms.vercel.app/auth/callback',
+        emailRedirectTo: 'https://www.aarem.net/auth/callback',
       },
     });
 
     if (signUpError) {
-      setError(signUpError.message === 'User already registered' ? 'هذا البريد مسجل مسبقاً' : signUpError.message);
+      setError(signUpError.message === 'User already registered' ? 'هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول' : signUpError.message);
+      setLoading(false);
+      return;
+    }
+
+    // Supabase يُرجع identities فارغة عند محاولة التسجيل ببريد موجود مسبقاً
+    if (signUpData?.user?.identities?.length === 0) {
+      setError('هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول');
       setLoading(false);
       return;
     }
