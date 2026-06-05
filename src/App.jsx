@@ -9,6 +9,7 @@ import './App.css';
 
 const PAGES       = { INFO: 'info', WELCOME: 'welcome', ASSESSMENT: 'assessment', TRANSITION: 'transition', RESULTS: 'results' };
 const SESSION_KEY = 'areem_session';
+const RESUME_KEY  = 'areem_resume';
 
 function saveSession(state) {
   try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(state)); } catch (_) {}
@@ -23,6 +24,24 @@ function loadSession() {
 
 function clearSession() {
   try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+}
+
+function saveResume(state) {
+  try { localStorage.setItem(RESUME_KEY, JSON.stringify({ ...state, _savedAt: Date.now() })); } catch (_) {}
+}
+
+function loadResume() {
+  try {
+    const data = JSON.parse(localStorage.getItem(RESUME_KEY) || 'null');
+    if (!data) return null;
+    // تنتهي صلاحية الحفظ بعد 7 أيام
+    if (Date.now() - data._savedAt > 7 * 24 * 60 * 60 * 1000) { localStorage.removeItem(RESUME_KEY); return null; }
+    return data;
+  } catch (_) { return null; }
+}
+
+function clearResume() {
+  try { localStorage.removeItem(RESUME_KEY); } catch (_) {}
 }
 
 const PINNED = new Set(['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'letter-position', 'word-construct', 'oral-assessment', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill', 'letter-listen-choose', 'syllable-reading', 'image-matching', 'listen-speak']);
@@ -65,10 +84,13 @@ const BG_LETTERS = [
   { char: 'ب', style: { left: '10%', top: '80%', fontSize: '8rem',  opacity: 0.10, animationDuration: '18s', animationDelay: '2s' } },
 ];
 
-const saved = loadSession();
+const saved      = loadSession();
+const resumeData = !saved ? loadResume() : null;
+const hasResume  = !!resumeData && resumeData.page !== PAGES.INFO && resumeData.page !== PAGES.RESULTS;
 
 export default function App() {
   const [offline, setOffline] = useState(!navigator.onLine);
+  const [showResumePrompt, setShowResumePrompt] = useState(hasResume);
 
   useEffect(() => {
     const on  = () => setOffline(false);
@@ -96,13 +118,16 @@ export default function App() {
 
   // حفظ الجلسة عند كل تغيير في الحالة
   useEffect(() => {
-    if (page === PAGES.INFO) { clearSession(); return; }
-    saveSession({
+    if (page === PAGES.INFO) { clearSession(); clearResume(); return; }
+    const state = {
       page, studentInfo, currentLevel, levelData,
       questionIdx, allAnswers, levelPath,
       transitionFrom, transitionTo, transitionScore,
       finalScores, finalLevel,
-    });
+    };
+    saveSession(state);
+    if (page !== PAGES.RESULTS) saveResume(state);
+    else clearResume();
   }, [page, studentInfo, currentLevel, levelData, questionIdx, allAnswers, levelPath,
       transitionFrom, transitionTo, transitionScore, finalScores, finalLevel]);
 
@@ -182,6 +207,26 @@ export default function App() {
     setTransitionFrom(null);
     setTransitionTo(null);
     setTransitionScore(0);
+  }
+
+  function handleResume() {
+    if (!resumeData) return;
+    setPage(resumeData.page);
+    setStudentInfo(resumeData.studentInfo);
+    setCurrentLevel(resumeData.currentLevel ?? 1);
+    setLevelData(resumeData.levelData ?? null);
+    setQuestionIdx(resumeData.questionIdx ?? 0);
+    setAllAnswers(resumeData.allAnswers ?? []);
+    setLevelPath(resumeData.levelPath ?? []);
+    setTransitionFrom(resumeData.transitionFrom ?? null);
+    setTransitionTo(resumeData.transitionTo ?? null);
+    setTransitionScore(resumeData.transitionScore ?? 0);
+    setShowResumePrompt(false);
+  }
+
+  function handleDismissResume() {
+    clearResume();
+    setShowResumePrompt(false);
   }
 
   const answered       = allAnswers.length + (page === PAGES.ASSESSMENT ? questionIdx : 0);
@@ -307,6 +352,42 @@ export default function App() {
         </div>
         <p className="footer-copy">© 2026 أكاديمية عارم — gandouzimohamed9@gmail.com</p>
       </footer>
+
+      {showResumePrompt && resumeData && (
+        <div className="modal-overlay" onClick={handleDismissResume}>
+          <div className="modal-box" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" dir="rtl">
+            <div style={{ textAlign: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: '2.8rem' }}>💾</span>
+            </div>
+            <h2 className="modal-title" style={{ fontSize: '1.2rem' }}>لديك تقييم غير مكتمل</h2>
+            <div style={{ background: '#eef5ff', borderRadius: 12, padding: '14px 18px', margin: '16px 0', fontSize: '.93rem', color: '#1a2d4a' }}>
+              <div style={{ marginBottom: 6 }}>
+                <strong>الطالب:</strong> {resumeData.studentInfo?.name ?? '—'}
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <strong>المستوى:</strong> المستوى {resumeData.currentLevel ?? 1}
+              </div>
+              <div>
+                <strong>آخر حفظ:</strong> {new Date(resumeData._savedAt).toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </div>
+            </div>
+            <p style={{ color: '#64748b', fontSize: '.88rem', textAlign: 'center', marginBottom: 20 }}>
+              هل تريد المتابعة من حيث توقفت؟
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
+              <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', fontSize: '1rem', padding: '12px' }} onClick={handleResume}>
+                ▶ متابعة التقييم
+              </button>
+              <button
+                style={{ background: 'none', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.9rem', color: '#64748b', fontWeight: 600 }}
+                onClick={handleDismissResume}
+              >
+                بدء تقييم جديد
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showAbout && (
         <div className="modal-overlay" onClick={() => setShowAbout(false)}>
