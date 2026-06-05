@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '../../../lib/supabase';
 
 export default function RegisterPage() {
@@ -9,6 +10,7 @@ export default function RegisterPage() {
   const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   function set(k, v) { setForm(prev => ({ ...prev, [k]: v })); setError(''); }
 
@@ -21,19 +23,9 @@ export default function RegisterPage() {
     if (!form.code.trim())              { setError('يرجى إدخال كود الأكاديمية'); return; }
 
     setLoading(true);
-    const res  = await fetch('/api/validate-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: form.code, name: form.name }),
-    });
-    const { valid } = await res.json();
-    if (!valid) {
-      setError('كود الأكاديمية غير صحيح أو غير مفعّل — تواصل مع إدارة الأكاديمية');
-      setLoading(false);
-      return;
-    }
-
     const supabase = createClient();
+
+    // ── الخطوة 1: إنشاء الحساب أولاً ──
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email:    form.email,
       password: form.password,
@@ -44,14 +36,41 @@ export default function RegisterPage() {
     });
 
     if (signUpError) {
-      setError(signUpError.message === 'User already registered' ? 'هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول' : signUpError.message);
+      setError(signUpError.message === 'User already registered'
+        ? 'هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول'
+        : signUpError.message);
       setLoading(false);
       return;
     }
 
-    // Supabase يُرجع identities فارغة عند محاولة التسجيل ببريد موجود مسبقاً
+    // حالة: البريد موجود مسبقاً (email confirmation مفعّل)
     if (signUpData?.user?.identities?.length === 0) {
       setError('هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول');
+      setLoading(false);
+      return;
+    }
+
+    // حالة: البريد موجود مسبقاً بدور آخر (معلم / مدير) — email confirmation معطّل
+    const existingRole = signUpData?.user?.user_metadata?.role;
+    if (existingRole && existingRole !== 'student') {
+      await supabase.auth.signOut();
+      setError('هذا البريد مسجل بدور آخر — استخدم صفحة تسجيل الدخول');
+      setLoading(false);
+      return;
+    }
+
+    // ── الخطوة 2: التحقق من الكود (فقط بعد التأكد من الحساب جديد) ──
+    const res  = await fetch('/api/validate-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: form.code, name: form.name }),
+    });
+    const { valid } = await res.json();
+
+    if (!valid) {
+      // الكود غير صالح — نحذف الجلسة (الحساب ينتظر التأكيد بدون كود)
+      await supabase.auth.signOut();
+      setError('كود الأكاديمية غير صحيح أو غير مفعّل — تواصل مع إدارة الأكاديمية');
       setLoading(false);
       return;
     }
@@ -98,35 +117,20 @@ export default function RegisterPage() {
               <label className="form-label">
                 كود الأكاديمية <span style={{ color: '#e53935', fontSize: '0.85em' }}>*</span>
               </label>
-              <input
-                className="form-input"
-                type="text"
-                value={form.code}
+              <input className="form-input" type="text" value={form.code}
                 onChange={e => set('code', e.target.value)}
-                placeholder="أدخل كود الأكاديمية"
-                required
-                dir="ltr"
-                style={{ letterSpacing: 2, textTransform: 'uppercase' }}
-              />
+                placeholder="أدخل كود الأكاديمية" required dir="ltr"
+                style={{ letterSpacing: 2, textTransform: 'uppercase' }} />
               <p style={{ fontSize: '.8rem', color: '#888', marginTop: 4 }}>
                 يُوفَّر الكود من إدارة أكاديمية عارم —{' '}
-                <a
-                  href="https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: '#1a7c40', fontWeight: 700 }}
-                >
-                  تواصل معنا
-                </a>
+                <a href="https://api.whatsapp.com/send/?phone=447400755914"
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ color: '#1a7c40', fontWeight: 700 }}>تواصل معنا</a>
               </p>
             </div>
             <div className="form-group">
               <label className="form-label">الصف الدراسي</label>
-              <select
-                className="form-input"
-                value={form.grade}
-                onChange={e => set('grade', e.target.value)}
-              >
+              <select className="form-input" value={form.grade} onChange={e => set('grade', e.target.value)}>
                 <option value="">اختر الصف (اختياري)</option>
                 {[1,2,3,4,5,6,7].map(g => (
                   <option key={g} value={g}>الصف {g}</option>
