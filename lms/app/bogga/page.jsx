@@ -169,6 +169,8 @@ ALTER TABLE lexicon_words            DISABLE ROW LEVEL SECURITY;
 ALTER TABLE interviews               DISABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications            DISABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions                 DISABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS notes  TEXT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS rating INT CHECK (rating BETWEEN 1 AND 5);
 CREATE INDEX IF NOT EXISTS interviews_slot_idx ON interviews (interviewer_name, interview_date, start_time);
 CREATE INDEX IF NOT EXISTS sessions_teacher_idx ON sessions (teacher_id, session_date);
 CREATE INDEX IF NOT EXISTS sessions_student_idx ON sessions (student_email, session_date);

@@ -54,7 +54,7 @@ export default async function DashboardPage() {
   const actions = [
     { icon: '📚', title: 'المكتبة التعليمية',   desc: 'تصفح المناهج والدروس المتاحة لك',                        href: '/library'          },
     { icon: '📖', title: 'بنك الكلمات الذكي',   desc: 'تعلّم الكلمات العربية المشكولة مع الصوت والصورة',       href: '/dashboard/lexicon' },
-    { icon: '📈', title: 'تقارير التقدم',        desc: 'شاهد نتيجة تقييمك التشخيصي ومستوى تقدمك',              href: '/dashboard'         },
+    { icon: '📈', title: 'تقارير التقدم',        desc: 'شاهد رسوم بيانية لتطورك وسجل حصصك ونتائج تقييماتك',    href: '/dashboard/progress' },
   ];
 
   const displayName    = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'طالب';
