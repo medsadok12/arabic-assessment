@@ -32,8 +32,8 @@ export default function ApplyPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const { name, email, phone, experience, specialty } = form;
-    if (!name || !email || !phone || !experience || !specialty) {
+    const { name, email, phone, experience, specialty, country } = form;
+    if (!name || !email || !phone || !experience || !specialty || !country) {
       setErrMsg('يرجى ملء جميع الحقول المطلوبة'); return;
     }
     if (!file) { setErrMsg('يرجى رفع السيرة الذاتية بصيغة PDF'); return; }
@@ -179,29 +179,25 @@ export default function ApplyPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">التخصص التعليمي *</label>
-                <select className="form-input" value={form.specialty} onChange={set('specialty')} required>
+                <select className="form-input" value={form.specialty === 'أخرى' ? 'أخرى' : form.specialty}
+                  onChange={e => setForm(p => ({ ...p, specialty: e.target.value === 'أخرى' ? 'أخرى' : e.target.value }))} required>
                   <option value="">اختر...</option>
                   {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
+                {form.specialty === 'أخرى' && (
+                  <input className="form-input" type="text" placeholder="اكتب تخصصك..."
+                    style={{ marginTop: 8 }}
+                    onChange={e => setForm(p => ({ ...p, specialty: e.target.value || 'أخرى' }))}
+                    autoFocus />
+                )}
               </div>
             </div>
 
-            {/* Country + Teaching method */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div className="form-group">
-                <label className="form-label">الدولة (اختياري)</label>
-                <input className="form-input" type="text" placeholder="مثال: المملكة العربية السعودية"
-                  value={form.country} onChange={set('country')} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">طريقة التدريس (اختياري)</label>
-                <select className="form-input" value={form.teachingMethod} onChange={set('teachingMethod')}>
-                  <option value="">اختر...</option>
-                  <option value="أونلاين فقط">أونلاين فقط</option>
-                  <option value="حضوري فقط">حضوري فقط</option>
-                  <option value="أونلاين وحضوري">أونلاين وحضوري</option>
-                </select>
-              </div>
+            {/* Country */}
+            <div className="form-group">
+              <label className="form-label">الدولة *</label>
+              <input className="form-input" type="text" placeholder="مثال: المملكة العربية السعودية"
+                value={form.country} onChange={set('country')} required />
             </div>
 
             {/* LinkedIn */}
