@@ -81,8 +81,6 @@ export async function createMeetSession({
           conferenceSolutionKey: { type: 'hangoutsMeet' },
         },
       },
-      // تفعيل التسجيل التلقائي (يتطلب Workspace يدعم التسجيل)
-      ...(autoRecord ? { conferenceProperties: { autoRecordingType: 'cloud' } } : {}),
       ...(attendeeEmail ? { attendees: [{ email: attendeeEmail }] } : {}),
     };
 
