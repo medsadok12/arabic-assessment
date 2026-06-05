@@ -1,4 +1,5 @@
 import { createAdminClient } from '../../../lib/supabase-admin';
+import { notify }            from '../../../lib/notify';
 
 export async function POST(request) {
   let body;
@@ -54,6 +55,8 @@ export async function POST(request) {
     .from('teacher_invitation_codes')
     .update({ used_by: created.user.id, used_by_name: name, used_at: new Date().toISOString() })
     .eq('id', claimed.id);
+
+  await notify('teacher', '👨‍🏫 معلم جديد سجّل حساباً', `${name} — ${email}`, { name, email });
 
   return Response.json({ success: true });
 }

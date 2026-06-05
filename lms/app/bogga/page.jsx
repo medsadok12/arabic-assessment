@@ -349,7 +349,7 @@ export default function BoggarAdminPage() {
     return `منذ ${Math.floor(diff / 86400)} يوم`;
   }
 
-  const NOTIF_ICONS = { recruitment: '📋', interview: '🗓️', assessment: '📝' };
+  const NOTIF_ICONS = { recruitment: '📋', interview: '🗓️', assessment: '📝', teacher: '👨‍🏫' };
 
   // Booked slots (modal) — reload on date/interviewer change
   useEffect(() => {
