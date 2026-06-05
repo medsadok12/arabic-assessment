@@ -13,7 +13,7 @@ const SPECIALTIES = [
 ];
 
 export default function ApplyPage() {
-  const [form, setForm]     = useState({ name: '', email: '', phone: '', experience: '', specialty: '', notes: '' });
+  const [form, setForm]     = useState({ name: '', email: '', phone: '', experience: '', specialty: '', notes: '', country: '', teachingMethod: '', linkedin: '' });
   const [file, setFile]     = useState(null);
   const [status, setStatus] = useState('idle'); // idle | uploading | success | error
   const [errMsg, setErrMsg] = useState('');
@@ -53,7 +53,14 @@ export default function ApplyPage() {
       const res  = await fetch('/api/recruitment/submit', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ ...form, cvBase64, cvFilename: file.name }),
+        body:    JSON.stringify({
+          ...form,
+          cvBase64,
+          cvFilename: file.name,
+          country:       form.country.trim()       || undefined,
+          teachingMethod: form.teachingMethod       || undefined,
+          linkedin:      form.linkedin.trim()       || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'فشل إرسال الطلب');
@@ -177,6 +184,31 @@ export default function ApplyPage() {
                   {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
+            </div>
+
+            {/* Country + Teaching method */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="form-group">
+                <label className="form-label">الدولة (اختياري)</label>
+                <input className="form-input" type="text" placeholder="مثال: المملكة العربية السعودية"
+                  value={form.country} onChange={set('country')} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">طريقة التدريس (اختياري)</label>
+                <select className="form-input" value={form.teachingMethod} onChange={set('teachingMethod')}>
+                  <option value="">اختر...</option>
+                  <option value="أونلاين فقط">أونلاين فقط</option>
+                  <option value="حضوري فقط">حضوري فقط</option>
+                  <option value="أونلاين وحضوري">أونلاين وحضوري</option>
+                </select>
+              </div>
+            </div>
+
+            {/* LinkedIn */}
+            <div className="form-group">
+              <label className="form-label">رابط لينكدإن (اختياري)</label>
+              <input className="form-input" type="url" placeholder="https://linkedin.com/in/..."
+                value={form.linkedin} onChange={set('linkedin')} dir="ltr" />
             </div>
 
             {/* Notes */}

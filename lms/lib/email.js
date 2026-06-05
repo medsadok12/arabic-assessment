@@ -104,6 +104,36 @@ export async function sendRejectionEmail({ to, candidateName }) {
   if (error) throw new Error(error.message);
 }
 
+export async function sendApplicationConfirmationEmail({ to, candidateName, specialty }) {
+  const html = baseHtml(`
+    <div class="card">
+      <div class="hdr">
+        <h1>🎓 أكاديمية عارم للتعليم</h1>
+        <p>تأكيد استلام طلب الترشح</p>
+      </div>
+      <div class="body">
+        <p>السلام عليكم ورحمة الله وبركاته،</p>
+        <p>شكراً جزيلاً <strong>${candidateName}</strong> على اهتمامك بالانضمام إلى فريق <strong>أكاديمية عارم</strong>. يسعدنا إخبارك بأنّنا استلمنا طلبك بنجاح.</p>
+        <div class="info">
+          <div class="info-row"><span class="info-lbl">📋 التخصص</span><span>${specialty || '—'}</span></div>
+          <div class="info-row"><span class="info-lbl">📌 حالة الطلب</span><span>قيد المراجعة</span></div>
+        </div>
+        <p>سيقوم فريقنا بمراجعة ملفك والتواصل معك في أقرب وقت ممكن عبر البريد الإلكتروني أو الواتساب.</p>
+        <p class="note">إذا كان لديك أي استفسار يمكنك التواصل معنا مباشرةً عبر <a href="https://api.whatsapp.com/send/?phone=447400755914" style="color:#1a7c40;font-weight:700">واتساب الأكاديمية</a>.</p>
+      </div>
+      <div class="ftr">أكاديمية عارم للتعليم — جميع الحقوق محفوظة</div>
+    </div>
+  `);
+
+  const { error } = await resend().emails.send({
+    from:    FROM,
+    to,
+    subject: '✅ وصل طلبك — أكاديمية عارم',
+    html,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function sendWelcomeEmail({ to, name, password }) {
   const html = baseHtml(`
     <div class="card">
