@@ -18,10 +18,11 @@ const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
 });
 
 // ── Tabs that assistant admins can be granted access to ─────────────────────
-const CONTROLLABLE = ['overview', 'codes', 'groups', 'results', 'lexicon', 'recruitment', 'setup'];
+const CONTROLLABLE = ['overview', 'codes', 'groups', 'sessions', 'results', 'lexicon', 'recruitment', 'setup'];
 const TAB_NAMES = {
   overview: 'نظرة عامة', codes: 'الأكواد', groups: 'إدارة الطلاب',
-  results: 'نتائج الطلاب', lexicon: 'بنك الكلمات', recruitment: 'طلبات التوظيف', setup: 'الإعداد',
+  sessions: 'الحصص', results: 'نتائج الطلاب', lexicon: 'بنك الكلمات',
+  recruitment: 'طلبات التوظيف', setup: 'الإعداد',
 };
 
 // ── Arabic month names ──────────────────────────────────────────────────────
@@ -261,6 +262,17 @@ export default function BoggarAdminPage() {
   const [resultsMin,     setResultsMin]     = useState('');
   const [resultsMax,     setResultsMax]     = useState('');
 
+  // Admin Sessions
+  const [adminSessions,     setAdminSessions]     = useState([]);
+  const [adminSessLoading,  setAdminSessLoading]  = useState(false);
+  const [adminSessTab,      setAdminSessTab]       = useState('upcoming');
+  const [adminCompleteFor,  setAdminCompleteFor]  = useState(null);
+  const [adminRecordingUrl, setAdminRecordingUrl] = useState('');
+  const [adminCompleteSav,  setAdminCompleteSav]  = useState(false);
+  const [adminCancellingId, setAdminCancellingId] = useState(null);
+  const [adminWeekOffset,   setAdminWeekOffset]   = useState(0);
+  const [adminTeacherFilter,setAdminTeacherFilter]= useState('');
+
   // Notifications
   const [notifications,  setNotifications]  = useState([]);
   const [unreadCount,    setUnreadCount]    = useState(0);
@@ -314,7 +326,8 @@ export default function BoggarAdminPage() {
     loadStats();
     if (tab === 'recruitment') { loadApps(); if (isSA) loadInterviews(); }
     if (tab === 'admins'      && isSA) loadAdmins();
-    if (tab === 'results') loadResults(1, resultsSearch, resultsLevel, resultsMin, resultsMax);
+    if (tab === 'results')   loadResults(1, resultsSearch, resultsLevel, resultsMin, resultsMax);
+    if (tab === 'sessions')  loadAdminSessions();
   }, [user, tab, myPermissions]);
 
   async function loadResults(page = 1, search = '', level = '', min = '', max = '') {
@@ -639,6 +652,39 @@ export default function BoggarAdminPage() {
     setCopied(true); setTimeout(() => setCopied(false), 2000);
   }
 
+  // ── Admin Sessions ────────────────────────────────────────────────────────
+  async function loadAdminSessions() {
+    setAdminSessLoading(true);
+    const data = await fetch('/api/bogga/sessions').then(r => r.json()).catch(() => ({}));
+    setAdminSessions(data.sessions ?? []);
+    setAdminSessLoading(false);
+  }
+
+  async function handleAdminCancel(id) {
+    if (!confirm('هل تريد إلغاء هذه الحصة؟')) return;
+    setAdminCancellingId(id);
+    const res = await fetch('/api/bogga/sessions', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    if (res.ok) setAdminSessions(prev => prev.map(s => s.id === id ? { ...s, status: 'cancelled' } : s));
+    setAdminCancellingId(null);
+  }
+
+  async function handleAdminComplete() {
+    setAdminCompleteSav(true);
+    const res = await fetch('/api/bogga/sessions', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: adminCompleteFor.id, status: 'completed', recording_url: adminRecordingUrl || null }),
+    });
+    if (res.ok) {
+      setAdminSessions(prev => prev.map(s => s.id === adminCompleteFor.id
+        ? { ...s, status: 'completed', recording_url: adminRecordingUrl || null } : s));
+      setAdminCompleteFor(null);
+    }
+    setAdminCompleteSav(false);
+  }
+
   function getOnlineInfo(adminId) {
     const s = onlineStatus[adminId];
     if (!s) return { online: false, label: 'لم يُسجَّل دخول بعد', color: '#94a3b8' };
@@ -695,6 +741,7 @@ export default function BoggarAdminPage() {
     { id: 'overview',    label: '📊 نظرة عامة',        show: canSee('overview') },
     { id: 'codes',       label: '🔑 الأكواد',            show: canSee('codes') },
     { id: 'groups',      label: '👥 إدارة الطلاب',      show: canSee('groups') },
+    { id: 'sessions',    label: '📅 الحصص',              show: canSee('sessions') },
     { id: 'results',     label: '🏆 نتائج الطلاب',      show: canSee('results') },
     { id: 'lexicon',     label: '📖 بنك الكلمات',       show: canSee('lexicon') },
     { id: 'recruitment', label: '📋 طلبات التوظيف',     show: canSee('recruitment') },
@@ -916,6 +963,214 @@ export default function BoggarAdminPage() {
 
           {/* ══ Groups ════════════════════════════════════════════ */}
           {activeTab === 'groups' && <GroupsManager />}
+
+          {/* ══ Sessions (Admin) ══════════════════════════════════ */}
+          {activeTab === 'sessions' && (() => {
+            const today      = new Date().toISOString().slice(0, 10);
+            const nextWeekDt = new Date(); nextWeekDt.setDate(nextWeekDt.getDate() + 7);
+            const nextWeek   = nextWeekDt.toISOString().slice(0, 10);
+            const filtered   = adminTeacherFilter
+              ? adminSessions.filter(s => s.teacher_name?.includes(adminTeacherFilter) || s.student_name?.includes(adminTeacherFilter))
+              : adminSessions;
+            const upcoming   = filtered.filter(s => s.status === 'scheduled' && s.session_date >= today);
+            const past       = filtered.filter(s => s.status === 'completed' || (s.status === 'scheduled' && s.session_date < today));
+            const cancelled  = filtered.filter(s => s.status === 'cancelled');
+            const totalStudents = new Set(adminSessions.map(s => s.student_email || s.student_name)).size;
+            const calWeekDays  = Array.from({ length: 7 }, (_, i) => {
+              const d = new Date();
+              d.setDate(d.getDate() - d.getDay() + i + adminWeekOffset * 7);
+              return d.toISOString().slice(0, 10);
+            });
+            const dayName = iso => ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'][new Date(iso).getDay()];
+            const joinLink = s => s.meet_link || `https://meet.jit.si/${s.room_name}`;
+
+            return (
+              <div>
+                {/* Stats */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 12, marginBottom: 24 }}>
+                  {[
+                    { icon: '📅', val: upcoming.length,                                            lbl: 'حصص قادمة'     },
+                    { icon: '📆', val: upcoming.filter(s => s.session_date < nextWeek).length,     lbl: 'هذا الأسبوع'   },
+                    { icon: '👥', val: totalStudents,                                              lbl: 'إجمالي الطلاب' },
+                    { icon: '✅', val: adminSessions.filter(s => s.status === 'completed').length, lbl: 'حصص منجزة'     },
+                    { icon: '❌', val: adminSessions.filter(s => s.status === 'cancelled').length, lbl: 'ملغاة'          },
+                  ].map(s => (
+                    <div key={s.lbl} style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.3rem' }}>{s.icon}</div>
+                      <div style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--primary)' }}>{s.val}</div>
+                      <div style={{ fontSize: '.76rem', color: 'var(--muted)', marginTop: 2 }}>{s.lbl}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Filter + Refresh */}
+                <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input className="form-input" style={{ flex: '1 1 200px', margin: 0 }}
+                    placeholder="🔍 فلتر حسب المعلم أو الطالب..."
+                    value={adminTeacherFilter}
+                    onChange={e => setAdminTeacherFilter(e.target.value)} />
+                  <button onClick={loadAdminSessions} className="btn btn-outline btn-sm" style={{ whiteSpace: 'nowrap' }}>🔄 تحديث</button>
+                </div>
+
+                {/* Sub-tabs */}
+                <div style={{ display: 'flex', gap: 4, background: '#f0f4f8', borderRadius: 10, padding: 4, marginBottom: 20, flexWrap: 'wrap' }}>
+                  {[
+                    { key: 'upcoming',  label: `📅 قادمة (${upcoming.length})`    },
+                    { key: 'calendar',  label: '🗓️ التقويم'                       },
+                    { key: 'past',      label: `✅ منتهية (${past.length})`        },
+                    { key: 'cancelled', label: `❌ ملغاة (${cancelled.length})`    },
+                  ].map(t => (
+                    <button key={t.key} onClick={() => setAdminSessTab(t.key)} style={{
+                      flex: 1, minWidth: 80, padding: '8px 4px', border: 'none',
+                      background: adminSessTab === t.key ? '#fff' : 'transparent',
+                      borderRadius: 7, fontFamily: 'inherit', fontSize: '.85rem', fontWeight: 700,
+                      color: adminSessTab === t.key ? 'var(--primary)' : 'var(--muted)',
+                      boxShadow: adminSessTab === t.key ? '0 1px 6px rgba(0,0,0,.1)' : 'none',
+                      cursor: 'pointer', transition: '.15s',
+                    }}>{t.label}</button>
+                  ))}
+                </div>
+
+                {adminSessLoading ? (
+                  <div style={{ textAlign: 'center', padding: 40 }}>
+                    <span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} />
+                  </div>
+                ) : (
+                  <>
+                    {/* Upcoming */}
+                    {adminSessTab === 'upcoming' && (
+                      upcoming.length === 0 ? (
+                        <div className="empty-state card"><span className="empty-icon">📭</span><p>لا توجد حصص قادمة</p></div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          {upcoming.map(s => (
+                            <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: '1.5px solid var(--border)', padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
+                              <div style={{ fontSize: '1.8rem', paddingTop: 2 }}>🎥</div>
+                              <div style={{ flex: 1, minWidth: 180 }}>
+                                <div style={{ fontWeight: 800, fontSize: '.97rem', color: 'var(--text)', marginBottom: 3 }}>{s.subject || 'حصة عامة'}</div>
+                                <div style={{ fontSize: '.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                                  <span>👨‍🏫 {s.teacher_name}</span>
+                                  <span>👤 {s.student_name}</span>
+                                  <span>📅 {fmtDate(s.session_date)}</span>
+                                  <span>⏰ {s.start_time?.slice(0, 5)}</span>
+                                  <span>⏱️ {s.duration_minutes} د</span>
+                                </div>
+                                {s.student_email && <div style={{ fontSize: '.79rem', color: 'var(--accent)', marginTop: 3 }}>✉️ {s.student_email}</div>}
+                              </div>
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start', flexShrink: 0 }}>
+                                <a href={joinLink(s)} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">ابدأ 🎥</a>
+                                <button onClick={() => { setAdminCompleteFor(s); setAdminRecordingUrl(''); }}
+                                  className="btn btn-outline btn-sm" style={{ color: '#1a7c40', borderColor: '#1a7c40' }}>✅ أنهِ</button>
+                                <button onClick={() => handleAdminCancel(s.id)} disabled={adminCancellingId === s.id}
+                                  className="btn btn-outline btn-sm" style={{ color: '#e53e3e', borderColor: '#e53e3e' }}>
+                                  {adminCancellingId === s.id ? '...' : 'إلغاء'}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    )}
+
+                    {/* Calendar */}
+                    {adminSessTab === 'calendar' && (
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                          <button className="btn btn-outline btn-sm" onClick={() => setAdminWeekOffset(w => w - 1)}>← السابق</button>
+                          <span style={{ fontWeight: 800, fontSize: '.93rem', color: 'var(--primary)' }}>
+                            {adminWeekOffset === 0 ? 'الأسبوع الحالي' : adminWeekOffset > 0 ? `+${adminWeekOffset} أسابيع` : `${adminWeekOffset} أسابيع`}
+                          </span>
+                          <button className="btn btn-outline btn-sm" onClick={() => setAdminWeekOffset(w => w + 1)}>التالي →</button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 8 }}>
+                          {calWeekDays.map(dateStr => {
+                            const daySess = filtered.filter(s => s.session_date === dateStr && s.status !== 'cancelled');
+                            const isToday = dateStr === today;
+                            const isPast  = dateStr < today;
+                            return (
+                              <div key={dateStr} style={{ borderRadius: 10, border: '1.5px solid var(--border)', overflow: 'hidden', minHeight: 80, opacity: isPast ? .7 : 1 }}>
+                                <div style={{ padding: '6px 8px', fontSize: '.76rem', fontWeight: 800, textAlign: 'center', background: isToday ? 'var(--primary)' : daySess.length ? '#eef5ff' : '#f8fafc', color: isToday ? '#fff' : daySess.length ? 'var(--primary)' : 'var(--muted)' }}>
+                                  <div>{dayName(dateStr)}</div>
+                                  <div>{parseInt(dateStr.split('-')[2])}</div>
+                                </div>
+                                <div style={{ padding: 4 }}>
+                                  {daySess.length === 0 ? (
+                                    <div style={{ fontSize: '.7rem', color: 'var(--muted)', textAlign: 'center', padding: '8px 4px' }}>—</div>
+                                  ) : daySess.map(s => (
+                                    <div key={s.id} title={`${s.teacher_name} — ${s.student_name} — ${s.start_time?.slice(0,5)}`}
+                                      style={{ padding: '3px 5px', fontSize: '.7rem', background: 'var(--accent)', color: '#fff', borderRadius: 4, margin: '3px 0', fontWeight: 700 }}>
+                                      {s.start_time?.slice(0,5)}{s.subject ? ` · ${s.subject.slice(0,6)}` : ''}<br/>
+                                      <span style={{ opacity: .85, fontWeight: 400 }}>👤 {s.student_name?.slice(0,8)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Past */}
+                    {adminSessTab === 'past' && (
+                      past.length === 0 ? (
+                        <div className="empty-state card"><span className="empty-icon">📭</span><p>لا توجد حصص منتهية</p></div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {past.slice(0, 30).map(s => (
+                            <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: '1.5px solid var(--border)', padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
+                              <div style={{ fontSize: '1.6rem', paddingTop: 2 }}>✅</div>
+                              <div style={{ flex: 1, minWidth: 180 }}>
+                                <div style={{ fontWeight: 800, fontSize: '.95rem', marginBottom: 3 }}>{s.subject || 'حصة عامة'}</div>
+                                <div style={{ fontSize: '.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                                  <span>👨‍🏫 {s.teacher_name}</span>
+                                  <span>👤 {s.student_name}</span>
+                                  <span>📅 {fmtDate(s.session_date)}</span>
+                                  <span>⏰ {s.start_time?.slice(0, 5)}</span>
+                                  <span style={{ color: '#1a7c40', fontWeight: 700 }}>منتهية</span>
+                                </div>
+                                {s.notes && <div style={{ marginTop: 6, padding: '6px 10px', background: '#fffbeb', borderRadius: 8, fontSize: '.82rem', color: '#92400e' }}>📝 {s.notes}</div>}
+                                {s.recording_url && (
+                                  <div style={{ marginTop: 4 }}>
+                                    <a href={s.recording_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '.8rem', color: 'var(--primary)', fontWeight: 600 }}>🎬 رابط التسجيل</a>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    )}
+
+                    {/* Cancelled */}
+                    {adminSessTab === 'cancelled' && (
+                      cancelled.length === 0 ? (
+                        <div className="empty-state card"><span className="empty-icon">📭</span><p>لا توجد حصص ملغاة</p></div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {cancelled.slice(0, 30).map(s => (
+                            <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: '1.5px solid var(--border)', padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', opacity: .7 }}>
+                              <div style={{ fontSize: '1.6rem', paddingTop: 2 }}>❌</div>
+                              <div style={{ flex: 1, minWidth: 180 }}>
+                                <div style={{ fontWeight: 800, fontSize: '.95rem', marginBottom: 3 }}>{s.subject || 'حصة عامة'}</div>
+                                <div style={{ fontSize: '.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                                  <span>👨‍🏫 {s.teacher_name}</span>
+                                  <span>👤 {s.student_name}</span>
+                                  <span>📅 {fmtDate(s.session_date)}</span>
+                                  <span>⏰ {s.start_time?.slice(0, 5)}</span>
+                                  <span style={{ color: '#e53e3e', fontWeight: 700 }}>ملغاة</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ══ Lexicon ═══════════════════════════════════════════ */}
           {activeTab === 'lexicon' && (
@@ -1328,6 +1583,33 @@ export default function BoggarAdminPage() {
 
         </div>
       </main>
+
+      {/* ══ Admin Complete Session Modal ═══════════════════════════════════ */}
+      {adminCompleteFor && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 650, padding: 16 }}
+          onClick={e => e.target === e.currentTarget && setAdminCompleteFor(null)}>
+          <div style={{ background: '#fff', borderRadius: 18, padding: '32px 28px', width: '100%', maxWidth: 480, direction: 'rtl', boxShadow: '0 20px 60px rgba(0,0,0,.25)' }}>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: 6, color: '#1a7c40' }}>✅ إنهاء الحصة</h2>
+            <p style={{ fontSize: '.88rem', color: 'var(--muted)', marginBottom: 20 }}>
+              {adminCompleteFor.subject || 'حصة عامة'} — {adminCompleteFor.student_name} مع {adminCompleteFor.teacher_name}
+            </p>
+            <div className="form-group">
+              <label className="form-label">رابط تسجيل الحصة (اختياري)</label>
+              <input className="form-input" type="url" dir="ltr"
+                placeholder="https://drive.google.com/..."
+                value={adminRecordingUrl} onChange={e => setAdminRecordingUrl(e.target.value)} />
+              <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 4 }}>يظهر للطالب في سجل حصصه</div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button onClick={handleAdminComplete} disabled={adminCompleteSav}
+                className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', background: '#1a7c40', borderColor: '#1a7c40' }}>
+                {adminCompleteSav ? 'جارٍ الحفظ...' : '✅ تأكيد الإنهاء'}
+              </button>
+              <button onClick={() => setAdminCompleteFor(null)} className="btn btn-outline">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══ Activity Modal ═════════════════════════════════════════════════ */}
       {activityModal && (
