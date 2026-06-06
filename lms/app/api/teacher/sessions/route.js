@@ -43,8 +43,8 @@ export async function POST(req) {
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 }); }
 
   const { studentName, studentEmail, sessionDate, startTime, durationMinutes = 60, subject } = body;
-  if (!studentName || !sessionDate || !startTime)
-    return NextResponse.json({ error: 'يرجى ملء جميع الحقول المطلوبة' }, { status: 400 });
+  if (!studentName || !studentEmail || !sessionDate || !startTime)
+    return NextResponse.json({ error: 'يرجى ملء جميع الحقول المطلوبة بما فيها بريد الطالب' }, { status: 400 });
 
   const admin = createAdminClient();
 

@@ -563,8 +563,12 @@ export default function TeacherPage() {
                 <input className="form-input" type="text" value={form.studentName} onChange={set('studentName')} required />
               </div>
               <div className="form-group">
-                <label className="form-label">بريد الطالب (اختياري)</label>
-                <input className="form-input" type="email" value={form.studentEmail} onChange={set('studentEmail')} dir="ltr" />
+                <label className="form-label">بريد الطالب الإلكتروني *</label>
+                <input className="form-input" type="email" value={form.studentEmail} onChange={set('studentEmail')}
+                  dir="ltr" required placeholder="student@example.com" />
+                <div style={{ fontSize:'.76rem', color:'var(--muted)', marginTop:4 }}>
+                  📌 مطلوب لكي تظهر الحصة في داشبورد الطالب
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">موضوع الحصة (اختياري)</label>
