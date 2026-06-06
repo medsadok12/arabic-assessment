@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '../../lib/supabase-server';
+import { createAdminClient } from '../../lib/supabase-admin';
 import Navbar from '../../components/Navbar';
 import ParentPanel from '../../components/ParentPanel';
 import FaheemWidget from '../../components/FaheemWidget';
@@ -25,16 +26,18 @@ export default async function DashboardPage() {
   if (role === 'teacher') redirect('/teacher');
 
   const today = new Date().toISOString().slice(0, 10);
-  const { data: sessionsRaw, error: sessionsErr } = await supabase
+  const admin = createAdminClient();
+  const { data: sessionsRaw } = await admin
     .from('sessions')
     .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, meet_link')
-    .eq('student_email', user.email)
+    .ilike('student_email', user.email)
     .eq('status', 'scheduled')
     .gte('session_date', today)
     .order('session_date', { ascending: true })
     .order('start_time',   { ascending: true })
-    .limit(5);
-  const upcomingSessions = sessionsErr ? [] : (sessionsRaw ?? []);
+    .limit(5)
+    .then(r => r.error?.code === '42P01' ? { data: [] } : r);
+  const upcomingSessions = sessionsRaw ?? [];
 
   const avgScore = assessments?.length
     ? Math.round(assessments.reduce((s, a) => s + (a.score ?? 0), 0) / assessments.length)
