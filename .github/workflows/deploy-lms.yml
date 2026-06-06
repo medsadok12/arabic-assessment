@@ -4,11 +4,20 @@ on:
   push:
     branches: [main]
     paths: ['lms/**']
+  workflow_dispatch: {}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Vercel Deploy Hook
-        run: |
-          curl -X POST "https://api.vercel.com/v1/integrations/deploy/prj_Wc9QOVw8LFFwjtANuUxlf5wi4fAW/3LR7ptURn4"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy aarem-lms to Vercel (Production)
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./lms
