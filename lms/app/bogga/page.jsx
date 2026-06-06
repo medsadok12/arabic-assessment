@@ -239,6 +239,7 @@ export default function BoggarAdminPage() {
   // permPopover: { tabKey, top, left } or null
   const [permPopover,  setPermPopover]  = useState(null);
   const [permSaving,   setPermSaving]   = useState({});
+  const [permError,    setPermError]    = useState(null);
   const permPopoverRef = useRef(null);
 
   // Promotion
@@ -544,6 +545,7 @@ export default function BoggarAdminPage() {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     setPermPopover({ tabKey, top: rect.bottom + 8, left: Math.max(8, rect.left - 180) });
+    setPermError(null);
     setPermsLoading(true);
     try {
       const [adminsRes, permsRes] = await Promise.all([
@@ -565,13 +567,23 @@ export default function BoggarAdminPage() {
     const key     = `${adminId}_${tabKey}`;
     const current = allPerms[adminId]?.[tabKey] ?? false;
     const newVal  = !current;
+    setPermError(null);
     setAllPerms(prev => ({ ...prev, [adminId]: { ...(prev[adminId] ?? {}), [tabKey]: newVal } }));
     setPermSaving(p => ({ ...p, [key]: true }));
-    const res = await fetch('/api/bogga/permissions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ admin_id: adminId, tab_key: tabKey, is_allowed: newVal }),
-    });
-    if (!res.ok) setAllPerms(prev => ({ ...prev, [adminId]: { ...(prev[adminId] ?? {}), [tabKey]: current } }));
+    try {
+      const res = await fetch('/api/bogga/permissions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_id: adminId, tab_key: tabKey, is_allowed: newVal }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setAllPerms(prev => ({ ...prev, [adminId]: { ...(prev[adminId] ?? {}), [tabKey]: current } }));
+        setPermError(d.error || 'تعذّر حفظ الصلاحية — حاول مجدداً');
+      }
+    } catch {
+      setAllPerms(prev => ({ ...prev, [adminId]: { ...(prev[adminId] ?? {}), [tabKey]: current } }));
+      setPermError('تعذّر الاتصال بالخادم — تحقّق من الإنترنت وحاول مجدداً');
+    }
     setPermSaving(p => { const n = { ...p }; delete n[key]; return n; });
   }
 
@@ -1735,6 +1747,12 @@ export default function BoggarAdminPage() {
                 </div>
               );
             })
+          )}
+
+          {permError && (
+            <div style={{ marginTop: 12, padding: '8px 10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, fontSize: '.78rem', color: '#b91c1c', lineHeight: 1.5 }}>
+              ⚠️ {permError}
+            </div>
           )}
 
           <div style={{ marginTop: 12, padding: '8px 10px', background: '#f8faff', borderRadius: 8, fontSize: '.76rem', color: 'var(--muted)', lineHeight: 1.6 }}>
