@@ -1,1 +1,1 @@
-deploy: test latest vercel cli 2026-06-06T18:16:01Z
+deploy: run vercel from repo root 2026-06-06T18:18:51Z
