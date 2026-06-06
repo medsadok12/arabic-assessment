@@ -1,0 +1,14 @@
+name: Deploy aarem-lms
+
+on:
+  push:
+    branches: [main]
+    paths: ['lms/**']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel Deploy Hook
+        run: |
+          curl -X POST "https://api.vercel.com/v1/integrations/deploy/prj_Wc9QOVw8LFFwjtANuUxlf5wi4fAW/3LR7ptURn4"
