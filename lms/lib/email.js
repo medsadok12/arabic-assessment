@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 
-const FROM = 'أكاديمية عارم <onboarding@resend.dev>';
+const FROM = 'أكاديمية عارم <noreply@aarem.net>';
 
 function resend() {
   return new Resend(process.env.RESEND_API_KEY);
