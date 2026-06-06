@@ -109,7 +109,7 @@ export async function PATCH(req) {
   let body;
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 }); }
 
-  const { id, studentName, studentEmail, sessionDate, startTime, durationMinutes, subject, notes } = body;
+  const { id, studentName, studentEmail, sessionDate, startTime, durationMinutes, subject, notes, status, recording_url } = body;
   if (!id) return NextResponse.json({ error: 'معرّف الحصة مطلوب' }, { status: 400 });
 
   const admin = createAdminClient();
@@ -130,13 +130,15 @@ export async function PATCH(req) {
   }
 
   const updates = {};
-  if (studentName)            updates.student_name     = studentName;
-  if (studentEmail !== undefined) updates.student_email = studentEmail || null;
-  if (sessionDate)            updates.session_date     = sessionDate;
-  if (startTime)              updates.start_time       = startTime;
-  if (durationMinutes)        updates.duration_minutes = durationMinutes;
-  if (subject !== undefined)  updates.subject          = subject || null;
-  if (notes  !== undefined)  updates.notes            = notes  || null;
+  if (studentName)                 updates.student_name     = studentName;
+  if (studentEmail !== undefined)  updates.student_email    = studentEmail || null;
+  if (sessionDate)                 updates.session_date     = sessionDate;
+  if (startTime)                   updates.start_time       = startTime;
+  if (durationMinutes)             updates.duration_minutes = durationMinutes;
+  if (subject !== undefined)       updates.subject          = subject || null;
+  if (notes !== undefined)         updates.notes            = notes || null;
+  if (status === 'completed')      updates.status           = 'completed';
+  if (recording_url !== undefined) updates.recording_url    = recording_url || null;
 
   const { data, error } = await admin
     .from('sessions')

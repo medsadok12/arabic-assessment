@@ -63,6 +63,10 @@ export default function TeacherPage() {
   const [notesFor,     setNotesFor]     = useState(null);
   const [notesText,    setNotesText]    = useState('');
   const [notesSaving,  setNotesSaving]  = useState(false);
+  // Complete session state
+  const [completeFor,    setCompleteFor]    = useState(null);
+  const [recordingUrl,   setRecordingUrl]   = useState('');
+  const [completeSaving, setCompleteSaving] = useState(false);
   // Calendar week offset
   const [weekOffset,   setWeekOffset]   = useState(0);
 
@@ -165,6 +169,23 @@ export default function TeacherPage() {
       setNotesFor(null);
     }
     setNotesSaving(false);
+  }
+
+  // ── Complete session ──
+  function openComplete(s) { setCompleteFor(s); setRecordingUrl(''); }
+
+  async function handleComplete() {
+    setCompleteSaving(true);
+    const res = await fetch('/api/teacher/sessions', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: completeFor.id, status: 'completed', recording_url: recordingUrl || null }),
+    });
+    if (res.ok) {
+      setSessions(prev => prev.map(s => s.id === completeFor.id
+        ? { ...s, status: 'completed', recording_url: recordingUrl || null } : s));
+      setCompleteFor(null);
+    }
+    setCompleteSaving(false);
   }
 
   // ── Invite ──
@@ -381,6 +402,10 @@ export default function TeacherPage() {
                         <div className="action-row" style={{ marginTop:4 }}>
                           <button onClick={() => window.open(joinLink(s), '_blank', 'noopener')}
                             className="btn btn-primary btn-sm">ابدأ الحصة 🎥</button>
+                          <button onClick={() => openComplete(s)}
+                            className="btn btn-outline btn-sm" style={{ color:'#1a7c40', borderColor:'#1a7c40' }}>
+                            ✅ أنهيت الحصة
+                          </button>
                           <button onClick={() => handleCancel(s.id)} disabled={cancelling === s.id}
                             className="btn btn-outline btn-sm" style={{ color:'#e53e3e', borderColor:'#e53e3e' }}>
                             {cancelling === s.id ? '...' : 'إلغاء'}
@@ -551,6 +576,34 @@ export default function TeacherPage() {
       </div>
 
       {/* ── Session Create/Edit Modal ── */}
+      {/* ── نافذة إنهاء الحصة ── */}
+      {completeFor && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setCompleteFor(null)}>
+          <div className="modal-box" dir="rtl">
+            <h2 style={{ fontSize:'1.15rem', fontWeight:800, marginBottom:6, color:'#1a7c40' }}>✅ إنهاء الحصة</h2>
+            <p style={{ fontSize:'.88rem', color:'var(--muted)', marginBottom:20 }}>
+              {completeFor.subject || 'حصة عامة'} — {completeFor.student_name}
+            </p>
+            <div className="form-group">
+              <label className="form-label">رابط تسجيل الحصة (اختياري)</label>
+              <input className="form-input" type="url" dir="ltr"
+                placeholder="https://drive.google.com/..."
+                value={recordingUrl} onChange={e => setRecordingUrl(e.target.value)} />
+              <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:4 }}>
+                يظهر للطالب في سجل حصصه السابقة
+              </div>
+            </div>
+            <div style={{ display:'flex', gap:10, marginTop:20 }}>
+              <button onClick={handleComplete} disabled={completeSaving}
+                className="btn btn-primary" style={{ flex:1, justifyContent:'center', background:'#1a7c40', borderColor:'#1a7c40' }}>
+                {completeSaving ? 'جارٍ الحفظ...' : '✅ تأكيد الإنهاء'}
+              </button>
+              <button onClick={() => setCompleteFor(null)} className="btn btn-outline">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
           <div className="modal-box" dir="rtl">
