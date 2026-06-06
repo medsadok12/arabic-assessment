@@ -763,3 +763,67 @@ body {
   .fsr::before { display: none; }
   body { padding-bottom: 76px; }
 }
+
+/* ── Mobile: dashboard & shared components ── */
+@media (max-width: 640px) {
+  .page-wrap { padding: 20px 0; }
+  .container { padding: 0 14px; }
+
+  /* Dashboard welcome */
+  .dash-welcome { font-size: 1.25rem !important; margin-bottom: 18px !important; }
+
+  /* Stats grid — 2 columns on mobile */
+  .card-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+
+  /* Stat cards */
+  .stat-card { padding: 14px 12px; gap: 8px; }
+  .stat-icon { font-size: 1.4rem; }
+  .stat-val  { font-size: 1.2rem; }
+  .stat-lbl  { font-size: .72rem; }
+
+  /* Quick action cards */
+  .dash-action-card { padding: 16px 14px; }
+  .dash-action-icon { font-size: 1.6rem; }
+  .dash-action-title { font-size: .92rem; }
+  .dash-action-desc  { font-size: .78rem; }
+
+  /* Section title */
+  .dash-section-title { font-size: .9rem; }
+
+  /* Upcoming session hero card */
+  .session-hero { padding: 16px 18px !important; gap: 12px !important; }
+
+  /* Cards */
+  .card { padding: 16px 14px; }
+
+  /* Tables — scroll horizontally */
+  .data-table { font-size: .82rem; }
+  .data-table th,
+  .data-table td { padding: 8px 10px; }
+
+  /* Buttons */
+  .btn-lg { padding: 12px 20px; font-size: 1rem; }
+
+  /* Auth card */
+  .auth-card { padding: 24px 16px; }
+
+  /* Apply form grid — stack on mobile */
+  .apply-grid-2 { grid-template-columns: 1fr !important; }
+}
+
+/* ── Mobile: teacher page ── */
+@media (max-width: 640px) {
+  /* Stat grid in teacher page */
+  .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Tab bar wraps */
+  .tab-bar { gap: 2px; }
+  .tab-btn { font-size: .78rem; padding: 7px 4px; min-width: 60px; }
+
+  /* Session cards action buttons */
+  .sc-actions { width: 100%; justify-content: flex-start; }
+  .action-row { width: 100%; }
+
+  /* Modal */
+  .modal-box { padding: 22px 18px; }
+}

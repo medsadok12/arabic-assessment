@@ -174,6 +174,7 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS rating INT CHECK (rating BETWEEN 1
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS meet_link     TEXT;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS meet_event_id TEXT;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS recording_url TEXT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE sessions ALTER COLUMN room_name DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS interviews_slot_idx ON interviews (interviewer_name, interview_date, start_time);
 CREATE INDEX IF NOT EXISTS sessions_teacher_idx ON sessions (teacher_id, session_date);
