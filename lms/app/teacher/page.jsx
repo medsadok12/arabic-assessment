@@ -522,7 +522,7 @@ export default function TeacherPage() {
                           <span>📅 {fmtDate(s.session_date)}</span>
                           <span>⏰ {s.start_time?.slice(0, 5)}</span>
                           <span style={{ color: s.status === 'cancelled' ? '#e53e3e' : '#1a7c40', fontWeight:700 }}>
-                            {s.status === 'cancelled' ? 'ملغية' : 'منتهية'}
+                            {s.status === 'cancelled' ? 'ملغاة' : 'منتهية'}
                           </span>
                         </div>
                         {s.student_email && <div className="se">✉️ {s.student_email}</div>}
