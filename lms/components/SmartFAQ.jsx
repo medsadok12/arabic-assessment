@@ -1,6 +1,5 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
 
 const FAQ_ITEMS = [
   {
@@ -175,39 +174,81 @@ export default function SmartFAQ() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 4,
+                gap: 5,
+                animation: 'faheemFloat 3s ease-in-out infinite',
               }}>
+                {/* Sparkle decorations */}
+                <span style={{ position:'absolute', top:0, right:-24, fontSize:'1.1rem', animation:'sparkle 2.2s ease-in-out infinite' }}>✨</span>
+                <span style={{ position:'absolute', top:14, left:-26, fontSize:'.95rem', animation:'sparkle 2.2s ease-in-out .6s infinite' }}>⭐</span>
+                <span style={{ position:'absolute', bottom:30, right:-20, fontSize:'.8rem', animation:'sparkle 2.2s ease-in-out 1.1s infinite' }}>✨</span>
+
+                {/* Avatar ring + character */}
                 <div style={{
-                  width: 100,
-                  height: 100,
+                  width: 114,
+                  height: 114,
                   borderRadius: '50%',
-                  background: 'linear-gradient(145deg, #e8f1ff, #cfe3ff)',
+                  background: 'linear-gradient(145deg, #fff9e6 0%, #fde68a 60%, #fbbf24 100%)',
                   border: '4px solid #fff',
-                  boxShadow: '0 6px 28px rgba(24,95,165,0.28), 0 0 0 6px rgba(24,95,165,0.1)',
+                  boxShadow: '0 8px 32px rgba(245,166,35,0.45), 0 0 0 6px rgba(245,166,35,0.18)',
                   overflow: 'hidden',
                   display: 'flex',
                   alignItems: 'flex-end',
                   justifyContent: 'center',
-                  animation: 'faheemFloat 3s ease-in-out infinite',
                 }}>
-                  <Image
-                    src="/faheem.png"
-                    alt="فهيم"
-                    width={90}
-                    height={90}
-                    style={{ objectFit: 'cover', objectPosition: 'top', marginBottom: -2 }}
-                  />
+                  {/* Faheem SVG — same character as the widget */}
+                  <svg viewBox="0 0 120 158" width="102" height="134" style={{ marginBottom: -10 }}>
+                    {/* Body */}
+                    <rect x="22" y="118" width="76" height="44" rx="18" fill="#1f2d5a" />
+                    {/* Collar accent */}
+                    <path d="M40,120 L60,133 L80,120" fill="none" stroke="#d4952a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    {/* Badge */}
+                    <circle cx="60" cy="142" r="8" fill="#d4952a" />
+                    <text x="60" y="146.5" textAnchor="middle" fontSize="8.5" fill="#1f2d5a" fontFamily="serif" fontWeight="900">&#x639;</text>
+                    {/* Skin */}
+                    <circle cx="60" cy="64" r="49" fill="#fce8c8" />
+                    {/* Hair */}
+                    <ellipse cx="60" cy="21" rx="49" ry="28" fill="#3d2510" />
+                    <ellipse cx="60" cy="16" rx="44" ry="22" fill="#4a2f15" />
+                    <path d="M63,2 Q74,-4 72,14" fill="none" stroke="#3d2510" strokeWidth="5.5" strokeLinecap="round" />
+                    {/* Ears */}
+                    <ellipse cx="11" cy="66" rx="9" ry="12" fill="#f5c47e" />
+                    <ellipse cx="8.5" cy="66" rx="5" ry="7.5" fill="#e8a860" />
+                    <ellipse cx="109" cy="66" rx="9" ry="12" fill="#f5c47e" />
+                    <ellipse cx="111.5" cy="66" rx="5" ry="7.5" fill="#e8a860" />
+                    {/* Left eye */}
+                    <ellipse cx="40" cy="63" rx="12" ry="14" fill="white" />
+                    <circle cx="41" cy="65" r="8.5" fill="#1a2d4a" />
+                    <circle cx="41" cy="65" r="4.2" fill="#080808" />
+                    <circle cx="43.5" cy="62" r="2.5" fill="white" />
+                    {/* Right eye */}
+                    <ellipse cx="80" cy="63" rx="12" ry="14" fill="white" />
+                    <circle cx="81" cy="65" r="8.5" fill="#1a2d4a" />
+                    <circle cx="81" cy="65" r="4.2" fill="#080808" />
+                    <circle cx="83.5" cy="62" r="2.5" fill="white" />
+                    {/* Happy eyebrows */}
+                    <path d="M28,50 Q40,44 52,50" fill="none" stroke="#3d2510" strokeWidth="3.2" strokeLinecap="round" />
+                    <path d="M68,50 Q80,44 92,50" fill="none" stroke="#3d2510" strokeWidth="3.2" strokeLinecap="round" />
+                    {/* Nose */}
+                    <circle cx="60" cy="79" r="2.8" fill="#d4956a" opacity=".45" />
+                    {/* Cheeks */}
+                    <circle cx="19" cy="82" r="10" fill="#f08070" opacity=".3" />
+                    <circle cx="101" cy="82" r="10" fill="#f08070" opacity=".3" />
+                    {/* Big happy smile */}
+                    <path d="M42,92 Q60,116 78,92" fill="none" stroke="#c0392b" strokeWidth="3.5" strokeLinecap="round" />
+                  </svg>
                 </div>
+
+                {/* Name badge */}
                 <span style={{
-                  background: 'var(--accent)',
+                  background: 'linear-gradient(90deg, #f59e0b, #f97316)',
                   color: '#fff',
                   fontWeight: 800,
-                  fontSize: '.8rem',
-                  padding: '2px 12px',
+                  fontSize: '.82rem',
+                  padding: '3px 14px',
                   borderRadius: 20,
-                  boxShadow: '0 3px 10px rgba(245,166,35,0.4)',
-                  letterSpacing: 1,
-                }}>فهيم 🤖</span>
+                  boxShadow: '0 3px 12px rgba(245,158,11,0.5)',
+                  letterSpacing: .5,
+                }}>✨ فهيم</span>
               </div>
 
             <div style={{
@@ -413,7 +454,11 @@ export default function SmartFAQ() {
         }
         @keyframes faheemFloat {
           0%, 100% { transform: translateY(0px); }
-          50%      { transform: translateY(-6px); }
+          50%      { transform: translateY(-7px); }
+        }
+        @keyframes sparkle {
+          0%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+          50%       { opacity: .4; transform: scale(1.3) rotate(20deg); }
         }
         input::placeholder { color: rgba(255,255,255,.5); }
       `}</style>
