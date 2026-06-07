@@ -317,7 +317,7 @@ export default function TeacherPage() {
         </div>
 
         {/* Tabs */}
-        <div className="tab-bar">
+        <div className="tab-bar" style={{ flexWrap: 'wrap', gap: 6 }}>
           {[
             { key:'sessions', label:`📅 الحصص (${upcoming.length})` },
             { key:'calendar', label:'🗓️ التقويم'                   },
@@ -327,6 +327,15 @@ export default function TeacherPage() {
             <button key={t.key} className={`tab-btn${activeTab === t.key ? ' active' : ''}`}
               onClick={() => setActiveTab(t.key)}>{t.label}</button>
           ))}
+          <a href="/teacher/logbook" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '8px 16px', borderRadius: 10, textDecoration: 'none',
+            background: '#fffbeb', color: '#92400e',
+            border: '1.5px solid #fde68a', fontWeight: 700, fontSize: '.88rem',
+            whiteSpace: 'nowrap',
+          }}>
+            📓 كراس الدروس
+          </a>
         </div>
 
         {loading ? (

@@ -1,7 +1,8 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from './Navbar';
+import LessonLogbookView from './LessonLogbookView';
 import { createClient } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -20,6 +21,7 @@ function fmtDate(iso, lang) {
 export default function SupervisorContent({ user, assessments, displayName }) {
   const router = useRouter();
   const { t, lang } = useLanguage();
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     const supabase = createClient();
@@ -71,6 +73,33 @@ export default function SupervisorContent({ user, assessments, displayName }) {
             {t('supervisor.readOnly')}
           </span>
         </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 28, borderBottom: '2px solid var(--border)', paddingBottom: 0 }}>
+          {[
+            { key: 'overview', label: lang === 'ar' ? '📊 نتائج الطلاب' : '📊 Student Results' },
+            { key: 'logbook',  label: lang === 'ar' ? '📓 كراس الدروس'  : '📓 Lesson Logbook'  },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: '10px 18px', border: 'none', cursor: 'pointer',
+                fontWeight: 700, fontSize: '.9rem', fontFamily: 'inherit',
+                borderBottom: activeTab === tab.key ? '3px solid var(--primary)' : '3px solid transparent',
+                background: 'transparent',
+                color: activeTab === tab.key ? 'var(--primary)' : '#64748b',
+                marginBottom: -2,
+                transition: 'all .15s',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Overview Tab ── */}
+        {activeTab === 'overview' && (<>
 
         {/* Stats grid */}
         <div style={{
@@ -167,6 +196,33 @@ export default function SupervisorContent({ user, assessments, displayName }) {
             </div>
           )}
         </div>
+
+        </>)}
+
+        {/* ── Logbook Tab ── */}
+        {activeTab === 'logbook' && (
+          <div>
+            <div style={{ marginBottom: 22 }}>
+              <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>
+                📓 {lang === 'ar' ? 'كراس الدروس الرقمي' : 'Digital Lesson Logbook'}
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '.88rem' }}>
+                {lang === 'ar'
+                  ? 'اعرض كراس أي معلم وأضف توجيهاتك التربوية مباشرة'
+                  : 'View any teacher\'s logbook and add your educational guidance directly'}
+              </p>
+            </div>
+            <div style={{
+              background: '#fff', borderRadius: 20,
+              border: '1.5px solid var(--border)',
+              padding: '24px',
+              boxShadow: '0 2px 12px rgba(24,95,165,.05)',
+            }}>
+              <LessonLogbookView lang={lang} />
+            </div>
+          </div>
+        )}
+
       </main>
     </>
   );

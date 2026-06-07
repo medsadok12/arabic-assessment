@@ -8,6 +8,7 @@ import AssessmentCodes                  from '../../components/AssessmentCodes';
 import StudentCodes                     from '../../components/StudentCodes';
 import TeacherCodes                     from '../../components/TeacherCodes';
 import GroupsManager                    from '../../components/GroupsManager';
+import LessonLogbookView               from '../../components/LessonLogbookView';
 import { useLanguage }                  from '../../contexts/LanguageContext';
 
 // ── Time slots 08:00 → 20:00, 30-min increments (25 slots) ─────────────────
@@ -383,6 +384,7 @@ export default function BoggarAdminPage() {
     if (tab === 'results')   loadResults(1, resultsSearch, resultsLevel, resultsMin, resultsMax);
     if (tab === 'sessions')    loadAdminSessions();
     if (tab === 'visitor_qa' && isSA) loadVisitorQA();
+    // logbook tab needs no pre-loading — LessonLogbookView loads on demand
   }, [user, tab, myPermissions]);
 
   async function loadResults(page = 1, search = '', level = '', min = '', max = '') {
@@ -981,6 +983,7 @@ export default function BoggarAdminPage() {
     { id: 'results',     label: tr('admin.tabs.results'),     show: canSee('results') },
     { id: 'lexicon',     label: tr('admin.tabs.lexicon'),     show: canSee('lexicon') },
     { id: 'recruitment', label: tr('admin.tabs.recruitment'), show: canSee('recruitment') },
+    { id: 'logbook',     label: tr('admin.tabs.logbook'),     show: isSuperAdmin },
     { id: 'admins',      label: tr('admin.tabs.admins'),      show: isSuperAdmin },
     { id: 'users',       label: tr('admin.tabs.users'),       show: isSuperAdmin },
     { id: 'visitor_qa',  label: tr('admin.tabs.visitor_qa'), show: isSuperAdmin },
@@ -1610,6 +1613,30 @@ export default function BoggarAdminPage() {
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ══ Logbook ════════════════════════════════════════════ */}
+          {activeTab === 'logbook' && isSuperAdmin && (
+            <div>
+              <div style={{ marginBottom: 24 }}>
+                <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>
+                  📓 {lang === 'ar' ? 'كراس الدروس الرقمي' : 'Digital Lesson Logbook'}
+                </h2>
+                <p style={{ color: 'var(--muted)', fontSize: '.88rem' }}>
+                  {lang === 'ar'
+                    ? 'اعرض كراس أي معلم، تابع خططه وتقدمه، وأضف توجيهات تربوية تصله فوراً'
+                    : 'View any teacher\'s logbook, track lesson plans & progress, and send instant pedagogical guidance'}
+                </p>
+              </div>
+              <div style={{
+                background: '#fff', borderRadius: 20,
+                border: '1.5px solid var(--border)',
+                padding: '24px',
+                boxShadow: '0 2px 12px rgba(24,95,165,.05)',
+              }}>
+                <LessonLogbookView lang={lang} />
+              </div>
             </div>
           )}
 
