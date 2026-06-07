@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS admin_permissions (
   UNIQUE (admin_id, tab_key)
 );
 ALTER TABLE admin_permissions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "admins_read_own_permissions" ON admin_permissions
+CREATE POLICY "admins_read_own_permissions" ON admin_permissions
   FOR SELECT USING (auth.uid() = admin_id);
 
 -- ترقيات آمنة للجداول القديمة
