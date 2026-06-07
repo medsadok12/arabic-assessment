@@ -175,10 +175,12 @@ export default function Navbar({ user: initialUser }) {
         {/* ── الجانب الأيسر: رابط تعريفي + أيقونات التواصل + أزرار الدخول/الحساب ── */}
         <div className="navbar-user">
 
-          {/* رابط تعريفي — desktop فقط، محاذٍ لليسار بجانب أيقونات التواصل */}
-          <Link href="/#about" className="navbar-about-link">
-            تعرّف على أكاديمية عارم
-          </Link>
+          {/* رابط تعريفي — للزوار غير المسجلين فقط */}
+          {!user && (
+            <Link href="/#about" className="navbar-about-link">
+              تعرّف على أكاديمية عارم
+            </Link>
+          )}
 
           {/* أيقونات التواصل الاجتماعي — desktop فقط */}
           <div className="navbar-social-desktop" style={{ borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: 20 }}>
