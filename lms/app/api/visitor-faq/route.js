@@ -69,7 +69,7 @@ export async function POST(req) {
   const geminiBody = JSON.stringify({
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: [{ role: 'user', parts: [{ text: question.trim() }] }],
-    generationConfig: { maxOutputTokens: 350, temperature: 0.7, topP: 0.9 },
+    generationConfig: { maxOutputTokens: 1024, temperature: 0.7, topP: 0.9 },
   });
 
   if (geminiKey) {
@@ -100,7 +100,7 @@ export async function POST(req) {
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 350,
+          max_tokens: 1024,
           system: systemPrompt,
           messages: [{ role: 'user', content: question.trim() }],
         }),
