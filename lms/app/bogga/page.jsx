@@ -193,6 +193,34 @@ CREATE TABLE IF NOT EXISTS faheem_visitor_qa (
 );
 ALTER TABLE faheem_visitor_qa DISABLE ROW LEVEL SECURITY;
 
+-- 8. جداول القصص المصورة
+CREATE TABLE IF NOT EXISTS stories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  level TEXT NOT NULL DEFAULT 'تمهيدي',
+  cover_image_url TEXT,
+  is_published BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE stories DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS story_pages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  story_id UUID NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+  page_number INT NOT NULL,
+  text TEXT NOT NULL,
+  image_url TEXT,
+  fal_request_id TEXT,
+  image_status TEXT NOT NULL DEFAULT 'pending'
+    CONSTRAINT valid_image_status CHECK (image_status IN ('pending','generating','ready','failed')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(story_id, page_number)
+);
+ALTER TABLE story_pages DISABLE ROW LEVEL SECURITY;
+
 NOTIFY pgrst, 'reload schema';`;
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -275,6 +303,21 @@ export default function BoggarAdminPage() {
   const [qaDeletingId, setQaDeletingId] = useState(null);
   const [qaMsg,        setQaMsg]        = useState(null);
 
+  // Stories
+  const [stories,          setStories]          = useState([]);
+  const [storiesLoading,   setStoriesLoading]   = useState(false);
+  const [storyForm,        setStoryForm]        = useState({ title: '', level: 'تمهيدي' });
+  const [addingStory,      setAddingStory]      = useState(false);
+  const [storyMsg,         setStoryMsg]         = useState(null);
+  const [openStory,        setOpenStory]        = useState(null); // story being edited
+  const [pageText,         setPageText]         = useState('');
+  const [addingPage,       setAddingPage]       = useState(false);
+  const [deletingPageId,   setDeletingPageId]   = useState(null);
+  const [deletingStoryId,  setDeletingStoryId]  = useState(null);
+  const [generating,       setGenerating]       = useState(false);
+  const [generateMsg,      setGenerateMsg]      = useState(null);
+  const [polling,          setPolling]          = useState(false);
+
   // Results tab
   const [results,        setResults]        = useState([]);
   const [resultsTotal,   setResultsTotal]   = useState(0);
@@ -353,6 +396,7 @@ export default function BoggarAdminPage() {
     if (tab === 'results')   loadResults(1, resultsSearch, resultsLevel, resultsMin, resultsMax);
     if (tab === 'sessions')    loadAdminSessions();
     if (tab === 'visitor_qa' && isSA) loadVisitorQA();
+    if (tab === 'stories'     && isSA) loadStories();
   }, [user, tab, myPermissions]);
 
   async function loadResults(page = 1, search = '', level = '', min = '', max = '') {
@@ -794,6 +838,130 @@ export default function BoggarAdminPage() {
     setActivityLoading(false);
   }
 
+  // ── Stories ───────────────────────────────────────────────────────────────
+  async function loadStories() {
+    setStoriesLoading(true);
+    const data = await fetch('/api/bogga/stories').then(r => r.json()).catch(() => ({}));
+    setStories(data.stories ?? []);
+    setStoriesLoading(false);
+  }
+
+  async function handleCreateStory(e) {
+    e.preventDefault();
+    if (!storyForm.title.trim()) return;
+    setAddingStory(true); setStoryMsg(null);
+    const res = await fetch('/api/bogga/stories', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(storyForm),
+    });
+    const data = await res.json();
+    if (!res.ok) { setStoryMsg({ type: 'error', text: data.error || 'خطأ' }); }
+    else { setStories(prev => [data.story, ...prev]); setStoryForm({ title: '', level: 'تمهيدي' }); setStoryMsg({ type: 'ok', text: 'تمت إضافة القصة' }); }
+    setAddingStory(false);
+  }
+
+  async function handleAddPage(storyId) {
+    if (!pageText.trim()) return;
+    setAddingPage(true);
+    const res = await fetch(`/api/bogga/stories/${storyId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: pageText }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setStories(prev => prev.map(s => s.id === storyId
+        ? { ...s, story_pages: [...(s.story_pages ?? []), data.page].sort((a, b) => a.page_number - b.page_number) }
+        : s));
+      if (openStory?.id === storyId) setOpenStory(prev => ({
+        ...prev, story_pages: [...(prev.story_pages ?? []), data.page].sort((a, b) => a.page_number - b.page_number)
+      }));
+      setPageText('');
+    }
+    setAddingPage(false);
+  }
+
+  async function handleDeletePage(storyId, pageId) {
+    if (!confirm('حذف هذه الصفحة؟')) return;
+    setDeletingPageId(pageId);
+    const res = await fetch(`/api/bogga/stories/${storyId}`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ page_id: pageId }),
+    });
+    if (res.ok) {
+      const remove = pages => pages.filter(p => p.id !== pageId);
+      setStories(prev => prev.map(s => s.id === storyId ? { ...s, story_pages: remove(s.story_pages ?? []) } : s));
+      if (openStory?.id === storyId) setOpenStory(prev => ({ ...prev, story_pages: remove(prev.story_pages ?? []) }));
+    }
+    setDeletingPageId(null);
+  }
+
+  async function handleDeleteStory(id) {
+    if (!confirm('حذف هذه القصة بالكامل؟')) return;
+    setDeletingStoryId(id);
+    const res = await fetch(`/api/bogga/stories/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+    if (res.ok) { setStories(prev => prev.filter(s => s.id !== id)); if (openStory?.id === id) setOpenStory(null); }
+    setDeletingStoryId(null);
+  }
+
+  async function handleTogglePublish(story) {
+    const res = await fetch(`/api/bogga/stories/${story.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_published: !story.is_published }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setStories(prev => prev.map(s => s.id === story.id ? { ...s, is_published: data.story.is_published } : s));
+      if (openStory?.id === story.id) setOpenStory(prev => ({ ...prev, is_published: data.story.is_published }));
+    }
+  }
+
+  async function handleGenerateImages(storyId) {
+    setGenerating(true); setGenerateMsg(null);
+    const res = await fetch(`/api/bogga/stories/${storyId}/generate`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) { setGenerateMsg({ type: 'error', text: data.error || 'خطأ في التوليد' }); }
+    else {
+      setGenerateMsg({ type: 'ok', text: `تم إرسال ${data.results?.filter(r => !r.skipped).length ?? 0} صفحة إلى قائمة التوليد` });
+      // Update local state to show generating status
+      setStories(prev => prev.map(s => {
+        if (s.id !== storyId) return s;
+        const updated = (s.story_pages ?? []).map(p => {
+          const r = data.results?.find(r => r.pageId === p.id);
+          return r && !r.skipped ? { ...p, image_status: 'generating' } : p;
+        });
+        return { ...s, story_pages: updated };
+      }));
+      if (openStory?.id === storyId) {
+        setOpenStory(prev => ({
+          ...prev, story_pages: (prev.story_pages ?? []).map(p => {
+            const r = data.results?.find(r => r.pageId === p.id);
+            return r && !r.skipped ? { ...p, image_status: 'generating' } : p;
+          })
+        }));
+      }
+    }
+    setGenerating(false);
+  }
+
+  async function handlePollImages(storyId) {
+    setPolling(true); setGenerateMsg(null);
+    const res = await fetch(`/api/bogga/stories/${storyId}/poll`);
+    const data = await res.json();
+    if (res.ok) {
+      const ready = data.results?.filter(r => r.status === 'ready').length ?? 0;
+      const still = data.results?.filter(r => r.status === 'IN_QUEUE' || r.status === 'IN_PROGRESS').length ?? 0;
+      setGenerateMsg({
+        type: data.allDone ? 'ok' : 'info',
+        text: data.allDone
+          ? `✅ اكتمل التوليد (${ready} صورة جاهزة)`
+          : `⏳ لا تزال ${still} صفحة قيد التوليد — حاول مرة أخرى بعد قليل`,
+      });
+      // Refresh stories list to show new images
+      if (ready > 0) loadStories();
+    }
+    setPolling(false);
+  }
+
   // ── Render guard ──────────────────────────────────────────────────────────
   if (!user || (myPermissions === null && !suspended)) {
     return (
@@ -836,6 +1004,7 @@ export default function BoggarAdminPage() {
     { id: 'recruitment', label: '📋 طلبات التوظيف',     show: canSee('recruitment') },
     { id: 'admins',      label: '👑 إدارة المشرفين',    show: isSuperAdmin },
     { id: 'visitor_qa',  label: '🤖 فهيم الزوار',       show: isSuperAdmin },
+    { id: 'stories',     label: '📚 القصص',              show: isSuperAdmin },
     { id: 'setup',       label: '⚙️ إعداد',              show: canSee('setup') },
   ].filter(t => t.show);
 
@@ -1747,6 +1916,184 @@ export default function BoggarAdminPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ══ Stories ═══════════════════════════════════════════ */}
+          {activeTab === 'stories' && (
+            <div>
+              <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 20, fontSize: '1.25rem' }}>📚 إدارة القصص</h2>
+
+              {storyMsg && (
+                <div className={`alert alert-${storyMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 16 }}>
+                  {storyMsg.text}
+                </div>
+              )}
+
+              {/* Add story form */}
+              <div className="card" style={{ marginBottom: 28, padding: '20px 24px' }}>
+                <h3 style={{ fontWeight: 700, marginBottom: 14, fontSize: '1rem' }}>➕ قصة جديدة</h3>
+                <form onSubmit={handleCreateStory} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div className="form-group" style={{ flex: '1 1 220px', marginBottom: 0 }}>
+                    <label className="form-label">عنوان القصة</label>
+                    <input className="form-input" value={storyForm.title}
+                      onChange={e => setStoryForm(p => ({ ...p, title: e.target.value }))}
+                      placeholder="مثال: قطتي" required />
+                  </div>
+                  <div className="form-group" style={{ flex: '0 1 160px', marginBottom: 0 }}>
+                    <label className="form-label">المستوى</label>
+                    <select className="form-input" value={storyForm.level}
+                      onChange={e => setStoryForm(p => ({ ...p, level: e.target.value }))}>
+                      {['تمهيدي', 'مستوى 1', 'مستوى 2', 'مستوى 3'].map(l => (
+                        <option key={l} value={l}>{l}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button type="submit" disabled={addingStory} className="btn btn-primary" style={{ marginBottom: 0 }}>
+                    {addingStory ? 'جارٍ الإضافة…' : '➕ إضافة'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Stories list */}
+              {storiesLoading ? (
+                <div style={{ textAlign: 'center', padding: 40 }}>
+                  <span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} />
+                </div>
+              ) : stories.length === 0 ? (
+                <div className="card" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>📖</div>
+                  <p>لا توجد قصص بعد — أضف أول قصة أعلاه</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {stories.map(story => {
+                    const isOpen = openStory?.id === story.id;
+                    const pgs = (isOpen ? openStory.story_pages : story.story_pages) ?? [];
+                    const readyCount = pgs.filter(p => p.image_status === 'ready').length;
+                    const genCount   = pgs.filter(p => p.image_status === 'generating').length;
+                    return (
+                      <div key={story.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                        {/* Story header */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: isOpen ? '#f0f9ff' : '#fff', cursor: 'pointer', borderBottom: isOpen ? '1px solid var(--border)' : 'none' }}
+                          onClick={() => setOpenStory(isOpen ? null : story)}>
+                          <span style={{ fontSize: '1.3rem' }}>📖</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text)' }}>{story.title}</div>
+                            <div style={{ fontSize: '.8rem', color: 'var(--muted)', marginTop: 2 }}>
+                              {story.level} · {pgs.length} صفحات · {readyCount} صورة جاهزة {genCount > 0 ? `· ⏳ ${genCount} قيد التوليد` : ''}
+                            </div>
+                          </div>
+                          <span style={{
+                            fontSize: '.75rem', padding: '3px 10px', borderRadius: 20, fontWeight: 600,
+                            background: story.is_published ? '#dcfce7' : '#fef3c7',
+                            color: story.is_published ? '#166534' : '#92400e',
+                          }}>
+                            {story.is_published ? '✅ منشور' : '⏸ مسودة'}
+                          </span>
+                          <span style={{ color: 'var(--muted)', fontSize: '.85rem' }}>{isOpen ? '▲' : '▼'}</span>
+                        </div>
+
+                        {/* Expanded story editor */}
+                        {isOpen && (
+                          <div style={{ padding: '16px 18px' }}>
+                            {generateMsg && (
+                              <div className={`alert alert-${generateMsg.type === 'error' ? 'error' : generateMsg.type === 'info' ? 'info' : 'success'}`} style={{ marginBottom: 14 }}>
+                                {generateMsg.text}
+                              </div>
+                            )}
+
+                            {/* Action buttons */}
+                            <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => handleGenerateImages(story.id)}
+                                disabled={generating || pgs.length === 0}
+                                className="btn btn-primary"
+                                style={{ fontSize: '.88rem', gap: 6 }}>
+                                {generating ? <><span className="spinner" style={{ width: 14, height: 14, borderWidth: 2, borderTopColor: '#fff', borderColor: 'rgba(255,255,255,.3)' }} /> جارٍ الإرسال…</> : '🎨 توليد الصور'}
+                              </button>
+                              <button
+                                onClick={() => handlePollImages(story.id)}
+                                disabled={polling || genCount === 0}
+                                className="btn btn-outline"
+                                style={{ fontSize: '.88rem' }}>
+                                {polling ? 'جارٍ الفحص…' : '🔄 تحقق من الحالة'}
+                              </button>
+                              <button
+                                onClick={() => handleTogglePublish(story)}
+                                className="btn btn-outline"
+                                style={{ fontSize: '.88rem', color: story.is_published ? '#92400e' : '#166534', borderColor: story.is_published ? '#fbbf24' : '#86efac' }}>
+                                {story.is_published ? '⏸ إلغاء النشر' : '✅ نشر للقراء'}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteStory(story.id)}
+                                disabled={deletingStoryId === story.id}
+                                className="btn btn-outline"
+                                style={{ fontSize: '.88rem', color: '#dc2626', borderColor: '#fca5a5', marginRight: 'auto' }}>
+                                {deletingStoryId === story.id ? 'جارٍ الحذف…' : '🗑 حذف القصة'}
+                              </button>
+                            </div>
+
+                            {/* Pages */}
+                            {pgs.length > 0 && (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 18 }}>
+                                {pgs.map(page => (
+                                  <div key={page.id} style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: '#fafafa' }}>
+                                    <div style={{ height: 110, background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                                      {page.image_url ? (
+                                        <img src={page.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                      ) : (
+                                        <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '.75rem' }}>
+                                          <div style={{ fontSize: '1.6rem', marginBottom: 2 }}>
+                                            {page.image_status === 'generating' ? '⏳' : page.image_status === 'failed' ? '❌' : '🎨'}
+                                          </div>
+                                          {page.image_status === 'generating' ? 'قيد التوليد' : page.image_status === 'failed' ? 'فشل' : 'لم تُولَّد'}
+                                        </div>
+                                      )}
+                                      <div style={{ position: 'absolute', top: 4, right: 6, background: 'rgba(0,0,0,.55)', color: '#fff', borderRadius: 6, padding: '1px 7px', fontSize: '.7rem', fontWeight: 700 }}>
+                                        {page.page_number}
+                                      </div>
+                                    </div>
+                                    <div style={{ padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                                      <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text)', flex: 1 }}>{page.text}</span>
+                                      <button
+                                        onClick={() => handleDeletePage(story.id, page.id)}
+                                        disabled={deletingPageId === page.id}
+                                        style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '1rem', padding: 2, lineHeight: 1 }}
+                                        title="حذف الصفحة">
+                                        🗑
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Add page */}
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                              <input
+                                className="form-input"
+                                style={{ flex: 1, fontSize: '1rem' }}
+                                placeholder="نص الصفحة الجديدة (3 كلمات كحد أقصى للمستوى التمهيدي)"
+                                value={pageText}
+                                onChange={e => setPageText(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') handleAddPage(story.id); }}
+                              />
+                              <button
+                                onClick={() => handleAddPage(story.id)}
+                                disabled={addingPage || !pageText.trim()}
+                                className="btn btn-primary"
+                                style={{ whiteSpace: 'nowrap' }}>
+                                {addingPage ? '…' : '+ صفحة'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
