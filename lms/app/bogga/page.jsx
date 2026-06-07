@@ -1993,139 +1993,153 @@ export default function BoggarAdminPage() {
                 ) : filtered.length === 0 ? (
                   <div className="empty-state card"><span className="empty-icon">👥</span><p>{tr('admin.users.noUsers')}</p></div>
                 ) : (
-                  <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th style={{ minWidth: 160 }}>{tr('admin.users.name')}</th>
-                          <th>{tr('admin.users.email')}</th>
-                          <th>{tr('admin.users.role')}</th>
-                          <th>{tr('admin.users.joined')}</th>
-                          <th>{tr('admin.users.lastLogin')}</th>
-                          <th>{lang === 'ar' ? '🔑 كلمة السر' : '🔑 Password'}</th>
-                          <th style={{ minWidth: 220 }}>{lang === 'ar' ? 'إجراءات' : 'Actions'}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filtered.map(u => {
-                          const badge     = ROLE_BADGES[u.role] ?? ROLE_BADGES.student;
-                          const isEditing = editingUser?.id === u.id;
-                          return (
-                            <tr key={u.id}>
-                              {/* Name — inline edit */}
-                              <td style={{ fontWeight: 700, minWidth: 160 }}>
-                                {isEditing ? (
-                                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                    <input
-                                      className="form-input" style={{ margin: 0, padding: '5px 10px', fontSize: '.88rem', width: 130 }}
-                                      value={editingUser.name}
-                                      onChange={e => setEditingUser(p => ({ ...p, name: e.target.value }))}
-                                      autoFocus
-                                    />
-                                    <button onClick={() => handleUpdateName(u.id)} disabled={savingUserId === u.id} className="btn btn-sm btn-primary" style={{ padding: '4px 10px', fontSize: '.78rem' }}>
-                                      {savingUserId === u.id ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : (lang === 'ar' ? 'حفظ' : 'Save')}
-                                    </button>
-                                    <button onClick={() => setEditingUser(null)} className="btn btn-sm btn-ghost" style={{ padding: '4px 8px', fontSize: '.78rem' }}>✕</button>
-                                  </div>
-                                ) : (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span style={{
-                                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                                      background: badge.bg, color: badge.color, fontWeight: 800,
-                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                      fontSize: '.85rem',
-                                    }}>
-                                      {(u.name ?? '?')[0].toUpperCase()}
-                                    </span>
-                                    {u.name}
-                                  </div>
-                                )}
-                              </td>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {filtered.map(u => {
+                      const badge     = ROLE_BADGES[u.role] ?? ROLE_BADGES.student;
+                      const isEditing = editingUser?.id === u.id;
+                      const dateJoined = new Date(u.created_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB');
+                      return (
+                        <div key={u.id} style={{
+                          background: '#fff', borderRadius: 16,
+                          border: '1.5px solid var(--border)',
+                          padding: '14px 18px',
+                          display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap',
+                          boxShadow: '0 1px 6px rgba(24,95,165,.05)',
+                        }}>
 
-                              {/* Email */}
-                              <td style={{ direction: 'ltr', textAlign: lang === 'ar' ? 'right' : 'left', color: '#334155', fontSize: '.88rem' }}>
-                                {u.email}
-                              </td>
+                          {/* Avatar */}
+                          <div style={{
+                            width: 46, height: 46, borderRadius: '50%', flexShrink: 0,
+                            background: badge.bg, color: badge.color, fontWeight: 800,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '1.1rem',
+                          }}>
+                            {(u.name ?? '?')[0].toUpperCase()}
+                          </div>
 
-                              {/* Role */}
-                              <td>
-                                <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '.75rem', fontWeight: 700, background: badge.bg, color: badge.color }}>
+                          {/* Name + email + meta */}
+                          <div style={{ flex: '1 1 180px', minWidth: 0 }}>
+                            {isEditing ? (
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
+                                <input
+                                  className="form-input"
+                                  style={{ margin: 0, padding: '5px 10px', fontSize: '.9rem', width: 160 }}
+                                  value={editingUser.name}
+                                  onChange={e => setEditingUser(p => ({ ...p, name: e.target.value }))}
+                                  autoFocus
+                                />
+                                <button onClick={() => handleUpdateName(u.id)} disabled={savingUserId === u.id} className="btn btn-sm btn-primary" style={{ padding: '5px 12px' }}>
+                                  {savingUserId === u.id ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : (lang === 'ar' ? 'حفظ' : 'Save')}
+                                </button>
+                                <button onClick={() => setEditingUser(null)} className="btn btn-sm btn-ghost" style={{ padding: '5px 8px' }}>✕</button>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 700, fontSize: '.97rem', color: '#1e293b' }}>{u.name}</span>
+                                <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: '.72rem', fontWeight: 700, background: badge.bg, color: badge.color, flexShrink: 0 }}>
                                   {badge.label}
                                 </span>
-                              </td>
+                              </div>
+                            )}
+                            <div dir="ltr" style={{ textAlign: lang === 'ar' ? 'right' : 'left', color: '#475569', fontSize: '.85rem', marginBottom: 3 }}>
+                              {u.email}
+                            </div>
+                            <div style={{ color: '#94a3b8', fontSize: '.78rem' }}>
+                              📅 {dateJoined}
+                              {u.last_sign_in && (
+                                <span style={{ marginRight: 10 }}>
+                                  · {lang === 'ar' ? 'آخر دخول:' : 'Last:'} {new Date(u.last_sign_in).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
 
-                              {/* Joined */}
-                              <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>
-                                {new Date(u.created_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB')}
-                              </td>
+                          {/* Password box */}
+                          <div style={{ flex: '0 1 220px', minWidth: 160 }}>
+                            <div style={{ fontSize: '.72rem', fontWeight: 600, color: '#64748b', marginBottom: 5 }}>
+                              🔑 {lang === 'ar' ? 'كلمة السر' : 'Password'}
+                            </div>
+                            {u.password ? (
+                              <div style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                background: '#fffbeb', border: '1.5px solid #fde68a',
+                                borderRadius: 10, padding: '7px 10px',
+                              }}>
+                                <span dir="ltr" style={{
+                                  fontFamily: 'monospace', fontWeight: 800, fontSize: '.92rem',
+                                  letterSpacing: '.04em', userSelect: 'all', color: '#b45309', flex: 1,
+                                }}>
+                                  {u.password}
+                                </span>
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(u.password)}
+                                  title={lang === 'ar' ? 'نسخ' : 'Copy'}
+                                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: 2 }}>
+                                  📋
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{
+                                background: '#f8fafc', border: '1.5px dashed #cbd5e1',
+                                borderRadius: 10, padding: '7px 10px',
+                                color: '#94a3b8', fontSize: '.82rem', fontStyle: 'italic',
+                              }}>
+                                {lang === 'ar' ? 'غير متاحة — اضغط إعادة الضبط' : 'Unknown — click Reset'}
+                              </div>
+                            )}
+                          </div>
 
-                              {/* Last login */}
-                              <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>
-                                {u.last_sign_in
-                                  ? new Date(u.last_sign_in).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB')
-                                  : <span style={{ opacity: .5 }}>{tr('admin.users.never')}</span>}
-                              </td>
+                          {/* Actions */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, flexShrink: 0 }}>
+                            <button
+                              onClick={() => handleResetPassword(u.id)}
+                              disabled={resettingPwdId === u.id}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 5,
+                                background: '#fffbeb', color: '#92400e',
+                                border: '1.5px solid #fde68a', borderRadius: 9,
+                                padding: '6px 12px', fontWeight: 600, fontSize: '.8rem',
+                                cursor: 'pointer', whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {resettingPwdId === u.id
+                                ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                                : '🔑'} {lang === 'ar' ? 'إعادة كلمة السر' : 'Reset Password'}
+                            </button>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              {!isEditing && (
+                                <button
+                                  onClick={() => setEditingUser({ id: u.id, name: u.name })}
+                                  style={{
+                                    flex: 1, background: '#eef5ff', color: '#185FA5',
+                                    border: '1.5px solid #bfdbfe', borderRadius: 9,
+                                    padding: '5px 10px', fontWeight: 600, fontSize: '.8rem',
+                                    cursor: 'pointer', whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  ✏️ {lang === 'ar' ? 'تعديل' : 'Edit'}
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteUser(u.id, u.name)}
+                                disabled={deletingUserId === u.id}
+                                style={{
+                                  flex: 1, background: '#fee2e2', color: '#b91c1c',
+                                  border: '1.5px solid #fca5a5', borderRadius: 9,
+                                  padding: '5px 10px', fontWeight: 600, fontSize: '.8rem',
+                                  cursor: 'pointer', whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {deletingUserId === u.id
+                                  ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                                  : `🗑️ ${lang === 'ar' ? 'حذف' : 'Delete'}`}
+                              </button>
+                            </div>
+                          </div>
 
-                              {/* Password column — always visible */}
-                              <td style={{ minWidth: 180 }}>
-                                {u.password ? (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 8, padding: '4px 8px' }}>
-                                    <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '.88rem', letterSpacing: '.05em', userSelect: 'all', color: '#b45309', flex: 1 }}>
-                                      {u.password}
-                                    </span>
-                                    <button
-                                      onClick={() => navigator.clipboard.writeText(u.password)}
-                                      title={lang === 'ar' ? 'نسخ' : 'Copy'}
-                                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '.85rem', padding: '1px 3px', color: '#92400e' }}>
-                                      📋
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <span style={{ color: '#94a3b8', fontSize: '.82rem', fontStyle: 'italic' }}>
-                                    {lang === 'ar' ? 'غير متاحة — أعد ضبطها' : 'Unknown — reset it'}
-                                  </span>
-                                )}
-                              </td>
-
-                              {/* Actions */}
-                              <td>
-                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                  <button
-                                    onClick={() => handleResetPassword(u.id)}
-                                    disabled={resettingPwdId === u.id}
-                                    className="btn btn-sm"
-                                    style={{ background: '#fffbeb', color: '#92400e', border: '1.5px solid #fde68a', fontSize: '.78rem' }}
-                                  >
-                                    {resettingPwdId === u.id
-                                      ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
-                                      : tr('admin.users.resetPwd')}
-                                  </button>
-                                  {!isEditing && (
-                                    <button
-                                      onClick={() => setEditingUser({ id: u.id, name: u.name })}
-                                      className="btn btn-sm"
-                                      style={{ background: '#eef5ff', color: '#185FA5', border: '1.5px solid #bfdbfe', fontSize: '.78rem' }}
-                                    >
-                                      {tr('admin.users.editName')}
-                                    </button>
-                                  )}
-                                  <button
-                                    onClick={() => handleDeleteUser(u.id, u.name)}
-                                    disabled={deletingUserId === u.id}
-                                    className="btn btn-sm btn-danger"
-                                    style={{ fontSize: '.78rem' }}
-                                  >
-                                    {deletingUserId === u.id
-                                      ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
-                                      : tr('admin.users.deleteUser')}
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
