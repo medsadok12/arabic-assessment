@@ -185,6 +185,32 @@ export default function Navbar({ user: initialUser }) {
             <SocialIcons />
           </div>
 
+          {/* زر لوحة الطالب — للزوار غير المسجلين فقط */}
+          {!user && (
+            <Link
+              href="/auth/login?for=student"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(255,255,255,0.15)',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '.88rem',
+                padding: '7px 14px',
+                borderRadius: 10,
+                textDecoration: 'none',
+                border: '1.5px solid rgba(255,255,255,0.35)',
+                transition: 'background .2s',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.26)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+            >
+              👤 لوحة الطالب
+            </Link>
+          )}
+
           {user ? (
             <div className="nav-dropdown" ref={dropRef}>
               <button
@@ -271,6 +297,9 @@ export default function Navbar({ user: initialUser }) {
           ) : (
             <>
               <Link href="/#about" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>تعرّف على أكاديمية عارم</Link>
+              <Link href="/auth/login?for=student" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>
+                👤 لوحة الطالب
+              </Link>
               <a href="https://api.whatsapp.com/send/?phone=447400755914" target="_blank" rel="noopener noreferrer" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>
                 💬 تواصل مع الإدارة
               </a>

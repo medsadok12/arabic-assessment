@@ -386,18 +386,19 @@ body {
   margin-bottom: 48px;
 }
 .feature-card {
-  background: var(--card);
+  background: #fff;
   border-radius: 20px;
   padding: 36px 24px 28px;
   box-shadow: 0 1px 4px rgba(24,95,165,.06), 0 4px 20px rgba(24,95,165,.08);
   text-align: center;
   border: 1.5px solid rgba(24,95,165,.08);
-  transition: transform .25s, box-shadow .25s, border-color .25s;
+  transition: transform .28s, box-shadow .28s, background .28s, border-color .28s;
 }
 .feature-card:hover {
   transform: translateY(-7px);
-  box-shadow: 0 10px 38px rgba(24,95,165,.17);
-  border-color: rgba(24,95,165,.22);
+  box-shadow: 0 12px 40px rgba(24,95,165,.28);
+  background: linear-gradient(145deg, #185FA5 0%, #1e88e5 100%);
+  border-color: transparent;
 }
 .feature-icon {
   width: 72px; height: 72px;
@@ -406,15 +407,17 @@ body {
   display: flex; align-items: center; justify-content: center;
   margin: 0 auto 20px;
   color: var(--primary);
-  transition: background .25s, transform .25s, color .25s;
+  transition: background .28s, transform .28s, color .28s;
 }
 .feature-card:hover .feature-icon {
-  background: linear-gradient(135deg, var(--primary), #1e88e5);
+  background: rgba(255,255,255,0.2);
   color: #fff;
   transform: scale(1.1) rotate(-5deg);
 }
-.feature-card h3 { font-size: 1.08rem; font-weight: 700; color: var(--text); margin-bottom: 10px; }
-.feature-card p  { font-size: .88rem; color: var(--muted); line-height: 1.75; }
+.feature-card h3 { font-size: 1.08rem; font-weight: 700; color: var(--text); margin-bottom: 10px; transition: color .28s; }
+.feature-card p  { font-size: .88rem; color: var(--muted); line-height: 1.75; transition: color .28s; }
+.feature-card:hover h3 { color: #fff; }
+.feature-card:hover p  { color: rgba(255,255,255,.82); }
 
 /* ── Dashboard ── */
 .dash-welcome { font-size: 1.5rem; font-weight: 700; margin-bottom: 24px; color: var(--text); }

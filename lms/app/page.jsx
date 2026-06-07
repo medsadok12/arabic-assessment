@@ -53,7 +53,7 @@ export default function LandingPage() {
                 <a href="https://arabic-assessment.vercel.app"
                   className="btn btn-accent btn-lg"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  ابدأ التقييم التشخيصي ▷
+                  ابدأ تحديد مستوى طفلك — مجاناً ▷
                 </a>
               </div>
             </div>

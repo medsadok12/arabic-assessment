@@ -71,7 +71,7 @@ export default function SmartFAQ() {
   return (
     <section style={{
       background: 'linear-gradient(160deg, #f0f6ff 0%, #ffffff 100%)',
-      padding: '80px 0',
+      padding: '80px 0 96px',
     }}>
       <div className="container">
 
@@ -85,16 +85,16 @@ export default function SmartFAQ() {
           </p>
         </div>
 
-        {/* Two-column layout */}
+        {/* Two-column layout — stretch makes both columns equal height */}
         <div style={{
           display: 'flex',
           gap: 36,
-          alignItems: 'flex-start',
+          alignItems: 'stretch',
           flexWrap: 'wrap',
         }}>
 
           {/* ── Right: Classic Accordion ── */}
-          <div style={{ flex: '1 1 340px', minWidth: 0 }}>
+          <div style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             {FAQ_ITEMS.map((item, idx) => (
               <div key={idx} style={{
                 background: '#fff',
@@ -159,13 +159,16 @@ export default function SmartFAQ() {
           </div>
 
           {/* ── Left: AI Chat Box ── */}
-          <div style={{ flex: '1 1 340px', minWidth: 0 }}>
+          <div style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{
               background: 'linear-gradient(145deg, #185FA5 0%, #104880 100%)',
               borderRadius: 20,
               padding: 28,
               boxShadow: '0 8px 32px rgba(24,95,165,0.22)',
               color: '#fff',
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
             }}>
 
               {/* Header: avatar + text side by side */}
