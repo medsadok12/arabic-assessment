@@ -244,6 +244,16 @@ export default function BoggarAdminPage() {
   const [suspendingId,  setSuspendingId]  = useState(null);
   const [suspended,     setSuspended]     = useState(false);
 
+  // Supervisors
+  const [supervisors,          setSupervisors]          = useState([]);
+  const [supervisorsLoading,   setSupervisorsLoading]   = useState(false);
+  const [showAddSupervisor,    setShowAddSupervisor]    = useState(false);
+  const [supervisorForm,       setSupervisorForm]       = useState(EMPTY_ADMIN_FORM);
+  const [addingSupervisor,     setAddingSupervisor]     = useState(false);
+  const [supervisorMsg,        setSupervisorMsg]        = useState(null);
+  const [deletingSupervisorId, setDeletingSupervisorId] = useState(null);
+  const [suspendingSupervisorId, setSuspendingSupervisorId] = useState(null);
+
   // Online status & activity
   const [onlineStatus,    setOnlineStatus]    = useState({});
   const [activityModal,   setActivityModal]   = useState(null);
@@ -357,7 +367,7 @@ export default function BoggarAdminPage() {
     const isSA = role === 'super_admin';
     loadStats();
     if (tab === 'recruitment') { loadApps(); if (isSA) loadInterviews(); }
-    if (tab === 'admins'      && isSA) loadAdmins();
+    if (tab === 'admins'      && isSA) { loadAdmins(); loadSupervisors(); }
     if (tab === 'results')   loadResults(1, resultsSearch, resultsLevel, resultsMin, resultsMax);
     if (tab === 'sessions')    loadAdminSessions();
     if (tab === 'visitor_qa' && isSA) loadVisitorQA();
@@ -495,6 +505,13 @@ export default function BoggarAdminPage() {
     (onlineRes.online_status ?? []).forEach(s => { map[s.admin_id] = s; });
     setOnlineStatus(map);
     setAdminsLoading(false);
+  }
+
+  async function loadSupervisors() {
+    setSupervisorsLoading(true);
+    const res = await fetch('/api/bogga/supervisors').then(r => r.json());
+    setSupervisors(res.supervisors ?? []);
+    setSupervisorsLoading(false);
   }
 
   // ── Recruitment ───────────────────────────────────────────────────────────
@@ -683,6 +700,56 @@ export default function BoggarAdminPage() {
     if (res.ok) setAdmins(prev => prev.filter(a => a.id !== id));
     else setAdminMsg({ type: 'error', text: data.error });
     setDeletingId(null);
+  }
+
+  // ── Supervisors ───────────────────────────────────────────────────────────
+  async function handleAddSupervisor(e) {
+    e.preventDefault();
+    setAddingSupervisor(true); setSupervisorMsg(null);
+    const res  = await fetch('/api/bogga/supervisors', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: supervisorForm.name, email: supervisorForm.email }),
+    });
+    const data = await res.json();
+    if (!res.ok) { setSupervisorMsg({ type: 'error', text: data.error }); }
+    else {
+      setSupervisors(prev => [...prev, data.supervisor]);
+      setShowAddSupervisor(false); setSupervisorForm(EMPTY_ADMIN_FORM);
+      const emailNote = data.emailSent
+        ? `📧 ${lang === 'ar' ? 'تم إرسال بيانات الدخول إلى' : 'Login details sent to'} ${data.supervisor.email}`
+        : `⚠️ ${lang === 'ar' ? 'فشل إرسال الإيميل — احفظ كلمة المرور الآن:' : 'Email failed — save password now:'} ${data.tempPassword}`;
+      setSupervisorMsg({
+        type: data.emailSent ? 'success' : 'error',
+        text: `✅ ${lang === 'ar' ? `تم إنشاء حساب "${data.supervisor.name}" — ${emailNote}` : `Account "${data.supervisor.name}" created — ${emailNote}`}`,
+        tempPassword: data.emailSent ? null : data.tempPassword,
+      });
+    }
+    setAddingSupervisor(false);
+  }
+
+  async function handleSuspendSupervisor(id, currentStatus) {
+    const action = currentStatus === 'suspended' ? 'activate' : 'suspend';
+    const label  = action === 'suspend' ? (lang === 'ar' ? 'إيقاف' : 'suspend') : (lang === 'ar' ? 'تفعيل' : 'activate');
+    if (!confirm(lang === 'ar' ? `هل تريد ${label} حساب هذا المرشد؟` : `Do you want to ${label} this supervisor's account?`)) return;
+    setSuspendingSupervisorId(id);
+    const res  = await fetch(`/api/bogga/supervisors/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    const data = await res.json();
+    if (res.ok) setSupervisors(prev => prev.map(s => s.id === id ? { ...s, status: data.status } : s));
+    else setSupervisorMsg({ type: 'error', text: data.error ?? (lang === 'ar' ? 'فشل تعديل حالة المرشد' : 'Failed to update supervisor status') });
+    setSuspendingSupervisorId(null);
+  }
+
+  async function handleDeleteSupervisor(id, name) {
+    if (!confirm(lang === 'ar' ? `هل تريد حذف حساب "${name}" نهائياً؟` : `Delete "${name}"'s account permanently?`)) return;
+    setDeletingSupervisorId(id);
+    const res  = await fetch(`/api/bogga/supervisors/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (res.ok) setSupervisors(prev => prev.filter(s => s.id !== id));
+    else setSupervisorMsg({ type: 'error', text: data.error });
+    setDeletingSupervisorId(null);
   }
 
   async function handlePromote() {
@@ -1576,6 +1643,90 @@ export default function BoggarAdminPage() {
                   </table>
                 </div>
               )}
+
+              {/* ── Supervisors sub-section ── */}
+              <div style={{ marginTop: 36, borderTop: '2px solid var(--border)', paddingTop: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+                  <div>
+                    <h2 style={{ fontWeight: 800, color: '#7c3aed', marginBottom: 4 }}>🧑‍💼 {lang === 'ar' ? 'المرشدون التربويون' : 'Educational Supervisors'}</h2>
+                    <p style={{ color: 'var(--muted)', fontSize: '.88rem' }}>{lang === 'ar' ? 'لوحة متابعة — للقراءة فقط' : 'Monitoring dashboard — read-only access'}</p>
+                  </div>
+                  <button onClick={() => { setShowAddSupervisor(true); setSupervisorMsg(null); }} className="btn btn-primary" style={{ background: '#7c3aed' }}>
+                    + {lang === 'ar' ? 'إضافة مرشد تربوي' : 'Add Supervisor'}
+                  </button>
+                </div>
+
+                {supervisorMsg && (
+                  <div className={`alert alert-${supervisorMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 18 }}>
+                    {supervisorMsg.text}
+                    {supervisorMsg.tempPassword && (
+                      <div style={{ marginTop: 10, background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 8, padding: '10px 14px' }}>
+                        <strong>{lang === 'ar' ? 'كلمة المرور المؤقتة:' : 'Temporary Password:'}</strong>
+                        <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.05rem', marginRight: 8, letterSpacing: '.08em', userSelect: 'all', color: '#b56a00' }}>
+                          {supervisorMsg.tempPassword}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {supervisorsLoading ? (
+                  <div style={{ textAlign: 'center', padding: 32 }}><span className="spinner" style={{ borderTopColor: '#7c3aed', borderColor: 'var(--border)' }} /></div>
+                ) : supervisors.length === 0 ? (
+                  <div className="empty-state card"><span className="empty-icon">🧑‍💼</span><p>{lang === 'ar' ? 'لا يوجد مرشدون تربويون بعد' : 'No supervisors yet'}</p></div>
+                ) : (
+                  <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>{lang === 'ar' ? 'الاسم' : 'Name'}</th>
+                          <th>{lang === 'ar' ? 'البريد الإلكتروني' : 'Email'}</th>
+                          <th>{lang === 'ar' ? 'حالة الحساب' : 'Status'}</th>
+                          <th>{lang === 'ar' ? 'تاريخ الإنشاء' : 'Created'}</th>
+                          <th>{lang === 'ar' ? 'إجراءات' : 'Actions'}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {supervisors.map(s => (
+                          <tr key={s.id}>
+                            <td style={{ fontWeight: 700 }}>{s.name}</td>
+                            <td style={{ direction: 'ltr', textAlign: 'right' }}>{s.email}</td>
+                            <td>
+                              <span style={{
+                                padding: '3px 10px', borderRadius: 20, fontSize: '.75rem', fontWeight: 700,
+                                background: s.status === 'suspended' ? '#fee2e2' : '#ede9fe',
+                                color:      s.status === 'suspended' ? '#b91c1c' : '#6d28d9',
+                              }}>
+                                {s.status === 'suspended' ? (lang === 'ar' ? '🚫 موقوف' : '🚫 Suspended') : (lang === 'ar' ? '✅ مفعَّل' : '✅ Active')}
+                              </span>
+                            </td>
+                            <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>{new Date(s.created_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB')}</td>
+                            <td>
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                <button
+                                  onClick={() => handleSuspendSupervisor(s.id, s.status ?? 'active')}
+                                  disabled={suspendingSupervisorId === s.id}
+                                  className="btn btn-sm"
+                                  style={{ background: s.status === 'suspended' ? '#1a7c40' : '#f59e0b', color: '#fff', border: 'none' }}
+                                >
+                                  {suspendingSupervisorId === s.id
+                                    ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                                    : s.status === 'suspended'
+                                      ? (lang === 'ar' ? '✅ تفعيل' : '✅ Activate')
+                                      : (lang === 'ar' ? '⏸ إيقاف' : '⏸ Suspend')}
+                                </button>
+                                <button onClick={() => handleDeleteSupervisor(s.id, s.name)} disabled={deletingSupervisorId === s.id} className="btn btn-sm btn-danger">
+                                  {deletingSupervisorId === s.id ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : (lang === 'ar' ? '🗑️ حذف' : '🗑️ Delete')}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -2233,6 +2384,36 @@ export default function BoggarAdminPage() {
                   {addingAdmin ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />{lang === 'ar' ? 'جارٍ الإنشاء...' : 'Creating...'}</> : (lang === 'ar' ? '✅ إنشاء الحساب' : '✅ Create Account')}
                 </button>
                 <button type="button" className="btn btn-ghost" onClick={() => { setShowAddModal(false); setAdminMsg(null); }}>{tr('cancel')}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ══ Add Supervisor Modal ═════════════════════════════════════════════ */}
+      {showAddSupervisor && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: 20 }}
+          onClick={e => { if (e.target === e.currentTarget) setShowAddSupervisor(false); }}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: '32px 28px', width: '100%', maxWidth: 440, direction: lang === 'ar' ? 'rtl' : 'ltr', boxShadow: '0 20px 60px rgba(0,0,0,.25)' }}>
+            <h2 style={{ fontWeight: 800, color: '#7c3aed', marginBottom: 20, fontSize: '1.15rem' }}>🧑‍💼 {lang === 'ar' ? 'إضافة مرشد تربوي جديد' : 'Add New Educational Supervisor'}</h2>
+            {supervisorMsg && <div className={`alert alert-${supervisorMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 14 }}>{supervisorMsg.text}</div>}
+            <form onSubmit={handleAddSupervisor}>
+              <div className="form-group">
+                <label className="form-label">{lang === 'ar' ? 'الاسم الكامل *' : 'Full Name *'}</label>
+                <input className="form-input" value={supervisorForm.name} required onChange={e => setSupervisorForm(p => ({ ...p, name: e.target.value }))} placeholder={lang === 'ar' ? 'أدخل الاسم الكامل' : 'Enter full name'} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">{lang === 'ar' ? 'البريد الإلكتروني *' : 'Email Address *'}</label>
+                <input className="form-input" type="email" value={supervisorForm.email} required onChange={e => setSupervisorForm(p => ({ ...p, email: e.target.value }))} placeholder="supervisor@example.com" dir="ltr" />
+              </div>
+              <div className="alert alert-info" style={{ fontSize: '.85rem', marginBottom: 4 }}>
+                🔑 {lang === 'ar' ? 'ستُنشأ كلمة مرور مؤقتة تلقائياً وتُرسل للمرشد عبر بريده الإلكتروني.' : 'A temporary password will be auto-generated and sent to the supervisor via email.'}
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                <button type="submit" className="btn btn-primary" disabled={addingSupervisor} style={{ flex: 1, justifyContent: 'center', gap: 8, background: '#7c3aed' }}>
+                  {addingSupervisor ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />{lang === 'ar' ? 'جارٍ الإنشاء...' : 'Creating...'}</> : (lang === 'ar' ? '✅ إنشاء الحساب' : '✅ Create Account')}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => { setShowAddSupervisor(false); setSupervisorMsg(null); }}>{tr('cancel')}</button>
               </div>
             </form>
           </div>
