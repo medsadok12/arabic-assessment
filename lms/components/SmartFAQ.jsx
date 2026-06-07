@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 
 const FAQ_ITEMS = [
   {
@@ -160,24 +161,76 @@ export default function SmartFAQ() {
 
           {/* ── Left: AI Chat Box ── */}
           <div style={{ flex: '1 1 340px', minWidth: 0 }}>
+
+            {/* Wrapper for floating avatar */}
+            <div style={{ position: 'relative', paddingTop: 56 }}>
+
+              {/* Floating Faheem avatar */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4,
+              }}>
+                <div style={{
+                  width: 100,
+                  height: 100,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(145deg, #e8f1ff, #cfe3ff)',
+                  border: '4px solid #fff',
+                  boxShadow: '0 6px 28px rgba(24,95,165,0.28), 0 0 0 6px rgba(24,95,165,0.1)',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  justifyContent: 'center',
+                  animation: 'faheemFloat 3s ease-in-out infinite',
+                }}>
+                  <Image
+                    src="/faheem.png"
+                    alt="فهيم"
+                    width={90}
+                    height={90}
+                    style={{ objectFit: 'cover', objectPosition: 'top', marginBottom: -2 }}
+                  />
+                </div>
+                <span style={{
+                  background: 'var(--accent)',
+                  color: '#fff',
+                  fontWeight: 800,
+                  fontSize: '.8rem',
+                  padding: '2px 12px',
+                  borderRadius: 20,
+                  boxShadow: '0 3px 10px rgba(245,166,35,0.4)',
+                  letterSpacing: 1,
+                }}>فهيم 🤖</span>
+              </div>
+
             <div style={{
               background: 'linear-gradient(145deg, #185FA5 0%, #104880 100%)',
               borderRadius: 20,
-              padding: 28,
+              padding: '68px 28px 28px',
               boxShadow: '0 8px 32px rgba(24,95,165,0.22)',
               color: '#fff',
             }}>
 
               {/* Header */}
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: '2rem', marginBottom: 6 }}>💡</div>
+              <div style={{ marginBottom: 20, textAlign: 'center' }}>
                 <h3 style={{
                   fontSize: '1.2rem',
                   fontWeight: 800,
                   marginBottom: 6,
-                  lineHeight: 1.5,
+                  lineHeight: 1.6,
                 }}>
-                  لم تجد إجابتك؟ اسأل فهيم مباشرة!
+                  لم تجد إجابتك؟ اسأل{' '}
+                  <span style={{ color: 'var(--accent)', textShadow: '0 1px 8px rgba(245,166,35,0.4)' }}>
+                    فهيم
+                  </span>{' '}
+                  مباشرة!
                 </h3>
                 <p style={{ fontSize: '.88rem', opacity: .75, margin: 0 }}>
                   مساعدنا الذكي يجيبك في ثوانٍ
@@ -337,6 +390,7 @@ export default function SmartFAQ() {
                 </a>
               )}
             </div>
+            </div>{/* /position:relative wrapper */}
           </div>
 
         </div>
@@ -356,6 +410,10 @@ export default function SmartFAQ() {
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes faheemFloat {
+          0%, 100% { transform: translateY(0px); }
+          50%      { transform: translateY(-6px); }
         }
         input::placeholder { color: rgba(255,255,255,.5); }
       `}</style>
