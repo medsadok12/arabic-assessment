@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '../components/Navbar';
 import FloatingSidebar from '../components/FloatingSidebar';
+import SmartFAQ from '../components/SmartFAQ';
 import { Target, FileBarChart, Globe, Smartphone, Lock, Zap } from 'lucide-react';
 
 const WHATSAPP_HREF = 'https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0';
@@ -165,6 +166,9 @@ export default function LandingPage() {
           </p>
         </div>
       </section>
+
+      {/* ── Smart FAQ ── */}
+      <SmartFAQ />
 
       <footer style={{ background: '#0e3d70', color: 'rgba(255,255,255,.55)', textAlign: 'center', padding: '22px', fontSize: '.88rem' }}>
         © 2026 أكاديمية عارم — جميع الحقوق محفوظة
