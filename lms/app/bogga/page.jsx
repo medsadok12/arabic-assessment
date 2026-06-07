@@ -254,6 +254,17 @@ export default function BoggarAdminPage() {
   const [deletingSupervisorId, setDeletingSupervisorId] = useState(null);
   const [suspendingSupervisorId, setSuspendingSupervisorId] = useState(null);
 
+  // Users directory
+  const [usersList,        setUsersList]        = useState([]);
+  const [usersLoading,     setUsersLoading]     = useState(false);
+  const [usersSearch,      setUsersSearch]      = useState('');
+  const [usersRoleFilter,  setUsersRoleFilter]  = useState('all');
+  const [resettingPwdId,   setResettingPwdId]   = useState(null);
+  const [resetPwdResult,   setResetPwdResult]   = useState(null); // { id, password }
+  const [deletingUserId,   setDeletingUserId]   = useState(null);
+  const [editingUser,      setEditingUser]      = useState(null); // { id, name }
+  const [savingUserId,     setSavingUserId]     = useState(null);
+
   // Online status & activity
   const [onlineStatus,    setOnlineStatus]    = useState({});
   const [activityModal,   setActivityModal]   = useState(null);
@@ -368,6 +379,7 @@ export default function BoggarAdminPage() {
     loadStats();
     if (tab === 'recruitment') { loadApps(); if (isSA) loadInterviews(); }
     if (tab === 'admins'      && isSA) { loadAdmins(); loadSupervisors(); }
+    if (tab === 'users'       && isSA) loadUsers();
     if (tab === 'results')   loadResults(1, resultsSearch, resultsLevel, resultsMin, resultsMax);
     if (tab === 'sessions')    loadAdminSessions();
     if (tab === 'visitor_qa' && isSA) loadVisitorQA();
@@ -512,6 +524,13 @@ export default function BoggarAdminPage() {
     const res = await fetch('/api/bogga/supervisors').then(r => r.json());
     setSupervisors(res.supervisors ?? []);
     setSupervisorsLoading(false);
+  }
+
+  async function loadUsers() {
+    setUsersLoading(true);
+    const res = await fetch('/api/bogga/users').then(r => r.json());
+    setUsersList(res.users ?? []);
+    setUsersLoading(false);
   }
 
   // ── Recruitment ───────────────────────────────────────────────────────────
@@ -752,6 +771,44 @@ export default function BoggarAdminPage() {
     setDeletingSupervisorId(null);
   }
 
+  // ── Users directory ───────────────────────────────────────────────────────
+  async function handleResetPassword(id) {
+    setResettingPwdId(id); setResetPwdResult(null);
+    const res  = await fetch(`/api/bogga/users/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reset-password' }),
+    });
+    const data = await res.json();
+    if (res.ok) setResetPwdResult({ id, password: data.password });
+    else alert(data.error ?? (lang === 'ar' ? 'فشل إعادة كلمة السر' : 'Failed to reset password'));
+    setResettingPwdId(null);
+  }
+
+  async function handleUpdateName(id) {
+    if (!editingUser?.name?.trim()) return;
+    setSavingUserId(id);
+    const res  = await fetch(`/api/bogga/users/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update-name', name: editingUser.name }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setUsersList(prev => prev.map(u => u.id === id ? { ...u, name: data.name } : u));
+      setEditingUser(null);
+    } else { alert(data.error ?? (lang === 'ar' ? 'فشل حفظ الاسم' : 'Failed to save name')); }
+    setSavingUserId(null);
+  }
+
+  async function handleDeleteUser(id, name) {
+    if (!confirm(lang === 'ar' ? `هل تريد حذف حساب "${name}" نهائياً؟` : `Delete "${name}"'s account permanently?`)) return;
+    setDeletingUserId(id);
+    const res  = await fetch(`/api/bogga/users/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (res.ok) { setUsersList(prev => prev.filter(u => u.id !== id)); setResetPwdResult(null); }
+    else alert(data.error ?? (lang === 'ar' ? 'فشل حذف الحساب' : 'Failed to delete account'));
+    setDeletingUserId(null);
+  }
+
   async function handlePromote() {
     if (!confirm(lang === 'ar' ? 'سيتم ترقية حسابك إلى مدير مطلق. هذا الإجراء لا يمكن التراجع عنه.' : 'Your account will be promoted to Super Admin. This action cannot be undone.')) return;
     setPromoting(true); setPromoMsg(null);
@@ -925,6 +982,7 @@ export default function BoggarAdminPage() {
     { id: 'lexicon',     label: tr('admin.tabs.lexicon'),     show: canSee('lexicon') },
     { id: 'recruitment', label: tr('admin.tabs.recruitment'), show: canSee('recruitment') },
     { id: 'admins',      label: tr('admin.tabs.admins'),      show: isSuperAdmin },
+    { id: 'users',       label: tr('admin.tabs.users'),       show: isSuperAdmin },
     { id: 'visitor_qa',  label: tr('admin.tabs.visitor_qa'), show: isSuperAdmin },
     { id: 'setup',       label: tr('admin.tabs.setup'),       show: canSee('setup') },
   ].filter(tab => tab.show);
@@ -1870,6 +1928,204 @@ export default function BoggarAdminPage() {
               </div>
             </div>
           )}
+
+          {/* ══ Users Directory ══════════════════════════════════ */}
+          {activeTab === 'users' && isSuperAdmin && (() => {
+            const ROLE_BADGES = {
+              student:    { label: lang === 'ar' ? tr('admin.users.student')    : tr('admin.users.student'),    bg: '#dbeafe', color: '#1d4ed8' },
+              teacher:    { label: lang === 'ar' ? tr('admin.users.teacher')    : tr('admin.users.teacher'),    bg: '#dcfce7', color: '#166534' },
+              supervisor: { label: lang === 'ar' ? tr('admin.users.supervisor') : tr('admin.users.supervisor'), bg: '#ede9fe', color: '#6d28d9' },
+              admin:      { label: lang === 'ar' ? tr('admin.users.admin')      : tr('admin.users.admin'),      bg: '#fef3c7', color: '#92400e' },
+            };
+
+            const filtered = usersList
+              .filter(u => usersRoleFilter === 'all' || u.role === usersRoleFilter)
+              .filter(u => {
+                const q = usersSearch.trim().toLowerCase();
+                return !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+              });
+
+            return (
+              <div>
+                {/* Header */}
+                <div style={{ marginBottom: 20 }}>
+                  <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>{tr('admin.users.title')}</h2>
+                  <p style={{ color: 'var(--muted)', fontSize: '.88rem' }}>
+                    {lang === 'ar' ? `${usersList.length} مستخدم مسجل` : `${usersList.length} registered users`}
+                  </p>
+                </div>
+
+                {/* Filters row */}
+                <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input
+                    className="form-input" style={{ flex: '1 1 220px', margin: 0 }}
+                    placeholder={tr('admin.users.searchPlaceholder')}
+                    value={usersSearch} onChange={e => setUsersSearch(e.target.value)}
+                  />
+                  {['all', 'student', 'teacher', 'supervisor', 'admin'].map(r => (
+                    <button key={r} onClick={() => setUsersRoleFilter(r)}
+                      style={{
+                        padding: '7px 16px', borderRadius: 20, border: '1.5px solid var(--border)',
+                        fontWeight: 600, fontSize: '.82rem', cursor: 'pointer',
+                        background: usersRoleFilter === r ? 'var(--primary)' : '#fff',
+                        color:      usersRoleFilter === r ? '#fff' : '#334155',
+                        transition: 'all .15s',
+                      }}>
+                      {r === 'all'        ? tr('admin.users.all')
+                       : r === 'student'  ? tr('admin.users.students')
+                       : r === 'teacher'  ? tr('admin.users.teachers')
+                       : r === 'supervisor' ? tr('admin.users.supervisors')
+                       : tr('admin.users.admin')}
+                      {r !== 'all' && (
+                        <span style={{ marginRight: 5, opacity: .65 }}>
+                          ({usersList.filter(u => u.role === r).length})
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                  <button onClick={loadUsers} style={{ background: '#eef5ff', color: 'var(--primary)', border: '1.5px solid var(--border)', borderRadius: 10, padding: '7px 14px', fontWeight: 600, fontSize: '.82rem', cursor: 'pointer' }}>
+                    🔄 {lang === 'ar' ? 'تحديث' : 'Refresh'}
+                  </button>
+                </div>
+
+                {usersLoading ? (
+                  <div style={{ textAlign: 'center', padding: 48 }}><span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} /></div>
+                ) : filtered.length === 0 ? (
+                  <div className="empty-state card"><span className="empty-icon">👥</span><p>{tr('admin.users.noUsers')}</p></div>
+                ) : (
+                  <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th style={{ minWidth: 160 }}>{tr('admin.users.name')}</th>
+                          <th>{tr('admin.users.email')}</th>
+                          <th>{tr('admin.users.role')}</th>
+                          <th>{tr('admin.users.joined')}</th>
+                          <th>{tr('admin.users.lastLogin')}</th>
+                          <th style={{ minWidth: 280 }}>{lang === 'ar' ? 'إجراءات' : 'Actions'}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered.map(u => {
+                          const badge   = ROLE_BADGES[u.role] ?? ROLE_BADGES.student;
+                          const isEditing = editingUser?.id === u.id;
+                          const pwdShown  = resetPwdResult?.id === u.id;
+                          return (
+                            <tr key={u.id}>
+                              {/* Name — inline edit */}
+                              <td style={{ fontWeight: 700, minWidth: 160 }}>
+                                {isEditing ? (
+                                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                    <input
+                                      className="form-input" style={{ margin: 0, padding: '5px 10px', fontSize: '.88rem', width: 130 }}
+                                      value={editingUser.name}
+                                      onChange={e => setEditingUser(p => ({ ...p, name: e.target.value }))}
+                                      autoFocus
+                                    />
+                                    <button onClick={() => handleUpdateName(u.id)} disabled={savingUserId === u.id} className="btn btn-sm btn-primary" style={{ padding: '4px 10px', fontSize: '.78rem' }}>
+                                      {savingUserId === u.id ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : (lang === 'ar' ? 'حفظ' : 'Save')}
+                                    </button>
+                                    <button onClick={() => setEditingUser(null)} className="btn btn-sm btn-ghost" style={{ padding: '4px 8px', fontSize: '.78rem' }}>✕</button>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{
+                                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                                      background: badge.bg, color: badge.color, fontWeight: 800,
+                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                      fontSize: '.85rem',
+                                    }}>
+                                      {(u.name ?? '?')[0].toUpperCase()}
+                                    </span>
+                                    {u.name}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Email */}
+                              <td style={{ direction: 'ltr', textAlign: lang === 'ar' ? 'right' : 'left', color: '#334155', fontSize: '.88rem' }}>
+                                {u.email}
+                              </td>
+
+                              {/* Role */}
+                              <td>
+                                <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '.75rem', fontWeight: 700, background: badge.bg, color: badge.color }}>
+                                  {badge.label}
+                                </span>
+                              </td>
+
+                              {/* Joined */}
+                              <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>
+                                {new Date(u.created_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB')}
+                              </td>
+
+                              {/* Last login */}
+                              <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>
+                                {u.last_sign_in
+                                  ? new Date(u.last_sign_in).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB')
+                                  : <span style={{ opacity: .5 }}>{tr('admin.users.never')}</span>}
+                              </td>
+
+                              {/* Actions */}
+                              <td>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                    <button
+                                      onClick={() => handleResetPassword(u.id)}
+                                      disabled={resettingPwdId === u.id}
+                                      className="btn btn-sm"
+                                      style={{ background: '#fffbeb', color: '#92400e', border: '1.5px solid #fde68a', fontSize: '.78rem' }}
+                                    >
+                                      {resettingPwdId === u.id
+                                        ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                                        : tr('admin.users.resetPwd')}
+                                    </button>
+                                    {!isEditing && (
+                                      <button
+                                        onClick={() => setEditingUser({ id: u.id, name: u.name })}
+                                        className="btn btn-sm"
+                                        style={{ background: '#eef5ff', color: '#185FA5', border: '1.5px solid #bfdbfe', fontSize: '.78rem' }}
+                                      >
+                                        {tr('admin.users.editName')}
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => handleDeleteUser(u.id, u.name)}
+                                      disabled={deletingUserId === u.id}
+                                      className="btn btn-sm btn-danger"
+                                      style={{ fontSize: '.78rem' }}
+                                    >
+                                      {deletingUserId === u.id
+                                        ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                                        : tr('admin.users.deleteUser')}
+                                    </button>
+                                  </div>
+
+                                  {/* New password reveal */}
+                                  {pwdShown && (
+                                    <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                      <span style={{ fontSize: '.75rem', color: '#92400e', fontWeight: 700 }}>{tr('admin.users.newPwdLabel')}</span>
+                                      <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '.9rem', letterSpacing: '.06em', userSelect: 'all', color: '#b45309' }}>
+                                        {resetPwdResult.password}
+                                      </span>
+                                      <button onClick={() => navigator.clipboard.writeText(resetPwdResult.password)}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '.8rem', color: '#92400e' }}>📋</button>
+                                      <button onClick={() => setResetPwdResult(null)}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '.8rem', color: '#64748b' }}>✕</button>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ══ Visitor Q&A — فهيم الزوار ══════════════════════ */}
           {activeTab === 'visitor_qa' && isSuperAdmin && (
