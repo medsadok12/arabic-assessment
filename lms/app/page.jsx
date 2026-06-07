@@ -142,7 +142,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA ── */}
+      {/* ── Smart FAQ ── */}
+      <SmartFAQ />
+
+      {/* ── CTA — للمعلمين والمترشحين فقط، دائماً في الأسفل ── */}
       <section style={{ background: 'var(--primary)', padding: '64px 0', textAlign: 'center', color: '#fff' }}>
         <div className="container">
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 12 }}>جاهز للبدء؟</h2>
@@ -166,9 +169,6 @@ export default function LandingPage() {
           </p>
         </div>
       </section>
-
-      {/* ── Smart FAQ ── */}
-      <SmartFAQ />
 
       <footer style={{ background: '#0e3d70', color: 'rgba(255,255,255,.55)', textAlign: 'center', padding: '22px', fontSize: '.88rem' }}>
         © 2026 أكاديمية عارم — جميع الحقوق محفوظة
