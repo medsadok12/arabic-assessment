@@ -1,14 +1,29 @@
 'use client';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '../components/Navbar';
 import FloatingSidebar from '../components/FloatingSidebar';
 import SmartFAQ from '../components/SmartFAQ';
 import { Target, FileBarChart, Globe, Smartphone, Lock, Zap } from 'lucide-react';
+import { createClient } from '../lib/supabase';
 
 const WHATSAPP_HREF = 'https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0';
 
 export default function LandingPage() {
+  const router = useRouter();
+
+  // Redirect logged-in users straight to their dashboard
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      const role = user.user_metadata?.role;
+      if (role === 'super_admin' || role === 'admin') router.replace('/bogga');
+      else router.replace('/dashboard');
+    });
+  }, [router]);
   const features = [
     { icon: Target,       title: 'تقييم تشخيصي ذكي',       desc: 'قياس مستوى الطالب في القراءة والكتابة والاستماع والتحدث عبر 10 تدريبات تشخيصية متنوعة.' },
     { icon: FileBarChart, title: 'تقارير تفصيلية',           desc: 'تقارير تفصيلية فورية تُرسل تلقائياً لولي الأمر لمتابعة مستوى الطالب وتطوره أولاً بأول.' },
