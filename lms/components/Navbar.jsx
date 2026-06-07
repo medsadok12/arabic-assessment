@@ -181,7 +181,7 @@ export default function Navbar({ user: initialUser }) {
           </Link>
 
           {/* أيقونات التواصل الاجتماعي — desktop فقط */}
-          <div className="navbar-social-desktop">
+          <div className="navbar-social-desktop" style={{ borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: 20 }}>
             <SocialIcons />
           </div>
 
