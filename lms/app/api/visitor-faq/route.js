@@ -6,17 +6,17 @@ import { createAdminClient } from '../../../lib/supabase-admin';
 const BASE_SYSTEM_PROMPT = `أنت "فهيم"، مساعد خدمة الزوار لأكاديمية عارم، أكاديمية أونلاين لتعليم اللغة العربية للأطفال (5-14 سنة). تتميز بنظام تقييم تشخيصي مجاني وحصص تفاعلية مع معلمين متخصصين.
 أجب بجملتين أو ثلاث جمل كاملة بلغة عربية واضحة. استخدم المعلومات المُزوَّدة إن وجدت. أنهِ دائماً بدعوة للتواصل عبر واتساب أو تجربة التقييم المجاني. لا تستخدم نقاطاً أو قوائم.`;
 
-function fetchWithTimeout(url, options, ms = 7000) {
+function fetchWithTimeout(url, options, ms) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), ms);
   return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
 }
 
+// Two models only: 3500 + 3000 = 6500ms max for Gemini, leaving ~3s for Anthropic
+// Total worst case ≈ 9s — within Vercel Hobby's 10s function limit
 const GEMINI_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
-  'gemini-1.5-flash',
+  { name: 'gemini-2.0-flash', ms: 3500 }, // fastest reliable model
+  { name: 'gemini-2.5-flash', ms: 3000 }, // better quality if first fails
 ];
 
 async function fetchContext() {
@@ -65,12 +65,12 @@ export async function POST(req) {
   });
 
   if (geminiKey) {
-    for (const model of GEMINI_MODELS) {
+    for (const { name, ms } of GEMINI_MODELS) {
       try {
         const res = await fetchWithTimeout(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${name}:generateContent?key=${geminiKey}`,
           { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: geminiBody },
-          6000
+          ms
         );
         if (!res.ok) continue;
         const json = await res.json().catch(() => null);
@@ -97,7 +97,7 @@ export async function POST(req) {
           system: systemPrompt,
           messages: [{ role: 'user', content: question.trim() }],
         }),
-      }, 5000);
+      }, 2500);
       if (res.ok) {
         const json = await res.json().catch(() => null);
         const reply = json?.content?.[0]?.text?.trim();
