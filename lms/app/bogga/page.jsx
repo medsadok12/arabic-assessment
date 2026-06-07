@@ -180,6 +180,19 @@ ALTER TABLE sessions ALTER COLUMN room_name DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS interviews_slot_idx ON interviews (interviewer_name, interview_date, start_time);
 CREATE INDEX IF NOT EXISTS sessions_teacher_idx ON sessions (teacher_id, session_date);
 CREATE INDEX IF NOT EXISTS sessions_student_idx ON sessions (student_email, session_date);
+
+-- 7. جدول قاعدة معرفة فهيم للزوار
+CREATE TABLE IF NOT EXISTS faheem_visitor_qa (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE faheem_visitor_qa DISABLE ROW LEVEL SECURITY;
+
 NOTIFY pgrst, 'reload schema';`;
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -251,6 +264,16 @@ export default function BoggarAdminPage() {
 
   // Setup
   const [copied, setCopied] = useState(false);
+
+  // Visitor Q&A — فهيم الزوار
+  const [visitorQA,    setVisitorQA]    = useState([]);
+  const [qaLoading,    setQaLoading]    = useState(false);
+  const [qaForm,       setQaForm]       = useState({ question: '', answer: '', sort_order: 0 });
+  const [qaEditing,    setQaEditing]    = useState(null);
+  const [qaShowModal,  setQaShowModal]  = useState(false);
+  const [qaSaving,     setQaSaving]     = useState(false);
+  const [qaDeletingId, setQaDeletingId] = useState(null);
+  const [qaMsg,        setQaMsg]        = useState(null);
 
   // Results tab
   const [results,        setResults]        = useState([]);
@@ -328,7 +351,8 @@ export default function BoggarAdminPage() {
     if (tab === 'recruitment') { loadApps(); if (isSA) loadInterviews(); }
     if (tab === 'admins'      && isSA) loadAdmins();
     if (tab === 'results')   loadResults(1, resultsSearch, resultsLevel, resultsMin, resultsMax);
-    if (tab === 'sessions')  loadAdminSessions();
+    if (tab === 'sessions')    loadAdminSessions();
+    if (tab === 'visitor_qa' && isSA) loadVisitorQA();
   }, [user, tab, myPermissions]);
 
   async function loadResults(page = 1, search = '', level = '', min = '', max = '') {
@@ -664,6 +688,59 @@ export default function BoggarAdminPage() {
     setCopied(true); setTimeout(() => setCopied(false), 2000);
   }
 
+  // ── Visitor Q&A ──────────────────────────────────────────────────────────
+  async function loadVisitorQA() {
+    setQaLoading(true);
+    const data = await fetch('/api/bogga/visitor-qa').then(r => r.json()).catch(() => ({}));
+    setVisitorQA(data.items ?? []);
+    setQaLoading(false);
+  }
+
+  async function handleSaveQA(e) {
+    e.preventDefault();
+    setQaSaving(true); setQaMsg(null);
+    const isEdit = !!qaEditing;
+    const res = await fetch('/api/bogga/visitor-qa', {
+      method: isEdit ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(isEdit
+        ? { id: qaEditing.id, ...qaForm }
+        : qaForm),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setQaMsg({ type: 'error', text: data.error || 'حدث خطأ' });
+    } else {
+      if (isEdit) {
+        setVisitorQA(prev => prev.map(q => q.id === qaEditing.id ? data.item : q));
+      } else {
+        setVisitorQA(prev => [...prev, data.item]);
+      }
+      setQaShowModal(false); setQaEditing(null);
+      setQaForm({ question: '', answer: '', sort_order: 0 });
+    }
+    setQaSaving(false);
+  }
+
+  async function handleDeleteQA(id) {
+    if (!confirm('هل تريد حذف هذا السؤال نهائياً؟')) return;
+    setQaDeletingId(id);
+    const res = await fetch('/api/bogga/visitor-qa', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    if (res.ok) setVisitorQA(prev => prev.filter(q => q.id !== id));
+    setQaDeletingId(null);
+  }
+
+  async function toggleQAActive(item) {
+    setVisitorQA(prev => prev.map(q => q.id === item.id ? { ...q, is_active: !q.is_active } : q));
+    await fetch('/api/bogga/visitor-qa', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: item.id, is_active: !item.is_active }),
+    });
+  }
+
   // ── Admin Sessions ────────────────────────────────────────────────────────
   async function loadAdminSessions() {
     setAdminSessLoading(true);
@@ -758,6 +835,7 @@ export default function BoggarAdminPage() {
     { id: 'lexicon',     label: '📖 بنك الكلمات',       show: canSee('lexicon') },
     { id: 'recruitment', label: '📋 طلبات التوظيف',     show: canSee('recruitment') },
     { id: 'admins',      label: '👑 إدارة المشرفين',    show: isSuperAdmin },
+    { id: 'visitor_qa',  label: '🤖 فهيم الزوار',       show: isSuperAdmin },
     { id: 'setup',       label: '⚙️ إعداد',              show: canSee('setup') },
   ].filter(t => t.show);
 
@@ -1557,6 +1635,123 @@ export default function BoggarAdminPage() {
             </div>
           )}
 
+          {/* ══ Visitor Q&A — فهيم الزوار ══════════════════════ */}
+          {activeTab === 'visitor_qa' && isSuperAdmin && (
+            <div>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 6 }}>🤖 قاعدة معرفة فهيم للزوار</h2>
+                  <p style={{ color: 'var(--muted)', fontSize: '.88rem', lineHeight: 1.6, maxWidth: 560 }}>
+                    الأسئلة والإجابات التي تضيفها هنا يحفظها فهيم ويستخدمها تلقائياً للرد على زوار الموقع.
+                    كلما أضفت معلومات أكثر، كانت إجاباته أدق وأكثر إقناعاً.
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setQaEditing(null); setQaForm({ question: '', answer: '', sort_order: visitorQA.length }); setQaMsg(null); setQaShowModal(true); }}
+                  className="btn btn-primary"
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  + إضافة سؤال وإجابة
+                </button>
+              </div>
+
+              {/* Info banner */}
+              <div style={{ background: '#eef5ff', borderRadius: 12, padding: '14px 18px', marginBottom: 22, display: 'flex', gap: 12, alignItems: 'flex-start', border: '1.5px solid #b3ccee' }}>
+                <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>💡</span>
+                <div style={{ fontSize: '.86rem', color: '#1a3a5c', lineHeight: 1.75 }}>
+                  <strong>كيف يعمل:</strong> عند سؤال زائر فهيم، يبحث النظام في هذه القائمة ويُدرج الإجابات المناسبة في سياق الذكاء الاصطناعي.
+                  السؤال المُدخَل لا يجب أن يطابق السؤال حرفياً — فهيم يفهم المعنى.
+                  <br /><strong>نصيحة:</strong> أضف أسئلة عن الأسعار، الأعمار، المناهج، طريقة الدفع، والنادي الصيفي.
+                </div>
+              </div>
+
+              {/* SQL reminder */}
+              <div style={{ background: '#fffbeb', borderRadius: 10, padding: '11px 16px', marginBottom: 22, fontSize: '.82rem', color: '#92400e', border: '1px solid #fde68a' }}>
+                ⚠️ تأكد من تشغيل SQL إنشاء جدول <code style={{ background: '#fff', padding: '1px 6px', borderRadius: 4 }}>faheem_visitor_qa</code> في Supabase (موجود في تبويب الإعداد).
+              </div>
+
+              {qaLoading ? (
+                <div style={{ textAlign: 'center', padding: 40 }}>
+                  <span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} />
+                </div>
+              ) : visitorQA.length === 0 ? (
+                <div className="empty-state card" style={{ padding: '48px 24px' }}>
+                  <span className="empty-icon">🤖</span>
+                  <p style={{ fontWeight: 700, marginBottom: 8 }}>لا توجد أسئلة بعد</p>
+                  <p style={{ color: 'var(--muted)', fontSize: '.88rem' }}>ابدأ بإضافة أول سؤال وإجابة لتزويد فهيم بمعلومات الأكاديمية</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {visitorQA.map((item, idx) => (
+                    <div key={item.id} style={{
+                      background: '#fff', borderRadius: 14, border: '1.5px solid var(--border)',
+                      padding: '18px 20px', opacity: item.is_active ? 1 : .55,
+                      transition: 'opacity .2s',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
+
+                        {/* Content */}
+                        <div style={{ flex: '1 1 300px', minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <span style={{ background: 'var(--primary-lt)', color: 'var(--primary)', borderRadius: 6, padding: '2px 10px', fontSize: '.75rem', fontWeight: 800 }}>
+                              #{idx + 1}
+                            </span>
+                            {!item.is_active && (
+                              <span style={{ background: '#f1f5f9', color: '#94a3b8', borderRadius: 6, padding: '2px 8px', fontSize: '.72rem', fontWeight: 700 }}>
+                                معطّل
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 8, fontSize: '.95rem' }}>
+                            ❓ {item.question}
+                          </div>
+                          <div style={{ color: '#475569', fontSize: '.88rem', lineHeight: 1.75, background: 'var(--bg)', borderRadius: 8, padding: '10px 14px' }}>
+                            💬 {item.answer}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                          <button
+                            onClick={() => toggleQAActive(item)}
+                            className="btn btn-sm"
+                            style={{ background: item.is_active ? '#f0fdf4' : '#f1f5f9', color: item.is_active ? '#16a34a' : '#64748b', border: `1px solid ${item.is_active ? '#86efac' : '#cbd5e1'}` }}
+                            title={item.is_active ? 'انقر لتعطيل السؤال' : 'انقر لتفعيل السؤال'}
+                          >
+                            {item.is_active ? '✅ مفعّل' : '⏸ معطّل'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setQaEditing(item);
+                              setQaForm({ question: item.question, answer: item.answer, sort_order: item.sort_order ?? idx });
+                              setQaMsg(null);
+                              setQaShowModal(true);
+                            }}
+                            className="btn btn-sm btn-outline"
+                            style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
+                          >
+                            ✏️ تعديل
+                          </button>
+                          <button
+                            onClick={() => handleDeleteQA(item.id)}
+                            disabled={qaDeletingId === item.id}
+                            className="btn btn-sm btn-danger"
+                          >
+                            {qaDeletingId === item.id
+                              ? <span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} />
+                              : '🗑️'}
+                          </button>
+                        </div>
+
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ══ Setup ═════════════════════════════════════════════ */}
           {activeTab === 'setup' && (
             <div>
@@ -1837,6 +2032,80 @@ export default function BoggarAdminPage() {
                 📋 سيُرسَل بريد إلى <strong>{schedModal.email}</strong> بموعد {fmtDate(schedDate)} الساعة {schedTime} مع المقابِل <strong>{schedInterviewer}</strong>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ══ Visitor Q&A Modal ══════════════════════════════════════════════ */}
+      {qaShowModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: 20 }}
+          onClick={e => { if (e.target === e.currentTarget) setQaShowModal(false); }}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: '32px 28px', width: '100%', maxWidth: 540, direction: 'rtl', boxShadow: '0 20px 60px rgba(0,0,0,.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.1rem', margin: 0 }}>
+                {qaEditing ? '✏️ تعديل سؤال وإجابة' : '+ إضافة سؤال وإجابة جديد'}
+              </h2>
+              <button onClick={() => setQaShowModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.3rem', color: 'var(--muted)', cursor: 'pointer', padding: 2, lineHeight: 1 }}>✕</button>
+            </div>
+
+            {qaMsg && (
+              <div className={`alert alert-${qaMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 14 }}>
+                {qaMsg.text}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveQA}>
+              <div className="form-group">
+                <label className="form-label">❓ السؤال *</label>
+                <input
+                  className="form-input"
+                  value={qaForm.question}
+                  required
+                  onChange={e => setQaForm(p => ({ ...p, question: e.target.value }))}
+                  placeholder="مثال: ما هي أسعار الاشتراك في الأكاديمية؟"
+                  disabled={qaSaving}
+                />
+                <p className="form-help">اكتب السؤال كما قد يسأله ولي الأمر</p>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">💬 الإجابة *</label>
+                <textarea
+                  className="form-input"
+                  value={qaForm.answer}
+                  required
+                  rows={4}
+                  onChange={e => setQaForm(p => ({ ...p, answer: e.target.value }))}
+                  placeholder="اكتب الإجابة الرسمية للأكاديمية..."
+                  disabled={qaSaving}
+                  style={{ resize: 'vertical', minHeight: 100 }}
+                />
+                <p className="form-help">فهيم سيستخدم هذه الإجابة كمرجع — كن دقيقاً ومقنعاً</p>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">🔢 الترتيب</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  min={0}
+                  value={qaForm.sort_order}
+                  onChange={e => setQaForm(p => ({ ...p, sort_order: parseInt(e.target.value) || 0 }))}
+                  style={{ maxWidth: 120 }}
+                  disabled={qaSaving}
+                />
+                <p className="form-help">الأسئلة ذات الرقم الأصغر تُعطى أولوية في السياق</p>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+                <button type="submit" className="btn btn-primary" disabled={qaSaving} style={{ flex: 1, justifyContent: 'center', gap: 8 }}>
+                  {qaSaving
+                    ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />جارٍ الحفظ...</>
+                    : qaEditing ? '✅ حفظ التعديلات' : '✅ إضافة السؤال'}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => setQaShowModal(false)} disabled={qaSaving}>إلغاء</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from 'next/server';
+import { NextResponse }      from 'next/server';
+import { createAdminClient } from '../../../lib/supabase-admin';
 
-const SYSTEM_PROMPT = `أنت "فهيم"، ممثل خدمة الزوار الذكي لأكاديمية عارم، وهي أكاديمية أونلاين متخصصة في تعليم اللغة العربية للأطفال من عمر 5 إلى 14 سنة.
+const BASE_SYSTEM_PROMPT = `أنت "فهيم"، ممثل خدمة الزوار الذكي لأكاديمية عارم، وهي أكاديمية أونلاين متخصصة في تعليم اللغة العربية للأطفال من عمر 5 إلى 14 سنة.
 تتميز الأكاديمية بـ: نظام تقييم تشخيصي ذكي مجاني، وحصص أونلاين تفاعلية مع معلمين متخصصين، ومساعد ذكي اسمه فهيم يرافق الطالب.
 أجب باختصار بليغ ومقنع جداً في جملتين أو ثلاث جمل فقط، بلغة عربية فصيحة واضحة ومحببة لأولياء الأمور.
 ركّز على إبراز قيمة المنصة وفوائدها، وادعُ الزائر بلطف لتجربة التقييم المجاني.
@@ -21,6 +22,21 @@ const GEMINI_MODELS = [
   'gemini-1.5-flash',
 ];
 
+async function fetchContext() {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from('faheem_visitor_qa')
+      .select('question, answer')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function POST(req) {
   let body;
   try { body = await req.json(); } catch {
@@ -32,13 +48,23 @@ export async function POST(req) {
     return NextResponse.json({ error: 'السؤال مطلوب' }, { status: 400 });
   }
 
-  const geminiKey = process.env.GEMINI_API_KEY;
+  // Build dynamic system prompt with DB context
+  const qaItems = await fetchContext();
+  let systemPrompt = BASE_SYSTEM_PROMPT;
+  if (qaItems.length > 0) {
+    const knowledgeBlock = qaItems
+      .map(item => `سؤال: ${item.question}\nإجابة: ${item.answer}`)
+      .join('\n\n');
+    systemPrompt += `\n\nفيما يلي معلومات وإجابات رسمية من إدارة الأكاديمية — استخدمها بدقة عند الإجابة:\n\n${knowledgeBlock}`;
+  }
+
+  const geminiKey    = process.env.GEMINI_API_KEY;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
   const geminiBody = JSON.stringify({
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: [{ role: 'user', parts: [{ text: question.trim() }] }],
-    generationConfig: { maxOutputTokens: 300, temperature: 0.75, topP: 0.9 },
+    generationConfig: { maxOutputTokens: 350, temperature: 0.7, topP: 0.9 },
   });
 
   if (geminiKey) {
@@ -69,8 +95,8 @@ export async function POST(req) {
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 300,
-          system: SYSTEM_PROMPT,
+          max_tokens: 350,
+          system: systemPrompt,
           messages: [{ role: 'user', content: question.trim() }],
         }),
       }, 5000);
