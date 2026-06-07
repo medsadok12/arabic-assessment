@@ -82,7 +82,8 @@ export async function POST(req) {
         );
         if (!res.ok) continue;
         const json = await res.json().catch(() => null);
-        const reply = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        const parts = json?.candidates?.[0]?.content?.parts;
+        const reply = parts?.map(p => p.text ?? '').join('').trim();
         if (reply) return NextResponse.json({ reply });
       } catch { /* try next model */ }
     }
