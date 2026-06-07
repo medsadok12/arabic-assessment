@@ -869,6 +869,12 @@ export default function BoggarAdminPage() {
         .perm-icon:hover { opacity:1; }
         .quick-link { text-decoration:none; transition:opacity .15s; }
         .quick-link:hover { opacity:.75; }
+        .admin-tab-btn:hover { background: #eef5ff !important; color: var(--primary) !important; }
+        @media (max-width: 800px) {
+          .admin-layout { flex-direction: column !important; }
+          .admin-sidebar { width: 100% !important; position: static !important; flex-direction: row !important; flex-wrap: wrap !important; border-radius: 14px !important; }
+          .admin-sidebar-nav { flex-direction: row !important; flex-wrap: wrap !important; }
+        }
       `}</style>
 
       <Navbar user={user} />
@@ -967,38 +973,65 @@ export default function BoggarAdminPage() {
           ) : (
             <>
 
-          {/* ── Tabs bar ────────────────────────────────────────── */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 28, borderBottom: '2px solid var(--border)', paddingBottom: 14, position: 'relative' }}>
-            {TABS.map(t => (
-              <div key={t.id} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                <button
-                  onClick={() => setTab(t.id)}
-                  style={{
-                    padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                    fontFamily: 'inherit', fontSize: '.88rem', fontWeight: 700,
-                    background: activeTab === t.id ? 'var(--primary)' : 'var(--bg)',
-                    color: activeTab === t.id ? '#fff' : 'var(--muted)',
-                    transition: 'all .15s',
-                    paddingLeft: isSuperAdmin && CONTROLLABLE.includes(t.id) ? 8 : 14,
-                  }}>
-                  {t.label}
-                </button>
-                {isSuperAdmin && CONTROLLABLE.includes(t.id) && (
-                  <button
-                    onClick={e => openPermPopover(t.id, e)}
-                    className="perm-icon"
-                    title={`${lang === 'ar' ? 'إدارة صلاحيات تبويب' : 'Manage permissions for tab'} "${(lang === 'ar' ? TAB_NAMES : TAB_NAMES_EN)[t.id]}"`}
-                    style={{
-                      background: 'none', border: 'none', cursor: 'pointer', padding: '0 6px 0 4px',
-                      fontSize: '.72rem', lineHeight: 1, color: activeTab === t.id ? 'rgba(255,255,255,.7)' : 'var(--muted)',
-                      marginRight: -6,
-                    }}>
-                    🔒
-                  </button>
-                )}
+          {/* ── Admin layout: sidebar + content ───────────────── */}
+          <div className="admin-layout" style={{ display: 'flex', gap: 22, alignItems: 'flex-start' }}>
+
+          {/* ── Vertical Sidebar ── */}
+          <div className="admin-sidebar" style={{
+            width: 218, flexShrink: 0,
+            position: 'sticky', top: 80,
+            background: '#fff', borderRadius: 20,
+            border: '1.5px solid var(--border)',
+            overflow: 'hidden',
+            boxShadow: '0 4px 24px rgba(24,95,165,.08)',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            {/* Sidebar brand strip */}
+            <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid var(--border)', background: 'linear-gradient(135deg,#f8faff,#eef3fb)' }}>
+              <div style={{ fontSize: '.68rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '.07em', textTransform: 'uppercase' }}>
+                {lang === 'ar' ? 'القائمة' : 'Navigation'}
               </div>
-            ))}
+            </div>
+
+            {/* Tab buttons */}
+            <div className="admin-sidebar-nav" style={{ padding: '8px 6px', display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+              {TABS.map(t => (
+                <div key={t.id} style={{ display: 'flex', alignItems: 'center' }}>
+                  <button
+                    className={activeTab === t.id ? '' : 'admin-tab-btn'}
+                    onClick={() => setTab(t.id)}
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '10px 13px', borderRadius: 11, border: 'none', cursor: 'pointer',
+                      fontFamily: 'inherit', fontSize: '.875rem', fontWeight: 700,
+                      background: activeTab === t.id ? 'var(--primary)' : 'transparent',
+                      color: activeTab === t.id ? '#fff' : '#334155',
+                      transition: 'all .15s', textAlign: 'inherit',
+                      boxShadow: activeTab === t.id ? '0 2px 10px rgba(24,95,165,.28)' : 'none',
+                    }}>
+                    {t.label}
+                  </button>
+                  {isSuperAdmin && CONTROLLABLE.includes(t.id) && (
+                    <button
+                      onClick={e => openPermPopover(t.id, e)}
+                      className="perm-icon"
+                      title={`${lang === 'ar' ? 'إدارة صلاحيات' : 'Permissions'}: "${(lang === 'ar' ? TAB_NAMES : TAB_NAMES_EN)[t.id]}"`}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px',
+                        fontSize: '.68rem', lineHeight: 1,
+                        color: activeTab === t.id ? 'rgba(255,255,255,.5)' : '#c4cdd8',
+                        flexShrink: 0,
+                      }}>
+                      🔒
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
+
+          {/* ── Content area ─────────────────────────────────────── */}
+          <div style={{ flex: 1, minWidth: 0 }}>
 
           {/* ══ Overview ══════════════════════════════════════════ */}
           {activeTab === 'overview' && (
@@ -1840,6 +1873,9 @@ export default function BoggarAdminPage() {
               )}
             </div>
           )}
+
+          </div> {/* end content area */}
+          </div> {/* end admin-layout */}
 
             </> /* end of tabs content */
           )}
