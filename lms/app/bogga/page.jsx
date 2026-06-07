@@ -8,6 +8,7 @@ import AssessmentCodes                  from '../../components/AssessmentCodes';
 import StudentCodes                     from '../../components/StudentCodes';
 import TeacherCodes                     from '../../components/TeacherCodes';
 import GroupsManager                    from '../../components/GroupsManager';
+import { useLanguage }                  from '../../contexts/LanguageContext';
 
 // ── Time slots 08:00 → 20:00, 30-min increments (25 slots) ─────────────────
 const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
@@ -24,12 +25,20 @@ const TAB_NAMES = {
   sessions: 'الحصص', results: 'نتائج الطلاب', lexicon: 'بنك الكلمات',
   recruitment: 'طلبات التوظيف', setup: 'الإعداد',
 };
+const TAB_NAMES_EN = {
+  overview: 'Overview', codes: 'Codes', groups: 'Students',
+  sessions: 'Sessions', results: 'Results', lexicon: 'Word Bank',
+  recruitment: 'Job Applications', setup: 'Setup',
+};
 
 // ── Arabic month names ──────────────────────────────────────────────────────
 const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
                    'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-function fmtDate(iso) {
+function fmtDate(iso, langCode) {
   if (!iso) return '';
+  if (langCode !== 'ar') {
+    return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
   const [y, m, d] = iso.split('-');
   return `${parseInt(d)} ${MONTHS_AR[parseInt(m) - 1]} ${y}`;
 }
@@ -69,12 +78,7 @@ function ToggleSwitch({ checked, onChange, disabled }) {
   );
 }
 
-const STATUS_LABELS = { pending: 'قيد المراجعة', reviewed: 'تمت المراجعة', accepted: 'مقبول', rejected: 'مرفوض' };
 const STATUS_COLORS = { pending: '#b56a00', reviewed: '#185FA5', accepted: '#1a7c40', rejected: '#e53e3e' };
-const IV_LABELS = {
-  pending: '⏳ بانتظار الرد', confirmed: '✅ مؤكد',
-  reschedule_requested: '📅 طلب تعديل', rejected: '❌ اعتذر',
-};
 const IV_COLORS = {
   pending: '#b56a00', confirmed: '#1a7c40',
   reschedule_requested: '#185FA5', rejected: '#e53e3e',
@@ -197,8 +201,9 @@ NOTIFY pgrst, 'reload schema';`;
 
 // ════════════════════════════════════════════════════════════════════════════
 export default function BoggarAdminPage() {
-  const supabase = createClient();
-  const router   = useRouter();
+  const supabase      = createClient();
+  const router        = useRouter();
+  const { t: tr, lang } = useLanguage();
 
   const [user, setUser] = useState(null);
   const [role, setRole] = useState('');
@@ -408,10 +413,17 @@ export default function BoggarAdminPage() {
 
   function relativeTime(iso) {
     const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-    if (diff < 60) return 'الآن';
-    if (diff < 3600) return `منذ ${Math.floor(diff / 60)} د`;
-    if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} س`;
-    return `منذ ${Math.floor(diff / 86400)} يوم`;
+    if (lang === 'ar') {
+      if (diff < 60) return 'الآن';
+      if (diff < 3600) return `منذ ${Math.floor(diff / 60)} د`;
+      if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} س`;
+      return `منذ ${Math.floor(diff / 86400)} يوم`;
+    } else {
+      if (diff < 60) return 'Just now';
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return `${Math.floor(diff / 86400)}d ago`;
+    }
   }
 
   const NOTIF_ICONS = { recruitment: '📋', interview: '🗓️', assessment: '📝', teacher: '👨‍🏫' };
@@ -492,7 +504,7 @@ export default function BoggarAdminPage() {
   }
 
   async function deleteApp(id, name) {
-    if (!confirm(`هل تريد حذف طلب "${name}" نهائياً؟`)) return;
+    if (!confirm(lang === 'ar' ? `هل تريد حذف طلب "${name}" نهائياً؟` : `Delete "${name}"'s application permanently?`)) return;
     setDeletingApp(id);
     const res = await fetch('/api/bogga/recruitment', {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' },
@@ -502,7 +514,7 @@ export default function BoggarAdminPage() {
       setApps(prev => prev.filter(a => a.id !== id));
       setInterviewsMap(prev => { const m = { ...prev }; delete m[id]; return m; });
     } else {
-      alert((await res.json()).error || 'تعذر حذف الطلب');
+      alert((await res.json()).error || (lang === 'ar' ? 'تعذر حذف الطلب' : 'Failed to delete application'));
     }
     setDeletingApp(null);
   }
@@ -512,7 +524,7 @@ export default function BoggarAdminPage() {
     try {
       const res  = await fetch(`/api/bogga/recruitment/${id}`);
       const data = await res.json();
-      if (!res.ok || !data.cv_base64) { alert(data.error || 'لا توجد سيرة ذاتية'); return; }
+      if (!res.ok || !data.cv_base64) { alert(data.error || (lang === 'ar' ? 'لا توجد سيرة ذاتية' : 'No CV found')); return; }
       const a = document.createElement('a');
       a.href = `data:application/pdf;base64,${data.cv_base64}`;
       a.download = data.cv_filename || 'cv.pdf';
@@ -554,7 +566,7 @@ export default function BoggarAdminPage() {
   }
 
   async function cancelInterview(ivId, appId) {
-    if (!confirm('هل تريد إلغاء هذه المقابلة؟')) return;
+    if (!confirm(lang === 'ar' ? 'هل تريد إلغاء هذه المقابلة؟' : 'Cancel this interview?')) return;
     setCancellingInterview(ivId);
     const res = await fetch('/api/bogga/interviews', {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' },
@@ -638,8 +650,8 @@ export default function BoggarAdminPage() {
 
   async function handleSuspendAdmin(id, currentStatus) {
     const action = currentStatus === 'suspended' ? 'activate' : 'suspend';
-    const label  = action === 'suspend' ? 'إيقاف' : 'تفعيل';
-    if (!confirm(`هل تريد ${label} حساب هذا المشرف؟`)) return;
+    const label  = action === 'suspend' ? (lang === 'ar' ? 'إيقاف' : 'suspend') : (lang === 'ar' ? 'تفعيل' : 'activate');
+    if (!confirm(lang === 'ar' ? `هل تريد ${label} حساب هذا المشرف؟` : `Do you want to ${label} this admin's account?`)) return;
     setSuspendingId(id);
     const res  = await fetch(`/api/bogga/admins/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -661,7 +673,7 @@ export default function BoggarAdminPage() {
   }
 
   async function handleDeleteAdmin(id, name) {
-    if (!confirm(`هل تريد حذف حساب "${name}" نهائياً؟`)) return;
+    if (!confirm(lang === 'ar' ? `هل تريد حذف حساب "${name}" نهائياً؟` : `Delete "${name}"'s account permanently?`)) return;
     setDeletingId(id);
     const res  = await fetch(`/api/bogga/admins/${id}`, { method: 'DELETE' });
     const data = await res.json();
@@ -671,7 +683,7 @@ export default function BoggarAdminPage() {
   }
 
   async function handlePromote() {
-    if (!confirm('سيتم ترقية حسابك إلى مدير مطلق. هذا الإجراء لا يمكن التراجع عنه.')) return;
+    if (!confirm(lang === 'ar' ? 'سيتم ترقية حسابك إلى مدير مطلق. هذا الإجراء لا يمكن التراجع عنه.' : 'Your account will be promoted to Super Admin. This action cannot be undone.')) return;
     setPromoting(true); setPromoMsg(null);
     const res  = await fetch('/api/bogga/make-super-admin', { method: 'POST' });
     const data = await res.json();
@@ -723,7 +735,7 @@ export default function BoggarAdminPage() {
   }
 
   async function handleDeleteQA(id) {
-    if (!confirm('هل تريد حذف هذا السؤال نهائياً؟')) return;
+    if (!confirm(lang === 'ar' ? 'هل تريد حذف هذا السؤال نهائياً؟' : 'Delete this question permanently?')) return;
     setQaDeletingId(id);
     const res = await fetch('/api/bogga/visitor-qa', {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' },
@@ -750,7 +762,7 @@ export default function BoggarAdminPage() {
   }
 
   async function handleAdminCancel(id) {
-    if (!confirm('هل تريد إلغاء هذه الحصة؟')) return;
+    if (!confirm(lang === 'ar' ? 'هل تريد إلغاء هذه الحصة؟' : 'Cancel this session?')) return;
     setAdminCancellingId(id);
     const res = await fetch('/api/bogga/sessions', {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' },
@@ -776,12 +788,12 @@ export default function BoggarAdminPage() {
 
   function getOnlineInfo(adminId) {
     const s = onlineStatus[adminId];
-    if (!s) return { online: false, label: 'لم يُسجَّل دخول بعد', color: '#94a3b8' };
+    if (!s) return { online: false, label: lang === 'ar' ? 'لم يُسجَّل دخول بعد' : 'Never logged in', color: '#94a3b8' };
     const diffMin = Math.floor((Date.now() - new Date(s.last_seen)) / 60000);
-    if (diffMin < 5)    return { online: true,  label: 'متصل الآن',                           color: '#16a34a' };
-    if (diffMin < 60)   return { online: false, label: `منذ ${diffMin} دقيقة`,                color: '#f59e0b' };
-    if (diffMin < 1440) return { online: false, label: `منذ ${Math.floor(diffMin/60)} ساعة`, color: '#94a3b8' };
-    return               { online: false, label: `منذ ${Math.floor(diffMin/1440)} يوم`,       color: '#94a3b8' };
+    if (diffMin < 5)    return { online: true,  label: lang === 'ar' ? 'متصل الآن'                              : 'Online now',               color: '#16a34a' };
+    if (diffMin < 60)   return { online: false, label: lang === 'ar' ? `منذ ${diffMin} دقيقة`                   : `${diffMin}m ago`,          color: '#f59e0b' };
+    if (diffMin < 1440) return { online: false, label: lang === 'ar' ? `منذ ${Math.floor(diffMin/60)} ساعة`     : `${Math.floor(diffMin/60)}h ago`, color: '#94a3b8' };
+    return               { online: false, label: lang === 'ar' ? `منذ ${Math.floor(diffMin/1440)} يوم`           : `${Math.floor(diffMin/1440)}d ago`, color: '#94a3b8' };
   }
 
   async function openActivityModal(a) {
@@ -805,17 +817,17 @@ export default function BoggarAdminPage() {
 
   if (suspended) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', direction: 'rtl' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
         <div style={{ textAlign: 'center', padding: '48px 36px', background: '#fff', borderRadius: 24, boxShadow: '0 8px 40px rgba(0,0,0,.12)', maxWidth: 420 }}>
           <div style={{ fontSize: '3.5rem', marginBottom: 16 }}>🔒</div>
-          <h2 style={{ color: '#b91c1c', fontWeight: 800, marginBottom: 12, fontSize: '1.3rem' }}>حسابك معطل مؤقتاً</h2>
-          <p style={{ color: '#64748b', lineHeight: 1.8, marginBottom: 28 }}>تواصل مع المدير العام لإعادة تفعيل حسابك.</p>
+          <h2 style={{ color: '#b91c1c', fontWeight: 800, marginBottom: 12, fontSize: '1.3rem' }}>{tr('admin.suspended')}</h2>
+          <p style={{ color: '#64748b', lineHeight: 1.8, marginBottom: 28 }}>{tr('admin.suspendedMsg')}</p>
           <button
             onClick={() => supabase.auth.signOut().then(() => router.push('/auth/login'))}
             className="btn btn-ghost"
             style={{ fontSize: '.9rem' }}
           >
-            تسجيل الخروج
+            {tr('nav.signOut')}
           </button>
         </div>
       </div>
@@ -824,20 +836,28 @@ export default function BoggarAdminPage() {
 
   const isSuperAdmin = role === 'super_admin';
 
+  const STATUS_LABELS = lang === 'ar'
+    ? { pending: 'قيد المراجعة', reviewed: 'تمت المراجعة', accepted: 'مقبول', rejected: 'مرفوض' }
+    : { pending: 'Pending', reviewed: 'Reviewed', accepted: 'Accepted', rejected: 'Rejected' };
+
+  const IV_LABELS = lang === 'ar'
+    ? { pending: '⏳ بانتظار الرد', confirmed: '✅ مؤكد', reschedule_requested: '📅 طلب تعديل', rejected: '❌ اعتذر' }
+    : { pending: '⏳ Awaiting Reply', confirmed: '✅ Confirmed', reschedule_requested: '📅 Reschedule Requested', rejected: '❌ Declined' };
+
   // Build TABS with permission filtering
-  const canSee = t => isSuperAdmin || (CONTROLLABLE.includes(t) && myPermissions[t] === true);
+  const canSee = id => isSuperAdmin || (CONTROLLABLE.includes(id) && myPermissions[id] === true);
   const TABS = [
-    { id: 'overview',    label: '📊 نظرة عامة',        show: canSee('overview') },
-    { id: 'codes',       label: '🔑 الأكواد',            show: canSee('codes') },
-    { id: 'groups',      label: '👥 إدارة الطلاب',      show: canSee('groups') },
-    { id: 'sessions',    label: '📅 الحصص',              show: canSee('sessions') },
-    { id: 'results',     label: '🏆 نتائج الطلاب',      show: canSee('results') },
-    { id: 'lexicon',     label: '📖 بنك الكلمات',       show: canSee('lexicon') },
-    { id: 'recruitment', label: '📋 طلبات التوظيف',     show: canSee('recruitment') },
-    { id: 'admins',      label: '👑 إدارة المشرفين',    show: isSuperAdmin },
-    { id: 'visitor_qa',  label: '🤖 فهيم الزوار',       show: isSuperAdmin },
-    { id: 'setup',       label: '⚙️ إعداد',              show: canSee('setup') },
-  ].filter(t => t.show);
+    { id: 'overview',    label: tr('admin.tabs.overview'),    show: canSee('overview') },
+    { id: 'codes',       label: tr('admin.tabs.codes'),       show: canSee('codes') },
+    { id: 'groups',      label: tr('admin.tabs.groups'),      show: canSee('groups') },
+    { id: 'sessions',    label: tr('admin.tabs.sessions'),    show: canSee('sessions') },
+    { id: 'results',     label: tr('admin.tabs.results'),     show: canSee('results') },
+    { id: 'lexicon',     label: tr('admin.tabs.lexicon'),     show: canSee('lexicon') },
+    { id: 'recruitment', label: tr('admin.tabs.recruitment'), show: canSee('recruitment') },
+    { id: 'admins',      label: tr('admin.tabs.admins'),      show: isSuperAdmin },
+    { id: 'visitor_qa',  label: tr('admin.tabs.visitor_qa'), show: isSuperAdmin },
+    { id: 'setup',       label: tr('admin.tabs.setup'),       show: canSee('setup') },
+  ].filter(tab => tab.show);
 
   const activeTab = TABS.some(t => t.id === tab) ? tab : TABS[0]?.id ?? 'overview';
 
@@ -852,15 +872,15 @@ export default function BoggarAdminPage() {
       `}</style>
 
       <Navbar user={user} />
-      <main className="page-wrap" dir="rtl">
+      <main className="page-wrap" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
         <div className="container">
 
           {/* ── Header ─────────────────────────────────────────── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28, flexWrap: 'wrap' }}>
             <div>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>🏰 حصن الإدارة</h1>
+              <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>{tr('admin.title')}</h1>
               <p style={{ color: isSuperAdmin ? '#1a7c40' : 'var(--muted)', fontSize: '.88rem', fontWeight: isSuperAdmin ? 700 : 400 }}>
-                {isSuperAdmin ? '👑 مدير مطلق — صلاحيات كاملة' : '🛡️ مشرف مساعد — صلاحيات محدودة'}
+                {isSuperAdmin ? tr('admin.superRole') : tr('admin.assistantRole')}
               </p>
             </div>
             <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -868,7 +888,7 @@ export default function BoggarAdminPage() {
               <div ref={bellRef} style={{ position: 'relative' }}>
                 <button
                   onClick={handleBellOpen}
-                  title="الإشعارات"
+                  title={lang === 'ar' ? 'الإشعارات' : 'Notifications'}
                   style={{
                     position: 'relative', background: bellOpen ? 'var(--primary)' : 'var(--bg)',
                     border: '1.5px solid var(--border)', borderRadius: 10,
@@ -902,17 +922,17 @@ export default function BoggarAdminPage() {
                       padding: '14px 16px 10px', borderBottom: '1px solid var(--border)',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     }}>
-                      <span style={{ fontWeight: 800, fontSize: '.95rem' }}>الإشعارات</span>
+                      <span style={{ fontWeight: 800, fontSize: '.95rem' }}>{lang === 'ar' ? 'الإشعارات' : 'Notifications'}</span>
                       {notifications.some(n => !n.is_read) && (
                         <button onClick={markAllRead} style={{
                           background: 'none', border: 'none', cursor: 'pointer',
                           color: 'var(--primary)', fontSize: '.78rem', fontWeight: 700,
-                        }}>تحديد الكل كمقروء</button>
+                        }}>{lang === 'ar' ? 'تحديد الكل كمقروء' : 'Mark all as read'}</button>
                       )}
                     </div>
                     {notifications.length === 0 ? (
                       <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--muted)', fontSize: '.88rem' }}>
-                        لا توجد إشعارات
+                        {lang === 'ar' ? 'لا توجد إشعارات' : 'No notifications'}
                       </div>
                     ) : notifications.map(n => (
                       <div key={n.id} style={{
@@ -933,7 +953,7 @@ export default function BoggarAdminPage() {
                 )}
               </div>
 
-              <Link href="/bogga/lexicon" className="btn btn-outline btn-sm">📖 بنك الكلمات</Link>
+              <Link href="/bogga/lexicon" className="btn btn-outline btn-sm">📖 {lang === 'ar' ? 'بنك الكلمات' : 'Word Bank'}</Link>
             </div>
           </div>
 
@@ -941,8 +961,8 @@ export default function BoggarAdminPage() {
           {!isSuperAdmin && TABS.length === 0 ? (
             <div className="card" style={{ textAlign: 'center', padding: '56px 24px' }}>
               <div style={{ fontSize: '3rem', marginBottom: 14 }}>🔒</div>
-              <h2 style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 10 }}>لا توجد لك صلاحيات بعد</h2>
-              <p style={{ color: 'var(--muted)' }}>تواصل مع المدير العام لمنحك صلاحيات الوصول إلى التبويبات المناسبة.</p>
+              <h2 style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 10 }}>{lang === 'ar' ? 'لا توجد لك صلاحيات بعد' : 'No permissions yet'}</h2>
+              <p style={{ color: 'var(--muted)' }}>{lang === 'ar' ? 'تواصل مع المدير العام لمنحك صلاحيات الوصول إلى التبويبات المناسبة.' : 'Contact the super admin to grant you access to the appropriate tabs.'}</p>
             </div>
           ) : (
             <>
@@ -967,7 +987,7 @@ export default function BoggarAdminPage() {
                   <button
                     onClick={e => openPermPopover(t.id, e)}
                     className="perm-icon"
-                    title={`إدارة صلاحيات تبويب "${TAB_NAMES[t.id]}"`}
+                    title={`${lang === 'ar' ? 'إدارة صلاحيات تبويب' : 'Manage permissions for tab'} "${(lang === 'ar' ? TAB_NAMES : TAB_NAMES_EN)[t.id]}"`}
                     style={{
                       background: 'none', border: 'none', cursor: 'pointer', padding: '0 6px 0 4px',
                       fontSize: '.72rem', lineHeight: 1, color: activeTab === t.id ? 'rgba(255,255,255,.7)' : 'var(--muted)',
@@ -985,10 +1005,10 @@ export default function BoggarAdminPage() {
             <div>
               <div className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 32 }}>
                 {[
-                  { icon: '📋', val: stats.assessments, lbl: 'إجمالي التقييمات' },
-                  { icon: '✅', val: stats.pass,         lbl: 'ناجحون (≥70%)' },
-                  { icon: '📊', val: stats.avg + '%',    lbl: 'متوسط النتائج' },
-                  ...(isSuperAdmin ? [{ icon: '📄', val: stats.applications, lbl: 'طلبات التوظيف' }] : []),
+                  { icon: '📋', val: stats.assessments, lbl: tr('admin.overview.totalAssessments') },
+                  { icon: '✅', val: stats.pass,         lbl: lang === 'ar' ? 'ناجحون (≥70%)' : 'Passed (≥70%)' },
+                  { icon: '📊', val: stats.avg + '%',    lbl: lang === 'ar' ? 'متوسط النتائج' : 'Average Score' },
+                  ...(isSuperAdmin ? [{ icon: '📄', val: stats.applications, lbl: tr('admin.overview.applications') }] : []),
                 ].map(s => (
                   <div key={s.lbl} className="stat-card">
                     <span className="stat-icon">{s.icon}</span>
@@ -998,24 +1018,39 @@ export default function BoggarAdminPage() {
               </div>
               <div className="card">
                 <h3 style={{ fontWeight: 700, marginBottom: 16 }}>
-                  {isSuperAdmin ? '👑 صلاحيات المدير المطلق' : '🛡️ صلاحياتك كمشرف مساعد'}
+                  {isSuperAdmin
+                    ? (lang === 'ar' ? '👑 صلاحيات المدير المطلق' : '👑 Super Admin Permissions')
+                    : (lang === 'ar' ? '🛡️ صلاحياتك كمشرف مساعد' : '🛡️ Your Permissions as Assistant Admin')}
                 </h3>
                 {isSuperAdmin ? (
                   <ul style={{ paddingRight: 20, lineHeight: 2.2 }}>
-                    <li>✅ تعديل وحذف أي شيء في المنصة</li>
-                    <li>✅ إدارة المشرفين المساعدين وضبط صلاحياتهم</li>
-                    <li>✅ جدولة مقابلات التوظيف وإرسال دعوات تفاعلية</li>
-                    <li>✅ الاطلاع على طلبات التوظيف والسير الذاتية</li>
-                    <li>✅ تعديل بنك الكلمات اللغوية</li>
-                    <li>✅ توليد أكواد التقييم والدعوة</li>
+                    {lang === 'ar' ? (
+                      <>
+                        <li>✅ تعديل وحذف أي شيء في المنصة</li>
+                        <li>✅ إدارة المشرفين المساعدين وضبط صلاحياتهم</li>
+                        <li>✅ جدولة مقابلات التوظيف وإرسال دعوات تفاعلية</li>
+                        <li>✅ الاطلاع على طلبات التوظيف والسير الذاتية</li>
+                        <li>✅ تعديل بنك الكلمات اللغوية</li>
+                        <li>✅ توليد أكواد التقييم والدعوة</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>✅ Edit and delete anything on the platform</li>
+                        <li>✅ Manage assistant admins and their permissions</li>
+                        <li>✅ Schedule job interviews and send interactive invitations</li>
+                        <li>✅ View job applications and resumes</li>
+                        <li>✅ Edit the word bank</li>
+                        <li>✅ Generate assessment and invitation codes</li>
+                      </>
+                    )}
                   </ul>
                 ) : (
                   <ul style={{ paddingRight: 20, lineHeight: 2.2 }}>
                     {Object.keys(myPermissions).filter(k => myPermissions[k]).map(k => (
-                      <li key={k}>✅ {TAB_NAMES[k] ?? k}</li>
+                      <li key={k}>✅ {(lang === 'ar' ? TAB_NAMES : TAB_NAMES_EN)[k] ?? k}</li>
                     ))}
                     {Object.keys(myPermissions).filter(k => myPermissions[k]).length === 0 && (
-                      <li style={{ color: 'var(--muted)' }}>لا توجد صلاحيات مُعيَّنة</li>
+                      <li style={{ color: 'var(--muted)' }}>{lang === 'ar' ? 'لا توجد صلاحيات مُعيَّنة' : 'No permissions assigned yet'}</li>
                     )}
                   </ul>
                 )}
@@ -1028,9 +1063,9 @@ export default function BoggarAdminPage() {
             <div>
               <div style={{ display: 'flex', gap: 8, marginBottom: 24, background: 'var(--bg)', borderRadius: 12, padding: 6, width: 'fit-content' }}>
                 {[
-                  { id: 'assessment', label: '📋 أكواد التقييم' },
-                  { id: 'students',   label: '👤 أكواد الطلبة' },
-                  { id: 'teachers',   label: '👨‍🏫 أكواد المعلمين' },
+                  { id: 'assessment', label: lang === 'ar' ? '📋 أكواد التقييم'  : '📋 Assessment Codes' },
+                  { id: 'students',   label: lang === 'ar' ? '👤 أكواد الطلبة'   : '👤 Student Codes' },
+                  { id: 'teachers',   label: lang === 'ar' ? '👨‍🏫 أكواد المعلمين' : '👨‍🏫 Teacher Codes' },
                 ].map(st => (
                   <button key={st.id} onClick={() => setCodesTab(st.id)}
                     style={{
@@ -1071,7 +1106,9 @@ export default function BoggarAdminPage() {
               d.setDate(d.getDate() - d.getDay() + i + adminWeekOffset * 7);
               return d.toISOString().slice(0, 10);
             });
-            const dayName = iso => ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'][new Date(iso).getDay()];
+            const dayName = iso => (lang === 'ar'
+              ? ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']
+              : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'])[new Date(iso).getDay()];
             const joinLink = s => s.meet_link || `https://meet.jit.si/${s.room_name}`;
 
             return (
@@ -1079,11 +1116,11 @@ export default function BoggarAdminPage() {
                 {/* Stats */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 12, marginBottom: 24 }}>
                   {[
-                    { icon: '📅', val: upcoming.length,                                            lbl: 'حصص قادمة'     },
-                    { icon: '📆', val: upcoming.filter(s => s.session_date < nextWeek).length,     lbl: 'هذا الأسبوع'   },
-                    { icon: '👥', val: totalStudents,                                              lbl: 'إجمالي الطلاب' },
-                    { icon: '✅', val: adminSessions.filter(s => s.status === 'completed').length, lbl: 'حصص منجزة'     },
-                    { icon: '❌', val: adminSessions.filter(s => s.status === 'cancelled').length, lbl: 'ملغاة'          },
+                    { icon: '📅', val: upcoming.length,                                            lbl: lang === 'ar' ? 'حصص قادمة'     : 'Upcoming'       },
+                    { icon: '📆', val: upcoming.filter(s => s.session_date < nextWeek).length,     lbl: lang === 'ar' ? 'هذا الأسبوع'   : 'This week'      },
+                    { icon: '👥', val: totalStudents,                                              lbl: lang === 'ar' ? 'إجمالي الطلاب' : 'Total students'  },
+                    { icon: '✅', val: adminSessions.filter(s => s.status === 'completed').length, lbl: lang === 'ar' ? 'حصص منجزة'     : 'Completed'      },
+                    { icon: '❌', val: adminSessions.filter(s => s.status === 'cancelled').length, lbl: lang === 'ar' ? 'ملغاة'          : 'Cancelled'      },
                   ].map(s => (
                     <div key={s.lbl} style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
                       <div style={{ fontSize: '1.3rem' }}>{s.icon}</div>
@@ -1096,19 +1133,19 @@ export default function BoggarAdminPage() {
                 {/* Filter + Refresh */}
                 <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
                   <input className="form-input" style={{ flex: '1 1 200px', margin: 0 }}
-                    placeholder="🔍 فلتر حسب المعلم أو الطالب..."
+                    placeholder={lang === 'ar' ? '🔍 فلتر حسب المعلم أو الطالب...' : '🔍 Filter by teacher or student...'}
                     value={adminTeacherFilter}
                     onChange={e => setAdminTeacherFilter(e.target.value)} />
-                  <button onClick={loadAdminSessions} className="btn btn-outline btn-sm" style={{ whiteSpace: 'nowrap' }}>🔄 تحديث</button>
+                  <button onClick={loadAdminSessions} className="btn btn-outline btn-sm" style={{ whiteSpace: 'nowrap' }}>🔄 {lang === 'ar' ? 'تحديث' : 'Refresh'}</button>
                 </div>
 
                 {/* Sub-tabs */}
                 <div style={{ display: 'flex', gap: 4, background: '#f0f4f8', borderRadius: 10, padding: 4, marginBottom: 20, flexWrap: 'wrap' }}>
                   {[
-                    { key: 'upcoming',  label: `📅 قادمة (${upcoming.length})`    },
-                    { key: 'calendar',  label: '🗓️ التقويم'                       },
-                    { key: 'past',      label: `✅ منتهية (${past.length})`        },
-                    { key: 'cancelled', label: `❌ ملغاة (${cancelled.length})`    },
+                    { key: 'upcoming',  label: lang === 'ar' ? `📅 قادمة (${upcoming.length})`  : `📅 Upcoming (${upcoming.length})` },
+                    { key: 'calendar',  label: lang === 'ar' ? '🗓️ التقويم'                     : '🗓️ Calendar' },
+                    { key: 'past',      label: lang === 'ar' ? `✅ منتهية (${past.length})`     : `✅ Past (${past.length})` },
+                    { key: 'cancelled', label: lang === 'ar' ? `❌ ملغاة (${cancelled.length})` : `❌ Cancelled (${cancelled.length})` },
                   ].map(t => (
                     <button key={t.key} onClick={() => setAdminSessTab(t.key)} style={{
                       flex: 1, minWidth: 80, padding: '8px 4px', border: 'none',
@@ -1130,30 +1167,30 @@ export default function BoggarAdminPage() {
                     {/* Upcoming */}
                     {adminSessTab === 'upcoming' && (
                       upcoming.length === 0 ? (
-                        <div className="empty-state card"><span className="empty-icon">📭</span><p>لا توجد حصص قادمة</p></div>
+                        <div className="empty-state card"><span className="empty-icon">📭</span><p>{lang === 'ar' ? 'لا توجد حصص قادمة' : 'No upcoming sessions'}</p></div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                           {upcoming.map(s => (
                             <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: '1.5px solid var(--border)', padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
                               <div style={{ fontSize: '1.8rem', paddingTop: 2 }}>🎥</div>
                               <div style={{ flex: 1, minWidth: 180 }}>
-                                <div style={{ fontWeight: 800, fontSize: '.97rem', color: 'var(--text)', marginBottom: 3 }}>{s.subject || 'حصة عامة'}</div>
+                                <div style={{ fontWeight: 800, fontSize: '.97rem', color: 'var(--text)', marginBottom: 3 }}>{s.subject || (lang === 'ar' ? 'حصة عامة' : 'General session')}</div>
                                 <div style={{ fontSize: '.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                                   <span>👨‍🏫 {s.teacher_name}</span>
                                   <span>👤 {s.student_name}</span>
-                                  <span>📅 {fmtDate(s.session_date)}</span>
+                                  <span>📅 {fmtDate(s.session_date, lang)}</span>
                                   <span>⏰ {s.start_time?.slice(0, 5)}</span>
-                                  <span>⏱️ {s.duration_minutes} د</span>
+                                  <span>⏱️ {s.duration_minutes} {lang === 'ar' ? 'د' : 'min'}</span>
                                 </div>
                                 {s.student_email && <div style={{ fontSize: '.79rem', color: 'var(--accent)', marginTop: 3 }}>✉️ {s.student_email}</div>}
                               </div>
                               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start', flexShrink: 0 }}>
-                                <a href={joinLink(s)} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">ابدأ 🎥</a>
+                                <a href={joinLink(s)} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">{lang === 'ar' ? 'ابدأ' : 'Start'} 🎥</a>
                                 <button onClick={() => { setAdminCompleteFor(s); setAdminRecordingUrl(''); }}
-                                  className="btn btn-outline btn-sm" style={{ color: '#1a7c40', borderColor: '#1a7c40' }}>✅ أنهِ</button>
+                                  className="btn btn-outline btn-sm" style={{ color: '#1a7c40', borderColor: '#1a7c40' }}>✅ {lang === 'ar' ? 'أنهِ' : 'Complete'}</button>
                                 <button onClick={() => handleAdminCancel(s.id)} disabled={adminCancellingId === s.id}
                                   className="btn btn-outline btn-sm" style={{ color: '#e53e3e', borderColor: '#e53e3e' }}>
-                                  {adminCancellingId === s.id ? '...' : 'إلغاء'}
+                                  {adminCancellingId === s.id ? '...' : (lang === 'ar' ? 'إلغاء' : 'Cancel')}
                                 </button>
                               </div>
                             </div>
@@ -1166,11 +1203,15 @@ export default function BoggarAdminPage() {
                     {adminSessTab === 'calendar' && (
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                          <button className="btn btn-outline btn-sm" onClick={() => setAdminWeekOffset(w => w - 1)}>← السابق</button>
+                          <button className="btn btn-outline btn-sm" onClick={() => setAdminWeekOffset(w => w - 1)}>{lang === 'ar' ? '← السابق' : '← Prev'}</button>
                           <span style={{ fontWeight: 800, fontSize: '.93rem', color: 'var(--primary)' }}>
-                            {adminWeekOffset === 0 ? 'الأسبوع الحالي' : adminWeekOffset > 0 ? `+${adminWeekOffset} أسابيع` : `${adminWeekOffset} أسابيع`}
+                            {adminWeekOffset === 0
+                              ? (lang === 'ar' ? 'الأسبوع الحالي' : 'This week')
+                              : adminWeekOffset > 0
+                                ? (lang === 'ar' ? `+${adminWeekOffset} أسابيع` : `+${adminWeekOffset} week${adminWeekOffset > 1 ? 's' : ''}`)
+                                : (lang === 'ar' ? `${adminWeekOffset} أسابيع` : `${adminWeekOffset} week${Math.abs(adminWeekOffset) > 1 ? 's' : ''}`)}
                           </span>
-                          <button className="btn btn-outline btn-sm" onClick={() => setAdminWeekOffset(w => w + 1)}>التالي →</button>
+                          <button className="btn btn-outline btn-sm" onClick={() => setAdminWeekOffset(w => w + 1)}>{lang === 'ar' ? 'التالي →' : 'Next →'}</button>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 8 }}>
                           {calWeekDays.map(dateStr => {
@@ -1204,25 +1245,25 @@ export default function BoggarAdminPage() {
                     {/* Past */}
                     {adminSessTab === 'past' && (
                       past.length === 0 ? (
-                        <div className="empty-state card"><span className="empty-icon">📭</span><p>لا توجد حصص منتهية</p></div>
+                        <div className="empty-state card"><span className="empty-icon">📭</span><p>{lang === 'ar' ? 'لا توجد حصص منتهية' : 'No past sessions'}</p></div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                           {past.slice(0, 30).map(s => (
                             <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: '1.5px solid var(--border)', padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
                               <div style={{ fontSize: '1.6rem', paddingTop: 2 }}>✅</div>
                               <div style={{ flex: 1, minWidth: 180 }}>
-                                <div style={{ fontWeight: 800, fontSize: '.95rem', marginBottom: 3 }}>{s.subject || 'حصة عامة'}</div>
+                                <div style={{ fontWeight: 800, fontSize: '.95rem', marginBottom: 3 }}>{s.subject || (lang === 'ar' ? 'حصة عامة' : 'General session')}</div>
                                 <div style={{ fontSize: '.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                                   <span>👨‍🏫 {s.teacher_name}</span>
                                   <span>👤 {s.student_name}</span>
-                                  <span>📅 {fmtDate(s.session_date)}</span>
+                                  <span>📅 {fmtDate(s.session_date, lang)}</span>
                                   <span>⏰ {s.start_time?.slice(0, 5)}</span>
-                                  <span style={{ color: '#1a7c40', fontWeight: 700 }}>منتهية</span>
+                                  <span style={{ color: '#1a7c40', fontWeight: 700 }}>{lang === 'ar' ? 'منتهية' : 'Completed'}</span>
                                 </div>
                                 {s.notes && <div style={{ marginTop: 6, padding: '6px 10px', background: '#fffbeb', borderRadius: 8, fontSize: '.82rem', color: '#92400e' }}>📝 {s.notes}</div>}
                                 {s.recording_url && (
                                   <div style={{ marginTop: 4 }}>
-                                    <a href={s.recording_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '.8rem', color: 'var(--primary)', fontWeight: 600 }}>🎬 رابط التسجيل</a>
+                                    <a href={s.recording_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '.8rem', color: 'var(--primary)', fontWeight: 600 }}>🎬 {lang === 'ar' ? 'رابط التسجيل' : 'Recording Link'}</a>
                                   </div>
                                 )}
                               </div>
@@ -1235,20 +1276,20 @@ export default function BoggarAdminPage() {
                     {/* Cancelled */}
                     {adminSessTab === 'cancelled' && (
                       cancelled.length === 0 ? (
-                        <div className="empty-state card"><span className="empty-icon">📭</span><p>لا توجد حصص ملغاة</p></div>
+                        <div className="empty-state card"><span className="empty-icon">📭</span><p>{lang === 'ar' ? 'لا توجد حصص ملغاة' : 'No cancelled sessions'}</p></div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                           {cancelled.slice(0, 30).map(s => (
                             <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: '1.5px solid var(--border)', padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', opacity: .7 }}>
                               <div style={{ fontSize: '1.6rem', paddingTop: 2 }}>❌</div>
                               <div style={{ flex: 1, minWidth: 180 }}>
-                                <div style={{ fontWeight: 800, fontSize: '.95rem', marginBottom: 3 }}>{s.subject || 'حصة عامة'}</div>
+                                <div style={{ fontWeight: 800, fontSize: '.95rem', marginBottom: 3 }}>{s.subject || (lang === 'ar' ? 'حصة عامة' : 'General session')}</div>
                                 <div style={{ fontSize: '.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                                   <span>👨‍🏫 {s.teacher_name}</span>
                                   <span>👤 {s.student_name}</span>
-                                  <span>📅 {fmtDate(s.session_date)}</span>
+                                  <span>📅 {fmtDate(s.session_date, lang)}</span>
                                   <span>⏰ {s.start_time?.slice(0, 5)}</span>
-                                  <span style={{ color: '#e53e3e', fontWeight: 700 }}>ملغاة</span>
+                                  <span style={{ color: '#e53e3e', fontWeight: 700 }}>{lang === 'ar' ? 'ملغاة' : 'Cancelled'}</span>
                                 </div>
                               </div>
                             </div>
@@ -1266,9 +1307,9 @@ export default function BoggarAdminPage() {
           {activeTab === 'lexicon' && (
             <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
               <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📖</div>
-              <h3 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 12 }}>بنك الكلمات اللغوية</h3>
-              <p style={{ color: 'var(--muted)', marginBottom: 24 }}>إدارة الكلمات المشكولة وتعديلها وإضافة الجذور والمقاطع الصوتية لكل صف</p>
-              <Link href="/bogga/lexicon" className="btn btn-primary btn-lg">فتح لوحة بنك الكلمات</Link>
+              <h3 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 12 }}>{lang === 'ar' ? 'بنك الكلمات اللغوية' : 'Language Word Bank'}</h3>
+              <p style={{ color: 'var(--muted)', marginBottom: 24 }}>{lang === 'ar' ? 'إدارة الكلمات المشكولة وتعديلها وإضافة الجذور والمقاطع الصوتية لكل صف' : 'Manage voweled words, edit them and add roots and syllables per grade'}</p>
+              <Link href="/bogga/lexicon" className="btn btn-primary btn-lg">{lang === 'ar' ? 'فتح لوحة بنك الكلمات' : 'Open Word Bank Panel'}</Link>
             </div>
           )}
 
@@ -1276,15 +1317,15 @@ export default function BoggarAdminPage() {
           {activeTab === 'recruitment' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <h2 style={{ fontWeight: 800, color: 'var(--primary)' }}>📋 طلبات الترشح للتوظيف</h2>
-                <button onClick={() => { loadApps(); loadInterviews(); }} className="btn btn-outline btn-sm">🔄 تحديث</button>
+                <h2 style={{ fontWeight: 800, color: 'var(--primary)' }}>📋 {lang === 'ar' ? 'طلبات الترشح للتوظيف' : 'Job Applications'}</h2>
+                <button onClick={() => { loadApps(); loadInterviews(); }} className="btn btn-outline btn-sm">🔄 {lang === 'ar' ? 'تحديث' : 'Refresh'}</button>
               </div>
               {appsLoading ? (
                 <div style={{ textAlign: 'center', padding: 40 }}>
                   <span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} />
                 </div>
               ) : apps.length === 0 ? (
-                <div className="empty-state"><span className="empty-icon">📭</span><p>لا توجد طلبات توظيف بعد</p></div>
+                <div className="empty-state"><span className="empty-icon">📭</span><p>{lang === 'ar' ? 'لا توجد طلبات توظيف بعد' : 'No job applications yet'}</p></div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {apps.map(app => {
@@ -1302,7 +1343,9 @@ export default function BoggarAdminPage() {
                               {isSuperAdmin && (
                                 <button
                                   onClick={() => toggleVisibility(app.id, app.is_visible_to_assistants ?? true)}
-                                  title={app.is_visible_to_assistants !== false ? 'مرئي للمساعدين — انقر للإخفاء' : 'مخفي عن المساعدين — انقر للإظهار'}
+                                  title={app.is_visible_to_assistants !== false
+                                    ? (lang === 'ar' ? 'مرئي للمساعدين — انقر للإخفاء' : 'Visible to assistants — click to hide')
+                                    : (lang === 'ar' ? 'مخفي عن المساعدين — انقر للإظهار' : 'Hidden from assistants — click to show')}
                                   style={{
                                     display: 'inline-flex', alignItems: 'center', gap: 5,
                                     padding: '3px 10px', borderRadius: 20, border: 'none', cursor: 'pointer',
@@ -1311,7 +1354,9 @@ export default function BoggarAdminPage() {
                                     color:      app.is_visible_to_assistants !== false ? '#166534' : '#64748b',
                                   }}
                                 >
-                                  {app.is_visible_to_assistants !== false ? '👁️ مرئي' : '🙈 مخفي'}
+                                  {app.is_visible_to_assistants !== false
+                                    ? (lang === 'ar' ? '👁️ مرئي' : '👁️ Visible')
+                                    : (lang === 'ar' ? '🙈 مخفي' : '🙈 Hidden')}
                                 </button>
                               )}
                             </div>
@@ -1347,16 +1392,16 @@ export default function BoggarAdminPage() {
                               className="btn btn-sm btn-outline"
                               style={{ marginTop: 10, fontSize: '.8rem', gap: 6 }}>
                               {downloadingCV[app.id]
-                                ? <><span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} />جارٍ التحميل...</>
-                                : '⬇️ تحميل السيرة الذاتية'}
+                                ? <><span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} />{lang === 'ar' ? 'جارٍ التحميل...' : 'Downloading...'}</>
+                                : (lang === 'ar' ? '⬇️ تحميل السيرة الذاتية' : '⬇️ Download CV')}
                             </button>
 
                             {/* Interview status block */}
                             {latestIv && (
                               <div style={{ marginTop: 14, background: '#eef5ff', borderRadius: 10, padding: '11px 14px', fontSize: '.83rem', borderRight: '3px solid #185FA5' }}>
-                                <div style={{ fontWeight: 800, color: '#185FA5', marginBottom: 6, fontSize: '.88rem' }}>📅 المقابلة المجدولة</div>
+                                <div style={{ fontWeight: 800, color: '#185FA5', marginBottom: 6, fontSize: '.88rem' }}>📅 {lang === 'ar' ? 'المقابلة المجدولة' : 'Scheduled Interview'}</div>
                                 <div style={{ color: '#1a2d4a', lineHeight: 1.8 }}>
-                                  📆 {fmtDate(latestIv.interview_date)} · ⏰ {latestIv.start_time?.slice(0, 5)} · 👤 {latestIv.interviewer_name}
+                                  📆 {fmtDate(latestIv.interview_date, lang)} · ⏰ {latestIv.start_time?.slice(0, 5)} · 👤 {latestIv.interviewer_name}
                                 </div>
                                 <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                                   <span style={{ padding: '3px 11px', borderRadius: 20, fontSize: '.76rem', fontWeight: 700, background: (IV_COLORS[latestIv.candidate_response] ?? '#6b7280') + '22', color: IV_COLORS[latestIv.candidate_response] ?? '#6b7280' }}>
@@ -1364,12 +1409,12 @@ export default function BoggarAdminPage() {
                                   </span>
                                   {cancellingInterview === latestIv.id
                                     ? <span className="spinner" style={{ width: 13, height: 13, borderWidth: 2, borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} />
-                                    : <button onClick={() => cancelInterview(latestIv.id, app.id)} style={{ fontSize: '.76rem', background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>✕ إلغاء</button>
+                                    : <button onClick={() => cancelInterview(latestIv.id, app.id)} style={{ fontSize: '.76rem', background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>✕ {lang === 'ar' ? 'إلغاء' : 'Cancel'}</button>
                                   }
                                 </div>
                                 {latestIv.candidate_response === 'reschedule_requested' && latestIv.reschedule_reason && (
                                   <div style={{ marginTop: 10, padding: '9px 12px', background: '#fff8e1', borderRadius: 8, border: '1px solid #ffe082', color: '#7a4f00', fontSize: '.83rem', lineHeight: 1.7 }}>
-                                    💬 <strong>سبب التعديل:</strong> {latestIv.reschedule_reason}
+                                    💬 <strong>{lang === 'ar' ? 'سبب التعديل:' : 'Reason:'}</strong> {latestIv.reschedule_reason}
                                   </div>
                                 )}
                               </div>
@@ -1388,16 +1433,16 @@ export default function BoggarAdminPage() {
                               </select>
                               <button onClick={() => openScheduleModal(app)} className="btn btn-sm"
                                 style={{ background: '#e8f0fb', color: '#185FA5', border: '1.5px solid #b3ccee', fontSize: '.8rem', gap: 5 }}>
-                                📅 {latestIv ? 'إعادة جدولة' : 'جدولة مقابلة'}
+                                📅 {latestIv ? (lang === 'ar' ? 'إعادة جدولة' : 'Reschedule') : (lang === 'ar' ? 'جدولة مقابلة' : 'Schedule Interview')}
                               </button>
                               <button onClick={() => deleteApp(app.id, app.name)} disabled={deletingApp === app.id} className="btn btn-sm btn-danger" style={{ fontSize: '.78rem' }}>
-                                {deletingApp === app.id ? <span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} /> : '🗑️ حذف'}
+                                {deletingApp === app.id ? <span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} /> : (lang === 'ar' ? '🗑️ حذف' : '🗑️ Delete')}
                               </button>
                             </>}
                           </div>
                         </div>
                         <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 10 }}>
-                          {new Date(app.created_at).toLocaleString('ar-SA')}
+                          {new Date(app.created_at).toLocaleString(lang === 'ar' ? 'ar-SA' : 'en-GB')}
                         </div>
                       </div>
                     );
@@ -1412,20 +1457,20 @@ export default function BoggarAdminPage() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                  <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>👑 إدارة المشرفين المساعدين</h2>
-                  <p style={{ color: 'var(--muted)', fontSize: '.88rem' }}>حد أقصى 2 — {admins.length}/2 مستخدَم</p>
+                  <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>👑 {tr('admin.admins.title')}</h2>
+                  <p style={{ color: 'var(--muted)', fontSize: '.88rem' }}>{lang === 'ar' ? `حد أقصى 2 — ${admins.length}/2 مستخدَم` : `Max 2 — ${admins.length}/2 used`}</p>
                 </div>
                 <button onClick={() => { setShowAddModal(true); setAdminMsg(null); }} disabled={admins.length >= 2} className="btn btn-primary" style={{ opacity: admins.length >= 2 ? .5 : 1 }}>
-                  + إضافة مشرف مساعد جديد
+                  + {lang === 'ar' ? 'إضافة مشرف مساعد جديد' : 'Add New Assistant Admin'}
                 </button>
               </div>
-              {admins.length >= 2 && <div className="alert alert-info" style={{ marginBottom: 18 }}>⚠️ وصلت للحد الأقصى (2 مشرفين).</div>}
+              {admins.length >= 2 && <div className="alert alert-info" style={{ marginBottom: 18 }}>⚠️ {lang === 'ar' ? 'وصلت للحد الأقصى (2 مشرفين).' : 'You have reached the maximum limit (2 admins).'}</div>}
               {adminMsg && (
                 <div className={`alert alert-${adminMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 18 }}>
                   {adminMsg.text}
                   {adminMsg.tempPassword && (
                     <div style={{ marginTop: 10, background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 8, padding: '10px 14px' }}>
-                      <strong>كلمة المرور المؤقتة:</strong>
+                      <strong>{lang === 'ar' ? 'كلمة المرور المؤقتة:' : 'Temporary Password:'}</strong>
                       <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.05rem', marginRight: 8, letterSpacing: '.08em', userSelect: 'all', color: '#b56a00' }}>
                         {adminMsg.tempPassword}
                       </span>
@@ -1436,11 +1481,11 @@ export default function BoggarAdminPage() {
               {adminsLoading ? (
                 <div style={{ textAlign: 'center', padding: 40 }}><span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} /></div>
               ) : admins.length === 0 ? (
-                <div className="empty-state card"><span className="empty-icon">👥</span><p>لا يوجد مشرفون مساعدون بعد</p></div>
+                <div className="empty-state card"><span className="empty-icon">👥</span><p>{lang === 'ar' ? 'لا يوجد مشرفون مساعدون بعد' : 'No assistant admins yet'}</p></div>
               ) : (
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                   <table className="data-table">
-                    <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>حالة الحساب</th><th>آخر نشاط</th><th>تاريخ الإنشاء</th><th>إجراءات</th></tr></thead>
+                    <thead><tr><th>{lang === 'ar' ? 'الاسم' : 'Name'}</th><th>{lang === 'ar' ? 'البريد الإلكتروني' : 'Email'}</th><th>{lang === 'ar' ? 'حالة الحساب' : 'Account Status'}</th><th>{lang === 'ar' ? 'آخر نشاط' : 'Last Seen'}</th><th>{lang === 'ar' ? 'تاريخ الإنشاء' : 'Created'}</th><th>{lang === 'ar' ? 'إجراءات' : 'Actions'}</th></tr></thead>
                     <tbody>
                       {admins.map(a => (
                         <tr key={a.id}>
@@ -1452,7 +1497,7 @@ export default function BoggarAdminPage() {
                               background: a.status === 'suspended' ? '#fee2e2' : '#dcfce7',
                               color:      a.status === 'suspended' ? '#b91c1c' : '#166534',
                             }}>
-                              {a.status === 'suspended' ? '🚫 موقوف' : '✅ مفعَّل'}
+                              {a.status === 'suspended' ? (lang === 'ar' ? '🚫 موقوف' : '🚫 Suspended') : (lang === 'ar' ? '✅ مفعَّل' : '✅ Active')}
                             </span>
                           </td>
                           <td>
@@ -1466,11 +1511,11 @@ export default function BoggarAdminPage() {
                               );
                             })()}
                           </td>
-                          <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>{new Date(a.created_at).toLocaleDateString('ar-SA')}</td>
+                          <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>{new Date(a.created_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB')}</td>
                           <td>
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                               <button onClick={() => openActivityModal(a)} className="btn btn-sm" style={{ background: '#eef5ff', color: '#185FA5', border: 'none' }}>
-                                📊 النشاط
+                                📊 {lang === 'ar' ? 'النشاط' : 'Activity'}
                               </button>
                               <button
                                 onClick={() => handleSuspendAdmin(a.id, a.status ?? 'active')}
@@ -1480,10 +1525,12 @@ export default function BoggarAdminPage() {
                               >
                                 {suspendingId === a.id
                                   ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-                                  : a.status === 'suspended' ? '✅ تفعيل' : '⏸ إيقاف'}
+                                  : a.status === 'suspended'
+                                    ? (lang === 'ar' ? '✅ تفعيل' : '✅ Activate')
+                                    : (lang === 'ar' ? '⏸ إيقاف' : '⏸ Suspend')}
                               </button>
                               <button onClick={() => handleDeleteAdmin(a.id, a.name)} disabled={deletingId === a.id} className="btn btn-sm btn-danger">
-                                {deletingId === a.id ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : '🗑️ حذف'}
+                                {deletingId === a.id ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : (lang === 'ar' ? '🗑️ حذف' : '🗑️ Delete')}
                               </button>
                             </div>
                           </td>
@@ -1502,10 +1549,10 @@ export default function BoggarAdminPage() {
               {/* Stats */}
               <div className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', marginBottom: 24 }}>
                 {[
-                  { icon: '📋', val: resultsStats.total,          lbl: 'إجمالي التقييمات' },
-                  { icon: '✅', val: resultsStats.passed,         lbl: 'ناجحون (≥70%)' },
-                  { icon: '📊', val: (resultsStats.avg ?? 0) + '%', lbl: 'متوسط النتائج' },
-                  { icon: '❌', val: (resultsStats.total ?? 0) - (resultsStats.passed ?? 0), lbl: 'دون 70%' },
+                  { icon: '📋', val: resultsStats.total,          lbl: tr('admin.overview.totalAssessments') },
+                  { icon: '✅', val: resultsStats.passed,         lbl: lang === 'ar' ? 'ناجحون (≥70%)' : 'Passed (≥70%)' },
+                  { icon: '📊', val: (resultsStats.avg ?? 0) + '%', lbl: lang === 'ar' ? 'متوسط النتائج' : 'Average Score' },
+                  { icon: '❌', val: (resultsStats.total ?? 0) - (resultsStats.passed ?? 0), lbl: lang === 'ar' ? 'دون 70%' : 'Below 70%' },
                 ].map(s => (
                   <div key={s.lbl} className="stat-card">
                     <span className="stat-icon">{s.icon}</span>
@@ -1518,28 +1565,28 @@ export default function BoggarAdminPage() {
               <div className="card" style={{ marginBottom: 20 }}>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                   <div style={{ flex: '1 1 200px' }}>
-                    <label style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>🔍 بحث بالاسم</label>
+                    <label style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>🔍 {lang === 'ar' ? 'بحث بالاسم' : 'Search by name'}</label>
                     <input
                       className="form-input" style={{ margin: 0 }}
-                      placeholder="اسم الطالب..."
+                      placeholder={lang === 'ar' ? 'اسم الطالب...' : 'Student name...'}
                       value={resultsSearch}
                       onChange={e => setResultsSearch(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && loadResults(1, resultsSearch, resultsLevel, resultsMin, resultsMax)}
                     />
                   </div>
                   <div style={{ flex: '0 1 130px' }}>
-                    <label style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>المستوى</label>
+                    <label style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>{lang === 'ar' ? 'المستوى' : 'Level'}</label>
                     <select className="form-input" style={{ margin: 0 }} value={resultsLevel} onChange={e => setResultsLevel(e.target.value)}>
-                      <option value="">كل المستويات</option>
-                      {[1,2,3,4,5,6,7].map(l => <option key={l} value={l}>المستوى {l}</option>)}
+                      <option value="">{lang === 'ar' ? 'كل المستويات' : 'All levels'}</option>
+                      {[1,2,3,4,5,6,7].map(l => <option key={l} value={l}>{lang === 'ar' ? `المستوى ${l}` : `Level ${l}`}</option>)}
                     </select>
                   </div>
                   <div style={{ flex: '0 1 110px' }}>
-                    <label style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>الدرجة من</label>
+                    <label style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>{lang === 'ar' ? 'الدرجة من' : 'Min score'}</label>
                     <input className="form-input" style={{ margin: 0 }} type="number" min="0" max="100" placeholder="0" value={resultsMin} onChange={e => setResultsMin(e.target.value)} />
                   </div>
                   <div style={{ flex: '0 1 110px' }}>
-                    <label style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>الدرجة إلى</label>
+                    <label style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>{lang === 'ar' ? 'الدرجة إلى' : 'Max score'}</label>
                     <input className="form-input" style={{ margin: 0 }} type="number" min="0" max="100" placeholder="100" value={resultsMax} onChange={e => setResultsMax(e.target.value)} />
                   </div>
                   <button
@@ -1547,7 +1594,7 @@ export default function BoggarAdminPage() {
                     onClick={() => loadResults(1, resultsSearch, resultsLevel, resultsMin, resultsMax)}
                     disabled={resultsLoading}
                   >
-                    {resultsLoading ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : '🔍 بحث'}
+                    {resultsLoading ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : `🔍 ${lang === 'ar' ? 'بحث' : 'Search'}`}
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"
@@ -1556,7 +1603,7 @@ export default function BoggarAdminPage() {
                       loadResults(1, '', '', '', '');
                     }}
                   >
-                    مسح
+                    {lang === 'ar' ? 'مسح' : 'Clear'}
                   </button>
                 </div>
               </div>
@@ -1567,7 +1614,7 @@ export default function BoggarAdminPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
                     <thead>
                       <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
-                        {['#', 'اسم الطالب', 'المستوى', 'الدرجة', 'الحالة', 'التاريخ'].map(h => (
+                        {['#', lang === 'ar' ? 'اسم الطالب' : 'Student', lang === 'ar' ? 'المستوى' : 'Level', lang === 'ar' ? 'الدرجة' : 'Score', lang === 'ar' ? 'الحالة' : 'Status', lang === 'ar' ? 'التاريخ' : 'Date'].map(h => (
                           <th key={h} style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: 'var(--muted)', fontSize: '.82rem' }}>{h}</th>
                         ))}
                       </tr>
@@ -1576,7 +1623,7 @@ export default function BoggarAdminPage() {
                       {resultsLoading ? (
                         <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}><span className="spinner" /></td></tr>
                       ) : results.length === 0 ? (
-                        <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>لا توجد نتائج</td></tr>
+                        <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>{tr('admin.results.noResults')}</td></tr>
                       ) : results.map((r, i) => {
                         const passed = (r.score ?? 0) >= 70;
                         const rowNum = (resultsPage - 1) * 50 + i + 1;
@@ -1588,7 +1635,7 @@ export default function BoggarAdminPage() {
                             <td style={{ padding: '11px 16px', fontWeight: 600 }}>{r.student_name ?? '—'}</td>
                             <td style={{ padding: '11px 16px' }}>
                               <span style={{ background: 'var(--primary-lt)', color: 'var(--primary)', borderRadius: 6, padding: '2px 10px', fontSize: '.82rem', fontWeight: 700 }}>
-                                المستوى {r.level ?? '—'}
+                                {lang === 'ar' ? 'المستوى' : 'Level'} {r.level ?? '—'}
                               </span>
                             </td>
                             <td style={{ padding: '11px 16px', fontWeight: 800, fontSize: '1rem', color: passed ? '#1a7c40' : '#b91c1c' }}>
@@ -1600,11 +1647,11 @@ export default function BoggarAdminPage() {
                                 background: passed ? '#dcfce7' : '#fee2e2',
                                 color:      passed ? '#15803d' : '#b91c1c',
                               }}>
-                                {passed ? '✅ ناجح' : '❌ دون المعدل'}
+                                {passed ? (lang === 'ar' ? '✅ ناجح' : '✅ Passed') : (lang === 'ar' ? '❌ دون المعدل' : '❌ Below average')}
                               </span>
                             </td>
                             <td style={{ padding: '11px 16px', color: 'var(--muted)', fontSize: '.85rem' }}>
-                              {r.completed_at ? new Date(r.completed_at).toLocaleDateString('ar-SA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                              {r.completed_at ? new Date(r.completed_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                             </td>
                           </tr>
                         );
@@ -1617,16 +1664,18 @@ export default function BoggarAdminPage() {
                 {resultsTotal > 50 && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: '1px solid var(--border)', fontSize: '.85rem' }}>
                     <span style={{ color: 'var(--muted)' }}>
-                      عرض {(resultsPage - 1) * 50 + 1}–{Math.min(resultsPage * 50, resultsTotal)} من {resultsTotal}
+                      {lang === 'ar'
+                        ? `عرض ${(resultsPage - 1) * 50 + 1}–${Math.min(resultsPage * 50, resultsTotal)} من ${resultsTotal}`
+                        : `Showing ${(resultsPage - 1) * 50 + 1}–${Math.min(resultsPage * 50, resultsTotal)} of ${resultsTotal}`}
                     </span>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button className="btn btn-ghost btn-sm" disabled={resultsPage === 1}
                         onClick={() => loadResults(resultsPage - 1, resultsSearch, resultsLevel, resultsMin, resultsMax)}>
-                        ← السابق
+                        {lang === 'ar' ? '← السابق' : '← Previous'}
                       </button>
                       <button className="btn btn-ghost btn-sm" disabled={resultsPage * 50 >= resultsTotal}
                         onClick={() => loadResults(resultsPage + 1, resultsSearch, resultsLevel, resultsMin, resultsMax)}>
-                        التالي →
+                        {lang === 'ar' ? 'التالي →' : 'Next →'}
                       </button>
                     </div>
                   </div>
@@ -1641,10 +1690,11 @@ export default function BoggarAdminPage() {
               {/* Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                  <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 6 }}>🤖 قاعدة معرفة فهيم للزوار</h2>
+                  <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 6 }}>🤖 {tr('admin.visitor_qa.title')}</h2>
                   <p style={{ color: 'var(--muted)', fontSize: '.88rem', lineHeight: 1.6, maxWidth: 560 }}>
-                    الأسئلة والإجابات التي تضيفها هنا يحفظها فهيم ويستخدمها تلقائياً للرد على زوار الموقع.
-                    كلما أضفت معلومات أكثر، كانت إجاباته أدق وأكثر إقناعاً.
+                    {lang === 'ar'
+                      ? 'الأسئلة والإجابات التي تضيفها هنا يحفظها فهيم ويستخدمها تلقائياً للرد على زوار الموقع. كلما أضفت معلومات أكثر، كانت إجاباته أدق وأكثر إقناعاً.'
+                      : 'The Q&A you add here is saved by Faheem and used automatically to answer website visitors. The more information you add, the more accurate and convincing his answers will be.'}
                   </p>
                 </div>
                 <button
@@ -1652,7 +1702,7 @@ export default function BoggarAdminPage() {
                   className="btn btn-primary"
                   style={{ whiteSpace: 'nowrap' }}
                 >
-                  + إضافة سؤال وإجابة
+                  + {lang === 'ar' ? 'إضافة سؤال وإجابة' : 'Add Question & Answer'}
                 </button>
               </div>
 
@@ -1660,15 +1710,21 @@ export default function BoggarAdminPage() {
               <div style={{ background: '#eef5ff', borderRadius: 12, padding: '14px 18px', marginBottom: 22, display: 'flex', gap: 12, alignItems: 'flex-start', border: '1.5px solid #b3ccee' }}>
                 <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>💡</span>
                 <div style={{ fontSize: '.86rem', color: '#1a3a5c', lineHeight: 1.75 }}>
-                  <strong>كيف يعمل:</strong> عند سؤال زائر فهيم، يبحث النظام في هذه القائمة ويُدرج الإجابات المناسبة في سياق الذكاء الاصطناعي.
-                  السؤال المُدخَل لا يجب أن يطابق السؤال حرفياً — فهيم يفهم المعنى.
-                  <br /><strong>نصيحة:</strong> أضف أسئلة عن الأسعار، الأعمار، المناهج، طريقة الدفع، والنادي الصيفي.
+                  {lang === 'ar' ? (
+                    <><strong>كيف يعمل:</strong> عند سؤال زائر فهيم، يبحث النظام في هذه القائمة ويُدرج الإجابات المناسبة في سياق الذكاء الاصطناعي.
+                    السؤال المُدخَل لا يجب أن يطابق السؤال حرفياً — فهيم يفهم المعنى.
+                    <br /><strong>نصيحة:</strong> أضف أسئلة عن الأسعار، الأعمار، المناهج، طريقة الدفع، والنادي الصيفي.</>
+                  ) : (
+                    <><strong>How it works:</strong> When a visitor asks Faheem, the system searches this list and injects relevant answers into the AI context.
+                    The question doesn't need to match exactly — Faheem understands meaning.
+                    <br /><strong>Tip:</strong> Add Q&A about pricing, age groups, curriculum, payment, and summer camp.</>
+                  )}
                 </div>
               </div>
 
               {/* SQL reminder */}
               <div style={{ background: '#fffbeb', borderRadius: 10, padding: '11px 16px', marginBottom: 22, fontSize: '.82rem', color: '#92400e', border: '1px solid #fde68a' }}>
-                ⚠️ تأكد من تشغيل SQL إنشاء جدول <code style={{ background: '#fff', padding: '1px 6px', borderRadius: 4 }}>faheem_visitor_qa</code> في Supabase (موجود في تبويب الإعداد).
+                ⚠️ {lang === 'ar' ? <>تأكد من تشغيل SQL إنشاء جدول <code style={{ background: '#fff', padding: '1px 6px', borderRadius: 4 }}>faheem_visitor_qa</code> في Supabase (موجود في تبويب الإعداد).</> : <>Make sure to run the SQL for the <code style={{ background: '#fff', padding: '1px 6px', borderRadius: 4 }}>faheem_visitor_qa</code> table in Supabase (found in the Setup tab).</>}
               </div>
 
               {qaLoading ? (
@@ -1678,8 +1734,8 @@ export default function BoggarAdminPage() {
               ) : visitorQA.length === 0 ? (
                 <div className="empty-state card" style={{ padding: '48px 24px' }}>
                   <span className="empty-icon">🤖</span>
-                  <p style={{ fontWeight: 700, marginBottom: 8 }}>لا توجد أسئلة بعد</p>
-                  <p style={{ color: 'var(--muted)', fontSize: '.88rem' }}>ابدأ بإضافة أول سؤال وإجابة لتزويد فهيم بمعلومات الأكاديمية</p>
+                  <p style={{ fontWeight: 700, marginBottom: 8 }}>{lang === 'ar' ? 'لا توجد أسئلة بعد' : 'No questions yet'}</p>
+                  <p style={{ color: 'var(--muted)', fontSize: '.88rem' }}>{lang === 'ar' ? 'ابدأ بإضافة أول سؤال وإجابة لتزويد فهيم بمعلومات الأكاديمية' : 'Start by adding the first Q&A to give Faheem academy information'}</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1699,7 +1755,7 @@ export default function BoggarAdminPage() {
                             </span>
                             {!item.is_active && (
                               <span style={{ background: '#f1f5f9', color: '#94a3b8', borderRadius: 6, padding: '2px 8px', fontSize: '.72rem', fontWeight: 700 }}>
-                                معطّل
+                                {lang === 'ar' ? 'معطّل' : 'Inactive'}
                               </span>
                             )}
                           </div>
@@ -1717,9 +1773,9 @@ export default function BoggarAdminPage() {
                             onClick={() => toggleQAActive(item)}
                             className="btn btn-sm"
                             style={{ background: item.is_active ? '#f0fdf4' : '#f1f5f9', color: item.is_active ? '#16a34a' : '#64748b', border: `1px solid ${item.is_active ? '#86efac' : '#cbd5e1'}` }}
-                            title={item.is_active ? 'انقر لتعطيل السؤال' : 'انقر لتفعيل السؤال'}
+                            title={item.is_active ? (lang === 'ar' ? 'انقر لتعطيل السؤال' : 'Click to deactivate') : (lang === 'ar' ? 'انقر لتفعيل السؤال' : 'Click to activate')}
                           >
-                            {item.is_active ? '✅ مفعّل' : '⏸ معطّل'}
+                            {item.is_active ? (lang === 'ar' ? '✅ مفعّل' : '✅ Active') : (lang === 'ar' ? '⏸ معطّل' : '⏸ Inactive')}
                           </button>
                           <button
                             onClick={() => {
@@ -1731,7 +1787,7 @@ export default function BoggarAdminPage() {
                             className="btn btn-sm btn-outline"
                             style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
                           >
-                            ✏️ تعديل
+                            ✏️ {lang === 'ar' ? 'تعديل' : 'Edit'}
                           </button>
                           <button
                             onClick={() => handleDeleteQA(item.id)}
@@ -1757,19 +1813,19 @@ export default function BoggarAdminPage() {
             <div>
               {!isSuperAdmin && (
                 <div className="card" style={{ marginBottom: 28, border: '2px solid #F5A623', background: '#fffbf0' }}>
-                  <h3 style={{ fontWeight: 800, color: '#b56a00', marginBottom: 10, fontSize: '1.1rem' }}>👑 ترقية حسابك إلى مدير مطلق</h3>
-                  <p style={{ color: '#64748b', fontSize: '.9rem', lineHeight: 1.7, marginBottom: 16 }}>إذا كنت المدير الرئيسي ولم يكن هناك مدير مطلق بعد، اضغط الزر أدناه.</p>
+                  <h3 style={{ fontWeight: 800, color: '#b56a00', marginBottom: 10, fontSize: '1.1rem' }}>{tr('admin.setup.promoteTitle')}</h3>
+                  <p style={{ color: '#64748b', fontSize: '.9rem', lineHeight: 1.7, marginBottom: 16 }}>{tr('admin.setup.promoteDesc')}</p>
                   {promoMsg && <div className={`alert alert-${promoMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 14 }}>{promoMsg.text}</div>}
                   <button onClick={handlePromote} disabled={promoting} className="btn btn-accent btn-lg" style={{ gap: 10 }}>
-                    {promoting ? <><span className="spinner" style={{ width: 18, height: 18, borderWidth: 2, borderTopColor: '#7A3800', borderColor: 'rgba(122,56,0,.2)' }} />جارٍ الترقية...</> : '👑 ترقية حسابي إلى مدير مطلق'}
+                    {promoting ? <><span className="spinner" style={{ width: 18, height: 18, borderWidth: 2, borderTopColor: '#7A3800', borderColor: 'rgba(122,56,0,.2)' }} />{tr('admin.setup.promoting')}</> : tr('admin.setup.promoteBtn')}
                   </button>
                 </div>
               )}
               {isSuperAdmin && (
                 <>
-                  <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 16 }}>⚙️ تهيئة قاعدة البيانات</h2>
+                  <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 16 }}>{tr('admin.setup.title')}</h2>
                   <div className="alert alert-info" style={{ marginBottom: 20 }}>
-                    افتح <strong>Supabase → SQL Editor</strong> ثم الصق هذا الكود وشغّله.
+                    {tr('admin.setup.hint')}
                   </div>
                   <div style={{ position: 'relative' }}>
                     <pre style={{ background: '#1a1a2e', color: '#e2e8f0', borderRadius: 14, padding: '24px 20px', fontSize: '.82rem', lineHeight: 1.8, overflowX: 'auto', whiteSpace: 'pre-wrap', fontFamily: "'Courier New', monospace" }}>
@@ -1777,7 +1833,7 @@ export default function BoggarAdminPage() {
                     </pre>
                     <button onClick={copySetupSql} className="btn btn-sm"
                       style={{ position: 'absolute', top: 12, left: 12, background: copied ? '#1a7c40' : 'rgba(255,255,255,.15)', color: '#fff', border: 'none' }}>
-                      {copied ? '✅ تم النسخ' : '📋 نسخ'}
+                      {copied ? tr('admin.setup.copied') : tr('admin.setup.copy')}
                     </button>
                   </div>
                 </>
@@ -1796,23 +1852,23 @@ export default function BoggarAdminPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 650, padding: 16 }}
           onClick={e => e.target === e.currentTarget && setAdminCompleteFor(null)}>
           <div style={{ background: '#fff', borderRadius: 18, padding: '32px 28px', width: '100%', maxWidth: 480, direction: 'rtl', boxShadow: '0 20px 60px rgba(0,0,0,.25)' }}>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: 6, color: '#1a7c40' }}>✅ إنهاء الحصة</h2>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: 6, color: '#1a7c40' }}>{tr('admin.sessions.completeSession')}</h2>
             <p style={{ fontSize: '.88rem', color: 'var(--muted)', marginBottom: 20 }}>
-              {adminCompleteFor.subject || 'حصة عامة'} — {adminCompleteFor.student_name} مع {adminCompleteFor.teacher_name}
+              {adminCompleteFor.subject || tr('admin.sessions.subject')} — {adminCompleteFor.student_name} {lang === 'ar' ? 'مع' : 'with'} {adminCompleteFor.teacher_name}
             </p>
             <div className="form-group">
-              <label className="form-label">رابط تسجيل الحصة (اختياري)</label>
+              <label className="form-label">{tr('admin.sessions.recordingUrl')}</label>
               <input className="form-input" type="url" dir="ltr"
-                placeholder="https://drive.google.com/..."
+                placeholder={tr('admin.sessions.recordingPlaceholder')}
                 value={adminRecordingUrl} onChange={e => setAdminRecordingUrl(e.target.value)} />
-              <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 4 }}>يظهر للطالب في سجل حصصه</div>
+              <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 4 }}>{tr('admin.sessions.recordingHint')}</div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button onClick={handleAdminComplete} disabled={adminCompleteSav}
                 className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', background: '#1a7c40', borderColor: '#1a7c40' }}>
-                {adminCompleteSav ? 'جارٍ الحفظ...' : '✅ تأكيد الإنهاء'}
+                {adminCompleteSav ? tr('admin.sessions.saving') : tr('admin.sessions.confirmComplete')}
               </button>
-              <button onClick={() => setAdminCompleteFor(null)} className="btn btn-outline">إلغاء</button>
+              <button onClick={() => setAdminCompleteFor(null)} className="btn btn-outline">{tr('cancel')}</button>
             </div>
           </div>
         </div>
@@ -1827,7 +1883,7 @@ export default function BoggarAdminPage() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <div>
-                <h2 style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.1rem', margin: '0 0 2px' }}>📊 سجل نشاط المشرف</h2>
+                <h2 style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.1rem', margin: '0 0 2px' }}>📊 {lang === 'ar' ? 'سجل نشاط المشرف' : 'Admin Activity Log'}</h2>
                 <p style={{ color: 'var(--muted)', fontSize: '.85rem', margin: 0 }}>{activityModal.name} — {activityModal.email}</p>
               </div>
               <button onClick={() => setActivityModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.3rem', color: 'var(--muted)', cursor: 'pointer', lineHeight: 1, padding: 2 }}>✕</button>
@@ -1854,8 +1910,8 @@ export default function BoggarAdminPage() {
                         {now && (
                           <div style={{ color: 'var(--muted)', fontSize: '.78rem', marginTop: 3 }}>
                             {s.online
-                              ? `بدأت الجلسة: ${new Date(now.session_start).toLocaleString('ar-SA')} — مدة الجلسة الحالية: ${curDur} دقيقة`
-                              : `آخر ظهور: ${new Date(now.last_seen).toLocaleString('ar-SA')}`}
+                              ? (lang === 'ar' ? `بدأت الجلسة: ${new Date(now.session_start).toLocaleString('ar-SA')} — مدة الجلسة الحالية: ${curDur} دقيقة` : `Session started: ${new Date(now.session_start).toLocaleString('en-GB')} — Current duration: ${curDur} min`)
+                              : (lang === 'ar' ? `آخر ظهور: ${new Date(now.last_seen).toLocaleString('ar-SA')}` : `Last seen: ${new Date(now.last_seen).toLocaleString('en-GB')}`)}
                           </div>
                         )}
                       </div>
@@ -1864,23 +1920,25 @@ export default function BoggarAdminPage() {
                 })()}
 
                 {/* Sessions list */}
-                <div style={{ fontWeight: 700, fontSize: '.88rem', color: 'var(--muted)', marginBottom: 12 }}>سجل الجلسات السابقة</div>
+                <div style={{ fontWeight: 700, fontSize: '.88rem', color: 'var(--muted)', marginBottom: 12 }}>{lang === 'ar' ? 'سجل الجلسات السابقة' : 'Previous Sessions Log'}</div>
                 {activityData.sessions.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--muted)', fontSize: '.9rem' }}>لا توجد جلسات مسجّلة بعد</div>
+                  <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--muted)', fontSize: '.9rem' }}>{lang === 'ar' ? 'لا توجد جلسات مسجّلة بعد' : 'No sessions recorded yet'}</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {activityData.sessions.map(s => {
                       const dur = s.duration_minutes ?? 0;
-                      const durLabel = dur >= 60 ? `${Math.floor(dur/60)}س ${dur%60}د` : `${dur} دقيقة`;
+                      const durLabel = lang === 'ar'
+                        ? (dur >= 60 ? `${Math.floor(dur/60)}س ${dur%60}د` : `${dur} دقيقة`)
+                        : (dur >= 60 ? `${Math.floor(dur/60)}h ${dur%60}m` : `${dur} min`);
                       return (
                         <div key={s.id} style={{ background: '#f8faff', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                           <div>
                             <div style={{ fontWeight: 700, fontSize: '.88rem' }}>
-                              📅 {new Date(s.session_start).toLocaleDateString('ar-SA', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
+                              📅 {new Date(s.session_start).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
                             </div>
                             <div style={{ color: 'var(--muted)', fontSize: '.78rem', marginTop: 3, display: 'flex', gap: 16 }}>
-                              <span>🕐 من: {new Date(s.session_start).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
-                              <span>🕓 إلى: {new Date(s.session_end).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span>🕐 {lang === 'ar' ? 'من:' : 'From:'} {new Date(s.session_start).toLocaleTimeString(lang === 'ar' ? 'ar-SA' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span>🕓 {lang === 'ar' ? 'إلى:' : 'To:'} {new Date(s.session_end).toLocaleTimeString(lang === 'ar' ? 'ar-SA' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                           </div>
                           <div style={{ background: '#185FA5', color: '#fff', borderRadius: 20, padding: '4px 14px', fontSize: '.78rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -1910,9 +1968,9 @@ export default function BoggarAdminPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <div>
               <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '.95rem' }}>
-                🔒 {TAB_NAMES[permPopover.tabKey]}
+                🔒 {(lang === 'ar' ? TAB_NAMES : TAB_NAMES_EN)[permPopover.tabKey]}
               </div>
-              <div style={{ color: 'var(--muted)', fontSize: '.75rem', marginTop: 2 }}>صلاحيات المشرفين المساعدين</div>
+              <div style={{ color: 'var(--muted)', fontSize: '.75rem', marginTop: 2 }}>{lang === 'ar' ? 'صلاحيات المشرفين المساعدين' : 'Assistant admin permissions'}</div>
             </div>
             <button onClick={() => setPermPopover(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '1.1rem', padding: 2, lineHeight: 1 }}>✕</button>
           </div>
@@ -1923,7 +1981,7 @@ export default function BoggarAdminPage() {
             </div>
           ) : admins.length === 0 ? (
             <p style={{ color: 'var(--muted)', fontSize: '.85rem', margin: 0 }}>
-              لا يوجد مشرفون مساعدون — أضف مشرفاً من تبويب <strong>إدارة المشرفين</strong> أولاً.
+              {lang === 'ar' ? <>لا يوجد مشرفون مساعدون — أضف مشرفاً من تبويب <strong>إدارة المشرفين</strong> أولاً.</> : <>No assistant admins — add one from the <strong>Admin Management</strong> tab first.</>}
             </p>
           ) : (
             admins.map(admin => {
@@ -1951,7 +2009,7 @@ export default function BoggarAdminPage() {
           )}
 
           <div style={{ marginTop: 12, padding: '8px 10px', background: '#f8faff', borderRadius: 8, fontSize: '.76rem', color: 'var(--muted)', lineHeight: 1.6 }}>
-            الوضع الافتراضي لأي تبويب: <strong style={{ color: '#b91c1c' }}>مخفي</strong> — لا يظهر لأي مساعد إلا بعد تفعيله يدوياً
+            {lang === 'ar' ? <>الوضع الافتراضي لأي تبويب: <strong style={{ color: '#b91c1c' }}>مخفي</strong> — لا يظهر لأي مساعد إلا بعد تفعيله يدوياً</> : <>Default for any tab: <strong style={{ color: '#b91c1c' }}>Hidden</strong> — won't appear for any assistant until manually enabled</>}
           </div>
         </div>
       )}
@@ -1964,7 +2022,7 @@ export default function BoggarAdminPage() {
           <div style={{ background: '#fff', borderRadius: 22, padding: '28px 28px 24px', width: '100%', maxWidth: 520, direction: 'rtl', boxShadow: '0 24px 72px rgba(0,0,0,.28)', maxHeight: '92vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
-                <h2 style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.15rem', margin: '0 0 4px' }}>📅 جدولة مقابلة</h2>
+                <h2 style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.15rem', margin: '0 0 4px' }}>📅 {lang === 'ar' ? 'جدولة مقابلة' : 'Schedule Interview'}</h2>
                 <p style={{ color: 'var(--muted)', fontSize: '.85rem', margin: 0 }}>{schedModal.name}</p>
               </div>
               <button onClick={() => { if (!schedulingBusy) setSchedModal(null); }} style={{ background: 'none', border: 'none', fontSize: '1.3rem', color: 'var(--muted)', cursor: 'pointer', lineHeight: 1, padding: 2 }}>✕</button>
@@ -1973,24 +2031,24 @@ export default function BoggarAdminPage() {
             {schedMsg && <div className={`alert alert-${schedMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 16 }}>{schedMsg.text}</div>}
 
             <div className="form-group">
-              <label className="form-label">👤 المقابِل</label>
-              <input className="form-input" value={schedInterviewer} onChange={e => setSchedInterviewer(e.target.value)} placeholder="اسم من سيجري المقابلة" disabled={schedulingBusy} />
-              <p className="form-help">سيظهر هذا الاسم في بريد الدعوة المرسل للمترشح</p>
+              <label className="form-label">👤 {lang === 'ar' ? 'المقابِل' : 'Interviewer'}</label>
+              <input className="form-input" value={schedInterviewer} onChange={e => setSchedInterviewer(e.target.value)} placeholder={lang === 'ar' ? 'اسم من سيجري المقابلة' : 'Name of the interviewer'} disabled={schedulingBusy} />
+              <p className="form-help">{lang === 'ar' ? 'سيظهر هذا الاسم في بريد الدعوة المرسل للمترشح' : 'This name will appear in the invitation email sent to the candidate'}</p>
             </div>
 
             <div className="form-group">
-              <label className="form-label">📆 تاريخ المقابلة</label>
+              <label className="form-label">📆 {lang === 'ar' ? 'تاريخ المقابلة' : 'Interview Date'}</label>
               <input className="form-input" type="date" value={schedDate} min={new Date().toISOString().split('T')[0]} onChange={e => { setSchedDate(e.target.value); setSchedTime(''); }} disabled={schedulingBusy} dir="ltr" />
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                ⏰ ساعة الانطلاق
+                ⏰ {lang === 'ar' ? 'ساعة الانطلاق' : 'Start Time'}
                 {slotsLoading && <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2, borderTopColor: 'var(--primary)', borderColor: 'var(--border)' }} />}
               </label>
               {!schedDate || !schedInterviewer.trim() ? (
                 <p style={{ color: 'var(--muted)', fontSize: '.85rem', background: 'var(--bg)', padding: '10px 14px', borderRadius: 8, margin: 0 }}>
-                  حدّد المقابِل والتاريخ أولاً لعرض الأوقات المتاحة
+                  {lang === 'ar' ? 'حدّد المقابِل والتاريخ أولاً لعرض الأوقات المتاحة' : 'Set the interviewer and date first to see available slots'}
                 </p>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 7, marginTop: 4 }}>
@@ -2009,7 +2067,7 @@ export default function BoggarAdminPage() {
                           textDecoration: booked ? 'line-through' : 'none',
                         }}>
                         {slot}
-                        {booked && <span style={{ fontSize: '.6rem', display: 'block', color: '#e53e3e', textDecoration: 'none' }}>محجوز</span>}
+                        {booked && <span style={{ fontSize: '.6rem', display: 'block', color: '#e53e3e', textDecoration: 'none' }}>{lang === 'ar' ? 'محجوز' : 'Booked'}</span>}
                       </button>
                     );
                   })}
@@ -2021,15 +2079,17 @@ export default function BoggarAdminPage() {
               <button onClick={handleSchedule} disabled={!schedDate || !schedInterviewer.trim() || !schedTime || schedulingBusy} className="btn btn-primary"
                 style={{ flex: 1, justifyContent: 'center', gap: 8, opacity: (!schedDate || !schedInterviewer.trim() || !schedTime) ? .55 : 1 }}>
                 {schedulingBusy
-                  ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />جارٍ الحجز وإرسال الدعوة...</>
-                  : '✅ تأكيد الموعد وإرسال الدعوة'}
+                  ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />{lang === 'ar' ? 'جارٍ الحجز وإرسال الدعوة...' : 'Booking and sending invitation...'}</>
+                  : (lang === 'ar' ? '✅ تأكيد الموعد وإرسال الدعوة' : '✅ Confirm & Send Invitation')}
               </button>
-              <button onClick={() => { if (!schedulingBusy) setSchedModal(null); }} className="btn btn-ghost" disabled={schedulingBusy}>إلغاء</button>
+              <button onClick={() => { if (!schedulingBusy) setSchedModal(null); }} className="btn btn-ghost" disabled={schedulingBusy}>{tr('cancel')}</button>
             </div>
 
             {schedTime && (
               <div style={{ marginTop: 12, background: '#eef5ff', borderRadius: 9, padding: '10px 14px', fontSize: '.83rem', color: '#1a2d4a' }}>
-                📋 سيُرسَل بريد إلى <strong>{schedModal.email}</strong> بموعد {fmtDate(schedDate)} الساعة {schedTime} مع المقابِل <strong>{schedInterviewer}</strong>
+                {lang === 'ar'
+                  ? <>📋 سيُرسَل بريد إلى <strong>{schedModal.email}</strong> بموعد {fmtDate(schedDate, lang)} الساعة {schedTime} مع المقابِل <strong>{schedInterviewer}</strong></>
+                  : <>📋 An email will be sent to <strong>{schedModal.email}</strong> for {fmtDate(schedDate, lang)} at {schedTime} with <strong>{schedInterviewer}</strong></>}
               </div>
             )}
           </div>
@@ -2043,7 +2103,7 @@ export default function BoggarAdminPage() {
           <div style={{ background: '#fff', borderRadius: 20, padding: '32px 28px', width: '100%', maxWidth: 540, direction: 'rtl', boxShadow: '0 20px 60px rgba(0,0,0,.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.1rem', margin: 0 }}>
-                {qaEditing ? '✏️ تعديل سؤال وإجابة' : '+ إضافة سؤال وإجابة جديد'}
+                {qaEditing ? (lang === 'ar' ? '✏️ تعديل سؤال وإجابة' : '✏️ Edit Q&A') : (lang === 'ar' ? '+ إضافة سؤال وإجابة جديد' : '+ Add New Q&A')}
               </h2>
               <button onClick={() => setQaShowModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.3rem', color: 'var(--muted)', cursor: 'pointer', padding: 2, lineHeight: 1 }}>✕</button>
             </div>
@@ -2056,35 +2116,35 @@ export default function BoggarAdminPage() {
 
             <form onSubmit={handleSaveQA}>
               <div className="form-group">
-                <label className="form-label">❓ السؤال *</label>
+                <label className="form-label">❓ {lang === 'ar' ? 'السؤال *' : 'Question *'}</label>
                 <input
                   className="form-input"
                   value={qaForm.question}
                   required
                   onChange={e => setQaForm(p => ({ ...p, question: e.target.value }))}
-                  placeholder="مثال: ما هي أسعار الاشتراك في الأكاديمية؟"
+                  placeholder={lang === 'ar' ? 'مثال: ما هي أسعار الاشتراك في الأكاديمية؟' : 'e.g. What are the subscription prices?'}
                   disabled={qaSaving}
                 />
-                <p className="form-help">اكتب السؤال كما قد يسأله ولي الأمر</p>
+                <p className="form-help">{lang === 'ar' ? 'اكتب السؤال كما قد يسأله ولي الأمر' : 'Write the question as a parent might ask it'}</p>
               </div>
 
               <div className="form-group">
-                <label className="form-label">💬 الإجابة *</label>
+                <label className="form-label">💬 {lang === 'ar' ? 'الإجابة *' : 'Answer *'}</label>
                 <textarea
                   className="form-input"
                   value={qaForm.answer}
                   required
                   rows={4}
                   onChange={e => setQaForm(p => ({ ...p, answer: e.target.value }))}
-                  placeholder="اكتب الإجابة الرسمية للأكاديمية..."
+                  placeholder={lang === 'ar' ? 'اكتب الإجابة الرسمية للأكاديمية...' : 'Write the official academy answer...'}
                   disabled={qaSaving}
                   style={{ resize: 'vertical', minHeight: 100 }}
                 />
-                <p className="form-help">فهيم سيستخدم هذه الإجابة كمرجع — كن دقيقاً ومقنعاً</p>
+                <p className="form-help">{lang === 'ar' ? 'فهيم سيستخدم هذه الإجابة كمرجع — كن دقيقاً ومقنعاً' : 'Faheem will use this as a reference — be accurate and convincing'}</p>
               </div>
 
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">🔢 الترتيب</label>
+                <label className="form-label">🔢 {lang === 'ar' ? 'الترتيب' : 'Sort Order'}</label>
                 <input
                   className="form-input"
                   type="number"
@@ -2094,16 +2154,16 @@ export default function BoggarAdminPage() {
                   style={{ maxWidth: 120 }}
                   disabled={qaSaving}
                 />
-                <p className="form-help">الأسئلة ذات الرقم الأصغر تُعطى أولوية في السياق</p>
+                <p className="form-help">{lang === 'ar' ? 'الأسئلة ذات الرقم الأصغر تُعطى أولوية في السياق' : 'Lower numbers are given priority in the context'}</p>
               </div>
 
               <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
                 <button type="submit" className="btn btn-primary" disabled={qaSaving} style={{ flex: 1, justifyContent: 'center', gap: 8 }}>
                   {qaSaving
-                    ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />جارٍ الحفظ...</>
-                    : qaEditing ? '✅ حفظ التعديلات' : '✅ إضافة السؤال'}
+                    ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />{lang === 'ar' ? 'جارٍ الحفظ...' : 'Saving...'}</>
+                    : qaEditing ? (lang === 'ar' ? '✅ حفظ التعديلات' : '✅ Save Changes') : (lang === 'ar' ? '✅ إضافة السؤال' : '✅ Add Question')}
                 </button>
-                <button type="button" className="btn btn-ghost" onClick={() => setQaShowModal(false)} disabled={qaSaving}>إلغاء</button>
+                <button type="button" className="btn btn-ghost" onClick={() => setQaShowModal(false)} disabled={qaSaving}>{tr('cancel')}</button>
               </div>
             </form>
           </div>
@@ -2115,25 +2175,25 @@ export default function BoggarAdminPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: 20 }}
           onClick={e => { if (e.target === e.currentTarget) setShowAddModal(false); }}>
           <div style={{ background: '#fff', borderRadius: 20, padding: '32px 28px', width: '100%', maxWidth: 440, direction: 'rtl', boxShadow: '0 20px 60px rgba(0,0,0,.25)' }}>
-            <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 20, fontSize: '1.15rem' }}>+ إضافة مشرف مساعد جديد</h2>
+            <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 20, fontSize: '1.15rem' }}>+ {lang === 'ar' ? 'إضافة مشرف مساعد جديد' : 'Add New Assistant Admin'}</h2>
             {adminMsg && <div className={`alert alert-${adminMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 14 }}>{adminMsg.text}</div>}
             <form onSubmit={handleAddAdmin}>
               <div className="form-group">
-                <label className="form-label">الاسم الكامل *</label>
-                <input className="form-input" value={adminForm.name} required onChange={e => setAdminForm(p => ({ ...p, name: e.target.value }))} placeholder="أدخل الاسم الكامل" />
+                <label className="form-label">{lang === 'ar' ? 'الاسم الكامل *' : 'Full Name *'}</label>
+                <input className="form-input" value={adminForm.name} required onChange={e => setAdminForm(p => ({ ...p, name: e.target.value }))} placeholder={lang === 'ar' ? 'أدخل الاسم الكامل' : 'Enter full name'} />
               </div>
               <div className="form-group">
-                <label className="form-label">البريد الإلكتروني *</label>
+                <label className="form-label">{lang === 'ar' ? 'البريد الإلكتروني *' : 'Email Address *'}</label>
                 <input className="form-input" type="email" value={adminForm.email} required onChange={e => setAdminForm(p => ({ ...p, email: e.target.value }))} placeholder="admin@example.com" dir="ltr" />
               </div>
               <div className="alert alert-info" style={{ fontSize: '.85rem', marginBottom: 4 }}>
-                🔑 ستُنشأ كلمة مرور مؤقتة تلقائياً وتُرسل للمشرف عبر بريده الإلكتروني.
+                🔑 {lang === 'ar' ? 'ستُنشأ كلمة مرور مؤقتة تلقائياً وتُرسل للمشرف عبر بريده الإلكتروني.' : 'A temporary password will be auto-generated and sent to the admin via email.'}
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
                 <button type="submit" className="btn btn-primary" disabled={addingAdmin} style={{ flex: 1, justifyContent: 'center', gap: 8 }}>
-                  {addingAdmin ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />جارٍ الإنشاء...</> : '✅ إنشاء الحساب'}
+                  {addingAdmin ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />{lang === 'ar' ? 'جارٍ الإنشاء...' : 'Creating...'}</> : (lang === 'ar' ? '✅ إنشاء الحساب' : '✅ Create Account')}
                 </button>
-                <button type="button" className="btn btn-ghost" onClick={() => { setShowAddModal(false); setAdminMsg(null); }}>إلغاء</button>
+                <button type="button" className="btn btn-ghost" onClick={() => { setShowAddModal(false); setAdminMsg(null); }}>{tr('cancel')}</button>
               </div>
             </form>
           </div>

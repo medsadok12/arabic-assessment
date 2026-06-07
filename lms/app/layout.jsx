@@ -1,8 +1,9 @@
 import './globals.css';
+import { LanguageProvider } from '../contexts/LanguageContext';
 
 export const metadata = {
-  title: 'أكاديمية عارم — نظام التعلم الذكي',
-  description: 'منصة تعليمية متكاملة لتعليم اللغة العربية',
+  title: 'Aarem Academy',
+  description: 'Comprehensive online Arabic learning platform',
   icons: {
     icon: '/logo.svg',
     shortcut: '/logo.svg',
@@ -13,7 +14,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="ar" dir="rtl">
-      <body>{children}</body>
+      <body>
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
+      </body>
     </html>
   );
 }

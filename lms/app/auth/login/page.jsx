@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '../../../lib/supabase';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 function LoginForm() {
   const [email,    setEmail]    = useState('');
@@ -13,6 +14,7 @@ function LoginForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const forTeacher   = searchParams.get('for') === 'teacher';
+  const { t } = useLanguage();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -22,7 +24,7 @@ function LoginForm() {
     const { data: { user }, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError) {
-      setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+      setError(t('login.wrongCredentials'));
       setLoading(false);
       return;
     }
@@ -30,18 +32,16 @@ function LoginForm() {
     const role          = user?.user_metadata?.role;
     const isTeacherRole = role === 'teacher' || role === 'admin' || role === 'super_admin';
 
-    // Teacher entry point — block students
     if (forTeacher && !isTeacherRole) {
       await supabase.auth.signOut();
-      setError('هذا البريد مسجل كطالب — استخدم خانة "دخول الطالب" في الشريط الجانبي');
+      setError(t('login.studentBlocked'));
       setLoading(false);
       return;
     }
 
-    // Student entry point — block teachers/admins
     if (!forTeacher && isTeacherRole) {
       await supabase.auth.signOut();
-      setError('هذا البريد مسجل كمعلم — استخدم خانة "دخول المعلم 🔑" أسفل الصفحة الرئيسية');
+      setError(t('login.teacherBlocked'));
       setLoading(false);
       return;
     }
@@ -59,35 +59,35 @@ function LoginForm() {
       <div className="auth-card">
         <div className="auth-logo">
           <span className="logo-icon">{forTeacher ? '👨‍🏫' : '📚'}</span>
-          <h1>أكاديمية عارم</h1>
+          <h1>{t('siteName')}</h1>
         </div>
-        <h2 className="auth-title">{forTeacher ? 'دخول المعلم' : 'دخول الطالب'}</h2>
+        <h2 className="auth-title">{forTeacher ? t('login.teacherLogin') : t('login.studentLogin')}</h2>
 
         {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">البريد الإلكتروني</label>
+            <label className="form-label">{t('login.email')}</label>
             <input className="form-input" type="email" value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="example@email.com" required dir="ltr" />
           </div>
           <div className="form-group">
-            <label className="form-label">كلمة المرور</label>
+            <label className="form-label">{t('login.password')}</label>
             <input className="form-input" type="password" value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••" required dir="ltr" />
           </div>
           <button type="submit" className="btn btn-primary"
             style={{ width: '100%', marginTop: 8 }} disabled={loading}>
-            {loading ? <span className="spinner" /> : 'دخول ←'}
+            {loading ? <span className="spinner" /> : t('login.signIn')}
           </button>
         </form>
 
         <p className="auth-footer">
           {forTeacher
-            ? <>معلم جديد؟ <Link href="/auth/register/teacher">إنشاء حساب معلم</Link></>
-            : <>ليس لديك حساب؟ <Link href="/auth/register">إنشاء حساب جديد</Link></>
+            ? <>{t('login.newTeacher')} <Link href="/auth/register/teacher">{t('login.createTeacher')}</Link></>
+            : <>{t('login.noAccount')} <Link href="/auth/register">{t('login.createAccount')}</Link></>
           }
         </p>
       </div>
