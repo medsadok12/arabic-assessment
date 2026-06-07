@@ -123,12 +123,13 @@ function LangToggle() {
   );
 }
 
-const ROLE_LABELS_AR = { admin: 'مدير', teacher: 'معلم', student: 'طالب' };
-const ROLE_LABELS_EN = { admin: 'Admin', teacher: 'Teacher', student: 'Student' };
+const ROLE_LABELS_AR = { admin: 'مدير', teacher: 'معلم', student: 'طالب', supervisor: 'مرشد' };
+const ROLE_LABELS_EN = { admin: 'Admin', teacher: 'Teacher', student: 'Student', supervisor: 'Supervisor' };
 
 function dashboardPath(role) {
   if (role === 'admin' || role === 'super_admin') return '/bogga';
-  if (role === 'teacher') return '/dashboard';
+  if (role === 'teacher') return '/teacher';
+  if (role === 'supervisor') return '/supervisor';
   return '/dashboard';
 }
 

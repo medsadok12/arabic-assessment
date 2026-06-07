@@ -23,6 +23,8 @@ export default function LandingPage() {
       if (!user) return;
       const role = user.user_metadata?.role;
       if (role === 'super_admin' || role === 'admin') router.replace('/bogga');
+      else if (role === 'teacher') router.replace('/teacher');
+      else if (role === 'supervisor') router.replace('/supervisor');
       else router.replace('/dashboard');
     });
   }, [router]);

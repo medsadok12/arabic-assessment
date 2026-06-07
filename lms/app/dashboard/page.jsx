@@ -20,6 +20,7 @@ export default async function DashboardPage() {
 
   if (role === 'admin' || role === 'super_admin') redirect('/bogga');
   if (role === 'teacher') redirect('/teacher');
+  if (role === 'supervisor') redirect('/supervisor');
 
   const today = new Date().toISOString().slice(0, 10);
   const admin = createAdminClient();

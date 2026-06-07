@@ -36,6 +36,7 @@ const t = {
       roleAdmin: 'مدير',
       roleTeacher: 'معلم',
       roleStudent: 'طالب',
+      roleSupervisor: 'مرشد',
     },
 
     // ── الصفحة الرئيسية ──────────────────────────────────────────────────────
@@ -316,6 +317,25 @@ const t = {
         promoting: 'جارٍ الترقية...',
       },
     },
+
+    // ── لوحة المرشد التربوي ──────────────────────────────────────────────────
+    supervisor: {
+      title: '🏫 لوحة المتابعة التربوية',
+      role: '🧑‍💼 مرشد تربوي',
+      greeting: 'أهلاً',
+      overview: 'نظرة عامة على الطلاب',
+      totalStudents: 'إجمالي الطلاب',
+      totalAssessments: 'إجمالي التقييمات',
+      avgScore: 'متوسط الدرجات',
+      passRate: 'معدل النجاح',
+      recentActivity: 'آخر النشاطات',
+      studentName: 'اسم الطالب',
+      level: 'المستوى',
+      score: 'النتيجة',
+      date: 'التاريخ',
+      noActivity: 'لا يوجد نشاط بعد',
+      readOnly: 'وضع المشاهدة — للاطلاع فقط',
+    },
   },
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -358,6 +378,7 @@ const t = {
       roleAdmin: 'Admin',
       roleTeacher: 'Teacher',
       roleStudent: 'Student',
+      roleSupervisor: 'Supervisor',
     },
 
     // ── Landing Page ──────────────────────────────────────────────────────────
@@ -627,6 +648,25 @@ const t = {
         promoteBtn: '👑 Promote My Account to Super Admin',
         promoting: 'Promoting...',
       },
+    },
+
+    // ── Supervisor Dashboard ──────────────────────────────────────────────────
+    supervisor: {
+      title: '🏫 Educational Monitoring Dashboard',
+      role: '🧑‍💼 Educational Supervisor',
+      greeting: 'Hello',
+      overview: 'Student Overview',
+      totalStudents: 'Total Students',
+      totalAssessments: 'Total Assessments',
+      avgScore: 'Average Score',
+      passRate: 'Pass Rate',
+      recentActivity: 'Recent Activity',
+      studentName: 'Student Name',
+      level: 'Level',
+      score: 'Score',
+      date: 'Date',
+      noActivity: 'No activity yet',
+      readOnly: 'View-only mode — read access',
     },
   },
 };

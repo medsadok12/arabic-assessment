@@ -313,7 +313,10 @@ export default function BoggarAdminPage() {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       if (!u) { router.push('/auth/login'); return; }
       const r = u.user_metadata?.role ?? '';
-      if (r !== 'admin' && r !== 'super_admin') { router.push('/dashboard'); return; }
+      if (r !== 'admin' && r !== 'super_admin') {
+        router.push(r === 'supervisor' ? '/supervisor' : r === 'teacher' ? '/teacher' : '/dashboard');
+        return;
+      }
       if (r === 'admin' && u.user_metadata?.status === 'suspended') { setSuspended(true); setUser(u); setRole(r); return; }
       setUser(u); setRole(r);
     });

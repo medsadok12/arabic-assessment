@@ -30,7 +30,7 @@ function LoginForm() {
     }
 
     const role          = user?.user_metadata?.role;
-    const isTeacherRole = role === 'teacher' || role === 'admin' || role === 'super_admin';
+    const isTeacherRole = role === 'teacher' || role === 'admin' || role === 'super_admin' || role === 'supervisor';
 
     if (forTeacher && !isTeacherRole) {
       await supabase.auth.signOut();
@@ -49,6 +49,7 @@ function LoginForm() {
     router.push(
       role === 'admin' || role === 'super_admin' ? '/bogga'
       : role === 'teacher'                        ? '/teacher'
+      : role === 'supervisor'                     ? '/supervisor'
       : '/dashboard'
     );
     router.refresh();
