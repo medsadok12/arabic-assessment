@@ -267,6 +267,9 @@ export default function SmartFAQ() {
                       fontSize: '.95rem',
                       lineHeight: 1.85,
                       color: '#fff',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      overflowWrap: 'anywhere',
                     }}>
                       {displayed}
                       {displayed.length < answer.length && (
