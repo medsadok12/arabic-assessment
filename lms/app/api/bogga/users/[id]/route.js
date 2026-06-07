@@ -53,7 +53,10 @@ export async function PATCH(req, { params }) {
   // ── Reset password ──────────────────────────────────────────────────────
   if (body.action === 'reset-password') {
     const newPwd = generateTempPassword();
-    const { error } = await admin.auth.admin.updateUserById(id, { password: newPwd });
+    const { error } = await admin.auth.admin.updateUserById(id, {
+      password:     newPwd,
+      app_metadata: { ...target.app_metadata, temp_password: newPwd },
+    });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true, password: newPwd });
   }

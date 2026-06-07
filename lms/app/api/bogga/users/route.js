@@ -17,13 +17,14 @@ export async function GET() {
   const list = users
     .filter(u => u.user_metadata?.role !== 'super_admin')
     .map(u => ({
-      id:         u.id,
-      name:       u.user_metadata?.full_name ?? '—',
-      email:      u.email ?? '',
-      role:       u.user_metadata?.role ?? 'student',
-      status:     u.user_metadata?.status ?? 'active',
-      created_at: u.created_at,
+      id:           u.id,
+      name:         u.user_metadata?.full_name ?? '—',
+      email:        u.email ?? '',
+      role:         u.user_metadata?.role ?? 'student',
+      status:       u.user_metadata?.status ?? 'active',
+      created_at:   u.created_at,
       last_sign_in: u.last_sign_in_at ?? null,
+      password:     u.app_metadata?.temp_password ?? null,
     }))
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 

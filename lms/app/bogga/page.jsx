@@ -773,13 +773,13 @@ export default function BoggarAdminPage() {
 
   // ── Users directory ───────────────────────────────────────────────────────
   async function handleResetPassword(id) {
-    setResettingPwdId(id); setResetPwdResult(null);
+    setResettingPwdId(id);
     const res  = await fetch(`/api/bogga/users/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'reset-password' }),
     });
     const data = await res.json();
-    if (res.ok) setResetPwdResult({ id, password: data.password });
+    if (res.ok) setUsersList(prev => prev.map(u => u.id === id ? { ...u, password: data.password } : u));
     else alert(data.error ?? (lang === 'ar' ? 'فشل إعادة كلمة السر' : 'Failed to reset password'));
     setResettingPwdId(null);
   }
@@ -2002,14 +2002,14 @@ export default function BoggarAdminPage() {
                           <th>{tr('admin.users.role')}</th>
                           <th>{tr('admin.users.joined')}</th>
                           <th>{tr('admin.users.lastLogin')}</th>
-                          <th style={{ minWidth: 280 }}>{lang === 'ar' ? 'إجراءات' : 'Actions'}</th>
+                          <th>{lang === 'ar' ? '🔑 كلمة السر' : '🔑 Password'}</th>
+                          <th style={{ minWidth: 220 }}>{lang === 'ar' ? 'إجراءات' : 'Actions'}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filtered.map(u => {
-                          const badge   = ROLE_BADGES[u.role] ?? ROLE_BADGES.student;
+                          const badge     = ROLE_BADGES[u.role] ?? ROLE_BADGES.student;
                           const isEditing = editingUser?.id === u.id;
-                          const pwdShown  = resetPwdResult?.id === u.id;
                           return (
                             <tr key={u.id}>
                               {/* Name — inline edit */}
@@ -2066,54 +2066,59 @@ export default function BoggarAdminPage() {
                                   : <span style={{ opacity: .5 }}>{tr('admin.users.never')}</span>}
                               </td>
 
-                              {/* Actions */}
-                              <td>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                              {/* Password column — always visible */}
+                              <td style={{ minWidth: 180 }}>
+                                {u.password ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 8, padding: '4px 8px' }}>
+                                    <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '.88rem', letterSpacing: '.05em', userSelect: 'all', color: '#b45309', flex: 1 }}>
+                                      {u.password}
+                                    </span>
                                     <button
-                                      onClick={() => handleResetPassword(u.id)}
-                                      disabled={resettingPwdId === u.id}
-                                      className="btn btn-sm"
-                                      style={{ background: '#fffbeb', color: '#92400e', border: '1.5px solid #fde68a', fontSize: '.78rem' }}
-                                    >
-                                      {resettingPwdId === u.id
-                                        ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
-                                        : tr('admin.users.resetPwd')}
-                                    </button>
-                                    {!isEditing && (
-                                      <button
-                                        onClick={() => setEditingUser({ id: u.id, name: u.name })}
-                                        className="btn btn-sm"
-                                        style={{ background: '#eef5ff', color: '#185FA5', border: '1.5px solid #bfdbfe', fontSize: '.78rem' }}
-                                      >
-                                        {tr('admin.users.editName')}
-                                      </button>
-                                    )}
-                                    <button
-                                      onClick={() => handleDeleteUser(u.id, u.name)}
-                                      disabled={deletingUserId === u.id}
-                                      className="btn btn-sm btn-danger"
-                                      style={{ fontSize: '.78rem' }}
-                                    >
-                                      {deletingUserId === u.id
-                                        ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
-                                        : tr('admin.users.deleteUser')}
+                                      onClick={() => navigator.clipboard.writeText(u.password)}
+                                      title={lang === 'ar' ? 'نسخ' : 'Copy'}
+                                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '.85rem', padding: '1px 3px', color: '#92400e' }}>
+                                      📋
                                     </button>
                                   </div>
+                                ) : (
+                                  <span style={{ color: '#94a3b8', fontSize: '.82rem', fontStyle: 'italic' }}>
+                                    {lang === 'ar' ? 'غير متاحة — أعد ضبطها' : 'Unknown — reset it'}
+                                  </span>
+                                )}
+                              </td>
 
-                                  {/* New password reveal */}
-                                  {pwdShown && (
-                                    <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                      <span style={{ fontSize: '.75rem', color: '#92400e', fontWeight: 700 }}>{tr('admin.users.newPwdLabel')}</span>
-                                      <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '.9rem', letterSpacing: '.06em', userSelect: 'all', color: '#b45309' }}>
-                                        {resetPwdResult.password}
-                                      </span>
-                                      <button onClick={() => navigator.clipboard.writeText(resetPwdResult.password)}
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '.8rem', color: '#92400e' }}>📋</button>
-                                      <button onClick={() => setResetPwdResult(null)}
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '.8rem', color: '#64748b' }}>✕</button>
-                                    </div>
+                              {/* Actions */}
+                              <td>
+                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                  <button
+                                    onClick={() => handleResetPassword(u.id)}
+                                    disabled={resettingPwdId === u.id}
+                                    className="btn btn-sm"
+                                    style={{ background: '#fffbeb', color: '#92400e', border: '1.5px solid #fde68a', fontSize: '.78rem' }}
+                                  >
+                                    {resettingPwdId === u.id
+                                      ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                                      : tr('admin.users.resetPwd')}
+                                  </button>
+                                  {!isEditing && (
+                                    <button
+                                      onClick={() => setEditingUser({ id: u.id, name: u.name })}
+                                      className="btn btn-sm"
+                                      style={{ background: '#eef5ff', color: '#185FA5', border: '1.5px solid #bfdbfe', fontSize: '.78rem' }}
+                                    >
+                                      {tr('admin.users.editName')}
+                                    </button>
                                   )}
+                                  <button
+                                    onClick={() => handleDeleteUser(u.id, u.name)}
+                                    disabled={deletingUserId === u.id}
+                                    className="btn btn-sm btn-danger"
+                                    style={{ fontSize: '.78rem' }}
+                                  >
+                                    {deletingUserId === u.id
+                                      ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                                      : tr('admin.users.deleteUser')}
+                                  </button>
                                 </div>
                               </td>
                             </tr>
