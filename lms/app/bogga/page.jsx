@@ -11,6 +11,7 @@ import GroupsManager                    from '../../components/GroupsManager';
 import LessonLogbookView               from '../../components/LessonLogbookView';
 import TeacherSpace                    from '../../components/TeacherSpace';
 import NotificationBell                from '../../components/NotificationBell';
+import FinancialsTab                   from '../../components/FinancialsTab';
 import { useLanguage }                  from '../../contexts/LanguageContext';
 
 // ── Time slots 08:00 → 20:00, 30-min increments (25 slots) ─────────────────
@@ -199,6 +200,29 @@ CREATE TABLE IF NOT EXISTS faheem_visitor_qa (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE faheem_visitor_qa DISABLE ROW LEVEL SECURITY;
+
+-- 8. جدول الفواتير والإدارة المالية
+CREATE TABLE IF NOT EXISTS invoices (
+  id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          UUID,
+  user_name        TEXT         NOT NULL,
+  user_email       TEXT         NOT NULL,
+  type             TEXT         NOT NULL CONSTRAINT invoice_type CHECK (type IN ('teacher_payout','student_bill')),
+  total_hours      NUMERIC(8,2) NOT NULL DEFAULT 0,
+  sessions_count   INT          NOT NULL DEFAULT 0,
+  rate_per_hour    NUMERIC(10,2) NOT NULL DEFAULT 0,
+  amount           NUMERIC(12,2) NOT NULL DEFAULT 0,
+  status           TEXT         NOT NULL DEFAULT 'draft' CONSTRAINT invoice_status CHECK (status IN ('draft','sent')),
+  billing_period   TEXT         NOT NULL,
+  items            JSONB,
+  sent_at          TIMESTAMPTZ,
+  notes            TEXT,
+  created_at       TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  UNIQUE (user_email, type, billing_period)
+);
+ALTER TABLE invoices DISABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS invoices_period_idx ON invoices (billing_period, type);
 
 NOTIFY pgrst, 'reload schema';`;
 
@@ -973,6 +997,7 @@ export default function BoggarAdminPage() {
     { id: 'logbook',     label: tr('admin.tabs.logbook'),     show: isSuperAdmin },
     { id: 'space',       label: tr('admin.tabs.space'),       show: true },
     { id: 'messages',    label: tr('admin.tabs.messages'),    show: true },
+    { id: 'financials',  label: tr('admin.tabs.financials'),  show: isSuperAdmin },
     { id: 'admins',      label: tr('admin.tabs.admins'),      show: isSuperAdmin },
     { id: 'users',       label: tr('admin.tabs.users'),       show: isSuperAdmin },
     { id: 'visitor_qa',  label: tr('admin.tabs.visitor_qa'), show: isSuperAdmin },
@@ -1638,6 +1663,11 @@ export default function BoggarAdminPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* ══ Financials ════════════════════════════════════════ */}
+          {activeTab === 'financials' && isSuperAdmin && (
+            <FinancialsTab lang={lang} />
           )}
 
           {/* ══ Admins ════════════════════════════════════════════ */}
