@@ -230,7 +230,7 @@ export default function TeacherPage() {
   return (
     <>
       <style>{`
-        .tw { max-width: 920px; margin: 0 auto; padding: 32px 20px; direction: rtl; }
+        .tw { max-width: 1100px; margin: 0 auto; padding: 32px 20px; direction: rtl; }
         .sc { background:#fff; border-radius:14px; border:1.5px solid var(--border);
               padding:16px 20px; display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; }
         .sc:hover { box-shadow:0 4px 18px rgba(24,95,165,.10); }
@@ -242,9 +242,52 @@ export default function TeacherPage() {
         .stat-b { background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; text-align:center; }
         .stat-v { font-size:1.45rem; font-weight:900; color:var(--primary); }
         .stat-l { font-size:.76rem; color:var(--muted); margin-top:2px; }
-        .tab-bar { display:flex; gap:4px; background:#f0f4f8; border-radius:10px; padding:4px; margin-bottom:24px; flex-wrap:wrap; }
-        .tab-btn { flex:1; min-width:80px; padding:8px 4px; border:none; background:transparent; border-radius:7px;
-                   font-family:inherit; font-size:.85rem; font-weight:700; cursor:pointer; color:var(--muted); transition:.15s; }
+        /* Sidebar layout */
+        .tw-body { display:flex; gap:20px; align-items:flex-start; }
+        .tw-sidebar {
+          width: 180px; flex-shrink:0;
+          background:#fff; border-radius:16px;
+          border:1.5px solid var(--border);
+          padding:10px 8px;
+          position:sticky; top:80px;
+          box-shadow:0 2px 12px rgba(24,95,165,.06);
+        }
+        .tw-content { flex:1; min-width:0; }
+        .side-btn {
+          display:flex; align-items:center; gap:9px;
+          width:100%; padding:10px 12px;
+          border:none; background:transparent; border-radius:10px;
+          font-family:inherit; font-size:.88rem; font-weight:600;
+          cursor:pointer; color:#475569; text-align:right;
+          transition:.15s; white-space:nowrap;
+        }
+        .side-btn:hover { background:#f0f4f8; color:var(--primary); }
+        .side-btn.active { background:var(--primary); color:#fff; font-weight:800; }
+        .side-btn .badge {
+          margin-right:auto; background:rgba(255,255,255,.25);
+          border-radius:20px; padding:1px 7px;
+          font-size:.75rem; font-weight:700;
+        }
+        .side-btn:not(.active) .badge { background:#eef5ff; color:var(--primary); }
+        .side-sep { height:1px; background:var(--border); margin:6px 4px; }
+        .side-link {
+          display:flex; align-items:center; gap:9px;
+          width:100%; padding:10px 12px;
+          border:none; background:#fffbeb; border-radius:10px;
+          font-family:inherit; font-size:.88rem; font-weight:700;
+          cursor:pointer; color:#92400e; text-align:right;
+          text-decoration:none; margin-top:4px;
+          border:1.5px solid #fde68a;
+          transition:.15s;
+        }
+        .side-link:hover { background:#fef3c7; }
+        @media(max-width:680px) {
+          .tw-body { flex-direction:column; }
+          .tw-sidebar { width:100%; position:static; display:flex; flex-wrap:wrap; gap:4px; padding:8px; }
+          .side-btn { flex:1; min-width:80px; justify-content:center; }
+          .side-sep { display:none; }
+          .side-link { flex:1; min-width:120px; justify-content:center; }
+        }
         .tab-btn.active { background:#fff; color:var(--primary); box-shadow:0 1px 6px rgba(0,0,0,.1); }
         .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1000;
                          display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -316,28 +359,36 @@ export default function TeacherPage() {
           ))}
         </div>
 
-        {/* Tabs */}
-        <div className="tab-bar" style={{ flexWrap: 'wrap', gap: 6 }}>
-          {[
-            { key:'sessions', label:`📅 الحصص (${upcoming.length})` },
-            { key:'calendar', label:'🗓️ التقويم'                   },
-            { key:'students', label:`👥 طلابي (${students.length})` },
-            { key:'past',     label:`📋 السابقة (${past.length})`   },
-          ].map(t => (
-            <button key={t.key} className={`tab-btn${activeTab === t.key ? ' active' : ''}`}
-              onClick={() => setActiveTab(t.key)}>{t.label}</button>
-          ))}
-          <a href="/teacher/logbook" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '8px 16px', borderRadius: 10, textDecoration: 'none',
-            background: '#fffbeb', color: '#92400e',
-            border: '1.5px solid #fde68a', fontWeight: 700, fontSize: '.88rem',
-            whiteSpace: 'nowrap',
-          }}>
-            📓 كراس الدروس
-          </a>
-        </div>
+        {/* Body: sidebar + content */}
+        <div className="tw-body">
 
+          {/* ── Sidebar ── */}
+          <nav className="tw-sidebar">
+            {[
+              { key:'sessions', icon:'📅', label:'الحصص',   count: upcoming.length },
+              { key:'calendar', icon:'🗓️', label:'التقويم', count: null },
+              { key:'students', icon:'👥', label:'طلابي',   count: students.length },
+              { key:'past',     icon:'📋', label:'السابقة', count: past.length },
+            ].map(t => (
+              <button
+                key={t.key}
+                className={`side-btn${activeTab === t.key ? ' active' : ''}`}
+                onClick={() => setActiveTab(t.key)}
+              >
+                <span>{t.icon}</span>
+                <span>{t.label}</span>
+                {t.count !== null && <span className="badge">{t.count}</span>}
+              </button>
+            ))}
+            <div className="side-sep" />
+            <a href="/teacher/logbook" className="side-link">
+              <span>📓</span>
+              <span>كراس الدروس</span>
+            </a>
+          </nav>
+
+          {/* ── Content ── */}
+          <div className="tw-content">
         {loading ? (
           <div style={{ textAlign:'center', padding:'40px 0', color:'var(--muted)' }}>جارٍ التحميل...</div>
         ) : (
@@ -582,6 +633,8 @@ export default function TeacherPage() {
             )}
           </>
         )}
+          </div>{/* tw-content */}
+        </div>{/* tw-body */}
       </div>
 
       {/* ── Session Create/Edit Modal ── */}
