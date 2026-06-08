@@ -23,6 +23,8 @@ export default function SupervisorContent({ user, assessments, displayName }) {
   const router = useRouter();
   const { t, lang } = useLanguage();
   const [activeTab, setActiveTab] = useState('overview');
+  const [messages,   setMessages]  = useState(null);
+  const [msgsLoaded, setMsgsLoaded] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -31,6 +33,21 @@ export default function SupervisorContent({ user, assessments, displayName }) {
     });
     return () => subscription.unsubscribe();
   }, [router]);
+
+  useEffect(() => {
+    if (activeTab !== 'messages' || msgsLoaded) return;
+    fetch('/api/contact/supervisor')
+      .then(r => r.json())
+      .then(d => { setMessages(d.messages ?? []); setMsgsLoaded(true); });
+  }, [activeTab, msgsLoaded]);
+
+  async function markRead(id) {
+    await fetch('/api/contact/supervisor', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, is_read: true } : m));
+  }
 
   // ── Stats ───────────────────────────────────────────────────────────────────
   const total      = assessments.length;
@@ -78,9 +95,10 @@ export default function SupervisorContent({ user, assessments, displayName }) {
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 28, borderBottom: '2px solid var(--border)', paddingBottom: 0 }}>
           {[
-            { key: 'overview', label: lang === 'ar' ? '📊 نتائج الطلاب' : '📊 Student Results' },
-            { key: 'logbook',  label: lang === 'ar' ? '📓 كراس الدروس'  : '📓 Lesson Logbook'  },
-            { key: 'space',    label: lang === 'ar' ? '🏫 فضاء المعلم'  : '🏫 Teacher Space'   },
+            { key: 'overview',  label: lang === 'ar' ? '📊 نتائج الطلاب'    : '📊 Student Results' },
+            { key: 'logbook',   label: lang === 'ar' ? '📓 كراس الدروس'     : '📓 Lesson Logbook'  },
+            { key: 'space',     label: lang === 'ar' ? '🏫 فضاء المعلم'     : '🏫 Teacher Space'   },
+            { key: 'messages',  label: lang === 'ar' ? '📩 رسائل الأولياء'  : '📩 Parent Messages' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -230,7 +248,98 @@ export default function SupervisorContent({ user, assessments, displayName }) {
           <TeacherSpace currentUser={user} />
         )}
 
+        {/* ── Parent Messages Tab ── */}
+        {activeTab === 'messages' && (
+          <ParentMessagesPanel
+            messages={messages}
+            loaded={msgsLoaded}
+            lang={lang}
+            onMarkRead={markRead}
+          />
+        )}
+
       </main>
     </>
+  );
+}
+
+function ParentMessagesPanel({ messages, loaded, lang, onMarkRead }) {
+  const unread = messages ? messages.filter(m => !m.is_read).length : 0;
+
+  return (
+    <div>
+      <div style={{ marginBottom: 22 }}>
+        <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>
+          📩 {lang === 'ar' ? 'رسائل الأولياء' : 'Parent Messages'}
+          {unread > 0 && (
+            <span style={{ background: '#dc2626', color: '#fff', fontSize: '.75rem',
+              borderRadius: 20, padding: '2px 9px', marginRight: 10, fontWeight: 700 }}>
+              {unread} {lang === 'ar' ? 'جديدة' : 'new'}
+            </span>
+          )}
+        </h2>
+        <p style={{ color: '#64748b', fontSize: '.88rem' }}>
+          {lang === 'ar'
+            ? 'رسائل أولياء الأمور المُرسَلة عبر الموقع'
+            : 'Messages sent by parents through the website'}
+        </p>
+      </div>
+
+      {!loaded ? (
+        <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8' }}>جارٍ التحميل...</div>
+      ) : messages.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '56px 24px', background: '#fff',
+          borderRadius: 16, border: '1.5px solid var(--border)' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>📭</div>
+          <p style={{ color: '#94a3b8', fontWeight: 600 }}>
+            {lang === 'ar' ? 'لا توجد رسائل بعد' : 'No messages yet'}
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {messages.map(m => (
+            <div key={m.id} style={{
+              background: '#fff', borderRadius: 14,
+              border: `1.5px solid ${m.is_read ? 'var(--border)' : '#c4b5fd'}`,
+              padding: '16px 20px',
+              borderRight: `4px solid ${m.is_read ? '#e2e8f0' : '#7c3aed'}`,
+              opacity: m.is_read ? .8 : 1,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '.97rem', color: '#1e293b' }}>
+                    {m.is_read ? '' : '🔵 '}{m.parent_name}
+                    {m.student_name && (
+                      <span style={{ fontWeight: 600, color: '#7c3aed', fontSize: '.85rem', marginRight: 8 }}>
+                        — {lang === 'ar' ? 'طالب:' : 'student:'} {m.student_name}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '.8rem', color: '#94a3b8', marginTop: 3 }}>
+                    {new Date(m.created_at).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' })}
+                    {m.phone && <span style={{ marginRight: 12 }}>📞 <a href={`tel:${m.phone}`} style={{ color: '#185FA5' }}>{m.phone}</a></span>}
+                  </div>
+                </div>
+                {!m.is_read && (
+                  <button
+                    onClick={() => onMarkRead(m.id)}
+                    style={{ background: '#f3f0ff', border: 'none', borderRadius: 8,
+                      padding: '5px 12px', fontSize: '.78rem', fontWeight: 700,
+                      color: '#7c3aed', cursor: 'pointer', flexShrink: 0 }}
+                  >
+                    ✓ {lang === 'ar' ? 'تمّ الاطلاع' : 'Mark read'}
+                  </button>
+                )}
+              </div>
+              <div style={{ marginTop: 12, padding: '12px 14px', background: '#fafafa',
+                borderRadius: 10, fontSize: '.9rem', color: '#334155', lineHeight: 1.7,
+                borderRight: '3px solid #e2e8f0' }}>
+                {m.message}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
