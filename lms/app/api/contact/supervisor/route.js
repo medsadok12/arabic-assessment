@@ -1,6 +1,7 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { notifyByRole }      from '../../../../lib/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,15 @@ export async function POST(req) {
       return NextResponse.json({ error: 'الجدول غير موجود — يرجى تشغيل parent_messages.sql في Supabase' }, { status: 500 });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Notify supervisors and admins
+  notifyByRole(
+    ['supervisor', 'admin', 'super_admin'],
+    'parent_message',
+    `📩 رسالة جديدة من ولي أمر: ${parent_name.trim()}`,
+    message.trim().slice(0, 60)
+  );
+
   return NextResponse.json({ success: true, id: data.id }, { status: 201 });
 }
 

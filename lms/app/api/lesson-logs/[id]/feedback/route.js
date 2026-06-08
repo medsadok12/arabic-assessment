@@ -1,6 +1,7 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
+import { notifyUser }        from '../../../../../lib/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,7 @@ export async function POST(req, { params }) {
   const admin = createAdminClient();
 
   const { data: logExists } = await admin
-    .from('lesson_logs').select('id').eq('id', params.id).single();
+    .from('lesson_logs').select('id, teacher_id').eq('id', params.id).single();
   if (!logExists) return NextResponse.json({ error: 'السجل غير موجود' }, { status: 404 });
 
   const { data, error } = await admin
@@ -37,5 +38,16 @@ export async function POST(req, { params }) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Notify the teacher
+  const reviewerName = user.user_metadata?.full_name ?? user.email;
+  notifyUser(
+    logExists.teacher_id,
+    'lesson_feedback',
+    `📓 ${reviewerName} أضاف توجيهاً على كراس دروسك`,
+    content.trim().slice(0, 60),
+    '/teacher/logbook'
+  );
+
   return NextResponse.json({ feedback: data }, { status: 201 });
 }

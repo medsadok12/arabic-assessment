@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '../../lib/supabase';
 import Navbar from '../../components/Navbar';
 import TeacherSpace from '../../components/TeacherSpace';
+import NotificationBell from '../../components/NotificationBell';
 
 const TIME_SLOTS = Array.from({ length: 29 }, (_, i) => {
   const mins = 7 * 60 + i * 30;
@@ -332,9 +333,12 @@ export default function TeacherPage() {
             <h1 style={{ fontSize:'1.5rem', fontWeight:800, color:'var(--primary)', marginBottom:4 }}>👨‍🏫 لوحة المعلم</h1>
             <p style={{ color:'var(--muted)', fontSize:'.88rem' }}>مرحباً {displayName}</p>
           </div>
-          <button onClick={openCreate} className="btn btn-primary" style={{ marginRight:'auto' }}>
-            + جدولة حصة جديدة
-          </button>
+          <div style={{ marginRight:'auto', display:'flex', alignItems:'center', gap:10 }}>
+            <NotificationBell userId={user?.id} role={user?.user_metadata?.role} lang="ar" />
+            <button onClick={openCreate} className="btn btn-primary">
+              + جدولة حصة جديدة
+            </button>
+          </div>
         </div>
 
         {msg && !showModal && (

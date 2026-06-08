@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Navbar from './Navbar';
 import LessonLogbookView from './LessonLogbookView';
 import TeacherSpace from './TeacherSpace';
+import NotificationBell from './NotificationBell';
 import { createClient } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -84,12 +85,15 @@ export default function SupervisorContent({ user, assessments, displayName }) {
               {t('supervisor.greeting')}، <strong>{displayName}</strong> — {t('supervisor.role')}
             </p>
           </div>
-          <span style={{
-            background: '#f0f6ff', color: '#185FA5', border: '1.5px solid #bfdbfe',
-            borderRadius: 20, padding: '4px 14px', fontSize: '.82rem', fontWeight: 600,
-          }}>
-            {t('supervisor.readOnly')}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <NotificationBell userId={user?.id} role={user?.user_metadata?.role} lang={lang} />
+            <span style={{
+              background: '#f0f6ff', color: '#185FA5', border: '1.5px solid #bfdbfe',
+              borderRadius: 20, padding: '4px 14px', fontSize: '.82rem', fontWeight: 600,
+            }}>
+              {t('supervisor.readOnly')}
+            </span>
+          </div>
         </div>
 
         {/* Tabs */}

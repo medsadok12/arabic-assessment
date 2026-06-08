@@ -1,6 +1,7 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../lib/supabase-server';
 import { createAdminClient } from '../../../lib/supabase-admin';
+import { notifyByRole }      from '../../../lib/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,6 @@ export async function POST(req) {
   if (!content?.trim() && !media_data)
     return NextResponse.json({ error: 'لا يمكن نشر منشور فارغ' }, { status: 400 });
 
-  // ~3MB base64 limit
   if (media_data && media_data.length > 4_000_000)
     return NextResponse.json({ error: 'حجم الملف كبير جداً (الحد 3MB)' }, { status: 400 });
 
@@ -60,5 +60,17 @@ export async function POST(req) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const authorName = user.user_metadata?.full_name ?? user.email;
+  const preview    = content?.trim()?.slice(0, 60) || (media_type === 'image' ? '📷 صورة' : '🎵 تسجيل صوتي');
+  notifyByRole(
+    ['teacher', 'supervisor', 'admin', 'super_admin'],
+    'space_post',
+    `🏫 منشور جديد من ${authorName}`,
+    preview,
+    null,
+    user.id   // exclude the poster themselves
+  );
+
   return NextResponse.json({ post: { ...data, teacher_space_comments: [] } }, { status: 201 });
 }

@@ -10,6 +10,7 @@ import TeacherCodes                     from '../../components/TeacherCodes';
 import GroupsManager                    from '../../components/GroupsManager';
 import LessonLogbookView               from '../../components/LessonLogbookView';
 import TeacherSpace                    from '../../components/TeacherSpace';
+import NotificationBell                from '../../components/NotificationBell';
 import { useLanguage }                  from '../../contexts/LanguageContext';
 
 // ── Time slots 08:00 → 20:00, 30-min increments (25 slots) ─────────────────
@@ -331,10 +332,6 @@ export default function BoggarAdminPage() {
   const [adminTeacherFilter,setAdminTeacherFilter]= useState('');
 
   // Notifications
-  const [notifications,  setNotifications]  = useState([]);
-  const [unreadCount,    setUnreadCount]    = useState(0);
-  const [bellOpen,       setBellOpen]       = useState(false);
-  const bellRef = useRef(null);
 
   // ── Auth guard ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -420,59 +417,6 @@ export default function BoggarAdminPage() {
     if (data.stats) setResultsStats(data.stats);
     setResultsLoading(false);
   }
-
-  // ── Notifications ─────────────────────────────────────────────────────────
-  async function loadNotifications() {
-    const data = await fetch('/api/bogga/notifications').then(r => r.json()).catch(() => ({}));
-    if (data.notifications) {
-      setNotifications(data.notifications);
-      setUnreadCount(data.unread ?? 0);
-    }
-  }
-
-  useEffect(() => {
-    if (!user) return;
-    loadNotifications();
-    const iv = setInterval(loadNotifications, 30_000);
-    return () => clearInterval(iv);
-  }, [user]);
-
-  useEffect(() => {
-    if (!bellOpen) return;
-    function handler(e) {
-      if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
-    }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [bellOpen]);
-
-  async function markAllRead() {
-    setUnreadCount(0);
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-    await fetch('/api/bogga/notifications', { method: 'PATCH' });
-  }
-
-  function handleBellOpen() {
-    setBellOpen(o => !o);
-    if (!bellOpen && unreadCount > 0) markAllRead();
-  }
-
-  function relativeTime(iso) {
-    const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-    if (lang === 'ar') {
-      if (diff < 60) return 'الآن';
-      if (diff < 3600) return `منذ ${Math.floor(diff / 60)} د`;
-      if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} س`;
-      return `منذ ${Math.floor(diff / 86400)} يوم`;
-    } else {
-      if (diff < 60) return 'Just now';
-      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-      return `${Math.floor(diff / 86400)}d ago`;
-    }
-  }
-
-  const NOTIF_ICONS = { recruitment: '📋', interview: '🗓️', assessment: '📝', teacher: '👨‍🏫' };
 
   // Booked slots (modal) — reload on date/interviewer change
   useEffect(() => {
@@ -1067,74 +1011,7 @@ export default function BoggarAdminPage() {
             </div>
             <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
               {/* ── Notification Bell ── */}
-              <div ref={bellRef} style={{ position: 'relative' }}>
-                <button
-                  onClick={handleBellOpen}
-                  title={lang === 'ar' ? 'الإشعارات' : 'Notifications'}
-                  style={{
-                    position: 'relative', background: bellOpen ? 'var(--primary)' : 'var(--bg)',
-                    border: '1.5px solid var(--border)', borderRadius: 10,
-                    width: 40, height: 40, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '1.2rem', transition: 'all .15s',
-                    color: bellOpen ? '#fff' : 'var(--text)',
-                  }}>
-                  🔔
-                  {unreadCount > 0 && (
-                    <span style={{
-                      position: 'absolute', top: -6, left: -6,
-                      background: '#e53e3e', color: '#fff',
-                      fontSize: '.65rem', fontWeight: 800,
-                      minWidth: 18, height: 18, borderRadius: 9,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '0 4px', lineHeight: 1,
-                    }}>{unreadCount > 99 ? '99+' : unreadCount}</span>
-                  )}
-                </button>
-
-                {bellOpen && (
-                  <div style={{
-                    position: 'absolute', top: 46, left: 0,
-                    width: 320, maxHeight: 420, overflowY: 'auto',
-                    background: '#fff', borderRadius: 14,
-                    boxShadow: '0 8px 32px rgba(24,95,165,.18)',
-                    border: '1px solid var(--border)', zIndex: 9999,
-                  }}>
-                    <div style={{
-                      padding: '14px 16px 10px', borderBottom: '1px solid var(--border)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    }}>
-                      <span style={{ fontWeight: 800, fontSize: '.95rem' }}>{lang === 'ar' ? 'الإشعارات' : 'Notifications'}</span>
-                      {notifications.some(n => !n.is_read) && (
-                        <button onClick={markAllRead} style={{
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          color: 'var(--primary)', fontSize: '.78rem', fontWeight: 700,
-                        }}>{lang === 'ar' ? 'تحديد الكل كمقروء' : 'Mark all as read'}</button>
-                      )}
-                    </div>
-                    {notifications.length === 0 ? (
-                      <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--muted)', fontSize: '.88rem' }}>
-                        {lang === 'ar' ? 'لا توجد إشعارات' : 'No notifications'}
-                      </div>
-                    ) : notifications.map(n => (
-                      <div key={n.id} style={{
-                        padding: '12px 16px', borderBottom: '1px solid var(--border)',
-                        background: n.is_read ? 'transparent' : 'rgba(24,95,165,.05)',
-                        display: 'flex', gap: 10, alignItems: 'flex-start',
-                      }}>
-                        <span style={{ fontSize: '1.2rem', lineHeight: 1.4 }}>{NOTIF_ICONS[n.type] ?? '🔔'}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: n.is_read ? 500 : 700, fontSize: '.88rem', color: 'var(--text)' }}>{n.title}</div>
-                          {n.body && <div style={{ fontSize: '.8rem', color: 'var(--muted)', marginTop: 2, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{n.body}</div>}
-                          <div style={{ fontSize: '.72rem', color: 'var(--muted)', marginTop: 4 }}>{relativeTime(n.created_at)}</div>
-                        </div>
-                        {!n.is_read && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0, marginTop: 5 }} />}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
+              <NotificationBell userId={user?.id} role={role} lang={lang} />
               <Link href="/bogga/lexicon" className="btn btn-outline btn-sm">📖 {lang === 'ar' ? 'بنك الكلمات' : 'Word Bank'}</Link>
             </div>
           </div>

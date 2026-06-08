@@ -1,6 +1,7 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
+import { notifyUser }        from '../../../../../lib/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,9 +20,9 @@ export async function POST(req, { params }) {
 
   const admin = createAdminClient();
 
-  const { data: postExists } = await admin
-    .from('teacher_space_posts').select('id').eq('id', params.id).single();
-  if (!postExists) return NextResponse.json({ error: 'المنشور غير موجود' }, { status: 404 });
+  const { data: post } = await admin
+    .from('teacher_space_posts').select('id, author_id, content').eq('id', params.id).single();
+  if (!post) return NextResponse.json({ error: 'المنشور غير موجود' }, { status: 404 });
 
   const { data, error } = await admin
     .from('teacher_space_comments')
@@ -36,5 +37,12 @@ export async function POST(req, { params }) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Notify post author (unless commenting on own post)
+  if (post.author_id !== user.id) {
+    const name = user.user_metadata?.full_name ?? user.email;
+    notifyUser(post.author_id, 'space_comment', `💬 ${name} علّق على منشورك`, content.trim().slice(0, 60));
+  }
+
   return NextResponse.json({ comment: data }, { status: 201 });
 }
