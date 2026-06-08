@@ -12,7 +12,7 @@ function periodLabel(period) {
 }
 
 function fmtAmount(n) {
-  return Number(n ?? 0).toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Number(n ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function invoiceHtml(invoice) {

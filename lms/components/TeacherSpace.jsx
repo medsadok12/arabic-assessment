@@ -507,7 +507,7 @@ export default function TeacherSpace({ currentUser }) {
 
               <div style={{ flex: 1 }} />
               <span style={{ color: '#cbd5e1', fontSize: '.75rem' }}>
-                {new Date(post.created_at).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })}
+                {new Date(post.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
               </span>
             </div>
 

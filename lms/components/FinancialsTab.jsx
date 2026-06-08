@@ -16,7 +16,7 @@ function periodLabel(p) {
 }
 
 function fmtAmount(n) {
-  return Number(n ?? 0).toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Number(n ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // ── Editable cell ────────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ function InvoiceRow({ invoice, onUpdate, onSend, sending, lang }) {
         <td style={{ padding: '12px 14px', textAlign: 'center' }}>
           {isSent ? (
             <span style={{ fontSize: '.75rem', color: '#94a3b8' }}>
-              {invoice.sent_at ? new Date(invoice.sent_at).toLocaleDateString('ar-SA') : '—'}
+              {invoice.sent_at ? new Date(invoice.sent_at).toLocaleDateString('en-GB') : '—'}
             </span>
           ) : (
             <button

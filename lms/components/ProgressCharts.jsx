@@ -64,7 +64,7 @@ export default function ProgressCharts({ assessments, pastSessions: initialSessi
   const latest    = assessments[assessments.length - 1];
 
   const chartData = assessments.map(a => ({
-    date: new Date(a.completed_at).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' }),
+    date: new Date(a.completed_at).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }),
     score: a.score ?? 0,
   }));
 
@@ -135,7 +135,7 @@ export default function ProgressCharts({ assessments, pastSessions: initialSessi
                 {[...assessments].reverse().map((a, i) => (
                   <tr key={a.id} style={{ background: i % 2 === 0 ? '#fff' : '#f9fbff' }}>
                     <td style={{ padding: '9px 16px', color: 'var(--muted)', fontSize: '.84rem', direction: 'ltr', textAlign: 'right' }}>
-                      {a.completed_at ? new Date(a.completed_at).toLocaleDateString('ar-SA') : '—'}
+                      {a.completed_at ? new Date(a.completed_at).toLocaleDateString('en-GB') : '—'}
                     </td>
                     <td style={{ padding: '9px 16px' }}>
                       <span className="badge badge-blue">المستوى {a.level}</span>
@@ -173,7 +173,7 @@ export default function ProgressCharts({ assessments, pastSessions: initialSessi
                     </div>
                     <div style={{ fontSize: '.82rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                       <span>👤 {s.teacher_name}</span>
-                      <span>📅 {new Date(s.session_date).toLocaleDateString('ar-SA')}</span>
+                      <span>📅 {new Date(s.session_date).toLocaleDateString('en-GB')}</span>
                       <span>⏰ {s.start_time?.slice(0,5)}</span>
                     </div>
                     {s.notes && (

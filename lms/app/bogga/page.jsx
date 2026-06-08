@@ -1553,7 +1553,7 @@ export default function BoggarAdminPage() {
                           </div>
                         </div>
                         <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 10 }}>
-                          {new Date(app.created_at).toLocaleString(lang === 'ar' ? 'ar-SA' : 'en-GB')}
+                          {new Date(app.created_at).toLocaleString(lang === 'ar' ? 'en-GB' : 'en-GB')}
                         </div>
                       </div>
                     );
@@ -1640,7 +1640,7 @@ export default function BoggarAdminPage() {
                             )}
                           </div>
                           <div style={{ fontSize:'.8rem', color:'#94a3b8', marginTop:3 }}>
-                            {new Date(m.created_at).toLocaleString('ar-EG', { dateStyle:'medium', timeStyle:'short' })}
+                            {new Date(m.created_at).toLocaleString('en-GB', { dateStyle:'medium', timeStyle:'short' })}
                             {m.phone && <span style={{ marginRight:12 }}>📞 <a href={`tel:${m.phone}`} style={{ color:'var(--primary)' }}>{m.phone}</a></span>}
                           </div>
                         </div>
@@ -1729,7 +1729,7 @@ export default function BoggarAdminPage() {
                               );
                             })()}
                           </td>
-                          <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>{new Date(a.created_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB')}</td>
+                          <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>{new Date(a.created_at).toLocaleDateString(lang === 'ar' ? 'en-GB' : 'en-GB')}</td>
                           <td>
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                               <button onClick={() => openActivityModal(a)} className="btn btn-sm" style={{ background: '#eef5ff', color: '#185FA5', border: 'none' }}>
@@ -1815,7 +1815,7 @@ export default function BoggarAdminPage() {
                                 {s.status === 'suspended' ? (lang === 'ar' ? '🚫 موقوف' : '🚫 Suspended') : (lang === 'ar' ? '✅ مفعَّل' : '✅ Active')}
                               </span>
                             </td>
-                            <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>{new Date(s.created_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB')}</td>
+                            <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>{new Date(s.created_at).toLocaleDateString(lang === 'ar' ? 'en-GB' : 'en-GB')}</td>
                             <td>
                               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                 <button
@@ -1953,7 +1953,7 @@ export default function BoggarAdminPage() {
                               </span>
                             </td>
                             <td style={{ padding: '11px 16px', color: 'var(--muted)', fontSize: '.85rem' }}>
-                              {r.completed_at ? new Date(r.completed_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                              {r.completed_at ? new Date(r.completed_at).toLocaleDateString(lang === 'ar' ? 'en-GB' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                             </td>
                           </tr>
                         );
@@ -2076,7 +2076,7 @@ export default function BoggarAdminPage() {
                     {filtered.map(u => {
                       const badge     = ROLE_BADGES[u.role] ?? ROLE_BADGES.student;
                       const isEditing = editingUser?.id === u.id;
-                      const dateJoined = new Date(u.created_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB');
+                      const dateJoined = new Date(u.created_at).toLocaleDateString(lang === 'ar' ? 'en-GB' : 'en-GB');
                       return (
                         <div key={u.id} style={{
                           background: '#fff', borderRadius: 16,
@@ -2127,7 +2127,7 @@ export default function BoggarAdminPage() {
                               📅 {dateJoined}
                               {u.last_sign_in && (
                                 <span style={{ marginRight: 10 }}>
-                                  · {lang === 'ar' ? 'آخر دخول:' : 'Last:'} {new Date(u.last_sign_in).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB')}
+                                  · {lang === 'ar' ? 'آخر دخول:' : 'Last:'} {new Date(u.last_sign_in).toLocaleDateString(lang === 'ar' ? 'en-GB' : 'en-GB')}
                                 </span>
                               )}
                             </div>
@@ -2454,8 +2454,8 @@ export default function BoggarAdminPage() {
                         {now && (
                           <div style={{ color: 'var(--muted)', fontSize: '.78rem', marginTop: 3 }}>
                             {s.online
-                              ? (lang === 'ar' ? `بدأت الجلسة: ${new Date(now.session_start).toLocaleString('ar-SA')} — مدة الجلسة الحالية: ${curDur} دقيقة` : `Session started: ${new Date(now.session_start).toLocaleString('en-GB')} — Current duration: ${curDur} min`)
-                              : (lang === 'ar' ? `آخر ظهور: ${new Date(now.last_seen).toLocaleString('ar-SA')}` : `Last seen: ${new Date(now.last_seen).toLocaleString('en-GB')}`)}
+                              ? (lang === 'ar' ? `بدأت الجلسة: ${new Date(now.session_start).toLocaleString('en-GB')} — مدة الجلسة الحالية: ${curDur} دقيقة` : `Session started: ${new Date(now.session_start).toLocaleString('en-GB')} — Current duration: ${curDur} min`)
+                              : (lang === 'ar' ? `آخر ظهور: ${new Date(now.last_seen).toLocaleString('en-GB')}` : `Last seen: ${new Date(now.last_seen).toLocaleString('en-GB')}`)}
                           </div>
                         )}
                       </div>
@@ -2478,11 +2478,11 @@ export default function BoggarAdminPage() {
                         <div key={s.id} style={{ background: '#f8faff', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                           <div>
                             <div style={{ fontWeight: 700, fontSize: '.88rem' }}>
-                              📅 {new Date(s.session_start).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
+                              📅 {new Date(s.session_start).toLocaleDateString(lang === 'ar' ? 'en-GB' : 'en-GB', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
                             </div>
                             <div style={{ color: 'var(--muted)', fontSize: '.78rem', marginTop: 3, display: 'flex', gap: 16 }}>
-                              <span>🕐 {lang === 'ar' ? 'من:' : 'From:'} {new Date(s.session_start).toLocaleTimeString(lang === 'ar' ? 'ar-SA' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
-                              <span>🕓 {lang === 'ar' ? 'إلى:' : 'To:'} {new Date(s.session_end).toLocaleTimeString(lang === 'ar' ? 'ar-SA' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span>🕐 {lang === 'ar' ? 'من:' : 'From:'} {new Date(s.session_start).toLocaleTimeString(lang === 'ar' ? 'en-GB' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span>🕓 {lang === 'ar' ? 'إلى:' : 'To:'} {new Date(s.session_end).toLocaleTimeString(lang === 'ar' ? 'en-GB' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                           </div>
                           <div style={{ background: '#185FA5', color: '#fff', borderRadius: 20, padding: '4px 14px', fontSize: '.78rem', fontWeight: 700, whiteSpace: 'nowrap' }}>

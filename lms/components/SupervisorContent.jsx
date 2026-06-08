@@ -320,7 +320,7 @@ function ParentMessagesPanel({ messages, loaded, lang, onMarkRead }) {
                     )}
                   </div>
                   <div style={{ fontSize: '.8rem', color: '#94a3b8', marginTop: 3 }}>
-                    {new Date(m.created_at).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' })}
+                    {new Date(m.created_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
                     {m.phone && <span style={{ marginRight: 12 }}>📞 <a href={`tel:${m.phone}`} style={{ color: '#185FA5' }}>{m.phone}</a></span>}
                   </div>
                 </div>

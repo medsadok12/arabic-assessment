@@ -8,7 +8,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 export default function DashboardContent({ user, assessments, role, isStudent, upcomingSessions, displayName, studentGender }) {
   const { t, lang } = useLanguage();
 
-  const locale = lang === 'ar' ? 'ar-SA' : 'en-GB';
+  const locale = 'en-GB';
 
   // Compute stats
   const avgScore = assessments?.length
