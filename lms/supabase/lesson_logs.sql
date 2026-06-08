@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS lesson_logs (
   teacher_name   TEXT NOT NULL,
   group_name     TEXT NOT NULL,
   lesson_date    DATE NOT NULL,
+  lesson_time    TIME,             -- وقت الحصة (اختياري)
   lesson_title   TEXT NOT NULL,
   lesson_content TEXT,          -- ما تم تدريسه فعلياً
   homework       TEXT,          -- الواجبات والأنشطة
@@ -32,5 +33,8 @@ CREATE TABLE IF NOT EXISTS lesson_feedback (
 );
 ALTER TABLE lesson_feedback DISABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS lesson_feedback_log_idx ON lesson_feedback (lesson_log_id);
+
+-- إضافة العمود لمن أنشأ الجدول مسبقاً
+ALTER TABLE lesson_logs ADD COLUMN IF NOT EXISTS lesson_time TIME;
 
 NOTIFY pgrst, 'reload schema';

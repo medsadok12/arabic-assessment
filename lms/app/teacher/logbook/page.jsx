@@ -20,7 +20,7 @@ function fmtDate(iso) {
 }
 
 const EMPTY = {
-  group_name: '', lesson_date: '', lesson_title: '',
+  group_name: '', lesson_date: '', lesson_time: '', lesson_title: '',
   lesson_content: '', homework: '', future_plan: '',
   status: 'planned', teacher_notes: '',
 };
@@ -117,6 +117,7 @@ export default function LogbookPage() {
     setForm({
       group_name:     log.group_name,
       lesson_date:    log.lesson_date,
+      lesson_time:    log.lesson_time    ?? '',
       lesson_title:   log.lesson_title,
       lesson_content: log.lesson_content ?? '',
       homework:       log.homework       ?? '',
@@ -231,7 +232,7 @@ export default function LogbookPage() {
               {editing ? '✏️ تعديل السجل' : '✏️ تسجيل درس جديد'}
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
               <div>
                 <label style={lbl}>المجموعة / الفصل *</label>
                 <input
@@ -246,6 +247,16 @@ export default function LogbookPage() {
               <div>
                 <label style={lbl}>تاريخ الحصة *</label>
                 <input type="date" value={form.lesson_date} onChange={set('lesson_date')} style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>وقت الحصة</label>
+                <input
+                  type="time"
+                  step="300"
+                  value={form.lesson_time}
+                  onChange={set('lesson_time')}
+                  style={inp}
+                />
               </div>
             </div>
 
@@ -425,6 +436,11 @@ export default function LogbookPage() {
                         </h3>
                         <p style={{ margin: 0, color: '#94a3b8', fontSize: '.8rem' }}>
                           {fmtDate(log.lesson_date)}
+                          {log.lesson_time && (
+                            <span style={{ marginRight: 8, color: '#64748b', fontWeight: 600 }}>
+                              ⏰ {log.lesson_time.slice(0, 5)}
+                            </span>
+                          )}
                         </p>
                       </div>
                       <div style={{ display: 'flex', gap: 7, alignItems: 'center', flexShrink: 0 }}>

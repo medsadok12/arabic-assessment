@@ -33,7 +33,7 @@ export async function POST(req) {
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const body = await req.json();
-  const { group_name, lesson_date, lesson_title, lesson_content, homework, future_plan, status, teacher_notes } = body;
+  const { group_name, lesson_date, lesson_time, lesson_title, lesson_content, homework, future_plan, status, teacher_notes } = body;
 
   if (!group_name?.trim() || !lesson_date || !lesson_title?.trim())
     return NextResponse.json({ error: 'اسم المجموعة والتاريخ وعنوان الدرس مطلوبة' }, { status: 400 });
@@ -46,6 +46,7 @@ export async function POST(req) {
       teacher_name:  user.user_metadata?.full_name ?? user.email,
       group_name:    group_name.trim(),
       lesson_date,
+      lesson_time:    lesson_time || null,
       lesson_title:  lesson_title.trim(),
       lesson_content: lesson_content?.trim() || null,
       homework:       homework?.trim()       || null,

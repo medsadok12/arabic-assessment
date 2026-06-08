@@ -19,7 +19,7 @@ export async function PUT(req, { params }) {
     return NextResponse.json({ error: 'لا يمكنك تعديل سجل معلم آخر' }, { status: 403 });
 
   const body = await req.json();
-  const allowed = ['group_name','lesson_date','lesson_title','lesson_content','homework','future_plan','status','teacher_notes'];
+  const allowed = ['group_name','lesson_date','lesson_time','lesson_title','lesson_content','homework','future_plan','status','teacher_notes'];
   const updates = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
   updates.updated_at = new Date().toISOString();
 

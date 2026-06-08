@@ -298,6 +298,11 @@ export default function LessonLogbookView({ lang = 'ar' }) {
                     </h4>
                     <p style={{ margin: 0, color: '#94a3b8', fontSize: '.8rem' }}>
                       {fmtDate(log.lesson_date)}
+                      {log.lesson_time && (
+                        <span style={{ marginRight: 8, color: '#64748b', fontWeight: 600 }}>
+                          ⏰ {log.lesson_time.slice(0, 5)}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
