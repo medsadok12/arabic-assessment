@@ -265,6 +265,7 @@ export default function BoggarAdminPage() {
   const [deletingUserId,   setDeletingUserId]   = useState(null);
   const [editingUser,      setEditingUser]      = useState(null); // { id, name }
   const [savingUserId,     setSavingUserId]     = useState(null);
+  const [bulkResetting,    setBulkResetting]    = useState(false);
 
   // Online status & activity
   const [onlineStatus,    setOnlineStatus]    = useState({});
@@ -533,6 +534,30 @@ export default function BoggarAdminPage() {
     const res = await fetch('/api/bogga/users').then(r => r.json());
     setUsersList(res.users ?? []);
     setUsersLoading(false);
+  }
+
+  async function handleBulkReset() {
+    const hidden = usersList.filter(u => !u.password);
+    if (hidden.length === 0) return;
+    const msg = lang === 'ar'
+      ? `سيتم إعادة ضبط كلمات سر ${hidden.length} حساب (الحسابات التي كلمة سرها غير مرئية). هل تريد المتابعة؟`
+      : `This will reset passwords for ${hidden.length} accounts without visible passwords. Continue?`;
+    if (!confirm(msg)) return;
+    setBulkResetting(true);
+    try {
+      const res  = await fetch('/api/bogga/users/bulk-reset', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      // Merge new passwords into usersList
+      setUsersList(prev => prev.map(u => {
+        const updated = data.updated.find(r => r.id === u.id);
+        return updated ? { ...u, password: updated.password } : u;
+      }));
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setBulkResetting(false);
+    }
   }
 
   // ── Recruitment ───────────────────────────────────────────────────────────
@@ -2013,6 +2038,28 @@ export default function BoggarAdminPage() {
                   <button onClick={loadUsers} style={{ background: '#eef5ff', color: 'var(--primary)', border: '1.5px solid var(--border)', borderRadius: 10, padding: '7px 14px', fontWeight: 600, fontSize: '.82rem', cursor: 'pointer' }}>
                     🔄 {lang === 'ar' ? 'تحديث' : 'Refresh'}
                   </button>
+                  {usersList.some(u => !u.password) && (
+                    <button
+                      onClick={handleBulkReset}
+                      disabled={bulkResetting}
+                      title={lang === 'ar' ? 'يعيد ضبط كلمات سر الحسابات التي لم تُعرض كلمة سرها بعد' : 'Resets passwords for accounts without a stored password'}
+                      style={{
+                        background: bulkResetting ? '#f1f5f9' : '#fffbeb',
+                        color: bulkResetting ? '#94a3b8' : '#92400e',
+                        border: '1.5px solid #fde68a',
+                        borderRadius: 10, padding: '7px 14px',
+                        fontWeight: 700, fontSize: '.82rem',
+                        cursor: bulkResetting ? 'default' : 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 5,
+                      }}
+                    >
+                      {bulkResetting
+                        ? (lang === 'ar' ? '⏳ جارٍ الكشف…' : '⏳ Processing…')
+                        : (lang === 'ar'
+                            ? `🔑 كشف كل كلمات السر (${usersList.filter(u => !u.password).length})`
+                            : `🔑 Reveal All Passwords (${usersList.filter(u => !u.password).length})`)}
+                    </button>
+                  )}
                 </div>
 
                 {usersLoading ? (
