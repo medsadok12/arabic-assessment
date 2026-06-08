@@ -87,11 +87,11 @@ function invoiceHtml(invoice) {
         </div>
         <div class="meta-box">
           <div class="meta-lbl">السعر / الساعة</div>
-          <div class="meta-val">${fmtAmount(invoice.rate_per_hour)} ر.س</div>
+          <div class="meta-val">${fmtAmount(invoice.rate_per_hour)} ر.ق</div>
         </div>
         <div class="meta-box" style="background:#f0fdf4;border-right-color:#1a7c40">
           <div class="meta-lbl" style="color:#1a7c40">المبلغ الإجمالي</div>
-          <div class="meta-val" style="color:#1a7c40;font-size:1.2rem">${fmtAmount(invoice.amount)} ر.س</div>
+          <div class="meta-val" style="color:#1a7c40;font-size:1.2rem">${fmtAmount(invoice.amount)} ر.ق</div>
         </div>
       </div>
 
@@ -113,7 +113,7 @@ function invoiceHtml(invoice) {
           <tfoot>
             <tr class="total-row">
               <td colspan="4">الإجمالي</td>
-              <td style="text-align:center">${fmtAmount(invoice.amount)} ر.س</td>
+              <td style="text-align:center">${fmtAmount(invoice.amount)} ر.ق</td>
             </tr>
           </tfoot>
         </table>

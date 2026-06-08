@@ -67,7 +67,7 @@ export async function POST(request) {
             user_id: null, user_name: 'أستاذ أحمد العمري',
             user_email: 'ahmed.omari@demo.test', type,
             billing_period: period, sessions_count: 6,
-            total_hours: 12, rate_per_hour: 0, amount: 0, status: 'draft',
+            total_hours: 12, rate_per_hour: 80, amount: 960, status: 'draft',
             items: [
               { date: `${period}-03`, start_time: '09:00', subject: 'قواعد اللغة', student: 'نورة المطيري', teacher: 'أستاذ أحمد العمري', minutes: 60 },
               { date: `${period}-05`, start_time: '10:00', subject: 'قواعد اللغة', student: 'فهد العتيبي',   teacher: 'أستاذ أحمد العمري', minutes: 60 },
@@ -82,7 +82,7 @@ export async function POST(request) {
             user_id: null, user_name: 'أستاذة سارة الخالدي',
             user_email: 'sara.khalidi@demo.test', type,
             billing_period: period, sessions_count: 8,
-            total_hours: 10, rate_per_hour: 0, amount: 0, status: 'draft',
+            total_hours: 10, rate_per_hour: 75, amount: 750, status: 'draft',
             items: [
               { date: `${period}-02`, start_time: '08:00', subject: 'الأدب العربي', student: 'ريم الدوسري',  teacher: 'أستاذة سارة الخالدي', minutes: 60 },
               { date: `${period}-04`, start_time: '08:00', subject: 'الأدب العربي', student: 'نورة المطيري', teacher: 'أستاذة سارة الخالدي', minutes: 60 },
@@ -99,7 +99,7 @@ export async function POST(request) {
             user_id: null, user_name: 'أستاذ محمود السالم',
             user_email: 'mahmoud.salem@demo.test', type,
             billing_period: period, sessions_count: 5,
-            total_hours: 8, rate_per_hour: 0, amount: 0, status: 'draft',
+            total_hours: 8, rate_per_hour: 70, amount: 560, status: 'draft',
             items: [
               { date: `${period}-01`, start_time: '12:00', subject: 'التعبير الكتابي', student: 'فهد العتيبي',  teacher: 'أستاذ محمود السالم', minutes: 90 },
               { date: `${period}-07`, start_time: '12:00', subject: 'النحو والصرف',    student: 'ريم الدوسري',  teacher: 'أستاذ محمود السالم', minutes: 90 },
@@ -115,7 +115,7 @@ export async function POST(request) {
             user_id: null, user_name: 'نورة المطيري',
             user_email: 'noura.mutairi@demo.test', type,
             billing_period: period, sessions_count: 6,
-            total_hours: 7.5, rate_per_hour: 0, amount: 0, status: 'draft',
+            total_hours: 7.5, rate_per_hour: 50, amount: 375, status: 'draft',
             items: [
               { date: `${period}-03`, subject: 'قواعد اللغة', teacher: 'أستاذ أحمد العمري',   student: 'نورة المطيري', minutes: 60 },
               { date: `${period}-04`, subject: 'الأدب العربي', teacher: 'أستاذة سارة الخالدي', student: 'نورة المطيري', minutes: 60 },
@@ -130,7 +130,7 @@ export async function POST(request) {
             user_id: null, user_name: 'فهد العتيبي',
             user_email: 'fahad.otaibi@demo.test', type,
             billing_period: period, sessions_count: 5,
-            total_hours: 5.5, rate_per_hour: 0, amount: 0, status: 'draft',
+            total_hours: 5.5, rate_per_hour: 50, amount: 275, status: 'draft',
             items: [
               { date: `${period}-05`, subject: 'قواعد اللغة',      teacher: 'أستاذ أحمد العمري',   student: 'فهد العتيبي', minutes: 60 },
               { date: `${period}-06`, subject: 'الخط العربي',       teacher: 'أستاذة سارة الخالدي', student: 'فهد العتيبي', minutes: 60 },
@@ -144,7 +144,7 @@ export async function POST(request) {
             user_id: null, user_name: 'ريم الدوسري',
             user_email: 'reem.dossari@demo.test', type,
             billing_period: period, sessions_count: 7,
-            total_hours: 8.5, rate_per_hour: 0, amount: 0, status: 'draft',
+            total_hours: 8.5, rate_per_hour: 50, amount: 425, status: 'draft',
             items: [
               { date: `${period}-02`, subject: 'الأدب العربي',      teacher: 'أستاذة سارة الخالدي', student: 'ريم الدوسري', minutes: 60 },
               { date: `${period}-07`, subject: 'النحو والصرف',      teacher: 'أستاذ محمود السالم',  student: 'ريم الدوسري', minutes: 90 },

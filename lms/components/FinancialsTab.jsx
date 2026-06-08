@@ -116,12 +116,12 @@ function InvoiceRow({ invoice, onUpdate, onSend, sending, lang }) {
         </td>
         {/* Rate — editable */}
         <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-          <EditableCell value={Number(invoice.rate_per_hour)} onSave={val => update('rate_per_hour', val)} suffix=" ر.س" />
+          <EditableCell value={Number(invoice.rate_per_hour)} onSave={val => update('rate_per_hour', val)} suffix=" ر.ق" />
         </td>
         {/* Amount */}
         <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 800,
           color: Number(invoice.amount) > 0 ? '#1a7c40' : '#94a3b8', fontSize: '.95rem' }}>
-          {fmtAmount(invoice.amount)} ر.س
+          {fmtAmount(invoice.amount)} ر.ق
         </td>
         {/* Status */}
         <td style={{ padding: '12px 14px', textAlign: 'center' }}>
@@ -414,7 +414,7 @@ export default function FinancialsTab({ lang = 'ar' }) {
             { label: 'إجمالي الفواتير', value: invoices.length, icon: '📄', color: '#185FA5', bg: '#eff6ff' },
             { label: 'المرسلة', value: sentCount, icon: '✅', color: '#1a7c40', bg: '#f0fdf4' },
             { label: 'المسودة', value: invoices.length - sentCount, icon: '⏳', color: '#b45309', bg: '#fffbeb' },
-            { label: 'الإجمالي الكلي', value: `${fmtAmount(totalAmount)} ر.س`, icon: '💰', color: '#7c3aed', bg: '#f5f3ff' },
+            { label: 'الإجمالي الكلي', value: `${fmtAmount(totalAmount)} ر.ق`, icon: '💰', color: '#7c3aed', bg: '#f5f3ff' },
           ].map(c => (
             <div key={c.label} style={{
               background: c.bg, borderRadius: 12, padding: '14px 18px',
@@ -478,7 +478,7 @@ export default function FinancialsTab({ lang = 'ar' }) {
                     الإجمالي
                   </td>
                   <td style={{ padding: '11px 14px', textAlign: 'center', fontWeight: 900, fontSize: '1rem' }}>
-                    {fmtAmount(totalAmount)} ر.س
+                    {fmtAmount(totalAmount)} ر.ق
                   </td>
                   <td colSpan={2} style={{ padding: '11px 14px', textAlign: 'center', fontSize: '.85rem' }}>
                     {sentCount}/{invoices.length} مُرسَل
