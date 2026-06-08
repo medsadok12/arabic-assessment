@@ -10,7 +10,7 @@ async function requireAdmin() {
   return (role === 'super_admin' || role === 'admin') ? user : null;
 }
 
-// ── POST /api/bogga/financials/[id]/send
+// ── POST /api/bogga/financials/[id]/send  (initial send OR retry)
 export async function POST(request, { params }) {
   const user = await requireAdmin();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
@@ -24,22 +24,46 @@ export async function POST(request, { params }) {
 
   if (fetchErr || !invoice) return Response.json({ error: 'الفاتورة غير موجودة' }, { status: 404 });
 
-  const email = invoice.user_email?.includes('@teacher') ? null : invoice.user_email;
+  // Allow retry only for failed or unsent invoices
+  if (invoice.status === 'sent' && invoice.email_delivery_status === 'success') {
+    return Response.json({ error: 'تم إرسال هذه الفاتورة بنجاح مسبقاً' }, { status: 400 });
+  }
+
+  const email = invoice.user_email?.includes('@teacher') || invoice.user_email?.endsWith('@demo.test')
+    ? null : invoice.user_email;
   if (!email) return Response.json({ error: 'البريد الإلكتروني غير متوفر لهذا المستخدم' }, { status: 400 });
 
+  // ── Attempt email delivery ──────────────────────────────────────────────────
+  let emailOk = false;
+  let emailErr = null;
   try {
     await sendInvoiceEmail({ invoice, to: email });
+    emailOk = true;
   } catch (e) {
-    return Response.json({ error: 'فشل إرسال البريد: ' + e.message }, { status: 500 });
+    emailErr = e.message;
   }
+
+  // ── Persist result regardless of outcome ───────────────────────────────────
+  const now = new Date().toISOString();
+  const patch = emailOk
+    ? { status: 'sent', sent_at: now, email_delivery_status: 'success', locked_at: now, updated_at: now }
+    : { email_delivery_status: 'failed', updated_at: now };
 
   const { data: updated, error: upErr } = await admin
     .from('invoices')
-    .update({ status: 'sent', sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .update(patch)
     .eq('id', params.id)
     .select()
     .maybeSingle();
 
   if (upErr) return Response.json({ error: upErr.message }, { status: 500 });
+
+  if (!emailOk) {
+    return Response.json({
+      error: `فشل إرسال البريد: ${emailErr}`,
+      invoice: updated,
+    }, { status: 500 });
+  }
+
   return Response.json({ invoice: updated });
 }

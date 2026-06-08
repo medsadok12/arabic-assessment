@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
                    'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
+// Qatar = UTC+3, no DST — always use Qatar local time for month boundaries
 function currentPeriod() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const qatar = new Date(Date.now() + 3 * 60 * 60 * 1000);
+  return `${qatar.getUTCFullYear()}-${String(qatar.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 function periodLabel(p) {
@@ -19,8 +20,8 @@ function fmtAmount(n) {
   return Number(n ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// ── Editable cell ────────────────────────────────────────────────────────────
-function EditableCell({ value, onSave, prefix = '', suffix = '' }) {
+// ── Editable cell (locked when invoice is sent — financial lock) ─────────────
+function EditableCell({ value, onSave, prefix = '', suffix = '', locked = false }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal]         = useState(value);
   const inputRef              = useRef(null);
@@ -33,6 +34,21 @@ function EditableCell({ value, onSave, prefix = '', suffix = '' }) {
     const n = parseFloat(val);
     if (!isNaN(n) && n !== value) onSave(n);
     else setVal(value);
+  }
+
+  // ── Locked: render plain read-only text ──────────────────────────────────
+  if (locked) {
+    return (
+      <span title="الفاتورة مغلقة — تم الإرسال" style={{
+        padding: '4px 10px', borderRadius: 7,
+        border: '1.5px solid #e2e8f0', fontSize: '.88rem',
+        color: '#64748b', fontWeight: 600,
+        display: 'inline-block', minWidth: 70, textAlign: 'center',
+        background: '#f8fafc', cursor: 'not-allowed',
+      }}>
+        🔒 {prefix}{fmtAmount(value)}{suffix}
+      </span>
+    );
   }
 
   if (editing) {
@@ -110,13 +126,13 @@ function InvoiceRow({ invoice, onUpdate, onSend, sending, lang }) {
         <td style={{ padding: '12px 14px', textAlign: 'center', color: '#475569', fontSize: '.88rem' }}>
           {invoice.sessions_count}
         </td>
-        {/* Hours — editable */}
+        {/* Hours — editable, locked when sent */}
         <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-          <EditableCell value={Number(invoice.total_hours)} onSave={val => update('total_hours', val)} suffix=" س" />
+          <EditableCell value={Number(invoice.total_hours)} onSave={val => update('total_hours', val)} suffix=" س" locked={isSent} />
         </td>
-        {/* Rate — editable */}
+        {/* Rate — editable, locked when sent */}
         <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-          <EditableCell value={Number(invoice.rate_per_hour)} onSave={val => update('rate_per_hour', val)} suffix=" ر.ق" />
+          <EditableCell value={Number(invoice.rate_per_hour)} onSave={val => update('rate_per_hour', val)} suffix=" ر.ق" locked={isSent} />
         </td>
         {/* Amount */}
         <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 800,
@@ -125,35 +141,70 @@ function InvoiceRow({ invoice, onUpdate, onSend, sending, lang }) {
         </td>
         {/* Status */}
         <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-          <span style={{
-            display: 'inline-block', padding: '3px 11px', borderRadius: 20,
-            fontSize: '.75rem', fontWeight: 700,
-            background: isSent ? '#dcfce7' : '#fef9c3',
-            color:      isSent ? '#166534' : '#713f12',
-          }}>
-            {isSent ? '✅ مُرسَل' : '⏳ مسودة'}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <span style={{
+              display: 'inline-block', padding: '3px 11px', borderRadius: 20,
+              fontSize: '.75rem', fontWeight: 700,
+              background: isSent ? '#dcfce7' : '#fef9c3',
+              color:      isSent ? '#166534' : '#713f12',
+            }}>
+              {isSent ? '✅ مُرسَل' : '⏳ مسودة'}
+            </span>
+            {/* Email delivery badge */}
+            {invoice.email_delivery_status === 'failed' && (
+              <span style={{
+                background: '#fef2f2', color: '#b91c1c',
+                border: '1px solid #fecaca', borderRadius: 20,
+                padding: '2px 8px', fontSize: '.7rem', fontWeight: 700,
+              }}>
+                ⚠️ فشل الإرسال
+              </span>
+            )}
+            {invoice.email_delivery_status === 'success' && (
+              <span style={{
+                background: '#f0fdf4', color: '#15803d',
+                border: '1px solid #bbf7d0', borderRadius: 20,
+                padding: '2px 8px', fontSize: '.7rem', fontWeight: 600,
+              }}>
+                📧 تم التسليم
+              </span>
+            )}
+          </div>
         </td>
         {/* Actions */}
         <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-          {isSent ? (
+          {isSent && invoice.email_delivery_status === 'success' ? (
             <span style={{ fontSize: '.75rem', color: '#94a3b8' }}>
               {invoice.sent_at ? new Date(invoice.sent_at).toLocaleDateString('en-GB') : '—'}
             </span>
           ) : (
             <button
               onClick={() => onSend(invoice)}
-              disabled={sending || Number(invoice.amount) <= 0 || invoice.user_email?.includes('@teacher')}
+              disabled={sending || Number(invoice.amount) <= 0 || invoice.user_email?.endsWith('@demo.test') || invoice.user_email?.includes('@teacher')}
               style={{
-                background: sending ? '#e2e8f0' : 'linear-gradient(135deg,#185FA5,#1a3a6b)',
+                background: invoice.email_delivery_status === 'failed'
+                  ? 'linear-gradient(135deg,#dc2626,#b91c1c)'
+                  : sending ? '#e2e8f0' : 'linear-gradient(135deg,#185FA5,#1a3a6b)',
                 color: sending ? '#94a3b8' : '#fff',
                 border: 'none', borderRadius: 9, padding: '7px 14px',
                 fontSize: '.8rem', fontWeight: 700, cursor: sending ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit', transition: 'opacity .15s', whiteSpace: 'nowrap',
               }}
-              title={invoice.user_email?.includes('@teacher') ? 'لا يوجد بريد للمعلم' : ''}
+              title={
+                invoice.user_email?.endsWith('@demo.test') ? 'بيانات تجريبية — لا يمكن الإرسال' :
+                invoice.user_email?.includes('@teacher') ? 'لا يوجد بريد إلكتروني للمعلم' : ''
+              }
             >
-              {sending ? '...' : '📨 اعتماد وإرسال'}
+              {sending ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{
+                    width: 12, height: 12, borderRadius: '50%',
+                    border: '2px solid #94a3b8', borderTopColor: 'transparent',
+                    animation: 'spin .7s linear infinite', display: 'inline-block',
+                  }} />
+                  جارٍ...
+                </span>
+              ) : invoice.email_delivery_status === 'failed' ? '🔄 إعادة الإرسال' : '📨 اعتماد وإرسال'}
             </button>
           )}
         </td>
@@ -248,7 +299,10 @@ export default function FinancialsTab({ lang = 'ar' }) {
       if (d.mock) {
         setMsg({ type: 'ok', text: `✅ تم توليد ${d.created} فاتورة تجريبية — جرّب جميع الخصائص!` });
       } else {
-        setMsg({ type: 'ok', text: `✅ تم توليد ${d.created} فاتورة من الحصص الحقيقية` });
+        const parts = [];
+        if (d.created  > 0) parts.push(`${d.created} جديدة`);
+        if (d.refreshed > 0) parts.push(`${d.refreshed} محدَّثة`);
+        setMsg({ type: 'ok', text: `✅ الفواتير: ${parts.join(' | ') || 'لا تغييرات'}` });
       }
       await loadInvoices();
     } catch {
@@ -294,6 +348,10 @@ export default function FinancialsTab({ lang = 'ar' }) {
 
   return (
     <div dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .fin-spin { animation: spin .7s linear infinite; }
+      `}</style>
       {/* ── Header ── */}
       <div style={{ marginBottom: 22 }}>
         <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 4, fontSize: '1.25rem' }}>
@@ -357,7 +415,16 @@ export default function FinancialsTab({ lang = 'ar' }) {
             display: 'flex', alignItems: 'center', gap: 7,
           }}
         >
-          {genBusy ? '⏳ جارٍ التوليد...' : '⚡ توليد من الحصص المكتملة'}
+          {genBusy ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <span className="fin-spin" style={{
+                width: 14, height: 14, borderRadius: '50%',
+                border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff',
+                display: 'inline-block',
+              }} />
+              جارٍ التوليد...
+            </span>
+          ) : '⚡ توليد من الحصص المكتملة'}
         </button>
 
         <button
@@ -493,7 +560,9 @@ export default function FinancialsTab({ lang = 'ar' }) {
       {/* ── Note ── */}
       <p style={{ fontSize: '.78rem', color: '#94a3b8', marginTop: 14, lineHeight: 1.7 }}>
         ✎ انقر على خلية الساعات أو السعر لتعديلها مباشرة. المبلغ يُحسب تلقائياً.
+        🔒 الخلايا تُقفل نهائياً بعد الإرسال الناجح لحماية السجلات التاريخية.
         {subTab === 'teacher_payout' && ' لإرسال مستحقات معلم، يجب أن يكون لديه بريد مسجّل في النظام.'}
+        {' '}⚠️ إذا ظهرت علامة "فشل الإرسال" اضغط "إعادة الإرسال" مباشرة.
       </p>
     </div>
   );

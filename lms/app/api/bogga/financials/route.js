@@ -39,15 +39,26 @@ export async function POST(request) {
 
   let body;
   try { body = await request.json(); } catch { body = {}; }
-  const period = body.period || new Date().toISOString().slice(0, 7);
+
+  // ── Qatar timezone (UTC+3, no DST) for period boundary calculation ──────────
+  function qatarNow() {
+    return new Date(Date.now() + 3 * 60 * 60 * 1000);
+  }
+  const defaultPeriod = (() => {
+    const q = qatarNow();
+    return `${q.getUTCFullYear()}-${String(q.getUTCMonth() + 1).padStart(2, '0')}`;
+  })();
+
+  const period = body.period || defaultPeriod;
   const type   = body.type   || 'teacher_payout';
 
   const admin = createAdminClient();
 
-  // Fetch completed sessions for this month
-  const dateFrom = `${period}-01`;
-  // Last day of month: first day of next month minus 1 day
+  // ── Date range using Qatar midnight boundaries ──────────────────────────────
   const [pYear, pMonth] = period.split('-').map(Number);
+  // Convert Qatar midnight → UTC for TIMESTAMPTZ comparisons (if ever needed)
+  // For DATE columns, simple YYYY-MM-DD strings suffice
+  const dateFrom = `${period}-01`;
   const lastDay = new Date(pYear, pMonth, 0).getDate(); // day 0 of next month = last day of this month
   const dateEnd  = `${period}-${String(lastDay).padStart(2, '0')}`;
   const { data: sessions, error: sessErr } = await admin
@@ -215,28 +226,58 @@ export async function POST(request) {
     }
   }
 
-  // Upsert invoices
-  const rows = Object.values(groups).map(g => ({
-    user_id:        g.user_id,
-    user_name:      g.user_name,
-    user_email:     g.user_email,
-    type,
-    billing_period: period,
-    total_hours:    parseFloat((g.totalMinutes / 60).toFixed(2)),
-    sessions_count: g.sessions_count,
-    rate_per_hour:  0,
-    amount:         0,
-    status:         'draft',
-    items:          g.items,
-    updated_at:     new Date().toISOString(),
-  }));
-
-  const { data: upserted, error: upsertErr } = await admin
+  // ── Historical snapshot protection ─────────────────────────────────────────
+  // Fetch already-existing invoices for this period to avoid overwriting admin edits
+  const { data: existing } = await admin
     .from('invoices')
-    .upsert(rows, { onConflict: 'user_email,type,billing_period', ignoreDuplicates: false })
-    .select('id');
+    .select('id, user_email, rate_per_hour, amount, status, items')
+    .eq('billing_period', period)
+    .eq('type', type);
+  const existingMap = {};
+  (existing ?? []).forEach(e => { existingMap[e.user_email] = e; });
 
-  if (upsertErr) return Response.json({ error: upsertErr.message }, { status: 500 });
+  const toInsert = [];
+  const toUpdate = [];
+  const now = new Date().toISOString();
 
-  return Response.json({ created: upserted?.length ?? 0 });
+  for (const g of Object.values(groups)) {
+    const hours = parseFloat((g.totalMinutes / 60).toFixed(2));
+    const ex    = existingMap[g.user_email];
+    if (ex) {
+      // Invoice already exists — preserve admin-set rate/amount/status/items
+      // Only refresh sessions_count and total_hours if no rate has been set yet
+      if (Number(ex.rate_per_hour) === 0) {
+        toUpdate.push({ id: ex.id, total_hours: hours, sessions_count: g.sessions_count, items: g.items, updated_at: now });
+      }
+      // If rate > 0: admin has edited → treat as locked snapshot, skip
+    } else {
+      toInsert.push({
+        user_id:        g.user_id,
+        user_name:      g.user_name,
+        user_email:     g.user_email,
+        type,
+        billing_period: period,
+        total_hours:    hours,
+        sessions_count: g.sessions_count,
+        rate_per_hour:  0,
+        amount:         0,
+        status:         'draft',
+        items:          g.items,
+        updated_at:     now,
+      });
+    }
+  }
+
+  let created = 0;
+  if (toInsert.length > 0) {
+    const { data: ins, error: insErr } = await admin.from('invoices').insert(toInsert).select('id');
+    if (insErr) return Response.json({ error: insErr.message }, { status: 500 });
+    created = ins?.length ?? 0;
+  }
+  for (const upd of toUpdate) {
+    const { id, ...fields } = upd;
+    await admin.from('invoices').update(fields).eq('id', id);
+  }
+
+  return Response.json({ created, refreshed: toUpdate.length });
 }
