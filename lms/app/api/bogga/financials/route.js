@@ -46,7 +46,10 @@ export async function POST(request) {
 
   // Fetch completed sessions for this month
   const dateFrom = `${period}-01`;
-  const dateEnd  = `${period}-31`;
+  // Last day of month: first day of next month minus 1 day
+  const [pYear, pMonth] = period.split('-').map(Number);
+  const lastDay = new Date(pYear, pMonth, 0).getDate(); // day 0 of next month = last day of this month
+  const dateEnd  = `${period}-${String(lastDay).padStart(2, '0')}`;
   const { data: sessions, error: sessErr } = await admin
     .from('sessions')
     .select('id,teacher_id,teacher_name,student_name,student_email,session_date,start_time,duration_minutes,subject')
