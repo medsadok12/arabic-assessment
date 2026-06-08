@@ -9,6 +9,7 @@ import StudentCodes                     from '../../components/StudentCodes';
 import TeacherCodes                     from '../../components/TeacherCodes';
 import GroupsManager                    from '../../components/GroupsManager';
 import LessonLogbookView               from '../../components/LessonLogbookView';
+import TeacherSpace                    from '../../components/TeacherSpace';
 import { useLanguage }                  from '../../contexts/LanguageContext';
 
 // ── Time slots 08:00 → 20:00, 30-min increments (25 slots) ─────────────────
@@ -1009,6 +1010,7 @@ export default function BoggarAdminPage() {
     { id: 'lexicon',     label: tr('admin.tabs.lexicon'),     show: canSee('lexicon') },
     { id: 'recruitment', label: tr('admin.tabs.recruitment'), show: canSee('recruitment') },
     { id: 'logbook',     label: tr('admin.tabs.logbook'),     show: isSuperAdmin },
+    { id: 'space',       label: tr('admin.tabs.space'),       show: true },
     { id: 'admins',      label: tr('admin.tabs.admins'),      show: isSuperAdmin },
     { id: 'users',       label: tr('admin.tabs.users'),       show: isSuperAdmin },
     { id: 'visitor_qa',  label: tr('admin.tabs.visitor_qa'), show: isSuperAdmin },
@@ -1663,6 +1665,11 @@ export default function BoggarAdminPage() {
                 <LessonLogbookView lang={lang} />
               </div>
             </div>
+          )}
+
+          {/* ══ Teacher Space ══════════════════════════════════════ */}
+          {activeTab === 'space' && (
+            <TeacherSpace currentUser={user} />
           )}
 
           {/* ══ Admins ════════════════════════════════════════════ */}

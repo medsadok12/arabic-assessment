@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../lib/supabase';
 import Navbar from '../../components/Navbar';
+import TeacherSpace from '../../components/TeacherSpace';
 
 const TIME_SLOTS = Array.from({ length: 29 }, (_, i) => {
   const mins = 7 * 60 + i * 30;
@@ -380,6 +381,13 @@ export default function TeacherPage() {
                 {t.count !== null && <span className="badge">{t.count}</span>}
               </button>
             ))}
+            <button
+              className={`side-btn${activeTab === 'space' ? ' active' : ''}`}
+              onClick={() => setActiveTab('space')}
+            >
+              <span>🏫</span>
+              <span>فضاء المعلم</span>
+            </button>
             <div className="side-sep" />
             <a href="/teacher/logbook" className="side-link">
               <span>📓</span>
@@ -630,6 +638,10 @@ export default function TeacherPage() {
                   ))}
                 </div>
               )
+            )}
+
+            {activeTab === 'space' && (
+              <TeacherSpace currentUser={user} />
             )}
           </>
         )}

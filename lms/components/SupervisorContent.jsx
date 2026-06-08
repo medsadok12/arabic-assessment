@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from './Navbar';
 import LessonLogbookView from './LessonLogbookView';
+import TeacherSpace from './TeacherSpace';
 import { createClient } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -79,6 +80,7 @@ export default function SupervisorContent({ user, assessments, displayName }) {
           {[
             { key: 'overview', label: lang === 'ar' ? '📊 نتائج الطلاب' : '📊 Student Results' },
             { key: 'logbook',  label: lang === 'ar' ? '📓 كراس الدروس'  : '📓 Lesson Logbook'  },
+            { key: 'space',    label: lang === 'ar' ? '🏫 فضاء المعلم'  : '🏫 Teacher Space'   },
           ].map(tab => (
             <button
               key={tab.key}
@@ -221,6 +223,11 @@ export default function SupervisorContent({ user, assessments, displayName }) {
               <LessonLogbookView lang={lang} />
             </div>
           </div>
+        )}
+
+        {/* ── Teacher Space Tab ── */}
+        {activeTab === 'space' && (
+          <TeacherSpace currentUser={user} />
         )}
 
       </main>
