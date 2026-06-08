@@ -1,8 +1,10 @@
 'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Navbar from './Navbar';
 import ParentPanel from './ParentPanel';
 import FaheemWidget from './FaheemWidget';
+import LifeSceneSimulator from './LifeSceneSimulator';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export default function DashboardContent({ user, assessments, role, isStudent, upcomingSessions, displayName, studentGender }) {
@@ -164,6 +166,14 @@ export default function DashboardContent({ user, assessments, role, isStudent, u
 
           {!isStudent && <ParentPanel assessments={assessments ?? []} />}
           {isStudent && <FaheemWidget studentName={displayName} studentGender={studentGender} />}
+
+          {/* Life-Scene Simulator for students */}
+          {isStudent && (
+            <div className="dash-section">
+              <div className="dash-section-title">🎭 {lang === 'ar' ? 'مشاهد الحياة التفاعلية' : 'Interactive Life Scenes'}</div>
+              <LifeSceneSimulator role="student" />
+            </div>
+          )}
 
           {/* Assessment history */}
           <div className="dash-section">

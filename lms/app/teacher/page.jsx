@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '../../lib/supabase';
 import Navbar from '../../components/Navbar';
 import TeacherSpace from '../../components/TeacherSpace';
+import LifeSceneSimulator from '../../components/LifeSceneSimulator';
 import NotificationBell from '../../components/NotificationBell';
 
 const TIME_SLOTS = Array.from({ length: 29 }, (_, i) => {
@@ -392,6 +393,13 @@ export default function TeacherPage() {
               <span>🏫</span>
               <span>فضاء المعلم</span>
             </button>
+            <button
+              className={`side-btn${activeTab === 'simulator' ? ' active' : ''}`}
+              onClick={() => setActiveTab('simulator')}
+            >
+              <span>🎭</span>
+              <span>محاكي الحياة</span>
+            </button>
             <div className="side-sep" />
             <a href="/teacher/logbook" className="side-link">
               <span>📓</span>
@@ -646,6 +654,10 @@ export default function TeacherPage() {
 
             {activeTab === 'space' && (
               <TeacherSpace currentUser={user} />
+            )}
+
+            {activeTab === 'simulator' && (
+              <LifeSceneSimulator role="teacher" currentUser={user} />
             )}
           </>
         )}
