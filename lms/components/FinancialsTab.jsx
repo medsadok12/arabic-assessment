@@ -99,9 +99,11 @@ function InvoiceRow({ invoice, onUpdate, onSend, sending, lang }) {
               {expanded ? '▲' : '▼'}
             </button>
             {invoice.user_name}
-            <span style={{ fontSize: '.72rem', color: '#94a3b8', fontWeight: 400 }}>
-              {invoice.user_email?.includes('@teacher') ? '' : invoice.user_email}
-            </span>
+            {!invoice.user_email?.endsWith('@demo.test') && !invoice.user_email?.includes('@teacher') && (
+              <span style={{ fontSize: '.72rem', color: '#94a3b8', fontWeight: 400 }}>
+                {invoice.user_email}
+              </span>
+            )}
           </div>
         </td>
         {/* Sessions */}
@@ -202,6 +204,7 @@ export default function FinancialsTab({ lang = 'ar' }) {
   const [loading,   setLoading]   = useState(false);
   const [genBusy,   setGenBusy]   = useState(false);
   const [sendingId, setSendingId] = useState(null);
+  const [isMock,    setIsMock]    = useState(false);
   const [msg,       setMsg]       = useState(null); // { type: 'ok'|'err', text }
 
   // Period options: current + 11 previous months
@@ -220,7 +223,10 @@ export default function FinancialsTab({ lang = 'ar' }) {
     try {
       const r = await fetch(`/api/bogga/financials?period=${period}&type=${subTab}`);
       const d = await r.json();
-      setInvoices(d.invoices ?? []);
+      const list = d.invoices ?? [];
+      setInvoices(list);
+      // If all emails end with @demo.test → still showing mock data
+      setIsMock(list.length > 0 && list.every(inv => inv.user_email?.endsWith('@demo.test')));
     } catch {
       setMsg({ type: 'err', text: 'خطأ في تحميل الفواتير' });
     } finally {
@@ -239,7 +245,11 @@ export default function FinancialsTab({ lang = 'ar' }) {
       });
       const d = await r.json();
       if (d.error) { setMsg({ type: 'err', text: d.error }); return; }
-      setMsg({ type: 'ok', text: d.message ?? `تم توليد ${d.created} فاتورة` });
+      if (d.mock) {
+        setMsg({ type: 'ok', text: `✅ تم توليد ${d.created} فاتورة تجريبية — جرّب جميع الخصائص!` });
+      } else {
+        setMsg({ type: 'ok', text: `✅ تم توليد ${d.created} فاتورة من الحصص الحقيقية` });
+      }
       await loadInvoices();
     } catch {
       setMsg({ type: 'err', text: 'خطأ في التوليد' });
@@ -378,6 +388,22 @@ export default function FinancialsTab({ lang = 'ar' }) {
           <span>{msg.text}</span>
           <button onClick={() => setMsg(null)} style={{ background: 'none', border: 'none',
             cursor: 'pointer', color: 'inherit', fontSize: '1rem', lineHeight: 1 }}>×</button>
+        </div>
+      )}
+
+      {/* ── Mock data banner ── */}
+      {isMock && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          background: '#fffbeb', border: '1.5px solid #fcd34d',
+          borderRadius: 12, padding: '10px 16px', marginBottom: 16,
+          fontSize: '.85rem', color: '#92400e', fontWeight: 600,
+        }}>
+          <span style={{ fontSize: '1.2rem' }}>🧪</span>
+          <span>
+            <strong>بيانات تجريبية</strong> — لا توجد حصص حقيقية لهذا الشهر. جرّب التعديل الفوري وزر الإرسال بحرية.
+            ستُستبدل تلقائياً بالبيانات الحقيقية عند وجود حصص مكتملة.
+          </span>
         </div>
       )}
 
