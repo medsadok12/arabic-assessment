@@ -34,6 +34,7 @@ export async function POST(request) {
     email,
     password,
     user_metadata: { full_name: name, role: 'teacher' },
+    app_metadata:  { temp_password: password },
     email_confirm: true,
   });
 
