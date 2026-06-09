@@ -135,8 +135,8 @@ export async function POST(req) {
     generationConfig: { maxOutputTokens: 2000, temperature: 0.85, topP: 0.92 },
   });
 
-  // One model only — budget is tight (Vercel 10s, auth ~1s, leaving ~8s)
-  const GEMINI_MODELS = ['gemini-2.0-flash'];
+  // gemini-2.0-flash deprecated (404) — use 2.5-flash as confirmed by /diagnose
+  const GEMINI_MODELS = ['gemini-2.5-flash'];
 
   if (geminiKey) {
     for (const model of GEMINI_MODELS) {

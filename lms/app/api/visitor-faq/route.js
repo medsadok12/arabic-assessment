@@ -15,8 +15,7 @@ function fetchWithTimeout(url, options, ms) {
 // Two models only: 3500 + 3000 = 6500ms max for Gemini, leaving ~3s for Anthropic
 // Total worst case ≈ 9s — within Vercel Hobby's 10s function limit
 const GEMINI_MODELS = [
-  { name: 'gemini-2.0-flash', ms: 3500 }, // fastest reliable model
-  { name: 'gemini-2.5-flash', ms: 3000 }, // better quality if first fails
+  { name: 'gemini-2.5-flash', ms: 7000 }, // 2.0-flash deprecated (404)
 ];
 
 async function fetchContext() {

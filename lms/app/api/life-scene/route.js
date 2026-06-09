@@ -37,7 +37,7 @@ EXACT OUTPUT FORMAT:
   });
 
   // Try fast models only — Vercel Hobby limit is 10s total
-  const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+  const MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash'];
   let lastErr = '';
   for (const model of MODELS) {
     try {
