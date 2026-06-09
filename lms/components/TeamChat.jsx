@@ -112,13 +112,15 @@ export default function TeamChat({ user }) {
   const [loading,     setLoading]     = useState(true);
   const [text,        setText]        = useState('');
   const [sending,     setSending]     = useState(false);
-  const [isMobile,    setIsMobile]    = useState(false);
-  const [mounted,     setMounted]     = useState(false);
+  const [isMobile,      setIsMobile]      = useState(false);
+  const [mounted,       setMounted]       = useState(false);
+  const [confirmClear,  setConfirmClear]  = useState(false);
 
-  const bottomRef = useRef(null);
-  const inputRef  = useRef(null);
-  const openRef   = useRef(false);
-  const chatRef   = useRef(null);
+  const bottomRef  = useRef(null);
+  const inputRef   = useRef(null);
+  const openRef    = useRef(false);
+  const chatRef    = useRef(null);
+  const clearChRef = useRef(null);
   openRef.current = open;
   chatRef.current = chat;
 
@@ -212,9 +214,25 @@ export default function TeamChat({ user }) {
       })
       .subscribe();
 
+    const clrCh = sb.channel('tc-clears-v1')
+      .on('broadcast', { event: 'group_cleared' }, () => {
+        setGroupMsgs([]);
+        setGroupUnread(0);
+      })
+      .on('broadcast', { event: 'dm_cleared' }, ({ payload }) => {
+        const ck = payload?.conv_key;
+        if (ck?.includes(myId)) {
+          setDmMsgs(prev => ({ ...prev, [ck]: [] }));
+          setDmUnread(prev => ({ ...prev, [ck]: 0 }));
+        }
+      })
+      .subscribe();
+    clearChRef.current = clrCh;
+
     return () => {
       try { sb.removeChannel(grpCh); } catch (_) {}
       try { sb.removeChannel(dmCh); }  catch (_) {}
+      try { sb.removeChannel(clrCh); } catch (_) {}
     };
   }, [myId]);
 
@@ -253,7 +271,23 @@ export default function TeamChat({ user }) {
     }
   }
 
-  function goBack() { setView('list'); setChat(null); setText(''); }
+  function goBack() { setView('list'); setChat(null); setText(''); setConfirmClear(false); }
+
+  async function clearChat() {
+    if (!chat) return;
+    if (chat.type === 'group') {
+      await fetch('/api/team-chat', { method: 'DELETE' });
+      setGroupMsgs([]);
+      setGroupUnread(0);
+      try { clearChRef.current?.send({ type: 'broadcast', event: 'group_cleared', payload: {} }); } catch (_) {}
+    } else {
+      await fetch(`/api/team-chat/dm?with=${chat.userId}`, { method: 'DELETE' });
+      setDmMsgs(prev => ({ ...prev, [chat.key]: [] }));
+      setDmUnread(prev => ({ ...prev, [chat.key]: 0 }));
+      try { clearChRef.current?.send({ type: 'broadcast', event: 'dm_cleared', payload: { conv_key: chat.key } }); } catch (_) {}
+    }
+    setConfirmClear(false);
+  }
 
   /* ── send with optimistic update ── */
   async function send() {
@@ -353,6 +387,18 @@ export default function TeamChat({ user }) {
               </div>
             </>}
 
+            {view === 'chat' && !confirmClear && (
+              <button onClick={() => setConfirmClear(true)} title="محو الرسائل" style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.6)', cursor: 'pointer', padding: '4px 6px', borderRadius: 8, lineHeight: 1, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+              </button>
+            )}
+            {view === 'chat' && confirmClear && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                <span style={{ color: 'rgba(255,255,255,.85)', fontSize: '.72rem', whiteSpace: 'nowrap' }}>محو الرسائل؟</span>
+                <button onClick={clearChat} style={{ background: '#e53e3e', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '.7rem', fontWeight: 700, padding: '3px 8px', borderRadius: 6, lineHeight: 1.4 }}>نعم</button>
+                <button onClick={() => setConfirmClear(false)} style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '.7rem', padding: '3px 8px', borderRadius: 6, lineHeight: 1.4 }}>لا</button>
+              </div>
+            )}
             <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.7)', cursor: 'pointer', fontSize: '.95rem', padding: '4px 6px', borderRadius: 8, lineHeight: 1, flexShrink: 0 }}>✕</button>
           </div>
 

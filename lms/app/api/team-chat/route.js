@@ -47,3 +47,15 @@ export async function POST(request) {
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ message: data });
 }
+
+export async function DELETE() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
+  if (!ALLOWED.includes(user.user_metadata?.role)) return Response.json({ error: 'غير مصرح' }, { status: 403 });
+
+  const admin = createAdminClient();
+  const { error } = await admin.from('team_messages').delete().gte('created_at', '2000-01-01');
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ ok: true });
+}

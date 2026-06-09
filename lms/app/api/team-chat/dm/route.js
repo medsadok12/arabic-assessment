@@ -60,3 +60,20 @@ export async function POST(request) {
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ message: data });
 }
+
+export async function DELETE(request) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
+  if (!ALLOWED.includes(user.user_metadata?.role)) return Response.json({ error: 'غير مصرح' }, { status: 403 });
+
+  const { searchParams } = new URL(request.url);
+  const otherId = searchParams.get('with');
+  if (!otherId) return Response.json({ error: 'المستخدم مطلوب' }, { status: 400 });
+
+  const ck = makeKey(user.id, otherId);
+  const admin = createAdminClient();
+  const { error } = await admin.from('dm_messages').delete().eq('conv_key', ck);
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ ok: true });
+}
