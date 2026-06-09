@@ -111,6 +111,7 @@ export default function TeamChat({ user }) {
   const [loading,     setLoading]     = useState(true);
   const [text,        setText]        = useState('');
   const [sending,     setSending]     = useState(false);
+  const [isMobile,    setIsMobile]    = useState(false);
 
   const bottomRef = useRef(null);
   const inputRef  = useRef(null);
@@ -125,6 +126,14 @@ export default function TeamChat({ user }) {
   const myName   = user?.user_metadata?.full_name ?? user?.email ?? '';
   const myAvatar = user?.user_metadata?.avatar_url ?? null;
   const allowed  = ALLOWED.includes(role);
+
+  /* ── mobile detection ── */
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   /* ── initial data load — guard with myId ── */
   useEffect(() => {
@@ -291,9 +300,16 @@ export default function TeamChat({ user }) {
         )}
       </button>
 
+      {/* mobile backdrop */}
+      {open && isMobile && (
+        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 9080, background: 'rgba(0,0,0,.35)', animation: 'tcFade .2s ease' }} />
+      )}
+
       {/* chat panel */}
       {open && (
-        <div style={{ position: 'fixed', bottom: 150, left: 20, zIndex: 9090, width: 355, maxWidth: 'calc(100vw - 28px)', height: 500, maxHeight: 'calc(100vh - 170px)', background: '#fff', borderRadius: 20, boxShadow: '0 12px 50px rgba(0,0,0,.2)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'tcUp .22s cubic-bezier(.34,1.56,.64,1)' }}>
+        <div style={isMobile
+          ? { position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9090, width: '100%', height: '88dvh', maxHeight: '88dvh', background: '#fff', borderRadius: '20px 20px 0 0', boxShadow: '0 -8px 40px rgba(0,0,0,.18)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'tcUpMob .25s cubic-bezier(.34,1.3,.64,1)' }
+          : { position: 'fixed', bottom: 150, left: 20, zIndex: 9090, width: 355, maxWidth: 'calc(100vw - 28px)', height: 500, maxHeight: 'calc(100vh - 170px)', background: '#fff', borderRadius: 20, boxShadow: '0 12px 50px rgba(0,0,0,.2)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'tcUp .22s cubic-bezier(.34,1.56,.64,1)' }}>
 
           {/* header */}
           <div style={{ background: 'linear-gradient(135deg,#1a7c40 0%,#0f5c2e 100%)', padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
@@ -418,6 +434,7 @@ export default function TeamChat({ user }) {
                   onKeyDown={onKey}
                   placeholder={chat?.type === 'group' ? 'اكتب رسالة للفريق...' : `راسل ${chat?.userName?.split(' ')[0]}...`}
                   rows={1}
+                  className="tc-textarea"
                   style={{ flex: 1, resize: 'none', border: '1.5px solid #e2e8f0', borderRadius: 20, padding: '8px 13px', fontSize: '.84rem', outline: 'none', fontFamily: 'inherit', maxHeight: 88, overflowY: 'auto', direction: 'rtl', lineHeight: 1.5, background: '#fafcff', transition: 'border-color .15s' }}
                   onFocus={e => e.currentTarget.style.borderColor = '#1a7c40'}
                   onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
@@ -439,8 +456,13 @@ export default function TeamChat({ user }) {
       )}
 
       <style>{`
-        @keyframes tcUp   { from{opacity:0;transform:translateY(18px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
-        @keyframes tcSpin { to{transform:rotate(360deg)} }
+        @keyframes tcUp    { from{opacity:0;transform:translateY(18px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+        @keyframes tcUpMob { from{opacity:0;transform:translateY(60px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes tcSpin  { to{transform:rotate(360deg)} }
+        @keyframes tcFade  { from{opacity:0} to{opacity:1} }
+        @media (max-width:639px) {
+          .tc-textarea { font-size: 16px !important; }
+        }
       `}</style>
     </>
   );
