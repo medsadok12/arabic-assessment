@@ -187,7 +187,7 @@ export default function TeamChat({ user }) {
           return [...prev, m];
         });
         const cc = chatRef.current;
-        if (!openRef.current || cc?.type !== 'group') setGroupUnread(n => n + 1);
+        if (m.sender_id !== myId && (!openRef.current || cc?.type !== 'group')) setGroupUnread(n => n + 1);
       })
       .subscribe();
 
@@ -206,7 +206,7 @@ export default function TeamChat({ user }) {
           return { ...prev, [m.conv_key]: updated };
         });
         const cc = chatRef.current;
-        if (!openRef.current || cc?.type !== 'dm' || cc?.key !== m.conv_key) {
+        if (m.sender_id !== myId && (!openRef.current || cc?.type !== 'dm' || cc?.key !== m.conv_key)) {
           setDmUnread(prev => ({ ...prev, [m.conv_key]: (prev[m.conv_key] ?? 0) + 1 }));
         }
       })
