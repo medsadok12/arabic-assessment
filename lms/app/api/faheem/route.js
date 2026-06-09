@@ -132,7 +132,7 @@ export async function POST(req) {
   const geminiBody = JSON.stringify({
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents,
-    generationConfig: { maxOutputTokens: 2000, temperature: 0.85, topP: 0.92 },
+    generationConfig: { maxOutputTokens: 350, temperature: 0.85, topP: 0.92 },
   });
 
   // gemini-2.0-flash deprecated (404) — use 2.5-flash as confirmed by /diagnose
