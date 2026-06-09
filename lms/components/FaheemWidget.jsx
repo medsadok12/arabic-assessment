@@ -232,6 +232,14 @@ const iconBtn = {
   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.8rem',
 };
 
+/* ── Warm fallback messages (shown on network error) ── */
+const FALLBACKS = [
+  'يَا صَدِيقِي، الاتِّصَالُ بَطِيءٌ الآنَ. هَلْ تُحَاوِلُ مُجَدَّدًا؟ 🌟',
+  'عَفْوًا يَا بَطَلُ! لَمْ أَسْمَعْكَ جَيِّدًا، أَعِدْ سُؤَالَكَ مِنْ فَضْلِكَ. 🎈',
+  'أَنَا هُنَا وَأَسْمَعُكَ يَا صَدِيقِي! جَرِّبْ مَرَّةً أُخْرَى. 🚀',
+  'الشَّبَكَةُ مَشْغُولَةٌ قَلِيلاً. لَا تَقْلَقْ وَحَاوِلْ مُجَدَّدًا! 💡',
+];
+
 /* ── Main FaheemWidget component ── */
 export default function FaheemWidget({ studentName = 'بطل', studentGender = 'male' }) {
   const isFemale = studentGender === 'female';
@@ -247,6 +255,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
   const [blink,     setBlink]   = useState(false);
   const [bob,       setBob]     = useState(0);
   const [sttErr,    setSttErr]  = useState('');
+  const [pendingQ,  setPendingQ] = useState(null); // prefetched question
 
   const recRef   = useRef(null);
   const endRef   = useRef(null);
@@ -301,32 +310,107 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
     return () => clearTimeout(t);
   }, [open, greeted, studentName, isFemale, sayText]);
 
-  // Input lockdown: locked while thinking AND while speaking (TTS).
-  // Unlocks only when Faheem finishes talking and the audio engine is silent.
-  const locked = phase === 'thinking' || phase === 'speaking';
+  const locked = phase === 'thinking' || phase === 'writing' || phase === 'speaking';
+
+  // Background prefetch: generate a question while child reads/listens
+  async function prefetchQuestion(responseText) {
+    try {
+      const res = await fetch('/api/generate-question', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ context: responseText }),
+      });
+      if (!res.ok) return;
+      const { question } = await res.json();
+      if (question?.q) setPendingQ(question);
+    } catch { /* silent */ }
+  }
 
   async function sendMsg(text) {
     if (!text.trim() || locked) return;
     const t = text.trim();
+    cancel();
+    setPendingQ(null);
     setMsgs(p => [...p, { role: 'user', text: t }]);
     setInput('');
-    cancel();
     setPhase('thinking');
 
+    // ── Try streaming endpoint (Claude / Edge) ─────────────────────────────
+    let usedStream = false;
     try {
-      const res  = await fetch('/api/faheem', {
-        method: 'POST',
+      const res = await fetch('/api/fahim-stream', {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: t, history: msgs, studentName, studentGender }),
+        body:    JSON.stringify({ message: t, history: msgs, studentName, studentGender }),
       });
-      const json = await res.json();
-      const reply = json.reply || 'يَا بَطَلُ، جَرِّبْ سُؤَالاً آخَرَ مِنْ فَضْلِكَ!';
-      setMsgs(p => [...p, { role: 'ai', text: reply }]);
-      sayText(reply);
-    } catch {
-      const fb = 'يَا صَدِيقِي، الاتِّصَالُ بَطِيءٌ قَلِيلاً. هَلْ تُحَاوِلُ مُجَدَّدًا؟';
-      setMsgs(p => [...p, { role: 'ai', text: fb }]);
-      sayText(fb);
+
+      if (res.ok && res.body) {
+        usedStream = true;
+
+        // Add placeholder — "✍️ فَهيمُ يَكْتُبُ..." appears immediately
+        setMsgs(p => [...p, { role: 'ai', text: '✍️ فَهيمُ يَكْتُبُ...', streaming: true }]);
+        setPhase('writing');
+
+        const reader  = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        let full = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split('\n');
+          buf = lines.pop() ?? '';
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const data = line.slice(6).trim();
+            if (data === '[DONE]') break;
+            try {
+              const { t: token } = JSON.parse(data);
+              if (token) {
+                full += token;
+                setMsgs(p => {
+                  const c = [...p];
+                  c[c.length - 1] = { role: 'ai', text: full, streaming: true };
+                  return c;
+                });
+              }
+            } catch { /* skip */ }
+          }
+        }
+
+        // Finalise message
+        const finalText = full.trim() || FALLBACKS[0];
+        setMsgs(p => {
+          const c = [...p];
+          c[c.length - 1] = { role: 'ai', text: finalText };
+          return c;
+        });
+        sayText(finalText);
+        prefetchQuestion(finalText); // fire-and-forget
+        return;
+      }
+    } catch { /* fall through to legacy route */ }
+
+    // ── Fallback: legacy /api/faheem (Gemini) ──────────────────────────────
+    if (!usedStream) {
+      try {
+        const res  = await fetch('/api/faheem', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ message: t, history: msgs, studentName, studentGender }),
+        });
+        const json  = await res.json();
+        const reply = json.reply || FALLBACKS[0];
+        setMsgs(p => [...p, { role: 'ai', text: reply }]);
+        sayText(reply);
+      } catch {
+        const fb = FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
+        setMsgs(p => [...p, { role: 'ai', text: fb }]);
+        sayText(fb);
+      }
     }
   }
 
@@ -374,9 +458,10 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
   const phaseLabel = {
     listening: '🎤 يَسْتَمِعُ...',
     thinking:  '💭 يُفَكِّرُ...',
+    writing:   '✍️ يَكْتُبُ...',
     speaking:  '🔊 يَتَحَدَّثُ...',
     idle:      '● مُتَّصِلٌ',
-  }[phase];
+  }[phase] ?? '● مُتَّصِلٌ';
 
   return (
     <>
@@ -495,6 +580,37 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
                 </div>
               </div>
             )}
+
+            {/* ── Prefetched interactive question ── */}
+            {pendingQ && phase === 'idle' && (
+              <div style={{
+                background: '#fffbeb', border: '1.5px solid #fcd34d',
+                borderRadius: 14, padding: '10px 12px', direction: 'rtl',
+              }}>
+                <div style={{ fontSize: '.82rem', fontWeight: 800, color: '#92400e', marginBottom: 8 }}>
+                  🌟 {pendingQ.q}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {pendingQ.opts.map((opt, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { setPendingQ(null); sendMsg(opt); }}
+                      style={{
+                        padding: '6px 12px', borderRadius: 20, border: '1.5px solid #fcd34d',
+                        background: '#fff', color: '#92400e', fontWeight: 700,
+                        fontSize: '.82rem', cursor: 'pointer', textAlign: 'right',
+                        fontFamily: "'Cairo','Tajawal',sans-serif", transition: '.15s',
+                      }}
+                      onMouseEnter={e => e.target.style.background = '#fef3c7'}
+                      onMouseLeave={e => e.target.style.background = '#fff'}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div ref={endRef} />
           </div>
 
