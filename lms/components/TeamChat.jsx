@@ -179,17 +179,15 @@ export default function TeamChat({ user }) {
     if (!myId) return;
     const sb = createClient();
 
+    /* postgres_changes — message list delivery only (no unread logic here) */
     const grpCh = sb.channel('tc-group-v4')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'team_messages' }, ({ new: m }) => {
         setGroupMsgs(prev => {
-          if (m.sender_id === myId) {
+          if (m.sender_id === myId)
             return [...prev.filter(e => !(e._opt && e.content === m.content && e.sender_id === myId)), m];
-          }
           if (prev.some(e => e.id === m.id)) return prev;
           return [...prev, m];
         });
-        const cc = chatRef.current;
-        if (m.sender_id !== myId && (!openRef.current || cc?.type !== 'group')) setGroupUnread(n => n + 1);
       })
       .subscribe();
 
@@ -198,23 +196,36 @@ export default function TeamChat({ user }) {
         if (!m.conv_key.includes(myId)) return;
         setDmMsgs(prev => {
           const existing = prev[m.conv_key] ?? [];
-          let updated;
-          if (m.sender_id === myId) {
-            updated = [...existing.filter(e => !(e._opt && e.content === m.content)), m];
-          } else {
-            if (existing.some(e => e.id === m.id)) return prev;
-            updated = [...existing, m];
-          }
-          return { ...prev, [m.conv_key]: updated };
+          if (m.sender_id === myId)
+            return { ...prev, [m.conv_key]: [...existing.filter(e => !(e._opt && e.content === m.content)), m] };
+          if (existing.some(e => e.id === m.id)) return prev;
+          return { ...prev, [m.conv_key]: [...existing, m] };
         });
-        const cc = chatRef.current;
-        if (m.sender_id !== myId && (!openRef.current || cc?.type !== 'dm' || cc?.key !== m.conv_key)) {
-          setDmUnread(prev => ({ ...prev, [m.conv_key]: (prev[m.conv_key] ?? 0) + 1 }));
-        }
       })
       .subscribe();
 
-    const clrCh = sb.channel('tc-clears-v1')
+    /* broadcast — unread notifications + new message delivery + clears */
+    const bcastCh = sb.channel('tc-broadcast-v3', { config: { broadcast: { self: false } } })
+      .on('broadcast', { event: 'grp_msg' }, ({ payload: m }) => {
+        if (!m?.id) return;
+        setGroupMsgs(prev => {
+          if (prev.some(e => e.id === m.id)) return prev;
+          return [...prev, m];
+        });
+        const cc = chatRef.current;
+        if (!openRef.current || cc?.type !== 'group') setGroupUnread(n => n + 1);
+      })
+      .on('broadcast', { event: 'dm_msg' }, ({ payload: m }) => {
+        if (!m?.conv_key?.includes(myId)) return;
+        setDmMsgs(prev => {
+          const existing = prev[m.conv_key] ?? [];
+          if (existing.some(e => e.id === m.id)) return prev;
+          return { ...prev, [m.conv_key]: [...existing, m] };
+        });
+        const cc = chatRef.current;
+        if (!openRef.current || cc?.type !== 'dm' || cc?.key !== m.conv_key)
+          setDmUnread(prev => ({ ...prev, [m.conv_key]: (prev[m.conv_key] ?? 0) + 1 }));
+      })
       .on('broadcast', { event: 'group_cleared' }, () => {
         setGroupMsgs([]);
         setGroupUnread(0);
@@ -227,12 +238,12 @@ export default function TeamChat({ user }) {
         }
       })
       .subscribe();
-    clearChRef.current = clrCh;
+    clearChRef.current = bcastCh;
 
     return () => {
       try { sb.removeChannel(grpCh); } catch (_) {}
       try { sb.removeChannel(dmCh); }  catch (_) {}
-      try { sb.removeChannel(clrCh); } catch (_) {}
+      try { sb.removeChannel(bcastCh); } catch (_) {}
     };
   }, [myId]);
 
@@ -304,10 +315,20 @@ export default function TeamChat({ user }) {
 
     if (chat.type === 'group') {
       setGroupMsgs(prev => [...prev, opt]);
-      await fetch('/api/team-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }) });
+      const res  = await fetch('/api/team-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }) });
+      const { message } = await res.json();
+      if (message) {
+        setGroupMsgs(prev => mergeDedup(prev, [message]));
+        try { clearChRef.current?.send({ type: 'broadcast', event: 'grp_msg', payload: message }); } catch (_) {}
+      }
     } else {
       setDmMsgs(prev => ({ ...prev, [chat.key]: [...(prev[chat.key] ?? []), opt] }));
-      await fetch('/api/team-chat/dm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, to: chat.userId }) });
+      const res  = await fetch('/api/team-chat/dm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, to: chat.userId }) });
+      const { message } = await res.json();
+      if (message) {
+        setDmMsgs(prev => ({ ...prev, [chat.key]: mergeDedup(prev[chat.key] ?? [], [message]) }));
+        try { clearChRef.current?.send({ type: 'broadcast', event: 'dm_msg', payload: message }); } catch (_) {}
+      }
     }
     setSending(false);
     inputRef.current?.focus();
