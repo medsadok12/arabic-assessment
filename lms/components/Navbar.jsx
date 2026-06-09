@@ -144,16 +144,26 @@ export default function Navbar({ user: initialUser }) {
   const [dropOpen, setDropOpen] = useState(false);
 
   useEffect(() => {
+    const supabase = createClient();
+
+    // Initial load
     if (!initialUser) {
-      const supabase = createClient();
       supabase.auth.getUser().then(({ data: { user } }) => setUser(user ?? null));
     }
+
+    // Listen for metadata changes (avatar upload, name change, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) setUser(session.user);
+    });
 
     function onOutsideClick(e) {
       if (dropRef.current && !dropRef.current.contains(e.target)) setDropOpen(false);
     }
     document.addEventListener('mousedown', onOutsideClick);
-    return () => document.removeEventListener('mousedown', onOutsideClick);
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('mousedown', onOutsideClick);
+    };
   }, [initialUser]);
 
   async function handleLogout() {
