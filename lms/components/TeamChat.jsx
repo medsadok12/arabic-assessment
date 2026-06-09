@@ -15,7 +15,6 @@ function mergeDedup(a = [], b = []) {
   return [...map.values()].sort((x, y) => new Date(x.created_at) - new Date(y.created_at));
 }
 
-/* ── helpers ── */
 function Avatar({ name, url, role, size = 34 }) {
   const init = (name ?? '?').split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
   if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid #e2e8f0' }} />;
@@ -93,8 +92,13 @@ function MsgList({ items, myId, isGroup, currentChat }) {
   });
 }
 
-/* ── main ── */
+/* ══════════════════════════════════════════════════════════
+   IMPORTANT: ALL hooks must be declared BEFORE any early
+   return — this is a React Rules of Hooks requirement.
+   The `if (!allowed) return null` goes AFTER all hooks.
+═══════════════════════════════════════════════════════════ */
 export default function TeamChat({ user }) {
+  /* ── all state & refs (hooks section — no early returns above here) ── */
   const [open,        setOpen]        = useState(false);
   const [view,        setView]        = useState('list');
   const [chat,        setChat]        = useState(null);
@@ -115,17 +119,16 @@ export default function TeamChat({ user }) {
   openRef.current = open;
   chatRef.current = chat;
 
+  /* derived values — safe with null user via optional chaining */
   const role     = user?.user_metadata?.role;
   const myId     = user?.id;
   const myName   = user?.user_metadata?.full_name ?? user?.email ?? '';
   const myAvatar = user?.user_metadata?.avatar_url ?? null;
+  const allowed  = ALLOWED.includes(role);
 
-  if (!ALLOWED.includes(role)) return null;
-
-  const totalUnread = groupUnread + Object.values(dmUnread).reduce((s, n) => s + n, 0);
-
-  /* initial load */
+  /* ── initial data load — guard with myId ── */
   useEffect(() => {
+    if (!myId) return;
     Promise.all([
       fetch('/api/team-chat').then(r => r.json()),
       fetch('/api/team-chat/members').then(r => r.json()),
@@ -134,9 +137,9 @@ export default function TeamChat({ user }) {
       setMembers(md.members ?? []);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
+  }, [myId]);
 
-  /* online presence */
+  /* ── online presence ── */
   useEffect(() => {
     if (!myId) return;
     const sb = createClient();
@@ -150,12 +153,14 @@ export default function TeamChat({ user }) {
         setOnlineIds(ids);
       })
       .subscribe(async status => {
-        if (status === 'SUBSCRIBED') await ch.track({ user_id: myId });
+        if (status === 'SUBSCRIBED') {
+          try { await ch.track({ user_id: myId }); } catch (_) {}
+        }
       });
-    return () => sb.removeChannel(ch);
+    return () => { try { sb.removeChannel(ch); } catch (_) {} };
   }, [myId]);
 
-  /* realtime: group + DM */
+  /* ── realtime: group + DMs ── */
   useEffect(() => {
     if (!myId) return;
     const sb = createClient();
@@ -163,11 +168,9 @@ export default function TeamChat({ user }) {
     const grpCh = sb.channel('tc-group-v4')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'team_messages' }, ({ new: m }) => {
         setGroupMsgs(prev => {
-          // Replace optimistic if it's my own message
           if (m.sender_id === myId) {
             return [...prev.filter(e => !(e._opt && e.content === m.content && e.sender_id === myId)), m];
           }
-          // Avoid duplicates
           if (prev.some(e => e.id === m.id)) return prev;
           return [...prev, m];
         });
@@ -183,7 +186,6 @@ export default function TeamChat({ user }) {
           const existing = prev[m.conv_key] ?? [];
           let updated;
           if (m.sender_id === myId) {
-            // Replace the optimistic bubble with the real one
             updated = [...existing.filter(e => !(e._opt && e.content === m.content)), m];
           } else {
             if (existing.some(e => e.id === m.id)) return prev;
@@ -198,20 +200,31 @@ export default function TeamChat({ user }) {
       })
       .subscribe();
 
-    return () => { sb.removeChannel(grpCh); sb.removeChannel(dmCh); };
+    return () => {
+      try { sb.removeChannel(grpCh); } catch (_) {}
+      try { sb.removeChannel(dmCh); }  catch (_) {}
+    };
   }, [myId]);
 
-  /* scroll to bottom */
+  /* ── scroll to bottom ── */
   useEffect(() => {
     if (open && view === 'chat') setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
   }, [open, view, chat, groupMsgs, dmMsgs]);
 
-  /* focus input when chat opens */
+  /* ── focus input on chat open ── */
   useEffect(() => {
     if (open && view === 'chat') setTimeout(() => inputRef.current?.focus(), 120);
   }, [open, view, chat]);
 
-  /* navigation */
+  /* ── early return AFTER all hooks ─────────────────────────────────────── */
+  if (!allowed) return null;
+
+  /* ── derived render values ── */
+  const totalUnread  = groupUnread + Object.values(dmUnread).reduce((s, n) => s + n, 0);
+  const currentMsgs  = chat?.type === 'group' ? groupMsgs : (dmMsgs[chat?.key] ?? []);
+  const lastGroupMsg = groupMsgs[groupMsgs.length - 1];
+
+  /* ── navigation helpers ── */
   function openGroup() { setChat({ type: 'group' }); setView('chat'); setGroupUnread(0); }
 
   async function openDm(member) {
@@ -223,7 +236,6 @@ export default function TeamChat({ user }) {
       setLoading(true);
       const r = await fetch(`/api/team-chat/dm?with=${member.id}`);
       const d = await r.json();
-      // Merge with any realtime messages that arrived during fetch
       setDmMsgs(prev => ({ ...prev, [ck]: mergeDedup(d.messages ?? [], prev[ck] ?? []) }));
       setLoading(false);
     }
@@ -231,7 +243,7 @@ export default function TeamChat({ user }) {
 
   function goBack() { setView('list'); setChat(null); setText(''); }
 
-  /* send with optimistic update */
+  /* ── send with optimistic update ── */
   async function send() {
     const content = text.trim();
     if (!content || sending || !chat) return;
@@ -239,9 +251,8 @@ export default function TeamChat({ user }) {
     setText('');
 
     const opt = {
-      id: `opt_${Date.now()}`,
-      sender_id: myId, sender_name: myName,
-      sender_role: role, sender_avatar: myAvatar,
+      id: `opt_${Date.now()}`, sender_id: myId,
+      sender_name: myName, sender_role: role, sender_avatar: myAvatar,
       content, created_at: new Date().toISOString(), _opt: true,
     };
 
@@ -252,17 +263,13 @@ export default function TeamChat({ user }) {
       setDmMsgs(prev => ({ ...prev, [chat.key]: [...(prev[chat.key] ?? []), opt] }));
       await fetch('/api/team-chat/dm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, to: chat.userId }) });
     }
-
     setSending(false);
     inputRef.current?.focus();
   }
 
   function onKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
 
-  const currentMsgs  = chat?.type === 'group' ? groupMsgs : (dmMsgs[chat?.key] ?? []);
-  const lastGroupMsg = groupMsgs[groupMsgs.length - 1];
-
-  /* render */
+  /* ── JSX ── */
   return (
     <>
       {/* floating button */}
@@ -329,10 +336,9 @@ export default function TeamChat({ user }) {
             <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.7)', cursor: 'pointer', fontSize: '.95rem', padding: '4px 6px', borderRadius: 8, lineHeight: 1, flexShrink: 0 }}>✕</button>
           </div>
 
-          {/* ── CONVERSATIONS LIST ── */}
+          {/* CONVERSATIONS LIST */}
           {view === 'list' && (
             <div style={{ flex: 1, overflowY: 'auto', direction: 'rtl' }}>
-              {/* group */}
               <div onClick={openGroup}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', cursor: 'pointer', borderBottom: '1px solid #f0f4f8', transition: 'background .12s' }}
                 onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
@@ -350,7 +356,6 @@ export default function TeamChat({ user }) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="#cbd5e1" style={{ transform: 'scaleX(-1)', flexShrink: 0 }}><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
               </div>
 
-              {/* DMs */}
               <div style={{ padding: '9px 14px 3px', fontSize: '.67rem', color: '#94a3b8', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="#94a3b8"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
                 محادثات خاصة
@@ -361,8 +366,8 @@ export default function TeamChat({ user }) {
               ) : members.length === 0 ? (
                 <div style={{ padding: '20px 14px', textAlign: 'center', color: '#94a3b8', fontSize: '.82rem' }}>لا يوجد أعضاء آخرون في الفريق</div>
               ) : members.map(m => {
-                const ck      = dmKey(myId, m.id);
-                const unread  = dmUnread[ck] ?? 0;
+                const ck     = dmKey(myId, m.id);
+                const unread = dmUnread[ck] ?? 0;
                 const lastMsg = dmMsgs[ck]?.[dmMsgs[ck].length - 1];
                 const online  = onlineIds.has(m.id);
                 return (
@@ -394,7 +399,7 @@ export default function TeamChat({ user }) {
             </div>
           )}
 
-          {/* ── CHAT VIEW ── */}
+          {/* CHAT VIEW */}
           {view === 'chat' && (
             <>
               <div style={{ flex: 1, overflowY: 'auto', padding: '10px 10px 4px', display: 'flex', flexDirection: 'column', direction: 'rtl' }}>
@@ -405,7 +410,6 @@ export default function TeamChat({ user }) {
                 <div ref={bottomRef} style={{ height: 4 }} />
               </div>
 
-              {/* input */}
               <div style={{ padding: '8px 10px 10px', borderTop: '1px solid #f0f4f8', display: 'flex', gap: 7, alignItems: 'flex-end', flexShrink: 0, direction: 'rtl' }}>
                 <textarea
                   ref={inputRef}
