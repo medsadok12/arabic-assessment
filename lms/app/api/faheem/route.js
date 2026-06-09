@@ -26,7 +26,7 @@ STRICT RULES — follow every rule in every response:
    • Place harakat (fatha/damma/kasra) and shadda on the letters INSIDE each word.
    • Indefinite nouns inside the sentence keep tanwin: كِتَابٌ، قَلَمًا، بِسُرْعَةٍ.
    • Never leave a word completely bare of harakat inside the sentence.
-4b. WAQF RULE — pausing is purely linguistic (let Gemini phrase it, NOT code):
+4b. WAQF RULE — pausing is purely linguistic:
    • The LAST letter of any word that comes immediately before ( . ، ؟ ! ؛ ) or ends the
      sentence MUST be written COMPLETELY BARE — no harakat, no tanwin, and NO sukun mark
      either. A bare final letter tells the voice engine "this is a natural stop".
@@ -60,6 +60,7 @@ async function tryAnthropic(anthropicKey, systemPrompt, recent, message) {
       ...recent.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
       { role: 'user', content: message },
     ];
+    const t0  = Date.now();
     const res = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -68,23 +69,24 @@ async function tryAnthropic(anthropicKey, systemPrompt, recent, message) {
         'content-type':      'application/json',
       },
       body: JSON.stringify({
-        model:      'claude-haiku-4-5-20251001',
+        model:      'claude-sonnet-4-6',
         max_tokens: 2000,
         system:     systemPrompt,
         messages,
       }),
-    }, 5000);
+    }, 8500);
+    const elapsed = Date.now() - t0;
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      console.error(`[faheem] ✗ Anthropic HTTP ${res.status} — ${errText.slice(0, 200)}`);
+      console.error(`[faheem] ✗ Claude HTTP ${res.status} (${elapsed}ms) — ${errText.slice(0, 200)}`);
       return null;
     }
     const json  = await res.json();
     const reply = json.content?.[0]?.text?.trim();
-    if (reply) { console.log(`[faheem] ✓ Anthropic OK len=${reply.length}`); return reply; }
-    console.error('[faheem] ✗ Anthropic empty reply:', JSON.stringify(json).slice(0, 150));
+    if (reply) { console.log(`[faheem] ✓ Claude OK (${elapsed}ms) len=${reply.length}`); return reply; }
+    console.error('[faheem] ✗ Claude empty reply:', JSON.stringify(json).slice(0, 150));
   } catch (e) {
-    console.error(`[faheem] ✗ Anthropic EXCEPTION ${e.name}: ${e.message}`);
+    console.error(`[faheem] ✗ Claude EXCEPTION ${e.name}: ${e.message}`);
   }
   return null;
 }
@@ -111,8 +113,13 @@ export async function POST(req) {
   const systemPrompt = buildSystemPrompt(studentName, studentGender);
 
   // Diagnostic log — visible in Vercel Function Logs
-  console.log(`[faheem] ▶ msg="${message.trim().slice(0,40)}" gemini=${!!geminiKey}(${geminiKey?.slice(0,8) ?? 'MISSING'}) anthropic=${!!anthropicKey}`);
+  console.log(`[faheem] ▶ msg="${message.trim().slice(0,40)}" anthropic=${!!anthropicKey} gemini=${!!geminiKey}`);
 
+  // ── 1. Claude (primary) ────────────────────────────────────────────────────
+  const anthropicReply = await tryAnthropic(anthropicKey, systemPrompt, recent, message.trim());
+  if (anthropicReply) return NextResponse.json({ reply: anthropicReply });
+
+  // ── 2. Gemini fallback ─────────────────────────────────────────────────────
   const contents = [
     ...recent.map(m => ({
       role:  m.role === 'user' ? 'user' : 'model',
@@ -126,18 +133,12 @@ export async function POST(req) {
     generationConfig: { maxOutputTokens: 2000, temperature: 0.85, topP: 0.92 },
   });
 
-  // Stable verified Gemini models — 2.5-flash → 2.0-flash → 2.0-flash-lite → 1.5-flash
-  const GEMINI_MODELS = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
-    'gemini-1.5-flash',
-  ];
+  const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
   if (geminiKey) {
     for (const model of GEMINI_MODELS) {
       try {
-        const t0 = Date.now();
+        const t0  = Date.now();
         const res = await fetchWithTimeout(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
           { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: geminiBody },
@@ -160,7 +161,7 @@ export async function POST(req) {
 
         const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         if (reply) {
-          console.log(`[faheem] ✓ ${model} OK (${elapsed}ms) len=${reply.length}`);
+          console.log(`[faheem] ✓ ${model} fallback OK (${elapsed}ms) len=${reply.length}`);
           return NextResponse.json({ reply });
         }
         const reason = json.candidates?.[0]?.finishReason ?? 'unknown';
@@ -171,15 +172,8 @@ export async function POST(req) {
       }
     }
   } else {
-    console.error('[faheem] ✗ GEMINI_API_KEY is not set in environment!');
+    console.error('[faheem] ✗ GEMINI_API_KEY not set — no fallback available');
   }
-
-  // Anthropic fallback — always tried after all Gemini models fail
-  if (!anthropicKey) {
-    console.error('[faheem] ✗ ANTHROPIC_API_KEY is not set — no fallback available');
-  }
-  const anthropicReply = await tryAnthropic(anthropicKey, systemPrompt, recent, message.trim());
-  if (anthropicReply) return NextResponse.json({ reply: anthropicReply });
 
   // All failed
   console.error('[faheem] ✗✗✗ ALL AI calls failed — returning fallback message');
