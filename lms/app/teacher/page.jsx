@@ -398,7 +398,7 @@ export default function TeacherPage() {
               onClick={() => setActiveTab('simulator')}
             >
               <span>🎭</span>
-              <span>محاكي الحياة</span>
+              <span>مسرح التعبير</span>
             </button>
             <div className="side-sep" />
             <a href="/teacher/logbook" className="side-link">

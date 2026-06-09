@@ -1,97 +1,128 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 
-// ── Character avatars (SVG, no regional clothing) ──────────────────────────
+// ── Character avatars (friendly cartoon kids — big eyes, rosy cheeks) ───────
+// Shared facial features so every character looks consistently cute.
 
-function AvatarBoy({ size = 44 }) {
+function Face({ skin = '#ffd9b3', eyeY = 25, cheek = '#ffb3b3' }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Body */}
-      <circle cx="22" cy="22" r="22" fill="#dbeafe"/>
-      {/* T-shirt */}
-      <rect x="12" y="28" width="20" height="10" rx="4" fill="#3b82f6"/>
+    <>
+      {/* Rosy cheeks */}
+      <circle cx="17" cy={eyeY + 4} r="2.6" fill={cheek} opacity="0.6"/>
+      <circle cx="31" cy={eyeY + 4} r="2.6" fill={cheek} opacity="0.6"/>
+      {/* Eyebrows */}
+      <path d={`M16 ${eyeY - 4} Q18.5 ${eyeY - 5.5} 21 ${eyeY - 4}`} stroke="#6b4423" strokeWidth="1.1" strokeLinecap="round" fill="none"/>
+      <path d={`M27 ${eyeY - 4} Q29.5 ${eyeY - 5.5} 32 ${eyeY - 4}`} stroke="#6b4423" strokeWidth="1.1" strokeLinecap="round" fill="none"/>
+      {/* Big expressive eyes (white + pupil + sparkle) */}
+      <ellipse cx="18.5" cy={eyeY} rx="2.6" ry="3" fill="#fff"/>
+      <ellipse cx="29.5" cy={eyeY} rx="2.6" ry="3" fill="#fff"/>
+      <circle cx="18.7" cy={eyeY + 0.4} r="1.6" fill="#3b2a1a"/>
+      <circle cx="29.7" cy={eyeY + 0.4} r="1.6" fill="#3b2a1a"/>
+      <circle cx="19.4" cy={eyeY - 0.4} r="0.6" fill="#fff"/>
+      <circle cx="30.4" cy={eyeY - 0.4} r="0.6" fill="#fff"/>
+      {/* Happy smile */}
+      <path d={`M19 ${eyeY + 6.5} Q24 ${eyeY + 10.5} 29 ${eyeY + 6.5}`} stroke="#c2410c" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+    </>
+  );
+}
+
+function Avatar({ id, grad, skin, shirt, children, eyeY = 25, cheek }) {
+  return (
+    <svg width="100%" height="100%" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id={`bg-${id}`} cx="50%" cy="38%" r="70%">
+          <stop offset="0%" stopColor={grad[0]}/>
+          <stop offset="100%" stopColor={grad[1]}/>
+        </radialGradient>
+      </defs>
+      {/* Background */}
+      <circle cx="24" cy="24" r="24" fill={`url(#bg-${id})`}/>
+      {/* Shoulders / shirt */}
+      <path d="M11 48 Q11 37 24 37 Q37 37 37 48 Z" fill={shirt}/>
+      {/* Neck */}
+      <rect x="21.5" y="31" width="5" height="5" rx="2" fill={skin}/>
       {/* Head */}
-      <circle cx="22" cy="20" r="9" fill="#fde68a"/>
-      {/* Eyes */}
-      <circle cx="19" cy="19" r="1.3" fill="#1e293b"/>
-      <circle cx="25" cy="19" r="1.3" fill="#1e293b"/>
-      {/* Smile */}
-      <path d="M19 22.5 Q22 25 25 22.5" stroke="#92400e" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
-      {/* Hair */}
-      <path d="M13 18 Q14 11 22 11 Q30 11 31 18" fill="#92400e"/>
+      <circle cx="24" cy={eyeY} r="11" fill={skin}/>
+      {/* Ears */}
+      <circle cx="13.5" cy={eyeY} r="2" fill={skin}/>
+      <circle cx="34.5" cy={eyeY} r="2" fill={skin}/>
+      {/* Hair / accessories drawn by the specific character */}
+      {children?.behind}
+      <Face skin={skin} eyeY={eyeY} cheek={cheek}/>
+      {children?.front}
     </svg>
   );
 }
 
-function AvatarGirl({ size = 44 }) {
+function AvatarBoy() {
   return (
-    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="22" cy="22" r="22" fill="#fce7f3"/>
-      {/* Dress */}
-      <rect x="12" y="28" width="20" height="10" rx="4" fill="#ec4899"/>
-      {/* Head */}
-      <circle cx="22" cy="20" r="9" fill="#fde68a"/>
-      {/* Hair */}
-      <path d="M13 18 Q12 10 22 10 Q32 10 31 18 Q30 22 32 24 Q28 28 22 27 Q16 28 12 24 Q14 22 13 18Z" fill="#b45309"/>
-      {/* Eyes */}
-      <circle cx="19.5" cy="19.5" r="1.3" fill="#1e293b"/>
-      <circle cx="24.5" cy="19.5" r="1.3" fill="#1e293b"/>
-      {/* Smile */}
-      <path d="M19.5 22.5 Q22 25 24.5 22.5" stroke="#9d174d" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
-    </svg>
+    <Avatar id="boy" grad={['#dbeafe', '#bfdbfe']} skin="#ffd9b3" shirt="#3b82f6"
+      eyeY={25} cheek="#ff9d9d"
+      >{{
+        behind: <path d="M13 22 Q13 11 24 11 Q35 11 35 22 Q35 18 31 17 Q28 14 24 14 Q20 14 17 17 Q13 18 13 22Z" fill="#7c4a1e"/>,
+      }}</Avatar>
   );
 }
 
-function AvatarWorker({ size = 44 }) {
+function AvatarGirl() {
   return (
-    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="22" cy="22" r="22" fill="#d1fae5"/>
-      {/* Shirt */}
-      <rect x="12" y="28" width="20" height="10" rx="4" fill="#059669"/>
-      {/* Collar */}
-      <path d="M18 28 L22 32 L26 28" fill="#065f46"/>
-      {/* Head */}
-      <circle cx="22" cy="20" r="9" fill="#fde68a"/>
-      {/* Cap */}
-      <rect x="13" y="13" width="18" height="5" rx="2" fill="#1e293b"/>
-      <rect x="11" y="16" width="22" height="2" rx="1" fill="#1e293b"/>
-      {/* Eyes */}
-      <circle cx="19.5" cy="20" r="1.3" fill="#1e293b"/>
-      <circle cx="24.5" cy="20" r="1.3" fill="#1e293b"/>
-      {/* Smile */}
-      <path d="M19.5 23 Q22 25.5 24.5 23" stroke="#92400e" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
-    </svg>
+    <Avatar id="girl" grad={['#fce7f3', '#fbcfe8']} skin="#ffd9b3" shirt="#ec4899"
+      eyeY={25} cheek="#ff8fb0"
+      >{{
+        behind: <>
+          {/* Long hair behind */}
+          <path d="M11 26 Q10 13 24 12 Q38 13 37 26 Q39 33 35 38 Q30 33 24 33 Q18 33 13 38 Q9 33 11 26Z" fill="#8b5a2b"/>
+        </>,
+        front: <>
+          {/* Bangs */}
+          <path d="M13 22 Q13 11 24 11 Q35 11 35 22 Q34 17 30 16 Q27 19 24 19 Q21 19 18 16 Q14 17 13 22Z" fill="#9c6b34"/>
+          {/* Bow */}
+          <circle cx="33" cy="15" r="2.4" fill="#f43f5e"/>
+          <path d="M33 15 l-3 -2 v4 z" fill="#e11d48"/>
+          <path d="M33 15 l3 -2 v4 z" fill="#e11d48"/>
+        </>,
+      }}</Avatar>
   );
 }
 
-function AvatarTeacher({ size = 44 }) {
+function AvatarWorker() {
   return (
-    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="22" cy="22" r="22" fill="#ede9fe"/>
-      <rect x="12" y="28" width="20" height="10" rx="4" fill="#7c3aed"/>
-      <circle cx="22" cy="20" r="9" fill="#fde68a"/>
-      {/* Glasses */}
-      <rect x="15" y="17.5" width="5" height="4" rx="2" fill="none" stroke="#374151" strokeWidth="1.2"/>
-      <rect x="24" y="17.5" width="5" height="4" rx="2" fill="none" stroke="#374151" strokeWidth="1.2"/>
-      <line x1="20" y1="19.5" x2="24" y2="19.5" stroke="#374151" strokeWidth="1.2"/>
-      {/* Eyes inside glasses */}
-      <circle cx="17.5" cy="19.5" r="1" fill="#1e293b"/>
-      <circle cx="26.5" cy="19.5" r="1" fill="#1e293b"/>
-      {/* Smile */}
-      <path d="M19.5 23 Q22 25.5 24.5 23" stroke="#92400e" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
-      {/* Hair */}
-      <path d="M13 18 Q14 11 22 11 Q30 11 31 18" fill="#b45309"/>
-    </svg>
+    <Avatar id="worker" grad={['#d1fae5', '#a7f3d0']} skin="#f0bd8a" shirt="#059669"
+      eyeY={26} cheek="#e8956b"
+      >{{
+        front: <>
+          {/* Cap */}
+          <path d="M13 19 Q13 12 24 12 Q35 12 35 19 Z" fill="#1f2937"/>
+          <rect x="10" y="18.5" width="20" height="2.6" rx="1.3" fill="#374151"/>
+          <circle cx="24" cy="13.5" r="1.1" fill="#6b7280"/>
+        </>,
+      }}</Avatar>
   );
 }
 
-function AvatarDefault({ size = 44 }) {
+function AvatarTeacher() {
   return (
-    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="22" cy="22" r="22" fill="#f1f5f9"/>
-      <circle cx="22" cy="19" r="8" fill="#94a3b8"/>
-      <ellipse cx="22" cy="36" rx="12" ry="7" fill="#94a3b8"/>
-    </svg>
+    <Avatar id="teacher" grad={['#ede9fe', '#ddd6fe']} skin="#ffd9b3" shirt="#7c3aed"
+      eyeY={25} cheek="#ff9d9d"
+      >{{
+        behind: <path d="M13 22 Q13 11 24 11 Q35 11 35 22 Q35 17 31 16 Q28 13 24 13 Q20 13 17 16 Q13 17 13 22Z" fill="#5b3a1a"/>,
+        front: <>
+          {/* Round glasses */}
+          <circle cx="18.5" cy="25" r="4" fill="none" stroke="#1f2937" strokeWidth="1.3"/>
+          <circle cx="29.5" cy="25" r="4" fill="none" stroke="#1f2937" strokeWidth="1.3"/>
+          <line x1="22.5" y1="25" x2="25.5" y2="25" stroke="#1f2937" strokeWidth="1.3"/>
+        </>,
+      }}</Avatar>
+  );
+}
+
+function AvatarDefault() {
+  return (
+    <Avatar id="default" grad={['#f1f5f9', '#e2e8f0']} skin="#ffd9b3" shirt="#94a3b8"
+      eyeY={25} cheek="#ff9d9d"
+      >{{
+        behind: <path d="M13 22 Q13 11 24 11 Q35 11 35 22 Q35 17 31 16 Q28 13 24 13 Q20 13 17 16 Q13 17 13 22Z" fill="#94a3b8"/>,
+      }}</Avatar>
   );
 }
 
@@ -534,7 +565,7 @@ export default function LifeSceneSimulator({ role = 'teacher', currentUser }) {
           {/* Header */}
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
             <h2 style={{ fontSize:'1.05rem', fontWeight:800, color:'var(--primary)', margin:0 }}>
-              🎭 مشاهدي التفاعلية
+              🎭 مسرح التعبير
             </h2>
             <button
               onClick={() => setView(v => v === 'create' ? 'list' : 'create')}
