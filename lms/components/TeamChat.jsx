@@ -2,17 +2,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '../lib/supabase';
 
-const ALLOWED_ROLES = ['teacher', 'admin', 'super_admin'];
+const ALLOWED  = ['teacher', 'admin', 'super_admin'];
+const ROLE_AR  = { teacher: 'معلم', admin: 'مشرف', super_admin: 'مرشد' };
+const ROLE_BG  = { teacher: '#dcfce7', admin: '#fef3c7', super_admin: '#dbeafe' };
+const ROLE_CLR = { teacher: '#166534', admin: '#92400e', super_admin: '#1d4ed8' };
 
-const ROLE_AR    = { teacher: 'معلم', admin: 'مشرف', super_admin: 'مرشد' };
-const ROLE_BG    = { teacher: '#dcfce7', admin: '#fef3c7', super_admin: '#dbeafe' };
-const ROLE_COLOR = { teacher: '#166534', admin: '#92400e', super_admin: '#1d4ed8' };
+/* ── helpers ─────────────────────────────────────────────── */
+function dmKey(a, b) { return [a, b].sort().join('_'); }
 
-function initials(name) {
-  return (name ?? '?').split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
-}
-
-function Avatar({ name, url, role, size = 30 }) {
+function Avatar({ name, url, role, size = 34 }) {
+  const init = (name ?? '?').split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
   if (url) return (
     <img src={url} alt={name}
       style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid #e2e8f0' }}
@@ -22,118 +21,237 @@ function Avatar({ name, url, role, size = 30 }) {
     <div style={{
       width: size, height: size, borderRadius: '50%',
       background: ROLE_BG[role] ?? '#f1f5f9',
-      color: ROLE_COLOR[role] ?? '#475569',
-      fontWeight: 700, fontSize: size * 0.36,
+      color: ROLE_CLR[role] ?? '#475569',
+      fontWeight: 700, fontSize: size * 0.33,
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    }}>
-      {initials(name)}
-    </div>
+    }}>{init}</div>
   );
 }
 
 function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 }
-
 function fmtDay(iso) {
-  const d = new Date(iso);
-  const now = new Date();
-  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-  if (d.toDateString() === now.toDateString()) return 'اليوم';
-  if (d.toDateString() === yesterday.toDateString()) return 'أمس';
+  const d = new Date(iso), now = new Date(), yest = new Date(now);
+  yest.setDate(now.getDate() - 1);
+  if (d.toDateString() === now.toDateString())  return 'اليوم';
+  if (d.toDateString() === yest.toDateString()) return 'أمس';
   return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
 }
 
+function buildItems(msgs) {
+  const out = [];
+  let last = '';
+  for (const m of msgs) {
+    const day = fmtDay(m.created_at);
+    if (day !== last) { out.push({ _sep: true, label: day, _key: `sep_${day}` }); last = day; }
+    out.push(m);
+  }
+  return out;
+}
+
+/* ── message bubble list ─────────────────────────────────── */
+function MsgList({ items, myId, isGroup, currentChat, bottomRef }) {
+  if (items.length === 0) return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: 8, padding: 24 }}>
+      <span style={{ fontSize: '2rem' }}>{isGroup ? '👥' : '🔒'}</span>
+      <span style={{ fontSize: '.84rem', textAlign: 'center' }}>
+        {isGroup ? 'ابدأ محادثة مع فريق العمل!' : `ابدأ محادثة خاصة مع ${currentChat?.userName}`}
+      </span>
+    </div>
+  );
+  return items.map((item, idx) => {
+    if (item._sep) return (
+      <div key={item._key} style={{ textAlign: 'center', margin: '10px 0 5px' }}>
+        <span style={{ background: '#f1f5f9', color: '#94a3b8', fontSize: '.64rem', padding: '3px 11px', borderRadius: 20 }}>{item.label}</span>
+      </div>
+    );
+    const isMe = item.sender_id === myId;
+    const prev = items[idx - 1], next = items[idx + 1];
+    const samePrev = prev && !prev._sep && prev.sender_id === item.sender_id;
+    const sameNext = next && !next._sep && next.sender_id === item.sender_id;
+    const showName = !samePrev && !isMe && isGroup;
+    const radius = isMe
+      ? `${samePrev ? 6 : 16}px 4px ${sameNext ? 6 : 16}px 16px`
+      : `4px ${samePrev ? 6 : 16}px 16px ${sameNext ? 6 : 16}px`;
+    return (
+      <div key={item.id} style={{
+        display: 'flex', flexDirection: isMe ? 'row' : 'row-reverse',
+        gap: 6, alignItems: 'flex-end', marginTop: samePrev ? 2 : 8,
+      }}>
+        <div style={{ width: 26, flexShrink: 0, display: 'flex', alignItems: 'flex-end' }}>
+          {!sameNext && !isMe && <Avatar name={item.sender_name} url={item.sender_avatar} role={item.sender_role} size={24} />}
+        </div>
+        <div style={{ maxWidth: '74%', display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', gap: 2 }}>
+          {showName && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingRight: 4 }}>
+              <span style={{ fontSize: '.65rem', fontWeight: 700, color: '#475569' }}>{item.sender_name}</span>
+              <span style={{ fontSize: '.57rem', padding: '1px 5px', borderRadius: 10, fontWeight: 600, background: ROLE_BG[item.sender_role] ?? '#f1f5f9', color: ROLE_CLR[item.sender_role] ?? '#475569' }}>
+                {ROLE_AR[item.sender_role] ?? item.sender_role}
+              </span>
+            </div>
+          )}
+          <div style={{
+            background: isMe ? 'linear-gradient(135deg,#1a7c40,#0f5c2e)' : '#f1f5f9',
+            color: isMe ? '#fff' : '#1e293b',
+            padding: '8px 12px', borderRadius: radius,
+            fontSize: '.85rem', lineHeight: 1.55, wordBreak: 'break-word',
+            boxShadow: isMe ? '0 2px 8px rgba(26,124,64,.2)' : '0 1px 3px rgba(0,0,0,.05)',
+            whiteSpace: 'pre-wrap',
+          }}>{item.content}</div>
+          {!sameNext && (
+            <span style={{ fontSize: '.59rem', color: '#94a3b8', padding: '0 3px' }}>{fmtTime(item.created_at)}</span>
+          )}
+        </div>
+        <div style={{ width: 26, flexShrink: 0, display: 'flex', alignItems: 'flex-end' }}>
+          {!sameNext && isMe && <Avatar name={item.sender_name} url={item.sender_avatar} role={item.sender_role} size={24} />}
+        </div>
+      </div>
+    );
+  });
+}
+
+/* ── main component ──────────────────────────────────────── */
 export default function TeamChat({ user }) {
-  const [open,    setOpen]    = useState(false);
-  const [msgs,    setMsgs]    = useState([]);
-  const [text,    setText]    = useState('');
+  const [open, setOpen]       = useState(false);
+  const [view, setView]       = useState('list');      // 'list' | 'chat'
+  const [chat, setChat]       = useState(null);        // { type:'group' } | { type:'dm', userId, userName, userRole, userAvatar, key }
+
+  const [members,    setMembers]    = useState([]);
+  const [groupMsgs,  setGroupMsgs]  = useState([]);
+  const [dmMsgs,     setDmMsgs]     = useState({});    // { [key]: Message[] }
+  const [groupUnread, setGroupUnread] = useState(0);
+  const [dmUnread,   setDmUnread]   = useState({});    // { [key]: number }
+
   const [loading, setLoading] = useState(true);
-  const [unread,  setUnread]  = useState(0);
+  const [text,    setText]    = useState('');
   const [sending, setSending] = useState(false);
 
-  const bottomRef = useRef(null);
-  const inputRef  = useRef(null);
-  const openRef   = useRef(false);
+  const bottomRef  = useRef(null);
+  const inputRef   = useRef(null);
+  const openRef    = useRef(false);
+  const chatRef    = useRef(null);
   openRef.current = open;
+  chatRef.current = chat;
 
   const role = user?.user_metadata?.role;
-  if (!ALLOWED_ROLES.includes(role)) return null;
-
+  if (!ALLOWED.includes(role)) return null;
   const myId = user?.id;
 
-  // Initial message load
+  const totalUnread = groupUnread + Object.values(dmUnread).reduce((s, n) => s + n, 0);
+
+  /* ── initial load ───────────────────────────── */
   useEffect(() => {
-    fetch('/api/team-chat')
-      .then(r => r.json())
-      .then(d => { setMsgs(d.messages ?? []); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch('/api/team-chat').then(r => r.json()),
+      fetch('/api/team-chat/members').then(r => r.json()),
+    ]).then(([gd, md]) => {
+      setGroupMsgs(gd.messages ?? []);
+      setMembers(md.members ?? []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
-  // Supabase Realtime subscription
+  /* ── realtime subscriptions ─────────────────── */
   useEffect(() => {
     const sb = createClient();
-    const ch = sb
-      .channel('team-chat-v1')
+
+    // Group chat
+    const grpCh = sb.channel('tc-group-v2')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'team_messages' }, ({ new: m }) => {
-        setMsgs(prev => [...prev, m]);
-        if (!openRef.current) setUnread(n => n + 1);
+        setGroupMsgs(prev => [...prev, m]);
+        const cc = chatRef.current;
+        if (!openRef.current || cc?.type !== 'group') setGroupUnread(n => n + 1);
       })
       .subscribe();
-    return () => sb.removeChannel(ch);
-  }, []);
 
-  // Scroll to bottom when panel opens or new message arrives
-  useEffect(() => {
-    if (open) setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: msgs.length > 10 ? 'auto' : 'smooth' }), 60);
-  }, [msgs, open]);
+    // DMs — subscribe to all, filter client-side by myId
+    const dmCh = sb.channel('tc-dm-v2')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, ({ new: m }) => {
+        const parts = m.conv_key.split('_');
+        // conv_key = uuid_uuid where uuids are 36 chars; safe split
+        const isParticipant = parts[0] === myId || parts[1] === myId
+          || m.conv_key.startsWith(myId + '_') || m.conv_key.endsWith('_' + myId);
+        if (!isParticipant) return;
 
-  // Focus input on open, reset unread
+        setDmMsgs(prev => ({
+          ...prev,
+          [m.conv_key]: prev[m.conv_key] ? [...prev[m.conv_key], m] : [m],
+        }));
+        const cc = chatRef.current;
+        if (!openRef.current || cc?.type !== 'dm' || cc?.key !== m.conv_key) {
+          setDmUnread(prev => ({ ...prev, [m.conv_key]: (prev[m.conv_key] ?? 0) + 1 }));
+        }
+      })
+      .subscribe();
+
+    return () => { sb.removeChannel(grpCh); sb.removeChannel(dmCh); };
+  }, [myId]);
+
+  /* ── scroll to bottom on new messages ───────── */
   useEffect(() => {
-    if (open) {
-      setUnread(0);
-      setTimeout(() => inputRef.current?.focus(), 120);
+    if (open && view === 'chat') setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
+  }, [open, view, chat, groupMsgs, dmMsgs]);
+
+  /* ── focus input when entering chat ─────────── */
+  useEffect(() => {
+    if (open && view === 'chat') setTimeout(() => inputRef.current?.focus(), 120);
+  }, [open, view, chat]);
+
+  /* ── navigation ─────────────────────────────── */
+  function openGroup() {
+    setChat({ type: 'group' });
+    setView('chat');
+    setGroupUnread(0);
+  }
+
+  async function openDm(member) {
+    const ck = dmKey(myId, member.id);
+    setChat({ type: 'dm', userId: member.id, userName: member.name, userRole: member.role, userAvatar: member.avatar_url, key: ck });
+    setView('chat');
+    setDmUnread(prev => ({ ...prev, [ck]: 0 }));
+
+    if (!dmMsgs[ck]) {
+      setLoading(true);
+      const r = await fetch(`/api/team-chat/dm?with=${member.id}`);
+      const d = await r.json();
+      setDmMsgs(prev => ({ ...prev, [ck]: d.messages ?? [] }));
+      setLoading(false);
     }
-  }, [open]);
+  }
 
+  function goBack() { setView('list'); setChat(null); setText(''); }
+
+  /* ── send message ───────────────────────────── */
   async function send() {
     const content = text.trim();
-    if (!content || sending) return;
+    if (!content || sending || !chat) return;
     setSending(true);
     setText('');
-    await fetch('/api/team-chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
-    });
+    if (chat.type === 'group') {
+      await fetch('/api/team-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }) });
+    } else {
+      await fetch('/api/team-chat/dm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, to: chat.userId }) });
+    }
     setSending(false);
     inputRef.current?.focus();
   }
+  function onKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
 
-  function onKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-  }
+  const currentMsgs  = chat?.type === 'group' ? groupMsgs : (dmMsgs[chat?.key] ?? []);
+  const lastGroupMsg  = groupMsgs[groupMsgs.length - 1];
 
-  // Build display list with date separators
-  const items = [];
-  let lastDay = '';
-  for (const m of msgs) {
-    const day = fmtDay(m.created_at);
-    if (day !== lastDay) { items.push({ _sep: true, label: day, key: `sep_${day}` }); lastDay = day; }
-    items.push(m);
-  }
-
+  /* ── render ─────────────────────────────────── */
   return (
     <>
-      {/* Floating button */}
+      {/* ── floating button ── */}
       <button
         onClick={() => setOpen(o => !o)}
         title="محادثات الفريق"
         style={{
           position: 'fixed', bottom: 88, left: 20, zIndex: 9100,
           width: 52, height: 52, borderRadius: '50%', border: 'none',
-          background: 'linear-gradient(135deg, #1a7c40 0%, #0f5c2e 100%)',
+          background: 'linear-gradient(135deg,#1a7c40 0%,#0f5c2e 100%)',
           boxShadow: '0 4px 16px rgba(26,124,64,.45)',
           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'transform .18s',
@@ -145,19 +263,14 @@ export default function TeamChat({ user }) {
           ? <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
           : <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
         }
-        {!open && unread > 0 && (
-          <span style={{
-            position: 'absolute', top: -2, right: -2,
-            background: '#e53e3e', color: '#fff',
-            borderRadius: '50%', minWidth: 20, height: 20, padding: '0 3px',
-            fontSize: '.62rem', fontWeight: 800,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '2px solid #fff', lineHeight: 1,
-          }}>{unread > 99 ? '99+' : unread}</span>
+        {!open && totalUnread > 0 && (
+          <span style={{ position: 'absolute', top: -2, right: -2, background: '#e53e3e', color: '#fff', borderRadius: '50%', minWidth: 20, height: 20, padding: '0 3px', fontSize: '.62rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #fff', lineHeight: 1 }}>
+            {totalUnread > 99 ? '99+' : totalUnread}
+          </span>
         )}
       </button>
 
-      {/* Chat panel */}
+      {/* ── chat panel ── */}
       {open && (
         <div style={{
           position: 'fixed', bottom: 150, left: 20, zIndex: 9090,
@@ -169,169 +282,164 @@ export default function TeamChat({ user }) {
           animation: 'tcUp .22s cubic-bezier(.34,1.56,.64,1)',
         }}>
 
-          {/* Header */}
-          <div style={{
-            background: 'linear-gradient(135deg, #1a7c40 0%, #0f5c2e 100%)',
-            padding: '11px 14px',
-            display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
-          }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: '50%',
-              background: 'rgba(255,255,255,.15)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem',
-              flexShrink: 0,
-            }}>💬</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: '#fff', fontWeight: 800, fontSize: '.95rem' }}>فريق العمل</div>
-              <div style={{ color: 'rgba(255,255,255,.6)', fontSize: '.68rem' }}>معلمون · إدارة · مشرفون</div>
-            </div>
-            <button onClick={() => setOpen(false)}
-              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.75)', cursor: 'pointer', fontSize: '1rem', padding: '4px 6px', borderRadius: 8, lineHeight: 1 }}>
-              ✕
-            </button>
+          {/* header */}
+          <div style={{ background: 'linear-gradient(135deg,#1a7c40 0%,#0f5c2e 100%)', padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
+            {view === 'chat' && (
+              <button onClick={goBack} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.35rem', padding: '2px 2px', borderRadius: 8, lineHeight: 1, opacity: .85, flexShrink: 0 }}>‹</button>
+            )}
+
+            {view === 'list' && <>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>💬</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: '#fff', fontWeight: 800, fontSize: '.93rem' }}>المحادثات</div>
+                <div style={{ color: 'rgba(255,255,255,.55)', fontSize: '.67rem' }}>فريق العمل · خاص</div>
+              </div>
+            </>}
+
+            {view === 'chat' && chat?.type === 'group' && <>
+              <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.05rem', flexShrink: 0 }}>👥</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: '#fff', fontWeight: 800, fontSize: '.9rem' }}>فريق العمل</div>
+                <div style={{ color: 'rgba(255,255,255,.5)', fontSize: '.65rem' }}>معلمون · إدارة · مشرفون</div>
+              </div>
+            </>}
+
+            {view === 'chat' && chat?.type === 'dm' && <>
+              <Avatar name={chat.userName} url={chat.userAvatar} role={chat.userRole} size={34} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: '#fff', fontWeight: 800, fontSize: '.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chat.userName}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ color: 'rgba(255,255,255,.5)', fontSize: '.64rem' }}>{ROLE_AR[chat.userRole] ?? ''}</span>
+                  <span style={{ background: 'rgba(0,0,0,.2)', color: '#fff', fontSize: '.58rem', padding: '1px 7px', borderRadius: 10 }}>خاص 🔒</span>
+                </div>
+              </div>
+            </>}
+
+            <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.7)', cursor: 'pointer', fontSize: '.95rem', padding: '4px 6px', borderRadius: 8, lineHeight: 1, flexShrink: 0 }}>✕</button>
           </div>
 
-          {/* Messages area */}
-          <div style={{
-            flex: 1, overflowY: 'auto', padding: '10px 10px 4px',
-            display: 'flex', flexDirection: 'column', gap: 0, direction: 'rtl',
-          }}>
-            {loading ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '.88rem' }}>
-                ⏳ تحميل...
-              </div>
-            ) : items.length === 0 ? (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: 8, padding: 24 }}>
-                <span style={{ fontSize: '2.2rem' }}>👋</span>
-                <span style={{ fontSize: '.86rem', textAlign: 'center' }}>ابدأ محادثة مع فريق العمل!</span>
-              </div>
-            ) : items.map((item, idx) => {
-              if (item._sep) return (
-                <div key={item.key} style={{ textAlign: 'center', margin: '10px 0 6px' }}>
-                  <span style={{ background: '#f1f5f9', color: '#94a3b8', fontSize: '.66rem', padding: '3px 12px', borderRadius: 20 }}>{item.label}</span>
+          {/* ── CONVERSATIONS LIST ── */}
+          {view === 'list' && (
+            <div style={{ flex: 1, overflowY: 'auto', direction: 'rtl' }}>
+
+              {/* group row */}
+              <div
+                onClick={openGroup}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', cursor: 'pointer', borderBottom: '1px solid #f0f4f8', transition: 'background .12s' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                onMouseLeave={e => e.currentTarget.style.background = ''}
+              >
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'linear-gradient(135deg,#dcfce7,#bbf7d0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>👥</div>
+                  {groupUnread > 0 && (
+                    <span style={{ position: 'absolute', top: -3, left: -3, background: '#e53e3e', color: '#fff', borderRadius: '50%', minWidth: 18, height: 18, padding: '0 2px', fontSize: '.59rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #fff', lineHeight: 1 }}>{groupUnread}</span>
+                  )}
                 </div>
-              );
-
-              const isMe = item.sender_id === myId;
-              const prev = items[idx - 1];
-              const next = items[idx + 1];
-              const sameAsPrev = prev && !prev._sep && prev.sender_id === item.sender_id;
-              const sameAsNext = next && !next._sep && next.sender_id === item.sender_id;
-              const showName   = !sameAsPrev && !isMe;
-              const showAvatar = !sameAsNext;
-
-              const radius = isMe
-                ? `${sameAsPrev ? 8 : 16}px 4px ${sameAsNext ? 8 : 16}px 16px`
-                : `4px ${sameAsPrev ? 8 : 16}px 16px ${sameAsNext ? 8 : 16}px`;
-
-              return (
-                <div key={item.id} style={{
-                  display: 'flex', flexDirection: isMe ? 'row' : 'row-reverse',
-                  gap: 6, alignItems: 'flex-end',
-                  marginTop: sameAsPrev ? 2 : 8,
-                }}>
-                  {/* Avatar placeholder / actual avatar */}
-                  <div style={{ width: 30, flexShrink: 0, display: 'flex', alignItems: 'flex-end' }}>
-                    {showAvatar && !isMe && (
-                      <Avatar name={item.sender_name} url={item.sender_avatar} role={item.sender_role} size={28} />
-                    )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: '.9rem', color: '#1e293b' }}>فريق العمل</div>
+                  <div style={{ fontSize: '.73rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {lastGroupMsg ? `${lastGroupMsg.sender_name.split(' ')[0]}: ${lastGroupMsg.content.slice(0, 32)}${lastGroupMsg.content.length > 32 ? '…' : ''}` : 'لا توجد رسائل بعد'}
                   </div>
+                </div>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="#cbd5e1" style={{ transform: 'scaleX(-1)', flexShrink: 0 }}><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+              </div>
 
-                  {/* Bubble group */}
-                  <div style={{ maxWidth: '74%', display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', gap: 2 }}>
-                    {showName && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, paddingRight: 4 }}>
-                        <span style={{ fontSize: '.68rem', fontWeight: 700, color: '#475569' }}>{item.sender_name}</span>
-                        <span style={{
-                          fontSize: '.58rem', padding: '1px 6px', borderRadius: 10, fontWeight: 600,
-                          background: ROLE_BG[item.sender_role] ?? '#f1f5f9',
-                          color: ROLE_COLOR[item.sender_role] ?? '#475569',
-                        }}>{ROLE_AR[item.sender_role] ?? item.sender_role}</span>
-                      </div>
-                    )}
-                    <div style={{
-                      background: isMe ? 'linear-gradient(135deg, #1a7c40, #0f5c2e)' : '#f1f5f9',
-                      color: isMe ? '#fff' : '#1e293b',
-                      padding: '8px 12px',
-                      borderRadius: radius,
-                      fontSize: '.85rem', lineHeight: 1.55,
-                      wordBreak: 'break-word',
-                      boxShadow: isMe ? '0 2px 8px rgba(26,124,64,.2)' : '0 1px 3px rgba(0,0,0,.05)',
-                      whiteSpace: 'pre-wrap',
-                    }}>
-                      {item.content}
+              {/* DM section */}
+              <div style={{ padding: '9px 14px 3px', fontSize: '.67rem', color: '#94a3b8', fontWeight: 700, letterSpacing: '.4px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#94a3b8"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                محادثات خاصة
+              </div>
+
+              {loading ? (
+                <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: '.82rem' }}>⏳ تحميل...</div>
+              ) : members.length === 0 ? (
+                <div style={{ padding: '20px 14px', textAlign: 'center', color: '#94a3b8', fontSize: '.82rem' }}>لا يوجد أعضاء آخرون في الفريق</div>
+              ) : members.map(m => {
+                const ck      = dmKey(myId, m.id);
+                const unread  = dmUnread[ck] ?? 0;
+                const lastMsg = dmMsgs[ck]?.[dmMsgs[ck].length - 1];
+                return (
+                  <div
+                    key={m.id}
+                    onClick={() => openDm(m)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #fafafa', transition: 'background .12s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseLeave={e => e.currentTarget.style.background = ''}
+                  >
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <Avatar name={m.name} url={m.avatar_url} role={m.role} size={42} />
+                      {unread > 0 && (
+                        <span style={{ position: 'absolute', top: -3, left: -3, background: '#e53e3e', color: '#fff', borderRadius: '50%', minWidth: 18, height: 18, padding: '0 2px', fontSize: '.59rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #fff', lineHeight: 1 }}>{unread}</span>
+                      )}
                     </div>
-                    {!sameAsNext && (
-                      <span style={{ fontSize: '.6rem', color: '#94a3b8', padding: '0 3px' }}>{fmtTime(item.created_at)}</span>
-                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                        <span style={{ fontWeight: 700, fontSize: '.87rem', color: '#1e293b' }}>{m.name}</span>
+                        <span style={{ fontSize: '.6rem', padding: '1px 6px', borderRadius: 10, fontWeight: 600, background: ROLE_BG[m.role] ?? '#f1f5f9', color: ROLE_CLR[m.role] ?? '#475569', flexShrink: 0 }}>{ROLE_AR[m.role] ?? m.role}</span>
+                      </div>
+                      <div style={{ fontSize: '.72rem', color: unread > 0 ? '#1e293b' : '#64748b', fontWeight: unread > 0 ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {lastMsg
+                          ? `${lastMsg.sender_id === myId ? 'أنت: ' : ''}${lastMsg.content.slice(0, 28)}${lastMsg.content.length > 28 ? '…' : ''}`
+                          : 'ابدأ محادثة خاصة'}
+                      </div>
+                    </div>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="#cbd5e1" style={{ transform: 'scaleX(-1)', flexShrink: 0 }}><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
                   </div>
+                );
+              })}
+            </div>
+          )}
 
-                  {/* My avatar */}
-                  <div style={{ width: 30, flexShrink: 0, display: 'flex', alignItems: 'flex-end' }}>
-                    {showAvatar && isMe && (
-                      <Avatar name={item.sender_name} url={item.sender_avatar} role={item.sender_role} size={28} />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            <div ref={bottomRef} style={{ height: 4 }} />
-          </div>
+          {/* ── CHAT VIEW ── */}
+          {view === 'chat' && (
+            <>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '10px 10px 4px', display: 'flex', flexDirection: 'column', direction: 'rtl' }}>
+                {loading ? (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '.88rem' }}>⏳ تحميل...</div>
+                ) : (
+                  <MsgList
+                    items={buildItems(currentMsgs)}
+                    myId={myId}
+                    isGroup={chat?.type === 'group'}
+                    currentChat={chat}
+                    bottomRef={bottomRef}
+                  />
+                )}
+                <div ref={bottomRef} style={{ height: 4 }} />
+              </div>
 
-          {/* Input bar */}
-          <div style={{
-            padding: '8px 10px 10px',
-            borderTop: '1px solid #f0f4f8',
-            display: 'flex', gap: 7, alignItems: 'flex-end', flexShrink: 0,
-            direction: 'rtl',
-          }}>
-            <textarea
-              ref={inputRef}
-              value={text}
-              onChange={e => setText(e.target.value)}
-              onKeyDown={onKey}
-              placeholder="اكتب رسالة للفريق..."
-              rows={1}
-              style={{
-                flex: 1, resize: 'none',
-                border: '1.5px solid #e2e8f0', borderRadius: 20,
-                padding: '8px 13px', fontSize: '.84rem',
-                outline: 'none', fontFamily: 'inherit',
-                maxHeight: 88, overflowY: 'auto',
-                direction: 'rtl', lineHeight: 1.5,
-                background: '#fafcff',
-                transition: 'border-color .15s',
-              }}
-              onFocus={e => e.currentTarget.style.borderColor = '#1a7c40'}
-              onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
-            />
-            <button
-              onClick={send}
-              disabled={!text.trim() || sending}
-              style={{
-                width: 38, height: 38, borderRadius: '50%', border: 'none',
-                background: text.trim() ? 'linear-gradient(135deg, #1a7c40, #0f5c2e)' : '#e2e8f0',
-                color: text.trim() ? '#fff' : '#94a3b8',
-                cursor: text.trim() && !sending ? 'pointer' : 'default',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0, transition: 'all .15s',
-              }}
-            >
-              {sending
-                ? <div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.35)', borderTopColor: '#fff', borderRadius: '50%', animation: 'tcSpin .7s linear infinite' }} />
-                : <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'scaleX(-1)' }}><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-              }
-            </button>
-          </div>
+              {/* input */}
+              <div style={{ padding: '8px 10px 10px', borderTop: '1px solid #f0f4f8', display: 'flex', gap: 7, alignItems: 'flex-end', flexShrink: 0, direction: 'rtl' }}>
+                <textarea
+                  ref={inputRef}
+                  value={text}
+                  onChange={e => setText(e.target.value)}
+                  onKeyDown={onKey}
+                  placeholder={chat?.type === 'group' ? 'اكتب رسالة للفريق...' : `راسل ${chat?.userName?.split(' ')[0]}...`}
+                  rows={1}
+                  style={{ flex: 1, resize: 'none', border: '1.5px solid #e2e8f0', borderRadius: 20, padding: '8px 13px', fontSize: '.84rem', outline: 'none', fontFamily: 'inherit', maxHeight: 88, overflowY: 'auto', direction: 'rtl', lineHeight: 1.5, background: '#fafcff', transition: 'border-color .15s' }}
+                  onFocus={e => e.currentTarget.style.borderColor = '#1a7c40'}
+                  onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
+                />
+                <button
+                  onClick={send}
+                  disabled={!text.trim() || sending}
+                  style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: text.trim() ? 'linear-gradient(135deg,#1a7c40,#0f5c2e)' : '#e2e8f0', color: text.trim() ? '#fff' : '#94a3b8', cursor: text.trim() && !sending ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all .15s' }}
+                >
+                  {sending
+                    ? <div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.35)', borderTopColor: '#fff', borderRadius: '50%', animation: 'tcSpin .7s linear infinite' }} />
+                    : <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'scaleX(-1)' }}><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                  }
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
       <style>{`
-        @keyframes tcUp {
-          from { opacity: 0; transform: translateY(18px) scale(.96); }
-          to   { opacity: 1; transform: translateY(0)    scale(1);   }
-        }
-        @keyframes tcSpin { to { transform: rotate(360deg); } }
+        @keyframes tcUp   { from{opacity:0;transform:translateY(18px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+        @keyframes tcSpin { to{transform:rotate(360deg)} }
       `}</style>
     </>
   );
