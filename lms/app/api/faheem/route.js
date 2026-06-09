@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 10; // use the full Vercel Hobby budget
 
 function buildSystemPrompt(studentName = 'صديقي', studentGender = 'male') {
   const now = new Date();
@@ -150,7 +151,7 @@ export async function POST(req) {
         const res = await fetchWithTimeout(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
           { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: geminiBody },
-          7500
+          9000 // single model, no Claude → use almost the whole 10s budget for long tashkeel replies
         );
         const elapsed = Date.now() - t0;
 
