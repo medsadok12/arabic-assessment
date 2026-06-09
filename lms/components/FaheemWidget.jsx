@@ -310,7 +310,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
     return () => clearTimeout(t);
   }, [open, greeted, studentName, isFemale, sayText]);
 
-  const locked = phase === 'thinking' || phase === 'writing' || phase === 'speaking';
+  const locked = phase === 'thinking' || phase === 'speaking';
 
   // Background prefetch: generate a question while child reads/listens
   async function prefetchQuestion(responseText) {
@@ -335,83 +335,23 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
     setInput('');
     setPhase('thinking');
 
-    // ── Try streaming endpoint (Claude / Edge) ─────────────────────────────
-    let usedStream = false;
     try {
-      const res = await fetch('/api/fahim-stream', {
+      const res   = await fetch('/api/faheem', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ message: t, history: msgs, studentName, studentGender }),
       });
-
-      if (res.ok && res.body) {
-        usedStream = true;
-
-        // Add placeholder — "✍️ فَهيمُ يَكْتُبُ..." appears immediately
-        setMsgs(p => [...p, { role: 'ai', text: '✍️ فَهيمُ يَكْتُبُ...', streaming: true }]);
-        setPhase('writing');
-
-        const reader  = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = '';
-        let full = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          const lines = buf.split('\n');
-          buf = lines.pop() ?? '';
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            const data = line.slice(6).trim();
-            if (data === '[DONE]') break;
-            try {
-              const { t: token } = JSON.parse(data);
-              if (token) {
-                full += token;
-                setMsgs(p => {
-                  const c = [...p];
-                  c[c.length - 1] = { role: 'ai', text: full, streaming: true };
-                  return c;
-                });
-              }
-            } catch { /* skip */ }
-          }
-        }
-
-        // Finalise message
-        const finalText = full.trim() || FALLBACKS[0];
-        setMsgs(p => {
-          const c = [...p];
-          c[c.length - 1] = { role: 'ai', text: finalText };
-          return c;
-        });
-        sayText(finalText);
-        prefetchQuestion(finalText); // fire-and-forget
-        return;
-      }
-    } catch { /* fall through to legacy route */ }
-
-    // ── Fallback: legacy /api/faheem (Gemini) ──────────────────────────────
-    if (!usedStream) {
-      try {
-        const res  = await fetch('/api/faheem', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ message: t, history: msgs, studentName, studentGender }),
-        });
-        const json  = await res.json();
-        const reply = json.reply || FALLBACKS[0];
-        setMsgs(p => [...p, { role: 'ai', text: reply }]);
-        sayText(reply);
-      } catch {
-        const fb = FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
-        setMsgs(p => [...p, { role: 'ai', text: fb }]);
-        sayText(fb);
-      }
+      const json  = await res.json();
+      const reply = json.reply || FALLBACKS[0];
+      setMsgs(p => [...p, { role: 'ai', text: reply }]);
+      sayText(reply);
+      prefetchQuestion(reply);
+    } catch {
+      const fb = FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
+      setMsgs(p => [...p, { role: 'ai', text: fb }]);
+      sayText(fb);
     }
+  }
   }
 
   function startListen() {
