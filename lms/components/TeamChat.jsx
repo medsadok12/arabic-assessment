@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { createClient } from '../lib/supabase';
 
 const ALLOWED  = ['teacher', 'admin', 'super_admin'];
@@ -112,6 +113,7 @@ export default function TeamChat({ user }) {
   const [text,        setText]        = useState('');
   const [sending,     setSending]     = useState(false);
   const [isMobile,    setIsMobile]    = useState(false);
+  const [mounted,     setMounted]     = useState(false);
 
   const bottomRef = useRef(null);
   const inputRef  = useRef(null);
@@ -127,8 +129,9 @@ export default function TeamChat({ user }) {
   const myAvatar = user?.user_metadata?.avatar_url ?? null;
   const allowed  = ALLOWED.includes(role);
 
-  /* ── mobile detection ── */
+  /* ── mobile detection + mount flag ── */
   useEffect(() => {
+    setMounted(true);
     const check = () => setIsMobile(window.innerWidth < 640);
     check();
     window.addEventListener('resize', check);
@@ -279,13 +282,14 @@ export default function TeamChat({ user }) {
   function onKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
 
   /* ── JSX ── */
-  return (
+  if (!mounted) return null;
+  return createPortal(
     <>
       {/* floating button */}
       <button
         onClick={() => setOpen(o => !o)}
         title="محادثات الفريق"
-        style={{ position: 'fixed', bottom: 88, left: 20, zIndex: 9100, width: 52, height: 52, borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg,#1a7c40 0%,#0f5c2e 100%)', boxShadow: '0 4px 16px rgba(26,124,64,.45)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform .18s' }}
+        style={{ position: 'fixed', bottom: isMobile ? 100 : 88, left: 20, zIndex: 9999, width: isMobile ? 48 : 52, height: isMobile ? 48 : 52, borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg,#1a7c40 0%,#0f5c2e 100%)', boxShadow: '0 4px 16px rgba(26,124,64,.45)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform .18s' }}
         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
         onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
       >
@@ -464,6 +468,7 @@ export default function TeamChat({ user }) {
           .tc-textarea { font-size: 16px !important; }
         }
       `}</style>
-    </>
+    </>,
+    document.body
   );
 }
