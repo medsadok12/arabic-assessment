@@ -3,7 +3,7 @@ import { createAdminClient } from '../../../lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
-function fetchWithTimeout(url, options, ms = 8000) {
+function fetchWithTimeout(url, options, ms = 7000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), ms);
   return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
@@ -13,52 +13,55 @@ async function generateDialogue({ situation, grade, skill }) {
   const geminiKey = process.env.GEMINI_API_KEY;
   if (!geminiKey) throw new Error('GEMINI_API_KEY missing');
 
-  const prompt = `أنتَ كاتب حوار تعليمي للأطفال العرب.
-المطلوب: اكتب حواراً قصيراً بين شخصيتين لتعليم المهارة اللغوية التالية:
-- الموقف: ${situation}
-- المرحلة الدراسية: ${grade}
-- المهارة: ${skill}
+  // Prompt in English to get more reliable JSON output from Gemini
+  const prompt = `You are an Arabic educational dialogue writer for children.
+Write a short 3-line dialogue between 2 characters to teach this skill:
+- Situation: ${situation}
+- Grade: ${grade}
+- Skill: ${skill}
 
-القواعد الصارمة:
-1. 3 أسطر فقط (لا أكثر، لا أقل)
-2. شخصيتان فقط — اختر أسماءً من: راشد، نورة، البائع، المعلمة، الصديق
-3. كل سطر لا يتجاوز 5 كلمات
-4. كل الكلمات مشكولة تشكيلاً كاملاً (حركات وتنوين)
-5. لغة فصحى مبسطة مناسبة للأطفال
-6. لا تضف أي شرح أو ملاحظات
+STRICT RULES:
+1. Exactly 3 lines, 2 characters only
+2. Characters must be from: راشد, نورة, البائع, المعلمة, الصديق
+3. Max 5 Arabic words per line
+4. Fully vowelized Arabic (تشكيل كامل)
+5. Simple Modern Standard Arabic for children
+6. Return ONLY a JSON array, no explanation, no markdown
 
-الإخراج: JSON فقط بهذا الشكل بالضبط:
-[
-  {"speaker":"اسم1","text":"النص المشكول"},
-  {"speaker":"اسم2","text":"النص المشكول"},
-  {"speaker":"اسم1","text":"النص المشكول"}
-]`;
+EXACT OUTPUT FORMAT:
+[{"speaker":"راشد","text":"اَلسَّلامُ عَلَيْكُم."},{"speaker":"البائع","text":"وَعَلَيْكُمُ السَّلام."},{"speaker":"راشد","text":"أُرِيدُ خُبْزاً، شُكْراً."}]`;
 
   const body = JSON.stringify({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 400, temperature: 0.7 },
+    generationConfig: { maxOutputTokens: 300, temperature: 0.6 },
   });
 
-  const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  // Try fast models only — Vercel Hobby limit is 10s total
+  const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+  let lastErr = '';
   for (const model of MODELS) {
     try {
       const res = await fetchWithTimeout(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body },
+        7000
       );
-      if (!res.ok) continue;
+      if (!res.ok) { lastErr = `HTTP ${res.status}`; continue; }
       const json = await res.json();
       const raw = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-      if (!raw) continue;
-      // Extract JSON array from response
-      const match = raw.match(/\[[\s\S]*\]/);
-      if (!match) continue;
+      if (!raw) { lastErr = 'empty response'; continue; }
+      // Extract JSON array — handle markdown code fences
+      const match = raw.match(/\[[\s\S]*?\]/);
+      if (!match) { lastErr = 'no JSON array in response'; continue; }
       const dialogue = JSON.parse(match[0]);
       if (Array.isArray(dialogue) && dialogue.length >= 2) return dialogue;
-    } catch {
+      lastErr = 'invalid dialogue format';
+    } catch (e) {
+      lastErr = e.message;
       continue;
     }
   }
+  console.error('[life-scene] generate failed:', lastErr);
   throw new Error('فشل توليد الحوار — حاول مرة أخرى');
 }
 
