@@ -141,17 +141,20 @@ export async function POST(req) {
     },
   });
 
-  // gemini-2.0-flash deprecated (404) — use 2.5-flash as confirmed by /diagnose
-  const GEMINI_MODELS = ['gemini-2.5-flash'];
+  // 2.5-flash free tier = 10 RPM → 1.5-flash fallback (15 RPM) handles rate-limit 429s
+  const GEMINI_MODELS = [
+    { name: 'gemini-2.5-flash', ms: 6000 },
+    { name: 'gemini-1.5-flash', ms: 3500 }, // no thinking overhead → fast
+  ];
 
   if (geminiKey) {
-    for (const model of GEMINI_MODELS) {
+    for (const { name: model, ms: timeout } of GEMINI_MODELS) {
       try {
         const t0  = Date.now();
         const res = await fetchWithTimeout(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
           { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: geminiBody },
-          9000 // single model, no Claude → use almost the whole 10s budget for long tashkeel replies
+          timeout
         );
         const elapsed = Date.now() - t0;
 
