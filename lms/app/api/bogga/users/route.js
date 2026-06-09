@@ -22,6 +22,7 @@ export async function GET() {
       email:        u.email ?? '',
       role:         u.user_metadata?.role ?? 'student',
       status:       u.user_metadata?.status ?? 'active',
+      avatar_url:   u.user_metadata?.avatar_url ?? null,
       created_at:   u.created_at,
       last_sign_in: u.last_sign_in_at ?? null,
       password:     u.app_metadata?.temp_password ?? null,

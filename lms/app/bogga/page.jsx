@@ -2094,14 +2094,22 @@ export default function BoggarAdminPage() {
                         }}>
 
                           {/* Avatar */}
-                          <div style={{
-                            width: 46, height: 46, borderRadius: '50%', flexShrink: 0,
-                            background: badge.bg, color: badge.color, fontWeight: 800,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '1.1rem',
-                          }}>
-                            {(u.name ?? '?')[0].toUpperCase()}
-                          </div>
+                          {u.avatar_url ? (
+                            <img
+                              src={u.avatar_url}
+                              alt={u.name}
+                              style={{ width: 46, height: 46, borderRadius: '50%', flexShrink: 0, objectFit: 'cover', border: '2px solid var(--border)' }}
+                            />
+                          ) : (
+                            <div style={{
+                              width: 46, height: 46, borderRadius: '50%', flexShrink: 0,
+                              background: badge.bg, color: badge.color, fontWeight: 800,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '1.1rem',
+                            }}>
+                              {(u.name ?? '?')[0].toUpperCase()}
+                            </div>
+                          )}
 
                           {/* Name + email + meta */}
                           <div style={{ flex: '1 1 180px', minWidth: 0 }}>
