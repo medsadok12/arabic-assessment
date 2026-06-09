@@ -116,11 +116,13 @@ export default function TeamChat({ user }) {
   const [mounted,       setMounted]       = useState(false);
   const [confirmClear,  setConfirmClear]  = useState(false);
 
-  const bottomRef  = useRef(null);
-  const inputRef   = useRef(null);
-  const openRef    = useRef(false);
-  const chatRef    = useRef(null);
-  const clearChRef = useRef(null);
+  const bottomRef      = useRef(null);
+  const inputRef       = useRef(null);
+  const openRef        = useRef(false);
+  const chatRef        = useRef(null);
+  const clearChRef     = useRef(null);
+  const seenGroupIds   = useRef(new Set());
+  const seenDmIds      = useRef({});   // { conv_key: Set<id> }
   openRef.current = open;
   chatRef.current = chat;
 
@@ -147,7 +149,9 @@ export default function TeamChat({ user }) {
       fetch('/api/team-chat').then(r => r.json()),
       fetch('/api/team-chat/members').then(r => r.json()),
     ]).then(([gd, md]) => {
-      setGroupMsgs(gd.messages ?? []);
+      const msgs = gd.messages ?? [];
+      msgs.forEach(m => seenGroupIds.current.add(m.id));
+      setGroupMsgs(msgs);
       setMembers(md.members ?? []);
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -257,6 +261,27 @@ export default function TeamChat({ user }) {
     if (open && view === 'chat') setTimeout(() => inputRef.current?.focus(), 120);
   }, [open, view, chat]);
 
+  /* ── polling fallback: check for new group messages every 20s ── */
+  useEffect(() => {
+    if (!myId) return;
+    const interval = setInterval(async () => {
+      if (openRef.current && chatRef.current?.type === 'group') return;
+      try {
+        const r = await fetch('/api/team-chat');
+        const { messages = [] } = await r.json();
+        const unseen = messages.filter(m => !seenGroupIds.current.has(m.id) && m.sender_id !== myId);
+        if (unseen.length > 0) {
+          unseen.forEach(m => seenGroupIds.current.add(m.id));
+          messages.forEach(m => seenGroupIds.current.add(m.id));
+          setGroupMsgs(prev => mergeDedup(prev, messages));
+          if (!openRef.current || chatRef.current?.type !== 'group')
+            setGroupUnread(n => n + unseen.length);
+        }
+      } catch (_) {}
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [myId]);
+
   /* ── early return AFTER all hooks ─────────────────────────────────────── */
   if (!allowed) return null;
 
@@ -266,7 +291,10 @@ export default function TeamChat({ user }) {
   const lastGroupMsg = groupMsgs[groupMsgs.length - 1];
 
   /* ── navigation helpers ── */
-  function openGroup() { setChat({ type: 'group' }); setView('chat'); setGroupUnread(0); }
+  function openGroup() {
+    groupMsgs.forEach(m => seenGroupIds.current.add(m.id));
+    setChat({ type: 'group' }); setView('chat'); setGroupUnread(0);
+  }
 
   async function openDm(member) {
     const ck = dmKey(myId, member.id);
