@@ -352,7 +352,6 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
       sayText(fb);
     }
   }
-  }
 
   function startListen() {
     setSttErr('');
