@@ -115,11 +115,13 @@ export async function POST(req) {
   // Diagnostic log — visible in Vercel Function Logs
   console.log(`[faheem] ▶ msg="${message.trim().slice(0,40)}" anthropic=${!!anthropicKey} gemini=${!!geminiKey}`);
 
-  // ── 1. Claude (primary) ────────────────────────────────────────────────────
-  const anthropicReply = await tryAnthropic(anthropicKey, systemPrompt, recent, message.trim());
-  if (anthropicReply) return NextResponse.json({ reply: anthropicReply });
+  // ── 1. Claude (only if key exists — avoids wasting the 10s Vercel budget) ──
+  if (anthropicKey) {
+    const anthropicReply = await tryAnthropic(anthropicKey, systemPrompt, recent, message.trim());
+    if (anthropicReply) return NextResponse.json({ reply: anthropicReply });
+  }
 
-  // ── 2. Gemini fallback ─────────────────────────────────────────────────────
+  // ── 2. Gemini ──────────────────────────────────────────────────────────────
   const contents = [
     ...recent.map(m => ({
       role:  m.role === 'user' ? 'user' : 'model',
@@ -133,7 +135,8 @@ export async function POST(req) {
     generationConfig: { maxOutputTokens: 2000, temperature: 0.85, topP: 0.92 },
   });
 
-  const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+  // One model only — budget is tight (Vercel 10s, auth ~1s, leaving ~8s)
+  const GEMINI_MODELS = ['gemini-2.0-flash'];
 
   if (geminiKey) {
     for (const model of GEMINI_MODELS) {
@@ -142,7 +145,7 @@ export async function POST(req) {
         const res = await fetchWithTimeout(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
           { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: geminiBody },
-          6000
+          7500
         );
         const elapsed = Date.now() - t0;
 
