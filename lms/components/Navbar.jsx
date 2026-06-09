@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
+import TeamChat        from './TeamChat';
 
 /* ── أيقونات التواصل الاجتماعي ── */
 function WhatsAppIcon() {
@@ -190,6 +191,7 @@ export default function Navbar({ user: initialUser }) {
   ];
 
   return (
+    <>
     <nav className="navbar">
       <div className="container navbar-inner">
 
@@ -364,5 +366,7 @@ export default function Navbar({ user: initialUser }) {
         </div>
       )}
     </nav>
+    <TeamChat user={user} />
+    </>
   );
 }
