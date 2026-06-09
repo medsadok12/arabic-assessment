@@ -69,15 +69,28 @@ EXACT OUTPUT FORMAT:
   throw new Error('فشل توليد الحوار — حاول مرة أخرى');
 }
 
-// GET /api/life-scene — list published scenes (students) or all scenes (teachers)
+const EDITOR_ROLES = ['teacher', 'super_admin', 'admin'];
+
+// GET /api/life-scene — list scenes based on role
 export async function GET(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
 
-  const role = user.user_metadata?.role ?? '';
+  const role  = user.user_metadata?.role ?? '';
   const admin = createAdminClient();
 
+  // super_admin / admin: see ALL scenes from all teachers
+  if (role === 'super_admin' || role === 'admin') {
+    const { data, error } = await admin
+      .from('life_scenes')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ scenes: data ?? [] });
+  }
+
+  // Teacher: see own scenes only
   if (role === 'teacher') {
     const { data, error } = await admin
       .from('life_scenes')
@@ -104,7 +117,7 @@ export async function POST(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
-  if (user.user_metadata?.role !== 'teacher') return Response.json({ error: 'للمعلمين فقط' }, { status: 403 });
+  if (!EDITOR_ROLES.includes(user.user_metadata?.role)) return Response.json({ error: 'للمعلمين والإدارة فقط' }, { status: 403 });
 
   const { situation, grade, skill } = await request.json();
   if (!situation?.trim() || !grade?.trim() || !skill?.trim()) {

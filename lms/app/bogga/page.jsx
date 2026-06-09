@@ -12,6 +12,7 @@ import LessonLogbookView               from '../../components/LessonLogbookView'
 import TeacherSpace                    from '../../components/TeacherSpace';
 import NotificationBell                from '../../components/NotificationBell';
 import FinancialsTab                   from '../../components/FinancialsTab';
+import LifeSceneSimulator              from '../../components/LifeSceneSimulator';
 import { useLanguage }                  from '../../contexts/LanguageContext';
 
 // ── Time slots 08:00 → 20:00, 30-min increments (25 slots) ─────────────────
@@ -23,16 +24,16 @@ const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
 });
 
 // ── Tabs that assistant admins can be granted access to ─────────────────────
-const CONTROLLABLE = ['overview', 'codes', 'groups', 'sessions', 'results', 'lexicon', 'recruitment', 'setup'];
+const CONTROLLABLE = ['overview', 'codes', 'groups', 'sessions', 'results', 'lexicon', 'recruitment', 'simulator', 'setup'];
 const TAB_NAMES = {
   overview: 'نظرة عامة', codes: 'الأكواد', groups: 'إدارة الطلاب',
   sessions: 'الحصص', results: 'نتائج الطلاب', lexicon: 'بنك الكلمات',
-  recruitment: 'طلبات التوظيف', setup: 'الإعداد',
+  recruitment: 'طلبات التوظيف', simulator: 'مسرح التعبير', setup: 'الإعداد',
 };
 const TAB_NAMES_EN = {
   overview: 'Overview', codes: 'Codes', groups: 'Students',
   sessions: 'Sessions', results: 'Results', lexicon: 'Word Bank',
-  recruitment: 'Job Applications', setup: 'Setup',
+  recruitment: 'Job Applications', simulator: 'Expression Theater', setup: 'Setup',
 };
 
 // ── Arabic month names ──────────────────────────────────────────────────────
@@ -994,6 +995,7 @@ export default function BoggarAdminPage() {
     { id: 'results',     label: tr('admin.tabs.results'),     show: canSee('results') },
     { id: 'lexicon',     label: tr('admin.tabs.lexicon'),     show: canSee('lexicon') },
     { id: 'recruitment', label: tr('admin.tabs.recruitment'), show: canSee('recruitment') },
+    { id: 'simulator',   label: tr('admin.tabs.simulator'),   show: canSee('simulator') },
     { id: 'logbook',     label: tr('admin.tabs.logbook'),     show: isSuperAdmin },
     { id: 'space',       label: tr('admin.tabs.space'),       show: true },
     { id: 'messages',    label: tr('admin.tabs.messages'),    show: true },
@@ -1422,6 +1424,11 @@ export default function BoggarAdminPage() {
               <p style={{ color: 'var(--muted)', marginBottom: 24 }}>{lang === 'ar' ? 'إدارة الكلمات المشكولة وتعديلها وإضافة الجذور والمقاطع الصوتية لكل صف' : 'Manage voweled words, edit them and add roots and syllables per grade'}</p>
               <Link href="/bogga/lexicon" className="btn btn-primary btn-lg">{lang === 'ar' ? 'فتح لوحة بنك الكلمات' : 'Open Word Bank Panel'}</Link>
             </div>
+          )}
+
+          {/* ══ Expression Theater ════════════════════════════════ */}
+          {activeTab === 'simulator' && (
+            <LifeSceneSimulator role="teacher" currentUser={user} />
           )}
 
           {/* ══ Recruitment ═══════════════════════════════════════ */}

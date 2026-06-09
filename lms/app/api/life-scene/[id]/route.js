@@ -8,7 +8,8 @@ export async function PATCH(request, { params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
-  if (user.user_metadata?.role !== 'teacher') return Response.json({ error: 'للمعلمين فقط' }, { status: 403 });
+  const role = user.user_metadata?.role ?? '';
+  if (!['teacher','super_admin','admin'].includes(role)) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
   const body = await request.json();
   const { is_published, dialogue } = body;
@@ -21,7 +22,8 @@ export async function PATCH(request, { params }) {
     .maybeSingle();
 
   if (!existing) return Response.json({ error: 'المشهد غير موجود' }, { status: 404 });
-  if (existing.teacher_id !== user.id) return Response.json({ error: 'غير مصرح' }, { status: 403 });
+  // super_admin/admin can edit any scene; teachers only their own
+  if (role === 'teacher' && existing.teacher_id !== user.id) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
   const patch = {};
   if (is_published !== undefined) {
@@ -48,7 +50,8 @@ export async function DELETE(request, { params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
-  if (user.user_metadata?.role !== 'teacher') return Response.json({ error: 'للمعلمين فقط' }, { status: 403 });
+  const delRole = user.user_metadata?.role ?? '';
+  if (!['teacher','super_admin','admin'].includes(delRole)) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
   const admin = createAdminClient();
   const { data: existing } = await admin
@@ -58,7 +61,7 @@ export async function DELETE(request, { params }) {
     .maybeSingle();
 
   if (!existing) return Response.json({ error: 'المشهد غير موجود' }, { status: 404 });
-  if (existing.teacher_id !== user.id) return Response.json({ error: 'غير مصرح' }, { status: 403 });
+  if (delRole === 'teacher' && existing.teacher_id !== user.id) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
   const { error } = await admin.from('life_scenes').delete().eq('id', params.id);
   if (error) return Response.json({ error: error.message }, { status: 500 });
