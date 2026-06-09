@@ -132,7 +132,12 @@ export async function POST(req) {
   const geminiBody = JSON.stringify({
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents,
-    generationConfig: { maxOutputTokens: 350, temperature: 0.85, topP: 0.92 },
+    generationConfig: {
+      maxOutputTokens: 800,        // tashkeel-heavy Arabic is token-dense; room for 3-5 sentences
+      temperature: 0.85,
+      topP: 0.92,
+      thinkingConfig: { thinkingBudget: 0 }, // disable 2.5-flash thinking — it ate the token budget → cut-offs & timeouts
+    },
   });
 
   // gemini-2.0-flash deprecated (404) — use 2.5-flash as confirmed by /diagnose

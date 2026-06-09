@@ -60,7 +60,12 @@ export async function POST(req) {
   const geminiBody = JSON.stringify({
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: [{ role: 'user', parts: [{ text: question.trim() }] }],
-    generationConfig: { maxOutputTokens: 1024, temperature: 0.7, topP: 0.9 },
+    generationConfig: {
+      maxOutputTokens: 1024,
+      temperature: 0.7,
+      topP: 0.9,
+      thinkingConfig: { thinkingBudget: 0 }, // disable 2.5-flash thinking — keeps replies fast within Vercel limit
+    },
   });
 
   if (geminiKey) {

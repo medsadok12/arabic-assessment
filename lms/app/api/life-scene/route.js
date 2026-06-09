@@ -33,7 +33,11 @@ EXACT OUTPUT FORMAT:
 
   const body = JSON.stringify({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 300, temperature: 0.6 },
+    generationConfig: {
+      maxOutputTokens: 600,
+      temperature: 0.6,
+      thinkingConfig: { thinkingBudget: 0 }, // disable 2.5-flash thinking — was eating budget & failing JSON generation
+    },
   });
 
   // Try fast models only — Vercel Hobby limit is 10s total
