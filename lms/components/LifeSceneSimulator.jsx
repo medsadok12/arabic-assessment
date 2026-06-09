@@ -1,27 +1,54 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 
-// ── Character avatars (friendly cartoon kids — big eyes, rosy cheeks) ───────
-// Shared facial features so every character looks consistently cute.
+// ── Metadata helpers ──────────────────────────────────────────────────────────
+// Character images live in a hidden {__meta,images} entry at dialogue[0]
+// — no extra DB column needed.
+function extractMeta(dialogue = []) {
+  return dialogue[0]?.__meta ? dialogue[0] : null;
+}
+function cleanDialogue(dialogue = []) {
+  return (dialogue[0]?.__meta ? dialogue.slice(1) : dialogue) ?? [];
+}
+function packDialogue(lines, images) {
+  const hasImg = Object.values(images).some(Boolean);
+  return hasImg ? [{ __meta: true, images }, ...lines] : lines;
+}
 
-function Face({ skin = '#ffd9b3', eyeY = 25, cheek = '#ffb3b3' }) {
+// ── Client-side image compression ─────────────────────────────────────────────
+function compressImage(file, maxPx = 120) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(maxPx / img.width, maxPx / img.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.75));
+    };
+    img.src = url;
+  });
+}
+
+// ── Character avatars (friendly cartoon kids — big eyes, rosy cheeks) ───────
+
+function Face({ eyeY = 25, cheek = '#ffb3b3' }) {
   return (
     <>
-      {/* Rosy cheeks */}
       <circle cx="17" cy={eyeY + 4} r="2.6" fill={cheek} opacity="0.6"/>
       <circle cx="31" cy={eyeY + 4} r="2.6" fill={cheek} opacity="0.6"/>
-      {/* Eyebrows */}
-      <path d={`M16 ${eyeY - 4} Q18.5 ${eyeY - 5.5} 21 ${eyeY - 4}`} stroke="#6b4423" strokeWidth="1.1" strokeLinecap="round" fill="none"/>
-      <path d={`M27 ${eyeY - 4} Q29.5 ${eyeY - 5.5} 32 ${eyeY - 4}`} stroke="#6b4423" strokeWidth="1.1" strokeLinecap="round" fill="none"/>
-      {/* Big expressive eyes (white + pupil + sparkle) */}
+      <path d={`M16 ${eyeY-4} Q18.5 ${eyeY-5.5} 21 ${eyeY-4}`} stroke="#6b4423" strokeWidth="1.1" strokeLinecap="round" fill="none"/>
+      <path d={`M27 ${eyeY-4} Q29.5 ${eyeY-5.5} 32 ${eyeY-4}`} stroke="#6b4423" strokeWidth="1.1" strokeLinecap="round" fill="none"/>
       <ellipse cx="18.5" cy={eyeY} rx="2.6" ry="3" fill="#fff"/>
       <ellipse cx="29.5" cy={eyeY} rx="2.6" ry="3" fill="#fff"/>
-      <circle cx="18.7" cy={eyeY + 0.4} r="1.6" fill="#3b2a1a"/>
-      <circle cx="29.7" cy={eyeY + 0.4} r="1.6" fill="#3b2a1a"/>
-      <circle cx="19.4" cy={eyeY - 0.4} r="0.6" fill="#fff"/>
-      <circle cx="30.4" cy={eyeY - 0.4} r="0.6" fill="#fff"/>
-      {/* Happy smile */}
-      <path d={`M19 ${eyeY + 6.5} Q24 ${eyeY + 10.5} 29 ${eyeY + 6.5}`} stroke="#c2410c" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+      <circle cx="18.7" cy={eyeY+0.4} r="1.6" fill="#3b2a1a"/>
+      <circle cx="29.7" cy={eyeY+0.4} r="1.6" fill="#3b2a1a"/>
+      <circle cx="19.4" cy={eyeY-0.4} r="0.6" fill="#fff"/>
+      <circle cx="30.4" cy={eyeY-0.4} r="0.6" fill="#fff"/>
+      <path d={`M19 ${eyeY+6.5} Q24 ${eyeY+10.5} 29 ${eyeY+6.5}`} stroke="#c2410c" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
     </>
   );
 }
@@ -35,20 +62,14 @@ function Avatar({ id, grad, skin, shirt, children, eyeY = 25, cheek }) {
           <stop offset="100%" stopColor={grad[1]}/>
         </radialGradient>
       </defs>
-      {/* Background */}
       <circle cx="24" cy="24" r="24" fill={`url(#bg-${id})`}/>
-      {/* Shoulders / shirt */}
       <path d="M11 48 Q11 37 24 37 Q37 37 37 48 Z" fill={shirt}/>
-      {/* Neck */}
       <rect x="21.5" y="31" width="5" height="5" rx="2" fill={skin}/>
-      {/* Head */}
       <circle cx="24" cy={eyeY} r="11" fill={skin}/>
-      {/* Ears */}
       <circle cx="13.5" cy={eyeY} r="2" fill={skin}/>
       <circle cx="34.5" cy={eyeY} r="2" fill={skin}/>
-      {/* Hair / accessories drawn by the specific character */}
       {children?.behind}
-      <Face skin={skin} eyeY={eyeY} cheek={cheek}/>
+      <Face eyeY={eyeY} cheek={cheek}/>
       {children?.front}
     </svg>
   );
@@ -56,73 +77,62 @@ function Avatar({ id, grad, skin, shirt, children, eyeY = 25, cheek }) {
 
 function AvatarBoy() {
   return (
-    <Avatar id="boy" grad={['#dbeafe', '#bfdbfe']} skin="#ffd9b3" shirt="#3b82f6"
-      eyeY={25} cheek="#ff9d9d"
-      >{{
-        behind: <path d="M13 22 Q13 11 24 11 Q35 11 35 22 Q35 18 31 17 Q28 14 24 14 Q20 14 17 17 Q13 18 13 22Z" fill="#7c4a1e"/>,
-      }}</Avatar>
+    <Avatar id="boy" grad={['#dbeafe','#bfdbfe']} skin="#ffd9b3" shirt="#3b82f6" eyeY={25} cheek="#ff9d9d">
+      {{ behind: <path d="M13 22 Q13 11 24 11 Q35 11 35 22 Q35 18 31 17 Q28 14 24 14 Q20 14 17 17 Q13 18 13 22Z" fill="#7c4a1e"/> }}
+    </Avatar>
   );
 }
 
 function AvatarGirl() {
   return (
-    <Avatar id="girl" grad={['#fce7f3', '#fbcfe8']} skin="#ffd9b3" shirt="#ec4899"
-      eyeY={25} cheek="#ff8fb0"
-      >{{
-        behind: <>
-          {/* Long hair behind */}
-          <path d="M11 26 Q10 13 24 12 Q38 13 37 26 Q39 33 35 38 Q30 33 24 33 Q18 33 13 38 Q9 33 11 26Z" fill="#8b5a2b"/>
-        </>,
+    <Avatar id="girl" grad={['#fce7f3','#fbcfe8']} skin="#ffd9b3" shirt="#ec4899" eyeY={25} cheek="#ff8fb0">
+      {{
+        behind: <path d="M11 26 Q10 13 24 12 Q38 13 37 26 Q39 33 35 38 Q30 33 24 33 Q18 33 13 38 Q9 33 11 26Z" fill="#8b5a2b"/>,
         front: <>
-          {/* Bangs */}
           <path d="M13 22 Q13 11 24 11 Q35 11 35 22 Q34 17 30 16 Q27 19 24 19 Q21 19 18 16 Q14 17 13 22Z" fill="#9c6b34"/>
-          {/* Bow */}
           <circle cx="33" cy="15" r="2.4" fill="#f43f5e"/>
           <path d="M33 15 l-3 -2 v4 z" fill="#e11d48"/>
           <path d="M33 15 l3 -2 v4 z" fill="#e11d48"/>
         </>,
-      }}</Avatar>
+      }}
+    </Avatar>
   );
 }
 
 function AvatarWorker() {
   return (
-    <Avatar id="worker" grad={['#d1fae5', '#a7f3d0']} skin="#f0bd8a" shirt="#059669"
-      eyeY={26} cheek="#e8956b"
-      >{{
+    <Avatar id="worker" grad={['#d1fae5','#a7f3d0']} skin="#f0bd8a" shirt="#059669" eyeY={26} cheek="#e8956b">
+      {{
         front: <>
-          {/* Cap */}
           <path d="M13 19 Q13 12 24 12 Q35 12 35 19 Z" fill="#1f2937"/>
           <rect x="10" y="18.5" width="20" height="2.6" rx="1.3" fill="#374151"/>
           <circle cx="24" cy="13.5" r="1.1" fill="#6b7280"/>
         </>,
-      }}</Avatar>
+      }}
+    </Avatar>
   );
 }
 
 function AvatarTeacher() {
   return (
-    <Avatar id="teacher" grad={['#ede9fe', '#ddd6fe']} skin="#ffd9b3" shirt="#7c3aed"
-      eyeY={25} cheek="#ff9d9d"
-      >{{
+    <Avatar id="teacher" grad={['#ede9fe','#ddd6fe']} skin="#ffd9b3" shirt="#7c3aed" eyeY={25} cheek="#ff9d9d">
+      {{
         behind: <path d="M13 22 Q13 11 24 11 Q35 11 35 22 Q35 17 31 16 Q28 13 24 13 Q20 13 17 16 Q13 17 13 22Z" fill="#5b3a1a"/>,
         front: <>
-          {/* Round glasses */}
           <circle cx="18.5" cy="25" r="4" fill="none" stroke="#1f2937" strokeWidth="1.3"/>
           <circle cx="29.5" cy="25" r="4" fill="none" stroke="#1f2937" strokeWidth="1.3"/>
           <line x1="22.5" y1="25" x2="25.5" y2="25" stroke="#1f2937" strokeWidth="1.3"/>
         </>,
-      }}</Avatar>
+      }}
+    </Avatar>
   );
 }
 
 function AvatarDefault() {
   return (
-    <Avatar id="default" grad={['#f1f5f9', '#e2e8f0']} skin="#ffd9b3" shirt="#94a3b8"
-      eyeY={25} cheek="#ff9d9d"
-      >{{
-        behind: <path d="M13 22 Q13 11 24 11 Q35 11 35 22 Q35 17 31 16 Q28 13 24 13 Q20 13 17 16 Q13 17 13 22Z" fill="#94a3b8"/>,
-      }}</Avatar>
+    <Avatar id="default" grad={['#f1f5f9','#e2e8f0']} skin="#ffd9b3" shirt="#94a3b8" eyeY={25} cheek="#ff9d9d">
+      {{ behind: <path d="M13 22 Q13 11 24 11 Q35 11 35 22 Q35 17 31 16 Q28 13 24 13 Q20 13 17 16 Q13 17 13 22Z" fill="#94a3b8"/> }}
+    </Avatar>
   );
 }
 
@@ -135,23 +145,24 @@ const CHAR_MAP = {
   'الصديقة': <AvatarGirl />,
 };
 
-function getAvatar(name) {
+function getAvatar(name, images = {}) {
+  if (images?.[name]) {
+    return <img src={images[name]} alt={name} style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'50%' }}/>;
+  }
   return CHAR_MAP[name] ?? <AvatarDefault />;
 }
 
-// Pastel bubble colours per speaker (cycles)
+// Pastel bubble colours per speaker
 const BUBBLE_COLORS = [
-  { bg: '#dbeafe', border: '#93c5fd', text: '#1e3a8a' },
-  { bg: '#d1fae5', border: '#6ee7b7', text: '#064e3b' },
-  { bg: '#fce7f3', border: '#f9a8d4', text: '#831843' },
+  { bg:'#dbeafe', border:'#93c5fd', text:'#1e3a8a' },
+  { bg:'#d1fae5', border:'#6ee7b7', text:'#064e3b' },
+  { bg:'#fce7f3', border:'#f9a8d4', text:'#831843' },
 ];
-
 function speakerColor(name, allSpeakers) {
-  const idx = allSpeakers.indexOf(name);
-  return BUBBLE_COLORS[idx % BUBBLE_COLORS.length];
+  return BUBBLE_COLORS[allSpeakers.indexOf(name) % BUBBLE_COLORS.length];
 }
 
-// ── Mock scene ─────────────────────────────────────────────────────────────
+// ── Mock scene ─────────────────────────────────────────────────────────────────
 const MOCK_SCENE = {
   id: 'mock',
   situation: 'فِي الْبَقَالَة',
@@ -159,66 +170,61 @@ const MOCK_SCENE = {
   skill: 'التعبير الشفهي',
   teacher_name: 'تجريبي',
   dialogue: [
-    { speaker: 'راشد',   text: 'السَّلامُ عَلَيْكُم.' },
-    { speaker: 'البائع', text: 'وَعَلَيْكُمُ السَّلام، تَفَضَّلْ؟' },
-    { speaker: 'راشد',   text: 'أُرِيدُ حَلِيباً طَازِجاً، شُكْراً.' },
+    { speaker:'راشد',   text:'السَّلامُ عَلَيْكُم.' },
+    { speaker:'البائع', text:'وَعَلَيْكُمُ السَّلام، تَفَضَّلْ؟' },
+    { speaker:'راشد',   text:'أُرِيدُ حَلِيباً طَازِجاً، شُكْراً.' },
   ],
 };
 
-// ── Chat bubble display ─────────────────────────────────────────────────────
-function DialogueView({ dialogue, animating }) {
-  const speakers = [...new Set(dialogue.map(l => l.speaker))];
-  const endRef = useRef(null);
+// ── Chat bubble display ────────────────────────────────────────────────────────
+function DialogueView({ dialogue, animating, characterImages = {} }) {
+  const lines    = cleanDialogue(dialogue ?? []);
+  const speakers = [...new Set(lines.map(l => l.speaker))];
+  const endRef   = useRef(null);
 
   useEffect(() => {
-    if (animating) endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [dialogue.length, animating]);
+    if (animating) endRef.current?.scrollIntoView({ behavior:'smooth' });
+  }, [lines.length, animating]);
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:16, padding:'4px 0' }}>
-      {dialogue.map((line, i) => {
+    // direction:rtl → flex 'row' puts first child on the RIGHT (Arabic reading direction)
+    <div style={{ display:'flex', flexDirection:'column', gap:16, padding:'4px 0', direction:'rtl' }}>
+      {lines.map((line, i) => {
         const isRight = speakers.indexOf(line.speaker) === 0;
         const col = speakerColor(line.speaker, speakers);
         return (
           <div
             key={i}
             style={{
-              display:'flex', flexDirection: isRight ? 'row-reverse' : 'row',
+              display:'flex',
+              // RTL: 'row' → avatar on RIGHT; 'row-reverse' → avatar on LEFT
+              flexDirection: isRight ? 'row' : 'row-reverse',
               alignItems:'flex-end', gap:10,
               animation: animating ? `fadeUp .4s ease ${i * 0.22}s both` : 'none',
             }}
           >
-            {/* Avatar circle */}
             <div style={{
               width:48, height:48, borderRadius:'50%',
               border:`2.5px solid ${col.border}`,
               flexShrink:0, overflow:'hidden',
-              background:'#fff',
-              boxShadow:'0 2px 8px rgba(0,0,0,.1)',
+              background:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,.1)',
             }}>
-              {getAvatar(line.speaker)}
+              {getAvatar(line.speaker, characterImages)}
             </div>
 
             <div style={{ maxWidth:'65%' }}>
-              {/* Speaker name */}
               <div style={{
-                fontSize:'.72rem', fontWeight:800, color: col.border,
+                fontSize:'.72rem', fontWeight:800, color:col.border,
                 marginBottom:4, textAlign: isRight ? 'right' : 'left',
               }}>
                 {line.speaker}
               </div>
-              {/* Bubble */}
               <div style={{
-                background: col.bg,
-                border: `1.5px solid ${col.border}`,
+                background:col.bg, border:`1.5px solid ${col.border}`,
                 borderRadius: isRight ? '18px 4px 18px 18px' : '4px 18px 18px 18px',
-                padding:'12px 16px',
-                fontSize:'1.12rem',
-                lineHeight:1.9,
-                color: col.text,
-                fontWeight:600,
-                boxShadow:'0 2px 10px rgba(0,0,0,.08)',
-                direction:'rtl',
+                padding:'12px 16px', fontSize:'1.12rem', lineHeight:1.9,
+                color:col.text, fontWeight:600,
+                boxShadow:'0 2px 10px rgba(0,0,0,.08)', direction:'rtl',
               }}>
                 {line.text}
               </div>
@@ -226,12 +232,12 @@ function DialogueView({ dialogue, animating }) {
           </div>
         );
       })}
-      <div ref={endRef} />
+      <div ref={endRef}/>
     </div>
   );
 }
 
-// ── Mic button ──────────────────────────────────────────────────────────────
+// ── Mic button ─────────────────────────────────────────────────────────────────
 function MicButton({ label }) {
   const [active, setActive] = useState(false);
   return (
@@ -239,12 +245,9 @@ function MicButton({ label }) {
       onClick={() => setActive(a => !a)}
       style={{
         display:'flex', alignItems:'center', gap:8,
-        padding:'10px 20px', borderRadius:30,
-        border:'none', cursor:'pointer', fontFamily:'inherit',
-        fontWeight:700, fontSize:'.9rem',
-        background: active
-          ? 'linear-gradient(135deg,#ef4444,#dc2626)'
-          : 'linear-gradient(135deg,#185FA5,#1d4ed8)',
+        padding:'10px 20px', borderRadius:30, border:'none',
+        cursor:'pointer', fontFamily:'inherit', fontWeight:700, fontSize:'.9rem',
+        background: active ? 'linear-gradient(135deg,#ef4444,#dc2626)' : 'linear-gradient(135deg,#185FA5,#1d4ed8)',
         color:'#fff',
         boxShadow: active ? '0 0 0 4px rgba(239,68,68,.25)' : '0 4px 14px rgba(24,95,165,.3)',
         transition:'.2s',
@@ -256,7 +259,141 @@ function MicButton({ label }) {
   );
 }
 
-// ── Teacher creator panel ───────────────────────────────────────────────────
+// ── Dialogue editor (teacher only) ─────────────────────────────────────────────
+const KNOWN_SPEAKERS = ['راشد','نورة','البائع','المعلمة','الصديق','الصديقة','الأم','الأب','الطبيب'];
+
+function DialogueEditor({ characterImages, setCharImages, editLines, setEditLines, onSave, onCancel, saving }) {
+  const speakers = [...new Set(editLines.map(l => l.speaker))];
+
+  function updateLine(i, field, val) {
+    setEditLines(p => p.map((l, j) => j === i ? { ...l, [field]: val } : l));
+  }
+  function deleteLine(i) {
+    setEditLines(p => p.filter((_, j) => j !== i));
+  }
+  function addLine() {
+    const last = editLines[editLines.length - 1]?.speaker ?? 'راشد';
+    const others = speakers.filter(s => s !== last);
+    setEditLines(p => [...p, { speaker: others[0] ?? last, text:'' }]);
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+      {/* Character image uploads */}
+      <div style={{ background:'#f8fafc', borderRadius:12, padding:'12px 16px', border:'1.5px solid var(--border)' }}>
+        <div style={{ fontWeight:700, fontSize:'.8rem', color:'#475569', marginBottom:10 }}>🖼️ صور الشخصيات</div>
+        <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
+          {speakers.map(name => (
+            <label key={name} style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}>
+              {/* Avatar + remove button */}
+              <div style={{ position:'relative', width:46, height:46, flexShrink:0 }}>
+                <div style={{ width:46, height:46, borderRadius:'50%', overflow:'hidden', border:'2px solid var(--border)' }}>
+                  {getAvatar(name, characterImages)}
+                </div>
+                {characterImages[name] && (
+                  <button
+                    onClick={e => { e.preventDefault(); setCharImages(p => ({ ...p, [name]: null })); }}
+                    style={{
+                      position:'absolute', top:-4, right:-4, width:16, height:16,
+                      borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff',
+                      fontSize:'.6rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                      lineHeight:1, padding:0,
+                    }}
+                  >✕</button>
+                )}
+              </div>
+              <div>
+                <div style={{ fontWeight:700, fontSize:'.82rem', color:'var(--text)' }}>{name}</div>
+                <div style={{ fontSize:'.7rem', color:'var(--primary)' }}>📷 رفع صورة</div>
+              </div>
+              <input type="file" accept="image/*" style={{ display:'none' }} onChange={async e => {
+                if (!e.target.files[0]) return;
+                const compressed = await compressImage(e.target.files[0]);
+                setCharImages(p => ({ ...p, [name]: compressed }));
+                e.target.value = '';
+              }}/>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Lines editor */}
+      <div style={{ fontWeight:700, fontSize:'.8rem', color:'#475569' }}>✍️ سطور الحوار</div>
+
+      {editLines.map((line, i) => (
+        <div key={i} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
+          <input
+            list="spk-dl"
+            value={line.speaker}
+            onChange={e => updateLine(i, 'speaker', e.target.value)}
+            placeholder="الشخصية"
+            style={{
+              width:88, padding:'8px 10px', borderRadius:8,
+              border:'1.5px solid var(--border)', fontSize:'.82rem',
+              fontFamily:'inherit', textAlign:'right', flexShrink:0,
+            }}
+          />
+          <textarea
+            value={line.text}
+            onChange={e => updateLine(i, 'text', e.target.value)}
+            rows={2}
+            placeholder="نص الجملة..."
+            style={{
+              flex:1, padding:'8px 12px', borderRadius:8,
+              border:'1.5px solid var(--border)', fontSize:'.93rem',
+              fontFamily:'inherit', resize:'vertical', direction:'rtl', lineHeight:1.7,
+            }}
+          />
+          <button
+            onClick={() => deleteLine(i)}
+            style={{
+              padding:'8px 10px', borderRadius:8, border:'1.5px solid #fca5a5',
+              background:'#fff', color:'#dc2626', cursor:'pointer', fontSize:'.88rem', flexShrink:0,
+            }}
+          >🗑️</button>
+        </div>
+      ))}
+
+      <datalist id="spk-dl">
+        {KNOWN_SPEAKERS.map(s => <option key={s} value={s}/>)}
+      </datalist>
+
+      <button
+        onClick={addLine}
+        style={{
+          padding:'9px 16px', borderRadius:10, border:'1.5px dashed #94a3b8',
+          background:'#f8fafc', color:'#64748b', cursor:'pointer',
+          fontFamily:'inherit', fontWeight:700, fontSize:'.84rem',
+        }}
+      >＋ إضافة سطر جديد</button>
+
+      <div style={{ display:'flex', gap:10 }}>
+        <button
+          onClick={onSave} disabled={saving}
+          style={{
+            flex:1, padding:'11px', borderRadius:10, border:'none',
+            background: saving ? '#94a3b8' : 'linear-gradient(135deg,#10b981,#059669)',
+            color:'#fff', fontWeight:800, fontSize:'.9rem',
+            cursor: saving ? 'not-allowed' : 'pointer', fontFamily:'inherit',
+          }}
+        >
+          {saving ? '⏳ جارٍ الحفظ...' : '✅ حفظ التعديلات'}
+        </button>
+        <button
+          onClick={onCancel}
+          style={{
+            padding:'11px 18px', borderRadius:10, border:'1.5px solid var(--border)',
+            background:'#fff', color:'var(--text)', fontWeight:700, fontSize:'.9rem',
+            cursor:'pointer', fontFamily:'inherit',
+          }}
+        >✕ إلغاء</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Teacher creator panel ──────────────────────────────────────────────────────
 const GRADES = [
   'الصف الأول','الصف الثاني','الصف الثالث','الصف الرابع',
   'الصف الخامس','الصف السادس','الصف السابع',
@@ -267,10 +404,10 @@ const SKILLS = [
 ];
 
 function TeacherCreator({ onCreated }) {
-  const [form, setForm]     = useState({ situation:'', grade: GRADES[0], skill: SKILLS[0] });
-  const [busy, setBusy]     = useState(false);
-  const [err,  setErr]      = useState(null);
-  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
+  const [form, setForm] = useState({ situation:'', grade:GRADES[0], skill:SKILLS[0] });
+  const [busy, setBusy] = useState(false);
+  const [err,  setErr]  = useState(null);
+  const set = k => e => setForm(p => ({ ...p, [k]:e.target.value }));
 
   async function generate(e) {
     e.preventDefault();
@@ -296,25 +433,19 @@ function TeacherCreator({ onCreated }) {
         <input
           className="form-input"
           placeholder="مثال: في البقالة، في المستشفى، في الفصل..."
-          value={form.situation}
-          onChange={set('situation')}
-          required
+          value={form.situation} onChange={set('situation')} required
           style={{ fontSize:'.93rem' }}
         />
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         <div>
-          <label style={{ display:'block', fontWeight:700, fontSize:'.87rem', marginBottom:5, color:'#374151' }}>
-            🎓 المرحلة
-          </label>
+          <label style={{ display:'block', fontWeight:700, fontSize:'.87rem', marginBottom:5, color:'#374151' }}>🎓 المرحلة</label>
           <select className="form-input" value={form.grade} onChange={set('grade')} style={{ fontSize:'.88rem' }}>
             {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
         </div>
         <div>
-          <label style={{ display:'block', fontWeight:700, fontSize:'.87rem', marginBottom:5, color:'#374151' }}>
-            🎯 المهارة المستهدفة
-          </label>
+          <label style={{ display:'block', fontWeight:700, fontSize:'.87rem', marginBottom:5, color:'#374151' }}>🎯 المهارة</label>
           <select className="form-input" value={form.skill} onChange={set('skill')} style={{ fontSize:'.88rem' }}>
             {SKILLS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -322,26 +453,24 @@ function TeacherCreator({ onCreated }) {
       </div>
       {err && <div style={{ color:'#dc2626', fontSize:'.85rem', fontWeight:600 }}>⚠️ {err}</div>}
       <button
-        type="submit"
-        disabled={busy}
+        type="submit" disabled={busy}
         style={{
           padding:'12px 24px', borderRadius:12, border:'none',
           background: busy ? '#94a3b8' : 'linear-gradient(135deg,#185FA5,#1d4ed8)',
           color:'#fff', fontWeight:800, fontSize:'.95rem',
-          cursor: busy ? 'not-allowed' : 'pointer',
-          fontFamily:'inherit',
+          cursor: busy ? 'not-allowed' : 'pointer', fontFamily:'inherit',
           display:'flex', alignItems:'center', justifyContent:'center', gap:8,
         }}
       >
-        {busy ? (
-          <><span style={{ display:'inline-block', animation:'spin .8s linear infinite' }}>⏳</span> جارٍ توليد المشهد...</>
-        ) : '✨ توليد المشهد بالذكاء الاصطناعي'}
+        {busy
+          ? <><span style={{ display:'inline-block', animation:'spin .8s linear infinite' }}>⏳</span> جارٍ توليد المشهد...</>
+          : '✨ توليد المشهد بالذكاء الاصطناعي'}
       </button>
     </form>
   );
 }
 
-// ── Scene card (teacher view) ───────────────────────────────────────────────
+// ── Scene card (teacher list) ──────────────────────────────────────────────────
 function SceneCard({ scene, onTogglePublish, onDelete, onPreview }) {
   const [toggling, setToggling] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -351,13 +480,14 @@ function SceneCard({ scene, onTogglePublish, onDelete, onPreview }) {
     await onTogglePublish(scene.id, !scene.is_published);
     setToggling(false);
   }
-
   async function del() {
     if (!confirm('حذف هذا المشهد نهائياً؟')) return;
     setDeleting(true);
     await onDelete(scene.id);
     setDeleting(false);
   }
+
+  const previewLines = cleanDialogue(scene.dialogue ?? []).slice(0, 2);
 
   return (
     <div style={{
@@ -382,66 +512,86 @@ function SceneCard({ scene, onTogglePublish, onDelete, onPreview }) {
         </span>
       </div>
 
-      {/* Mini dialogue preview */}
-      <div style={{
-        background:'#f8fafc', borderRadius:10, padding:'10px 14px',
-        display:'flex', flexDirection:'column', gap:4,
-      }}>
-        {scene.dialogue?.slice(0,2).map((l, i) => (
+      <div style={{ background:'#f8fafc', borderRadius:10, padding:'10px 14px', display:'flex', flexDirection:'column', gap:4 }}>
+        {previewLines.map((l, i) => (
           <div key={i} style={{ fontSize:'.82rem', color:'#374151' }}>
             <span style={{ fontWeight:700, color:'var(--primary)' }}>{l.speaker}: </span>
             {l.text}
           </div>
         ))}
-        {scene.dialogue?.length > 2 && (
-          <div style={{ fontSize:'.75rem', color:'var(--muted)' }}>...+{scene.dialogue.length - 2} أسطر</div>
+        {cleanDialogue(scene.dialogue ?? []).length > 2 && (
+          <div style={{ fontSize:'.75rem', color:'var(--muted)' }}>...+{cleanDialogue(scene.dialogue).length - 2} أسطر</div>
         )}
       </div>
 
       <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-        <button
-          onClick={() => onPreview(scene)}
-          style={{
-            flex:1, padding:'8px', borderRadius:9, border:'1.5px solid var(--border)',
-            background:'#fff', color:'var(--primary)', fontWeight:700, fontSize:'.82rem',
-            cursor:'pointer', fontFamily:'inherit',
-          }}
-        >👁️ معاينة</button>
+        <button onClick={() => onPreview(scene)} style={{
+          flex:1, padding:'8px', borderRadius:9, border:'1.5px solid var(--border)',
+          background:'#fff', color:'var(--primary)', fontWeight:700, fontSize:'.82rem',
+          cursor:'pointer', fontFamily:'inherit',
+        }}>👁️ معاينة</button>
 
-        <button
-          onClick={togglePublish} disabled={toggling}
-          style={{
-            flex:1, padding:'8px', borderRadius:9, border:'none',
-            background: scene.is_published
-              ? 'linear-gradient(135deg,#f59e0b,#d97706)'
-              : 'linear-gradient(135deg,#10b981,#059669)',
-            color:'#fff', fontWeight:700, fontSize:'.82rem',
-            cursor: toggling ? 'not-allowed' : 'pointer', fontFamily:'inherit',
-          }}
-        >
+        <button onClick={togglePublish} disabled={toggling} style={{
+          flex:1, padding:'8px', borderRadius:9, border:'none',
+          background: scene.is_published ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'linear-gradient(135deg,#10b981,#059669)',
+          color:'#fff', fontWeight:700, fontSize:'.82rem',
+          cursor: toggling ? 'not-allowed' : 'pointer', fontFamily:'inherit',
+        }}>
           {toggling ? '...' : scene.is_published ? '⏸️ إلغاء النشر' : '🚀 نشر للطلاب'}
         </button>
 
-        <button
-          onClick={del} disabled={deleting}
-          style={{
-            padding:'8px 10px', borderRadius:9, border:'1.5px solid #fca5a5',
-            background:'#fff', color:'#dc2626', fontSize:'.82rem',
-            cursor: deleting ? 'not-allowed' : 'pointer', fontFamily:'inherit',
-          }}
-        >🗑️</button>
+        <button onClick={del} disabled={deleting} style={{
+          padding:'8px 10px', borderRadius:9, border:'1.5px solid #fca5a5',
+          background:'#fff', color:'#dc2626', fontSize:'.82rem',
+          cursor: deleting ? 'not-allowed' : 'pointer', fontFamily:'inherit',
+        }}>🗑️</button>
       </div>
     </div>
   );
 }
 
-// ── Student scene viewer ────────────────────────────────────────────────────
-function StudentSceneViewer({ scene, onClose }) {
+// ── Scene viewer (student + teacher preview with edit mode) ───────────────────
+function StudentSceneViewer({ scene, onClose, editable, onUpdate }) {
+  const [editing,   setEditing]   = useState(false);
+  const [editLines, setEditLines] = useState(() => cleanDialogue(scene.dialogue ?? []));
+  const [charImg,   setCharImg]   = useState(() => extractMeta(scene.dialogue ?? [])?.images ?? {});
+  const [saving,    setSaving]    = useState(false);
+
+  // Reset when scene changes
+  useEffect(() => {
+    setEditLines(cleanDialogue(scene.dialogue ?? []));
+    setCharImg(extractMeta(scene.dialogue ?? [])?.images ?? {});
+    setEditing(false);
+  }, [scene.id]);
+
+  async function saveEdits() {
+    setSaving(true);
+    const newDialogue = packDialogue(editLines, charImg);
+    const res  = await fetch(`/api/life-scene/${scene.id}`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ dialogue: newDialogue }),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (res.ok) { onUpdate?.(data.scene); setEditing(false); }
+  }
+
+  function cancelEdit() {
+    setEditLines(cleanDialogue(scene.dialogue ?? []));
+    setCharImg(extractMeta(scene.dialogue ?? [])?.images ?? {});
+    setEditing(false);
+  }
+
+  // Derive current character images (from live scene or from edit state)
+  const liveImages = editing ? charImg : (extractMeta(scene.dialogue ?? [])?.images ?? {});
+  const liveLines  = cleanDialogue(scene.dialogue ?? []);
+
   return (
     <div style={{
       background:'#fff', borderRadius:18, border:'1.5px solid var(--border)',
       padding:'22px 20px', maxWidth:520, margin:'0 auto',
     }}>
+      {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
         <div>
           <div style={{ fontWeight:800, fontSize:'1.05rem', color:'var(--primary)' }}>{scene.situation}</div>
@@ -450,32 +600,56 @@ function StudentSceneViewer({ scene, onClose }) {
             <span>🎯 {scene.skill}</span>
           </div>
         </div>
-        {onClose && (
-          <button onClick={onClose} style={{ background:'none', border:'none', fontSize:'1.3rem', cursor:'pointer', color:'var(--muted)' }}>✕</button>
-        )}
-      </div>
-
-      <DialogueView dialogue={scene.dialogue} animating />
-
-      <div style={{ marginTop:22, display:'flex', flexDirection:'column', gap:10, alignItems:'center' }}>
-        <div style={{ fontSize:'.82rem', color:'var(--muted)', fontWeight:600 }}>
-          🎭 مثّل دور أحد الشخصيات — سجّل صوتك!
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          {editable && !editing && scene.id !== 'mock' && (
+            <button
+              onClick={() => setEditing(true)}
+              style={{
+                padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--primary)',
+                background:'#fff', color:'var(--primary)', fontWeight:700, fontSize:'.82rem',
+                cursor:'pointer', fontFamily:'inherit',
+              }}
+            >✏️ تعديل</button>
+          )}
+          {onClose && (
+            <button onClick={onClose} style={{ background:'none', border:'none', fontSize:'1.3rem', cursor:'pointer', color:'var(--muted)' }}>✕</button>
+          )}
         </div>
-        {[...new Set(scene.dialogue.map(l => l.speaker))].map(name => (
-          <MicButton key={name} label={`سجّل دور "${name}"`} />
-        ))}
       </div>
+
+      {editing ? (
+        <DialogueEditor
+          characterImages={charImg}
+          setCharImages={setCharImg}
+          editLines={editLines}
+          setEditLines={setEditLines}
+          onSave={saveEdits}
+          onCancel={cancelEdit}
+          saving={saving}
+        />
+      ) : (
+        <>
+          <DialogueView dialogue={scene.dialogue} animating characterImages={liveImages}/>
+          <div style={{ marginTop:22, display:'flex', flexDirection:'column', gap:10, alignItems:'center' }}>
+            <div style={{ fontSize:'.82rem', color:'var(--muted)', fontWeight:600 }}>
+              🎭 مثّل دور أحد الشخصيات — سجّل صوتك!
+            </div>
+            {[...new Set(liveLines.map(l => l.speaker))].map(name => (
+              <MicButton key={name} label={`سجّل دور "${name}"`}/>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-// ── Main exported component ─────────────────────────────────────────────────
-
+// ── Main exported component ────────────────────────────────────────────────────
 export default function LifeSceneSimulator({ role = 'teacher', currentUser }) {
-  const [scenes,   setScenes]   = useState(null);
-  const [loading,  setLoading]  = useState(true);
-  const [preview,  setPreview]  = useState(null);
-  const [view,     setView]     = useState('list'); // 'list' | 'create'
+  const [scenes,  setScenes]  = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [preview, setPreview] = useState(null);
+  const [view,    setView]    = useState('list'); // 'list' | 'create'
 
   useEffect(() => {
     fetch('/api/life-scene')
@@ -487,6 +661,11 @@ export default function LifeSceneSimulator({ role = 'teacher', currentUser }) {
   function handleCreated(scene) {
     setScenes(prev => [scene, ...(prev ?? [])]);
     setView('list');
+    setPreview(scene);
+  }
+
+  function handleUpdated(scene) {
+    setScenes(prev => prev?.map(s => s.id === scene.id ? scene : s) ?? prev);
     setPreview(scene);
   }
 
@@ -505,13 +684,13 @@ export default function LifeSceneSimulator({ role = 'teacher', currentUser }) {
     if (preview?.id === id) setPreview(null);
   }
 
-  // ── Student view ──────────────────────────────────────────────────────────
+  // ── Student view ─────────────────────────────────────────────────────────
   if (role === 'student') {
     return (
       <>
         <style>{`
           @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-          @keyframes spin { to { transform:rotate(360deg); } }
+          @keyframes spin   { to   { transform:rotate(360deg); } }
         `}</style>
         {loading ? (
           <div style={{ textAlign:'center', padding:'32px 0', color:'var(--muted)' }}>جارٍ التحميل...</div>
@@ -521,17 +700,15 @@ export default function LifeSceneSimulator({ role = 'teacher', currentUser }) {
             <p style={{ color:'var(--muted)' }}>لا توجد مشاهد منشورة حتى الآن</p>
           </div>
         ) : preview ? (
-          <StudentSceneViewer scene={preview} onClose={() => setPreview(null)} />
+          <StudentSceneViewer scene={preview} onClose={() => setPreview(null)}/>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {scenes.map(s => (
-              <div key={s.id} onClick={() => setPreview(s)}
-                style={{
-                  background:'#fff', border:'1.5px solid var(--border)', borderRadius:14,
-                  padding:'14px 18px', cursor:'pointer', transition:'.15s',
-                  display:'flex', alignItems:'center', gap:14,
-                }}
-              >
+              <div key={s.id} onClick={() => setPreview(s)} style={{
+                background:'#fff', border:'1.5px solid var(--border)', borderRadius:14,
+                padding:'14px 18px', cursor:'pointer', transition:'.15s',
+                display:'flex', alignItems:'center', gap:14,
+              }}>
                 <div style={{ fontSize:'2rem' }}>🎭</div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontWeight:800, fontSize:'.97rem' }}>{s.situation}</div>
@@ -548,21 +725,20 @@ export default function LifeSceneSimulator({ role = 'teacher', currentUser }) {
     );
   }
 
-  // ── Teacher view ──────────────────────────────────────────────────────────
+  // ── Teacher view ─────────────────────────────────────────────────────────
   const mockDisplayed = scenes?.length === 0 && !loading;
 
   return (
     <>
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes spin { to { transform:rotate(360deg); } }
+        @keyframes spin   { to   { transform:rotate(360deg); } }
       `}</style>
 
       <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:22, alignItems:'start' }}>
 
-        {/* Left column: list or create form */}
+        {/* Left: list or create */}
         <div>
-          {/* Header */}
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
             <h2 style={{ fontSize:'1.05rem', fontWeight:800, color:'var(--primary)', margin:0 }}>
               🎭 مسرح التعبير
@@ -585,7 +761,7 @@ export default function LifeSceneSimulator({ role = 'teacher', currentUser }) {
               <h3 style={{ margin:'0 0 16px', fontSize:'.95rem', fontWeight:800, color:'var(--primary)' }}>
                 ✨ إنشاء مشهد جديد
               </h3>
-              <TeacherCreator onCreated={handleCreated} />
+              <TeacherCreator onCreated={handleCreated}/>
             </div>
           ) : (
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
@@ -598,14 +774,9 @@ export default function LifeSceneSimulator({ role = 'teacher', currentUser }) {
                     borderRadius:12, padding:'10px 14px',
                     fontSize:'.83rem', color:'#92400e', fontWeight:600,
                   }}>
-                    🎬 هذا مشهد تجريبي — أنشئ مشهداً حقيقياً بالضغط على "مشهد جديد"
+                    🎬 هذا مشهد تجريبي — أنشئ مشهداً حقيقياً بالضغط على "+ مشهد جديد"
                   </div>
-                  <SceneCard
-                    scene={MOCK_SCENE}
-                    onTogglePublish={() => {}}
-                    onDelete={() => {}}
-                    onPreview={() => setPreview(MOCK_SCENE)}
-                  />
+                  <SceneCard scene={MOCK_SCENE} onTogglePublish={() => {}} onDelete={() => {}} onPreview={() => setPreview(MOCK_SCENE)}/>
                 </>
               ) : scenes?.length === 0 ? (
                 <div style={{
@@ -617,9 +788,7 @@ export default function LifeSceneSimulator({ role = 'teacher', currentUser }) {
                 </div>
               ) : (
                 scenes.map(s => (
-                  <SceneCard
-                    key={s.id}
-                    scene={s}
+                  <SceneCard key={s.id} scene={s}
                     onTogglePublish={handleTogglePublish}
                     onDelete={handleDelete}
                     onPreview={setPreview}
@@ -630,10 +799,15 @@ export default function LifeSceneSimulator({ role = 'teacher', currentUser }) {
           )}
         </div>
 
-        {/* Right column: preview */}
+        {/* Right: preview */}
         <div style={{ position:'sticky', top:80 }}>
           {preview ? (
-            <StudentSceneViewer scene={preview} onClose={() => setPreview(null)} />
+            <StudentSceneViewer
+              scene={preview}
+              onClose={() => setPreview(null)}
+              editable
+              onUpdate={handleUpdated}
+            />
           ) : (
             <div style={{
               background:'#f8fafc', border:'1.5px dashed var(--border)', borderRadius:18,

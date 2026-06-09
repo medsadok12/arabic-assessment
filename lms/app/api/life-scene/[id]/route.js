@@ -3,17 +3,17 @@ import { createAdminClient } from '../../../../lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
-// PATCH /api/life-scene/[id] — publish / unpublish
+// PATCH /api/life-scene/[id] — publish/unpublish OR save edited dialogue
 export async function PATCH(request, { params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
   if (user.user_metadata?.role !== 'teacher') return Response.json({ error: 'للمعلمين فقط' }, { status: 403 });
 
-  const { is_published } = await request.json();
-  const admin = createAdminClient();
+  const body = await request.json();
+  const { is_published, dialogue } = body;
 
-  // Verify ownership
+  const admin = createAdminClient();
   const { data: existing } = await admin
     .from('life_scenes')
     .select('id, teacher_id')
@@ -23,10 +23,14 @@ export async function PATCH(request, { params }) {
   if (!existing) return Response.json({ error: 'المشهد غير موجود' }, { status: 404 });
   if (existing.teacher_id !== user.id) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
-  const patch = {
-    is_published,
-    published_at: is_published ? new Date().toISOString() : null,
-  };
+  const patch = {};
+  if (is_published !== undefined) {
+    patch.is_published  = is_published;
+    patch.published_at  = is_published ? new Date().toISOString() : null;
+  }
+  if (dialogue !== undefined) {
+    patch.dialogue = dialogue;
+  }
 
   const { data: scene, error } = await admin
     .from('life_scenes')
@@ -47,7 +51,6 @@ export async function DELETE(request, { params }) {
   if (user.user_metadata?.role !== 'teacher') return Response.json({ error: 'للمعلمين فقط' }, { status: 403 });
 
   const admin = createAdminClient();
-
   const { data: existing } = await admin
     .from('life_scenes')
     .select('id, teacher_id')
