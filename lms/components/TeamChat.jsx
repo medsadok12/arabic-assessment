@@ -31,6 +31,27 @@ function fmtDay(iso) {
   return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
 }
 
+function playNotifSound(isTask = false) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.type = 'sine';
+    if (isTask) {
+      o.frequency.setValueAtTime(660, ctx.currentTime);
+      o.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+    } else {
+      o.frequency.setValueAtTime(880, ctx.currentTime);
+    }
+    g.gain.setValueAtTime(0.25, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+    o.start(ctx.currentTime);
+    o.stop(ctx.currentTime + 0.45);
+  } catch (_) {}
+}
+
 function buildItems(msgs) {
   const out = []; let last = '';
   for (const m of msgs) {
@@ -237,6 +258,7 @@ export default function TeamChat({ user }) {
         if (!openRef.current || chatRef.current?.type !== 'group') {
           console.log('[TeamChat] 🔴 incrementing groupUnread');
           setGroupUnread(n => n + 1);
+          playNotifSound(m.is_task);
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'team_messages' }, ({ new: m }) => {
@@ -264,8 +286,10 @@ export default function TeamChat({ user }) {
           const ex = prev[m.conv_key] ?? [];
           return ex.some(e => e.id === m.id) ? prev : { ...prev, [m.conv_key]: [...ex, m] };
         });
-        if (!openRef.current || chatRef.current?.type !== 'dm' || chatRef.current?.key !== m.conv_key)
+        if (!openRef.current || chatRef.current?.type !== 'dm' || chatRef.current?.key !== m.conv_key) {
           setDmUnread(prev => ({ ...prev, [m.conv_key]: (prev[m.conv_key] ?? 0) + 1 }));
+          playNotifSound(m.is_task);
+        }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'dm_messages' }, ({ new: m }) => {
         if (!m.conv_key?.includes(myId)) return;
@@ -286,7 +310,10 @@ export default function TeamChat({ user }) {
         if (seenGroupIds.current.has(m.id)) return; /* postgres_changes already handled */
         seenGroupIds.current.add(m.id);
         setGroupMsgs(prev => prev.some(e => e.id === m.id) ? prev : [...prev, m]);
-        if (!openRef.current || chatRef.current?.type !== 'group') setGroupUnread(n => n + 1);
+        if (!openRef.current || chatRef.current?.type !== 'group') {
+          setGroupUnread(n => n + 1);
+          playNotifSound(m.is_task);
+        }
       })
       .on('broadcast', { event: 'dm_msg' }, ({ payload: m }) => {
         if (!m?.conv_key?.includes(myId)) return;
@@ -297,8 +324,10 @@ export default function TeamChat({ user }) {
           const ex = prev[m.conv_key] ?? [];
           return ex.some(e => e.id === m.id) ? prev : { ...prev, [m.conv_key]: [...ex, m] };
         });
-        if (!openRef.current || chatRef.current?.type !== 'dm' || chatRef.current?.key !== m.conv_key)
+        if (!openRef.current || chatRef.current?.type !== 'dm' || chatRef.current?.key !== m.conv_key) {
           setDmUnread(prev => ({ ...prev, [m.conv_key]: (prev[m.conv_key] ?? 0) + 1 }));
+          playNotifSound(m.is_task);
+        }
       })
       .on('broadcast', { event: 'task_completed' }, ({ payload }) => {
         const { messageId, convKey, completedByName } = payload ?? {};
@@ -359,8 +388,10 @@ export default function TeamChat({ user }) {
         if (unseenGrp.length > 0) {
           unseenGrp.forEach(m => seenGroupIds.current.add(m.id));
           setGroupMsgs(prev => mergeDedup(prev, unseenGrp));
-          if (!openRef.current || chatRef.current?.type !== 'group')
+          if (!openRef.current || chatRef.current?.type !== 'group') {
             setGroupUnread(n => n + unseenGrp.length);
+            playNotifSound(unseenGrp.some(m => m.is_task));
+          }
         }
 
         /* DMs — group by conv_key */
@@ -375,8 +406,10 @@ export default function TeamChat({ user }) {
           if (unseen.length > 0) {
             unseen.forEach(m => seenDmIds.current[ck].add(m.id));
             setDmMsgs(prev => ({ ...prev, [ck]: mergeDedup(prev[ck] ?? [], unseen) }));
-            if (!openRef.current || chatRef.current?.type !== 'dm' || chatRef.current?.key !== ck)
+            if (!openRef.current || chatRef.current?.type !== 'dm' || chatRef.current?.key !== ck) {
               setDmUnread(prev => ({ ...prev, [ck]: (prev[ck] ?? 0) + unseen.length }));
+              playNotifSound(unseen.some(m => m.is_task));
+            }
           }
         }
       } catch (_) {}
