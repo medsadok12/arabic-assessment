@@ -185,41 +185,59 @@ export default function TeamChat({ user }) {
     if (!myId) return;
     const sb = createClient();
 
-    /* postgres_changes — message list delivery only (no unread logic here) */
+    /* ── postgres_changes: message delivery + unread badge ── */
     const grpCh = sb.channel('tc-group-v4')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'team_messages' }, ({ new: m }) => {
-        setGroupMsgs(prev => {
-          if (m.sender_id === myId)
-            return [...prev.filter(e => !(e._opt && e.content === m.content && e.sender_id === myId)), m];
-          if (prev.some(e => e.id === m.id)) return prev;
-          return [...prev, m];
-        });
+        if (m.sender_id === myId) {
+          /* replace optimistic bubble */
+          setGroupMsgs(prev => [...prev.filter(e => !(e._opt && e.content === m.content)), m]);
+          return;
+        }
+        /* deduplicate with broadcast / polling */
+        if (seenGroupIds.current.has(m.id)) return;
+        seenGroupIds.current.add(m.id);
+        setGroupMsgs(prev => prev.some(e => e.id === m.id) ? prev : [...prev, m]);
+        if (!openRef.current || chatRef.current?.type !== 'group')
+          setGroupUnread(n => n + 1);
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.error('[TeamChat] grpCh error:', status, err);
+        else     console.log('[TeamChat] grpCh status:', status);
+      });
 
     const dmCh = sb.channel('tc-dm-v4')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, ({ new: m }) => {
-        if (!m.conv_key.includes(myId)) return;
+        if (!m.conv_key?.includes(myId)) return;
+        if (m.sender_id === myId) {
+          setDmMsgs(prev => {
+            const ex = prev[m.conv_key] ?? [];
+            return { ...prev, [m.conv_key]: [...ex.filter(e => !(e._opt && e.content === m.content)), m] };
+          });
+          return;
+        }
+        if (!seenDmIds.current[m.conv_key]) seenDmIds.current[m.conv_key] = new Set();
+        if (seenDmIds.current[m.conv_key].has(m.id)) return;
+        seenDmIds.current[m.conv_key].add(m.id);
         setDmMsgs(prev => {
-          const existing = prev[m.conv_key] ?? [];
-          if (m.sender_id === myId)
-            return { ...prev, [m.conv_key]: [...existing.filter(e => !(e._opt && e.content === m.content)), m] };
-          if (existing.some(e => e.id === m.id)) return prev;
-          return { ...prev, [m.conv_key]: [...existing, m] };
+          const ex = prev[m.conv_key] ?? [];
+          return ex.some(e => e.id === m.id) ? prev : { ...prev, [m.conv_key]: [...ex, m] };
         });
+        if (!openRef.current || chatRef.current?.type !== 'dm' || chatRef.current?.key !== m.conv_key)
+          setDmUnread(prev => ({ ...prev, [m.conv_key]: (prev[m.conv_key] ?? 0) + 1 }));
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.error('[TeamChat] dmCh error:', status, err);
+        else     console.log('[TeamChat] dmCh status:', status);
+      });
 
-    /* broadcast — unread notifications + new message delivery + clears */
+    /* broadcast: fast-path delivery (deduplication prevents double badge) */
     const bcastCh = sb.channel('tc-broadcast-v3', { config: { broadcast: { self: false } } })
       .on('broadcast', { event: 'grp_msg' }, ({ payload: m }) => {
         if (!m?.id) return;
-        setGroupMsgs(prev => {
-          if (prev.some(e => e.id === m.id)) return prev;
-          return [...prev, m];
-        });
-        const cc = chatRef.current;
-        if (!openRef.current || cc?.type !== 'group') setGroupUnread(n => n + 1);
+        if (seenGroupIds.current.has(m.id)) return; /* postgres_changes already handled */
+        seenGroupIds.current.add(m.id);
+        setGroupMsgs(prev => prev.some(e => e.id === m.id) ? prev : [...prev, m]);
+        if (!openRef.current || chatRef.current?.type !== 'group') setGroupUnread(n => n + 1);
       })
       .on('broadcast', { event: 'dm_msg' }, ({ payload: m }) => {
         if (!m?.conv_key?.includes(myId)) return;
@@ -227,12 +245,10 @@ export default function TeamChat({ user }) {
         if (seenDmIds.current[m.conv_key].has(m.id)) return;
         seenDmIds.current[m.conv_key].add(m.id);
         setDmMsgs(prev => {
-          const existing = prev[m.conv_key] ?? [];
-          if (existing.some(e => e.id === m.id)) return prev;
-          return { ...prev, [m.conv_key]: [...existing, m] };
+          const ex = prev[m.conv_key] ?? [];
+          return ex.some(e => e.id === m.id) ? prev : { ...prev, [m.conv_key]: [...ex, m] };
         });
-        const cc = chatRef.current;
-        if (!openRef.current || cc?.type !== 'dm' || cc?.key !== m.conv_key)
+        if (!openRef.current || chatRef.current?.type !== 'dm' || chatRef.current?.key !== m.conv_key)
           setDmUnread(prev => ({ ...prev, [m.conv_key]: (prev[m.conv_key] ?? 0) + 1 }));
       })
       .on('broadcast', { event: 'group_cleared' }, () => {
