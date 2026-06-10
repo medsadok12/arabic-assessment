@@ -229,6 +229,7 @@ export default function TeamChat({ user }) {
   const [confirmClear,  setConfirmClear]  = useState(false);
   const [taskMode,      setTaskMode]      = useState(false);
   const [toast,         setToast]         = useState(null);
+  const [audioReady,    setAudioReady]    = useState(false);
 
   const bottomRef      = useRef(null);
   const inputRef       = useRef(null);
@@ -254,10 +255,11 @@ export default function TeamChat({ user }) {
     const check = () => setIsMobile(window.innerWidth < 640);
     check();
     window.addEventListener('resize', check);
-    /* iOS/Android require AudioContext to be resumed inside a user gesture */
+    /* Unlock AudioContext on first user gesture — required by all browsers */
     const unlock = () => {
       const ctx = getAudioCtx();
-      if (ctx?.state === 'suspended') ctx.resume().catch(() => {});
+      const p = ctx?.state === 'suspended' ? ctx.resume() : Promise.resolve();
+      p.then(() => setAudioReady(true)).catch(() => {});
     };
     document.addEventListener('touchstart', unlock, { once: true, passive: true });
     document.addEventListener('click',      unlock, { once: true });
@@ -600,7 +602,13 @@ export default function TeamChat({ user }) {
     <>
       {/* floating button */}
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => {
+          /* Guaranteed user gesture — unlock AudioContext here too */
+          const ctx = getAudioCtx();
+          const p = ctx?.state === 'suspended' ? ctx.resume() : Promise.resolve();
+          p.then(() => setAudioReady(true)).catch(() => {});
+          setOpen(o => !o);
+        }}
         title="محادثات الفريق"
         style={{ position: 'fixed', bottom: isMobile ? 100 : 88, left: 20, zIndex: 9999, width: isMobile ? 48 : 52, height: isMobile ? 48 : 52, borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg,#1a7c40 0%,#0f5c2e 100%)', boxShadow: '0 4px 16px rgba(26,124,64,.45)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform .18s' }}
         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
@@ -616,6 +624,27 @@ export default function TeamChat({ user }) {
           </span>
         )}
       </button>
+
+      {/* audio unlock hint — shown only before first interaction */}
+      {!audioReady && totalUnread > 0 && !open && (
+        <div style={{
+          position: 'fixed', bottom: isMobile ? 155 : 148, left: 14, zIndex: 9998,
+          background: '#1e293b', color: '#fff', borderRadius: 10,
+          padding: '6px 12px', fontSize: '.72rem', fontWeight: 600,
+          boxShadow: '0 4px 16px rgba(0,0,0,.25)', direction: 'rtl',
+          animation: 'tcUp .3s cubic-bezier(.34,1.56,.64,1)',
+          display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}
+          onClick={() => {
+            const ctx = getAudioCtx();
+            const p = ctx?.state === 'suspended' ? ctx.resume() : Promise.resolve();
+            p.then(() => setAudioReady(true)).catch(() => {});
+          }}
+        >
+          🔔 انقر لتفعيل الأصوات
+        </div>
+      )}
 
       {/* mobile backdrop */}
       {open && isMobile && (
