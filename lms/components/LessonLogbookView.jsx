@@ -34,6 +34,7 @@ export default function LessonLogbookView({ lang = 'ar' }) {
   const [feedbackText, setFeedbackText] = useState('');
   const [savingFb,     setSavingFb]     = useState(false);
   const [msg,          setMsg]          = useState(null);
+  const [reviewing,    setReviewing]    = useState(new Set());
 
   // Auto-load all lesson logs on mount
   useEffect(() => {
@@ -43,6 +44,26 @@ export default function LessonLogbookView({ lang = 'ar' }) {
       .catch(() => setMsg({ type: 'error', text: ar ? 'تعذّر تحميل البيانات' : 'Failed to load data' }))
       .finally(() => setLoading(false));
   }, []);
+
+  async function markReviewed(logId) {
+    setReviewing(prev => new Set(prev).add(logId));
+    try {
+      const res  = await fetch(`/api/lesson-logs/${logId}/review`, { method: 'PATCH' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAllLogs(prev => prev.map(l =>
+        l.id === logId
+          ? { ...l, reviewed_at: data.log.reviewed_at, reviewed_by: data.log.reviewed_by }
+          : l
+      ));
+      setMsg({ type: 'success', text: ar ? '✅ تمت المراجعة بنجاح' : '✅ Marked as reviewed' });
+      setTimeout(() => setMsg(null), 3000);
+    } catch (e) {
+      setMsg({ type: 'error', text: e.message });
+    } finally {
+      setReviewing(prev => { const s = new Set(prev); s.delete(logId); return s; });
+    }
+  }
 
   async function submitFeedback() {
     if (!feedbackText.trim()) return;
@@ -283,6 +304,24 @@ export default function LessonLogbookView({ lang = 'ar' }) {
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                      {log.reviewed_at ? (
+                        <SBadge bg="#f0fdf4" color="#16a34a" border="#bbf7d0">
+                          ✅ {ar ? 'تمت المراجعة' : 'Reviewed'}
+                        </SBadge>
+                      ) : (
+                        <button
+                          onClick={e => { e.stopPropagation(); markReviewed(log.id); }}
+                          disabled={reviewing.has(log.id)}
+                          style={{
+                            background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0',
+                            borderRadius: 8, padding: '5px 12px', cursor: 'pointer',
+                            fontSize: '.8rem', fontWeight: 700,
+                            opacity: reviewing.has(log.id) ? .6 : 1,
+                          }}
+                        >
+                          {reviewing.has(log.id) ? '…' : (ar ? '✅ تم' : '✅ Done')}
+                        </button>
+                      )}
                       <button
                         onClick={e => { e.stopPropagation(); setFeedbackFor(log.id); setFeedbackText(''); }}
                         style={{
@@ -305,6 +344,15 @@ export default function LessonLogbookView({ lang = 'ar' }) {
                       {log.lesson_content && <VSection icon="📖" title={ar?'ما تم تدريسه':'Taught'} content={log.lesson_content} color="#185FA5" />}
                       {log.homework       && <VSection icon="📝" title={ar?'الواجبات والأنشطة':'Homework'} content={log.homework} color="#7c3aed" />}
                       {log.future_plan    && <VSection icon="🔮" title={ar?'الخطة القادمة':'Next Plan'} content={log.future_plan} color="#059669" />}
+                      {log.reviewed_at && (
+                        <div style={{
+                          marginTop: 12, padding: '7px 12px', borderRadius: 10,
+                          background: '#f0fdf4', border: '1px solid #bbf7d0',
+                          fontSize: '.78rem', color: '#16a34a', fontWeight: 600,
+                        }}>
+                          ✅ {ar ? 'راجعها' : 'Reviewed by'}: {log.reviewed_by} — {fmtDate(log.reviewed_at.split('T')[0])}
+                        </div>
+                      )}
 
                       {fbCount > 0 && (
                         <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px dashed #e2e8f0' }}>
