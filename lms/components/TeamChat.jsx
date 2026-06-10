@@ -33,8 +33,8 @@ function fmtDay(iso) {
 
 /* ── Audio — static WAV files, independent of OS language settings ── */
 let _audioCtx     = null;
-let _pendingAudio = null; /* /sounds/task_pending.wav  */
-let _successAudio = null; /* /sounds/task_success.wav  */
+let _pendingAudio = null; /* /sounds/task_pending.mp3  */
+let _successAudio = null; /* /sounds/task_success.mp3  */
 
 function getAudioCtx() {
   if (typeof window === 'undefined') return null;
@@ -45,8 +45,8 @@ function getAudioCtx() {
 /* Called inside the first user-gesture (unlock) — activates Audio elements on iOS */
 function preloadSounds() {
   if (_pendingAudio) return;
-  _pendingAudio = new Audio('/sounds/task_pending.wav');
-  _successAudio = new Audio('/sounds/task_success.wav');
+  _pendingAudio = new Audio('/sounds/task_pending.mp3');
+  _successAudio = new Audio('/sounds/task_success.mp3');
   _pendingAudio.preload = 'auto';
   _successAudio.preload = 'auto';
   _pendingAudio.load();
