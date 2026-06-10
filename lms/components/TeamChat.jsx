@@ -89,19 +89,29 @@ function playNotifSound(isTask = false) {
   } catch (_) {}
 
   if (isTask) {
-    /* Speech synthesis — desktop only (iOS/Android block this for non-gesture events) */
+    /* Speech synthesis — only if an Arabic voice is installed on the system */
     try {
       if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance('رسالةٌ مهمة');
-        u.lang  = 'ar-SA';
-        u.rate  = 1.05;
-        u.pitch = 1.25;
-        const arFemale =
-          _voices.find(v => v.lang.startsWith('ar') && /zar|reem|hana|female/i.test(v.name)) ||
-          _voices.find(v => v.lang.startsWith('ar'));
-        if (arFemale) u.voice = arFemale;
-        window.speechSynthesis.speak(u);
+        const speak = () => {
+          const voices = window.speechSynthesis.getVoices();
+          const arVoice =
+            voices.find(v => v.lang.startsWith('ar') && /zar|reem|hana|female/i.test(v.name)) ||
+            voices.find(v => v.lang.startsWith('ar'));
+          if (!arVoice) return; /* no Arabic TTS on this machine — chime is enough */
+          window.speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance('رسالةٌ مهمة');
+          u.lang  = 'ar-SA';
+          u.rate  = 1.05;
+          u.pitch = 1.25;
+          u.voice = arVoice;
+          window.speechSynthesis.speak(u);
+        };
+        /* voices may not be loaded yet on first call */
+        if (window.speechSynthesis.getVoices().length > 0) {
+          speak();
+        } else {
+          window.speechSynthesis.addEventListener('voiceschanged', speak, { once: true });
+        }
       }
     } catch (_) {}
     /* Haptic feedback on Android */
