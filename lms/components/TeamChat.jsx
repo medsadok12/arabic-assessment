@@ -31,91 +31,57 @@ function fmtDay(iso) {
   return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
 }
 
-/* Singleton AudioContext — created once, unlocked on first user tap */
-let _audioCtx = null;
+/* ── Audio — static WAV files, independent of OS language settings ── */
+let _audioCtx     = null;
+let _pendingAudio = null; /* /sounds/task_pending.wav  */
+let _successAudio = null; /* /sounds/task_success.wav  */
+
 function getAudioCtx() {
   if (typeof window === 'undefined') return null;
   if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return _audioCtx;
 }
 
-/* Preload voices list (async on some browsers) */
-let _voices = [];
-if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-  const _loadVoices = () => { _voices = window.speechSynthesis.getVoices(); };
-  window.speechSynthesis.addEventListener('voiceschanged', _loadVoices);
-  _loadVoices();
+/* Called inside the first user-gesture (unlock) — activates Audio elements on iOS */
+function preloadSounds() {
+  if (_pendingAudio) return;
+  _pendingAudio = new Audio('/sounds/task_pending.wav');
+  _successAudio = new Audio('/sounds/task_success.wav');
+  _pendingAudio.preload = 'auto';
+  _successAudio.preload = 'auto';
+  _pendingAudio.load();
+  _successAudio.load();
 }
 
-function playNotifSound(isTask = false) {
+function _playAudio(audio) {
+  if (!audio) return;
+  audio.currentTime = 0;
+  audio.play().catch(() => {}); /* silently ignore autoplay block */
+}
+
+/* Oscillator fallback (used for regular messages — no WAV file needed) */
+function _oscillatorDing() {
   try {
     const ctx = getAudioCtx();
     if (!ctx) return;
-    const play = () => {
-      if (isTask) {
-        /* 3-note ascending chime (D5→G5→B5) — triangle wave, warmer tone */
-        const notes = [
-          { freq: 587, start: 0,    dur: 0.35 },
-          { freq: 784, start: 0.22, dur: 0.35 },
-          { freq: 988, start: 0.44, dur: 0.45 },
-        ];
-        for (const n of notes) {
-          const o = ctx.createOscillator();
-          const g = ctx.createGain();
-          o.connect(g); g.connect(ctx.destination);
-          o.type = 'triangle';
-          o.frequency.value = n.freq;
-          g.gain.setValueAtTime(0, ctx.currentTime + n.start);
-          g.gain.linearRampToValueAtTime(0.28, ctx.currentTime + n.start + 0.015);
-          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + n.start + n.dur);
-          o.start(ctx.currentTime + n.start);
-          o.stop(ctx.currentTime + n.start + n.dur);
-        }
-      } else {
-        /* simple ding for regular messages */
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.connect(g); g.connect(ctx.destination);
-        o.type = 'sine';
-        o.frequency.value = 880;
-        g.gain.setValueAtTime(0.25, ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
-        o.start(ctx.currentTime);
-        o.stop(ctx.currentTime + 0.45);
-      }
+    const go = () => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine'; o.frequency.value = 880;
+      g.gain.setValueAtTime(0.25, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+      o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.45);
     };
-    if (ctx.state === 'suspended') ctx.resume().then(play).catch(() => {});
-    else play();
+    ctx.state === 'suspended' ? ctx.resume().then(go).catch(() => {}) : go();
   } catch (_) {}
+}
 
+function playNotifSound(isTask = false) {
   if (isTask) {
-    /* Speech synthesis — only if an Arabic voice is installed on the system */
-    try {
-      if ('speechSynthesis' in window) {
-        const speak = () => {
-          const voices = window.speechSynthesis.getVoices();
-          const arVoice =
-            voices.find(v => v.lang.startsWith('ar') && /zar|reem|hana|female/i.test(v.name)) ||
-            voices.find(v => v.lang.startsWith('ar'));
-          if (!arVoice) return; /* no Arabic TTS on this machine — chime is enough */
-          window.speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance('رسالةٌ مهمة');
-          u.lang  = 'ar-SA';
-          u.rate  = 1.05;
-          u.pitch = 1.25;
-          u.voice = arVoice;
-          window.speechSynthesis.speak(u);
-        };
-        /* voices may not be loaded yet on first call */
-        if (window.speechSynthesis.getVoices().length > 0) {
-          speak();
-        } else {
-          window.speechSynthesis.addEventListener('voiceschanged', speak, { once: true });
-        }
-      }
-    } catch (_) {}
-    /* Haptic feedback on Android */
-    try { navigator.vibrate?.([200, 80, 200]); } catch (_) {}
+    _playAudio(_pendingAudio);              /* WAV file — works on all devices */
+    try { navigator.vibrate?.([200, 80, 200]); } catch (_) {} /* Android haptic */
+  } else {
+    _oscillatorDing();                     /* simple ding for regular messages */
   }
 }
 
@@ -265,11 +231,11 @@ export default function TeamChat({ user }) {
     const check = () => setIsMobile(window.innerWidth < 640);
     check();
     window.addEventListener('resize', check);
-    /* Unlock AudioContext on first user gesture — required by all browsers */
+    /* Unlock AudioContext + preload WAV files on first user gesture */
     const unlock = () => {
       const ctx = getAudioCtx();
       const p = ctx?.state === 'suspended' ? ctx.resume() : Promise.resolve();
-      p.then(() => setAudioReady(true)).catch(() => {});
+      p.then(() => { preloadSounds(); setAudioReady(true); }).catch(() => {});
     };
     document.addEventListener('touchstart', unlock, { once: true, passive: true });
     document.addEventListener('click',      unlock, { once: true });
@@ -417,6 +383,7 @@ export default function TeamChat({ user }) {
           ...prev,
           [convKey]: (prev[convKey] ?? []).map(m => m.id === messageId ? { ...m, task_status: 'completed' } : m),
         }));
+        _playAudio(_successAudio);
         setToast(`✅ أنجز ${completedByName ?? 'أحد الأعضاء'} المهمة`);
         setTimeout(() => setToast(null), 4000);
       })
@@ -613,10 +580,10 @@ export default function TeamChat({ user }) {
       {/* floating button */}
       <button
         onClick={() => {
-          /* Guaranteed user gesture — unlock AudioContext here too */
+          /* Guaranteed user gesture — unlock AudioContext + preload sounds */
           const ctx = getAudioCtx();
           const p = ctx?.state === 'suspended' ? ctx.resume() : Promise.resolve();
-          p.then(() => setAudioReady(true)).catch(() => {});
+          p.then(() => { preloadSounds(); setAudioReady(true); }).catch(() => {});
           setOpen(o => !o);
         }}
         title="محادثات الفريق"
