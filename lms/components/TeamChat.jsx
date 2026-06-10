@@ -51,9 +51,9 @@ function speakTaskAlert() {
   try {
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance('رسالة مهمة');
+    const u = new SpeechSynthesisUtterance('رسالةٌ مهمة');
     u.lang  = 'ar-SA';
-    u.rate  = 0.88;
+    u.rate  = 1.05;
     u.pitch = 1.25;
     /* prefer Arabic female voice (Zariyah on iOS/macOS, Hana on Windows) */
     const arFemale =
