@@ -39,6 +39,31 @@ function getAudioCtx() {
   return _audioCtx;
 }
 
+/* Preload voices list (async on some browsers) */
+let _voices = [];
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  const _loadVoices = () => { _voices = window.speechSynthesis.getVoices(); };
+  window.speechSynthesis.addEventListener('voiceschanged', _loadVoices);
+  _loadVoices();
+}
+
+function speakTaskAlert() {
+  try {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance('رسالة مهمة');
+    u.lang  = 'ar-SA';
+    u.rate  = 0.88;
+    u.pitch = 1.25;
+    /* prefer Arabic female voice (Zariyah on iOS/macOS, Hana on Windows) */
+    const arFemale =
+      _voices.find(v => v.lang.startsWith('ar') && /zar|reem|hana|female/i.test(v.name)) ||
+      _voices.find(v => v.lang.startsWith('ar'));
+    if (arFemale) u.voice = arFemale;
+    window.speechSynthesis.speak(u);
+  } catch (_) {}
+}
+
 function playNotifSound(isTask = false) {
   try {
     const ctx = getAudioCtx();
@@ -63,6 +88,7 @@ function playNotifSound(isTask = false) {
     if (ctx.state === 'suspended') ctx.resume().then(play).catch(() => {});
     else play();
   } catch (_) {}
+  if (isTask) speakTaskAlert();
 }
 
 function buildItems(msgs) {
