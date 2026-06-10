@@ -38,7 +38,7 @@ export async function POST(request) {
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
   if (!ALLOWED.includes(user.user_metadata?.role)) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
-  const { content, to } = await request.json();
+  const { content, to, is_task = false } = await request.json();
   if (!content?.trim()) return Response.json({ error: 'الرسالة فارغة' }, { status: 400 });
   if (!to) return Response.json({ error: 'المستلم مطلوب' }, { status: 400 });
 
@@ -53,6 +53,7 @@ export async function POST(request) {
       sender_role:   user.user_metadata?.role,
       sender_avatar: user.user_metadata?.avatar_url ?? null,
       content:       content.trim(),
+      is_task:       Boolean(is_task),
     })
     .select()
     .single();

@@ -41,7 +41,7 @@ function buildItems(msgs) {
   return out;
 }
 
-function MsgList({ items, myId, isGroup, currentChat }) {
+function MsgList({ items, myId, isGroup, currentChat, onCompleteTask }) {
   if (items.length === 0) return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: 8, padding: 24 }}>
       <span style={{ fontSize: '2rem' }}>{isGroup ? '👥' : '🔒'}</span>
@@ -64,6 +64,22 @@ function MsgList({ items, myId, isGroup, currentChat }) {
     const radius = isMe
       ? `${samePrev ? 6 : 16}px 4px ${sameNext ? 6 : 16}px 16px`
       : `4px ${samePrev ? 6 : 16}px 16px ${sameNext ? 6 : 16}px`;
+
+    const isTask = item.is_task;
+    const taskDone = item.task_status === 'completed';
+
+    /* task message colours */
+    let bubbleBg, bubbleColor, taskBorder;
+    if (isTask) {
+      bubbleBg    = taskDone ? 'rgba(34,197,94,.1)' : (isMe ? 'rgba(245,158,11,.15)' : 'rgba(245,158,11,.1)');
+      bubbleColor = '#1e293b';
+      taskBorder  = taskDone ? '2px solid #22c55e' : '2px solid #f59e0b';
+    } else {
+      bubbleBg    = isMe ? 'linear-gradient(135deg,#1a7c40,#0f5c2e)' : '#f1f5f9';
+      bubbleColor = isMe ? '#fff' : '#1e293b';
+      taskBorder  = 'none';
+    }
+
     return (
       <div key={item.id} style={{ display: 'flex', flexDirection: isMe ? 'row' : 'row-reverse', gap: 6, alignItems: 'flex-end', marginTop: samePrev ? 2 : 8 }}>
         <div style={{ width: 26, flexShrink: 0 }}>
@@ -76,8 +92,26 @@ function MsgList({ items, myId, isGroup, currentChat }) {
               <span style={{ fontSize: '.57rem', padding: '1px 5px', borderRadius: 10, fontWeight: 600, background: ROLE_BG[item.sender_role] ?? '#f1f5f9', color: ROLE_CLR[item.sender_role] ?? '#475569' }}>{ROLE_AR[item.sender_role] ?? item.sender_role}</span>
             </div>
           )}
-          <div style={{ background: isMe ? 'linear-gradient(135deg,#1a7c40,#0f5c2e)' : '#f1f5f9', color: isMe ? '#fff' : '#1e293b', padding: '8px 12px', borderRadius: radius, fontSize: '.85rem', lineHeight: 1.55, wordBreak: 'break-word', boxShadow: isMe ? '0 2px 8px rgba(26,124,64,.2)' : '0 1px 3px rgba(0,0,0,.05)', whiteSpace: 'pre-wrap', opacity: item._opt ? 0.72 : 1, transition: 'opacity .2s' }}>
+          <div style={{ background: bubbleBg, color: bubbleColor, padding: isTask ? '9px 12px 7px' : '8px 12px', borderRadius: radius, border: taskBorder, fontSize: '.85rem', lineHeight: 1.55, wordBreak: 'break-word', boxShadow: isTask ? (taskDone ? '0 2px 8px rgba(34,197,94,.15)' : '0 2px 8px rgba(245,158,11,.18)') : (isMe ? '0 2px 8px rgba(26,124,64,.2)' : '0 1px 3px rgba(0,0,0,.05)'), whiteSpace: 'pre-wrap', opacity: item._opt ? 0.72 : 1, transition: 'all .2s' }}>
+            {isTask && (
+              <div style={{ fontSize: '.6rem', fontWeight: 800, marginBottom: 5, display: 'flex', alignItems: 'center', gap: 4, color: taskDone ? '#16a34a' : '#b45309' }}>
+                <span>{taskDone ? '✅ تم الإنجاز' : '🛠️ مهمة'}</span>
+              </div>
+            )}
             {item.content}
+            {isTask && !isMe && !taskDone && !item._opt && (
+              <button
+                onClick={() => onCompleteTask?.(item.id)}
+                style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, background: '#f59e0b', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 11px', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer', transition: 'background .15s' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#d97706'}
+                onMouseLeave={e => e.currentTarget.style.background = '#f59e0b'}
+              >
+                <span>✅</span> إتمام المهمة
+              </button>
+            )}
+            {isTask && taskDone && (
+              <div style={{ marginTop: 6, fontSize: '.68rem', color: taskDone ? '#16a34a' : '#b45309', fontWeight: 600 }}>تم الإنجاز ✔</div>
+            )}
           </div>
           {!sameNext && (
             <span style={{ fontSize: '.59rem', color: '#94a3b8', padding: '0 3px' }}>
@@ -115,6 +149,8 @@ export default function TeamChat({ user }) {
   const [isMobile,      setIsMobile]      = useState(false);
   const [mounted,       setMounted]       = useState(false);
   const [confirmClear,  setConfirmClear]  = useState(false);
+  const [taskMode,      setTaskMode]      = useState(false);
+  const [toast,         setToast]         = useState(null);
 
   const bottomRef      = useRef(null);
   const inputRef       = useRef(null);
@@ -203,6 +239,9 @@ export default function TeamChat({ user }) {
           setGroupUnread(n => n + 1);
         }
       })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'team_messages' }, ({ new: m }) => {
+        setGroupMsgs(prev => prev.map(e => e.id === m.id ? { ...e, task_status: m.task_status } : e));
+      })
       .subscribe((status, err) => {
         if (err) console.error('[TeamChat] grpCh error:', status, err);
         else     console.log('[TeamChat] grpCh status:', status);
@@ -227,6 +266,13 @@ export default function TeamChat({ user }) {
         });
         if (!openRef.current || chatRef.current?.type !== 'dm' || chatRef.current?.key !== m.conv_key)
           setDmUnread(prev => ({ ...prev, [m.conv_key]: (prev[m.conv_key] ?? 0) + 1 }));
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'dm_messages' }, ({ new: m }) => {
+        if (!m.conv_key?.includes(myId)) return;
+        setDmMsgs(prev => ({
+          ...prev,
+          [m.conv_key]: (prev[m.conv_key] ?? []).map(e => e.id === m.id ? { ...e, task_status: m.task_status } : e),
+        }));
       })
       .subscribe((status, err) => {
         if (err) console.error('[TeamChat] dmCh error:', status, err);
@@ -253,6 +299,17 @@ export default function TeamChat({ user }) {
         });
         if (!openRef.current || chatRef.current?.type !== 'dm' || chatRef.current?.key !== m.conv_key)
           setDmUnread(prev => ({ ...prev, [m.conv_key]: (prev[m.conv_key] ?? 0) + 1 }));
+      })
+      .on('broadcast', { event: 'task_completed' }, ({ payload }) => {
+        const { messageId, convKey, completedByName } = payload ?? {};
+        if (!messageId) return;
+        setGroupMsgs(prev => prev.map(m => m.id === messageId ? { ...m, task_status: 'completed' } : m));
+        if (convKey) setDmMsgs(prev => ({
+          ...prev,
+          [convKey]: (prev[convKey] ?? []).map(m => m.id === messageId ? { ...m, task_status: 'completed' } : m),
+        }));
+        setToast(`✅ أنجز ${completedByName ?? 'أحد الأعضاء'} المهمة`);
+        setTimeout(() => setToast(null), 4000);
       })
       .on('broadcast', { event: 'group_cleared' }, () => {
         setGroupMsgs([]);
@@ -378,22 +435,44 @@ export default function TeamChat({ user }) {
     setConfirmClear(false);
   }
 
+  /* ── complete task ── */
+  async function completeTask(msgId) {
+    if (!chat) return;
+    const type = chat.type === 'group' ? 'group' : 'dm';
+    const updater = prev => prev.map(m => m.id === msgId ? { ...m, task_status: 'completed' } : m);
+    if (type === 'group') setGroupMsgs(updater);
+    else setDmMsgs(prev => ({ ...prev, [chat.key]: updater(prev[chat.key] ?? []) }));
+    try {
+      await fetch('/api/team-chat/task', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId: msgId, type }),
+      });
+      clearChRef.current?.send({
+        type: 'broadcast', event: 'task_completed',
+        payload: { messageId: msgId, convKey: chat.key, completedByName: myName },
+      });
+    } catch (_) {}
+  }
+
   /* ── send with optimistic update ── */
   async function send() {
     const content = text.trim();
     if (!content || sending || !chat) return;
     setSending(true);
     setText('');
+    const isTaskMsg = taskMode;
+    setTaskMode(false);
 
     const opt = {
       id: `opt_${Date.now()}`, sender_id: myId,
       sender_name: myName, sender_role: role, sender_avatar: myAvatar,
       content, created_at: new Date().toISOString(), _opt: true,
+      is_task: isTaskMsg, task_status: 'pending',
     };
 
     if (chat.type === 'group') {
       setGroupMsgs(prev => [...prev, opt]);
-      const res  = await fetch('/api/team-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }) });
+      const res  = await fetch('/api/team-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, is_task: isTaskMsg }) });
       const { message } = await res.json();
       if (message) {
         setGroupMsgs(prev => mergeDedup(prev, [message]));
@@ -401,7 +480,7 @@ export default function TeamChat({ user }) {
       }
     } else {
       setDmMsgs(prev => ({ ...prev, [chat.key]: [...(prev[chat.key] ?? []), opt] }));
-      const res  = await fetch('/api/team-chat/dm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, to: chat.userId }) });
+      const res  = await fetch('/api/team-chat/dm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, to: chat.userId, is_task: isTaskMsg }) });
       const { message } = await res.json();
       if (message) {
         setDmMsgs(prev => ({ ...prev, [chat.key]: mergeDedup(prev[chat.key] ?? [], [message]) }));
@@ -570,12 +649,19 @@ export default function TeamChat({ user }) {
               <div style={{ flex: 1, overflowY: 'auto', padding: '10px 10px 4px', display: 'flex', flexDirection: 'column', direction: 'rtl' }}>
                 {loading
                   ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '.88rem' }}>⏳ تحميل...</div>
-                  : <MsgList items={buildItems(currentMsgs)} myId={myId} isGroup={chat?.type === 'group'} currentChat={chat} />
+                  : <MsgList items={buildItems(currentMsgs)} myId={myId} isGroup={chat?.type === 'group'} currentChat={chat} onCompleteTask={completeTask} />
                 }
                 <div ref={bottomRef} style={{ height: 4 }} />
               </div>
 
-              <div style={{ padding: '8px 10px 10px', borderTop: '1px solid #f0f4f8', display: 'flex', gap: 7, alignItems: 'flex-end', flexShrink: 0, direction: 'rtl' }}>
+              <div style={{ padding: '8px 10px 10px', borderTop: '1px solid #f0f4f8', display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
+                {taskMode && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', fontSize: '.72rem', fontWeight: 700, color: '#b45309' }}>
+                    🛠️ وضع المهمة — ستُرسل هذه الرسالة كمهمة قابلة للإنجاز
+                    <button onClick={() => setTaskMode(false)} style={{ marginRight: 'auto', background: 'none', border: 'none', color: '#b45309', cursor: 'pointer', fontSize: '.8rem', padding: 0 }}>✕</button>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 7, alignItems: 'flex-end', direction: 'rtl' }}>
                 <textarea
                   ref={inputRef}
                   value={text}
@@ -584,23 +670,36 @@ export default function TeamChat({ user }) {
                   placeholder={chat?.type === 'group' ? 'اكتب رسالة للفريق...' : `راسل ${chat?.userName?.split(' ')[0]}...`}
                   rows={1}
                   className="tc-textarea"
-                  style={{ flex: 1, resize: 'none', border: '1.5px solid #e2e8f0', borderRadius: 20, padding: '8px 13px', fontSize: '.84rem', outline: 'none', fontFamily: 'inherit', maxHeight: 88, overflowY: 'auto', direction: 'rtl', lineHeight: 1.5, background: '#fafcff', transition: 'border-color .15s' }}
-                  onFocus={e => e.currentTarget.style.borderColor = '#1a7c40'}
-                  onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
+                  style={{ flex: 1, resize: 'none', border: `1.5px solid ${taskMode ? '#f59e0b' : '#e2e8f0'}`, borderRadius: 20, padding: '8px 13px', fontSize: '.84rem', outline: 'none', fontFamily: 'inherit', maxHeight: 88, overflowY: 'auto', direction: 'rtl', lineHeight: 1.5, background: taskMode ? '#fffbeb' : '#fafcff', transition: 'all .15s' }}
+                  onFocus={e => e.currentTarget.style.borderColor = taskMode ? '#f59e0b' : '#1a7c40'}
+                  onBlur={e => e.currentTarget.style.borderColor = taskMode ? '#f59e0b' : '#e2e8f0'}
                 />
+                <button
+                  onClick={() => setTaskMode(t => !t)}
+                  title={taskMode ? 'إلغاء وضع المهمة' : 'إرسال كمهمة'}
+                  style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: taskMode ? '#fef3c7' : '#f1f5f9', color: taskMode ? '#d97706' : '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1rem', transition: 'all .15s', boxShadow: taskMode ? '0 0 0 2px #f59e0b' : 'none' }}
+                >🛠️</button>
                 <button
                   onClick={send}
                   disabled={!text.trim() || sending}
-                  style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: text.trim() ? 'linear-gradient(135deg,#1a7c40,#0f5c2e)' : '#e2e8f0', color: text.trim() ? '#fff' : '#94a3b8', cursor: text.trim() && !sending ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all .15s' }}
+                  style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: text.trim() ? (taskMode ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'linear-gradient(135deg,#1a7c40,#0f5c2e)') : '#e2e8f0', color: text.trim() ? '#fff' : '#94a3b8', cursor: text.trim() && !sending ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all .15s' }}
                 >
                   {sending
                     ? <div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.35)', borderTopColor: '#fff', borderRadius: '50%', animation: 'tcSpin .7s linear infinite' }} />
                     : <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'scaleX(-1)' }}><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                   }
                 </button>
+                </div>
+              </div>
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {toast && (
+        <div style={{ position: 'fixed', bottom: isMobile ? 175 : 155, left: 20, zIndex: 10000, background: 'linear-gradient(135deg,#1a7c40,#0f5c2e)', color: '#fff', padding: '10px 16px', borderRadius: 14, fontSize: '.84rem', fontWeight: 700, boxShadow: '0 4px 20px rgba(26,124,64,.45)', animation: 'tcUp .3s cubic-bezier(.34,1.56,.64,1)', maxWidth: 260, direction: 'rtl' }}>
+          {toast}
         </div>
       )}
 
