@@ -691,7 +691,6 @@ export default function TeamChat({ user }) {
                 </button>
                 </div>
               </div>
-              </div>
             </>
           )}
         </div>
