@@ -22,14 +22,16 @@ export async function GET(request) {
       .select('*')
       .neq('sender_id', user.id)
       .gt('created_at', since)
-      .order('created_at', { ascending: true }),
+      .order('created_at', { ascending: true })
+      .limit(50),
     admin
       .from('dm_messages')
       .select('*')
       .neq('sender_id', user.id)
       .like('conv_key', `%${user.id}%`)
       .gt('created_at', since)
-      .order('created_at', { ascending: true }),
+      .order('created_at', { ascending: true })
+      .limit(50),
   ]);
 
   return Response.json({

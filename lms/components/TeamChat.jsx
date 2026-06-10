@@ -123,7 +123,7 @@ export default function TeamChat({ user }) {
   const clearChRef     = useRef(null);
   const seenGroupIds   = useRef(new Set());
   const seenDmIds      = useRef({});   // { conv_key: Set<id> }
-  const lastPollTs     = useRef(null); // ISO timestamp of last notify poll
+  const mountedAtRef   = useRef(null); // ISO timestamp when user authenticated
   openRef.current = open;
   chatRef.current = chat;
 
@@ -146,7 +146,7 @@ export default function TeamChat({ user }) {
   /* ── initial data load — guard with myId ── */
   useEffect(() => {
     if (!myId) return;
-    lastPollTs.current = new Date().toISOString();
+    mountedAtRef.current = new Date().toISOString();
     Promise.all([
       fetch('/api/team-chat').then(r => r.json()),
       fetch('/api/team-chat/members').then(r => r.json()),
@@ -266,15 +266,16 @@ export default function TeamChat({ user }) {
     if (open && view === 'chat') setTimeout(() => inputRef.current?.focus(), 120);
   }, [open, view, chat]);
 
-  /* ── unified polling: group + DM notifications every 15s ── */
+  /* ── unified polling: group + DM notifications every 8s ── */
   useEffect(() => {
     if (!myId) return;
     const interval = setInterval(async () => {
-      if (!lastPollTs.current) return;
-      const since = lastPollTs.current;
-      lastPollTs.current = new Date().toISOString();
+      /* use mountedAt (or 3 minutes ago as safety floor) */
+      const floor = mountedAtRef.current
+        ?? new Date(Date.now() - 3 * 60 * 1000).toISOString();
       try {
-        const r = await fetch(`/api/team-chat/notify?since=${encodeURIComponent(since)}`);
+        const r = await fetch(`/api/team-chat/notify?since=${encodeURIComponent(floor)}`);
+        if (!r.ok) return;
         const { groupMsgs: gm = [], dmMsgs: dm = [] } = await r.json();
 
         /* group */
@@ -303,7 +304,7 @@ export default function TeamChat({ user }) {
           }
         }
       } catch (_) {}
-    }, 15000);
+    }, 8000);
     return () => clearInterval(interval);
   }, [myId]);
 
