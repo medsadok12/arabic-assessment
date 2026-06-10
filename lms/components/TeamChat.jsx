@@ -123,6 +123,7 @@ export default function TeamChat({ user }) {
   const clearChRef     = useRef(null);
   const seenGroupIds   = useRef(new Set());
   const seenDmIds      = useRef({});   // { conv_key: Set<id> }
+  const lastPollTs     = useRef(null); // ISO timestamp of last notify poll
   openRef.current = open;
   chatRef.current = chat;
 
@@ -145,6 +146,7 @@ export default function TeamChat({ user }) {
   /* ── initial data load — guard with myId ── */
   useEffect(() => {
     if (!myId) return;
+    lastPollTs.current = new Date().toISOString();
     Promise.all([
       fetch('/api/team-chat').then(r => r.json()),
       fetch('/api/team-chat/members').then(r => r.json()),
@@ -221,6 +223,9 @@ export default function TeamChat({ user }) {
       })
       .on('broadcast', { event: 'dm_msg' }, ({ payload: m }) => {
         if (!m?.conv_key?.includes(myId)) return;
+        if (!seenDmIds.current[m.conv_key]) seenDmIds.current[m.conv_key] = new Set();
+        if (seenDmIds.current[m.conv_key].has(m.id)) return;
+        seenDmIds.current[m.conv_key].add(m.id);
         setDmMsgs(prev => {
           const existing = prev[m.conv_key] ?? [];
           if (existing.some(e => e.id === m.id)) return prev;
@@ -261,24 +266,44 @@ export default function TeamChat({ user }) {
     if (open && view === 'chat') setTimeout(() => inputRef.current?.focus(), 120);
   }, [open, view, chat]);
 
-  /* ── polling fallback: check for new group messages every 20s ── */
+  /* ── unified polling: group + DM notifications every 15s ── */
   useEffect(() => {
     if (!myId) return;
     const interval = setInterval(async () => {
-      if (openRef.current && chatRef.current?.type === 'group') return;
+      if (!lastPollTs.current) return;
+      const since = lastPollTs.current;
+      lastPollTs.current = new Date().toISOString();
       try {
-        const r = await fetch('/api/team-chat');
-        const { messages = [] } = await r.json();
-        const unseen = messages.filter(m => !seenGroupIds.current.has(m.id) && m.sender_id !== myId);
-        if (unseen.length > 0) {
-          unseen.forEach(m => seenGroupIds.current.add(m.id));
-          messages.forEach(m => seenGroupIds.current.add(m.id));
-          setGroupMsgs(prev => mergeDedup(prev, messages));
+        const r = await fetch(`/api/team-chat/notify?since=${encodeURIComponent(since)}`);
+        const { groupMsgs: gm = [], dmMsgs: dm = [] } = await r.json();
+
+        /* group */
+        const unseenGrp = gm.filter(m => !seenGroupIds.current.has(m.id));
+        if (unseenGrp.length > 0) {
+          unseenGrp.forEach(m => seenGroupIds.current.add(m.id));
+          setGroupMsgs(prev => mergeDedup(prev, unseenGrp));
           if (!openRef.current || chatRef.current?.type !== 'group')
-            setGroupUnread(n => n + unseen.length);
+            setGroupUnread(n => n + unseenGrp.length);
+        }
+
+        /* DMs — group by conv_key */
+        const byConv = {};
+        for (const m of dm) {
+          if (!byConv[m.conv_key]) byConv[m.conv_key] = [];
+          byConv[m.conv_key].push(m);
+        }
+        for (const [ck, msgs] of Object.entries(byConv)) {
+          if (!seenDmIds.current[ck]) seenDmIds.current[ck] = new Set();
+          const unseen = msgs.filter(m => !seenDmIds.current[ck].has(m.id));
+          if (unseen.length > 0) {
+            unseen.forEach(m => seenDmIds.current[ck].add(m.id));
+            setDmMsgs(prev => ({ ...prev, [ck]: mergeDedup(prev[ck] ?? [], unseen) }));
+            if (!openRef.current || chatRef.current?.type !== 'dm' || chatRef.current?.key !== ck)
+              setDmUnread(prev => ({ ...prev, [ck]: (prev[ck] ?? 0) + unseen.length }));
+          }
         }
       } catch (_) {}
-    }, 20000);
+    }, 15000);
     return () => clearInterval(interval);
   }, [myId]);
 
@@ -301,12 +326,17 @@ export default function TeamChat({ user }) {
     setChat({ type: 'dm', userId: member.id, userName: member.name, userRole: member.role, userAvatar: member.avatar_url, key: ck });
     setView('chat');
     setDmUnread(prev => ({ ...prev, [ck]: 0 }));
+    if (!seenDmIds.current[ck]) seenDmIds.current[ck] = new Set();
     if (!dmMsgs[ck]) {
       setLoading(true);
       const r = await fetch(`/api/team-chat/dm?with=${member.id}`);
       const d = await r.json();
-      setDmMsgs(prev => ({ ...prev, [ck]: mergeDedup(d.messages ?? [], prev[ck] ?? []) }));
+      const msgs = d.messages ?? [];
+      msgs.forEach(m => seenDmIds.current[ck].add(m.id));
+      setDmMsgs(prev => ({ ...prev, [ck]: mergeDedup(msgs, prev[ck] ?? []) }));
       setLoading(false);
+    } else {
+      (dmMsgs[ck] ?? []).forEach(m => seenDmIds.current[ck].add(m.id));
     }
   }
 
