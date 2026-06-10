@@ -188,6 +188,7 @@ export default function TeamChat({ user }) {
     /* ── postgres_changes: message delivery + unread badge ── */
     const grpCh = sb.channel('tc-group-v4')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'team_messages' }, ({ new: m }) => {
+        console.log('[TeamChat] grpCh INSERT received:', m?.id, 'sender:', m?.sender_id, 'me:', myId);
         if (m.sender_id === myId) {
           /* replace optimistic bubble */
           setGroupMsgs(prev => [...prev.filter(e => !(e._opt && e.content === m.content)), m]);
@@ -197,8 +198,10 @@ export default function TeamChat({ user }) {
         if (seenGroupIds.current.has(m.id)) return;
         seenGroupIds.current.add(m.id);
         setGroupMsgs(prev => prev.some(e => e.id === m.id) ? prev : [...prev, m]);
-        if (!openRef.current || chatRef.current?.type !== 'group')
+        if (!openRef.current || chatRef.current?.type !== 'group') {
+          console.log('[TeamChat] 🔴 incrementing groupUnread');
           setGroupUnread(n => n + 1);
+        }
       })
       .subscribe((status, err) => {
         if (err) console.error('[TeamChat] grpCh error:', status, err);

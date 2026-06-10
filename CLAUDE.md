@@ -81,6 +81,18 @@ CREATE TABLE IF NOT EXISTS interviews (
 ALTER TABLE interviews DISABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS interviews_slot_idx ON interviews (interviewer_name, interview_date, start_time);
 
+-- 5. نتائج التقييمات ✅ تم إنشاؤه Jun 10
+CREATE TABLE IF NOT EXISTS assessments (
+  id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID,
+  student_name TEXT         NOT NULL,
+  level        INT          NOT NULL DEFAULT 1,
+  score        NUMERIC      NOT NULL DEFAULT 0,
+  completed_at TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+ALTER TABLE assessments DISABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS assessments_completed_idx ON assessments (completed_at DESC);
+
 -- 4. صلاحيات المشرفين المساعدين ✅ تم إنشاؤه Jun 3
 CREATE TABLE IF NOT EXISTS admin_permissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
