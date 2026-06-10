@@ -62,6 +62,8 @@ function speakTaskAlert() {
     if (arFemale) u.voice = arFemale;
     window.speechSynthesis.speak(u);
   } catch (_) {}
+  /* Android vibration — iOS blocks vibration API entirely */
+  try { navigator.vibrate?.([200, 80, 200]); } catch (_) {}
 }
 
 function playNotifSound(isTask = false) {
