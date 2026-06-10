@@ -31,24 +31,37 @@ function fmtDay(iso) {
   return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
 }
 
+/* Singleton AudioContext — created once, unlocked on first user tap */
+let _audioCtx = null;
+function getAudioCtx() {
+  if (typeof window === 'undefined') return null;
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return _audioCtx;
+}
+
 function playNotifSound(isTask = false) {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.type = 'sine';
-    if (isTask) {
-      o.frequency.setValueAtTime(660, ctx.currentTime);
-      o.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
-    } else {
-      o.frequency.setValueAtTime(880, ctx.currentTime);
-    }
-    g.gain.setValueAtTime(0.25, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
-    o.start(ctx.currentTime);
-    o.stop(ctx.currentTime + 0.45);
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    const play = () => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.type = 'sine';
+      if (isTask) {
+        o.frequency.setValueAtTime(660, ctx.currentTime);
+        o.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+      } else {
+        o.frequency.setValueAtTime(880, ctx.currentTime);
+      }
+      g.gain.setValueAtTime(0.25, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+      o.start(ctx.currentTime);
+      o.stop(ctx.currentTime + 0.45);
+    };
+    if (ctx.state === 'suspended') ctx.resume().then(play).catch(() => {});
+    else play();
   } catch (_) {}
 }
 
@@ -191,13 +204,24 @@ export default function TeamChat({ user }) {
   const myAvatar = user?.user_metadata?.avatar_url ?? null;
   const allowed  = ALLOWED.includes(role);
 
-  /* ── mobile detection + mount flag ── */
+  /* ── mobile detection + mount flag + audio unlock ── */
   useEffect(() => {
     setMounted(true);
     const check = () => setIsMobile(window.innerWidth < 640);
     check();
     window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    /* iOS/Android require AudioContext to be resumed inside a user gesture */
+    const unlock = () => {
+      const ctx = getAudioCtx();
+      if (ctx?.state === 'suspended') ctx.resume().catch(() => {});
+    };
+    document.addEventListener('touchstart', unlock, { once: true, passive: true });
+    document.addEventListener('click',      unlock, { once: true });
+    return () => {
+      window.removeEventListener('resize', check);
+      document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('click',      unlock);
+    };
   }, []);
 
   /* ── initial data load — guard with myId ── */
