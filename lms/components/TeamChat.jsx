@@ -32,11 +32,52 @@ function fmtDay(iso) {
 }
 
 /* Singleton AudioContext — created once, unlocked on first user tap */
-let _audioCtx = null;
+let _audioCtx  = null;
+let _taskBuf   = null; /* pre-synthesised chime AudioBuffer */
+
 function getAudioCtx() {
   if (typeof window === 'undefined') return null;
   if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return _audioCtx;
+}
+
+/* Synthesise a 3-note ascending chime (D5→G5→B5) via OfflineAudioContext.
+   Result stored in _taskBuf and played later without needing a user gesture,
+   because it goes through the already-unlocked AudioContext. Works on iOS. */
+async function preloadTaskChime() {
+  try {
+    if (_taskBuf) return;
+    const sr  = 22050;
+    const off = new OfflineAudioContext(1, Math.ceil(sr * 0.95), sr);
+    const notes = [
+      { freq: 587, start: 0,    dur: 0.38 },  /* D5 */
+      { freq: 784, start: 0.24, dur: 0.38 },  /* G5 */
+      { freq: 988, start: 0.48, dur: 0.47 },  /* B5 */
+    ];
+    for (const n of notes) {
+      const o = off.createOscillator();
+      const g = off.createGain();
+      o.connect(g); g.connect(off.destination);
+      o.type = 'triangle';
+      o.frequency.value = n.freq;
+      g.gain.setValueAtTime(0, n.start);
+      g.gain.linearRampToValueAtTime(0.28, n.start + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.001, n.start + n.dur);
+      o.start(n.start); o.stop(n.start + n.dur);
+    }
+    _taskBuf = await off.startRendering();
+  } catch (_) {}
+}
+
+function playTaskChime() {
+  try {
+    const ctx = getAudioCtx();
+    if (!ctx || !_taskBuf) return;
+    const src = ctx.createBufferSource();
+    src.buffer = _taskBuf;
+    src.connect(ctx.destination);
+    src.start(0);
+  } catch (_) {}
 }
 
 /* Preload voices list (async on some browsers) */
@@ -48,6 +89,9 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
 }
 
 function speakTaskAlert() {
+  /* Chime via AudioBuffer — works on iOS/Android after first-tap unlock */
+  playTaskChime();
+  /* Speech synthesis — works on desktop (Chrome/Firefox/Safari/Edge) */
   try {
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
@@ -55,14 +99,13 @@ function speakTaskAlert() {
     u.lang  = 'ar-SA';
     u.rate  = 1.05;
     u.pitch = 1.25;
-    /* prefer Arabic female voice (Zariyah on iOS/macOS, Hana on Windows) */
     const arFemale =
       _voices.find(v => v.lang.startsWith('ar') && /zar|reem|hana|female/i.test(v.name)) ||
       _voices.find(v => v.lang.startsWith('ar'));
     if (arFemale) u.voice = arFemale;
     window.speechSynthesis.speak(u);
   } catch (_) {}
-  /* Android vibration — iOS blocks vibration API entirely */
+  /* Haptic feedback on Android */
   try { navigator.vibrate?.([200, 80, 200]); } catch (_) {}
 }
 
@@ -238,10 +281,12 @@ export default function TeamChat({ user }) {
     const check = () => setIsMobile(window.innerWidth < 640);
     check();
     window.addEventListener('resize', check);
-    /* iOS/Android require AudioContext to be resumed inside a user gesture */
+    /* iOS/Android require AudioContext to be resumed inside a user gesture.
+       We also pre-synthesise the task chime here so _taskBuf is ready. */
     const unlock = () => {
       const ctx = getAudioCtx();
-      if (ctx?.state === 'suspended') ctx.resume().catch(() => {});
+      const ready = ctx?.state === 'suspended' ? ctx.resume() : Promise.resolve();
+      ready.then(() => preloadTaskChime()).catch(() => {});
     };
     document.addEventListener('touchstart', unlock, { once: true, passive: true });
     document.addEventListener('click',      unlock, { once: true });
