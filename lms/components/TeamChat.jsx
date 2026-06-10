@@ -594,7 +594,9 @@ export default function TeamChat({ user }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: '.9rem', color: '#1e293b' }}>فريق العمل</div>
                   <div style={{ fontSize: '.73rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {lastGroupMsg ? `${lastGroupMsg.sender_name.split(' ')[0]}: ${lastGroupMsg.content.slice(0, 32)}${lastGroupMsg.content.length > 32 ? '…' : ''}` : 'لا توجد رسائل بعد'}
+                    {lastGroupMsg
+                      ? `${lastGroupMsg.is_task ? (lastGroupMsg.task_status === 'completed' ? '✅ ' : '🛠️ ') : ''}${lastGroupMsg.sender_name.split(' ')[0]}: ${lastGroupMsg.content.slice(0, 28)}${lastGroupMsg.content.length > 28 ? '…' : ''}`
+                      : 'لا توجد رسائل بعد'}
                   </div>
                 </div>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="#cbd5e1" style={{ transform: 'scaleX(-1)', flexShrink: 0 }}><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
@@ -631,7 +633,7 @@ export default function TeamChat({ user }) {
                       </div>
                       <div style={{ fontSize: '.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: unread > 0 ? '#1e293b' : '#64748b', fontWeight: unread > 0 ? 600 : 400 }}>
                         {lastMsg
-                          ? `${lastMsg.sender_id === myId ? 'أنت: ' : ''}${lastMsg.content.slice(0, 28)}${lastMsg.content.length > 28 ? '…' : ''}`
+                          ? `${lastMsg.is_task ? (lastMsg.task_status === 'completed' ? '✅ ' : '🛠️ ') : ''}${lastMsg.sender_id === myId ? 'أنت: ' : ''}${lastMsg.content.slice(0, 25)}${lastMsg.content.length > 25 ? '…' : ''}`
                           : <span style={{ color: online ? '#22c55e' : '#94a3b8' }}>{online ? '● متصل الآن' : '○ غير متصل'}</span>
                         }
                       </div>
