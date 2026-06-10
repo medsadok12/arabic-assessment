@@ -95,7 +95,9 @@ function buildItems(msgs) {
   return out;
 }
 
-function MsgList({ items, myId, isGroup, currentChat, onCompleteTask }) {
+function MsgList({ items, myId, isGroup, currentChat, onCompleteTask, onReply, isMobile }) {
+  const [hoveredId, setHoveredId] = useState(null);
+
   if (items.length === 0) return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: 8, padding: 24 }}>
       <span style={{ fontSize: '2rem' }}>{isGroup ? '👥' : '🔒'}</span>
@@ -134,8 +136,15 @@ function MsgList({ items, myId, isGroup, currentChat, onCompleteTask }) {
       taskBorder  = 'none';
     }
 
+    const showReplyBtn = !item._opt && (isMobile ? true : hoveredId === item.id);
+
     return (
-      <div key={item.id} style={{ display: 'flex', flexDirection: isMe ? 'row' : 'row-reverse', gap: 6, alignItems: 'flex-end', marginTop: samePrev ? 2 : 8 }}>
+      <div
+        key={item.id}
+        style={{ display: 'flex', flexDirection: isMe ? 'row' : 'row-reverse', gap: 6, alignItems: 'flex-end', marginTop: samePrev ? 2 : 8 }}
+        onMouseEnter={!isMobile ? () => setHoveredId(item.id) : undefined}
+        onMouseLeave={!isMobile ? () => setHoveredId(null) : undefined}
+      >
         <div style={{ width: 26, flexShrink: 0 }}>
           {!sameNext && !isMe && <Avatar name={item.sender_name} url={item.sender_avatar} role={item.sender_role} size={24} />}
         </div>
@@ -147,6 +156,21 @@ function MsgList({ items, myId, isGroup, currentChat, onCompleteTask }) {
             </div>
           )}
           <div style={{ background: bubbleBg, color: bubbleColor, padding: isTask ? '9px 12px 7px' : '8px 12px', borderRadius: radius, border: taskBorder, fontSize: '.85rem', lineHeight: 1.55, wordBreak: 'break-word', boxShadow: isTask ? (taskDone ? '0 2px 8px rgba(34,197,94,.15)' : '0 2px 8px rgba(245,158,11,.18)') : (isMe ? '0 2px 8px rgba(26,124,64,.2)' : '0 1px 3px rgba(0,0,0,.05)'), whiteSpace: 'pre-wrap', opacity: item._opt ? 0.72 : 1, transition: 'all .2s' }}>
+            {item.reply_to_content && (
+              <div style={{
+                borderRight: `3px solid ${isMe ? 'rgba(255,255,255,.5)' : '#1a7c40'}`,
+                paddingRight: 8, marginBottom: 6,
+                background: isMe ? 'rgba(0,0,0,.15)' : 'rgba(26,124,64,.07)',
+                borderRadius: '0 6px 6px 0', padding: '4px 8px 4px 6px',
+              }}>
+                <div style={{ fontSize: '.63rem', fontWeight: 800, color: isMe ? 'rgba(255,255,255,.9)' : '#1a7c40', marginBottom: 1 }}>
+                  {item.reply_to_sender?.split(' ')[0]}
+                </div>
+                <div style={{ fontSize: '.75rem', color: isMe ? 'rgba(255,255,255,.75)' : '#475569', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                  {item.reply_to_content}
+                </div>
+              </div>
+            )}
             {isTask && (
               <div style={{ fontSize: '.6rem', fontWeight: 800, marginBottom: 5, display: 'flex', alignItems: 'center', gap: 4, color: taskDone ? '#16a34a' : '#b45309' }}>
                 <span>{taskDone ? '✅ تم الإنجاز' : '🛠️ مهمة'}</span>
@@ -167,6 +191,20 @@ function MsgList({ items, myId, isGroup, currentChat, onCompleteTask }) {
               <div style={{ marginTop: 6, fontSize: '.68rem', color: taskDone ? '#16a34a' : '#b45309', fontWeight: 600 }}>تم الإنجاز ✔</div>
             )}
           </div>
+          {!item._opt && (
+            <button
+              onClick={() => onReply?.({ id: item.id, content: item.content, senderName: item.sender_name })}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: '.78rem', color: '#94a3b8', padding: '1px 4px',
+                borderRadius: 6, lineHeight: 1,
+                opacity: isMobile ? 0.4 : (showReplyBtn ? 1 : 0),
+                transition: 'opacity .15s',
+                pointerEvents: showReplyBtn ? 'auto' : 'none',
+              }}
+              title="رد"
+            >↩</button>
+          )}
           {!sameNext && (
             <span style={{ fontSize: '.59rem', color: '#94a3b8', padding: '0 3px' }}>
               {item._opt ? '⏳' : fmtTime(item.created_at)}
@@ -206,6 +244,7 @@ export default function TeamChat({ user }) {
   const [taskMode,      setTaskMode]      = useState(false);
   const [toast,         setToast]         = useState(null);
   const [audioReady,    setAudioReady]    = useState(false);
+  const [replyTo,       setReplyTo]       = useState(null); // { id, content, senderName }
 
   const bottomRef      = useRef(null);
   const inputRef       = useRef(null);
@@ -497,7 +536,7 @@ export default function TeamChat({ user }) {
     }
   }
 
-  function goBack() { setView('list'); setChat(null); setText(''); setConfirmClear(false); }
+  function goBack() { setView('list'); setChat(null); setText(''); setConfirmClear(false); setReplyTo(null); }
 
   async function clearChat() {
     if (!chat) return;
@@ -542,17 +581,20 @@ export default function TeamChat({ user }) {
     setText('');
     const isTaskMsg = taskMode;
     setTaskMode(false);
+    const replyData = replyTo ? { reply_to_id: replyTo.id, reply_to_content: replyTo.content, reply_to_sender: replyTo.senderName } : {};
+    setReplyTo(null);
 
     const opt = {
       id: `opt_${Date.now()}`, sender_id: myId,
       sender_name: myName, sender_role: role, sender_avatar: myAvatar,
       content, created_at: new Date().toISOString(), _opt: true,
       is_task: isTaskMsg, task_status: 'pending',
+      ...replyData,
     };
 
     if (chat.type === 'group') {
       setGroupMsgs(prev => [...prev, opt]);
-      const res  = await fetch('/api/team-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, is_task: isTaskMsg }) });
+      const res  = await fetch('/api/team-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, is_task: isTaskMsg, ...replyData }) });
       const { message } = await res.json();
       if (message) {
         setGroupMsgs(prev => mergeDedup(prev, [message]));
@@ -560,7 +602,7 @@ export default function TeamChat({ user }) {
       }
     } else {
       setDmMsgs(prev => ({ ...prev, [chat.key]: [...(prev[chat.key] ?? []), opt] }));
-      const res  = await fetch('/api/team-chat/dm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, to: chat.userId, is_task: isTaskMsg }) });
+      const res  = await fetch('/api/team-chat/dm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, to: chat.userId, is_task: isTaskMsg, ...replyData }) });
       const { message } = await res.json();
       if (message) {
         setDmMsgs(prev => ({ ...prev, [chat.key]: mergeDedup(prev[chat.key] ?? [], [message]) }));
@@ -758,12 +800,21 @@ export default function TeamChat({ user }) {
               <div style={{ flex: 1, overflowY: 'auto', padding: '10px 10px 4px', display: 'flex', flexDirection: 'column', direction: 'rtl' }}>
                 {loading
                   ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '.88rem' }}>⏳ تحميل...</div>
-                  : <MsgList items={buildItems(currentMsgs)} myId={myId} isGroup={chat?.type === 'group'} currentChat={chat} onCompleteTask={completeTask} />
+                  : <MsgList items={buildItems(currentMsgs)} myId={myId} isGroup={chat?.type === 'group'} currentChat={chat} onCompleteTask={completeTask} onReply={msg => { setReplyTo(msg); inputRef.current?.focus(); }} isMobile={isMobile} />
                 }
                 <div ref={bottomRef} style={{ height: 4 }} />
               </div>
 
               <div style={{ padding: '8px 10px 10px', borderTop: '1px solid #f0f4f8', display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
+                {replyTo && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', direction: 'rtl' }}>
+                    <div style={{ borderRight: '3px solid #1a7c40', paddingRight: 8, flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '.65rem', fontWeight: 800, color: '#1a7c40' }}>↩ رداً على: {replyTo.senderName?.split(' ')[0]}</div>
+                      <div style={{ fontSize: '.74rem', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{replyTo.content.slice(0, 60)}{replyTo.content.length > 60 ? '…' : ''}</div>
+                    </div>
+                    <button onClick={() => setReplyTo(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1rem', padding: '2px 4px', flexShrink: 0 }}>✕</button>
+                  </div>
+                )}
                 {taskMode && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', fontSize: '.72rem', fontWeight: 700, color: '#b45309' }}>
                     🛠️ وضع المهمة — ستُرسل هذه الرسالة كمهمة قابلة للإنجاز
