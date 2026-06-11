@@ -100,10 +100,9 @@ export async function POST(req) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Send email to each student
-  const joinUrl = meet?.meetLink || `https://meet.jit.si/${roomName}`;
+  // Send notification email to each student (no join link)
   for (const s of studentList.filter(x => x.email)) {
-    sendSessionEmail({ to: s.email, studentName: s.name, teacherName, sessionDate, startTime, durationMinutes, subject, joinUrl }).catch(() => {});
+    sendSessionEmail({ to: s.email, studentName: s.name, teacherName, sessionDate, startTime, durationMinutes, subject }).catch(() => {});
   }
 
   await notify('session', '📅 حصة جديدة مجدولة',

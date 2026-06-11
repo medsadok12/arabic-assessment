@@ -104,8 +104,8 @@ export async function sendRejectionEmail({ to, candidateName }) {
   if (error) throw new Error(error.message);
 }
 
-export async function sendSessionEmail({ to, studentName, teacherName, sessionDate, startTime, durationMinutes, subject, joinUrl, reminderType }) {
-  const is24h   = reminderType === '24h';
+export async function sendSessionEmail({ to, studentName, teacherName, sessionDate, startTime, durationMinutes, subject, reminderType }) {
+  const is24h    = reminderType === '24h';
   const subtitle = is24h ? 'تذكير: حصتك غداً' : 'موعد حصتك القادمة';
   const intro    = is24h
     ? `تذكيرٌ بأن لديك حصة <strong>غداً</strong>، <strong>${studentName}</strong>. إليك التفاصيل:`
@@ -130,10 +130,7 @@ export async function sendSessionEmail({ to, studentName, teacherName, sessionDa
           <div class="info-row"><span class="info-lbl">⏰ الوقت</span><span>${startTime}</span></div>
           <div class="info-row"><span class="info-lbl">⏱️ المدة</span><span>${durationMinutes} دقيقة</span></div>
         </div>
-        <div class="actions">
-          <a href="${joinUrl}" class="btn btn-green">🎥 &nbsp; انضم للحصة</a>
-        </div>
-        <p class="note">احفظ هذا الرابط للدخول للحصة في الوقت المحدد. لا يحتاج تثبيت أي تطبيق — يعمل مباشرة في المتصفح.</p>
+        <p class="note">سيتواصل معك المعلم بخصوص رابط الحصة. نتمنى لك حصة مثمرة!</p>
       </div>
       <div class="ftr">أكاديمية عارم للتعليم — جميع الحقوق محفوظة</div>
     </div>

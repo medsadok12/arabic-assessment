@@ -48,7 +48,6 @@ export async function GET(req) {
         startTime:       s.start_time,
         durationMinutes: s.duration_minutes,
         subject:         s.subject,
-        joinUrl:         s.meet_link || `https://meet.jit.si/${s.room_name}`,
         reminderType:    '24h',
       });
       await admin.from('sessions').update({ reminder_24h_sent: true }).eq('id', s.id);

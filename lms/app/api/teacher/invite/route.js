@@ -50,7 +50,6 @@ export async function POST(req) {
     await sendSessionEmail({
       to: studentEmail, studentName: studentName || 'الطالب', teacherName,
       sessionDate, startTime, durationMinutes, subject,
-      joinUrl: meetLink || `https://meet.jit.si/${roomName}`,
     });
     return NextResponse.json({ success: true });
   } catch (e) {
