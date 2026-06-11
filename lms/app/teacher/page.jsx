@@ -6,6 +6,7 @@ import Navbar from '../../components/Navbar';
 import TeacherSpace from '../../components/TeacherSpace';
 import LifeSceneSimulator from '../../components/LifeSceneSimulator';
 import NotificationBell from '../../components/NotificationBell';
+import StudentProfilePanel from '../../components/StudentProfilePanel';
 
 const TIME_SLOTS = Array.from({ length: 29 }, (_, i) => {
   const mins = 7 * 60 + i * 30;
@@ -72,6 +73,8 @@ export default function TeacherPage() {
   const [completeSaving, setCompleteSaving] = useState(false);
   // Calendar week offset
   const [weekOffset,   setWeekOffset]   = useState(0);
+  // Student profile panel
+  const [profileStudent, setProfileStudent] = useState(null);
   // Homework state
   const [homework,     setHomework]     = useState([]);
   const [hwForm,       setHwForm]       = useState({ title:'', description:'', student_email:'', student_name:'', due_date:'' });
@@ -569,8 +572,8 @@ export default function TeacherPage() {
                       {students.map((st, i) => {
                         const latest = st.assessments?.[0];
                         return (
-                          <tr key={i}>
-                            <td style={{ fontWeight:700 }}>{st.name}</td>
+                          <tr key={i} style={{ cursor:'pointer' }} onClick={() => setProfileStudent(st)}>
+                            <td style={{ fontWeight:700, color:'var(--primary)', textDecoration:'underline dotted' }}>{st.name}</td>
                             <td style={{ direction:'ltr', textAlign:'right', color:'var(--muted)', fontSize:'.82rem' }}>
                               {st.email ? <a href={`mailto:${st.email}`} style={{ color:'var(--accent)' }}>{st.email}</a> : '—'}
                             </td>
@@ -816,6 +819,14 @@ export default function TeacherPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Student Profile Panel ── */}
+      {profileStudent && (
+        <StudentProfilePanel
+          student={profileStudent}
+          onClose={() => setProfileStudent(null)}
+        />
       )}
 
       {showModal && (
