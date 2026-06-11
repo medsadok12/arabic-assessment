@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Navbar from './Navbar';
 import ParentPanel from './ParentPanel';
@@ -21,140 +21,204 @@ function HwToggle({ id, status }) {
         setSt(next);
       }}
       style={{
-        padding: '5px 12px', borderRadius: 20, border: 'none',
-        background: st === 'done' ? '#16a34a' : '#e2e8f0',
-        color: st === 'done' ? '#fff' : '#64748b',
-        fontWeight: 700, fontSize: '.78rem', cursor: 'pointer',
+        padding: '6px 14px', borderRadius: 20, border: 'none',
+        background: st === 'done' ? '#16a34a' : '#f1f5f9',
+        color: st === 'done' ? '#fff' : '#475569',
+        fontWeight: 700, fontSize: '.82rem', cursor: 'pointer',
         fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap',
+        transition: '.2s',
       }}
-    >{st === 'done' ? '✅ تم' : '○ إنجاز'}</button>
+    >{st === 'done' ? '✅ أنجزته' : '○ إنجاز'}</button>
   );
 }
 
-export default function DashboardContent({ user, assessments, role, isStudent, upcomingSessions, displayName, studentGender, attendancePct, attendedCount, attendanceTotal, homework = [], sessionNotes = [] }) {
-  const { t, lang } = useLanguage();
+const ACTION_CARDS = [
+  { icon: '📅', title: 'تقويمي',       desc: 'حصصي القادمة والمنتهية', href: '/dashboard/calendar',  grad: 'linear-gradient(135deg,#185FA5,#1d4ed8)' },
+  { icon: '📖', title: 'بنك الكلمات',  desc: 'تعلّم كلمات جديدة يومياً', href: '/dashboard/lexicon',   grad: 'linear-gradient(135deg,#7c3aed,#a855f7)' },
+  { icon: '📈', title: 'تقاريري',      desc: 'تابع تطوّرك ونتائجك',     href: '/dashboard/progress',  grad: 'linear-gradient(135deg,#059669,#10b981)' },
+  { icon: '👤', title: 'ملفي الشخصي',  desc: 'تعديل اسمك وكلمة مرورك',  href: '/dashboard/profile',   grad: 'linear-gradient(135deg,#d97706,#f59e0b)' },
+];
 
+export default function DashboardContent({
+  user, assessments, role, isStudent,
+  upcomingSessions, displayName, studentGender,
+  attendancePct, attendedCount, attendanceTotal,
+  homework = [], sessionNotes = [],
+}) {
+  const { t, lang } = useLanguage();
   const locale = 'en-GB';
 
-  // Compute stats
-  const avgScore = assessments?.length
-    ? Math.round(assessments.reduce((s, a) => s + (a.score ?? 0), 0) / assessments.length)
-    : null;
+  const nextSession   = upcomingSessions[0] ?? null;
+  const pendingHw     = homework.filter(h => h.status !== 'done').length;
+  const today         = new Date().toISOString().slice(0, 10);
 
-  const stats = isStudent
-    ? [
-        { icon: '📊', val: assessments?.length ?? 0,                         lbl: t('dashboard.myAssessments') },
-        { icon: '✅', val: assessments?.length ? t('dashboard.completed') : '—', lbl: t('dashboard.assessmentStatus') },
-        ...(attendancePct != null ? [{ icon: '🏫', val: `${attendancePct}%`, lbl: lang === 'ar' ? `الحضور (${attendedCount}/${attendanceTotal})` : `Attendance (${attendedCount}/${attendanceTotal})` }] : []),
-      ]
-    : [
-        { icon: '📊', val: assessments?.length ?? 0,                              lbl: t('dashboard.myAssessments') },
-        { icon: '⭐', val: avgScore != null ? avgScore + '%' : '—',               lbl: t('dashboard.avgScore') },
-        { icon: '🏅', val: assessments?.[0]?.level ? `${t('dashboard.level')} ${assessments[0].level}` : '—', lbl: t('dashboard.lastLevel') },
-      ];
-
-  const actions = [
-    { icon: '📅', title: t('dashboard.myCalendar'),  desc: t('dashboard.calendarDesc'),  href: '/dashboard/calendar' },
-    { icon: '📖', title: t('dashboard.wordBank'),    desc: t('dashboard.wordBankDesc'),  href: '/dashboard/lexicon' },
-    { icon: '📈', title: t('dashboard.progress'),    desc: t('dashboard.progressDesc'),  href: '/dashboard/progress' },
-    { icon: '👤', title: t('dashboard.myProfile'),   desc: t('dashboard.profileDesc'),   href: '/dashboard/profile' },
-  ];
-
-  // Upcoming session countdown
-  const nextSession = upcomingSessions[0] ?? null;
-  let timeLabel = '';
-  let joinable  = false;
+  let timeLabel = '', joinable = false;
   if (nextSession) {
-    const now       = new Date();
-    const sessionDT = new Date(`${nextSession.session_date}T${nextSession.start_time}`);
-    const diffMins  = Math.round((sessionDT - now) / 60000);
+    const now      = new Date();
+    const dt       = new Date(`${nextSession.session_date}T${nextSession.start_time}`);
+    const diffMins = Math.round((dt - now) / 60000);
     joinable = diffMins <= 30;
-    if (diffMins <= 0)        timeLabel = t('dashboard.liveSoon');
-    else if (diffMins < 60)   timeLabel = `${t('dashboard.startingIn')} ${diffMins} ${t('dashboard.minutes')}`;
-    else if (diffMins < 1440) timeLabel = `${t('dashboard.startingIn')} ${Math.floor(diffMins / 60)} ${t('dashboard.hours')}`;
+    if (diffMins <= 0)        timeLabel = '🔴 الحصة تبدأ الآن';
+    else if (diffMins < 60)   timeLabel = `⏱️ تبدأ بعد ${diffMins} دقيقة`;
+    else if (diffMins < 1440) timeLabel = `⏱️ تبدأ بعد ${Math.floor(diffMins / 60)} ساعة`;
     else {
       const d = Math.floor(diffMins / 1440);
-      timeLabel = `${t('dashboard.startingIn')} ${d} ${d === 1 ? t('dashboard.day') : t('dashboard.days')}`;
+      timeLabel = `📆 بعد ${d} ${d === 1 ? 'يوم' : 'أيام'}`;
     }
   }
 
   return (
     <>
+      <style>{`
+        .db-wrap { max-width:820px; margin:0 auto; padding:28px 18px 60px; direction:rtl; }
+        .db-hello { font-size:1.55rem; font-weight:900; color:var(--primary); margin-bottom:6px; }
+        .db-sub   { font-size:.9rem; color:var(--muted); margin-bottom:28px; }
+
+        /* Stats row */
+        .db-stats { display:flex; gap:12px; margin-bottom:28px; flex-wrap:wrap; }
+        .db-stat  { flex:1; min-width:110px; background:#fff; border:1.5px solid var(--border);
+                    border-radius:14px; padding:14px 16px; text-align:center; }
+        .db-stat-v { font-size:1.55rem; font-weight:900; color:var(--primary); line-height:1; }
+        .db-stat-l { font-size:.75rem; color:var(--muted); margin-top:4px; font-weight:600; }
+        .db-stat-i { font-size:1.4rem; margin-bottom:4px; }
+
+        /* Section */
+        .db-sec   { margin-bottom:28px; }
+        .db-sec-h { font-size:1rem; font-weight:800; color:#1e293b; margin-bottom:12px;
+                    display:flex; align-items:center; gap:8px; }
+        .db-sec-h::after { content:''; flex:1; height:1.5px; background:var(--border); }
+
+        /* Next session */
+        .db-session { border-radius:18px; padding:20px 22px; color:#fff;
+                      display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+                      box-shadow:0 6px 28px rgba(24,95,165,.2); margin-bottom:28px; }
+        .db-session-body { flex:1; min-width:180px; }
+        .db-session-badge { display:inline-block; background:rgba(255,255,255,.22);
+                            padding:4px 12px; border-radius:20px; font-size:.8rem; font-weight:700; margin-top:8px; }
+        .db-session-btn { background:#fff; border-radius:12px; padding:11px 20px;
+                          font-weight:800; font-size:.9rem; text-decoration:none;
+                          display:inline-flex; align-items:center; gap:7px; white-space:nowrap;
+                          transition:.2s; flex-shrink:0; }
+        .db-session-btn.dim { background:rgba(255,255,255,.18); color:#fff;
+                              border:1.5px solid rgba(255,255,255,.4); }
+
+        /* Homework cards */
+        .hw-card { background:#fff; border-radius:14px; border:1.5px solid var(--border);
+                   padding:14px 16px; display:flex; align-items:flex-start; gap:12px; }
+        .hw-card.done   { border-color:#6ee7b7; background:#f0fdf4; }
+        .hw-card.overdue{ border-color:#fca5a5; background:#fff5f5; }
+
+        /* Notes */
+        .note-card { background:#fffbeb; border-radius:14px; border:1.5px solid #fcd34d;
+                     padding:16px 18px; }
+        .note-meta { display:flex; gap:12px; flex-wrap:wrap; font-size:.8rem;
+                     color:#92400e; margin-bottom:10px; font-weight:700; }
+        .note-text { font-size:.92rem; color:#451a03; line-height:1.8;
+                     border-right:3px solid #f59e0b; padding-right:12px; }
+
+        /* Action cards */
+        .db-actions { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+        .db-action  { border-radius:16px; padding:20px 18px; color:#fff; text-decoration:none;
+                      display:flex; align-items:center; gap:14px;
+                      transition:transform .18s, box-shadow .18s; }
+        .db-action:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,.15); }
+        .db-action-icon { font-size:2rem; line-height:1; flex-shrink:0; }
+        .db-action-title{ font-weight:800; font-size:.97rem; margin-bottom:3px; }
+        .db-action-desc { font-size:.78rem; opacity:.85; }
+        @media(max-width:500px){ .db-actions{grid-template-columns:1fr;} }
+      `}</style>
+
       <Navbar user={user} />
       <main className="page-wrap">
-        <div className="container">
-          <h1 className="dash-welcome">{t('dashboard.greeting')}، {displayName} 👋</h1>
+        <div className="db-wrap">
 
-          {role === 'super_admin' && (
-            <div style={{ marginBottom: 24 }}>
-              <Link href="/bogga" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                ⚙️ {t('nav.admin')}
-              </Link>
+          {/* ── Header ── */}
+          <div className="db-hello">أهلاً، {displayName} 👋</div>
+          <div className="db-sub">
+            {pendingHw > 0
+              ? `لديك ${pendingHw} واجب${pendingHw === 1 ? '' : 'ات'} معلّقة`
+              : nextSession
+                ? 'كل شيء على ما يرام — حصتك القادمة في الأسفل'
+                : 'مرحباً بك في أكاديمية عارم'}
+          </div>
+
+          {/* ── Stats ── */}
+          <div className="db-stats">
+            {attendancePct != null && (
+              <div className="db-stat">
+                <div className="db-stat-i">🏫</div>
+                <div className="db-stat-v" style={{ color: attendancePct >= 80 ? '#059669' : attendancePct >= 60 ? '#d97706' : '#dc2626' }}>
+                  {attendancePct}%
+                </div>
+                <div className="db-stat-l">الحضور ({attendedCount}/{attendanceTotal})</div>
+              </div>
+            )}
+            <div className="db-stat">
+              <div className="db-stat-i">📝</div>
+              <div className="db-stat-v" style={{ color: pendingHw > 0 ? '#d97706' : '#059669' }}>
+                {pendingHw}
+              </div>
+              <div className="db-stat-l">واجبات معلّقة</div>
             </div>
-          )}
+            <div className="db-stat">
+              <div className="db-stat-i">📊</div>
+              <div className="db-stat-v">{assessments?.length ?? 0}</div>
+              <div className="db-stat-l">تقييماتي</div>
+            </div>
+            {upcomingSessions.length > 0 && (
+              <div className="db-stat">
+                <div className="db-stat-i">📅</div>
+                <div className="db-stat-v">{upcomingSessions.length}</div>
+                <div className="db-stat-l">حصص قادمة</div>
+              </div>
+            )}
+          </div>
 
-          {/* Next session card */}
+          {/* ── Next session ── */}
           {nextSession && (
-            <div style={{
-              background: joinable
-                ? 'linear-gradient(135deg, #1a7c40, #15803d)'
-                : 'linear-gradient(135deg, #185FA5, #1d4ed8)',
-              borderRadius: 18, padding: '22px 26px', marginBottom: 28,
-              color: '#fff', display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap',
-              boxShadow: '0 6px 24px rgba(24,95,165,.22)',
-            }}>
-              <div style={{ fontSize: '2.6rem', lineHeight: 1 }}>📅</div>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ fontSize: '.8rem', opacity: .8, marginBottom: 4, fontWeight: 600 }}>
-                  {t('dashboard.upcomingSession')}
+            <div className="db-session" style={{ background: joinable ? 'linear-gradient(135deg,#1a7c40,#15803d)' : 'linear-gradient(135deg,#185FA5,#1d4ed8)' }}>
+              <div style={{ fontSize: '2.8rem', lineHeight: 1 }}>🎥</div>
+              <div className="db-session-body">
+                <div style={{ fontSize: '.78rem', opacity: .8, fontWeight: 600, marginBottom: 3 }}>الحصة القادمة</div>
+                <div style={{ fontWeight: 900, fontSize: '1.1rem' }}>
+                  {nextSession.subject || 'حصة عامة'}
                 </div>
-                <div style={{ fontWeight: 800, fontSize: '1.12rem', marginBottom: 8 }}>
-                  {nextSession.subject || t('dashboard.general')}
-                </div>
-                <div style={{ fontSize: '.85rem', opacity: .9, display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
+                <div style={{ fontSize: '.83rem', opacity: .9, display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 5 }}>
                   <span>👤 {nextSession.teacher_name}</span>
                   <span>📅 {new Date(nextSession.session_date).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
                   <span>⏰ {nextSession.start_time?.slice(0, 5)}</span>
-                  {nextSession.duration_minutes && <span>⏱️ {nextSession.duration_minutes} {lang === 'ar' ? 'دقيقة' : 'min'}</span>}
                 </div>
-                <span style={{ display: 'inline-block', background: 'rgba(255,255,255,.2)', padding: '4px 12px', borderRadius: 20, fontSize: '.8rem', fontWeight: 700 }}>
-                  {timeLabel}
-                </span>
+                <span className="db-session-badge">{timeLabel}</span>
               </div>
               <a
                 href={nextSession.meet_link || `https://meet.jit.si/${nextSession.room_name}`}
                 target="_blank" rel="noopener noreferrer"
-                style={{
-                  background: joinable ? '#fff' : 'rgba(255,255,255,.18)',
-                  color: joinable ? '#15803d' : '#fff',
-                  borderRadius: 12, padding: '12px 22px', fontWeight: 800, fontSize: '.92rem',
-                  textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 7,
-                  border: joinable ? 'none' : '1.5px solid rgba(255,255,255,.4)', whiteSpace: 'nowrap',
-                }}>
-                🎥 {joinable ? t('dashboard.joinSession') : lang === 'ar' ? 'رابط الحصة' : 'Session Link'}
+                className={`db-session-btn${joinable ? '' : ' dim'}`}
+                style={{ color: joinable ? '#15803d' : '#fff' }}
+              >
+                🎥 {joinable ? 'انضمّ الآن' : 'رابط الحصة'}
               </a>
             </div>
           )}
 
-          {/* Other upcoming sessions */}
+          {/* ── Other upcoming sessions ── */}
           {upcomingSessions.length > 1 && (
-            <div className="dash-section" style={{ marginTop: 0, marginBottom: 24 }}>
-              <div className="dash-section-title">📋 {lang === 'ar' ? 'حصص أخرى قادمة' : 'Other Upcoming Sessions'}</div>
+            <div className="db-sec">
+              <div className="db-sec-h">📋 حصص أخرى قادمة</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {upcomingSessions.slice(1).map(s => (
-                  <div key={s.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', flexWrap: 'wrap' }}>
+                  <div key={s.id} style={{ background: '#fff', borderRadius: 12, border: '1.5px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 160 }}>
-                      <div style={{ fontWeight: 700, fontSize: '.9rem' }}>{s.subject || t('dashboard.general')}</div>
+                      <div style={{ fontWeight: 700, fontSize: '.9rem' }}>{s.subject || 'حصة عامة'}</div>
                       <div style={{ fontSize: '.8rem', color: 'var(--muted)', display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 2 }}>
                         <span>👤 {s.teacher_name}</span>
                         <span>📅 {new Date(s.session_date).toLocaleDateString(locale)}</span>
                         <span>⏰ {s.start_time?.slice(0, 5)}</span>
                       </div>
                     </div>
-                    <a href={s.meet_link || `https://meet.jit.si/${s.room_name}`}
-                      target="_blank" rel="noopener noreferrer"
+                    <a href={s.meet_link || `https://meet.jit.si/${s.room_name}`} target="_blank" rel="noopener noreferrer"
                       className="btn btn-outline btn-sm" style={{ whiteSpace: 'nowrap' }}>
-                      🎥 {lang === 'ar' ? 'رابط الحصة' : 'Session Link'}
+                      🎥 رابط الحصة
                     </a>
                   </div>
                 ))}
@@ -162,26 +226,36 @@ export default function DashboardContent({ user, assessments, role, isStudent, u
             </div>
           )}
 
-          {/* Homework */}
+          {/* ── Homework ── */}
           {homework.length > 0 && (
-            <div className="dash-section" style={{ marginBottom: 24 }}>
-              <div className="dash-section-title">📝 {lang === 'ar' ? 'واجباتي' : 'My Homework'}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="db-sec">
+              <div className="db-sec-h">📝 واجباتي</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {homework.map(h => {
-                  const today   = new Date().toISOString().slice(0, 10);
                   const overdue = h.due_date && h.due_date < today && h.status === 'pending';
+                  const cls = h.status === 'done' ? 'done' : overdue ? 'overdue' : '';
                   return (
-                    <div key={h.id} style={{ background: '#fff', borderRadius: 12, border: `1.5px solid ${h.status === 'done' ? '#6ee7b7' : overdue ? '#fca5a5' : 'var(--border)'}`, padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                      <div style={{ fontSize: '1.3rem', paddingTop: 2 }}>{h.status === 'done' ? '✅' : overdue ? '⚠️' : '📋'}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: '.92rem', marginBottom: 2, color: h.status === 'done' ? '#64748b' : '#1e293b', textDecoration: h.status === 'done' ? 'line-through' : 'none' }}>{h.title}</div>
-                        <div style={{ fontSize: '.78rem', color: 'var(--muted)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                          <span>👨‍🏫 {h.teacher_name}</span>
-                          {h.due_date && <span style={{ color: overdue ? '#dc2626' : '#64748b', fontWeight: overdue ? 700 : 400 }}>📅 {h.due_date} {overdue ? '— متأخر!' : ''}</span>}
-                        </div>
-                        {h.description && <div style={{ marginTop: 4, fontSize: '.82rem', color: '#475569' }}>{h.description}</div>}
+                    <div key={h.id} className={`hw-card ${cls}`}>
+                      <div style={{ fontSize: '1.4rem', paddingTop: 2, lineHeight: 1 }}>
+                        {h.status === 'done' ? '✅' : overdue ? '⚠️' : '📋'}
                       </div>
-                      <HwToggle id={h.id} status={h.status}/>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, fontSize: '.93rem', color: h.status === 'done' ? '#64748b' : '#1e293b', textDecoration: h.status === 'done' ? 'line-through' : 'none', marginBottom: 3 }}>
+                          {h.title}
+                        </div>
+                        <div style={{ fontSize: '.79rem', color: 'var(--muted)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                          <span>👨‍🏫 {h.teacher_name}</span>
+                          {h.due_date && (
+                            <span style={{ color: overdue ? '#dc2626' : '#64748b', fontWeight: overdue ? 700 : 400 }}>
+                              📅 {h.due_date}{overdue ? ' — متأخر!' : ''}
+                            </span>
+                          )}
+                        </div>
+                        {h.description && (
+                          <div style={{ marginTop: 5, fontSize: '.83rem', color: '#475569', lineHeight: 1.6 }}>{h.description}</div>
+                        )}
+                      </div>
+                      <HwToggle id={h.id} status={h.status} />
                     </div>
                   );
                 })}
@@ -189,131 +263,87 @@ export default function DashboardContent({ user, assessments, role, isStudent, u
             </div>
           )}
 
-          {/* Teacher notes */}
+          {/* ── Teacher notes ── */}
           {sessionNotes.length > 0 && (
-            <div className="dash-section" style={{ marginBottom: 24 }}>
-              <div className="dash-section-title">📝 {lang === 'ar' ? 'ملاحظات المعلم' : 'Teacher Notes'}</div>
+            <div className="db-sec">
+              <div className="db-sec-h">🗒️ ملاحظات المعلم</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {sessionNotes.map(s => (
-                  <div key={s.id} style={{ background: '#fffbeb', borderRadius: 12, border: '1.5px solid #fcd34d', padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 800, fontSize: '.88rem', color: '#92400e' }}>
-                        {s.subject || (lang === 'ar' ? 'حصة عامة' : 'General Session')}
-                      </span>
-                      <span style={{ fontSize: '.78rem', color: '#b45309' }}>
-                        📅 {new Date(s.session_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
-                      </span>
-                      <span style={{ fontSize: '.78rem', color: '#b45309' }}>👨‍🏫 {s.teacher_name}</span>
+                  <div key={s.id} className="note-card">
+                    <div className="note-meta">
+                      <span>{s.subject || 'حصة عامة'}</span>
+                      <span>📅 {new Date(s.session_date).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                      <span>👨‍🏫 {s.teacher_name}</span>
                     </div>
-                    <div style={{ fontSize: '.9rem', color: '#451a03', lineHeight: 1.7, borderRight: '3px solid #f59e0b', paddingRight: 10 }}>
-                      {s.notes}
-                    </div>
+                    <div className="note-text">{s.notes}</div>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Stats */}
-          <div className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-            {stats.map(s => (
-              <div key={s.lbl} className="stat-card">
-                <span className="stat-icon">{s.icon}</span>
-                <div>
-                  <div className="stat-val">{s.val}</div>
-                  <div className="stat-lbl">{s.lbl}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="dash-section">
-            <div className="dash-section-title">{lang === 'ar' ? 'إجراءات سريعة' : 'Quick Actions'}</div>
-            <div className="card-grid">
-              {actions.map(a => (
-                <Link key={a.href} href={a.href} className="dash-action-card">
-                  <span className="dash-action-icon">{a.icon}</span>
-                  <div className="dash-action-title">{a.title}</div>
-                  <div className="dash-action-desc">{a.desc}</div>
+          {/* ── Quick actions ── */}
+          <div className="db-sec">
+            <div className="db-sec-h">🚀 وصول سريع</div>
+            <div className="db-actions">
+              {ACTION_CARDS.map(a => (
+                <Link key={a.href} href={a.href} className="db-action" style={{ background: a.grad }}>
+                  <span className="db-action-icon">{a.icon}</span>
+                  <div>
+                    <div className="db-action-title">{a.title}</div>
+                    <div className="db-action-desc">{a.desc}</div>
+                  </div>
                 </Link>
               ))}
             </div>
           </div>
 
-          {!isStudent && <ParentPanel assessments={assessments ?? []} />}
+          {/* ── Faheem widget ── */}
           {isStudent && <FaheemWidget studentName={displayName} studentGender={studentGender} />}
 
-          {/* Life-Scene Simulator for students */}
+          {/* ── Life-Scene Simulator ── */}
           {isStudent && (
-            <div className="dash-section">
-              <div className="dash-section-title">🎭 {lang === 'ar' ? 'مسرح التعبير' : 'Expression Theater'}</div>
+            <div className="db-sec">
+              <div className="db-sec-h">🎭 مسرح التعبير</div>
               <LifeSceneSimulator role="student" />
             </div>
           )}
 
-          {/* Assessment history */}
-          <div className="dash-section">
-            <div className="dash-section-title">{t('dashboard.assessmentHistory')}</div>
-            {assessments && assessments.length > 0 ? (
-              isStudent ? (
-                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>{t('dashboard.level')}</th>
-                        <th>{lang === 'ar' ? 'الحالة' : 'Status'}</th>
-                        <th>{t('dashboard.date')}</th>
+          {/* ── Assessment history ── */}
+          {assessments && assessments.length > 0 && (
+            <div className="db-sec">
+              <div className="db-sec-h">📊 سجل تقييماتي</div>
+              <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid var(--border)', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.88rem' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--primary)' }}>
+                      <th style={{ padding: '10px 14px', color: '#fff', textAlign: 'right', fontWeight: 700 }}>المستوى</th>
+                      <th style={{ padding: '10px 14px', color: '#fff', textAlign: 'right', fontWeight: 700 }}>الحالة</th>
+                      <th style={{ padding: '10px 14px', color: '#fff', textAlign: 'right', fontWeight: 700 }}>التاريخ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assessments.slice(0, 5).map((a, i) => (
+                      <tr key={a.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? '#fff' : '#f9fbff' }}>
+                        <td style={{ padding: '10px 14px' }}>
+                          <span className="badge badge-blue">المستوى {a.level}</span>
+                        </td>
+                        <td style={{ padding: '10px 14px' }}>
+                          <span className="badge badge-green">تم الإرسال ✓</span>
+                        </td>
+                        <td style={{ padding: '10px 14px', color: 'var(--muted)', fontSize: '.82rem' }}>
+                          {a.completed_at ? new Date(a.completed_at).toLocaleDateString(locale) : '—'}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {assessments.slice(0, 5).map(a => (
-                        <tr key={a.id}>
-                          <td><span className="badge badge-blue">{t('dashboard.level')} {a.level}</span></td>
-                          <td><span className="badge badge-green">{lang === 'ar' ? 'تم الإرسال ✓' : 'Submitted ✓'}</span></td>
-                          <td style={{ direction: 'ltr', textAlign: lang === 'ar' ? 'right' : 'left' }}>
-                            {a.completed_at ? new Date(a.completed_at).toLocaleDateString(locale) : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>{t('dashboard.level')}</th>
-                        <th>{t('dashboard.score')}</th>
-                        <th>{t('dashboard.date')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {assessments.slice(0, 5).map(a => (
-                        <tr key={a.id}>
-                          <td><span className="badge badge-blue">{t('dashboard.level')} {a.level}</span></td>
-                          <td>
-                            <span className={`badge ${(a.score ?? 0) >= 70 ? 'badge-green' : 'badge-orange'}`}>
-                              {a.score ?? 0}%
-                            </span>
-                          </td>
-                          <td style={{ direction: 'ltr', textAlign: lang === 'ar' ? 'right' : 'left' }}>
-                            {a.completed_at ? new Date(a.completed_at).toLocaleDateString(locale) : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )
-            ) : (
-              <div className="empty-state card">
-                <span className="empty-icon">📋</span>
-                <p>{t('dashboard.noAssessments')}</p>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {!isStudent && <ParentPanel assessments={assessments ?? []} />}
+
         </div>
       </main>
     </>
