@@ -36,18 +36,19 @@ EXACT OUTPUT FORMAT:
     generationConfig: {
       maxOutputTokens: 600,
       temperature: 0.6,
+      thinkingConfig: { thinkingBudget: 0 },
     },
   });
 
-  // Current available models (June 2026) — Vercel Hobby limit is 10s total
-  const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  // Only gemini-2.5-flash is confirmed available (Jun 2026)
+  const MODELS = ['gemini-2.5-flash'];
   const errors = [];
   for (const model of MODELS) {
     try {
       const res = await fetchWithTimeout(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body },
-        7000
+        8000
       );
       if (!res.ok) {
         const errBody = await res.text().catch(() => '');
@@ -60,11 +61,15 @@ EXACT OUTPUT FORMAT:
         const msg = `${model} empty: ${JSON.stringify(json).slice(0, 150)}`;
         errors.push(msg); console.error('[life-scene]', msg); continue;
       }
-      const match = raw.match(/\[[\s\S]*?\]/);
-      if (!match) { const msg = `${model} no-array: ${raw.slice(0, 100)}`; errors.push(msg); console.error('[life-scene]', msg); continue; }
-      const dialogue = JSON.parse(match[0]);
-      if (Array.isArray(dialogue) && dialogue.length >= 2) return dialogue;
-      const msg = `${model} bad-format`; errors.push(msg); console.error('[life-scene]', msg);
+      // Greedy extraction: find first '[' to last ']'
+      const start = raw.indexOf('[');
+      const end   = raw.lastIndexOf(']');
+      if (start === -1 || end <= start) {
+        const msg = `${model} no-array: ${raw.slice(0, 100)}`; errors.push(msg); console.error('[life-scene]', msg); continue;
+      }
+      const dialogue = JSON.parse(raw.slice(start, end + 1));
+      if (Array.isArray(dialogue) && dialogue.length >= 2 && dialogue[0].speaker && dialogue[0].text) return dialogue;
+      const msg = `${model} bad-format: ${JSON.stringify(dialogue).slice(0,100)}`; errors.push(msg); console.error('[life-scene]', msg);
     } catch (e) {
       const msg = `${model} err: ${e.message}`; errors.push(msg); console.error('[life-scene]', msg); continue;
     }
