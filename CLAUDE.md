@@ -339,6 +339,16 @@ api/send-email.js         ← sizeLimit: 10mb
 4. **لا تشارك API keys في المحادثة** — أضفها مباشرة في Vercel
 5. **RLS**: مفعّل فقط على `admin_permissions` — بقية الجداول معطّل
 6. **كلمة مرور Supabase Admin**: عبر `createAdminClient()` فقط (service_role)
+7. **الروابط المفيدة**: بعد كل مهمة قدّم دائماً الروابط ذات الصلة تلقائياً دون انتظار:
+   - بعد push → رابط Vercel للمشروع المعني
+   - بعد SQL → رابط Supabase SQL Editor
+   - بعد تغيير متغيرات البيئة → رابط Vercel Environment Variables
+   - روابط المشاريع الثابتة:
+     - LMS (Vercel): https://aarem-lms.vercel.app
+     - LMS (Vercel settings): https://vercel.com/medsadok12s-projects/aarem-lms/settings/environment-variables
+     - نظام التقييم: https://arabic-assessment.vercel.app
+     - Supabase SQL Editor: https://supabase.com/dashboard/project/uqspozzkzyytwwidojxv/sql/new
+     - Supabase Tables: https://supabase.com/dashboard/project/uqspozzkzyytwwidojxv/editor
 
 ---
 
