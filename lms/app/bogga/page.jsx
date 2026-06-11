@@ -323,6 +323,9 @@ export default function BoggarAdminPage() {
 
   // Setup
   const [copied, setCopied] = useState(false);
+  const [sheetsUrl,      setSheetsUrl]      = useState(() => typeof window !== 'undefined' ? localStorage.getItem('admin_sheets_url') ?? '' : '');
+  const [sheetsUrlInput, setSheetsUrlInput] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('admin_sheets_url') ?? '' : '');
+  const [sheetsSaved,    setSheetsSaved]    = useState(false);
 
   // Visitor Q&A — فهيم الزوار
   const [visitorQA,    setVisitorQA]    = useState([]);
@@ -1914,6 +1917,14 @@ export default function BoggarAdminPage() {
                   >
                     {lang === 'ar' ? 'مسح' : 'Clear'}
                   </button>
+                  {sheetsUrl && (
+                    <a href={sheetsUrl} target="_blank" rel="noopener noreferrer"
+                      className="btn btn-sm"
+                      style={{ background: '#1a7c40', color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                      {lang === 'ar' ? 'فتح Google Sheet' : 'Open Google Sheet'}
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -2379,6 +2390,44 @@ export default function BoggarAdminPage() {
               )}
               {isSuperAdmin && (
                 <>
+                  {/* Google Sheet URL */}
+                  <div className="card" style={{ marginBottom: 28 }}>
+                    <h3 style={{ fontWeight: 800, color: '#1a7c40', marginBottom: 10, fontSize: '1.05rem' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ verticalAlign: 'middle', marginLeft: 6 }}><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                      {lang === 'ar' ? 'رابط Google Sheet للنتائج' : 'Google Sheet URL for Results'}
+                    </h3>
+                    <p style={{ color: '#64748b', fontSize: '.88rem', marginBottom: 12 }}>
+                      {lang === 'ar' ? 'أضف رابط الجدول ليظهر زر الفتح السريع في تبويب النتائج.' : 'Add the sheet URL to show a quick-open button in the Results tab.'}
+                    </p>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <input
+                        className="form-input" style={{ margin: 0, flex: 1, direction: 'ltr', fontSize: '.88rem' }}
+                        type="url"
+                        placeholder="https://docs.google.com/spreadsheets/d/..."
+                        value={sheetsUrlInput}
+                        onChange={e => setSheetsUrlInput(e.target.value)}
+                      />
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => {
+                          localStorage.setItem('admin_sheets_url', sheetsUrlInput);
+                          setSheetsUrl(sheetsUrlInput);
+                          setSheetsSaved(true);
+                          setTimeout(() => setSheetsSaved(false), 2000);
+                        }}
+                      >
+                        {sheetsSaved ? (lang === 'ar' ? '✓ تم الحفظ' : '✓ Saved') : (lang === 'ar' ? 'حفظ' : 'Save')}
+                      </button>
+                      {sheetsUrl && (
+                        <a href={sheetsUrl} target="_blank" rel="noopener noreferrer"
+                          className="btn btn-sm"
+                          style={{ background: '#1a7c40', color: '#fff', textDecoration: 'none' }}>
+                          {lang === 'ar' ? 'فتح' : 'Open'}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
                   <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 16 }}>{tr('admin.setup.title')}</h2>
                   <div className="alert alert-info" style={{ marginBottom: 20 }}>
                     {tr('admin.setup.hint')}
