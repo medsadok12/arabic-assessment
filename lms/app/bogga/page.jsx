@@ -342,11 +342,15 @@ export default function BoggarAdminPage() {
   const [resultsTotal,   setResultsTotal]   = useState(0);
   const [resultsPage,    setResultsPage]    = useState(1);
   const [resultsLoading, setResultsLoading] = useState(false);
-  const [resultsStats,   setResultsStats]   = useState({ total: 0, passed: 0, avg: 0 });
+  const [resultsStats,   setResultsStats]   = useState({ total: 0, passed: 0, avg: 0, levelCounts: {}, scoreDist: {} });
   const [resultsSearch,  setResultsSearch]  = useState('');
   const [resultsLevel,   setResultsLevel]   = useState('');
   const [resultsMin,     setResultsMin]     = useState('');
   const [resultsMax,     setResultsMax]     = useState('');
+  const [resultsExporting, setResultsExporting] = useState(false);
+  const [editingNoteId,    setEditingNoteId]    = useState(null);
+  const [editNoteText,     setEditNoteText]     = useState('');
+  const [noteSaving,       setNoteSaving]       = useState(false);
 
   // Admin Sessions
   const [adminSessions,     setAdminSessions]     = useState([]);
@@ -444,6 +448,49 @@ export default function BoggarAdminPage() {
     setResultsPage(page);
     if (data.stats) setResultsStats(data.stats);
     setResultsLoading(false);
+  }
+
+  async function exportCsv() {
+    setResultsExporting(true);
+    const params = new URLSearchParams({ all: 'true' });
+    if (resultsSearch) params.set('search',   resultsSearch);
+    if (resultsLevel)  params.set('level',    resultsLevel);
+    if (resultsMin)    params.set('minScore', resultsMin);
+    if (resultsMax)    params.set('maxScore', resultsMax);
+    const data = await fetch(`/api/bogga/results?${params}`).then(r => r.json()).catch(() => ({}));
+    const rows = data.results ?? [];
+    const headers = [lang === 'ar' ? 'اسم الطالب' : 'Student', lang === 'ar' ? 'المستوى' : 'Level', lang === 'ar' ? 'الدرجة' : 'Score', lang === 'ar' ? 'الحالة' : 'Status', lang === 'ar' ? 'التاريخ' : 'Date', lang === 'ar' ? 'ملاحظات' : 'Notes'];
+    const csv = [
+      headers.join(','),
+      ...rows.map(r => [
+        `"${(r.student_name ?? '').replace(/"/g, '""')}"`,
+        r.level ?? '',
+        r.score ?? '',
+        (r.score ?? 0) >= 70 ? (lang === 'ar' ? 'ناجح' : 'Passed') : (lang === 'ar' ? 'دون المعدل' : 'Below average'),
+        r.completed_at ? new Date(r.completed_at).toLocaleDateString('en-GB') : '',
+        `"${(r.notes ?? '').replace(/"/g, '""')}"`,
+      ].join(','))
+    ].join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `نتائج_التقييم_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setResultsExporting(false);
+  }
+
+  async function saveNote(id, notes) {
+    setNoteSaving(true);
+    await fetch(`/api/bogga/results/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes }),
+    }).catch(() => {});
+    setResults(prev => prev.map(r => r.id === id ? { ...r, notes } : r));
+    setEditingNoteId(null);
+    setNoteSaving(false);
   }
 
   // Booked slots (modal) — reload on date/interviewer change
@@ -1873,6 +1920,41 @@ export default function BoggarAdminPage() {
                 ))}
               </div>
 
+              {/* Chart — score distribution */}
+              {resultsStats.total > 0 && (() => {
+                const dist  = resultsStats.scoreDist ?? {};
+                const maxV  = Math.max(...Object.values(dist), 1);
+                const bars  = [
+                  { label: '0–29%',   key: '0-29',   color: '#dc2626' },
+                  { label: '30–49%',  key: '30-49',  color: '#ea580c' },
+                  { label: '50–69%',  key: '50-69',  color: '#ca8a04' },
+                  { label: '70–89%',  key: '70-89',  color: '#16a34a' },
+                  { label: '90–100%', key: '90-100', color: '#15803d' },
+                ];
+                return (
+                  <div className="card" style={{ marginBottom: 20 }}>
+                    <div style={{ fontWeight: 700, fontSize: '.9rem', marginBottom: 14, color: 'var(--primary)' }}>
+                      📊 {lang === 'ar' ? 'توزيع الدرجات' : 'Score Distribution'}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {bars.map(b => {
+                        const val = dist[b.key] ?? 0;
+                        const pct = Math.round((val / maxV) * 100);
+                        return (
+                          <div key={b.key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ width: 60, fontSize: '.78rem', color: 'var(--muted)', flexShrink: 0, textAlign: 'left' }}>{b.label}</span>
+                            <div style={{ flex: 1, background: '#f1f5f9', borderRadius: 6, height: 20, overflow: 'hidden' }}>
+                              <div style={{ width: `${pct}%`, background: b.color, height: '100%', borderRadius: 6, transition: 'width .4s', minWidth: val > 0 ? 4 : 0 }} />
+                            </div>
+                            <span style={{ width: 28, fontSize: '.82rem', fontWeight: 700, color: b.color, flexShrink: 0 }}>{val}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Filters */}
               <div className="card" style={{ marginBottom: 20 }}>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -1917,6 +1999,10 @@ export default function BoggarAdminPage() {
                   >
                     {lang === 'ar' ? 'مسح' : 'Clear'}
                   </button>
+                  <button className="btn btn-sm" style={{ background: '#166534', color: '#fff' }}
+                    onClick={exportCsv} disabled={resultsExporting}>
+                    {resultsExporting ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : `⬇ ${lang === 'ar' ? 'تصدير CSV' : 'Export CSV'}`}
+                  </button>
                   {sheetsUrl && (
                     <a href={sheetsUrl} target="_blank" rel="noopener noreferrer"
                       className="btn btn-sm"
@@ -1934,7 +2020,7 @@ export default function BoggarAdminPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
                     <thead>
                       <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
-                        {['#', lang === 'ar' ? 'اسم الطالب' : 'Student', lang === 'ar' ? 'المستوى' : 'Level', lang === 'ar' ? 'الدرجة' : 'Score', lang === 'ar' ? 'الحالة' : 'Status', lang === 'ar' ? 'التاريخ' : 'Date'].map(h => (
+                        {['#', lang === 'ar' ? 'اسم الطالب' : 'Student', lang === 'ar' ? 'المستوى' : 'Level', lang === 'ar' ? 'الدرجة' : 'Score', lang === 'ar' ? 'الحالة' : 'Status', lang === 'ar' ? 'التاريخ' : 'Date', lang === 'ar' ? 'ملاحظات' : 'Notes'].map(h => (
                           <th key={h} style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: 'var(--muted)', fontSize: '.82rem' }}>{h}</th>
                         ))}
                       </tr>
@@ -1971,7 +2057,33 @@ export default function BoggarAdminPage() {
                               </span>
                             </td>
                             <td style={{ padding: '11px 16px', color: 'var(--muted)', fontSize: '.85rem' }}>
-                              {r.completed_at ? new Date(r.completed_at).toLocaleDateString(lang === 'ar' ? 'en-GB' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                              {r.completed_at ? new Date(r.completed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                            </td>
+                            <td style={{ padding: '8px 16px', minWidth: 160 }}>
+                              {editingNoteId === r.id ? (
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                  <input
+                                    autoFocus
+                                    className="form-input"
+                                    style={{ margin: 0, fontSize: '.82rem', padding: '4px 8px' }}
+                                    value={editNoteText}
+                                    onChange={e => setEditNoteText(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') saveNote(r.id, editNoteText); if (e.key === 'Escape') setEditingNoteId(null); }}
+                                  />
+                                  <button className="btn btn-primary btn-sm" style={{ padding: '4px 10px', fontSize: '.78rem' }}
+                                    onClick={() => saveNote(r.id, editNoteText)} disabled={noteSaving}>
+                                    {noteSaving ? '...' : '✓'}
+                                  </button>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                                  onClick={() => { setEditingNoteId(r.id); setEditNoteText(r.notes ?? ''); }}>
+                                  <span style={{ fontSize: '.82rem', color: r.notes ? '#374151' : 'var(--muted)', flex: 1 }}>
+                                    {r.notes || (lang === 'ar' ? '+ إضافة ملاحظة' : '+ Add note')}
+                                  </span>
+                                  <span style={{ fontSize: '.75rem', color: 'var(--muted)', opacity: 0.6 }}>✏️</span>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         );

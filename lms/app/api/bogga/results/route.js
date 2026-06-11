@@ -26,13 +26,15 @@ export async function GET(req) {
   const limit    = 50;
   const offset   = (page - 1) * limit;
 
+  const exportAll = searchParams.get('all') === 'true';
   const admin = createAdminClient();
+
   let query = admin
     .from('assessments')
-    .select('id, student_name, level, score, completed_at, user_id', { count: 'exact' })
-    .order('completed_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .select('id, student_name, level, score, completed_at, user_id, notes', { count: 'exact' })
+    .order('completed_at', { ascending: false });
 
+  if (!exportAll) query = query.range(offset, offset + limit - 1);
   if (search)   query = query.ilike('student_name', `%${search}%`);
   if (level)    query = query.eq('level', parseInt(level, 10));
   if (minScore) query = query.gte('score', parseInt(minScore, 10));
@@ -42,19 +44,33 @@ export async function GET(req) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Aggregate stats (no filters — always full picture)
-  const [{ count: total }, { count: passed }, { data: scores }] = await Promise.all([
+  const [{ count: total }, { count: passed }, { data: allData }] = await Promise.all([
     admin.from('assessments').select('id', { count: 'exact', head: true }),
     admin.from('assessments').select('id', { count: 'exact', head: true }).gte('score', 70),
-    admin.from('assessments').select('score'),
+    admin.from('assessments').select('score, level'),
   ]);
-  const avg = scores?.length
-    ? Math.round(scores.reduce((s, a) => s + (a.score ?? 0), 0) / scores.length)
+
+  const avg = allData?.length
+    ? Math.round(allData.reduce((s, a) => s + (a.score ?? 0), 0) / allData.length)
     : 0;
+
+  const levelCounts = {};
+  const scoreDist   = { '0-29': 0, '30-49': 0, '50-69': 0, '70-89': 0, '90-100': 0 };
+  for (const r of allData ?? []) {
+    const l = r.level ?? 1;
+    levelCounts[l] = (levelCounts[l] || 0) + 1;
+    const s = r.score ?? 0;
+    if      (s < 30) scoreDist['0-29']++;
+    else if (s < 50) scoreDist['30-49']++;
+    else if (s < 70) scoreDist['50-69']++;
+    else if (s < 90) scoreDist['70-89']++;
+    else             scoreDist['90-100']++;
+  }
 
   return NextResponse.json({
     results: data ?? [],
     total:   count ?? 0,
     page,
-    stats: { total: total ?? 0, passed: passed ?? 0, avg },
+    stats: { total: total ?? 0, passed: passed ?? 0, avg, levelCounts, scoreDist },
   });
 }
