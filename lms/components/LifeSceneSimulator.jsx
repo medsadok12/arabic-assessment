@@ -569,7 +569,11 @@ function StudentSceneViewer({ scene, onClose, editable, onUpdate }) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       chunksRef.current = [];
-      const recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4' });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+                    : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
+                    : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4'
+                    : '';
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
       mediaRef.current = recorder;
       recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       recorder.onstop = () => {
@@ -586,8 +590,12 @@ function StudentSceneViewer({ scene, onClose, editable, onUpdate }) {
       };
       recorder.start();
       setRecordingIdx(idx);
-    } catch {
-      alert('🎤 يرجى السماح بالوصول للميكروفون لتسجيل صوتك');
+    } catch (err) {
+      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        alert('🎤 يرجى السماح بالوصول للميكروفون من إعدادات المتصفح ثم حاول مجدداً');
+      } else {
+        alert('حدث خطأ في التسجيل: ' + (err?.message || err));
+      }
     }
   }
 
