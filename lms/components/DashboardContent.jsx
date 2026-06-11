@@ -189,14 +189,9 @@ export default function DashboardContent({
                 </div>
                 <span className="db-session-badge">{timeLabel}</span>
               </div>
-              <a
-                href={nextSession.meet_link || `https://meet.jit.si/${nextSession.room_name}`}
-                target="_blank" rel="noopener noreferrer"
-                className={`db-session-btn${joinable ? '' : ' dim'}`}
-                style={{ color: joinable ? '#15803d' : '#fff' }}
-              >
-                🎥 {joinable ? 'انضمّ الآن' : 'رابط الحصة'}
-              </a>
+              <div style={{ background:'rgba(255,255,255,.18)', borderRadius:12, padding:'11px 18px', fontSize:'.85rem', fontWeight:700, whiteSpace:'nowrap', border:'1.5px solid rgba(255,255,255,.35)', textAlign:'center' }}>
+                ⏳ {joinable ? 'تبدأ الآن' : 'انتظر المعلم'}
+              </div>
             </div>
           )}
 
@@ -215,10 +210,7 @@ export default function DashboardContent({
                         <span>⏰ {s.start_time?.slice(0, 5)}</span>
                       </div>
                     </div>
-                    <a href={s.meet_link || `https://meet.jit.si/${s.room_name}`} target="_blank" rel="noopener noreferrer"
-                      className="btn btn-outline btn-sm" style={{ whiteSpace: 'nowrap' }}>
-                      🎥 رابط الحصة
-                    </a>
+                    <span style={{ fontSize:'.78rem', color:'var(--muted)', whiteSpace:'nowrap' }}>⏳ انتظر المعلم</span>
                   </div>
                 ))}
               </div>
