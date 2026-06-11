@@ -109,7 +109,7 @@ export async function PATCH(req) {
   let body;
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 }); }
 
-  const { id, studentName, studentEmail, sessionDate, startTime, durationMinutes, subject, notes, status, recording_url } = body;
+  const { id, studentName, studentEmail, sessionDate, startTime, durationMinutes, subject, notes, status, recording_url, attended } = body;
   if (!id) return NextResponse.json({ error: 'معرّف الحصة مطلوب' }, { status: 400 });
 
   const admin = createAdminClient();
@@ -139,6 +139,7 @@ export async function PATCH(req) {
   if (notes !== undefined)         updates.notes            = notes || null;
   if (status === 'completed')      updates.status           = 'completed';
   if (recording_url !== undefined) updates.recording_url    = recording_url || null;
+  if (attended      !== undefined) updates.attended         = attended;
 
   const { data, error } = await admin
     .from('sessions')

@@ -592,9 +592,21 @@ export default function TeacherPage() {
                 </div>
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {(() => {
+                    const marked  = past.filter(s => s.status !== 'cancelled' && s.attended !== null && s.attended !== undefined);
+                    const present = marked.filter(s => s.attended === true).length;
+                    return marked.length > 0 && (
+                      <div style={{ background:'#f0fdf4', border:'1.5px solid #6ee7b7', borderRadius:12, padding:'10px 16px', display:'flex', gap:18, alignItems:'center', flexWrap:'wrap', marginBottom:4 }}>
+                        <span style={{ fontWeight:800, fontSize:'.88rem', color:'#065f46' }}>📊 الحضور</span>
+                        <span style={{ fontSize:'.85rem', color:'#047857' }}>✅ حضر: <strong>{present}</strong></span>
+                        <span style={{ fontSize:'.85rem', color:'#b91c1c' }}>❌ غاب: <strong>{marked.length - present}</strong></span>
+                        <span style={{ fontSize:'.85rem', color:'#64748b' }}>النسبة: <strong>{Math.round((present / marked.length) * 100)}%</strong></span>
+                      </div>
+                    );
+                  })()}
                   {past.slice(0, 20).map(s => (
-                    <div key={s.id} className="sc" style={{ opacity: s.status === 'cancelled' ? .6 : 1 }}>
-                      <div style={{ fontSize:'1.6rem', paddingTop:2 }}>{s.status === 'cancelled' ? '❌' : '✅'}</div>
+                    <div key={s.id} className="sc" style={{ opacity: s.status === 'cancelled' ? .6 : 1, borderColor: s.attended === true ? '#6ee7b7' : s.attended === false ? '#fca5a5' : undefined }}>
+                      <div style={{ fontSize:'1.6rem', paddingTop:2 }}>{s.status === 'cancelled' ? '❌' : s.attended === true ? '✅' : s.attended === false ? '🔴' : '📋'}</div>
                       <div className="si">
                         <div className="ss">{s.subject || 'حصة عامة'}</div>
                         <div className="sm">
@@ -638,13 +650,35 @@ export default function TeacherPage() {
                       </div>
 
                       {s.status !== 'cancelled' && (
-                        <button
-                          onClick={() => notesFor === s.id ? setNotesFor(null) : openNotes(s)}
-                          title={s.notes ? 'تعديل الملاحظة' : 'إضافة ملاحظة'}
-                          className="icon-btn"
-                          style={{ color: notesFor === s.id ? 'var(--primary)' : s.notes ? '#f59e0b' : 'var(--muted)', flexShrink:0 }}>
-                          📝
-                        </button>
+                        <div style={{ display:'flex', flexDirection:'column', gap:6, flexShrink:0, alignItems:'flex-end' }}>
+                          {/* Attendance buttons */}
+                          <div style={{ display:'flex', gap:5 }}>
+                            <button
+                              onClick={async () => {
+                                const next = s.attended === true ? null : true;
+                                await fetch('/api/teacher/sessions', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: s.id, attended: next }) });
+                                setSessions(prev => prev.map(x => x.id === s.id ? { ...x, attended: next } : x));
+                              }}
+                              style={{ padding:'4px 10px', borderRadius:20, border:'none', background: s.attended === true ? '#16a34a' : '#e2e8f0', color: s.attended === true ? '#fff' : '#64748b', fontWeight:700, fontSize:'.75rem', cursor:'pointer', fontFamily:'inherit' }}
+                            >✅ حضر</button>
+                            <button
+                              onClick={async () => {
+                                const next = s.attended === false ? null : false;
+                                await fetch('/api/teacher/sessions', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: s.id, attended: next }) });
+                                setSessions(prev => prev.map(x => x.id === s.id ? { ...x, attended: next } : x));
+                              }}
+                              style={{ padding:'4px 10px', borderRadius:20, border:'none', background: s.attended === false ? '#dc2626' : '#e2e8f0', color: s.attended === false ? '#fff' : '#64748b', fontWeight:700, fontSize:'.75rem', cursor:'pointer', fontFamily:'inherit' }}
+                            >❌ غاب</button>
+                          </div>
+                          {/* Notes button */}
+                          <button
+                            onClick={() => notesFor === s.id ? setNotesFor(null) : openNotes(s)}
+                            title={s.notes ? 'تعديل الملاحظة' : 'إضافة ملاحظة'}
+                            className="icon-btn"
+                            style={{ color: notesFor === s.id ? 'var(--primary)' : s.notes ? '#f59e0b' : 'var(--muted)' }}>
+                            📝
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
