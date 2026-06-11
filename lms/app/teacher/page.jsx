@@ -72,6 +72,11 @@ export default function TeacherPage() {
   const [completeSaving, setCompleteSaving] = useState(false);
   // Calendar week offset
   const [weekOffset,   setWeekOffset]   = useState(0);
+  // Homework state
+  const [homework,     setHomework]     = useState([]);
+  const [hwForm,       setHwForm]       = useState({ title:'', description:'', student_email:'', student_name:'', due_date:'' });
+  const [hwSaving,     setHwSaving]     = useState(false);
+  const [hwMsg,        setHwMsg]        = useState(null);
 
   const set    = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
   const setInv = k => e => setInviteForm(p => ({ ...p, [k]: e.target.value }));
@@ -89,9 +94,11 @@ export default function TeacherPage() {
     Promise.all([
       fetch('/api/teacher/sessions').then(r => r.json()),
       fetch('/api/teacher/students').then(r => r.json()),
-    ]).then(([sd, st]) => {
+      fetch('/api/teacher/homework').then(r => r.json()),
+    ]).then(([sd, st, hw]) => {
       setSessions(sd.sessions ?? []);
       setStudents(st.students ?? []);
+      setHomework(hw.homework ?? []);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [user]);
@@ -375,6 +382,7 @@ export default function TeacherPage() {
               { key:'calendar', icon:'🗓️', label:'التقويم', count: null },
               { key:'students', icon:'👥', label:'طلابي',   count: students.length },
               { key:'past',     icon:'📋', label:'السابقة', count: past.length },
+              { key:'homework', icon:'📝', label:'الواجبات', count: homework.filter(h => h.status === 'pending').length || null },
             ].map(t => (
               <button
                 key={t.key}
@@ -693,6 +701,88 @@ export default function TeacherPage() {
             {activeTab === 'simulator' && (
               <LifeSceneSimulator role="teacher" currentUser={user} />
             )}
+
+            {/* ── HOMEWORK ── */}
+            {activeTab === 'homework' && (() => {
+              const today = new Date().toISOString().slice(0,10);
+              async function sendHw(e) {
+                e.preventDefault();
+                if (!hwForm.title.trim() || !hwForm.student_email.trim()) return;
+                setHwSaving(true); setHwMsg(null);
+                const res  = await fetch('/api/teacher/homework', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(hwForm) });
+                const data = await res.json();
+                setHwSaving(false);
+                if (res.ok) { setHomework(prev => [data.homework, ...prev]); setHwForm({ title:'', description:'', student_email:'', student_name:'', due_date:'' }); setHwMsg({ ok:true, text:'✅ تم إرسال الواجب' }); }
+                else setHwMsg({ ok:false, text: data.error });
+                setTimeout(() => setHwMsg(null), 3000);
+              }
+              async function deleteHw(id) {
+                if (!confirm('حذف هذا الواجب؟')) return;
+                await fetch('/api/teacher/homework', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) });
+                setHomework(prev => prev.filter(h => h.id !== id));
+              }
+              return (
+                <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+                  {/* Send form */}
+                  <form onSubmit={sendHw} style={{ background:'#f8fafc', borderRadius:14, padding:'18px 20px', border:'1.5px solid var(--border)', display:'flex', flexDirection:'column', gap:12 }}>
+                    <div style={{ fontWeight:800, fontSize:'.95rem', color:'var(--primary)', marginBottom:2 }}>📝 إرسال واجب جديد</div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                      <div>
+                        <label className="form-label">الطالب</label>
+                        <select className="form-input" value={hwForm.student_email} onChange={e => { const st = students.find(s => s.email === e.target.value); setHwForm(p => ({ ...p, student_email: e.target.value, student_name: st?.name || '' })); }} required>
+                          <option value="">اختر طالباً...</option>
+                          {students.map(s => <option key={s.email} value={s.email}>{s.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="form-label">تاريخ التسليم (اختياري)</label>
+                        <input className="form-input" type="date" value={hwForm.due_date} onChange={e => setHwForm(p => ({ ...p, due_date: e.target.value }))} min={today}/>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="form-label">عنوان الواجب</label>
+                      <input className="form-input" placeholder="مثال: اقرأ الدرس الثالث وأجب على الأسئلة" value={hwForm.title} onChange={e => setHwForm(p => ({ ...p, title: e.target.value }))} required/>
+                    </div>
+                    <div>
+                      <label className="form-label">التفاصيل (اختياري)</label>
+                      <textarea className="form-input" rows={2} placeholder="تفاصيل إضافية أو تعليمات..." value={hwForm.description} onChange={e => setHwForm(p => ({ ...p, description: e.target.value }))} style={{ resize:'vertical' }}/>
+                    </div>
+                    {hwMsg && <div style={{ fontSize:'.85rem', fontWeight:700, color: hwMsg.ok ? '#16a34a' : '#dc2626' }}>{hwMsg.text}</div>}
+                    <button type="submit" disabled={hwSaving} className="btn btn-primary" style={{ alignSelf:'flex-start' }}>
+                      {hwSaving ? '⏳ جارٍ الإرسال...' : '📤 إرسال الواجب'}
+                    </button>
+                  </form>
+
+                  {/* List */}
+                  {homework.length === 0 ? (
+                    <div className="card" style={{ textAlign:'center', padding:'40px 24px', color:'var(--muted)' }}>لا توجد واجبات مرسلة بعد</div>
+                  ) : (
+                    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                      {homework.map(h => {
+                        const overdue = h.due_date && h.due_date < today && h.status === 'pending';
+                        return (
+                          <div key={h.id} style={{ background:'#fff', borderRadius:12, border:`1.5px solid ${h.status === 'done' ? '#6ee7b7' : overdue ? '#fca5a5' : 'var(--border)'}`, padding:'12px 16px', display:'flex', alignItems:'flex-start', gap:12 }}>
+                            <div style={{ fontSize:'1.4rem', paddingTop:2 }}>{h.status === 'done' ? '✅' : overdue ? '⚠️' : '📝'}</div>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ fontWeight:800, fontSize:'.93rem', marginBottom:3 }}>{h.title}</div>
+                              <div style={{ fontSize:'.8rem', color:'var(--muted)', display:'flex', gap:10, flexWrap:'wrap' }}>
+                                <span>👤 {h.student_name || h.student_email}</span>
+                                {h.due_date && <span style={{ color: overdue ? '#dc2626' : '#64748b' }}>📅 {h.due_date}</span>}
+                                <span style={{ fontWeight:700, color: h.status === 'done' ? '#16a34a' : overdue ? '#dc2626' : '#64748b' }}>
+                                  {h.status === 'done' ? 'تم ✓' : overdue ? 'متأخر' : 'معلق'}
+                                </span>
+                              </div>
+                              {h.description && <div style={{ marginTop:5, fontSize:'.82rem', color:'#475569' }}>{h.description}</div>}
+                            </div>
+                            <button onClick={() => deleteHw(h.id)} style={{ background:'none', border:'none', color:'#e53e3e', cursor:'pointer', fontSize:'.9rem', flexShrink:0, padding:4 }}>🗑️</button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </>
         )}
           </div>{/* tw-content */}

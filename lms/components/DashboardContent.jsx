@@ -7,7 +7,31 @@ import FaheemWidget from './FaheemWidget';
 import LifeSceneSimulator from './LifeSceneSimulator';
 import { useLanguage } from '../contexts/LanguageContext';
 
-export default function DashboardContent({ user, assessments, role, isStudent, upcomingSessions, displayName, studentGender, attendancePct, attendedCount, attendanceTotal }) {
+function HwToggle({ id, status }) {
+  const [st, setSt] = useState(status);
+  return (
+    <button
+      onClick={async () => {
+        const next = st === 'done' ? 'pending' : 'done';
+        await fetch('/api/student/homework', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, status: next }),
+        });
+        setSt(next);
+      }}
+      style={{
+        padding: '5px 12px', borderRadius: 20, border: 'none',
+        background: st === 'done' ? '#16a34a' : '#e2e8f0',
+        color: st === 'done' ? '#fff' : '#64748b',
+        fontWeight: 700, fontSize: '.78rem', cursor: 'pointer',
+        fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap',
+      }}
+    >{st === 'done' ? '✅ تم' : '○ إنجاز'}</button>
+  );
+}
+
+export default function DashboardContent({ user, assessments, role, isStudent, upcomingSessions, displayName, studentGender, attendancePct, attendedCount, attendanceTotal, homework = [] }) {
   const { t, lang } = useLanguage();
 
   const locale = 'en-GB';
@@ -134,6 +158,33 @@ export default function DashboardContent({ user, assessments, role, isStudent, u
                     </a>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Homework */}
+          {homework.length > 0 && (
+            <div className="dash-section" style={{ marginBottom: 24 }}>
+              <div className="dash-section-title">📝 {lang === 'ar' ? 'واجباتي' : 'My Homework'}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {homework.map(h => {
+                  const today   = new Date().toISOString().slice(0, 10);
+                  const overdue = h.due_date && h.due_date < today && h.status === 'pending';
+                  return (
+                    <div key={h.id} style={{ background: '#fff', borderRadius: 12, border: `1.5px solid ${h.status === 'done' ? '#6ee7b7' : overdue ? '#fca5a5' : 'var(--border)'}`, padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{ fontSize: '1.3rem', paddingTop: 2 }}>{h.status === 'done' ? '✅' : overdue ? '⚠️' : '📋'}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, fontSize: '.92rem', marginBottom: 2, color: h.status === 'done' ? '#64748b' : '#1e293b', textDecoration: h.status === 'done' ? 'line-through' : 'none' }}>{h.title}</div>
+                        <div style={{ fontSize: '.78rem', color: 'var(--muted)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                          <span>👨‍🏫 {h.teacher_name}</span>
+                          {h.due_date && <span style={{ color: overdue ? '#dc2626' : '#64748b', fontWeight: overdue ? 700 : 400 }}>📅 {h.due_date} {overdue ? '— متأخر!' : ''}</span>}
+                        </div>
+                        {h.description && <div style={{ marginTop: 4, fontSize: '.82rem', color: '#475569' }}>{h.description}</div>}
+                      </div>
+                      <HwToggle id={h.id} status={h.status}/>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

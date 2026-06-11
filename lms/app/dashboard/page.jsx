@@ -49,6 +49,16 @@ export default async function DashboardPage() {
   const attendedCount     = attendanceRecords.filter(s => s.attended === true).length;
   const attendancePct     = attendanceRecords.length > 0 ? Math.round((attendedCount / attendanceRecords.length) * 100) : null;
 
+  // Homework
+  const { data: hwRaw } = await admin
+    .from('homework')
+    .select('id, teacher_name, title, description, due_date, status, created_at')
+    .ilike('student_email', user.email)
+    .order('due_date', { ascending: true, nullsFirst: false })
+    .limit(20)
+    .then(r => r.error ? { data: [] } : r);
+  const homework = hwRaw ?? [];
+
   const displayName   = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '';
   const studentGender = user.user_metadata?.gender === 'female' ? 'female' : 'male';
 
@@ -64,6 +74,7 @@ export default async function DashboardPage() {
       attendancePct={attendancePct}
       attendedCount={attendedCount}
       attendanceTotal={attendanceRecords.length}
+      homework={homework}
     />
   );
 }
