@@ -355,6 +355,8 @@ function DialogueEditor({ characterImages, setCharImages, editLines, setEditLine
     const name = addingName.trim();
     if (!name || allSpeakers.includes(name)) { setAddingName(''); setShowAddInput(false); return; }
     setExtraSpeakers(p => [...p, name]);
+    // Auto-add an empty line for this new character so they appear in recording
+    setEditLines(p => [...p, { speaker: name, text: '' }]);
     setAddingName('');
     setShowAddInput(false);
   }
@@ -380,14 +382,15 @@ function DialogueEditor({ characterImages, setCharImages, editLines, setEditLine
         <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
 
           {allSpeakers.map(name => {
-            const col      = speakerColor(name, allSpeakers);
-            const hasLines = lineSpeakers.includes(name);
+            const col = speakerColor(name, allSpeakers);
             return (
               <div key={name} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5, position:'relative' }}>
-                {/* Remove button (only for extra speakers without lines) */}
-                {!hasLines && (
-                  <button onClick={() => removeSpeaker(name)} style={{ position:'absolute', top:-4, right:-4, zIndex:2, width:16, height:16, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:'.6rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, lineHeight:1 }}>✕</button>
-                )}
+                {/* Remove character + their lines */}
+                <button
+                  onClick={() => { if (confirm(`حذف شخصية "${name}" وجميع أسطرها؟`)) { removeSpeaker(name); setEditLines(p => p.filter(l => l.speaker !== name)); } }}
+                  title="حذف الشخصية"
+                  style={{ position:'absolute', top:-4, right:-4, zIndex:2, width:16, height:16, borderRadius:'50%', border:'1px solid #94a3b8', background:'#f1f5f9', color:'#64748b', fontSize:'.55rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, lineHeight:1 }}
+                >✕</button>
                 {/* Avatar + image upload */}
                 <label style={{ cursor:'pointer' }}>
                   <div style={{ width:46, height:46, borderRadius:'50%', overflow:'hidden', border:`2.5px solid ${col.border}`, background:'#fff', position:'relative' }}>
