@@ -33,10 +33,9 @@ function HwToggle({ id, status }) {
 }
 
 const ACTION_CARDS = [
-  { icon: '📅', title: 'تقويمي',       desc: 'حصصي القادمة والمنتهية', href: '/dashboard/calendar',  grad: 'linear-gradient(135deg,#185FA5,#1d4ed8)' },
-  { icon: '📖', title: 'بنك الكلمات',  desc: 'تعلّم كلمات جديدة يومياً', href: '/dashboard/lexicon',   grad: 'linear-gradient(135deg,#7c3aed,#a855f7)' },
-  { icon: '📈', title: 'تقاريري',      desc: 'تابع تطوّرك ونتائجك',     href: '/dashboard/progress',  grad: 'linear-gradient(135deg,#059669,#10b981)' },
-  { icon: '👤', title: 'ملفي الشخصي',  desc: 'تعديل اسمك وكلمة مرورك',  href: '/dashboard/profile',   grad: 'linear-gradient(135deg,#d97706,#f59e0b)' },
+  { icon: '📅', title: 'تقويمي',      desc: 'حصصي القادمة والمنتهية',  href: '/dashboard/calendar', grad: 'linear-gradient(135deg,#185FA5,#1d4ed8)' },
+  { icon: '📖', title: 'بنك الكلمات', desc: 'تعلّم كلمات جديدة يومياً', href: '/dashboard/lexicon',  grad: 'linear-gradient(135deg,#7c3aed,#a855f7)' },
+  { icon: '📈', title: 'تقاريري',     desc: 'تابع تطوّرك ونتائجك',     href: '/dashboard/progress', grad: 'linear-gradient(135deg,#059669,#10b981)' },
 ];
 
 export default function DashboardContent({
@@ -117,7 +116,7 @@ export default function DashboardContent({
                      border-right:3px solid #f59e0b; padding-right:12px; }
 
         /* Action cards */
-        .db-actions { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+        .db-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
         .db-action  { border-radius:16px; padding:20px 18px; color:#fff; text-decoration:none;
                       display:flex; align-items:center; gap:14px;
                       transition:transform .18s, box-shadow .18s; }
@@ -125,7 +124,7 @@ export default function DashboardContent({
         .db-action-icon { font-size:2rem; line-height:1; flex-shrink:0; }
         .db-action-title{ font-weight:800; font-size:.97rem; margin-bottom:3px; }
         .db-action-desc { font-size:.78rem; opacity:.85; }
-        @media(max-width:500px){ .db-actions{grid-template-columns:1fr;} }
+        @media(max-width:600px){ .db-actions{grid-template-columns:1fr;} }
       `}</style>
 
       <Navbar user={user} />
