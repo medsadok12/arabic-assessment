@@ -39,9 +39,9 @@ EXACT OUTPUT FORMAT:
     },
   });
 
-  // Try fast models only — Vercel Hobby limit is 10s total
-  const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite'];
-  let lastErr = '';
+  // Current available models (June 2026) — Vercel Hobby limit is 10s total
+  const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  const errors = [];
   for (const model of MODELS) {
     try {
       const res = await fetchWithTimeout(
@@ -51,31 +51,25 @@ EXACT OUTPUT FORMAT:
       );
       if (!res.ok) {
         const errBody = await res.text().catch(() => '');
-        lastErr = `${model} HTTP ${res.status}: ${errBody.slice(0, 200)}`;
-        console.error('[life-scene]', lastErr);
-        continue;
+        const msg = `${model} HTTP ${res.status}: ${errBody.slice(0, 150)}`;
+        errors.push(msg); console.error('[life-scene]', msg); continue;
       }
       const json = await res.json();
       const raw = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
       if (!raw) {
-        lastErr = `${model} empty response: ${JSON.stringify(json).slice(0, 200)}`;
-        console.error('[life-scene]', lastErr);
-        continue;
+        const msg = `${model} empty: ${JSON.stringify(json).slice(0, 150)}`;
+        errors.push(msg); console.error('[life-scene]', msg); continue;
       }
-      // Extract JSON array — handle markdown code fences
       const match = raw.match(/\[[\s\S]*?\]/);
-      if (!match) { lastErr = `${model} no JSON array: ${raw.slice(0, 200)}`; console.error('[life-scene]', lastErr); continue; }
+      if (!match) { const msg = `${model} no-array: ${raw.slice(0, 100)}`; errors.push(msg); console.error('[life-scene]', msg); continue; }
       const dialogue = JSON.parse(match[0]);
       if (Array.isArray(dialogue) && dialogue.length >= 2) return dialogue;
-      lastErr = `${model} invalid format: ${JSON.stringify(dialogue).slice(0, 200)}`;
-      console.error('[life-scene]', lastErr);
+      const msg = `${model} bad-format`; errors.push(msg); console.error('[life-scene]', msg);
     } catch (e) {
-      lastErr = `${model} exception: ${e.message}`;
-      console.error('[life-scene]', lastErr);
-      continue;
+      const msg = `${model} err: ${e.message}`; errors.push(msg); console.error('[life-scene]', msg); continue;
     }
   }
-  throw new Error(`فشل توليد الحوار — ${lastErr}`);
+  throw new Error(`فشل توليد الحوار — ${errors.join(' | ')}`);
 }
 
 const EDITOR_ROLES = ['teacher', 'super_admin', 'admin'];
