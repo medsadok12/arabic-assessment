@@ -344,55 +344,125 @@ function DialogueView({ dialogue, animating, characterImages = {} }) {
 const KNOWN_SPEAKERS = ['راشد','نورة','البائع','المعلمة','الصديق','الصديقة','الأم','الأب','الطبيب','الممرضة','المدير','السائق','الجار','الجارة','خالد','سارة','يوسف','ليلى'];
 
 function DialogueEditor({ characterImages, setCharImages, editLines, setEditLines, onSave, onCancel, saving }) {
-  const speakers = [...new Set(editLines.map(l => l.speaker))];
+  const lineSpeakers            = [...new Set(editLines.map(l => l.speaker))];
+  const [extraSpeakers, setExtraSpeakers] = useState([]);
+  const [addingName,    setAddingName]    = useState('');
+  const [showAddInput,  setShowAddInput]  = useState(false);
+
+  const allSpeakers = [...new Set([...lineSpeakers, ...extraSpeakers])];
+
+  function addSpeaker() {
+    const name = addingName.trim();
+    if (!name || allSpeakers.includes(name)) { setAddingName(''); setShowAddInput(false); return; }
+    setExtraSpeakers(p => [...p, name]);
+    setAddingName('');
+    setShowAddInput(false);
+  }
+  function removeSpeaker(name) {
+    setExtraSpeakers(p => p.filter(s => s !== name));
+    setCharImages(p => { const n = { ...p }; delete n[name]; return n; });
+  }
+
   function updateLine(i, field, val) { setEditLines(p => p.map((l, j) => j === i ? { ...l, [field]: val } : l)); }
   function deleteLine(i)             { setEditLines(p => p.filter((_, j) => j !== i)); }
   function addLine() {
-    const last = editLines[editLines.length - 1]?.speaker ?? 'راشد';
-    const others = speakers.filter(s => s !== last);
-    setEditLines(p => [...p, { speaker: others[0] ?? last, text:'' }]);
+    const last   = editLines[editLines.length - 1]?.speaker ?? allSpeakers[0] ?? 'راشد';
+    const others = allSpeakers.filter(s => s !== last);
+    setEditLines(p => [...p, { speaker: others[0] ?? last, text: '' }]);
   }
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+      {/* ── Characters panel ── */}
       <div style={{ background:'#f8fafc', borderRadius:12, padding:'12px 16px', border:'1.5px solid var(--border)' }}>
-        <div style={{ fontWeight:700, fontSize:'.8rem', color:'#475569', marginBottom:10 }}>🖼️ صور الشخصيات</div>
-        <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
-          {speakers.map(name => (
-            <label key={name} style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}>
-              <div style={{ position:'relative', width:46, height:46, flexShrink:0 }}>
-                <div style={{ width:46, height:46, borderRadius:'50%', overflow:'hidden', border:'2px solid var(--border)' }}>{getAvatar(name, characterImages)}</div>
-                {characterImages[name] && (
-                  <button onClick={e => { e.preventDefault(); setCharImages(p => ({ ...p, [name]: null })); }}
-                    style={{ position:'absolute', top:-4, right:-4, width:16, height:16, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:'.6rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1, padding:0 }}>✕</button>
+        <div style={{ fontWeight:700, fontSize:'.8rem', color:'#475569', marginBottom:10 }}>🎭 الشخصيات</div>
+        <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
+
+          {allSpeakers.map(name => {
+            const col      = speakerColor(name, allSpeakers);
+            const hasLines = lineSpeakers.includes(name);
+            return (
+              <div key={name} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5, position:'relative' }}>
+                {/* Remove button (only for extra speakers without lines) */}
+                {!hasLines && (
+                  <button onClick={() => removeSpeaker(name)} style={{ position:'absolute', top:-4, right:-4, zIndex:2, width:16, height:16, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:'.6rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, lineHeight:1 }}>✕</button>
                 )}
+                {/* Avatar + image upload */}
+                <label style={{ cursor:'pointer' }}>
+                  <div style={{ width:46, height:46, borderRadius:'50%', overflow:'hidden', border:`2.5px solid ${col.border}`, background:'#fff', position:'relative' }}>
+                    {getAvatar(name, characterImages)}
+                    {characterImages[name] && (
+                      <button onClick={e => { e.preventDefault(); setCharImages(p => ({ ...p, [name]: null })); }}
+                        style={{ position:'absolute', top:0, right:0, width:14, height:14, borderRadius:'50%', border:'none', background:'#ef4444', color:'#fff', fontSize:'.55rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, lineHeight:1 }}>✕</button>
+                    )}
+                  </div>
+                  <input type="file" accept="image/*" style={{ display:'none' }} onChange={async e => {
+                    if (!e.target.files[0]) return;
+                    const compressed = await compressImage(e.target.files[0]);
+                    setCharImages(p => ({ ...p, [name]: compressed }));
+                    e.target.value = '';
+                  }}/>
+                </label>
+                <div style={{ fontSize:'.72rem', fontWeight:800, color: col.text, textAlign:'center', maxWidth:56, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+                <div style={{ fontSize:'.62rem', color: col.border }}>📷</div>
               </div>
-              <div>
-                <div style={{ fontWeight:700, fontSize:'.82rem', color:'var(--text)' }}>{name}</div>
-                <div style={{ fontSize:'.7rem', color:'var(--primary)' }}>📷 رفع صورة</div>
-              </div>
-              <input type="file" accept="image/*" style={{ display:'none' }} onChange={async e => {
-                if (!e.target.files[0]) return;
-                const compressed = await compressImage(e.target.files[0]);
-                setCharImages(p => ({ ...p, [name]: compressed }));
-                e.target.value = '';
-              }}/>
-            </label>
-          ))}
+            );
+          })}
+
+          {/* Add new speaker */}
+          {showAddInput ? (
+            <div style={{ display:'flex', gap:5, alignItems:'center', background:'#fff', border:'1.5px solid var(--primary)', borderRadius:10, padding:'5px 8px' }}>
+              <input
+                autoFocus
+                value={addingName}
+                onChange={e => setAddingName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addSpeaker(); if (e.key === 'Escape') { setAddingName(''); setShowAddInput(false); } }}
+                list="spk-suggestions"
+                placeholder="اسم الشخصية..."
+                style={{ width:100, border:'none', outline:'none', fontSize:'.82rem', fontFamily:'inherit', textAlign:'right', background:'transparent' }}
+              />
+              <datalist id="spk-suggestions">{KNOWN_SPEAKERS.filter(s => !allSpeakers.includes(s)).map(s => <option key={s} value={s}/>)}</datalist>
+              <button onClick={addSpeaker} style={{ padding:'3px 8px', borderRadius:6, border:'none', background:'var(--primary)', color:'#fff', fontWeight:700, fontSize:'.75rem', cursor:'pointer', fontFamily:'inherit' }}>إضافة</button>
+              <button onClick={() => { setAddingName(''); setShowAddInput(false); }} style={{ padding:'3px 6px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#fff', color:'#64748b', fontWeight:700, fontSize:'.75rem', cursor:'pointer', fontFamily:'inherit' }}>✕</button>
+            </div>
+          ) : (
+            <button onClick={() => setShowAddInput(true)} style={{
+              display:'flex', flexDirection:'column', alignItems:'center', gap:5,
+              padding:'8px 12px', borderRadius:10, border:'1.5px dashed #185FA5',
+              background:'#eff6ff', color:'#185FA5', cursor:'pointer', fontFamily:'inherit', fontWeight:700, fontSize:'.78rem',
+            }}>
+              <span style={{ fontSize:'1.2rem' }}>＋</span>
+              شخصية
+            </button>
+          )}
         </div>
       </div>
+
+      {/* ── Dialogue lines ── */}
       <div style={{ fontWeight:700, fontSize:'.8rem', color:'#475569' }}>✍️ سطور الحوار</div>
-      {editLines.map((line, i) => (
-        <div key={i} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
-          <input list="spk-dl" value={line.speaker} onChange={e => updateLine(i, 'speaker', e.target.value)} placeholder="الشخصية"
-            style={{ width:88, padding:'8px 10px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:'.82rem', fontFamily:'inherit', textAlign:'right', flexShrink:0 }}/>
-          <textarea value={line.text} onChange={e => updateLine(i, 'text', e.target.value)} rows={2} placeholder="نص الجملة..."
-            style={{ flex:1, padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:'.93rem', fontFamily:'inherit', resize:'vertical', direction:'rtl', lineHeight:1.7 }}/>
-          <button onClick={() => deleteLine(i)}
-            style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid #fca5a5', background:'#fff', color:'#dc2626', cursor:'pointer', fontSize:'.88rem', flexShrink:0 }}>🗑️</button>
-        </div>
-      ))}
-      <datalist id="spk-dl">{KNOWN_SPEAKERS.map(s => <option key={s} value={s}/>)}</datalist>
-      <button onClick={addLine} style={{ padding:'9px 16px', borderRadius:10, border:'1.5px dashed #94a3b8', background:'#f8fafc', color:'#64748b', cursor:'pointer', fontFamily:'inherit', fontWeight:700, fontSize:'.84rem' }}>＋ إضافة سطر جديد</button>
+      {editLines.map((line, i) => {
+        const col = speakerColor(line.speaker, allSpeakers);
+        return (
+          <div key={i} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
+            <select value={line.speaker} onChange={e => updateLine(i, 'speaker', e.target.value)}
+              style={{ width:96, padding:'8px 10px', borderRadius:8, border:`1.5px solid ${col.border}`, background: col.bg, color: col.text, fontSize:'.82rem', fontFamily:'inherit', fontWeight:700, flexShrink:0, cursor:'pointer' }}>
+              {allSpeakers.map(s => <option key={s} value={s}>{s}</option>)}
+              {!allSpeakers.includes(line.speaker) && <option value={line.speaker}>{line.speaker}</option>}
+            </select>
+            <textarea value={line.text} onChange={e => updateLine(i, 'text', e.target.value)} rows={2} placeholder="نص الجملة..."
+              style={{ flex:1, padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:'.93rem', fontFamily:'inherit', resize:'vertical', direction:'rtl', lineHeight:1.7 }}/>
+            <button onClick={() => deleteLine(i)}
+              style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid #fca5a5', background:'#fff', color:'#dc2626', cursor:'pointer', fontSize:'.88rem', flexShrink:0 }}>🗑️</button>
+          </div>
+        );
+      })}
+
+      <button onClick={addLine} disabled={allSpeakers.length === 0}
+        style={{ padding:'9px 16px', borderRadius:10, border:'1.5px dashed #94a3b8', background:'#f8fafc', color: allSpeakers.length === 0 ? '#cbd5e1' : '#64748b', cursor: allSpeakers.length === 0 ? 'not-allowed' : 'pointer', fontFamily:'inherit', fontWeight:700, fontSize:'.84rem' }}>
+        ＋ إضافة سطر جديد
+      </button>
+
       <div style={{ display:'flex', gap:10 }}>
         <button onClick={onSave} disabled={saving} style={{ flex:1, padding:'11px', borderRadius:10, border:'none', background: saving ? '#94a3b8' : 'linear-gradient(135deg,#10b981,#059669)', color:'#fff', fontWeight:800, fontSize:'.9rem', cursor: saving ? 'not-allowed' : 'pointer', fontFamily:'inherit' }}>
           {saving ? '⏳ جارٍ الحفظ...' : '✅ حفظ التعديلات'}
