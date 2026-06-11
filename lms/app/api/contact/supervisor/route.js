@@ -86,3 +86,19 @@ export async function PATCH(req) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }
+
+// DELETE — remove a message
+export async function DELETE(req) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || !ALLOWED_READ.includes(user.user_metadata?.role))
+    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+
+  const { id } = await req.json();
+  if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
+
+  const admin = createAdminClient();
+  const { error } = await admin.from('parent_messages').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
+}

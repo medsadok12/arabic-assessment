@@ -1701,14 +1701,30 @@ export default function BoggarAdminPage() {
                             {m.phone && <span style={{ marginRight:12 }}>📞 <a href={`tel:${m.phone}`} style={{ color:'var(--primary)' }}>{m.phone}</a></span>}
                           </div>
                         </div>
-                        {!m.is_read && (
-                          <button onClick={() => markMsgRead(m.id)}
-                            style={{ background:'#f3f0ff', border:'none', borderRadius:8,
+                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                          {!m.is_read && (
+                            <button onClick={() => markMsgRead(m.id)}
+                              style={{ background:'#f3f0ff', border:'none', borderRadius:8,
+                                padding:'5px 12px', fontSize:'.78rem', fontWeight:700,
+                                color:'#7c3aed', cursor:'pointer' }}>
+                              ✓ {lang === 'ar' ? 'تمّ الاطلاع' : 'Mark read'}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              if (!window.confirm(lang === 'ar' ? 'هل تريد حذف هذه الرسالة؟' : 'Delete this message?')) return;
+                              fetch('/api/contact/supervisor', {
+                                method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: m.id }),
+                              });
+                              setParentMessages(prev => prev.filter(x => x.id !== m.id));
+                            }}
+                            style={{ background:'#fee2e2', border:'none', borderRadius:8,
                               padding:'5px 12px', fontSize:'.78rem', fontWeight:700,
-                              color:'#7c3aed', cursor:'pointer', flexShrink:0 }}>
-                            ✓ {lang === 'ar' ? 'تمّ الاطلاع' : 'Mark read'}
+                              color:'#b91c1c', cursor:'pointer' }}>
+                            🗑 {lang === 'ar' ? 'حذف' : 'Delete'}
                           </button>
-                        )}
+                        </div>
                       </div>
                       <div style={{ marginTop:12, padding:'12px 14px', background:'#fafafa',
                         borderRadius:10, fontSize:'.9rem', color:'#334155', lineHeight:1.7,
