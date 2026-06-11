@@ -49,23 +49,33 @@ EXACT OUTPUT FORMAT:
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body },
         7000
       );
-      if (!res.ok) { lastErr = `HTTP ${res.status}`; continue; }
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        lastErr = `${model} HTTP ${res.status}: ${errBody.slice(0, 200)}`;
+        console.error('[life-scene]', lastErr);
+        continue;
+      }
       const json = await res.json();
       const raw = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-      if (!raw) { lastErr = 'empty response'; continue; }
+      if (!raw) {
+        lastErr = `${model} empty response: ${JSON.stringify(json).slice(0, 200)}`;
+        console.error('[life-scene]', lastErr);
+        continue;
+      }
       // Extract JSON array — handle markdown code fences
       const match = raw.match(/\[[\s\S]*?\]/);
-      if (!match) { lastErr = 'no JSON array in response'; continue; }
+      if (!match) { lastErr = `${model} no JSON array: ${raw.slice(0, 200)}`; console.error('[life-scene]', lastErr); continue; }
       const dialogue = JSON.parse(match[0]);
       if (Array.isArray(dialogue) && dialogue.length >= 2) return dialogue;
-      lastErr = 'invalid dialogue format';
+      lastErr = `${model} invalid format: ${JSON.stringify(dialogue).slice(0, 200)}`;
+      console.error('[life-scene]', lastErr);
     } catch (e) {
-      lastErr = e.message;
+      lastErr = `${model} exception: ${e.message}`;
+      console.error('[life-scene]', lastErr);
       continue;
     }
   }
-  console.error('[life-scene] generate failed:', lastErr);
-  throw new Error('فشل توليد الحوار — حاول مرة أخرى');
+  throw new Error(`فشل توليد الحوار — ${lastErr}`);
 }
 
 const EDITOR_ROLES = ['teacher', 'super_admin', 'admin'];
