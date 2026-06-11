@@ -21,7 +21,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('sessions')
-    .select('id, teacher_id, teacher_name, student_name, student_email, session_date, start_time, duration_minutes, subject, status, meet_link, room_name, notes, recording_url, reminder_sent, created_at')
+    .select('id, teacher_id, teacher_name, student_name, student_email, session_date, start_time, duration_minutes, subject, status, meet_link, room_name, notes, recording_url, reminder_sent, attended, created_at')
     .order('session_date', { ascending: false })
     .order('start_time',   { ascending: true });
 
@@ -35,13 +35,14 @@ export async function PATCH(req) {
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
   const body = await req.json();
-  const { id, status, notes, recording_url } = body;
+  const { id, status, notes, recording_url, attended } = body;
   if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
 
   const updates = {};
-  if (status       !== undefined) updates.status        = status;
-  if (notes        !== undefined) updates.notes         = notes;
+  if (status        !== undefined) updates.status        = status;
+  if (notes         !== undefined) updates.notes         = notes;
   if (recording_url !== undefined) updates.recording_url = recording_url;
+  if (attended      !== undefined) updates.attended      = attended;
 
   const admin = createAdminClient();
   const { data, error } = await admin

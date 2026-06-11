@@ -7,7 +7,7 @@ import FaheemWidget from './FaheemWidget';
 import LifeSceneSimulator from './LifeSceneSimulator';
 import { useLanguage } from '../contexts/LanguageContext';
 
-export default function DashboardContent({ user, assessments, role, isStudent, upcomingSessions, displayName, studentGender }) {
+export default function DashboardContent({ user, assessments, role, isStudent, upcomingSessions, displayName, studentGender, attendancePct, attendedCount, attendanceTotal }) {
   const { t, lang } = useLanguage();
 
   const locale = 'en-GB';
@@ -21,6 +21,7 @@ export default function DashboardContent({ user, assessments, role, isStudent, u
     ? [
         { icon: '📊', val: assessments?.length ?? 0,                         lbl: t('dashboard.myAssessments') },
         { icon: '✅', val: assessments?.length ? t('dashboard.completed') : '—', lbl: t('dashboard.assessmentStatus') },
+        ...(attendancePct != null ? [{ icon: '🏫', val: `${attendancePct}%`, lbl: lang === 'ar' ? `الحضور (${attendedCount}/${attendanceTotal})` : `Attendance (${attendedCount}/${attendanceTotal})` }] : []),
       ]
     : [
         { icon: '📊', val: assessments?.length ?? 0,                              lbl: t('dashboard.myAssessments') },

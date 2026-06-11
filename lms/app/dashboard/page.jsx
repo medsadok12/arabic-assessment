@@ -36,8 +36,21 @@ export default async function DashboardPage() {
     .then(r => r.error?.code === '42P01' ? { data: [] } : r);
 
   const upcomingSessions = sessionsRaw ?? [];
-  const displayName      = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '';
-  const studentGender    = user.user_metadata?.gender === 'female' ? 'female' : 'male';
+
+  // Attendance stats
+  const { data: pastRaw } = await admin
+    .from('sessions')
+    .select('id, attended')
+    .ilike('student_email', user.email)
+    .not('attended', 'is', null)
+    .limit(100)
+    .then(r => r.error ? { data: [] } : r);
+  const attendanceRecords = pastRaw ?? [];
+  const attendedCount     = attendanceRecords.filter(s => s.attended === true).length;
+  const attendancePct     = attendanceRecords.length > 0 ? Math.round((attendedCount / attendanceRecords.length) * 100) : null;
+
+  const displayName   = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '';
+  const studentGender = user.user_metadata?.gender === 'female' ? 'female' : 'male';
 
   return (
     <DashboardContent
@@ -48,6 +61,9 @@ export default async function DashboardPage() {
       upcomingSessions={upcomingSessions}
       displayName={displayName}
       studentGender={studentGender}
+      attendancePct={attendancePct}
+      attendedCount={attendedCount}
+      attendanceTotal={attendanceRecords.length}
     />
   );
 }

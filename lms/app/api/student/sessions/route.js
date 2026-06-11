@@ -18,7 +18,7 @@ export async function GET(req) {
 
   let query = admin
     .from('sessions')
-    .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, status, notes, rating')
+    .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, status, notes, rating, attended, meet_link')
     .eq('student_email', email);
 
   if (type === 'past') {

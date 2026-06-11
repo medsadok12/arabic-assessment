@@ -1406,35 +1406,65 @@ export default function BoggarAdminPage() {
                     )}
 
                     {/* Past */}
-                    {adminSessTab === 'past' && (
-                      past.length === 0 ? (
+                    {adminSessTab === 'past' && (() => {
+                      const attendedCount = past.filter(s => s.attended === true).length;
+                      const markedCount   = past.filter(s => s.attended !== null && s.attended !== undefined).length;
+                      return past.length === 0 ? (
                         <div className="empty-state card"><span className="empty-icon">📭</span><p>{lang === 'ar' ? 'لا توجد حصص منتهية' : 'No past sessions'}</p></div>
                       ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          {past.slice(0, 30).map(s => (
-                            <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: '1.5px solid var(--border)', padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
-                              <div style={{ fontSize: '1.6rem', paddingTop: 2 }}>✅</div>
-                              <div style={{ flex: 1, minWidth: 180 }}>
-                                <div style={{ fontWeight: 800, fontSize: '.95rem', marginBottom: 3 }}>{s.subject || (lang === 'ar' ? 'حصة عامة' : 'General session')}</div>
-                                <div style={{ fontSize: '.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                                  <span>👨‍🏫 {s.teacher_name}</span>
-                                  <span>👤 {s.student_name}</span>
-                                  <span>📅 {fmtDate(s.session_date, lang)}</span>
-                                  <span>⏰ {s.start_time?.slice(0, 5)}</span>
-                                  <span style={{ color: '#1a7c40', fontWeight: 700 }}>{lang === 'ar' ? 'منتهية' : 'Completed'}</span>
-                                </div>
-                                {s.notes && <div style={{ marginTop: 6, padding: '6px 10px', background: '#fffbeb', borderRadius: 8, fontSize: '.82rem', color: '#92400e' }}>📝 {s.notes}</div>}
-                                {s.recording_url && (
-                                  <div style={{ marginTop: 4 }}>
-                                    <a href={s.recording_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '.8rem', color: 'var(--primary)', fontWeight: 600 }}>🎬 {lang === 'ar' ? 'رابط التسجيل' : 'Recording Link'}</a>
-                                  </div>
-                                )}
-                              </div>
+                        <>
+                          {markedCount > 0 && (
+                            <div style={{ background: '#f0fdf4', border: '1.5px solid #6ee7b7', borderRadius: 12, padding: '10px 16px', marginBottom: 14, display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 800, fontSize: '.88rem', color: '#065f46' }}>📊 إحصائيات الحضور</span>
+                              <span style={{ fontSize: '.85rem', color: '#047857' }}>✅ حضر: <strong>{attendedCount}</strong></span>
+                              <span style={{ fontSize: '.85rem', color: '#b91c1c' }}>❌ غاب: <strong>{markedCount - attendedCount}</strong></span>
+                              <span style={{ fontSize: '.85rem', color: '#64748b' }}>نسبة الحضور: <strong>{Math.round((attendedCount / markedCount) * 100)}%</strong></span>
                             </div>
-                          ))}
-                        </div>
-                      )
-                    )}
+                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {past.slice(0, 30).map(s => (
+                              <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: `1.5px solid ${s.attended === true ? '#6ee7b7' : s.attended === false ? '#fca5a5' : 'var(--border)'}`, padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
+                                <div style={{ fontSize: '1.6rem', paddingTop: 2 }}>{s.attended === true ? '✅' : s.attended === false ? '❌' : '📋'}</div>
+                                <div style={{ flex: 1, minWidth: 180 }}>
+                                  <div style={{ fontWeight: 800, fontSize: '.95rem', marginBottom: 3 }}>{s.subject || (lang === 'ar' ? 'حصة عامة' : 'General session')}</div>
+                                  <div style={{ fontSize: '.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                                    <span>👨‍🏫 {s.teacher_name}</span>
+                                    <span>👤 {s.student_name}</span>
+                                    <span>📅 {fmtDate(s.session_date, lang)}</span>
+                                    <span>⏰ {s.start_time?.slice(0, 5)}</span>
+                                  </div>
+                                  {s.notes && <div style={{ marginTop: 6, padding: '6px 10px', background: '#fffbeb', borderRadius: 8, fontSize: '.82rem', color: '#92400e' }}>📝 {s.notes}</div>}
+                                  {s.recording_url && (
+                                    <div style={{ marginTop: 4 }}>
+                                      <a href={s.recording_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '.8rem', color: 'var(--primary)', fontWeight: 600 }}>🎬 {lang === 'ar' ? 'رابط التسجيل' : 'Recording Link'}</a>
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Attendance toggle */}
+                                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                                  <button
+                                    onClick={async () => {
+                                      const next = s.attended === true ? null : true;
+                                      await fetch('/api/bogga/sessions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: s.id, attended: next }) });
+                                      setAdminSessions(prev => prev.map(x => x.id === s.id ? { ...x, attended: next } : x));
+                                    }}
+                                    style={{ padding: '5px 12px', borderRadius: 20, border: 'none', background: s.attended === true ? '#16a34a' : '#e2e8f0', color: s.attended === true ? '#fff' : '#64748b', fontWeight: 700, fontSize: '.78rem', cursor: 'pointer', fontFamily: 'inherit' }}
+                                  >✅ حضر</button>
+                                  <button
+                                    onClick={async () => {
+                                      const next = s.attended === false ? null : false;
+                                      await fetch('/api/bogga/sessions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: s.id, attended: next }) });
+                                      setAdminSessions(prev => prev.map(x => x.id === s.id ? { ...x, attended: next } : x));
+                                    }}
+                                    style={{ padding: '5px 12px', borderRadius: 20, border: 'none', background: s.attended === false ? '#dc2626' : '#e2e8f0', color: s.attended === false ? '#fff' : '#64748b', fontWeight: 700, fontSize: '.78rem', cursor: 'pointer', fontFamily: 'inherit' }}
+                                  >❌ غاب</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      );
+                    })()}
 
                     {/* Cancelled */}
                     {adminSessTab === 'cancelled' && (
