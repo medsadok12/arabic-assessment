@@ -31,7 +31,7 @@ function HwToggle({ id, status }) {
   );
 }
 
-export default function DashboardContent({ user, assessments, role, isStudent, upcomingSessions, displayName, studentGender, attendancePct, attendedCount, attendanceTotal, homework = [] }) {
+export default function DashboardContent({ user, assessments, role, isStudent, upcomingSessions, displayName, studentGender, attendancePct, attendedCount, attendanceTotal, homework = [], sessionNotes = [] }) {
   const { t, lang } = useLanguage();
 
   const locale = 'en-GB';
@@ -185,6 +185,31 @@ export default function DashboardContent({ user, assessments, role, isStudent, u
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Teacher notes */}
+          {sessionNotes.length > 0 && (
+            <div className="dash-section" style={{ marginBottom: 24 }}>
+              <div className="dash-section-title">📝 {lang === 'ar' ? 'ملاحظات المعلم' : 'Teacher Notes'}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {sessionNotes.map(s => (
+                  <div key={s.id} style={{ background: '#fffbeb', borderRadius: 12, border: '1.5px solid #fcd34d', padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 800, fontSize: '.88rem', color: '#92400e' }}>
+                        {s.subject || (lang === 'ar' ? 'حصة عامة' : 'General Session')}
+                      </span>
+                      <span style={{ fontSize: '.78rem', color: '#b45309' }}>
+                        📅 {new Date(s.session_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </span>
+                      <span style={{ fontSize: '.78rem', color: '#b45309' }}>👨‍🏫 {s.teacher_name}</span>
+                    </div>
+                    <div style={{ fontSize: '.9rem', color: '#451a03', lineHeight: 1.7, borderRight: '3px solid #f59e0b', paddingRight: 10 }}>
+                      {s.notes}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

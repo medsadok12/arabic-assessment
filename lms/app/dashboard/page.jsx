@@ -49,6 +49,18 @@ export default async function DashboardPage() {
   const attendedCount     = attendanceRecords.filter(s => s.attended === true).length;
   const attendancePct     = attendanceRecords.length > 0 ? Math.round((attendedCount / attendanceRecords.length) * 100) : null;
 
+  // Past sessions with teacher notes
+  const { data: notedRaw } = await admin
+    .from('sessions')
+    .select('id, teacher_name, session_date, subject, notes')
+    .ilike('student_email', user.email)
+    .not('notes', 'is', null)
+    .neq('notes', '')
+    .order('session_date', { ascending: false })
+    .limit(10)
+    .then(r => r.error ? { data: [] } : r);
+  const sessionNotes = notedRaw ?? [];
+
   // Homework
   const { data: hwRaw } = await admin
     .from('homework')
@@ -75,6 +87,7 @@ export default async function DashboardPage() {
       attendedCount={attendedCount}
       attendanceTotal={attendanceRecords.length}
       homework={homework}
+      sessionNotes={sessionNotes}
     />
   );
 }
