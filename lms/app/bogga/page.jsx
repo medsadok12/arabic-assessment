@@ -1,4 +1,5 @@
 'use client';
+// v2026.06.11
 import { useEffect, useRef, useState } from 'react';
 import { useRouter }                    from 'next/navigation';
 import Link                             from 'next/link';
