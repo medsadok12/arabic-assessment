@@ -36,12 +36,11 @@ EXACT OUTPUT FORMAT:
     generationConfig: {
       maxOutputTokens: 600,
       temperature: 0.6,
-      thinkingConfig: { thinkingBudget: 0 }, // disable 2.5-flash thinking — was eating budget & failing JSON generation
     },
   });
 
   // Try fast models only — Vercel Hobby limit is 10s total
-  const MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+  const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite'];
   let lastErr = '';
   for (const model of MODELS) {
     try {
