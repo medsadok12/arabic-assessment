@@ -146,6 +146,9 @@ const BUBBLE_COLORS = [
   { bg:'#dbeafe', border:'#93c5fd', text:'#1e3a8a' },
   { bg:'#d1fae5', border:'#6ee7b7', text:'#064e3b' },
   { bg:'#fce7f3', border:'#f9a8d4', text:'#831843' },
+  { bg:'#fef9c3', border:'#fde047', text:'#713f12' },
+  { bg:'#ede9fe', border:'#c4b5fd', text:'#4c1d95' },
+  { bg:'#ffedd5', border:'#fdba74', text:'#7c2d12' },
 ];
 function speakerColor(name, allSpeakers) {
   return BUBBLE_COLORS[allSpeakers.indexOf(name) % BUBBLE_COLORS.length];
@@ -312,7 +315,7 @@ function DialogueView({ dialogue, animating, characterImages = {} }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16, padding:'4px 0', direction:'rtl' }}>
       {lines.map((line, i) => {
-        const isRight = speakers.indexOf(line.speaker) === 0;
+        const isRight = speakers.indexOf(line.speaker) % 2 === 0;
         const col = speakerColor(line.speaker, speakers);
         return (
           <div key={i} style={{
@@ -338,7 +341,7 @@ function DialogueView({ dialogue, animating, characterImages = {} }) {
 }
 
 // ── Dialogue editor ────────────────────────────────────────────────────────────
-const KNOWN_SPEAKERS = ['راشد','نورة','البائع','المعلمة','الصديق','الصديقة','الأم','الأب','الطبيب'];
+const KNOWN_SPEAKERS = ['راشد','نورة','البائع','المعلمة','الصديق','الصديقة','الأم','الأب','الطبيب','الممرضة','المدير','السائق','الجار','الجارة','خالد','سارة','يوسف','ليلى'];
 
 function DialogueEditor({ characterImages, setCharImages, editLines, setEditLines, onSave, onCancel, saving }) {
   const speakers = [...new Set(editLines.map(l => l.speaker))];
@@ -690,7 +693,7 @@ function StudentSceneViewer({ scene, onClose, editable, onUpdate }) {
           <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
             {lines.map((line, idx) => {
               const col     = speakerColor(line.speaker, speakers);
-              const isRight = speakers.indexOf(line.speaker) === 0;
+              const isRight = speakers.indexOf(line.speaker) % 2 === 0;
               return (
                 <RecordableLine key={idx}
                   line={line} idx={idx}
