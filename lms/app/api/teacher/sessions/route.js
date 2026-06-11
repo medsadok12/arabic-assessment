@@ -42,48 +42,57 @@ export async function POST(req) {
   let body;
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 }); }
 
-  const { studentName, studentEmail, sessionDate, startTime, durationMinutes = 60, subject } = body;
-  if (!studentName || !studentEmail || !sessionDate || !startTime)
-    return NextResponse.json({ error: 'يرجى ملء جميع الحقول المطلوبة بما فيها بريد الطالب' }, { status: 400 });
+  const { students, studentName, studentEmail, sessionDate, startTime, durationMinutes = 60, subject } = body;
 
-  const admin = createAdminClient();
+  // Support both single student (legacy) and array of students (group)
+  const studentList = (students?.length > 0)
+    ? students
+    : [{ name: studentName, email: studentEmail }];
 
-  // Conflict detection
-  const { data: conflicts } = await admin
-    .from('sessions')
-    .select('id')
-    .eq('teacher_id', teacher.id)
-    .eq('session_date', sessionDate)
-    .eq('start_time', startTime)
-    .eq('status', 'scheduled');
+  if (!studentList[0]?.name || !sessionDate || !startTime)
+    return NextResponse.json({ error: 'يرجى تحديد طالب واحد على الأقل والتاريخ والوقت' }, { status: 400 });
 
-  if (conflicts?.length > 0)
-    return NextResponse.json({ error: 'لديك حصة أخرى في نفس اليوم والوقت — اختر وقتاً مختلفاً' }, { status: 409 });
-
+  const admin       = createAdminClient();
+  const isGroup     = studentList.length > 1;
   const teacherName = teacher.user_metadata?.full_name ?? teacher.email;
   const roomName    = `aarem-${teacher.id.slice(0, 8)}-${sessionDate}-${startTime.replace(':', '')}`;
 
-  // محاولة إنشاء رابط Google Meet (مع تسجيل تلقائي) — يرجع null عند غياب الإعداد
+  // Conflict check only for solo sessions (group sessions share the same room intentionally)
+  if (!isGroup) {
+    const { data: conflicts } = await admin
+      .from('sessions')
+      .select('id')
+      .eq('teacher_id', teacher.id)
+      .eq('session_date', sessionDate)
+      .eq('start_time', startTime)
+      .eq('status', 'scheduled');
+    if (conflicts?.length > 0)
+      return NextResponse.json({ error: 'لديك حصة أخرى في نفس اليوم والوقت — اختر وقتاً مختلفاً' }, { status: 409 });
+  }
+
+  // Create one Meet link shared by all students
   const meet = await createMeetSession({
-    summary:       subject ? `حصة: ${subject} — ${studentName}` : `حصة — ${studentName}`,
-    description:   `حصة من ${teacherName} للطالب ${studentName} عبر أكاديمية عارم`,
-    attendeeEmail: studentEmail || null,
+    summary:       subject ? `حصة: ${subject}` : `حصة جماعية — ${teacherName}`,
+    description:   `حصة من ${teacherName} عبر أكاديمية عارم`,
+    attendeeEmail: studentList[0]?.email || null,
     sessionDate, startTime, durationMinutes,
   });
 
-  const { data, error } = await admin
-    .from('sessions')
-    .insert({
-      teacher_id: teacher.id, teacher_name: teacherName,
-      student_name: studentName, student_email: studentEmail || null,
-      session_date: sessionDate, start_time: startTime,
-      duration_minutes: durationMinutes,
-      subject: subject || null, room_name: roomName,
-      meet_link:     meet?.meetLink || null,
-      meet_event_id: meet?.eventId  || null,
-    })
-    .select()
-    .single();
+  const rows = studentList.map(s => ({
+    teacher_id:       teacher.id,
+    teacher_name:     teacherName,
+    student_name:     s.name,
+    student_email:    s.email || null,
+    session_date:     sessionDate,
+    start_time:       startTime,
+    duration_minutes: durationMinutes,
+    subject:          subject || null,
+    room_name:        roomName,
+    meet_link:        meet?.meetLink || null,
+    meet_event_id:    meet?.eventId  || null,
+  }));
+
+  const { data, error } = await admin.from('sessions').insert(rows).select();
 
   if (error) {
     if (error.code === '42P01')
@@ -91,14 +100,18 @@ export async function POST(req) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (studentEmail) {
-    const joinUrl = meet?.meetLink || `https://meet.jit.si/${roomName}`;
-    sendSessionEmail({ to: studentEmail, studentName, teacherName, sessionDate, startTime, durationMinutes, subject, joinUrl }).catch(() => {});
+  // Send email to each student
+  const joinUrl = meet?.meetLink || `https://meet.jit.si/${roomName}`;
+  for (const s of studentList.filter(x => x.email)) {
+    sendSessionEmail({ to: s.email, studentName: s.name, teacherName, sessionDate, startTime, durationMinutes, subject, joinUrl }).catch(() => {});
   }
 
-  await notify('session', '📅 حصة جديدة مجدولة', `${teacherName} ← ${studentName}`, { sessionDate, startTime });
+  await notify('session', '📅 حصة جديدة مجدولة',
+    `${teacherName} ← ${studentList.map(s => s.name).join('، ')}`,
+    { sessionDate, startTime });
 
-  return NextResponse.json({ session: data });
+  // Return array of sessions (or single for backward compat)
+  return NextResponse.json(isGroup ? { sessions: data } : { session: data[0] });
 }
 
 // PATCH — edit session

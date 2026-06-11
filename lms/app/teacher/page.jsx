@@ -78,7 +78,8 @@ export default function TeacherPage() {
   // Student profile panel
   const [profileStudent, setProfileStudent] = useState(null);
   // Class picker state for session modal
-  const [pickerClass,    setPickerClass]    = useState('');
+  const [pickerClass,       setPickerClass]       = useState('');
+  const [selectedStudents,  setSelectedStudents]  = useState([]);
   // My student roster (with level/section)
   const [myStudents,   setMyStudents]   = useState([]);
   const [rosterForm,   setRosterForm]   = useState({ student_name:'', student_email:'', level:'1', section:'أ' });
@@ -135,7 +136,7 @@ export default function TeacherPage() {
   });
 
   // ── Session modal ──
-  function openCreate() { setForm(EMPTY_FORM); setEditSession(null); setShowModal(true); setMsg(null); setPickerClass(''); }
+  function openCreate() { setForm(EMPTY_FORM); setEditSession(null); setShowModal(true); setMsg(null); setPickerClass(''); setSelectedStudents([]); }
   function openEdit(s) {
     setForm({
       studentName: s.student_name, studentEmail: s.student_email ?? '',
@@ -147,16 +148,28 @@ export default function TeacherPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.studentName || !form.sessionDate || !form.startTime) {
-      setMsg({ type: 'error', text: 'يرجى ملء الحقول المطلوبة' }); return;
+    // Require at least one student (from chips or manual fields)
+    const hasStudents = selectedStudents.length > 0 || form.studentName;
+    if (!hasStudents || !form.sessionDate || !form.startTime) {
+      setMsg({ type: 'error', text: 'يرجى تحديد طالب والتاريخ والوقت' }); return;
     }
     setSaving(true); setMsg(null);
-    const method = editSession ? 'PATCH' : 'POST';
-    const body   = editSession
-      ? { id: editSession.id, ...form, durationMinutes: parseInt(form.durationMinutes) || 60 }
-      : { ...form, durationMinutes: parseInt(form.durationMinutes) || 60 };
 
-    const res  = await fetch('/api/teacher/sessions', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    let body;
+    if (editSession) {
+      body = { id: editSession.id, ...form, durationMinutes: parseInt(form.durationMinutes) || 60 };
+    } else if (selectedStudents.length > 0) {
+      body = {
+        students: selectedStudents.map(s => ({ name: s.name, email: s.email })),
+        sessionDate: form.sessionDate, startTime: form.startTime,
+        durationMinutes: parseInt(form.durationMinutes) || 60,
+        subject: form.subject,
+      };
+    } else {
+      body = { ...form, durationMinutes: parseInt(form.durationMinutes) || 60 };
+    }
+
+    const res  = await fetch('/api/teacher/sessions', { method: editSession ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await res.json();
     if (!res.ok) { setMsg({ type: 'error', text: data.error }); setSaving(false); return; }
 
@@ -164,9 +177,10 @@ export default function TeacherPage() {
       setSessions(prev => prev.map(s => s.id === editSession.id ? data.session : s));
       setMsg({ type: 'success', text: '✅ تمّ تعديل الحصة بنجاح' });
     } else {
-      setSessions(prev => [...prev, data.session].sort((a, b) =>
+      const newSessions = data.sessions ?? [data.session];
+      setSessions(prev => [...prev, ...newSessions].sort((a, b) =>
         a.session_date.localeCompare(b.session_date) || a.start_time.localeCompare(b.start_time)));
-      setMsg({ type: 'success', text: '✅ تمّت جدولة الحصة' + (form.studentEmail ? ' وأُرسل إيميل للطالب' : '') });
+      setMsg({ type: 'success', text: `✅ تمّت جدولة ${newSessions.length} حصة${newSessions.length > 1 ? '' : ''}` });
     }
     setShowModal(false); setSaving(false);
   }
@@ -945,66 +959,90 @@ export default function TeacherPage() {
               {editSession ? '✏️ تعديل الحصة' : '📅 جدولة حصة جديدة'}
             </h2>
             <form onSubmit={handleSubmit}>
-              {/* Two-step student picker */}
-              {myStudents.length > 0 && (() => {
-                // Unique classes sorted by level then section
+              {/* Multi-student picker */}
+              {myStudents.length > 0 && !editSession && (() => {
                 const classes = [...new Map(
                   myStudents.map(s => [`${s.level}-${s.section}`, { level: s.level ?? 1, section: s.section ?? 'أ' }])
                 ).values()].sort((a,b) => a.level - b.level || a.section.localeCompare(b.section));
-
                 const classStudents = pickerClass
                   ? myStudents.filter(s => `${s.level}-${s.section}` === pickerClass)
                   : [];
+                const remaining = classStudents.filter(s => !selectedStudents.find(x => x.id === s.id));
 
                 return (
                   <div className="form-group" style={{ background:'#f0f7ff', borderRadius:12, padding:'14px 16px', border:'1.5px solid #bcd4f0' }}>
-                    <div style={{ fontWeight:800, fontSize:'.85rem', color:'var(--primary)', marginBottom:10 }}>
-                      👥 اختر من قائمتي
-                    </div>
+                    <div style={{ fontWeight:800, fontSize:'.88rem', color:'var(--primary)', marginBottom:10 }}>👥 اختر من قائمتي</div>
+
                     {/* Step 1: Class */}
-                    <label className="form-label" style={{ fontSize:'.8rem' }}>الخطوة 1 — اختر المستوى والصف</label>
+                    <label className="form-label" style={{ fontSize:'.8rem' }}>① المستوى والصف</label>
                     <select className="form-input" value={pickerClass}
-                      onChange={e => { setPickerClass(e.target.value); setForm(p => ({ ...p, studentName:'', studentEmail:'' })); }}
-                      style={{ marginBottom: 10 }}>
-                      <option value="">— المستوى والصف —</option>
+                      onChange={e => { setPickerClass(e.target.value); }}
+                      style={{ marginBottom:10 }}>
+                      <option value="">— اختر المستوى والصف —</option>
                       {classes.map(c => (
                         <option key={`${c.level}-${c.section}`} value={`${c.level}-${c.section}`}>
                           📚 المستوى {LEVEL_AR[c.level]} — الصف {c.section}
-                          {' '}({myStudents.filter(s => s.level === c.level && s.section === c.section).length} طالب)
+                          {' '}({myStudents.filter(s => s.level===c.level && s.section===c.section).length} طالب)
                         </option>
                       ))}
                     </select>
-                    {/* Step 2: Student */}
-                    {pickerClass && (
+
+                    {/* Step 2: Add students one by one */}
+                    {pickerClass && remaining.length > 0 && (
                       <>
-                        <label className="form-label" style={{ fontSize:'.8rem' }}>الخطوة 2 — اختر الطالب</label>
-                        <select className="form-input" defaultValue=""
+                        <label className="form-label" style={{ fontSize:'.8rem' }}>② أضف طالباً (يمكنك إضافة أكثر من واحد)</label>
+                        <select className="form-input" value=""
                           onChange={e => {
                             const s = myStudents.find(x => x.id === e.target.value);
-                            if (s) setForm(p => ({ ...p, studentName: s.student_name, studentEmail: s.student_email ?? '' }));
+                            if (s && !selectedStudents.find(x => x.id === s.id))
+                              setSelectedStudents(prev => [...prev, { id: s.id, name: s.student_name, email: s.student_email ?? '' }]);
                           }}>
-                          <option value="">— اختر الطالب —</option>
-                          {classStudents.map(s => (
+                          <option value="">— اضغط لاختيار طالب —</option>
+                          {remaining.map(s => (
                             <option key={s.id} value={s.id}>👤 {s.student_name}</option>
                           ))}
                         </select>
                       </>
                     )}
+                    {pickerClass && remaining.length === 0 && (
+                      <div style={{ fontSize:'.82rem', color:'#059669', fontWeight:700 }}>✅ تم اختيار جميع طلاب هذا الصف</div>
+                    )}
+
+                    {/* Selected students chips */}
+                    {selectedStudents.length > 0 && (
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:10 }}>
+                        {selectedStudents.map(s => (
+                          <span key={s.id} style={{ background:'#185FA5', color:'#fff', borderRadius:20, padding:'5px 12px', fontSize:'.82rem', display:'flex', alignItems:'center', gap:7, fontWeight:700 }}>
+                            👤 {s.name}
+                            <button type="button"
+                              onClick={() => setSelectedStudents(prev => prev.filter(x => x.id !== s.id))}
+                              style={{ background:'rgba(255,255,255,.25)', border:'none', color:'#fff', cursor:'pointer', borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'.75rem', fontWeight:900, padding:0, lineHeight:1 }}>
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
-              <div className="form-group">
-                <label className="form-label">اسم الطالب *</label>
-                <input className="form-input" type="text" value={form.studentName} onChange={set('studentName')} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">بريد الطالب الإلكتروني *</label>
-                <input className="form-input" type="email" value={form.studentEmail} onChange={set('studentEmail')}
-                  dir="ltr" required placeholder="student@example.com" />
-                <div style={{ fontSize:'.76rem', color:'var(--muted)', marginTop:4 }}>
-                  📌 مطلوب لكي تظهر الحصة في داشبورد الطالب
-                </div>
-              </div>
+              {/* Manual fields — hidden when students selected from picker */}
+              {selectedStudents.length === 0 && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">اسم الطالب *</label>
+                    <input className="form-input" type="text" value={form.studentName} onChange={set('studentName')} required={selectedStudents.length === 0} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">بريد الطالب الإلكتروني *</label>
+                    <input className="form-input" type="email" value={form.studentEmail} onChange={set('studentEmail')}
+                      dir="ltr" required={selectedStudents.length === 0} placeholder="student@example.com" />
+                    <div style={{ fontSize:'.76rem', color:'var(--muted)', marginTop:4 }}>
+                      📌 مطلوب لكي تظهر الحصة في داشبورد الطالب
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="form-group">
                 <label className="form-label">موضوع الحصة (اختياري)</label>
                 <input className="form-input" type="text" placeholder="قواعد النحو، القراءة..." value={form.subject} onChange={set('subject')} />
