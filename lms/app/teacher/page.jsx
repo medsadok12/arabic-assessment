@@ -77,6 +77,8 @@ export default function TeacherPage() {
   const [weekOffset,   setWeekOffset]   = useState(0);
   // Student profile panel
   const [profileStudent, setProfileStudent] = useState(null);
+  // Class picker state for session modal
+  const [pickerClass,    setPickerClass]    = useState('');
   // My student roster (with level/section)
   const [myStudents,   setMyStudents]   = useState([]);
   const [rosterForm,   setRosterForm]   = useState({ student_name:'', student_email:'', level:'1', section:'أ' });
@@ -133,7 +135,7 @@ export default function TeacherPage() {
   });
 
   // ── Session modal ──
-  function openCreate() { setForm(EMPTY_FORM); setEditSession(null); setShowModal(true); setMsg(null); }
+  function openCreate() { setForm(EMPTY_FORM); setEditSession(null); setShowModal(true); setMsg(null); setPickerClass(''); }
   function openEdit(s) {
     setForm({
       studentName: s.student_name, studentEmail: s.student_email ?? '',
@@ -943,36 +945,54 @@ export default function TeacherPage() {
               {editSession ? '✏️ تعديل الحصة' : '📅 جدولة حصة جديدة'}
             </h2>
             <form onSubmit={handleSubmit}>
-              {/* Student picker from roster */}
-              {myStudents.length > 0 && (
-                <div className="form-group">
-                  <label className="form-label">اختر من القائمة</label>
-                  <select className="form-input" defaultValue=""
-                    onChange={e => {
-                      const s = myStudents.find(x => x.id === e.target.value);
-                      if (s) setForm(p => ({ ...p, studentName: s.student_name, studentEmail: s.student_email ?? '' }));
-                    }}>
-                    <option value="" disabled>— اختر طالباً —</option>
-                    {(() => {
-                      const grouped = {};
-                      for (const s of myStudents) {
-                        const key = `${s.level ?? 1}-${s.section ?? 'أ'}`;
-                        if (!grouped[key]) grouped[key] = { level: s.level ?? 1, section: s.section ?? 'أ', list: [] };
-                        grouped[key].list.push(s);
-                      }
-                      return Object.values(grouped)
-                        .sort((a,b) => a.level - b.level || a.section.localeCompare(b.section))
-                        .map(g => (
-                          <optgroup key={`${g.level}-${g.section}`} label={`المستوى ${LEVEL_AR[g.level]} — الصف ${g.section}`}>
-                            {g.list.map(s => (
-                              <option key={s.id} value={s.id}>{s.student_name}</option>
-                            ))}
-                          </optgroup>
-                        ));
-                    })()}
-                  </select>
-                </div>
-              )}
+              {/* Two-step student picker */}
+              {myStudents.length > 0 && (() => {
+                // Unique classes sorted by level then section
+                const classes = [...new Map(
+                  myStudents.map(s => [`${s.level}-${s.section}`, { level: s.level ?? 1, section: s.section ?? 'أ' }])
+                ).values()].sort((a,b) => a.level - b.level || a.section.localeCompare(b.section));
+
+                const classStudents = pickerClass
+                  ? myStudents.filter(s => `${s.level}-${s.section}` === pickerClass)
+                  : [];
+
+                return (
+                  <div className="form-group" style={{ background:'#f0f7ff', borderRadius:12, padding:'14px 16px', border:'1.5px solid #bcd4f0' }}>
+                    <div style={{ fontWeight:800, fontSize:'.85rem', color:'var(--primary)', marginBottom:10 }}>
+                      👥 اختر من قائمتي
+                    </div>
+                    {/* Step 1: Class */}
+                    <label className="form-label" style={{ fontSize:'.8rem' }}>الخطوة 1 — اختر المستوى والصف</label>
+                    <select className="form-input" value={pickerClass}
+                      onChange={e => { setPickerClass(e.target.value); setForm(p => ({ ...p, studentName:'', studentEmail:'' })); }}
+                      style={{ marginBottom: 10 }}>
+                      <option value="">— المستوى والصف —</option>
+                      {classes.map(c => (
+                        <option key={`${c.level}-${c.section}`} value={`${c.level}-${c.section}`}>
+                          📚 المستوى {LEVEL_AR[c.level]} — الصف {c.section}
+                          {' '}({myStudents.filter(s => s.level === c.level && s.section === c.section).length} طالب)
+                        </option>
+                      ))}
+                    </select>
+                    {/* Step 2: Student */}
+                    {pickerClass && (
+                      <>
+                        <label className="form-label" style={{ fontSize:'.8rem' }}>الخطوة 2 — اختر الطالب</label>
+                        <select className="form-input" defaultValue=""
+                          onChange={e => {
+                            const s = myStudents.find(x => x.id === e.target.value);
+                            if (s) setForm(p => ({ ...p, studentName: s.student_name, studentEmail: s.student_email ?? '' }));
+                          }}>
+                          <option value="">— اختر الطالب —</option>
+                          {classStudents.map(s => (
+                            <option key={s.id} value={s.id}>👤 {s.student_name}</option>
+                          ))}
+                        </select>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="form-group">
                 <label className="form-label">اسم الطالب *</label>
                 <input className="form-input" type="text" value={form.studentName} onChange={set('studentName')} required />
