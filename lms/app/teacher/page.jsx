@@ -15,8 +15,10 @@ const TIME_SLOTS = Array.from({ length: 29 }, (_, i) => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 });
 
-const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-const DAYS_AR   = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const MONTHS_AR  = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const DAYS_AR    = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const LEVEL_AR   = ['','الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع'];
+const SECTIONS   = ['أ','ب','ج','د','هـ','و'];
 
 function fmtDate(iso) {
   if (!iso) return '';
@@ -75,6 +77,11 @@ export default function TeacherPage() {
   const [weekOffset,   setWeekOffset]   = useState(0);
   // Student profile panel
   const [profileStudent, setProfileStudent] = useState(null);
+  // My student roster (with level/section)
+  const [myStudents,   setMyStudents]   = useState([]);
+  const [rosterForm,   setRosterForm]   = useState({ student_name:'', student_email:'', level:'1', section:'أ' });
+  const [rosterSaving, setRosterSaving] = useState(false);
+  const [rosterMsg,    setRosterMsg]    = useState(null);
   // Homework state
   const [homework,     setHomework]     = useState([]);
   const [hwForm,       setHwForm]       = useState({ title:'', description:'', student_email:'', student_name:'', due_date:'' });
@@ -98,10 +105,12 @@ export default function TeacherPage() {
       fetch('/api/teacher/sessions').then(r => r.json()),
       fetch('/api/teacher/students').then(r => r.json()),
       fetch('/api/teacher/homework').then(r => r.json()),
-    ]).then(([sd, st, hw]) => {
+      fetch('/api/teacher/my-students').then(r => r.json()),
+    ]).then(([sd, st, hw, ms]) => {
       setSessions(sd.sessions ?? []);
       setStudents(st.students ?? []);
       setHomework(hw.homework ?? []);
+      setMyStudents(ms.students ?? []);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [user]);
@@ -381,8 +390,9 @@ export default function TeacherPage() {
           {/* ── Sidebar ── */}
           <nav className="tw-sidebar">
             {[
-              { key:'sessions', icon:'📅', label:'الحصص',   count: upcoming.length },
+              { key:'sessions', icon:'📅', label:'الحصص',    count: upcoming.length },
               { key:'calendar', icon:'🗓️', label:'التقويم', count: null },
+              { key:'roster',   icon:'📒', label:'قائمتي',  count: myStudents.length || null },
               { key:'students', icon:'👥', label:'طلابي',   count: students.length },
               { key:'past',     icon:'📋', label:'السابقة', count: past.length },
               { key:'homework', icon:'📝', label:'الواجبات', count: homework.filter(h => h.status === 'pending').length || null },
@@ -697,6 +707,103 @@ export default function TeacherPage() {
               )
             )}
 
+            {/* ── MY STUDENT ROSTER ── */}
+            {activeTab === 'roster' && (() => {
+              // Group by level then section
+              const grouped = {};
+              for (const s of myStudents) {
+                const lvl = s.level ?? 1;
+                const sec = s.section ?? 'أ';
+                const key = `${lvl}-${sec}`;
+                if (!grouped[key]) grouped[key] = { level: lvl, section: sec, students: [] };
+                grouped[key].students.push(s);
+              }
+              const groups = Object.values(grouped).sort((a,b) => a.level - b.level || a.section.localeCompare(b.section));
+
+              async function addStudent(e) {
+                e.preventDefault();
+                if (!rosterForm.student_name.trim()) return;
+                setRosterSaving(true); setRosterMsg(null);
+                const res  = await fetch('/api/teacher/my-students', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(rosterForm) });
+                const data = await res.json();
+                setRosterSaving(false);
+                if (res.ok) {
+                  setMyStudents(prev => [...prev, data.student].sort((a,b) => a.level - b.level || (a.section||'').localeCompare(b.section||'') || a.student_name.localeCompare(b.student_name)));
+                  setRosterForm({ student_name:'', student_email:'', level:'1', section:'أ' });
+                  setRosterMsg({ ok:true, text:'✅ تمت الإضافة' });
+                } else setRosterMsg({ ok:false, text: data.error });
+                setTimeout(() => setRosterMsg(null), 3000);
+              }
+              async function removeStudent(id) {
+                if (!confirm('حذف هذا الطالب من القائمة؟')) return;
+                await fetch('/api/teacher/my-students', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) });
+                setMyStudents(prev => prev.filter(s => s.id !== id));
+              }
+
+              return (
+                <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+                  {/* Add form */}
+                  <form onSubmit={addStudent} style={{ background:'#f8fafc', borderRadius:14, padding:'18px 20px', border:'1.5px solid var(--border)' }}>
+                    <div style={{ fontWeight:800, fontSize:'.95rem', color:'var(--primary)', marginBottom:14 }}>➕ إضافة طالب للقائمة</div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                      <div>
+                        <label className="form-label">المستوى</label>
+                        <select className="form-input" value={rosterForm.level} onChange={e => setRosterForm(p=>({...p, level:e.target.value}))}>
+                          {[1,2,3,4,5,6,7].map(n => <option key={n} value={n}>المستوى {LEVEL_AR[n]}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="form-label">الصف</label>
+                        <select className="form-input" value={rosterForm.section} onChange={e => setRosterForm(p=>({...p, section:e.target.value}))}>
+                          {SECTIONS.map(s => <option key={s} value={s}>الصف {s}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
+                      <div>
+                        <label className="form-label">اسم الطالب *</label>
+                        <input className="form-input" placeholder="محمد أحمد" value={rosterForm.student_name} onChange={e => setRosterForm(p=>({...p, student_name:e.target.value}))} required />
+                      </div>
+                      <div>
+                        <label className="form-label">البريد الإلكتروني</label>
+                        <input className="form-input" type="email" dir="ltr" placeholder="student@email.com" value={rosterForm.student_email} onChange={e => setRosterForm(p=>({...p, student_email:e.target.value}))} />
+                      </div>
+                    </div>
+                    {rosterMsg && <div style={{ fontSize:'.85rem', fontWeight:700, color: rosterMsg.ok ? '#16a34a' : '#dc2626', marginBottom:8 }}>{rosterMsg.text}</div>}
+                    <button type="submit" disabled={rosterSaving} className="btn btn-primary" style={{ alignSelf:'flex-start' }}>
+                      {rosterSaving ? '...' : '➕ إضافة'}
+                    </button>
+                  </form>
+
+                  {/* Grouped list */}
+                  {groups.length === 0 ? (
+                    <div className="card" style={{ textAlign:'center', padding:'40px 24px', color:'var(--muted)' }}>
+                      لم تضف طلاباً بعد — ابدأ بإضافة طلابك أعلاه
+                    </div>
+                  ) : groups.map(g => (
+                    <div key={`${g.level}-${g.section}`}>
+                      <div style={{ fontWeight:900, fontSize:'.9rem', color:'var(--primary)', background:'#eef5ff', borderRadius:10, padding:'8px 14px', marginBottom:8, display:'flex', alignItems:'center', gap:8 }}>
+                        📚 المستوى {LEVEL_AR[g.level]} — الصف {g.section}
+                        <span style={{ fontWeight:600, fontSize:'.78rem', color:'#64748b', marginRight:'auto' }}>{g.students.length} طالب</span>
+                      </div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                        {g.students.map(s => (
+                          <div key={s.id} style={{ background:'#fff', borderRadius:10, border:'1.5px solid var(--border)', padding:'10px 14px', display:'flex', alignItems:'center', gap:12 }}>
+                            <span style={{ fontSize:'1.1rem' }}>👤</span>
+                            <div style={{ flex:1 }}>
+                              <div style={{ fontWeight:700, fontSize:'.9rem' }}>{s.student_name}</div>
+                              {s.student_email && <div style={{ fontSize:'.78rem', color:'var(--muted)', direction:'ltr', textAlign:'right' }}>{s.student_email}</div>}
+                            </div>
+                            <button onClick={() => removeStudent(s.id)} style={{ background:'none', border:'none', color:'#dc2626', cursor:'pointer', fontSize:'.9rem', padding:'4px 6px' }}>🗑️</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
             {activeTab === 'space' && (
               <TeacherSpace currentUser={user} />
             )}
@@ -836,6 +943,36 @@ export default function TeacherPage() {
               {editSession ? '✏️ تعديل الحصة' : '📅 جدولة حصة جديدة'}
             </h2>
             <form onSubmit={handleSubmit}>
+              {/* Student picker from roster */}
+              {myStudents.length > 0 && (
+                <div className="form-group">
+                  <label className="form-label">اختر من القائمة</label>
+                  <select className="form-input" defaultValue=""
+                    onChange={e => {
+                      const s = myStudents.find(x => x.id === e.target.value);
+                      if (s) setForm(p => ({ ...p, studentName: s.student_name, studentEmail: s.student_email ?? '' }));
+                    }}>
+                    <option value="" disabled>— اختر طالباً —</option>
+                    {(() => {
+                      const grouped = {};
+                      for (const s of myStudents) {
+                        const key = `${s.level ?? 1}-${s.section ?? 'أ'}`;
+                        if (!grouped[key]) grouped[key] = { level: s.level ?? 1, section: s.section ?? 'أ', list: [] };
+                        grouped[key].list.push(s);
+                      }
+                      return Object.values(grouped)
+                        .sort((a,b) => a.level - b.level || a.section.localeCompare(b.section))
+                        .map(g => (
+                          <optgroup key={`${g.level}-${g.section}`} label={`المستوى ${LEVEL_AR[g.level]} — الصف ${g.section}`}>
+                            {g.list.map(s => (
+                              <option key={s.id} value={s.id}>{s.student_name}</option>
+                            ))}
+                          </optgroup>
+                        ));
+                    })()}
+                  </select>
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">اسم الطالب *</label>
                 <input className="form-input" type="text" value={form.studentName} onChange={set('studentName')} required />
