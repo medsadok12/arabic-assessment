@@ -7,6 +7,14 @@ import { createClient } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import TeamChat        from './TeamChat';
 
+/* ── Global style for navbar pulse ── */
+if (typeof document !== 'undefined' && !document.getElementById('nav-pulse-style')) {
+  const s = document.createElement('style');
+  s.id = 'nav-pulse-style';
+  s.textContent = '@keyframes navPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.82;transform:scale(1.04)}}';
+  document.head.appendChild(s);
+}
+
 /* ── أيقونات التواصل الاجتماعي ── */
 function WhatsAppIcon() {
   return (
@@ -134,7 +142,7 @@ function dashboardPath(role) {
   return '/dashboard';
 }
 
-export default function Navbar({ user: initialUser }) {
+export default function Navbar({ user: initialUser, sessionCountdown = null }) {
   const pathname  = usePathname();
   const router    = useRouter();
   const dropRef   = useRef(null);
@@ -234,6 +242,21 @@ export default function Navbar({ user: initialUser }) {
           <div className="navbar-social-desktop" style={{ borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: 20 }}>
             <SocialIcons />
           </div>
+
+          {/* عداد تنازلي للحصة القادمة */}
+          {sessionCountdown && (
+            <div style={{
+              background: 'linear-gradient(135deg,#dc2626,#b91c1c)',
+              color: '#fff', borderRadius: 20, padding: '5px 14px',
+              fontSize: '.82rem', fontWeight: 900, letterSpacing: '.5px',
+              fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+              boxShadow: '0 0 12px rgba(220,38,38,.5)',
+              animation: 'navPulse 1.5s ease-in-out infinite',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <span>⏱️</span> {sessionCountdown}
+            </div>
+          )}
 
           {/* زر تبديل اللغة */}
           <LangToggle />

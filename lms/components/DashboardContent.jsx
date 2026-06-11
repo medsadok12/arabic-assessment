@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Navbar from './Navbar';
 import ParentPanel from './ParentPanel';
@@ -47,18 +47,77 @@ export default function DashboardContent({
   const { t, lang } = useLanguage();
   const locale = 'en-GB';
 
-  const nextSession   = upcomingSessions[0] ?? null;
-  const pendingHw     = homework.filter(h => h.status !== 'done').length;
-  const today         = new Date().toISOString().slice(0, 10);
+  const nextSession = upcomingSessions[0] ?? null;
+  const pendingHw   = homework.filter(h => h.status !== 'done').length;
+  const today       = new Date().toISOString().slice(0, 10);
 
-  let timeLabel = '', joinable = false;
-  if (nextSession) {
-    const now      = new Date();
-    const dt       = new Date(`${nextSession.session_date}T${nextSession.start_time}`);
-    const diffMins = Math.round((dt - now) / 60000);
-    joinable = diffMins <= 30;
+  // ── Live clock ──
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // ── Session timing ──
+  const sessionDT  = nextSession ? new Date(`${nextSession.session_date}T${nextSession.start_time}`) : null;
+  const diffMs     = sessionDT ? sessionDT - now : null;
+  const diffMins   = diffMs != null ? diffMs / 60000 : null;
+  const sessionActive = diffMs != null && diffMs <= 0; // time reached
+
+  // Countdown string (MM:SS) shown when < 1 hour
+  let countdown = null;
+  if (diffMs != null && diffMs > 0 && diffMs <= 3600000) {
+    const secs = Math.floor(diffMs / 1000);
+    countdown = `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
+  }
+
+  // ── Audio reminder — plays ONCE when entering the 1-hour window ──
+  const audioPlayedRef = useRef(new Set());
+  useEffect(() => {
+    if (!nextSession || !diffMs) return;
+    if (diffMs > 0 && diffMs <= 3600000 && !audioPlayedRef.current.has(nextSession.id)) {
+      audioPlayedRef.current.add(nextSession.id);
+      const audio = new Audio('/sounds/session-reminder.mp3');
+      audio.play().catch(() => {
+        if ('speechSynthesis' in window) {
+          const u = new SpeechSynthesisUtterance('لَدَيْكَ حِصَّةُ لُغَةٍ عَرَبِيَّةٍ بَعْدَ سَاعَةٍ');
+          u.lang = 'ar-SA'; u.rate = 0.9;
+          window.speechSynthesis.speak(u);
+        }
+      });
+    }
+  }, [countdown, nextSession]);
+
+  // ── Attendance state ──
+  const [attendanceLogged, setAttendanceLogged] = useState(false);
+  const [attLoading,       setAttLoading]       = useState(false);
+
+  useEffect(() => {
+    if (!nextSession || !sessionActive) return;
+    fetch(`/api/student/attendance?session_id=${nextSession.id}`)
+      .then(r => r.json())
+      .then(d => { if (d.logged) setAttendanceLogged(true); })
+      .catch(() => {});
+  }, [sessionActive, nextSession?.id]);
+
+  async function logAttendance() {
+    if (!nextSession || attLoading || attendanceLogged) return;
+    setAttLoading(true);
+    const res = await fetch('/api/student/attendance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: nextSession.id }),
+    });
+    const data = await res.json();
+    if (data.ok) setAttendanceLogged(true);
+    setAttLoading(false);
+  }
+
+  // ── Time label ──
+  let timeLabel = '';
+  if (diffMins != null) {
     if (diffMins <= 0)        timeLabel = '🔴 الحصة تبدأ الآن';
-    else if (diffMins < 60)   timeLabel = `⏱️ تبدأ بعد ${diffMins} دقيقة`;
+    else if (diffMins < 60)   timeLabel = `⏱️ تبدأ بعد ${Math.round(diffMins)} دقيقة`;
     else if (diffMins < 1440) timeLabel = `⏱️ تبدأ بعد ${Math.floor(diffMins / 60)} ساعة`;
     else {
       const d = Math.floor(diffMins / 1440);
@@ -125,9 +184,14 @@ export default function DashboardContent({
         .db-action-title{ font-weight:800; font-size:.97rem; margin-bottom:3px; }
         .db-action-desc { font-size:.78rem; opacity:.85; }
         @media(max-width:600px){ .db-actions{grid-template-columns:1fr;} }
+
+        @keyframes attPulse {
+          0%,100% { box-shadow:0 4px 16px rgba(0,0,0,.18); transform:scale(1); }
+          50%     { box-shadow:0 6px 24px rgba(24,95,165,.45); transform:scale(1.04); }
+        }
       `}</style>
 
-      <Navbar user={user} />
+      <Navbar user={user} sessionCountdown={isStudent ? countdown : null} />
       <main className="page-wrap">
         <div className="db-wrap">
 
@@ -175,7 +239,7 @@ export default function DashboardContent({
 
           {/* ── Next session ── */}
           {nextSession && (
-            <div className="db-session" style={{ background: joinable ? 'linear-gradient(135deg,#1a7c40,#15803d)' : 'linear-gradient(135deg,#185FA5,#1d4ed8)' }}>
+            <div className="db-session" style={{ background: sessionActive ? 'linear-gradient(135deg,#1a7c40,#15803d)' : 'linear-gradient(135deg,#185FA5,#1d4ed8)' }}>
               <div style={{ fontSize: '2.8rem', lineHeight: 1 }}>🎥</div>
               <div className="db-session-body">
                 <div style={{ fontSize: '.78rem', opacity: .8, fontWeight: 600, marginBottom: 3 }}>الحصة القادمة</div>
@@ -189,9 +253,37 @@ export default function DashboardContent({
                 </div>
                 <span className="db-session-badge">{timeLabel}</span>
               </div>
-              <div style={{ background:'rgba(255,255,255,.18)', borderRadius:12, padding:'11px 18px', fontSize:'.85rem', fontWeight:700, whiteSpace:'nowrap', border:'1.5px solid rgba(255,255,255,.35)', textAlign:'center' }}>
-                ⏳ {joinable ? 'تبدأ الآن' : 'انتظر المعلم'}
-              </div>
+              {/* زر الحضور */}
+              <button
+                onClick={logAttendance}
+                disabled={!sessionActive || attendanceLogged || attLoading}
+                style={{
+                  borderRadius: 12, padding: '12px 20px',
+                  fontWeight: 900, fontSize: '.92rem', whiteSpace: 'nowrap',
+                  border: 'none', cursor: sessionActive && !attendanceLogged ? 'pointer' : 'not-allowed',
+                  fontFamily: 'inherit', transition: '.25s',
+                  background: attendanceLogged
+                    ? '#16a34a'
+                    : sessionActive
+                      ? '#fff'
+                      : 'rgba(255,255,255,.15)',
+                  color: attendanceLogged
+                    ? '#fff'
+                    : sessionActive
+                      ? '#185FA5'
+                      : 'rgba(255,255,255,.6)',
+                  boxShadow: sessionActive && !attendanceLogged ? '0 4px 16px rgba(0,0,0,.18)' : 'none',
+                  animation: sessionActive && !attendanceLogged ? 'attPulse 1.8s ease-in-out infinite' : 'none',
+                }}
+              >
+                {attendanceLogged
+                  ? '✅ سُجِّل حضورك'
+                  : attLoading
+                    ? '...'
+                    : sessionActive
+                      ? '🟢 سجّل حضورك'
+                      : `🔒 ${countdown ? countdown : 'قبل الموعد'}`}
+              </button>
             </div>
           )}
 
