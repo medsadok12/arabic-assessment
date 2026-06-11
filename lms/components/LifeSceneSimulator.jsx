@@ -513,7 +513,6 @@ function StudentSceneViewer({ scene, onClose, editable, onUpdate }) {
   const [saving,    setSaving]    = useState(false);
 
   // interactive recording state
-  const [studentRole,   setStudentRole]   = useState(null);
   const [recordings,    setRecordings]    = useState({});    // { idx: blobUrl }
   const [recordingIdx,  setRecordingIdx]  = useState(null);
   const [playingIdx,    setPlayingIdx]    = useState(null);
@@ -527,9 +526,8 @@ function StudentSceneViewer({ scene, onClose, editable, onUpdate }) {
   const audioRef  = useRef(null);
   const grandRef  = useRef(false);
 
-  const studentLineIndices = lines.reduce((acc, l, i) => l.speaker === studentRole ? [...acc, i] : acc, []);
-  const recordedCount      = studentLineIndices.filter(i => recordings[i]).length;
-  const allRecorded        = studentRole && recordedCount === studentLineIndices.length && studentLineIndices.length > 0;
+  const recordedCount = Object.keys(recordings).length;
+  const allRecorded   = lines.length > 0 && recordedCount === lines.length;
 
   useEffect(() => {
     setEditLines(cleanDialogue(scene.dialogue ?? []));
@@ -546,7 +544,6 @@ function StudentSceneViewer({ scene, onClose, editable, onUpdate }) {
 
   function resetRecording() {
     stopMedia();
-    setStudentRole(null);
     Object.values(recordings).forEach(u => URL.revokeObjectURL(u));
     setRecordings({});
     setRecordingIdx(null);
@@ -620,7 +617,7 @@ function StudentSceneViewer({ scene, onClose, editable, onUpdate }) {
       if (!grandRef.current) break;
       setGrandIdx(i);
       const line = lines[i];
-      if (line.speaker === studentRole && recordings[i]) {
+      if (recordings[i]) {
         await new Promise(resolve => {
           const audio = new Audio(recordings[i]);
           audioRef.current = audio;
@@ -662,8 +659,8 @@ function StudentSceneViewer({ scene, onClose, editable, onUpdate }) {
           {editable && !editing && scene.id !== 'mock' && (
             <button onClick={() => setEditing(true)} style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--primary)', background:'#fff', color:'var(--primary)', fontWeight:700, fontSize:'.82rem', cursor:'pointer', fontFamily:'inherit' }}>✏️ تعديل</button>
           )}
-          {studentRole && !editing && (
-            <button onClick={resetRecording} title="إعادة الاختيار" style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#64748b', fontSize:'.8rem', cursor:'pointer', fontFamily:'inherit', fontWeight:700 }}>↩ غيّر الدور</button>
+          {recordedCount > 0 && !editing && (
+            <button onClick={resetRecording} title="إعادة التسجيل" style={{ padding:'6px 10px', borderRadius:8, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#64748b', fontSize:'.8rem', cursor:'pointer', fontFamily:'inherit', fontWeight:700 }}>↩ إعادة</button>
           )}
           {onClose && <button onClick={onClose} style={{ background:'none', border:'none', fontSize:'1.3rem', cursor:'pointer', color:'var(--muted)' }}>✕</button>}
         </div>
@@ -673,73 +670,31 @@ function StudentSceneViewer({ scene, onClose, editable, onUpdate }) {
       {editing ? (
         <DialogueEditor characterImages={charImg} setCharImages={setCharImg} editLines={editLines} setEditLines={setEditLines}
           onSave={saveEdits} onCancel={() => { setEditLines(cleanDialogue(scene.dialogue ?? [])); setCharImg(extractMeta(scene.dialogue ?? [])?.images ?? {}); setEditing(false); }} saving={saving}/>
-      ) : !studentRole ? (
-        /* ── Character selector ───────────────────────────────── */
-        <div style={{ direction:'rtl' }}>
-          <div style={{ textAlign:'center', marginBottom:20 }}>
-            <div style={{ fontSize:'2rem', marginBottom:8 }}>🎭</div>
-            <div style={{ fontWeight:800, fontSize:'1rem', color:'#1e293b', marginBottom:6 }}>اخترْ شخصيتك في المسرحية</div>
-            <div style={{ fontSize:'.85rem', color:'#64748b' }}>ستسجّل أسطرها بصوتك وتصبح بطل المشهد!</div>
-          </div>
-
-          {/* Preview of dialogue */}
-          <div style={{ background:'#f8fafc', borderRadius:14, padding:'14px 16px', marginBottom:18, maxHeight:180, overflowY:'auto' }}>
-            <DialogueView dialogue={scene.dialogue} characterImages={characterImages}/>
-          </div>
-
-          <div style={{ display:'flex', gap:14, justifyContent:'center', flexWrap:'wrap' }}>
-            {speakers.map(name => {
-              const col   = speakerColor(name, speakers);
-              const count = lines.filter(l => l.speaker === name).length;
-              return (
-                <button key={name} onClick={() => setStudentRole(name)} style={{
-                  display:'flex', flexDirection:'column', alignItems:'center', gap:8,
-                  padding:'16px 22px', borderRadius:16,
-                  border:`2px solid ${col.border}`,
-                  background: col.bg,
-                  cursor:'pointer', fontFamily:'inherit',
-                  transition:'transform .15s, box-shadow .15s',
-                  boxShadow:`0 4px 12px ${col.border}55`,
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.transform='scale(1.06)'; e.currentTarget.style.boxShadow=`0 8px 24px ${col.border}88`; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform='scale(1)';    e.currentTarget.style.boxShadow=`0 4px 12px ${col.border}55`; }}
-                >
-                  <div style={{ width:56, height:56, borderRadius:'50%', overflow:'hidden', border:`2.5px solid ${col.border}`, boxShadow:'0 2px 8px rgba(0,0,0,.1)' }}>
-                    {getAvatar(name, characterImages)}
-                  </div>
-                  <div style={{ fontWeight:800, fontSize:'.95rem', color: col.text }}>{name}</div>
-                  <div style={{ fontSize:'.72rem', color: col.text, opacity:.7 }}>{count} {count === 1 ? 'سطر' : 'أسطر'}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
       ) : (
         /* ── Inline recording experience ─────────────────────── */
         <div style={{ direction:'rtl' }}>
           {/* Progress bar */}
           <div style={{ marginBottom:16 }}>
             <div style={{ display:'flex', justifyContent:'space-between', fontSize:'.78rem', color:'#64748b', marginBottom:5, fontWeight:700 }}>
-              <span>🎤 دورك كـ «{studentRole}»</span>
+              <span>🎭 سجّل جميع الأدوار</span>
               <span style={{ color: allRecorded ? '#16a34a' : '#185FA5' }}>
-                {recordedCount}/{studentLineIndices.length} {allRecorded ? '✅ جاهز!' : 'سطر'}
+                {recordedCount}/{lines.length} {allRecorded ? '✅ جاهز!' : 'سطر'}
               </span>
             </div>
             <div style={{ height:6, background:'#e2e8f0', borderRadius:3, overflow:'hidden' }}>
-              <div style={{ height:'100%', background: allRecorded ? 'linear-gradient(90deg,#10b981,#059669)' : 'linear-gradient(90deg,#185FA5,#3b82f6)', borderRadius:3, width:`${studentLineIndices.length ? (recordedCount / studentLineIndices.length) * 100 : 0}%`, transition:'width .4s' }}/>
+              <div style={{ height:'100%', background: allRecorded ? 'linear-gradient(90deg,#10b981,#059669)' : 'linear-gradient(90deg,#185FA5,#3b82f6)', borderRadius:3, width:`${lines.length ? (recordedCount / lines.length) * 100 : 0}%`, transition:'width .4s' }}/>
             </div>
           </div>
 
           {/* Dialogue lines */}
           <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
             {lines.map((line, idx) => {
-              const isStudentLine = line.speaker === studentRole;
-              const col           = speakerColor(line.speaker, speakers);
-              const isRight       = speakers.indexOf(line.speaker) === 0;
+              const col     = speakerColor(line.speaker, speakers);
+              const isRight = speakers.indexOf(line.speaker) === 0;
               return (
                 <RecordableLine key={idx}
                   line={line} idx={idx}
-                  isStudentLine={isStudentLine}
+                  isStudentLine={true}
                   recording={recordings[idx]}
                   isRecording={recordingIdx === idx}
                   isPlaying={playingIdx === idx}
@@ -760,7 +715,7 @@ function StudentSceneViewer({ scene, onClose, editable, onUpdate }) {
           <div style={{ marginTop:28, textAlign:'center' }}>
             {!allRecorded && (
               <div style={{ fontSize:'.8rem', color:'#94a3b8', marginBottom:10, fontWeight:600 }}>
-                🎤 سجّل {studentLineIndices.length - recordedCount} {studentLineIndices.length - recordedCount === 1 ? 'سطر' : 'أسطر'} متبقية للبدء بالعرض الكامل
+                🎤 سجّل {lines.length - recordedCount} {lines.length - recordedCount === 1 ? 'سطر' : 'أسطر'} متبقية للبدء بالعرض الكامل
               </div>
             )}
             <button
@@ -797,7 +752,7 @@ function StudentSceneViewer({ scene, onClose, editable, onUpdate }) {
 
             {allRecorded && !grandPlaying && (
               <div style={{ marginTop:10, fontSize:'.78rem', color:'#16a34a', fontWeight:700 }}>
-                🌟 رائع! سجّلت كل أسطرك — استمع للمشهد كاملاً!
+                🌟 رائع! سجّلتم جميع الأدوار — استمعوا للمسرحية كاملةً!
               </div>
             )}
           </div>
