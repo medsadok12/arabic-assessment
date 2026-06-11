@@ -2,7 +2,7 @@ import { NextResponse }     from 'next/server';
 import { createClient }    from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { notify }           from '../../../../lib/notify';
-import { sendSessionEmail } from '../../../../lib/email';
+import { sendSessionEmail, sendTeacherInviteEmail } from '../../../../lib/email';
 import { createMeetSession, deleteMeetEvent } from '../../../../lib/google-meet';
 
 export const dynamic = 'force-dynamic';
@@ -42,7 +42,8 @@ export async function POST(req) {
   let body;
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 }); }
 
-  const { students, studentName, studentEmail, sessionDate, startTime, durationMinutes = 60, subject } = body;
+  const { students, studentName, studentEmail, sessionDate, startTime, durationMinutes = 60, subject,
+          supportStudents = [], invitedTeacherId = null } = body;
 
   // Support both single student (legacy) and array of students (group)
   const studentList = (students?.length > 0)
@@ -100,9 +101,37 @@ export async function POST(req) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Send notification email to each student (no join link)
+  // Send notification email to each main student
   for (const s of studentList.filter(x => x.email)) {
     sendSessionEmail({ to: s.email, studentName: s.name, teacherName, sessionDate, startTime, durationMinutes, subject }).catch(() => {});
+  }
+
+  // Anchor session id (first created) for support students + colleague invite
+  const anchorId = data[0]?.id;
+
+  // Insert support students linked to anchor session
+  if (anchorId && supportStudents.length > 0) {
+    const rows = supportStudents
+      .filter(s => s.name)
+      .map(s => ({ session_id: anchorId, student_name: s.name, student_email: s.email || null }));
+    await admin.from('session_support_students').insert(rows).then(() => null).catch(() => null);
+
+    for (const s of supportStudents.filter(x => x.email)) {
+      sendSessionEmail({ to: s.email, studentName: s.name, teacherName, sessionDate, startTime, durationMinutes, subject }).catch(() => {});
+    }
+  }
+
+  // Invite colleague teacher
+  if (anchorId && invitedTeacherId) {
+    const { data: { user: invited } } = await admin.auth.admin.getUserById(invitedTeacherId).catch(() => ({ data: {} }));
+    if (invited?.email) {
+      const iName  = invited.user_metadata?.full_name ?? invited.email;
+      const iEmail = invited.email;
+      await admin.from('session_teacher_invites')
+        .insert({ session_id: anchorId, teacher_id: invitedTeacherId, teacher_email: iEmail, teacher_name: iName })
+        .catch(() => null);
+      sendTeacherInviteEmail({ to: iEmail, teacherName: iName, inviterName: teacherName, sessionDate, startTime, durationMinutes, subject }).catch(() => {});
+    }
   }
 
   await notify('session', '📅 حصة جديدة مجدولة',

@@ -90,9 +90,32 @@ export default function TeacherPage() {
   const [hwForm,       setHwForm]       = useState({ title:'', description:'', student_email:'', student_name:'', due_date:'' });
   const [hwSaving,     setHwSaving]     = useState(false);
   const [hwMsg,        setHwMsg]        = useState(null);
+  // Support students for new session
+  const [showSupport,          setShowSupport]          = useState(false);
+  const [supportPickerClass,   setSupportPickerClass]   = useState('');
+  const [selectedSupport,      setSelectedSupport]      = useState([]);
+  // Colleague invite for new session
+  const [showColleague,        setShowColleague]        = useState(false);
+  const [colleagues,           setColleagues]           = useState([]);
+  const [colleaguesLoading,    setColleaguesLoading]    = useState(false);
+  const [selectedColleague,    setSelectedColleague]    = useState('');
+  // Pending invites received by this teacher
+  const [pendingInvites,       setPendingInvites]       = useState([]);
+  const [inviteResponding,     setInviteResponding]     = useState(null);
 
   const set    = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
   const setInv = k => e => setInviteForm(p => ({ ...p, [k]: e.target.value }));
+
+  // Load colleagues whenever date+time change inside modal (with colleague section open)
+  useEffect(() => {
+    if (!showModal || editSession || !showColleague || !form.sessionDate || !form.startTime) return;
+    setColleaguesLoading(true);
+    setSelectedColleague('');
+    fetch(`/api/teacher/colleagues?date=${form.sessionDate}&time=${form.startTime}`)
+      .then(r => r.json())
+      .then(d => { setColleagues(d.teachers ?? []); setColleaguesLoading(false); })
+      .catch(() => setColleaguesLoading(false));
+  }, [form.sessionDate, form.startTime, showColleague, showModal]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
@@ -109,11 +132,13 @@ export default function TeacherPage() {
       fetch('/api/teacher/students').then(r => r.json()),
       fetch('/api/teacher/homework').then(r => r.json()),
       fetch('/api/teacher/my-students').then(r => r.json()),
-    ]).then(([sd, st, hw, ms]) => {
+      fetch('/api/teacher/teacher-invites').then(r => r.json()),
+    ]).then(([sd, st, hw, ms, inv]) => {
       setSessions(sd.sessions ?? []);
       setStudents(st.students ?? []);
       setHomework(hw.homework ?? []);
       setMyStudents(ms.students ?? []);
+      setPendingInvites(inv.invites ?? []);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [user]);
@@ -136,7 +161,12 @@ export default function TeacherPage() {
   });
 
   // ── Session modal ──
-  function openCreate() { setForm(EMPTY_FORM); setEditSession(null); setShowModal(true); setMsg(null); setPickerClass(''); setSelectedStudents([]); }
+  function openCreate() {
+    setForm(EMPTY_FORM); setEditSession(null); setShowModal(true); setMsg(null);
+    setPickerClass(''); setSelectedStudents([]);
+    setShowSupport(false); setSupportPickerClass(''); setSelectedSupport([]);
+    setShowColleague(false); setSelectedColleague(''); setColleagues([]);
+  }
   function openEdit(s) {
     setForm({
       studentName: s.student_name, studentEmail: s.student_email ?? '',
@@ -160,13 +190,21 @@ export default function TeacherPage() {
       body = { id: editSession.id, ...form, durationMinutes: parseInt(form.durationMinutes) || 60 };
     } else if (selectedStudents.length > 0) {
       body = {
-        students: selectedStudents.map(s => ({ name: s.name, email: s.email })),
-        sessionDate: form.sessionDate, startTime: form.startTime,
-        durationMinutes: parseInt(form.durationMinutes) || 60,
-        subject: form.subject,
+        students:          selectedStudents.map(s => ({ name: s.name, email: s.email })),
+        sessionDate:       form.sessionDate,
+        startTime:         form.startTime,
+        durationMinutes:   parseInt(form.durationMinutes) || 60,
+        subject:           form.subject,
+        supportStudents:   selectedSupport.map(s => ({ name: s.name, email: s.email })),
+        invitedTeacherId:  selectedColleague || null,
       };
     } else {
-      body = { ...form, durationMinutes: parseInt(form.durationMinutes) || 60 };
+      body = {
+        ...form,
+        durationMinutes:  parseInt(form.durationMinutes) || 60,
+        supportStudents:  selectedSupport.map(s => ({ name: s.name, email: s.email })),
+        invitedTeacherId: selectedColleague || null,
+      };
     }
 
     const res  = await fetch('/api/teacher/sessions', { method: editSession ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -412,6 +450,7 @@ export default function TeacherPage() {
               { key:'students', icon:'👥', label:'طلابي',   count: students.length },
               { key:'past',     icon:'📋', label:'السابقة', count: past.length },
               { key:'homework', icon:'📝', label:'الواجبات', count: homework.filter(h => h.status === 'pending').length || null },
+              { key:'invites',  icon:'👨‍🏫', label:'دعواتي', count: pendingInvites.filter(i => i.status === 'pending').length || null },
             ].map(t => (
               <button
                 key={t.key}
@@ -909,6 +948,108 @@ export default function TeacherPage() {
                 </div>
               );
             })()}
+
+            {/* ── INVITES TAB ── */}
+            {activeTab === 'invites' && (() => {
+              const pending  = pendingInvites.filter(i => i.status === 'pending');
+              const accepted = pendingInvites.filter(i => i.status === 'accepted');
+
+              async function respond(id, status) {
+                setInviteResponding(id);
+                const res = await fetch('/api/teacher/teacher-invites', {
+                  method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ id, status }),
+                });
+                const d = await res.json();
+                if (res.ok) {
+                  setPendingInvites(prev => prev.map(i => i.id === id ? { ...i, status } : i));
+                }
+                setInviteResponding(null);
+              }
+
+              return (
+                <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+                  {/* Pending invites */}
+                  <div>
+                    <div style={{ fontWeight:800, fontSize:'1rem', color:'#7c3aed', marginBottom:12, display:'flex', alignItems:'center', gap:8 }}>
+                      ⏳ دعوات معلّقة {pending.length > 0 && <span style={{ background:'#7c3aed', color:'#fff', borderRadius:20, padding:'1px 8px', fontSize:'.76rem' }}>{pending.length}</span>}
+                    </div>
+                    {pending.length === 0 ? (
+                      <div className="card" style={{ textAlign:'center', padding:'28px 16px', color:'var(--muted)' }}>
+                        <div style={{ fontSize:'2rem', marginBottom:8 }}>📭</div>
+                        لا توجد دعوات معلّقة
+                      </div>
+                    ) : (
+                      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                        {pending.map(inv => (
+                          <div key={inv.id} className="sc" style={{ border:'1.5px solid #d8b4fe', background:'#faf5ff' }}>
+                            <div style={{ fontSize:'1.8rem' }}>👨‍🏫</div>
+                            <div className="si">
+                              <div className="ss">{inv.session?.subject || 'حصة عامة'}</div>
+                              <div className="sm">
+                                <span>👨‍🏫 {inv.session?.teacher_name}</span>
+                                <span>📅 {fmtDate(inv.session?.session_date)}</span>
+                                <span>⏰ {inv.session?.start_time?.slice(0,5)}</span>
+                                <span>⏱️ {inv.session?.duration_minutes} دقيقة</span>
+                              </div>
+                            </div>
+                            <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+                              <button
+                                onClick={() => respond(inv.id, 'accepted')}
+                                disabled={inviteResponding === inv.id}
+                                className="btn btn-primary btn-sm"
+                                style={{ background:'#1a7c40', borderColor:'#1a7c40' }}>
+                                {inviteResponding === inv.id ? '...' : '✅ قبول'}
+                              </button>
+                              <button
+                                onClick={() => respond(inv.id, 'declined')}
+                                disabled={inviteResponding === inv.id}
+                                className="btn btn-outline btn-sm"
+                                style={{ color:'#e53e3e', borderColor:'#e53e3e' }}>
+                                ❌ اعتذار
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Accepted invites */}
+                  {accepted.length > 0 && (
+                    <div>
+                      <div style={{ fontWeight:800, fontSize:'1rem', color:'#1a7c40', marginBottom:12 }}>✅ حصص قبلتها</div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                        {accepted.map(inv => {
+                          const s = inv.session;
+                          const link = s?.meet_link || (s?.room_name ? `https://meet.jit.si/${s.room_name}` : null);
+                          return (
+                            <div key={inv.id} className="sc" style={{ border:'1.5px solid #6ee7b7', background:'#f0fdf4' }}>
+                              <div style={{ fontSize:'1.8rem' }}>🎥</div>
+                              <div className="si">
+                                <div className="ss">{s?.subject || 'حصة عامة'}</div>
+                                <div className="sm">
+                                  <span>👨‍🏫 {s?.teacher_name}</span>
+                                  <span>📅 {fmtDate(s?.session_date)}</span>
+                                  <span>⏰ {s?.start_time?.slice(0,5)}</span>
+                                </div>
+                                <div style={{ fontSize:'.78rem', color:'#059669', fontWeight:700, marginTop:3 }}>✅ قبلت الدعوة</div>
+                              </div>
+                              {link && (
+                                <button onClick={() => window.open(link, '_blank', 'noopener')}
+                                  className="btn btn-primary btn-sm">
+                                  ابدأ الحصة 🎥
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </>
         )}
           </div>{/* tw-content */}
@@ -1043,6 +1184,101 @@ export default function TeacherPage() {
                   </div>
                 </>
               )}
+              {/* ── طالب الدعم (اختياري) ── */}
+              {!editSession && myStudents.length > 0 && (() => {
+                const classes = [...new Map(
+                  myStudents.map(s => [`${s.level}-${s.section}`, { level: s.level ?? 1, section: s.section ?? 'أ' }])
+                ).values()].sort((a,b) => a.level - b.level || a.section.localeCompare(b.section));
+                const supClassStudents = supportPickerClass
+                  ? myStudents.filter(s => `${s.level}-${s.section}` === supportPickerClass)
+                  : [];
+                const supRemaining = supClassStudents.filter(
+                  s => !selectedStudents.find(x => x.id === s.id) && !selectedSupport.find(x => x.id === s.id)
+                );
+                return (
+                  <div className="form-group">
+                    <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', marginBottom: showSupport ? 10 : 0 }}>
+                      <input type="checkbox" checked={showSupport} onChange={e => setShowSupport(e.target.checked)}
+                        style={{ width:15, height:15, cursor:'pointer' }} />
+                      <span style={{ fontWeight:700, fontSize:'.88rem', color:'#059669' }}>👥 إضافة طالب دعم (من أي مستوى)</span>
+                    </label>
+                    {showSupport && (
+                      <div style={{ background:'#f0fdf4', borderRadius:12, padding:'14px 16px', border:'1.5px solid #6ee7b7' }}>
+                        <select className="form-input" value={supportPickerClass}
+                          onChange={e => setSupportPickerClass(e.target.value)} style={{ marginBottom:8 }}>
+                          <option value="">— اختر المستوى والصف —</option>
+                          {classes.map(c => (
+                            <option key={`${c.level}-${c.section}`} value={`${c.level}-${c.section}`}>
+                              📚 المستوى {LEVEL_AR[c.level]} — الصف {c.section}
+                            </option>
+                          ))}
+                        </select>
+                        {supportPickerClass && supRemaining.length > 0 && (
+                          <select className="form-input" value=""
+                            onChange={e => {
+                              const s = myStudents.find(x => x.id === e.target.value);
+                              if (s) setSelectedSupport(prev => [...prev, { id: s.id, name: s.student_name, email: s.student_email ?? '' }]);
+                            }}>
+                            <option value="">— اضغط لإضافة طالب دعم —</option>
+                            {supRemaining.map(s => <option key={s.id} value={s.id}>👤 {s.student_name}</option>)}
+                          </select>
+                        )}
+                        {selectedSupport.length > 0 && (
+                          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:8 }}>
+                            {selectedSupport.map(s => (
+                              <span key={s.id} style={{ background:'#059669', color:'#fff', borderRadius:20, padding:'5px 12px', fontSize:'.82rem', display:'flex', alignItems:'center', gap:7, fontWeight:700 }}>
+                                👤 {s.name}
+                                <button type="button"
+                                  onClick={() => setSelectedSupport(prev => prev.filter(x => x.id !== s.id))}
+                                  style={{ background:'rgba(255,255,255,.25)', border:'none', color:'#fff', cursor:'pointer', borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'.75rem', fontWeight:900, padding:0 }}>
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {selectedSupport.length === 0 && <div style={{ fontSize:'.79rem', color:'var(--muted)', marginTop:4 }}>طلاب الدعم يتلقّون إشعاراً بالحصة ويرونها في داشبورداتهم</div>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* ── دعوة زميل (اختياري) ── */}
+              {!editSession && (
+                <div className="form-group">
+                  <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', marginBottom: showColleague ? 10 : 0 }}>
+                    <input type="checkbox" checked={showColleague} onChange={e => setShowColleague(e.target.checked)}
+                      style={{ width:15, height:15, cursor:'pointer' }} />
+                    <span style={{ fontWeight:700, fontSize:'.88rem', color:'#7c3aed' }}>👨‍🏫 دعوة كادر تعليمي (اختياري)</span>
+                  </label>
+                  {showColleague && (
+                    <div style={{ background:'#faf5ff', borderRadius:12, padding:'14px 16px', border:'1.5px solid #d8b4fe' }}>
+                      {!form.sessionDate || !form.startTime ? (
+                        <div style={{ fontSize:'.83rem', color:'#7c3aed', fontWeight:600 }}>⚠️ حدّد التاريخ والوقت أولاً لرؤية المعلمين المتاحين</div>
+                      ) : colleaguesLoading ? (
+                        <div style={{ fontSize:'.83rem', color:'var(--muted)' }}>🔍 جارٍ التحقق من الجداول...</div>
+                      ) : colleagues.length === 0 ? (
+                        <div style={{ fontSize:'.83rem', color:'var(--muted)' }}>لا يوجد معلمون آخرون مسجّلون</div>
+                      ) : (
+                        <select className="form-input" value={selectedColleague}
+                          onChange={e => setSelectedColleague(e.target.value)}>
+                          <option value="">— اختر زميلاً لدعوته —</option>
+                          {colleagues.map(c => (
+                            <option key={c.id} value={c.id} disabled={!c.available}>
+                              {c.available ? '✅' : '🔴'} {c.name}{!c.available ? ' — غير متاح (تعارض في الموعد)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <div style={{ fontSize:'.76rem', color:'var(--muted)', marginTop:6 }}>
+                        المعلم المدعو يتلقى إشعاراً ويختار القبول أو الاعتذار من لوحته
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="form-group">
                 <label className="form-label">موضوع الحصة (اختياري)</label>
                 <input className="form-input" type="text" placeholder="قواعد النحو، القراءة..." value={form.subject} onChange={set('subject')} />

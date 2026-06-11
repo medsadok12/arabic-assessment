@@ -170,6 +170,69 @@ export async function sendApplicationConfirmationEmail({ to, candidateName, spec
   if (error) throw new Error(error.message);
 }
 
+export async function sendTeacherInviteEmail({ to, teacherName, inviterName, sessionDate, startTime, durationMinutes, subject }) {
+  const html = baseHtml(`
+    <div class="card">
+      <div class="hdr">
+        <h1>🎓 أكاديمية عارم للتعليم</h1>
+        <p>دعوة لحضور حصة دراسية</p>
+      </div>
+      <div class="body">
+        <p>السلام عليكم ورحمة الله وبركاته،</p>
+        <p>يسعدنا إعلامك يا <strong>${teacherName}</strong> بأن زميلك <strong>${inviterName}</strong> يدعوك لحضور الحصة التالية:</p>
+        <div class="info">
+          ${subject ? `<div class="info-row"><span class="info-lbl">📚 الموضوع</span><span>${subject}</span></div>` : ''}
+          <div class="info-row"><span class="info-lbl">👨‍🏫 صاحب الحصة</span><span>${inviterName}</span></div>
+          <div class="info-row"><span class="info-lbl">📅 التاريخ</span><span>${sessionDate}</span></div>
+          <div class="info-row"><span class="info-lbl">⏰ الوقت</span><span>${startTime}</span></div>
+          <div class="info-row"><span class="info-lbl">⏱️ المدة</span><span>${durationMinutes} دقيقة</span></div>
+        </div>
+        <p>يمكنك قبول أو رفض الدعوة من لوحة تحكمك في <a href="https://aarem.net/teacher" style="color:#185FA5;font-weight:700">منصة أكاديمية عارم</a>.</p>
+        <p class="note">سيشاركك الزميل رابط الحصة فور انطلاقها.</p>
+      </div>
+      <div class="ftr">أكاديمية عارم للتعليم — جميع الحقوق محفوظة</div>
+    </div>
+  `);
+
+  const { error } = await resend().emails.send({
+    from:    FROM,
+    to,
+    subject: `👥 دعوة من ${inviterName} لحضور حصة — ${sessionDate} الساعة ${startTime}`,
+    html,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function sendTeacherDeclineEmail({ to, ownerName, inviteeName, sessionDate, startTime, subject }) {
+  const html = baseHtml(`
+    <div class="card">
+      <div class="hdr">
+        <h1>🎓 أكاديمية عارم للتعليم</h1>
+        <p>اعتذار عن حضور الحصة</p>
+      </div>
+      <div class="body">
+        <p>السلام عليكم ورحمة الله وبركاته،</p>
+        <p>نُفيدك يا <strong>${ownerName}</strong> بأن الزميل <strong>${inviteeName}</strong> اعتذر عن حضور الحصة التالية لارتباطات أخرى:</p>
+        <div class="info">
+          ${subject ? `<div class="info-row"><span class="info-lbl">📚 الموضوع</span><span>${subject}</span></div>` : ''}
+          <div class="info-row"><span class="info-lbl">📅 التاريخ</span><span>${sessionDate}</span></div>
+          <div class="info-row"><span class="info-lbl">⏰ الوقت</span><span>${startTime}</span></div>
+        </div>
+        <p class="note">يمكنك دعوة زميل آخر من لوحة التحكم.</p>
+      </div>
+      <div class="ftr">أكاديمية عارم للتعليم — جميع الحقوق محفوظة</div>
+    </div>
+  `);
+
+  const { error } = await resend().emails.send({
+    from:    FROM,
+    to,
+    subject: `❌ ${inviteeName} اعتذر عن حضور حصة ${sessionDate}`,
+    html,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function sendWelcomeEmail({ to, name, password }) {
   const html = baseHtml(`
     <div class="card">

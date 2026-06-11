@@ -24,18 +24,46 @@ export default async function DashboardPage() {
 
   const today = new Date().toISOString().slice(0, 10);
   const admin = createAdminClient();
-  const { data: sessionsRaw } = await admin
-    .from('sessions')
-    .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, meet_link')
-    .ilike('student_email', user.email)
-    .eq('status', 'scheduled')
-    .gte('session_date', today)
-    .order('session_date', { ascending: true })
-    .order('start_time',   { ascending: true })
-    .limit(5)
-    .then(r => r.error?.code === '42P01' ? { data: [] } : r);
 
-  const upcomingSessions = sessionsRaw ?? [];
+  const [{ data: sessionsRaw }, { data: supportLinks }] = await Promise.all([
+    admin
+      .from('sessions')
+      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, meet_link')
+      .ilike('student_email', user.email)
+      .eq('status', 'scheduled')
+      .gte('session_date', today)
+      .order('session_date', { ascending: true })
+      .order('start_time',   { ascending: true })
+      .limit(5)
+      .then(r => r.error?.code === '42P01' ? { data: [] } : r),
+    admin
+      .from('session_support_students')
+      .select('session_id')
+      .ilike('student_email', user.email)
+      .then(r => r.error ? { data: [] } : r),
+  ]);
+
+  // Fetch support-student sessions separately and merge
+  let supportSessions = [];
+  const supportIds = (supportLinks ?? []).map(r => r.session_id).filter(Boolean);
+  if (supportIds.length > 0) {
+    const { data: supRaw } = await admin
+      .from('sessions')
+      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, meet_link')
+      .in('id', supportIds)
+      .eq('status', 'scheduled')
+      .gte('session_date', today);
+    supportSessions = (supRaw ?? []).map(s => ({ ...s, is_support: true }));
+  }
+
+  const mainIds = new Set((sessionsRaw ?? []).map(s => s.id));
+  const merged  = [
+    ...(sessionsRaw ?? []),
+    ...supportSessions.filter(s => !mainIds.has(s.id)),
+  ].sort((a, b) => a.session_date.localeCompare(b.session_date) || a.start_time.localeCompare(b.start_time))
+   .slice(0, 5);
+
+  const upcomingSessions = merged;
 
   // Attendance stats
   const { data: pastRaw } = await admin
