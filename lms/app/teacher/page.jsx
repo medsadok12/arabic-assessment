@@ -165,7 +165,7 @@ export default function TeacherPage() {
     setForm(EMPTY_FORM); setEditSession(null); setShowModal(true); setMsg(null);
     setPickerClass(''); setSelectedStudents([]);
     setShowSupport(false); setSupportPickerClass(''); setSelectedSupport([]);
-    setShowColleague(false); setSelectedColleague(''); setColleagues([]);
+    setShowColleague(false); setSelectedColleague(null); setColleagues([]);
   }
   function openEdit(s) {
     setForm({
@@ -195,15 +195,15 @@ export default function TeacherPage() {
         startTime:         form.startTime,
         durationMinutes:   parseInt(form.durationMinutes) || 60,
         subject:           form.subject,
-        supportStudents:   selectedSupport.map(s => ({ name: s.name, email: s.email })),
-        invitedTeacherId:  selectedColleague || null,
+        supportStudents:  selectedSupport.map(s => ({ name: s.name, email: s.email })),
+        invitedTeacher:   selectedColleague || null,
       };
     } else {
       body = {
         ...form,
         durationMinutes:  parseInt(form.durationMinutes) || 60,
         supportStudents:  selectedSupport.map(s => ({ name: s.name, email: s.email })),
-        invitedTeacherId: selectedColleague || null,
+        invitedTeacher:   selectedColleague || null,
       };
     }
 
@@ -1261,8 +1261,12 @@ export default function TeacherPage() {
                       ) : colleagues.length === 0 ? (
                         <div style={{ fontSize:'.83rem', color:'var(--muted)' }}>لا يوجد معلمون آخرون مسجّلون</div>
                       ) : (
-                        <select className="form-input" value={selectedColleague}
-                          onChange={e => setSelectedColleague(e.target.value)}>
+                        <select className="form-input"
+                          value={selectedColleague?.id ?? ''}
+                          onChange={e => {
+                            const c = colleagues.find(x => x.id === e.target.value);
+                            setSelectedColleague(c && c.available ? c : null);
+                          }}>
                           <option value="">— اختر زميلاً لدعوته —</option>
                           {colleagues.map(c => (
                             <option key={c.id} value={c.id} disabled={!c.available}>

@@ -43,7 +43,7 @@ export async function POST(req) {
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 }); }
 
   const { students, studentName, studentEmail, sessionDate, startTime, durationMinutes = 60, subject,
-          supportStudents = [], invitedTeacherId = null } = body;
+          supportStudents = [], invitedTeacher = null } = body;
 
   // Support both single student (legacy) and array of students (group)
   const studentList = (students?.length > 0)
@@ -121,17 +121,24 @@ export async function POST(req) {
     }
   }
 
-  // Invite colleague teacher
-  if (anchorId && invitedTeacherId) {
-    const { data: { user: invited } } = await admin.auth.admin.getUserById(invitedTeacherId).catch(() => ({ data: {} }));
-    if (invited?.email) {
-      const iName  = invited.user_metadata?.full_name ?? invited.email;
-      const iEmail = invited.email;
-      await admin.from('session_teacher_invites')
-        .insert({ session_id: anchorId, teacher_id: invitedTeacherId, teacher_email: iEmail, teacher_name: iName })
-        .catch(() => null);
-      sendTeacherInviteEmail({ to: iEmail, teacherName: iName, inviterName: teacherName, sessionDate, startTime, durationMinutes, subject }).catch(() => {});
-    }
+  // Invite colleague teacher — info comes directly from frontend, no getUserById needed
+  if (anchorId && invitedTeacher?.id && invitedTeacher?.email) {
+    admin.from('session_teacher_invites')
+      .insert({
+        session_id:    anchorId,
+        teacher_id:    invitedTeacher.id,
+        teacher_email: invitedTeacher.email,
+        teacher_name:  invitedTeacher.name ?? invitedTeacher.email,
+      })
+      .then(() => {
+        sendTeacherInviteEmail({
+          to:              invitedTeacher.email,
+          teacherName:     invitedTeacher.name ?? invitedTeacher.email,
+          inviterName:     teacherName,
+          sessionDate, startTime, durationMinutes, subject,
+        }).catch(() => {});
+      })
+      .catch(() => {});
   }
 
   await notify('session', '📅 حصة جديدة مجدولة',
