@@ -6,6 +6,7 @@ import ParentPanel from './ParentPanel';
 import FaheemWidget from './FaheemWidget';
 import LifeSceneSimulator from './LifeSceneSimulator';
 import { useLanguage } from '../contexts/LanguageContext';
+import { createClient } from '../lib/supabase';
 
 function HwToggle({ id, status }) {
   const [st, setSt] = useState(status);
@@ -51,6 +52,33 @@ export default function DashboardContent({
   const pendingHw   = homework.filter(h => h.status !== 'done').length;
   const today       = new Date().toISOString().slice(0, 10);
 
+  // ── Live session status — polls Supabase every 15 s to detect teacher "active" ──
+  const [liveStatus, setLiveStatus] = useState(nextSession?.status ?? 'scheduled');
+  const announcedActiveRef = useRef(false);
+
+  useEffect(() => {
+    if (!nextSession?.id) return;
+    setLiveStatus(nextSession.status ?? 'scheduled');
+    announcedActiveRef.current = false; // reset when session changes
+  }, [nextSession?.id]);
+
+  useEffect(() => {
+    if (!nextSession?.id) return;
+    const supabase = createClient();
+    async function pollStatus() {
+      const { data } = await supabase
+        .from('sessions')
+        .select('status')
+        .eq('id', nextSession.id)
+        .single();
+      if (data?.status) setLiveStatus(data.status);
+    }
+    pollStatus();
+    const id = setInterval(pollStatus, 15000);
+    return () => clearInterval(id);
+  }, [nextSession?.id]);
+
+
   // ── Live clock ──
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -91,7 +119,28 @@ export default function DashboardContent({
   // Integer seconds remaining — changes every second, gives exact threshold matching
   const remainingSecs = diffMs != null && diffMs > 0 ? Math.floor(diffMs / 1000) : null;
 
+  function speak(text) {
+    const audio = new Audio('/sounds/session-reminder.mp3');
+    audio.play().catch(() => {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ar-SA';
+      u.rate = 0.85;
+      window.speechSynthesis.speak(u);
+    });
+  }
+
+  // Announce "session started" once when liveStatus becomes 'active'
   useEffect(() => {
+    if (liveStatus !== 'active' || announcedActiveRef.current) return;
+    announcedActiveRef.current = true;
+    speak('حِصَّتُكَ بَدَأَتْ بِالْفِعْلِ، اُدْخُلْ لِلْقَاعَةِ يَا بَطَلُ');
+  }, [liveStatus]);
+
+  useEffect(() => {
+    // Skip countdown audio entirely if session is already active
+    if (liveStatus === 'active') return;
     if (!nextSession || remainingSecs == null || remainingSecs <= 0) return;
 
     // Reset flags when session changes
@@ -99,18 +148,6 @@ export default function DashboardContent({
       announcedForRef.current  = nextSession.id;
       announced1hRef.current   = false;
       announced2minRef.current = false;
-    }
-
-    function speak(text) {
-      const audio = new Audio('/sounds/session-reminder.mp3');
-      audio.play().catch(() => {
-        if (!('speechSynthesis' in window)) return;
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'ar-SA';
-        u.rate = 0.85;
-        window.speechSynthesis.speak(u);
-      });
     }
 
     // Window 1 — exactly 59:00→60:00 before session (3540–3600 s)
@@ -124,7 +161,7 @@ export default function DashboardContent({
       announced2minRef.current = true;
       speak('حِصَّتُكَ سَتَبْدَأُ بَعْدَ قَلِيلٍ، اِسْتَعِدَّ يَا بَطَلُ');
     }
-  }, [remainingSecs, nextSession?.id]);
+  }, [remainingSecs, nextSession?.id, liveStatus]);
 
   // ── Attendance state ──
   const [attendanceLogged, setAttendanceLogged] = useState(false);
@@ -275,11 +312,15 @@ export default function DashboardContent({
           </div>
 
           {/* ── Next session ── */}
-          {nextSession && (
-            <div className="db-session" style={{ background: sessionActive ? 'linear-gradient(135deg,#1a7c40,#15803d)' : 'linear-gradient(135deg,#185FA5,#1d4ed8)' }}>
+          {nextSession && (() => {
+            const isActive = liveStatus === 'active' || sessionActive;
+            return (
+            <div className="db-session" style={{ background: isActive ? 'linear-gradient(135deg,#1a7c40,#15803d)' : 'linear-gradient(135deg,#185FA5,#1d4ed8)' }}>
               <div style={{ fontSize: '2.8rem', lineHeight: 1 }}>🎥</div>
               <div className="db-session-body">
-                <div style={{ fontSize: '.78rem', opacity: .8, fontWeight: 600, marginBottom: 3 }}>الحصة القادمة</div>
+                <div style={{ fontSize: '.78rem', opacity: .8, fontWeight: 600, marginBottom: 3 }}>
+                  {liveStatus === 'active' ? '🔴 الحصة جارية الآن' : 'الحصة القادمة'}
+                </div>
                 <div style={{ fontWeight: 900, fontSize: '1.1rem' }}>
                   {nextSession.subject || 'حصة عامة'}
                 </div>
@@ -288,41 +329,38 @@ export default function DashboardContent({
                   <span>📅 {new Date(nextSession.session_date).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
                   <span>⏰ {nextSession.start_time?.slice(0, 5)}</span>
                 </div>
-                <span className="db-session-badge">{timeLabel}</span>
+                {liveStatus !== 'active' && <span className="db-session-badge">{timeLabel}</span>}
               </div>
               {/* زر الحضور */}
               <button
                 onClick={logAttendance}
-                disabled={!sessionActive || attendanceLogged || attLoading}
+                disabled={attendanceLogged}
                 style={{
                   borderRadius: 12, padding: '12px 20px',
                   fontWeight: 900, fontSize: '.92rem', whiteSpace: 'nowrap',
-                  border: 'none', cursor: sessionActive && !attendanceLogged ? 'pointer' : 'not-allowed',
+                  border: 'none', cursor: !attendanceLogged ? 'pointer' : 'not-allowed',
                   fontFamily: 'inherit', transition: '.25s',
                   background: attendanceLogged
                     ? '#16a34a'
-                    : sessionActive
-                      ? '#fff'
-                      : 'rgba(255,255,255,.15)',
+                    : isActive ? '#fff' : 'rgba(255,255,255,.15)',
                   color: attendanceLogged
                     ? '#fff'
-                    : sessionActive
-                      ? '#185FA5'
-                      : 'rgba(255,255,255,.6)',
-                  boxShadow: sessionActive && !attendanceLogged ? '0 4px 16px rgba(0,0,0,.18)' : 'none',
-                  animation: sessionActive && !attendanceLogged ? 'attPulse 1.8s ease-in-out infinite' : 'none',
+                    : isActive ? '#185FA5' : 'rgba(255,255,255,.6)',
+                  boxShadow: isActive && !attendanceLogged ? '0 4px 16px rgba(0,0,0,.18)' : 'none',
+                  animation: isActive && !attendanceLogged ? 'attPulse 1.8s ease-in-out infinite' : 'none',
                 }}
               >
                 {attendanceLogged
                   ? '✅ سُجِّل حضورك'
-                  : attLoading
-                    ? '...'
-                    : sessionActive
+                  : liveStatus === 'active'
+                    ? '🎥 دخول الحصة الآن'
+                    : isActive
                       ? '🟢 سجّل حضورك'
                       : `🔒 ${countdown ? countdown : 'قبل الموعد'}`}
               </button>
             </div>
-          )}
+            );
+          })()}
 
           {/* ── Other upcoming sessions ── */}
           {upcomingSessions.length > 1 && (
