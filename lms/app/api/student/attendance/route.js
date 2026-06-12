@@ -47,6 +47,9 @@ export async function POST(req) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // تحديث حقل attended في الحصة مباشرةً لتظهر "حاضر" في لوحة الإدارة
+  await admin.from('sessions').update({ attended: true }).eq('id', session_id);
+
   return NextResponse.json({ ok: true });
 }
 
