@@ -149,7 +149,7 @@ export default function DashboardContent({
   useEffect(() => {
     if (liveStatus !== 'active' || announcedActiveRef.current) return;
     announcedActiveRef.current = true;
-    playAudio('session-started.mp3', 'درسك بدا، ادخل للقاعة يا بطل');
+    playAudio('session-started.mp3', 'دَرْسُكَ بَدَأَ، اُدْخُلْ لِلْقَاعَةِ يَا بَطَل');
   }, [liveStatus]);
 
   useEffect(() => {
@@ -167,14 +167,14 @@ export default function DashboardContent({
     // Window 1 — exactly 59:00→60:00 before session (3540–3600 s)
     if (remainingSecs <= 3600 && remainingSecs > 3540 && !announced1hRef.current) {
       announced1hRef.current = true;
-      playAudio('session-1hour.mp3', 'لديك درس بعد ساعة');
+      playAudio('session-1hour.mp3', 'لَدَيْكَ دَرْسٌ بَعْدَ سَاعَة');
     }
 
     // Window 2 — ≤ 5 minutes before session (≤ 300 s)
     // Fires immediately on page-load if student opens dashboard inside this window
     if (remainingSecs <= 300 && !announced5minRef.current) {
       announced5minRef.current = true;
-      playAudio('session-soon.mp3', 'تنبيه، حصتك تبدا الان، ادخل البث يا بطل');
+      playAudio('session-soon.mp3', 'تَنْبِيه، حِصَّتُكَ سَتَبْدَأُ الْآنَ، اُدْخُلِ الْبَثَّ يَا بَطَل');
     }
   }, [remainingSecs, nextSession?.id, liveStatus]);
 
