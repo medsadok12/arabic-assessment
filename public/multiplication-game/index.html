@@ -4,14 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#5b21b6" />
-  <title>بطل الضرب — مغامرة جدول الضرب</title>
+  <title>بطل الحساب — العب وتعلّم الحساب</title>
 
   <!-- PWA: قابل للتثبيت على الشاشة الرئيسية ويعمل أوفلاين -->
   <link rel="manifest" href="manifest.json" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="بطل الضرب" />
+  <meta name="apple-mobile-web-app-title" content="بطل الحساب" />
   <link rel="apple-touch-icon" href="icon-180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png" />
@@ -25,26 +25,39 @@
     <header class="topbar" id="topbar">
       <button class="icon-btn" id="btn-home" title="الرئيسية" aria-label="الرئيسية">🏠</button>
       <div class="brand">
-        <span class="brand-emoji">✖️</span>
-        <span class="brand-name">بطل الضرب</span>
+        <span class="brand-emoji">🧮</span>
+        <span class="brand-name">بطل الحساب</span>
       </div>
       <button class="icon-btn" id="btn-sound" title="الصوت" aria-label="الصوت">🔊</button>
     </header>
 
     <main class="stage">
 
-      <!-- ====== الرئيسية ====== -->
+      <!-- ====== الرئيسية: أربع خانات ====== -->
       <section class="screen" id="screen-home">
         <div class="mascot-big" id="home-mascot">🦉</div>
-        <h1 class="home-title">بطل الضرب</h1>
-        <p class="home-sub">تعلَّم جدول الضرب وأنت تلعب!</p>
+        <h1 class="home-title">بطل الحساب</h1>
+        <p class="home-sub">اختر ما تريد تعلّمه</p>
 
-        <div class="home-chips" id="home-chips"><!-- تُملأ ديناميكياً --></div>
+        <div class="op-grid" id="op-grid"><!-- 4 خانات تُبنى بـ JS --></div>
+
+        <div class="home-foot">
+          <button class="ghost-btn" data-action="settings">⚙️ الإعدادات</button>
+        </div>
+      </section>
+
+      <!-- ====== قائمة العملية (الأوضاع) ====== -->
+      <section class="screen" id="screen-ops" hidden>
+        <div class="op-hero" id="op-hero">
+          <span class="op-hero-ic" id="op-hero-ic">×</span>
+          <h2 class="op-hero-name" id="op-hero-name">الضرب</h2>
+        </div>
+        <div class="home-chips" id="ops-chips"></div>
 
         <div class="mode-buttons">
           <button class="mode-btn mode-adventure" data-action="worlds">
             <span class="mode-ic">🗺️</span>
-            <span class="mode-tx"><b>المغامرة</b><small>اكتشف العوالم جدولاً جدولاً</small></span>
+            <span class="mode-tx"><b>المغامرة</b><small>خانة بعد خانة، واجمع النجوم</small></span>
           </button>
           <button class="mode-btn mode-smart" data-action="smart">
             <span class="mode-ic">🧠</span>
@@ -58,14 +71,13 @@
 
         <div class="home-foot">
           <button class="ghost-btn" data-action="mastery">📊 خريطة الإتقان</button>
-          <button class="ghost-btn" data-action="settings">⚙️ الإعدادات</button>
         </div>
       </section>
 
-      <!-- ====== اختيار العالم (المغامرة) ====== -->
+      <!-- ====== اختيار الخانة (المغامرة) ====== -->
       <section class="screen" id="screen-worlds" hidden>
-        <h2 class="screen-title">🗺️ اختر عالمك</h2>
-        <p class="screen-hint">أكمِل العالم لتفتح الذي يليه ⭐</p>
+        <h2 class="screen-title">🗺️ اختر خانة</h2>
+        <p class="screen-hint">أكمِل الخانة لتفتح التي تليها ⭐</p>
         <div class="worlds-grid" id="worlds-grid"></div>
       </section>
 
@@ -98,8 +110,8 @@
 
       <!-- ====== خريطة الإتقان ====== -->
       <section class="screen" id="screen-mastery" hidden>
-        <h2 class="screen-title">📊 خريطة الإتقان</h2>
-        <p class="screen-hint">كل مربّع = حقيقة ضرب. الأخضر = مُتقَن، الأصفر = قيد التعلّم، الأحمر = يحتاج تدريباً.</p>
+        <h2 class="screen-title" id="mastery-title">📊 خريطة الإتقان</h2>
+        <p class="screen-hint">كل مربّع = مسألة. الأخضر = مُتقَن، الأصفر = قيد التعلّم، الأحمر = يحتاج تدريباً.</p>
         <div class="mastery-wrap">
           <div class="mastery-grid" id="mastery-grid"></div>
         </div>
@@ -124,10 +136,11 @@
         <div class="how-to">
           <h3>كيف تلعب؟</h3>
           <ul>
-            <li>🗺️ <b>المغامرة:</b> ابدأ بالعوالم السهلة، وأكمِلها لتفتح الأصعب.</li>
+            <li>🧮 اختر العملية: <b>ضرب · قسمة · جمع · طرح</b>.</li>
+            <li>🗺️ <b>المغامرة:</b> ابدأ بالخانات السهلة، وأكمِلها لتفتح الأصعب.</li>
             <li>🧠 <b>تدريب ذكي:</b> النظام يتذكّر أخطاءك ويعيدها حتى تُتقنها.</li>
             <li>⚡ <b>تحدّي الزمن:</b> أجب أكبر عدد في ٦٠ ثانية.</li>
-            <li>💡 إن لم تعرف الإجابة، اضغط «ساعدني أفهم» لترى الضرب على شكل صفوف.</li>
+            <li>💡 إن لم تعرف الإجابة، اضغط «ساعدني أفهم» لترى المسألة بالصور.</li>
           </ul>
         </div>
 
