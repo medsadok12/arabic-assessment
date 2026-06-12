@@ -15,9 +15,9 @@ import FinancialsTab                   from '../../components/FinancialsTab';
 import LifeSceneSimulator              from '../../components/LifeSceneSimulator';
 import { useLanguage }                  from '../../contexts/LanguageContext';
 
-// ── Time slots 08:00 → 20:00, 30-min increments (25 slots) ─────────────────
-const TIME_SLOTS = Array.from({ length: 145 }, (_, i) => {
-  const mins = 8 * 60 + i * 5;
+// ── Time slots 00:00 → 23:55, 5-min increments (288 slots) ─────────────────
+const TIME_SLOTS = Array.from({ length: 288 }, (_, i) => {
+  const mins = i * 5;
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
