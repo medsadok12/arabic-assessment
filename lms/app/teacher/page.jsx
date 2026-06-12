@@ -116,14 +116,18 @@ export default function TeacherPage() {
   function sessionCountdown(s) {
     const dt   = new Date(`${s.session_date}T${s.start_time}`);
     const diff = dt - now;
-    if (diff <= 0)            return { label: '🔴 الآن', active: true };
-    if (diff <= 3600000) {
-      const secs = Math.floor(diff / 1000);
-      return { label: `⏱️ ${String(Math.floor(secs / 60)).padStart(2,'0')}:${String(secs % 60).padStart(2,'0')}`, active: false };
+    if (diff <= 0) return { label: '🔴 الآن', active: true };
+    if (diff < 86400000) {
+      const totalSecs = Math.floor(diff / 1000);
+      const hh = Math.floor(totalSecs / 3600);
+      const mm = Math.floor((totalSecs % 3600) / 60);
+      const ss = totalSecs % 60;
+      const label = hh > 0
+        ? `⏱️ ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`
+        : `⏱️ ${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+      return { label, active: false };
     }
-    const mins = diff / 60000;
-    if (mins < 1440) return { label: `⏱️ بعد ${Math.floor(mins / 60)} ساعة`, active: false };
-    const d = Math.floor(mins / 1440);
+    const d = Math.floor(diff / 86400000);
     return { label: `📆 بعد ${d} ${d === 1 ? 'يوم' : 'أيام'}`, active: false };
   }
 

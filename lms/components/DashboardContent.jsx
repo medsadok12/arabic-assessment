@@ -64,11 +64,23 @@ export default function DashboardContent({
   const diffMins   = diffMs != null ? diffMs / 60000 : null;
   const sessionActive = diffMs != null && diffMs <= 0; // time reached
 
-  // Countdown string (MM:SS) shown when < 1 hour
+  // Countdown string — MM:SS when < 1 hour (used for navbar), HH:MM:SS beyond that
   let countdown = null;
   if (diffMs != null && diffMs > 0 && diffMs <= 3600000) {
     const secs = Math.floor(diffMs / 1000);
     countdown = `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
+  }
+
+  // Live badge label — always precise for sessions within 24 hours
+  let liveLabel = null;
+  if (diffMs != null && diffMs > 0 && diffMs < 86400000) {
+    const totalSecs = Math.floor(diffMs / 1000);
+    const hh = Math.floor(totalSecs / 3600);
+    const mm = Math.floor((totalSecs % 3600) / 60);
+    const ss = totalSecs % 60;
+    liveLabel = hh > 0
+      ? `⏱️ ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`
+      : `⏱️ ${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
   }
 
   // ── Audio reminder — plays ONCE when entering the 1-hour window ──
@@ -122,9 +134,8 @@ export default function DashboardContent({
   // ── Time label ──
   let timeLabel = '';
   if (diffMins != null) {
-    if (diffMins <= 0)        timeLabel = '🔴 الحصة تبدأ الآن';
-    else if (countdown)       timeLabel = `⏱️ ${countdown}`;
-    else if (diffMins < 1440) timeLabel = `⏱️ تبدأ بعد ${Math.floor(diffMins / 60)} ساعة`;
+    if (diffMins <= 0)  timeLabel = '🔴 الحصة تبدأ الآن';
+    else if (liveLabel) timeLabel = liveLabel;
     else {
       const d = Math.floor(diffMins / 1440);
       timeLabel = `📆 بعد ${d} ${d === 1 ? 'يوم' : 'أيام'}`;
