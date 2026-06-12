@@ -89,9 +89,12 @@ function EditableCell({ value, onSave, prefix = '', suffix = '', locked = false 
 
 // ── Invoice row ──────────────────────────────────────────────────────────────
 function InvoiceRow({ invoice, onUpdate, onSend, sending, lang }) {
-  const [expanded, setExpanded] = useState(false);
-  const items = Array.isArray(invoice.items) ? invoice.items : [];
+  const [expanded,      setExpanded]      = useState(false);
+  const [editingEmail,  setEditingEmail]  = useState(false);
+  const [emailDraft,    setEmailDraft]    = useState('');
+  const items  = Array.isArray(invoice.items) ? invoice.items : [];
   const isSent = invoice.status === 'sent';
+  const emailUnknown = !invoice.user_email || invoice.user_email.includes('@teacher');
 
   function update(field, val) {
     onUpdate(invoice.id, { [field]: val });
@@ -105,7 +108,7 @@ function InvoiceRow({ invoice, onUpdate, onSend, sending, lang }) {
       }}>
         {/* Name */}
         <td style={{ padding: '12px 14px', fontWeight: 700, color: '#1e293b', fontSize: '.92rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <button
               onClick={() => setExpanded(v => !v)}
               style={{ background: 'none', border: 'none', cursor: 'pointer',
@@ -115,10 +118,68 @@ function InvoiceRow({ invoice, onUpdate, onSend, sending, lang }) {
               {expanded ? '▲' : '▼'}
             </button>
             {invoice.user_name}
-            {!invoice.user_email?.endsWith('@demo.test') && !invoice.user_email?.includes('@teacher') && (
+            {!invoice.user_email?.endsWith('@demo.test') && !emailUnknown && (
               <span style={{ fontSize: '.72rem', color: '#94a3b8', fontWeight: 400 }}>
                 {invoice.user_email}
               </span>
+            )}
+            {/* Email entry when unknown */}
+            {emailUnknown && !isSent && (
+              editingEmail ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <input
+                    type="email"
+                    value={emailDraft}
+                    onChange={e => setEmailDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && emailDraft.includes('@')) {
+                        onUpdate(invoice.id, { user_email: emailDraft });
+                        setEditingEmail(false);
+                      }
+                      if (e.key === 'Escape') setEditingEmail(false);
+                    }}
+                    placeholder="البريد الإلكتروني"
+                    autoFocus
+                    style={{
+                      width: 180, padding: '3px 8px', border: '1.5px solid #185FA5',
+                      borderRadius: 7, fontSize: '.8rem', fontFamily: 'inherit', outline: 'none',
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      if (emailDraft.includes('@')) {
+                        onUpdate(invoice.id, { user_email: emailDraft });
+                        setEditingEmail(false);
+                      }
+                    }}
+                    style={{
+                      background: '#185FA5', color: '#fff', border: 'none',
+                      borderRadius: 6, padding: '3px 8px', fontSize: '.75rem',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >حفظ</button>
+                  <button
+                    onClick={() => setEditingEmail(false)}
+                    style={{
+                      background: '#f1f5f9', color: '#64748b', border: 'none',
+                      borderRadius: 6, padding: '3px 7px', fontSize: '.75rem',
+                      cursor: 'pointer',
+                    }}
+                  >✕</button>
+                </span>
+              ) : (
+                <button
+                  onClick={() => { setEmailDraft(''); setEditingEmail(true); }}
+                  style={{
+                    background: '#fef9c3', color: '#92400e', border: '1px dashed #f59e0b',
+                    borderRadius: 7, padding: '2px 8px', fontSize: '.72rem',
+                    cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700,
+                  }}
+                  title="أدخل بريد المعلم لتفعيل الإرسال"
+                >
+                  ⚠️ أدخل الإيميل
+                </button>
+              )
             )}
           </div>
         </td>
@@ -180,19 +241,22 @@ function InvoiceRow({ invoice, onUpdate, onSend, sending, lang }) {
           ) : (
             <button
               onClick={() => onSend(invoice)}
-              disabled={sending || Number(invoice.amount) <= 0 || invoice.user_email?.endsWith('@demo.test') || invoice.user_email?.includes('@teacher')}
+              disabled={sending || Number(invoice.amount) <= 0 || invoice.user_email?.endsWith('@demo.test') || emailUnknown}
               style={{
-                background: invoice.email_delivery_status === 'failed'
-                  ? 'linear-gradient(135deg,#dc2626,#b91c1c)'
-                  : sending ? '#e2e8f0' : 'linear-gradient(135deg,#185FA5,#1a3a6b)',
-                color: sending ? '#94a3b8' : '#fff',
+                background: (sending || Number(invoice.amount) <= 0 || emailUnknown)
+                  ? '#e2e8f0'
+                  : invoice.email_delivery_status === 'failed'
+                    ? 'linear-gradient(135deg,#dc2626,#b91c1c)'
+                    : 'linear-gradient(135deg,#185FA5,#1a3a6b)',
+                color: (sending || Number(invoice.amount) <= 0 || emailUnknown) ? '#94a3b8' : '#fff',
                 border: 'none', borderRadius: 9, padding: '7px 14px',
-                fontSize: '.8rem', fontWeight: 700, cursor: sending ? 'not-allowed' : 'pointer',
+                fontSize: '.8rem', fontWeight: 700,
+                cursor: (sending || Number(invoice.amount) <= 0 || emailUnknown) ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit', transition: 'opacity .15s', whiteSpace: 'nowrap',
               }}
               title={
                 invoice.user_email?.endsWith('@demo.test') ? 'بيانات تجريبية — لا يمكن الإرسال' :
-                invoice.user_email?.includes('@teacher') ? 'لا يوجد بريد إلكتروني للمعلم' : ''
+                emailUnknown ? 'أدخل بريد المعلم أولاً' : ''
               }
             >
               {sending ? (

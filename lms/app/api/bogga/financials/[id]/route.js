@@ -38,7 +38,8 @@ export async function PATCH(request, { params }) {
     amount,
     updated_at:    new Date().toISOString(),
   };
-  if (body.notes !== undefined) update.notes = body.notes;
+  if (body.notes      !== undefined) update.notes      = body.notes;
+  if (body.user_email !== undefined) update.user_email = body.user_email;
 
   const { data, error } = await admin
     .from('invoices')
