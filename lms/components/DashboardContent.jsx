@@ -112,9 +112,10 @@ export default function DashboardContent({
   }
 
   // ── Audio reminders — fires ONCE per session at precise second thresholds ──
-  const announced1hRef    = useRef(false);
-  const announced5minRef  = useRef(false);
-  const announcedForRef   = useRef(null);
+  const announced1hRef   = useRef(false);
+  const announced5minRef = useRef(false);
+  const announced30sRef  = useRef(false);
+  const announcedForRef  = useRef(null);
 
   // Integer seconds remaining — changes every second, gives exact threshold matching
   const remainingSecs = diffMs != null && diffMs > 0 ? Math.floor(diffMs / 1000) : null;
@@ -149,7 +150,7 @@ export default function DashboardContent({
   useEffect(() => {
     if (liveStatus !== 'active' || announcedActiveRef.current) return;
     announcedActiveRef.current = true;
-    playAudio('session-started.mp3', 'دَرْسُكَ بَدَأَ، اُدْخُلْ لِلْقَاعَةِ يَا بَطَل');
+    playAudio('session-started.mp3', 'دَرْسُكَ بَدَأْ، اُدْخُلْ لِلْقَاعَهْ يَا بَطَلْ');
   }, [liveStatus]);
 
   useEffect(() => {
@@ -159,22 +160,29 @@ export default function DashboardContent({
 
     // Reset flags when session changes
     if (announcedForRef.current !== nextSession.id) {
-      announcedForRef.current = nextSession.id;
-      announced1hRef.current  = false;
+      announcedForRef.current  = nextSession.id;
+      announced1hRef.current   = false;
       announced5minRef.current = false;
+      announced30sRef.current  = false;
     }
 
-    // Window 1 — exactly 59:00→60:00 before session (3540–3600 s)
-    if (remainingSecs <= 3600 && remainingSecs > 3540 && !announced1hRef.current) {
+    // Window 1 — 58:00→60:00 before session (3480–3600 s)
+    if (remainingSecs <= 3600 && remainingSecs > 3480 && !announced1hRef.current) {
       announced1hRef.current = true;
-      playAudio('session-1hour.mp3', 'لَدَيْكَ دَرْسٌ بَعْدَ سَاعَة');
+      playAudio('session-1hour.mp3', 'لَدَيْكَ دَرْسٌ بَعْدَ سَاعَهْ');
     }
 
-    // Window 2 — ≤ 5 minutes before session (≤ 300 s)
+    // Window 2 — 1:00→5:00 before session (60–300 s)
     // Fires immediately on page-load if student opens dashboard inside this window
-    if (remainingSecs <= 300 && !announced5minRef.current) {
+    if (remainingSecs <= 300 && remainingSecs > 60 && !announced5minRef.current) {
       announced5minRef.current = true;
-      playAudio('session-soon.mp3', 'تَنْبِيهْ، دَرْسُكَ سَيَبْدَأُ الْآنَ، اُدْخُلِ الْبَثَّ يَا بَطَل');
+      playAudio('session-soon.mp3', 'تَنْبِيهْ، حِصَّتُكَ سَتَبْدَأُ بَعْدَ قَلِيلْ، اِسْتَعِدَّ يَا بَطَلْ');
+    }
+
+    // Window 3 — ≤ 30 seconds before session
+    if (remainingSecs <= 30 && !announced30sRef.current) {
+      announced30sRef.current = true;
+      playAudio('session-now.mp3', 'دَرْسُكَ بَدَأْ، اُدْخُلْ لِلْقَاعَهْ يَا بَطَلْ');
     }
   }, [remainingSecs, nextSession?.id, liveStatus]);
 
