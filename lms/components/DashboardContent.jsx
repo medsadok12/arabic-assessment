@@ -103,11 +103,17 @@ export default function DashboardContent({
   async function logAttendance() {
     if (!nextSession || attLoading || attendanceLogged) return;
     setAttLoading(true);
-    const res = await fetch('/api/student/attendance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: nextSession.id }),
-    });
+    const [res] = await Promise.all([
+      fetch('/api/student/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: nextSession.id }),
+      }),
+      // Open the meet link immediately — don't wait for the API response
+      nextSession.meet_link
+        ? Promise.resolve(window.open(nextSession.meet_link, '_blank', 'noopener'))
+        : Promise.resolve(),
+    ]);
     const data = await res.json();
     if (data.ok) setAttendanceLogged(true);
     setAttLoading(false);
