@@ -185,7 +185,7 @@ export async function PATCH(req) {
   if (durationMinutes)             updates.duration_minutes = durationMinutes;
   if (subject !== undefined)       updates.subject          = subject || null;
   if (notes !== undefined)         updates.notes            = notes || null;
-  if (status === 'completed')      updates.status           = 'completed';
+  if (status === 'completed' || status === 'active') updates.status = status;
   if (recording_url !== undefined) updates.recording_url    = recording_url || null;
   if (attended      !== undefined) updates.attended         = attended;
 

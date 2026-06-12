@@ -83,29 +83,29 @@ export default function DashboardContent({
       : `⏱️ ${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
   }
 
-  // ── Audio reminders — each fires ONCE per session, at the correct time window ──
-  const announced1hRef   = useRef(false); // fires once when 55–60 min remain
-  const announced5minRef = useRef(false); // fires once when < 5 min remain
-  const announcedForRef  = useRef(null);  // tracks which session the flags belong to
+  // ── Audio reminders — fires ONCE per session at precise second thresholds ──
+  const announced1hRef    = useRef(false);
+  const announced2minRef  = useRef(false);
+  const announcedForRef   = useRef(null);
 
-  // Round to whole minutes so this effect only re-runs once per minute (not every second)
-  const diffMinsRounded = diffMins != null ? Math.floor(diffMins) : null;
+  // Integer seconds remaining — changes every second, gives exact threshold matching
+  const remainingSecs = diffMs != null && diffMs > 0 ? Math.floor(diffMs / 1000) : null;
 
   useEffect(() => {
-    if (!nextSession || diffMinsRounded == null || diffMinsRounded <= 0) return;
+    if (!nextSession || remainingSecs == null || remainingSecs <= 0) return;
 
-    // Reset flags when a new session becomes the next session
+    // Reset flags when session changes
     if (announcedForRef.current !== nextSession.id) {
-      announcedForRef.current = nextSession.id;
+      announcedForRef.current  = nextSession.id;
       announced1hRef.current   = false;
-      announced5minRef.current = false;
+      announced2minRef.current = false;
     }
 
     function speak(text) {
       const audio = new Audio('/sounds/session-reminder.mp3');
       audio.play().catch(() => {
         if (!('speechSynthesis' in window)) return;
-        window.speechSynthesis.cancel(); // stop any ongoing speech
+        window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
         u.lang = 'ar-SA';
         u.rate = 0.85;
@@ -113,18 +113,18 @@ export default function DashboardContent({
       });
     }
 
-    // Window 1: 55–60 min before session → "لديك حصة بعد ساعة"
-    if (diffMinsRounded <= 60 && diffMinsRounded > 55 && !announced1hRef.current) {
+    // Window 1 — exactly 59:00→60:00 before session (3540–3600 s)
+    if (remainingSecs <= 3600 && remainingSecs > 3540 && !announced1hRef.current) {
       announced1hRef.current = true;
       speak('لَدَيْكَ حِصَّةٌ بَعْدَ سَاعَةٍ');
     }
 
-    // Window 2: < 5 min before session (including page load within this window)
-    if (diffMinsRounded < 5 && !announced5minRef.current) {
-      announced5minRef.current = true;
+    // Window 2 — ≤ 2 minutes before session (≤ 120 s), includes page-load inside window
+    if (remainingSecs <= 120 && !announced2minRef.current) {
+      announced2minRef.current = true;
       speak('حِصَّتُكَ سَتَبْدَأُ بَعْدَ قَلِيلٍ، اِسْتَعِدَّ يَا بَطَلُ');
     }
-  }, [diffMinsRounded, nextSession?.id]);
+  }, [remainingSecs, nextSession?.id]);
 
   // ── Attendance state ──
   const [attendanceLogged, setAttendanceLogged] = useState(false);

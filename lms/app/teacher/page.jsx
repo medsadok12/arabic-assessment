@@ -102,9 +102,23 @@ export default function TeacherPage() {
   // Pending invites received by this teacher
   const [pendingInvites,       setPendingInvites]       = useState([]);
   const [inviteResponding,     setInviteResponding]     = useState(null);
+  const [startedIds,           setStartedIds]           = useState(new Set());
 
   const set    = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
   const setInv = k => e => setInviteForm(p => ({ ...p, [k]: e.target.value }));
+
+  async function startSession(s) {
+    // Mark active optimistically
+    setStartedIds(prev => new Set([...prev, s.id]));
+    // Open meet link immediately
+    window.open(joinLink(s), '_blank', 'noopener');
+    // Update DB status to 'active' (fire-and-forget)
+    fetch('/api/teacher/sessions', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: s.id, status: 'active' }),
+    }).catch(() => {});
+  }
 
   // Live clock — refreshes every second to drive per-session countdown badges
   const [now, setNow] = useState(() => new Date());
@@ -588,8 +602,16 @@ export default function TeacherPage() {
                           <button onClick={() => openEdit(s)} title="تعديل" className="icon-btn">✏️</button>
                         </div>
                         <div className="action-row" style={{ marginTop:4 }}>
-                          <button onClick={() => window.open(joinLink(s), '_blank', 'noopener')}
-                            className="btn btn-primary btn-sm">ابدأ الحصة 🎥</button>
+                          {(s.status === 'active' || startedIds.has(s.id)) ? (
+                            <button onClick={() => window.open(joinLink(s), '_blank', 'noopener')}
+                              className="btn btn-sm"
+                              style={{ background:'#1a7c40', color:'#fff', border:'none' }}>
+                              🟢 الحصة جارية — دخول البث
+                            </button>
+                          ) : (
+                            <button onClick={() => startSession(s)}
+                              className="btn btn-primary btn-sm">ابدأ الحصة 🎥</button>
+                          )}
                           <button onClick={() => openComplete(s)}
                             className="btn btn-outline btn-sm" style={{ color:'#1a7c40', borderColor:'#1a7c40' }}>
                             ✅ أنهيت الحصة
