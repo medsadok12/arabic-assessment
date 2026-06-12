@@ -83,22 +83,48 @@ export default function DashboardContent({
       : `⏱️ ${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
   }
 
-  // ── Audio reminder — plays ONCE when entering the 1-hour window ──
-  const audioPlayedRef = useRef(new Set());
+  // ── Audio reminders — each fires ONCE per session, at the correct time window ──
+  const announced1hRef   = useRef(false); // fires once when 55–60 min remain
+  const announced5minRef = useRef(false); // fires once when < 5 min remain
+  const announcedForRef  = useRef(null);  // tracks which session the flags belong to
+
+  // Round to whole minutes so this effect only re-runs once per minute (not every second)
+  const diffMinsRounded = diffMins != null ? Math.floor(diffMins) : null;
+
   useEffect(() => {
-    if (!nextSession || !diffMs) return;
-    if (diffMs > 0 && diffMs <= 3600000 && !audioPlayedRef.current.has(nextSession.id)) {
-      audioPlayedRef.current.add(nextSession.id);
+    if (!nextSession || diffMinsRounded == null || diffMinsRounded <= 0) return;
+
+    // Reset flags when a new session becomes the next session
+    if (announcedForRef.current !== nextSession.id) {
+      announcedForRef.current = nextSession.id;
+      announced1hRef.current   = false;
+      announced5minRef.current = false;
+    }
+
+    function speak(text) {
       const audio = new Audio('/sounds/session-reminder.mp3');
       audio.play().catch(() => {
-        if ('speechSynthesis' in window) {
-          const u = new SpeechSynthesisUtterance('لَدَيْكَ حِصَّةُ لُغَةٍ عَرَبِيَّةٍ بَعْدَ سَاعَةٍ');
-          u.lang = 'ar-SA'; u.rate = 0.9;
-          window.speechSynthesis.speak(u);
-        }
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel(); // stop any ongoing speech
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'ar-SA';
+        u.rate = 0.85;
+        window.speechSynthesis.speak(u);
       });
     }
-  }, [countdown, nextSession]);
+
+    // Window 1: 55–60 min before session → "لديك حصة بعد ساعة"
+    if (diffMinsRounded <= 60 && diffMinsRounded > 55 && !announced1hRef.current) {
+      announced1hRef.current = true;
+      speak('لَدَيْكَ حِصَّةٌ بَعْدَ سَاعَةٍ');
+    }
+
+    // Window 2: < 5 min before session (including page load within this window)
+    if (diffMinsRounded < 5 && !announced5minRef.current) {
+      announced5minRef.current = true;
+      speak('حِصَّتُكَ سَتَبْدَأُ بَعْدَ قَلِيلٍ، اِسْتَعِدَّ يَا بَطَلُ');
+    }
+  }, [diffMinsRounded, nextSession?.id]);
 
   // ── Attendance state ──
   const [attendanceLogged, setAttendanceLogged] = useState(false);
