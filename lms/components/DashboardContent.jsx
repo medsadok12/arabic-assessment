@@ -120,15 +120,28 @@ export default function DashboardContent({
   const remainingSecs = diffMs != null && diffMs > 0 ? Math.floor(diffMs / 1000) : null;
 
   function speak(text) {
-    const audio = new Audio('/sounds/session-reminder.mp3');
-    audio.play().catch(() => {
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
+    if (!('speechSynthesis' in window)) return;
+    // Cancel any queued speech first
+    window.speechSynthesis.cancel();
+
+    let done = false;
+    function doSpeak() {
+      if (done) return;
+      done = true;
+      window.speechSynthesis.cancel(); // clear again after voices load
       const u = new SpeechSynthesisUtterance(text);
       u.lang = 'ar-SA';
       u.rate = 1.05;
       window.speechSynthesis.speak(u);
-    });
+    }
+
+    // Chrome loads voices asynchronously — wait if not ready yet
+    if (window.speechSynthesis.getVoices().length > 0) {
+      doSpeak();
+    } else {
+      window.speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true });
+      setTimeout(doSpeak, 600); // fallback if voiceschanged never fires
+    }
   }
 
   // Announce "session started" once when liveStatus becomes 'active'
