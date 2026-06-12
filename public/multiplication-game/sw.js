@@ -1,5 +1,5 @@
 /* خدمة العامل — تخزين التطبيق مؤقّتاً ليعمل أوفلاين بعد أول فتح */
-const CACHE = 'batal-aldarb-v1';
+const CACHE = 'batal-aldarb-v2';
 const ASSETS = [
   './',
   './index.html',
