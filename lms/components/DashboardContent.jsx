@@ -174,7 +174,7 @@ export default function DashboardContent({
     // Fires immediately on page-load if student opens dashboard inside this window
     if (remainingSecs <= 300 && !announced5minRef.current) {
       announced5minRef.current = true;
-      playAudio('session-soon.mp3', 'تَنْبِيهْ، حِصَّتُكَ سَتَبْدَأُ الْآنَ، اُدْخُلِ الْبَثَّ يَا بَطَل');
+      playAudio('session-soon.mp3', 'تَنْبِيهْ، دَرْسُكَ سَيَبْدَأُ الْآنَ، اُدْخُلِ الْبَثَّ يَا بَطَل');
     }
   }, [remainingSecs, nextSession?.id, liveStatus]);
 
