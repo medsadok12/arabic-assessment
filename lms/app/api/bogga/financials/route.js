@@ -209,15 +209,35 @@ export async function POST(request) {
     });
   }
 
-  // Fetch teacher emails for teacher payouts — getUserById per teacher (listUsers can fail silently)
+  // Fetch teacher emails for teacher payouts
   if (type === 'teacher_payout') {
+    // 1. Fetch all auth users once — needed for name-based fallback
+    let allUsers = [];
+    try {
+      const { data: { users } = {} } = await admin.auth.admin.listUsers({ perPage: 1000 });
+      allUsers = users ?? [];
+    } catch (_) {}
+
+    // Build name → email map from user metadata
+    const nameToEmail = {};
+    for (const u of allUsers) {
+      const name = u.user_metadata?.full_name ?? u.user_metadata?.name ?? '';
+      if (name) nameToEmail[name] = u.email;
+    }
+
     await Promise.all(
       Object.values(groups).map(async g => {
-        if (!g.user_id) return;
-        try {
-          const { data: { user } = {} } = await admin.auth.admin.getUserById(g.user_id);
-          if (user?.email) g.user_email = user.email;
-        } catch (_) {}
+        // Priority 1: getUserById when teacher_id is present
+        if (g.user_id) {
+          try {
+            const { data: { user } = {} } = await admin.auth.admin.getUserById(g.user_id);
+            if (user?.email) { g.user_email = user.email; return; }
+          } catch (_) {}
+        }
+        // Priority 2: match by teacher display name
+        if (nameToEmail[g.user_name]) {
+          g.user_email = nameToEmail[g.user_name];
+        }
       })
     );
   }
