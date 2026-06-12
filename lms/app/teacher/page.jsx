@@ -621,6 +621,14 @@ export default function TeacherPage() {
                             {cancelling === s.id ? '...' : 'إلغاء'}
                           </button>
                         </div>
+                        <div className="action-row" style={{ marginTop:4 }}>
+                          <button
+                            onClick={() => inviteFor?.id === s.id ? setInviteFor(null) : openInvite(s)}
+                            className="btn btn-outline btn-sm"
+                            style={{ color:'var(--primary)', borderColor:'var(--primary)', fontSize:'.82rem' }}>
+                            ➕ إضافة طالب
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );})}
