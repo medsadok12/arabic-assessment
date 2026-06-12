@@ -106,6 +106,27 @@ export default function TeacherPage() {
   const set    = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
   const setInv = k => e => setInviteForm(p => ({ ...p, [k]: e.target.value }));
 
+  // Live clock — refreshes every second to drive per-session countdown badges
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  function sessionCountdown(s) {
+    const dt   = new Date(`${s.session_date}T${s.start_time}`);
+    const diff = dt - now;
+    if (diff <= 0)            return { label: '🔴 الآن', active: true };
+    if (diff <= 3600000) {
+      const secs = Math.floor(diff / 1000);
+      return { label: `⏱️ ${String(Math.floor(secs / 60)).padStart(2,'0')}:${String(secs % 60).padStart(2,'0')}`, active: false };
+    }
+    const mins = diff / 60000;
+    if (mins < 1440) return { label: `⏱️ بعد ${Math.floor(mins / 60)} ساعة`, active: false };
+    const d = Math.floor(mins / 1440);
+    return { label: `📆 بعد ${d} ${d === 1 ? 'يوم' : 'أيام'}`, active: false };
+  }
+
   // Load colleagues whenever date+time change inside modal (with colleague section open)
   useEffect(() => {
     if (!showModal || editSession || !showColleague || !form.sessionDate || !form.startTime) return;
@@ -498,11 +519,18 @@ export default function TeacherPage() {
                 </div>
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                  {upcoming.map(s => (
-                    <div key={s.id} className="sc">
+                  {upcoming.map(s => {
+                    const ct = sessionCountdown(s);
+                    return (
+                    <div key={s.id} className="sc" style={ct.active ? { background:'linear-gradient(135deg,#e8f5e9,#f1f8ff)', borderColor:'#4caf50' } : {}}>
                       <div style={{ fontSize:'1.8rem', paddingTop:2 }}>🎥</div>
                       <div className="si">
-                        <div className="ss">{s.subject || 'حصة عامة'}</div>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                          <div className="ss">{s.subject || 'حصة عامة'}</div>
+                          <span style={{ fontSize:'.82rem', fontWeight:700, color: ct.active ? '#1a7c40' : 'var(--primary)',
+                            background: ct.active ? '#d4edda' : '#e8f0fe', borderRadius:20,
+                            padding:'2px 10px', whiteSpace:'nowrap' }}>{ct.label}</span>
+                        </div>
                         <div className="sm">
                           <span>👤 {s.student_name}</span>
                           <span>📅 {fmtDate(s.session_date)}</span>
@@ -569,7 +597,7 @@ export default function TeacherPage() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  );})}
                 </div>
               )
             )}

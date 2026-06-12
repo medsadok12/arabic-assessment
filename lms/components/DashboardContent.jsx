@@ -117,7 +117,7 @@ export default function DashboardContent({
   let timeLabel = '';
   if (diffMins != null) {
     if (diffMins <= 0)        timeLabel = '🔴 الحصة تبدأ الآن';
-    else if (diffMins < 60)   timeLabel = `⏱️ تبدأ بعد ${Math.round(diffMins)} دقيقة`;
+    else if (countdown)       timeLabel = `⏱️ ${countdown}`;
     else if (diffMins < 1440) timeLabel = `⏱️ تبدأ بعد ${Math.floor(diffMins / 60)} ساعة`;
     else {
       const d = Math.floor(diffMins / 1440);
