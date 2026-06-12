@@ -126,7 +126,7 @@ export default function DashboardContent({
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = 'ar-SA';
-      u.rate = 0.85;
+      u.rate = 1.05;
       window.speechSynthesis.speak(u);
     });
   }
@@ -159,7 +159,7 @@ export default function DashboardContent({
     // Window 2 — ≤ 2 minutes before session (≤ 120 s), includes page-load inside window
     if (remainingSecs <= 120 && !announced2minRef.current) {
       announced2minRef.current = true;
-      speak('درسك سيبدأ بعد قليل، استعد يا بطل');
+      speak('تنبيه! حصتك ستبدأ الآن، ادخل البث يا بطل');
     }
   }, [remainingSecs, nextSession?.id, liveStatus]);
 
