@@ -10,6 +10,22 @@ const FAHIM_NAME     = 'فهيم 🦉';
 const FAHIM_ROLE     = 'system';
 const FAHIM_AVATAR   = null;
 
+// Sessions are stored in academy local time — compute "now" in that timezone,
+// NOT in server UTC, otherwise reminders fire 1+ hour late
+const ACADEMY_TZ = process.env.ACADEMY_TZ || 'Africa/Tunis';
+function nowInAcademyTz() {
+  // sv-SE locale gives "YYYY-MM-DD HH:mm:ss" — directly parseable
+  const s = new Date().toLocaleString('sv-SE', { timeZone: ACADEMY_TZ });
+  return new Date(s.replace(' ', 'T'));
+}
+function fmtLocal(d) {
+  const p = n => String(n).padStart(2, '0');
+  return {
+    date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`,
+    time: `${p(d.getHours())}:${p(d.getMinutes())}`,
+  };
+}
+
 // يُستدعى كل 5 دقائق — يُرسل تذكيراً عاجلاً للمعلم في صندوق الرسائل
 export async function GET(req) {
   const authHeader = req.headers.get('authorization');
@@ -20,25 +36,20 @@ export async function GET(req) {
     return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
   const admin = createAdminClient();
-  const now   = new Date();
+  const now   = nowInAcademyTz();
 
-  const from = new Date(now.getTime() + 2 * 60000).toISOString();
-  const to   = new Date(now.getTime() + 8 * 60000).toISOString();
-
-  const fromDate = from.slice(0, 10);
-  const toDate   = to.slice(0, 10);
-  const fromTime = from.slice(11, 16);
-  const toTime   = to.slice(11, 16);
+  const from = fmtLocal(new Date(now.getTime() + 2 * 60000));
+  const to   = fmtLocal(new Date(now.getTime() + 8 * 60000));
 
   const { data: sessions, error } = await admin
     .from('sessions')
     .select('id, teacher_id, teacher_name, student_name, subject, session_date, start_time, reminder_5min_sent')
     .eq('status', 'scheduled')
     .eq('reminder_5min_sent', false)
-    .gte('session_date', fromDate)
-    .lte('session_date', toDate)
-    .gte('start_time', fromDate === toDate ? fromTime : '00:00')
-    .lte('start_time', fromDate === toDate ? toTime   : '23:59');
+    .gte('session_date', from.date)
+    .lte('session_date', to.date)
+    .gte('start_time', from.date === to.date ? from.time : '00:00')
+    .lte('start_time', from.date === to.date ? to.time   : '23:59');
 
   if (error) {
     if (error.code === '42703')
@@ -47,11 +58,12 @@ export async function GET(req) {
   }
 
   const sent = [];
+  const failures = [];
   for (const s of sessions ?? []) {
     if (!s.teacher_id) continue;
     try {
       const sessionLabel = `${s.student_name}${s.subject ? ` — ${s.subject}` : ' — حصة عامة'}`;
-      const dmContent    = `⚠️ مهمة عاجلة — تذكير من فهيم\n\nأهلاً يا أستاذ ${s.teacher_name}، لديك حصة مع ${sessionLabel} ستنطلق بعد 5 دقائق تماماً. يرجى الاستعداد ودخول البث فوراً 🚀`;
+      const dmContent    = '⚠️ مهمة عاجلة: تذكير من فهيم. أهلاً بك يا أستاذ، لديك حصة مبرمجة ستنطلق بعد 5 دقائق تماماً. يرجى الاستعداد ودخول البث فوراً 🚀';
       const groupContent = `⚠️ @${s.teacher_name} لديك حصة مع ${sessionLabel} بعد 5 دقائق — استعد وادخل البث فوراً! 🚀`;
 
       // 1. جرس الإشعار (notification bell)
@@ -60,7 +72,7 @@ export async function GET(req) {
 
       // 2. رسالة خاصة (DM) من فهيم إلى المعلم — تظهر في صندوق محادثاته
       const convKey = [FAHIM_BOT_ID, s.teacher_id].sort().join('_');
-      await admin.from('dm_messages').insert({
+      const { error: dmErr } = await admin.from('dm_messages').insert({
         conv_key:     convKey,
         sender_id:    FAHIM_BOT_ID,
         sender_name:  FAHIM_NAME,
@@ -70,9 +82,10 @@ export async function GET(req) {
         is_task:      true,
         task_status:  'pending',
       });
+      if (dmErr) failures.push({ id: s.id, table: 'dm_messages', error: dmErr.message });
 
       // 3. رسالة في المجموعة (فريق العمل) مع @mention للمعلم
-      await admin.from('team_messages').insert({
+      const { error: tmErr } = await admin.from('team_messages').insert({
         sender_id:    FAHIM_BOT_ID,
         sender_name:  FAHIM_NAME,
         sender_role:  FAHIM_ROLE,
@@ -81,11 +94,14 @@ export async function GET(req) {
         is_task:      true,
         task_status:  'pending',
       });
+      if (tmErr) failures.push({ id: s.id, table: 'team_messages', error: tmErr.message });
 
       await admin.from('sessions').update({ reminder_5min_sent: true }).eq('id', s.id);
       sent.push(s.id);
-    } catch (_) {}
+    } catch (e) {
+      failures.push({ id: s.id, error: String(e?.message ?? e) });
+    }
   }
 
-  return NextResponse.json({ sent: sent.length, ids: sent });
+  return NextResponse.json({ sent: sent.length, ids: sent, failures, window: { from, to } });
 }
