@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#5b21b6" />
+  <title>بطل الضرب — مغامرة جدول الضرب</title>
+
+  <!-- PWA: قابل للتثبيت على الشاشة الرئيسية ويعمل أوفلاين -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="بطل الضرب" />
+  <link rel="apple-touch-icon" href="icon-180.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- شريط علوي -->
+    <header class="topbar" id="topbar">
+      <button class="icon-btn" id="btn-home" title="الرئيسية" aria-label="الرئيسية">🏠</button>
+      <div class="brand">
+        <span class="brand-emoji">✖️</span>
+        <span class="brand-name">بطل الضرب</span>
+      </div>
+      <button class="icon-btn" id="btn-sound" title="الصوت" aria-label="الصوت">🔊</button>
+    </header>
+
+    <main class="stage">
+
+      <!-- ====== الرئيسية ====== -->
+      <section class="screen" id="screen-home">
+        <div class="mascot-big" id="home-mascot">🦉</div>
+        <h1 class="home-title">بطل الضرب</h1>
+        <p class="home-sub">تعلَّم جدول الضرب وأنت تلعب!</p>
+
+        <div class="home-chips" id="home-chips"><!-- تُملأ ديناميكياً --></div>
+
+        <div class="mode-buttons">
+          <button class="mode-btn mode-adventure" data-action="worlds">
+            <span class="mode-ic">🗺️</span>
+            <span class="mode-tx"><b>المغامرة</b><small>اكتشف العوالم جدولاً جدولاً</small></span>
+          </button>
+          <button class="mode-btn mode-smart" data-action="smart">
+            <span class="mode-ic">🧠</span>
+            <span class="mode-tx"><b>تدريب ذكي</b><small>يركّز على ما تحتاج تدريبه</small></span>
+          </button>
+          <button class="mode-btn mode-time" data-action="time">
+            <span class="mode-ic">⚡</span>
+            <span class="mode-tx"><b>تحدّي الزمن</b><small>كم إجابة في ٦٠ ثانية؟</small></span>
+          </button>
+        </div>
+
+        <div class="home-foot">
+          <button class="ghost-btn" data-action="mastery">📊 خريطة الإتقان</button>
+          <button class="ghost-btn" data-action="settings">⚙️ الإعدادات</button>
+        </div>
+      </section>
+
+      <!-- ====== اختيار العالم (المغامرة) ====== -->
+      <section class="screen" id="screen-worlds" hidden>
+        <h2 class="screen-title">🗺️ اختر عالمك</h2>
+        <p class="screen-hint">أكمِل العالم لتفتح الذي يليه ⭐</p>
+        <div class="worlds-grid" id="worlds-grid"></div>
+      </section>
+
+      <!-- ====== اللعب ====== -->
+      <section class="screen" id="screen-game" hidden>
+        <div class="game-top">
+          <div class="streak" id="streak" hidden>🔥 <span id="streak-n">0</span></div>
+          <div class="game-progress" id="game-progress"></div>
+          <div class="timer" id="timer" hidden>⏱️ <span id="timer-n">60</span></div>
+        </div>
+
+        <div class="mascot" id="mascot">🦉</div>
+
+        <div class="problem-card">
+          <div class="problem" id="problem" dir="ltr">1 × 1 = <b class="ans">?</b></div>
+          <div class="feedback" id="feedback">&nbsp;</div>
+        </div>
+
+        <div class="hint-area" id="hint-area" hidden></div>
+
+        <div class="pad" id="pad"><!-- لوحة الأرقام تُبنى بـ JS --></div>
+
+        <button class="hint-toggle" id="hint-toggle">💡 ساعدني أفهم</button>
+      </section>
+
+      <!-- ====== الملخّص ====== -->
+      <section class="screen" id="screen-summary" hidden>
+        <div id="summary-content"></div>
+      </section>
+
+      <!-- ====== خريطة الإتقان ====== -->
+      <section class="screen" id="screen-mastery" hidden>
+        <h2 class="screen-title">📊 خريطة الإتقان</h2>
+        <p class="screen-hint">كل مربّع = حقيقة ضرب. الأخضر = مُتقَن، الأصفر = قيد التعلّم، الأحمر = يحتاج تدريباً.</p>
+        <div class="mastery-wrap">
+          <div class="mastery-grid" id="mastery-grid"></div>
+        </div>
+        <div class="mastery-stats" id="mastery-stats"></div>
+        <div class="legend">
+          <span><i class="sw sw-new"></i> جديد</span>
+          <span><i class="sw sw-weak"></i> ضعيف</span>
+          <span><i class="sw sw-learn"></i> قيد التعلّم</span>
+          <span><i class="sw sw-master"></i> مُتقَن</span>
+        </div>
+      </section>
+
+      <!-- ====== الإعدادات ====== -->
+      <section class="screen" id="screen-settings" hidden>
+        <h2 class="screen-title">⚙️ الإعدادات</h2>
+
+        <div class="setting-row">
+          <span>🔊 الأصوات</span>
+          <button class="switch" id="set-sound" aria-pressed="true"><span class="knob"></span></button>
+        </div>
+
+        <div class="how-to">
+          <h3>كيف تلعب؟</h3>
+          <ul>
+            <li>🗺️ <b>المغامرة:</b> ابدأ بالعوالم السهلة، وأكمِلها لتفتح الأصعب.</li>
+            <li>🧠 <b>تدريب ذكي:</b> النظام يتذكّر أخطاءك ويعيدها حتى تُتقنها.</li>
+            <li>⚡ <b>تحدّي الزمن:</b> أجب أكبر عدد في ٦٠ ثانية.</li>
+            <li>💡 إن لم تعرف الإجابة، اضغط «ساعدني أفهم» لترى الضرب على شكل صفوف.</li>
+          </ul>
+        </div>
+
+        <button class="danger-btn" id="set-reset">🗑️ مسح كل التقدّم والبدء من جديد</button>
+        <p class="academy-note">من إنتاج «أكاديمية عارم» — نتعلّم باللعب 💜</p>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- طبقة الاحتفال -->
+  <div id="confetti" aria-hidden="true"></div>
+
+  <script src="game.js" defer></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function () {});
+      });
+    }
+  </script>
+</body>
+</html>
