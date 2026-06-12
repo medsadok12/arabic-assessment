@@ -8,8 +8,8 @@ import LifeSceneSimulator from '../../components/LifeSceneSimulator';
 import NotificationBell from '../../components/NotificationBell';
 import StudentProfilePanel from '../../components/StudentProfilePanel';
 
-const TIME_SLOTS = Array.from({ length: 29 }, (_, i) => {
-  const mins = 7 * 60 + i * 30;
+const TIME_SLOTS = Array.from({ length: 157 }, (_, i) => {
+  const mins = 7 * 60 + i * 5;
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
