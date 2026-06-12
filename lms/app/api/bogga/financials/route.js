@@ -209,21 +209,17 @@ export async function POST(request) {
     });
   }
 
-  // Fetch teacher emails for teacher payouts
+  // Fetch teacher emails for teacher payouts — getUserById per teacher (listUsers can fail silently)
   if (type === 'teacher_payout') {
-    const teacherIds = [...new Set(
-      Object.values(groups)
-        .filter(g => g.user_id)
-        .map(g => g.user_id)
-    )];
-    if (teacherIds.length > 0) {
-      const { data: { users } = {} } = await admin.auth.admin.listUsers({ perPage: 1000 });
-      const emailMap = {};
-      (users ?? []).forEach(u => { emailMap[u.id] = u.email; });
-      Object.values(groups).forEach(g => {
-        if (g.user_id && emailMap[g.user_id]) g.user_email = emailMap[g.user_id];
-      });
-    }
+    await Promise.all(
+      Object.values(groups).map(async g => {
+        if (!g.user_id) return;
+        try {
+          const { data: { user } = {} } = await admin.auth.admin.getUserById(g.user_id);
+          if (user?.email) g.user_email = user.email;
+        } catch (_) {}
+      })
+    );
   }
 
   // ── Historical snapshot protection ─────────────────────────────────────────
