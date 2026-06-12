@@ -135,7 +135,7 @@ export default function DashboardContent({
   useEffect(() => {
     if (liveStatus !== 'active' || announcedActiveRef.current) return;
     announcedActiveRef.current = true;
-    speak('حِصَّتُكَ بَدَأَتْ بِالْفِعْلِ، اُدْخُلْ لِلْقَاعَةِ يَا بَطَلُ');
+    speak('درسك بدأ بالفعل، ادخل للقاعة يا بطل');
   }, [liveStatus]);
 
   useEffect(() => {
@@ -153,13 +153,13 @@ export default function DashboardContent({
     // Window 1 — exactly 59:00→60:00 before session (3540–3600 s)
     if (remainingSecs <= 3600 && remainingSecs > 3540 && !announced1hRef.current) {
       announced1hRef.current = true;
-      speak('لَدَيْكَ حِصَّةٌ بَعْدَ سَاعَةٍ');
+      speak('لديك درس بعد ساعة');
     }
 
     // Window 2 — ≤ 2 minutes before session (≤ 120 s), includes page-load inside window
     if (remainingSecs <= 120 && !announced2minRef.current) {
       announced2minRef.current = true;
-      speak('حِصَّتُكَ سَتَبْدَأُ بَعْدَ قَلِيلٍ، اِسْتَعِدَّ يَا بَطَلُ');
+      speak('درسك سيبدأ بعد قليل، استعد يا بطل');
     }
   }, [remainingSecs, nextSession?.id, liveStatus]);
 
