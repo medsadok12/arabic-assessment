@@ -254,8 +254,40 @@ body {
 .confetti-piece { position: absolute; width: 10px; height: 14px; top: -20px; will-change: transform; animation: fall linear forwards; }
 @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
 
+/* ===== الخانات الأربع (الرئيسية) ===== */
+.op-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; max-width: 360px; margin: 8px 0; }
+.op-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; aspect-ratio: 1/1; border: none; border-radius: 24px; cursor: pointer; color: #fff; box-shadow: var(--shadow); transition: transform .15s; }
+.op-card:active { transform: scale(.95); }
+.op-card:hover { transform: translateY(-3px); }
+.op-sym { font-size: 3.4rem; font-weight: 900; line-height: 1; }
+.op-name { font-size: 1.3rem; font-weight: 800; }
+.op-stars { font-size: .78rem; opacity: .92; font-weight: 700; }
+
+.op-mul { background: linear-gradient(150deg, #7c3aed, #6d28d9); }
+.op-div { background: linear-gradient(150deg, #14b8a6, #0d9488); }
+.op-add { background: linear-gradient(150deg, #3b82f6, #2563eb); }
+.op-sub { background: linear-gradient(150deg, #fb923c, #ea580c); }
+
+/* ===== رأس قائمة العملية ===== */
+.op-hero { display: flex; flex-direction: column; align-items: center; gap: 2px; color: #fff; padding: 16px; border-radius: 22px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.op-hero-ic { font-size: 2.8rem; font-weight: 900; line-height: 1; }
+.op-hero-name { margin: 0; font-size: 1.6rem; }
+
+.world-card.op-mul .wnum { color: #6d28d9; }
+.world-card.op-div .wnum { color: #0d9488; }
+.world-card.op-add .wnum { color: #2563eb; }
+.world-card.op-sub .wnum { color: #ea580c; }
+
+/* ألوان التلميح البصري */
+.dot.d-a { background: #3b82f6; }
+.dot.d-b { background: #22c55e; }
+.dot.d-x { background: #fca5a5; opacity: .45; }
+.hint-row.hint-wrap { flex-wrap: wrap; justify-content: center; max-width: 320px; }
+
 @media (max-width: 360px) {
   .problem { font-size: 2.2rem; }
   .key { font-size: 1.5rem; padding: 13px 0; }
   .home-title { font-size: 2rem; }
+  .op-sym { font-size: 2.8rem; }
+  .op-name { font-size: 1.1rem; }
 }
