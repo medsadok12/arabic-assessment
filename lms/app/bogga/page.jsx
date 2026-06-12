@@ -362,6 +362,13 @@ export default function BoggarAdminPage() {
   const [adminCancellingId, setAdminCancellingId] = useState(null);
   const [adminWeekOffset,   setAdminWeekOffset]   = useState(0);
   const [adminTeacherFilter,setAdminTeacherFilter]= useState('');
+  // Admin session scheduling modal
+  const EMPTY_SCHED = { teacherName:'', teacherId:'', teacherEmail:'', studentName:'', studentEmail:'', sessionDate:'', startTime:'', durationMinutes:'60', subject:'' };
+  const [adminSchedModal,   setAdminSchedModal]   = useState(false);
+  const [adminSchedForm,    setAdminSchedForm]    = useState(EMPTY_SCHED);
+  const [adminSchedSaving,  setAdminSchedSaving]  = useState(false);
+  const [adminSchedMsg,     setAdminSchedMsg]     = useState(null);
+  const [adminTeacherList,  setAdminTeacherList]  = useState([]);
 
   // Notifications
 
@@ -977,6 +984,35 @@ export default function BoggarAdminPage() {
     setAdminCompleteSav(false);
   }
 
+  // ── Admin session scheduling ──────────────────────────────────────────────
+  async function openAdminSchedModal() {
+    setAdminSchedModal(true);
+    setAdminSchedForm(EMPTY_SCHED);
+    setAdminSchedMsg(null);
+    if (adminTeacherList.length === 0) {
+      const res = await fetch('/api/bogga/users').then(r => r.json()).catch(() => ({}));
+      setAdminTeacherList((res.users ?? []).filter(u => u.role === 'teacher'));
+    }
+  }
+
+  async function handleAdminSchedSubmit(e) {
+    e.preventDefault();
+    if (!adminSchedForm.teacherName || !adminSchedForm.studentName || !adminSchedForm.sessionDate || !adminSchedForm.startTime) {
+      setAdminSchedMsg({ type: 'error', text: 'المعلم واسم الطالب والتاريخ والوقت مطلوبة' }); return;
+    }
+    setAdminSchedSaving(true); setAdminSchedMsg(null);
+    const res = await fetch('/api/bogga/sessions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...adminSchedForm, durationMinutes: parseInt(adminSchedForm.durationMinutes) || 60 }),
+    });
+    const data = await res.json();
+    if (!res.ok) { setAdminSchedMsg({ type: 'error', text: data.error }); setAdminSchedSaving(false); return; }
+    setAdminSessions(prev => [data.session, ...prev]);
+    setAdminSchedMsg({ type: 'success', text: '✅ تمّت جدولة الحصة بنجاح' });
+    setAdminSchedSaving(false);
+    setTimeout(() => setAdminSchedModal(false), 1400);
+  }
+
   function getOnlineInfo(adminId) {
     const s = onlineStatus[adminId];
     if (!s) return { online: false, label: lang === 'ar' ? 'لم يُسجَّل دخول بعد' : 'Never logged in', color: '#94a3b8' };
@@ -1293,13 +1329,16 @@ export default function BoggarAdminPage() {
                   ))}
                 </div>
 
-                {/* Filter + Refresh */}
+                {/* Filter + Refresh + Schedule */}
                 <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
                   <input className="form-input" style={{ flex: '1 1 200px', margin: 0 }}
                     placeholder={lang === 'ar' ? '🔍 فلتر حسب المعلم أو الطالب...' : '🔍 Filter by teacher or student...'}
                     value={adminTeacherFilter}
                     onChange={e => setAdminTeacherFilter(e.target.value)} />
                   <button onClick={loadAdminSessions} className="btn btn-outline btn-sm" style={{ whiteSpace: 'nowrap' }}>🔄 {lang === 'ar' ? 'تحديث' : 'Refresh'}</button>
+                  <button onClick={openAdminSchedModal} className="btn btn-primary btn-sm" style={{ whiteSpace: 'nowrap' }}>
+                    📅 {lang === 'ar' ? '+ جدولة حصة' : '+ Schedule'}
+                  </button>
                 </div>
 
                 {/* Sub-tabs */}
@@ -2776,6 +2815,109 @@ export default function BoggarAdminPage() {
 
           <div style={{ marginTop: 12, padding: '8px 10px', background: '#f8faff', borderRadius: 8, fontSize: '.76rem', color: 'var(--muted)', lineHeight: 1.6 }}>
             {lang === 'ar' ? <>الوضع الافتراضي لأي تبويب: <strong style={{ color: '#b91c1c' }}>مخفي</strong> — لا يظهر لأي مساعد إلا بعد تفعيله يدوياً</> : <>Default for any tab: <strong style={{ color: '#b91c1c' }}>Hidden</strong> — won't appear for any assistant until manually enabled</>}
+          </div>
+        </div>
+      )}
+
+      {/* ══ Admin Session Scheduling Modal ══════════════════════════════════ */}
+      {adminSchedModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.48)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:600, padding:16 }}
+          onClick={e => e.target === e.currentTarget && !adminSchedSaving && setAdminSchedModal(false)}>
+          <div style={{ background:'#fff', borderRadius:22, padding:'28px 28px 24px', width:'100%', maxWidth:480, direction:'rtl', boxShadow:'0 24px 72px rgba(0,0,0,.28)', maxHeight:'92vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+              <h2 style={{ fontWeight:800, color:'var(--primary)', fontSize:'1.15rem', margin:0 }}>📅 جدولة حصة جديدة</h2>
+              <button onClick={() => !adminSchedSaving && setAdminSchedModal(false)} style={{ background:'none', border:'none', fontSize:'1.3rem', color:'var(--muted)', cursor:'pointer', lineHeight:1 }}>✕</button>
+            </div>
+
+            <form onSubmit={handleAdminSchedSubmit}>
+              {/* Teacher */}
+              <div className="form-group">
+                <label className="form-label">👨‍🏫 المعلم *</label>
+                {adminTeacherList.length > 0 ? (
+                  <select className="form-input" value={adminSchedForm.teacherId}
+                    onChange={e => {
+                      const t = adminTeacherList.find(x => x.id === e.target.value);
+                      setAdminSchedForm(p => ({ ...p, teacherId: t?.id ?? '', teacherName: t?.name ?? '', teacherEmail: t?.email ?? '' }));
+                    }}>
+                    <option value="">— اختر من القائمة —</option>
+                    {adminTeacherList.map(t => <option key={t.id} value={t.id}>👤 {t.name}</option>)}
+                  </select>
+                ) : null}
+                <input className="form-input" type="text" placeholder="أو اكتب اسم المعلم يدوياً"
+                  style={{ marginTop: adminTeacherList.length > 0 ? 8 : 0 }}
+                  value={adminSchedForm.teacherName}
+                  onChange={e => setAdminSchedForm(p => ({ ...p, teacherName: e.target.value }))} required />
+              </div>
+
+              {/* Student */}
+              <div className="form-group">
+                <label className="form-label">👤 اسم الطالب *</label>
+                <input className="form-input" type="text" placeholder="اسم الطالب"
+                  value={adminSchedForm.studentName}
+                  onChange={e => setAdminSchedForm(p => ({ ...p, studentName: e.target.value }))} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">✉️ بريد الطالب الإلكتروني</label>
+                <input className="form-input" type="email" dir="ltr" placeholder="student@example.com"
+                  value={adminSchedForm.studentEmail}
+                  onChange={e => setAdminSchedForm(p => ({ ...p, studentEmail: e.target.value }))} />
+                <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:3 }}>مطلوب لكي تظهر الحصة في داشبورد الطالب وإرسال الإشعار</div>
+              </div>
+
+              {/* Subject */}
+              <div className="form-group">
+                <label className="form-label">📚 موضوع الحصة (اختياري)</label>
+                <input className="form-input" type="text" placeholder="قواعد النحو، القراءة..."
+                  value={adminSchedForm.subject}
+                  onChange={e => setAdminSchedForm(p => ({ ...p, subject: e.target.value }))} />
+              </div>
+
+              {/* Date + Time */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+                <div className="form-group">
+                  <label className="form-label">📅 التاريخ *</label>
+                  <input className="form-input" type="date" min={new Date().toISOString().slice(0,10)}
+                    value={adminSchedForm.sessionDate}
+                    onChange={e => setAdminSchedForm(p => ({ ...p, sessionDate: e.target.value }))} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">⏰ الوقت *</label>
+                  <select className="form-input" value={adminSchedForm.startTime}
+                    onChange={e => setAdminSchedForm(p => ({ ...p, startTime: e.target.value }))} required>
+                    <option value="">اختر...</option>
+                    {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Duration */}
+              <div className="form-group">
+                <label className="form-label">⏱️ مدة الحصة</label>
+                <select className="form-input" value={adminSchedForm.durationMinutes}
+                  onChange={e => setAdminSchedForm(p => ({ ...p, durationMinutes: e.target.value }))}>
+                  <option value="30">30 دقيقة</option>
+                  <option value="45">45 دقيقة</option>
+                  <option value="60">ساعة كاملة</option>
+                  <option value="90">ساعة ونصف</option>
+                </select>
+              </div>
+
+              {adminSchedMsg && (
+                <div style={{ padding:'10px 14px', borderRadius:10, marginBottom:14, fontSize:'.88rem', fontWeight:600,
+                  background: adminSchedMsg.type === 'error' ? '#fff5f5' : '#f0fdf4',
+                  color:      adminSchedMsg.type === 'error' ? '#b91c1c' : '#1a7c40',
+                  border:     `1.5px solid ${adminSchedMsg.type === 'error' ? '#fca5a5' : '#6ee7b7'}` }}>
+                  {adminSchedMsg.text}
+                </div>
+              )}
+
+              <div style={{ display:'flex', gap:10, marginTop:8 }}>
+                <button type="submit" disabled={adminSchedSaving} className="btn btn-primary" style={{ flex:1, justifyContent:'center' }}>
+                  {adminSchedSaving ? 'جارٍ الجدولة...' : '📅 جدولة الحصة'}
+                </button>
+                <button type="button" onClick={() => setAdminSchedModal(false)} className="btn btn-outline">إلغاء</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
