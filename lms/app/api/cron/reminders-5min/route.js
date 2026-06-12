@@ -4,10 +4,14 @@ import { notifyUser }        from '../../../../lib/notify';
 
 export const dynamic = 'force-dynamic';
 
-// يُستدعى كل 5 دقائق — يُرسل إشعاراً عاجلاً في صندوق المعلم عند اقتراب حصته
+// Fahim bot — stable system UUID (not in auth.users, only used as sender identity)
+const FAHIM_BOT_ID   = '00000000-0000-4000-8000-000000000001';
+const FAHIM_NAME     = 'فهيم 🦉';
+const FAHIM_ROLE     = 'system';
+const FAHIM_AVATAR   = null;
+
+// يُستدعى كل 5 دقائق — يُرسل تذكيراً عاجلاً للمعلم في صندوق الرسائل
 export async function GET(req) {
-  // Vercel Cron يرسل Authorization: Bearer <CRON_SECRET>
-  // كما نقبل x-cron-secret للاستدعاء اليدوي
   const authHeader = req.headers.get('authorization');
   const cronSecret = req.headers.get('x-cron-secret');
   const vercelAuth = authHeader === `Bearer ${process.env.CRON_SECRET}`;
@@ -18,8 +22,6 @@ export async function GET(req) {
   const admin = createAdminClient();
   const now   = new Date();
 
-  // نافذة: الحصص التي تبدأ خلال 2 → 8 دقائق من الآن
-  // (نافذة 6 دقائق تضمن التقاط أي حصة حتى لو تأخر الـ cron قليلاً)
   const from = new Date(now.getTime() + 2 * 60000).toISOString();
   const to   = new Date(now.getTime() + 8 * 60000).toISOString();
 
@@ -39,7 +41,6 @@ export async function GET(req) {
     .lte('start_time', fromDate === toDate ? toTime   : '23:59');
 
   if (error) {
-    // عمود غير موجود → لم يُشغَّل SQL بعد
     if (error.code === '42703')
       return NextResponse.json({ note: 'reminder_5min_sent column missing — run SQL migration' });
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -49,12 +50,38 @@ export async function GET(req) {
   for (const s of sessions ?? []) {
     if (!s.teacher_id) continue;
     try {
-      await notifyUser(
-        s.teacher_id,
-        'session',
-        '⚡ تذكير من فهيم: لديك حصة بعد 5 دقائق!',
-        `${s.student_name}${s.subject ? ` — ${s.subject}` : ' — حصة عامة'}`,
-      );
+      const sessionLabel = `${s.student_name}${s.subject ? ` — ${s.subject}` : ' — حصة عامة'}`;
+      const dmContent    = `⚠️ مهمة عاجلة — تذكير من فهيم\n\nأهلاً يا أستاذ ${s.teacher_name}، لديك حصة مع ${sessionLabel} ستنطلق بعد 5 دقائق تماماً. يرجى الاستعداد ودخول البث فوراً 🚀`;
+      const groupContent = `⚠️ @${s.teacher_name} لديك حصة مع ${sessionLabel} بعد 5 دقائق — استعد وادخل البث فوراً! 🚀`;
+
+      // 1. جرس الإشعار (notification bell)
+      await notifyUser(s.teacher_id, 'session',
+        '⚡ تذكير من فهيم: لديك حصة بعد 5 دقائق!', sessionLabel);
+
+      // 2. رسالة خاصة (DM) من فهيم إلى المعلم — تظهر في صندوق محادثاته
+      const convKey = [FAHIM_BOT_ID, s.teacher_id].sort().join('_');
+      await admin.from('dm_messages').insert({
+        conv_key:     convKey,
+        sender_id:    FAHIM_BOT_ID,
+        sender_name:  FAHIM_NAME,
+        sender_role:  FAHIM_ROLE,
+        sender_avatar: FAHIM_AVATAR,
+        content:      dmContent,
+        is_task:      true,
+        task_status:  'pending',
+      });
+
+      // 3. رسالة في المجموعة (فريق العمل) مع @mention للمعلم
+      await admin.from('team_messages').insert({
+        sender_id:    FAHIM_BOT_ID,
+        sender_name:  FAHIM_NAME,
+        sender_role:  FAHIM_ROLE,
+        sender_avatar: FAHIM_AVATAR,
+        content:      groupContent,
+        is_task:      true,
+        task_status:  'pending',
+      });
+
       await admin.from('sessions').update({ reminder_5min_sent: true }).eq('id', s.id);
       sent.push(s.id);
     } catch (_) {}

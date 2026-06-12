@@ -4,9 +4,13 @@ import { createPortal } from 'react-dom';
 import { createClient } from '../lib/supabase';
 
 const ALLOWED  = ['teacher', 'admin', 'super_admin'];
-const ROLE_AR  = { teacher: 'معلم', admin: 'مشرف', super_admin: 'مرشد' };
-const ROLE_BG  = { teacher: '#dcfce7', admin: '#fef3c7', super_admin: '#dbeafe' };
-const ROLE_CLR = { teacher: '#166534', admin: '#92400e', super_admin: '#1d4ed8' };
+const ROLE_AR  = { teacher: 'معلم', admin: 'مشرف', super_admin: 'مرشد', system: 'بوت' };
+const ROLE_BG  = { teacher: '#dcfce7', admin: '#fef3c7', super_admin: '#dbeafe', system: '#f3e8ff' };
+const ROLE_CLR = { teacher: '#166534', admin: '#92400e', super_admin: '#1d4ed8', system: '#7e22ce' };
+
+// Fahim bot — must match the ID used in the cron route
+const FAHIM_BOT_ID = '00000000-0000-4000-8000-000000000001';
+const FAHIM_MEMBER = { id: FAHIM_BOT_ID, name: 'فهيم 🦉', role: 'system', avatar_url: null };
 
 function dmKey(a, b) { return [a, b].sort().join('_'); }
 
@@ -292,11 +296,15 @@ export default function TeamChat({ user }) {
     Promise.all([
       fetch('/api/team-chat').then(r => r.json()),
       fetch('/api/team-chat/members').then(r => r.json()),
-    ]).then(([gd, md]) => {
+      fetch('/api/team-chat/dm').then(r => r.json()),
+    ]).then(([gd, md, dd]) => {
       const msgs = gd.messages ?? [];
       msgs.forEach(m => seenGroupIds.current.add(m.id));
       setGroupMsgs(msgs);
-      setMembers(md.members ?? []);
+      // Inject Fahim as a virtual member if there are DMs from him
+      const hasFahimDm = (dd.messages ?? []).some(m => m.sender_id === FAHIM_BOT_ID);
+      const realMembers = md.members ?? [];
+      setMembers(hasFahimDm ? [FAHIM_MEMBER, ...realMembers] : realMembers);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [myId]);
@@ -363,6 +371,10 @@ export default function TeamChat({ user }) {
             return { ...prev, [m.conv_key]: [...ex.filter(e => !(e._opt && e.content === m.content)), m] };
           });
           return;
+        }
+        // If Fahim DM arrives — inject him as virtual member so the teacher sees the contact
+        if (m.sender_id === FAHIM_BOT_ID) {
+          setMembers(prev => prev.some(x => x.id === FAHIM_BOT_ID) ? prev : [FAHIM_MEMBER, ...prev]);
         }
         if (!seenDmIds.current[m.conv_key]) seenDmIds.current[m.conv_key] = new Set();
         if (seenDmIds.current[m.conv_key].has(m.id)) return;
