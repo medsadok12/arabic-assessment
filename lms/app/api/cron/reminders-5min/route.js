@@ -12,7 +12,7 @@ const FAHIM_AVATAR   = null;
 
 // Sessions are stored in academy local time — compute "now" in that timezone,
 // NOT in server UTC, otherwise reminders fire 1+ hour late
-const ACADEMY_TZ = process.env.ACADEMY_TZ || 'Africa/Tunis';
+const ACADEMY_TZ = process.env.ACADEMY_TZ || 'Asia/Qatar';
 function nowInAcademyTz() {
   // sv-SE locale gives "YYYY-MM-DD HH:mm:ss" — directly parseable
   const s = new Date().toLocaleString('sv-SE', { timeZone: ACADEMY_TZ });

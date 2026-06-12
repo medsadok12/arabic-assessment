@@ -13,7 +13,7 @@ export async function GET(req) {
   const admin = createAdminClient();
 
   // Sessions are stored in academy local time — compute "now" in that timezone
-  const TZ  = process.env.ACADEMY_TZ || 'Africa/Tunis';
+  const TZ  = process.env.ACADEMY_TZ || 'Asia/Qatar';
   const now = new Date(new Date().toLocaleString('sv-SE', { timeZone: TZ }).replace(' ', 'T'));
   const p   = n => String(n).padStart(2, '0');
   const fmt = d => ({
