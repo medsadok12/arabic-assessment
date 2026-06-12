@@ -113,42 +113,43 @@ export default function DashboardContent({
 
   // ── Audio reminders — fires ONCE per session at precise second thresholds ──
   const announced1hRef    = useRef(false);
-  const announced2minRef  = useRef(false);
+  const announced5minRef  = useRef(false);
   const announcedForRef   = useRef(null);
 
   // Integer seconds remaining — changes every second, gives exact threshold matching
   const remainingSecs = diffMs != null && diffMs > 0 ? Math.floor(diffMs / 1000) : null;
 
-  function speak(text) {
-    if (!('speechSynthesis' in window)) return;
-    // Cancel any queued speech first
-    window.speechSynthesis.cancel();
-
-    let done = false;
-    function doSpeak() {
-      if (done) return;
-      done = true;
-      window.speechSynthesis.cancel(); // clear again after voices load
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ar-SA';
-      u.rate = 1.05;
-      window.speechSynthesis.speak(u);
-    }
-
-    // Chrome loads voices asynchronously — wait if not ready yet
-    if (window.speechSynthesis.getVoices().length > 0) {
-      doSpeak();
-    } else {
-      window.speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true });
-      setTimeout(doSpeak, 600); // fallback if voiceschanged never fires
-    }
+  // Tries pre-recorded file first; falls back to browser TTS on any failure
+  function playAudio(fileName, fallbackText) {
+    const audio = new Audio(`/sounds/${fileName}`);
+    audio.playbackRate = 1.05;
+    audio.play().catch(() => {
+      if (!fallbackText || !('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      let done = false;
+      function doSpeak() {
+        if (done) return;
+        done = true;
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(fallbackText);
+        u.lang = 'ar-SA';
+        u.rate = 1.05;
+        window.speechSynthesis.speak(u);
+      }
+      if (window.speechSynthesis.getVoices().length > 0) {
+        doSpeak();
+      } else {
+        window.speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true });
+        setTimeout(doSpeak, 600);
+      }
+    });
   }
 
   // Announce "session started" once when liveStatus becomes 'active'
   useEffect(() => {
     if (liveStatus !== 'active' || announcedActiveRef.current) return;
     announcedActiveRef.current = true;
-    speak('درسك بدأ بالفعل، ادخل للقاعة يا بطل');
+    playAudio('session-started.mp3', 'درسك بدا، ادخل للقاعة يا بطل');
   }, [liveStatus]);
 
   useEffect(() => {
@@ -158,21 +159,22 @@ export default function DashboardContent({
 
     // Reset flags when session changes
     if (announcedForRef.current !== nextSession.id) {
-      announcedForRef.current  = nextSession.id;
-      announced1hRef.current   = false;
-      announced2minRef.current = false;
+      announcedForRef.current = nextSession.id;
+      announced1hRef.current  = false;
+      announced5minRef.current = false;
     }
 
     // Window 1 — exactly 59:00→60:00 before session (3540–3600 s)
     if (remainingSecs <= 3600 && remainingSecs > 3540 && !announced1hRef.current) {
       announced1hRef.current = true;
-      speak('لديك درس بعد ساعة');
+      playAudio('session-1hour.mp3', 'لديك درس بعد ساعة');
     }
 
-    // Window 2 — ≤ 2 minutes before session (≤ 120 s), includes page-load inside window
-    if (remainingSecs <= 120 && !announced2minRef.current) {
-      announced2minRef.current = true;
-      speak('تنبيه! حصتك ستبدأ الآن، ادخل البث يا بطل');
+    // Window 2 — ≤ 5 minutes before session (≤ 300 s)
+    // Fires immediately on page-load if student opens dashboard inside this window
+    if (remainingSecs <= 300 && !announced5minRef.current) {
+      announced5minRef.current = true;
+      playAudio('session-soon.mp3', 'تنبيه، حصتك تبدا الان، ادخل البث يا بطل');
     }
   }, [remainingSecs, nextSession?.id, liveStatus]);
 
