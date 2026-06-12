@@ -6,8 +6,13 @@ export const dynamic = 'force-dynamic';
 
 // يُستدعى كل 5 دقائق — يُرسل إشعاراً عاجلاً في صندوق المعلم عند اقتراب حصته
 export async function GET(req) {
-  const secret = req.headers.get('x-cron-secret');
-  if (secret !== process.env.CRON_SECRET && process.env.CRON_SECRET)
+  // Vercel Cron يرسل Authorization: Bearer <CRON_SECRET>
+  // كما نقبل x-cron-secret للاستدعاء اليدوي
+  const authHeader = req.headers.get('authorization');
+  const cronSecret = req.headers.get('x-cron-secret');
+  const vercelAuth = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  const manualAuth = cronSecret === process.env.CRON_SECRET;
+  if (process.env.CRON_SECRET && !vercelAuth && !manualAuth)
     return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
   const admin = createAdminClient();
