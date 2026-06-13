@@ -160,6 +160,13 @@ export default function TeacherPage() {
     return () => clearInterval(id);
   }, []);
 
+  // Auto-clear msg after 6 seconds
+  useEffect(() => {
+    if (!msg) return;
+    const t = setTimeout(() => setMsg(null), 6000);
+    return () => clearTimeout(t);
+  }, [msg]);
+
   function sessionCountdown(s) {
     const dt   = new Date(`${s.session_date}T${s.start_time}`);
     const diff = dt - now;
@@ -231,11 +238,13 @@ export default function TeacherPage() {
   const bannerDT           = bannerSession ? new Date(`${bannerSession.session_date}T${bannerSession.start_time}`) : null;
   const bannerDiffMs       = bannerDT ? bannerDT - now : null;
   const bannerDiffMins     = bannerDiffMs != null ? bannerDiffMs / 60000 : null;
-  const showBanner         = bannerDiffMins != null && bannerDiffMins <= 30 && bannerDiffMins > -120;
-  const bannerIsLive       = bannerDiffMins != null && bannerDiffMins <= 0;
   const bannerAlreadyStart = bannerSession
     ? (startedIds.has(bannerSession.id) || bannerSession.status === 'active')
     : false;
+  // البانر يظهر: ضمن نافذة 30 دقيقة، أو دائماً إذا الحصة active في DB
+  const showBanner = bannerAlreadyStart
+    || (bannerDiffMins != null && bannerDiffMins <= 30 && bannerDiffMins > -120);
+  const bannerIsLive = bannerDiffMins != null && bannerDiffMins <= 0;
 
   const weekStart  = (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10); })();
   const monthStart = new Date().toISOString().slice(0, 7) + '-01';

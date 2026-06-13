@@ -87,7 +87,7 @@ export default function DashboardContent({
     return () => clearInterval(id);
   }, []);
 
-  // ── Session timing — precise windows ──────────────────────────────────
+  // ── Session timing (للعداد التنازلي فقط — لا تحكم في الأزرار) ──────────
   const sessionDT    = nextSession ? new Date(`${nextSession.session_date}T${nextSession.start_time}`) : null;
   const duration     = nextSession?.duration_minutes ?? 60;
   const sessionEndDT = sessionDT ? new Date(sessionDT.getTime() + duration * 60000) : null;
@@ -96,16 +96,14 @@ export default function DashboardContent({
   const diffEndMs = sessionEndDT ? sessionEndDT - now : null;
   const diffMins  = diffMs != null ? diffMs / 60000 : null;
 
-  /** الحصة انتهت تماماً (مرّت مدتها الكاملة) */
-  const sessionHasEnded = sessionEndDT ? now >= sessionEndDT : false;
+  // ── مصدر الحقيقة الوحيد: حالة الحصة من قاعدة البيانات (liveStatus) ──
+  // لا نعتمد على ساعة المتصفح لفتح/قفل الأزرار — فقط status من السيرفر
 
-  /** نافذة التسجيل: من 10 دقائق قبل البدء حتى 15 دقيقة بعده */
-  const canRegisterAttendance = diffMins != null
-    && diffMins <= 10    // لم يتبقَّ أكثر من 10 دقائق على الموعد
-    && diffMins >= -15;  // لم تمرّ أكثر من 15 دقيقة على البدء
+  /** الحصة نشطة: يعتمد حصراً على liveStatus من DB */
+  const isLiveOrActive = liveStatus === 'active';
 
-  /** الحصة جارية فعلياً (بدأت ولم تنتهِ بعد) */
-  const sessionIsLive = diffMs != null && diffMs <= 0 && !sessionHasEnded;
+  /** الحصة انتهت: فقط إذا لم يكن السيرفر يقول active وانقضى وقتها محلياً */
+  const sessionHasEnded = !isLiveOrActive && (sessionEndDT ? now >= sessionEndDT : false);
 
   // عداد تنازلي داخل بطاقة الحصة (يظهر فقط عند ≤ 60 دقيقة)
   let cardCountdown = null;
@@ -119,8 +117,6 @@ export default function DashboardContent({
       : `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
   }
 
-  // liveLabel بقي للتوافق مع timeLabel (سيُحذف في خطوة لاحقة)
-  const liveLabel = cardCountdown ? `⏱️ ${cardCountdown}` : null;
 
   // ── Audio reminders — fires ONCE per session at precise second thresholds ──
   const announced1hRef   = useRef(false);
@@ -200,6 +196,7 @@ export default function DashboardContent({
   // ── Attendance state — seed from server value so refresh shows correct state ──
   const [attendanceLogged, setAttendanceLogged] = useState(nextSession?.attended === true);
   const [attLoading,       setAttLoading]       = useState(false);
+  const [attError,         setAttError]         = useState(null);
 
   // تُجلب حالة الحضور فقط بعد أن يبدأ المعلم الحصة (liveStatus === 'active')
   useEffect(() => {
@@ -213,6 +210,7 @@ export default function DashboardContent({
   async function logAttendance() {
     if (!nextSession || attLoading || attendanceLogged) return;
     setAttLoading(true);
+    setAttError(null);
     try {
       const res  = await fetch('/api/student/attendance', {
         method: 'POST',
@@ -222,32 +220,29 @@ export default function DashboardContent({
       const data = await res.json();
       if (data.ok || data.already) {
         setAttendanceLogged(true);
-        // الرابط يأتي من الـ API (أحدث) أو من بيانات الحصة المحلية
         const meetUrl = data.meet_link || nextSession.meet_link;
         if (meetUrl) window.open(meetUrl, '_blank', 'noopener');
       } else {
-        alert(data.error ?? 'تعذّر تسجيل الحضور — حاول مرة أخرى');
+        setAttError(data.error ?? 'تعذّر تسجيل الحضور — حاول مرة أخرى');
       }
     } catch {
-      alert('خطأ في الاتصال — تحقق من الإنترنت وحاول مرة أخرى');
+      setAttError('خطأ في الاتصال — تحقق من الإنترنت');
     }
     setAttLoading(false);
   }
 
-  // ── Time label ──
+  // ── Time label (عرض فقط — لا يتحكم في الأزرار) ──
   let timeLabel = '';
-  if (diffMins != null) {
-    if (sessionHasEnded) {
-      timeLabel = '⏹️ انتهت الحصة';
-    } else if (liveStatus === 'active' || sessionIsLive) {
-      const minsLeft = diffEndMs != null ? Math.ceil(diffEndMs / 60000) : null;
-      timeLabel = minsLeft != null ? `🔴 جارية — يتبقى ${minsLeft} د` : '🔴 الحصة جارية الآن';
-    } else if (liveLabel) {
-      timeLabel = liveLabel;
-    } else {
-      const d = Math.floor(diffMins / 1440);
-      timeLabel = `📆 بعد ${d} ${d === 1 ? 'يوم' : 'أيام'}`;
-    }
+  if (sessionHasEnded) {
+    timeLabel = '⏹️ انتهت الحصة';
+  } else if (isLiveOrActive) {
+    const minsLeft = diffEndMs != null ? Math.ceil(diffEndMs / 60000) : null;
+    timeLabel = minsLeft != null && minsLeft > 0 ? `🔴 جارية — يتبقى ${minsLeft} د` : '🔴 الحصة جارية الآن';
+  } else if (cardCountdown) {
+    timeLabel = `⏱️ ${cardCountdown}`;
+  } else if (diffMins != null) {
+    const d = Math.floor(diffMins / 1440);
+    timeLabel = `📆 بعد ${d} ${d === 1 ? 'يوم' : 'أيام'}`;
   }
 
   return (
@@ -362,9 +357,8 @@ export default function DashboardContent({
             )}
           </div>
 
-          {/* ── Next session — 3 حالات زمنية ── */}
+          {/* ── Next session ── */}
           {nextSession && (() => {
-            const isLiveOrActive = liveStatus === 'active' || sessionIsLive;
 
             // ── لون البطاقة ──
             const cardBg = sessionHasEnded
@@ -418,6 +412,11 @@ export default function DashboardContent({
                       }}>
                       {attLoading ? '⏳ جارٍ التسجيل...' : '🟢 سجّل حضورك'}
                     </button>
+                    {attError && (
+                      <div style={{ marginTop:6, fontSize:'.78rem', color:'#fca5a5', fontWeight:700 }}>
+                        ⚠️ {attError}
+                      </div>
+                    )}
                   </div>
                 );
               } else {
