@@ -520,18 +520,29 @@ export default function TeacherPage() {
                 </>
               )}
             </div>
-            <button
-              onClick={() => startSession(bannerSession)}
-              style={{
-                background:'#fff', border:'none', borderRadius:12,
-                padding:'11px 24px', fontWeight:900, fontSize:'.95rem',
-                cursor:'pointer', whiteSpace:'nowrap', flexShrink:0,
-                color: bannerIsLive ? '#1a7c40' : '#92400e',
-                boxShadow:'0 4px 14px rgba(0,0,0,.2)',
-                fontFamily:'inherit',
-              }}>
-              {bannerIsLive ? '▶️ ابدأ الحصة الآن' : '🎥 فتح Google Meet'}
-            </button>
+            <div style={{ flexShrink:0, display:'flex', flexDirection:'column', gap:8, alignItems:'center' }}>
+              <button
+                onClick={() => startSession(bannerSession)}
+                style={{
+                  background:'#fff', border:'none', borderRadius:12,
+                  padding:'11px 24px', fontWeight:900, fontSize:'.95rem',
+                  cursor:'pointer', whiteSpace:'nowrap',
+                  color: bannerIsLive ? '#1a7c40' : '#92400e',
+                  boxShadow:'0 4px 14px rgba(0,0,0,.2)',
+                  fontFamily:'inherit',
+                }}>
+                {bannerIsLive ? '▶️ ابدأ الحصة الآن' : '🎥 فتح Google Meet'}
+              </button>
+              {!(bannerSession.meet_link ?? personalMeetLink) && (
+                <div style={{ fontSize:'.75rem', opacity:.85, textAlign:'center' }}>
+                  ⚠️ أضف رابطك في <button onClick={() => setActiveTab('settings')}
+                    style={{ background:'none', border:'none', color:'#fff', textDecoration:'underline',
+                      cursor:'pointer', fontSize:'.75rem', fontFamily:'inherit', fontWeight:700, padding:0 }}>
+                    الإعدادات
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -565,7 +576,6 @@ export default function TeacherPage() {
               { key:'past',     icon:'📋', label:'السابقة', count: past.length },
               { key:'homework', icon:'📝', label:'الواجبات', count: homework.filter(h => h.status === 'pending').length || null },
               { key:'invites',  icon:'👨‍🏫', label:'دعواتي', count: pendingInvites.filter(i => i.status === 'pending').length || null },
-              { key:'settings', icon:'⚙️', label:'الإعدادات', count: null },
             ].map(t => (
               <button
                 key={t.key}
@@ -590,6 +600,15 @@ export default function TeacherPage() {
             >
               <span>🎭</span>
               <span>مسرح التعبير</span>
+            </button>
+            <button
+              className={`side-btn${activeTab === 'settings' ? ' active' : ''}`}
+              onClick={() => setActiveTab('settings')}
+              style={{ borderTop: '1.5px solid var(--border)', marginTop: 4, paddingTop: 12 }}
+            >
+              <span>⚙️</span>
+              <span>الإعدادات</span>
+              {!personalMeetLink && <span className="badge" style={{ background:'#e53e3e' }}>!</span>}
             </button>
             <div className="side-sep" />
             <a href="/teacher/logbook" className="side-link">
