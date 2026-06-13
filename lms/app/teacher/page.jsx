@@ -34,12 +34,8 @@ function dayName(iso) {
   return DAYS_AR[new Date(iso).getDay()];
 }
 
-function joinLink(s) {
-  return s.meet_link ?? null;   // Google Meet حصراً — لا Jitsi
-}
-
-function sessionMessage(s, teacherName) {
-  return `📚 *دعوة حصة — أكاديمية عارم*\n\nالموضوع: ${s.subject || 'حصة عامة'}\nالمعلم: ${teacherName}\nالتاريخ: ${fmtDate(s.session_date)}\nالوقت: ${s.start_time?.slice(0,5)}\nالمدة: ${s.duration_minutes} دقيقة\n\n🎥 رابط الانضمام:\n${joinLink(s)}`;
+function sessionMessage(s, teacherName, link) {
+  return `📚 *دعوة حصة — أكاديمية عارم*\n\nالموضوع: ${s.subject || 'حصة عامة'}\nالمعلم: ${teacherName}\nالتاريخ: ${fmtDate(s.session_date)}\nالوقت: ${s.start_time?.slice(0,5)}\nالمدة: ${s.duration_minutes} دقيقة\n\n🎥 رابط الانضمام:\n${link ?? 'لا يتوفر رابط بعد'}`;
 }
 
 const EMPTY_FORM   = { studentName: '', studentEmail: '', sessionDate: '', startTime: '', durationMinutes: '60', subject: '' };
@@ -103,14 +99,18 @@ export default function TeacherPage() {
   const [pendingInvites,       setPendingInvites]       = useState([]);
   const [inviteResponding,     setInviteResponding]     = useState(null);
   const [startedIds,           setStartedIds]           = useState(new Set());
+  const [personalMeetLink,     setPersonalMeetLink]     = useState('');
+  const [meetLinkSaving,       setMeetLinkSaving]       = useState(false);
+  const [meetLinkMsg,          setMeetLinkMsg]          = useState(null);
 
   const set    = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
   const setInv = k => e => setInviteForm(p => ({ ...p, [k]: e.target.value }));
 
   async function startSession(s) {
-    const link = joinLink(s);
+    const link = s.meet_link ?? personalMeetLink ?? null;
     if (!link) {
-      alert('لم يُعثر على رابط Google Meet لهذه الحصة.\nتأكد من إعداد متغيرات Google في Vercel.');
+      setActiveTab('settings');
+      setMeetLinkMsg({ type: 'error', text: '⬆️ أضف رابط Google Meet الشخصي ثم اضغط حفظ' });
       return;
     }
     setStartedIds(prev => new Set([...prev, s.id]));
@@ -120,6 +120,21 @@ export default function TeacherPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: s.id, status: 'active' }),
     }).catch(() => {});
+  }
+
+  async function saveMeetLink() {
+    const link = personalMeetLink.trim();
+    if (!link) { setMeetLinkMsg({ type:'error', text:'أدخل رابط Google Meet أولاً' }); return; }
+    if (!link.startsWith('http')) { setMeetLinkMsg({ type:'error', text:'الرابط يجب أن يبدأ بـ https://' }); return; }
+    setMeetLinkSaving(true); setMeetLinkMsg(null);
+    const { error } = await supabase.auth.updateUser({ data: { meet_link: link } });
+    if (error) {
+      setMeetLinkMsg({ type:'error', text:'فشل الحفظ — ' + error.message });
+    } else {
+      setMeetLinkMsg({ type:'ok', text:'✅ تم حفظ رابط Google Meet بنجاح — يمكنك الآن ابدأ الحصة' });
+      setUser(prev => prev ? { ...prev, user_metadata: { ...prev.user_metadata, meet_link: link } } : prev);
+    }
+    setMeetLinkSaving(false);
   }
 
   // Live clock — refreshes every second to drive per-session countdown badges
@@ -163,6 +178,7 @@ export default function TeacherPage() {
       if (!u) { router.push('/auth/login'); return; }
       if (u.user_metadata?.role !== 'teacher') { router.push('/dashboard'); return; }
       setUser(u);
+      setPersonalMeetLink(u.user_metadata?.meet_link ?? '');
     });
   }, []);
 
@@ -337,16 +353,17 @@ export default function TeacherPage() {
   }
 
   // ── Copy / WhatsApp ──
+  function effectiveLink(s) { return s.meet_link ?? personalMeetLink ?? ''; }
   function copyLink(s) {
-    navigator.clipboard.writeText(joinLink(s));
+    navigator.clipboard.writeText(effectiveLink(s));
     setCopied(`link-${s.id}`); setTimeout(() => setCopied(null), 2000);
   }
   function copyMessage(s) {
-    navigator.clipboard.writeText(sessionMessage(s, user.user_metadata?.full_name ?? user.email));
+    navigator.clipboard.writeText(sessionMessage(s, user.user_metadata?.full_name ?? user.email, effectiveLink(s)));
     setCopied(`msg-${s.id}`); setTimeout(() => setCopied(null), 2000);
   }
   function shareWhatsApp(s) {
-    window.open(`https://wa.me/?text=${encodeURIComponent(sessionMessage(s, user.user_metadata?.full_name ?? user.email))}`, '_blank', 'noopener');
+    window.open(`https://wa.me/?text=${encodeURIComponent(sessionMessage(s, user.user_metadata?.full_name ?? user.email, effectiveLink(s)))}`, '_blank', 'noopener');
   }
 
   if (!user) return null;
@@ -548,6 +565,7 @@ export default function TeacherPage() {
               { key:'past',     icon:'📋', label:'السابقة', count: past.length },
               { key:'homework', icon:'📝', label:'الواجبات', count: homework.filter(h => h.status === 'pending').length || null },
               { key:'invites',  icon:'👨‍🏫', label:'دعواتي', count: pendingInvites.filter(i => i.status === 'pending').length || null },
+              { key:'settings', icon:'⚙️', label:'الإعدادات', count: null },
             ].map(t => (
               <button
                 key={t.key}
@@ -661,7 +679,7 @@ export default function TeacherPage() {
                         </div>
                         <div className="action-row" style={{ marginTop:4 }}>
                           {(s.status === 'active' || startedIds.has(s.id)) ? (
-                            <button onClick={() => window.open(joinLink(s), '_blank', 'noopener')}
+                            <button onClick={() => window.open(effectiveLink(s), '_blank', 'noopener')}
                               className="btn btn-sm"
                               style={{ background:'#1a7c40', color:'#fff', border:'none' }}>
                               🟢 الحصة جارية — دخول البث
@@ -985,6 +1003,51 @@ export default function TeacherPage() {
 
             {activeTab === 'simulator' && (
               <LifeSceneSimulator role="teacher" currentUser={user} />
+            )}
+
+            {/* ── SETTINGS ── */}
+            {activeTab === 'settings' && (
+              <div style={{ maxWidth: 520 }}>
+                <div style={{ fontWeight:900, fontSize:'1.05rem', color:'var(--primary)', marginBottom:6 }}>
+                  ⚙️ الإعدادات
+                </div>
+                <div style={{ fontSize:'.88rem', color:'var(--muted)', marginBottom:20 }}>
+                  اضبط إعداداتك الشخصية للمنصة
+                </div>
+
+                {/* Personal Google Meet link */}
+                <div style={{ background:'#fff', border:'1.5px solid var(--border)', borderRadius:14, padding:'20px 22px' }}>
+                  <div style={{ fontWeight:800, fontSize:'.97rem', marginBottom:6 }}>🎥 رابط Google Meet الشخصي</div>
+                  <div style={{ fontSize:'.83rem', color:'var(--muted)', marginBottom:14, lineHeight:1.7 }}>
+                    أدخل رابط غرفة Google Meet الخاصة بك (الثابت). سيُستخدم تلقائياً لجميع الحصص التي لا تحتوي على رابط خاص.
+                    <br/>يمكنك الحصول على رابطك من <strong>meet.google.com</strong> ← "بدء اجتماع جديد".
+                  </div>
+                  <div style={{ display:'flex', gap:10 }}>
+                    <input
+                      type="url"
+                      dir="ltr"
+                      className="form-input"
+                      style={{ flex:1, margin:0, fontSize:'.9rem' }}
+                      placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                      value={personalMeetLink}
+                      onChange={e => { setPersonalMeetLink(e.target.value); setMeetLinkMsg(null); }}
+                    />
+                    <button
+                      onClick={saveMeetLink}
+                      disabled={meetLinkSaving}
+                      className="btn btn-primary"
+                      style={{ whiteSpace:'nowrap', flexShrink:0 }}>
+                      {meetLinkSaving ? '...' : '💾 حفظ'}
+                    </button>
+                  </div>
+                  {meetLinkMsg && (
+                    <div style={{ marginTop:10, fontSize:'.85rem', fontWeight:700,
+                      color: meetLinkMsg.type === 'ok' ? '#1a7c40' : '#e53e3e' }}>
+                      {meetLinkMsg.text}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
 
             {/* ── HOMEWORK ── */}

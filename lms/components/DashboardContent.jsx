@@ -59,6 +59,7 @@ export default function DashboardContent({
   useEffect(() => {
     if (!nextSession?.id) return;
     setLiveStatus(nextSession.status ?? 'scheduled');
+    setAttendanceLogged(false); // إعادة تعيين عند تغيير الحصة
     announcedActiveRef.current = false; // reset when session changes
   }, [nextSession?.id]);
 
@@ -200,13 +201,14 @@ export default function DashboardContent({
   const [attendanceLogged, setAttendanceLogged] = useState(false);
   const [attLoading,       setAttLoading]       = useState(false);
 
+  // تُجلب حالة الحضور فقط بعد أن يبدأ المعلم الحصة (liveStatus === 'active')
   useEffect(() => {
-    if (!nextSession || (!canRegisterAttendance && !sessionHasEnded)) return;
+    if (!nextSession || liveStatus !== 'active') return;
     fetch(`/api/student/attendance?session_id=${nextSession.id}`)
       .then(r => r.json())
       .then(d => { if (d.logged) setAttendanceLogged(true); })
       .catch(() => {});
-  }, [canRegisterAttendance, sessionHasEnded, nextSession?.id]);
+  }, [liveStatus, nextSession?.id]);
 
   async function logAttendance() {
     if (!nextSession || attLoading || attendanceLogged) return;
@@ -375,7 +377,7 @@ export default function DashboardContent({
             // ── منطقة الحضور ──
             let attendanceArea = null;
             if (showAttendArea) {
-              if (attendanceLogged) {
+              if (attendanceLogged && (isLiveOrActive || sessionHasEnded)) {
                 attendanceArea = (
                   <div style={{ background:'rgba(34,197,94,.25)', border:'1.5px solid rgba(34,197,94,.5)', borderRadius:12, padding:'11px 18px', color:'#fff', fontWeight:800, fontSize:'.9rem', whiteSpace:'nowrap', flexShrink:0, textAlign:'center' }}>
                     ✅ تم تسجيل الحضور
@@ -387,7 +389,7 @@ export default function DashboardContent({
                     ⏰ انتهى وقت التسجيل
                   </div>
                 );
-              } else if (isLiveOrActive || canRegisterAttendance) {
+              } else if (isLiveOrActive) {
                 // ── الحالة 3: المعلم ضغط "ابدأ الحصة" → الزر نشط ──
                 attendanceArea = (
                   <div style={{ flexShrink:0, textAlign:'center' }}>
