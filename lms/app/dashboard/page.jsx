@@ -56,12 +56,20 @@ export default async function DashboardPage() {
     supportSessions = (supRaw ?? []).map(s => ({ ...s, is_support: true }));
   }
 
-  const mainIds = new Set((sessionsRaw ?? []).map(s => s.id));
-  const merged  = [
+  const mainIds  = new Set((sessionsRaw ?? []).map(s => s.id));
+  const nowMs    = Date.now();
+  const merged   = [
     ...(sessionsRaw ?? []),
     ...supportSessions.filter(s => !mainIds.has(s.id)),
-  ].sort((a, b) => a.session_date.localeCompare(b.session_date) || a.start_time.localeCompare(b.start_time))
-   .slice(0, 5);
+  ]
+  .sort((a, b) => a.session_date.localeCompare(b.session_date) || a.start_time.localeCompare(b.start_time))
+  .filter(s => {
+    // حذف الحصص التي انتهت وقتها (تاريخ البدء + المدة < الآن)
+    const startMs = new Date(`${s.session_date}T${s.start_time}`).getTime();
+    const endMs   = startMs + (s.duration_minutes ?? 60) * 60000;
+    return nowMs < endMs;
+  })
+  .slice(0, 5);
 
   const upcomingSessions = merged;
 

@@ -25,10 +25,15 @@ export async function POST(req) {
 
   if (!session) return NextResponse.json({ error: 'الحصة غير موجودة' }, { status: 404 });
 
-  // تحقق من أن الوقت قد حلّ فعلاً (حماية من الغش)
+  // نافذة التسجيل: من 10 دقائق قبل البدء حتى 15 دقيقة بعده
   const sessionDT = new Date(`${session.session_date}T${session.start_time}`);
-  if (new Date() < sessionDT)
-    return NextResponse.json({ error: 'لم يحن موعد الحصة بعد' }, { status: 400 });
+  const nowTime   = new Date();
+  const diffMins  = (sessionDT - nowTime) / 60000; // موجب = مستقبل، سالب = ماضٍ
+
+  if (diffMins > 10)
+    return NextResponse.json({ error: 'لم يحن وقت التسجيل — يفتح قبل الحصة بـ 10 دقائق' }, { status: 400 });
+  if (diffMins < -15)
+    return NextResponse.json({ error: 'انتهى وقت تسجيل الحضور — مضت أكثر من 15 دقيقة على بدء الحصة' }, { status: 400 });
 
   // سجّل الحضور (UNIQUE INDEX يمنع التكرار)
   const { error } = await admin

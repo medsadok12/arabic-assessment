@@ -86,11 +86,25 @@ export default function DashboardContent({
     return () => clearInterval(id);
   }, []);
 
-  // ── Session timing ──
-  const sessionDT  = nextSession ? new Date(`${nextSession.session_date}T${nextSession.start_time}`) : null;
-  const diffMs     = sessionDT ? sessionDT - now : null;
-  const diffMins   = diffMs != null ? diffMs / 60000 : null;
-  const sessionActive = diffMs != null && diffMs <= 0; // time reached
+  // ── Session timing — precise windows ──────────────────────────────────
+  const sessionDT    = nextSession ? new Date(`${nextSession.session_date}T${nextSession.start_time}`) : null;
+  const duration     = nextSession?.duration_minutes ?? 60;
+  const sessionEndDT = sessionDT ? new Date(sessionDT.getTime() + duration * 60000) : null;
+
+  const diffMs    = sessionDT    ? sessionDT    - now : null;
+  const diffEndMs = sessionEndDT ? sessionEndDT - now : null;
+  const diffMins  = diffMs != null ? diffMs / 60000 : null;
+
+  /** الحصة انتهت تماماً (مرّت مدتها الكاملة) */
+  const sessionHasEnded = sessionEndDT ? now >= sessionEndDT : false;
+
+  /** نافذة التسجيل: من 10 دقائق قبل البدء حتى 15 دقيقة بعده */
+  const canRegisterAttendance = diffMins != null
+    && diffMins <= 10    // لم يتبقَّ أكثر من 10 دقائق على الموعد
+    && diffMins >= -15;  // لم تمرّ أكثر من 15 دقيقة على البدء
+
+  /** الحصة جارية فعلياً (بدأت ولم تنتهِ بعد) */
+  const sessionIsLive = diffMs != null && diffMs <= 0 && !sessionHasEnded;
 
   // Countdown string — MM:SS when < 1 hour (used for navbar), HH:MM:SS beyond that
   let countdown = null;
@@ -191,12 +205,12 @@ export default function DashboardContent({
   const [attLoading,       setAttLoading]       = useState(false);
 
   useEffect(() => {
-    if (!nextSession || !sessionActive) return;
+    if (!nextSession || (!canRegisterAttendance && !sessionHasEnded)) return;
     fetch(`/api/student/attendance?session_id=${nextSession.id}`)
       .then(r => r.json())
       .then(d => { if (d.logged) setAttendanceLogged(true); })
       .catch(() => {});
-  }, [sessionActive, nextSession?.id]);
+  }, [canRegisterAttendance, sessionHasEnded, nextSession?.id]);
 
   async function logAttendance() {
     if (!nextSession || attLoading || attendanceLogged) return;
@@ -214,9 +228,14 @@ export default function DashboardContent({
   // ── Time label ──
   let timeLabel = '';
   if (diffMins != null) {
-    if (diffMins <= 0)  timeLabel = '🔴 الحصة تبدأ الآن';
-    else if (liveLabel) timeLabel = liveLabel;
-    else {
+    if (sessionHasEnded) {
+      timeLabel = '⏹️ انتهت الحصة';
+    } else if (liveStatus === 'active' || sessionIsLive) {
+      const minsLeft = diffEndMs != null ? Math.ceil(diffEndMs / 60000) : null;
+      timeLabel = minsLeft != null ? `🔴 جارية — يتبقى ${minsLeft} د` : '🔴 الحصة جارية الآن';
+    } else if (liveLabel) {
+      timeLabel = liveLabel;
+    } else {
       const d = Math.floor(diffMins / 1440);
       timeLabel = `📆 بعد ${d} ${d === 1 ? 'يوم' : 'أيام'}`;
     }
@@ -336,52 +355,93 @@ export default function DashboardContent({
 
           {/* ── Next session ── */}
           {nextSession && (() => {
-            const isActive = liveStatus === 'active' || sessionActive;
+            const isLiveOrActive = liveStatus === 'active' || sessionIsLive;
+
+            // لون البطاقة بحسب الحالة
+            const cardBg = sessionHasEnded
+              ? 'linear-gradient(135deg,#64748b,#475569)'
+              : isLiveOrActive
+                ? 'linear-gradient(135deg,#1a7c40,#15803d)'
+                : 'linear-gradient(135deg,#185FA5,#1d4ed8)';
+
+            // تسمية حالة الحصة
+            const statusLabel = sessionHasEnded
+              ? '⏹️ انتهت الحصة'
+              : isLiveOrActive
+                ? '🔴 الحصة جارية الآن'
+                : canRegisterAttendance
+                  ? '🔔 الحصة على وشك البدء'
+                  : 'الحصة القادمة';
+
+            // منطقة زر الحضور — 4 حالات
+            let attendanceArea;
+
+            if (attendanceLogged) {
+              // ✅ تم التسجيل (في أي وقت)
+              attendanceArea = (
+                <div style={{ background:'rgba(34,197,94,.25)', border:'1.5px solid rgba(34,197,94,.5)', borderRadius:12, padding:'11px 18px', color:'#fff', fontWeight:800, fontSize:'.9rem', whiteSpace:'nowrap', flexShrink:0, textAlign:'center' }}>
+                  ✅ تم تسجيل الحضور
+                </div>
+              );
+            } else if (sessionHasEnded) {
+              // ⏰ الحصة انتهت ولم يُسجَّل
+              attendanceArea = (
+                <div style={{ background:'rgba(239,68,68,.18)', border:'1.5px solid rgba(239,68,68,.4)', borderRadius:12, padding:'11px 18px', color:'rgba(255,255,255,.8)', fontWeight:700, fontSize:'.88rem', whiteSpace:'nowrap', flexShrink:0, textAlign:'center' }}>
+                  ⏰ انتهى وقت تسجيل الحضور
+                </div>
+              );
+            } else if (canRegisterAttendance) {
+              // 🟢 النافذة مفتوحة — الزر نشط
+              attendanceArea = (
+                <button
+                  onClick={logAttendance}
+                  disabled={attLoading}
+                  style={{
+                    borderRadius:12, padding:'12px 20px',
+                    fontWeight:900, fontSize:'.92rem', whiteSpace:'nowrap',
+                    border:'none', cursor:'pointer', fontFamily:'inherit',
+                    transition:'.25s', flexShrink:0,
+                    background:'#fff', color:'#185FA5',
+                    boxShadow:'0 4px 16px rgba(0,0,0,.18)',
+                    animation:'attPulse 1.8s ease-in-out infinite',
+                  }}>
+                  {isLiveOrActive ? '🎥 سجّل حضورك' : '🟢 سجّل حضورك'}
+                </button>
+              );
+            } else {
+              // 🔒 قبل نافذة التسجيل (أكثر من 10 دقائق على الموعد)
+              const minsUntilOpen = diffMins != null ? Math.ceil(diffMins - 10) : null;
+              attendanceArea = (
+                <div style={{ background:'rgba(255,255,255,.1)', border:'1.5px solid rgba(255,255,255,.2)', borderRadius:12, padding:'11px 18px', color:'rgba(255,255,255,.6)', fontWeight:700, fontSize:'.88rem', whiteSpace:'nowrap', flexShrink:0, textAlign:'center' }}>
+                  🔒 {minsUntilOpen != null && minsUntilOpen > 0 ? `يفتح بعد ${minsUntilOpen} د` : countdown ?? 'قبل الموعد'}
+                </div>
+              );
+            }
+
             return (
-            <div className="db-session" style={{ background: isActive ? 'linear-gradient(135deg,#1a7c40,#15803d)' : 'linear-gradient(135deg,#185FA5,#1d4ed8)' }}>
-              <div style={{ fontSize: '2.8rem', lineHeight: 1 }}>🎥</div>
-              <div className="db-session-body">
-                <div style={{ fontSize: '.78rem', opacity: .8, fontWeight: 600, marginBottom: 3 }}>
-                  {liveStatus === 'active' ? '🔴 الحصة جارية الآن' : 'الحصة القادمة'}
+              <div className="db-session" style={{ background: cardBg }}>
+                <div style={{ fontSize:'2.8rem', lineHeight:1 }}>
+                  {sessionHasEnded ? '✅' : isLiveOrActive ? '📹' : '🎥'}
                 </div>
-                <div style={{ fontWeight: 900, fontSize: '1.1rem' }}>
-                  {nextSession.subject || 'حصة عامة'}
+                <div className="db-session-body">
+                  <div style={{ fontSize:'.78rem', opacity:.8, fontWeight:600, marginBottom:3 }}>
+                    {statusLabel}
+                  </div>
+                  <div style={{ fontWeight:900, fontSize:'1.1rem' }}>
+                    {nextSession.subject || 'حصة عامة'}
+                  </div>
+                  <div style={{ fontSize:'.83rem', opacity:.9, display:'flex', gap:14, flexWrap:'wrap', marginTop:5 }}>
+                    <span>👤 {nextSession.teacher_name}</span>
+                    <span>📅 {new Date(nextSession.session_date).toLocaleDateString(locale, { weekday:'long', day:'numeric', month:'long' })}</span>
+                    <span>⏰ {nextSession.start_time?.slice(0, 5)}</span>
+                    {nextSession.duration_minutes && <span>⌛ {nextSession.duration_minutes} د</span>}
+                  </div>
+                  {!sessionHasEnded && (
+                    <span className="db-session-badge">{timeLabel}</span>
+                  )}
                 </div>
-                <div style={{ fontSize: '.83rem', opacity: .9, display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 5 }}>
-                  <span>👤 {nextSession.teacher_name}</span>
-                  <span>📅 {new Date(nextSession.session_date).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-                  <span>⏰ {nextSession.start_time?.slice(0, 5)}</span>
-                </div>
-                {liveStatus !== 'active' && <span className="db-session-badge">{timeLabel}</span>}
+                {attendanceArea}
               </div>
-              {/* زر الحضور */}
-              <button
-                onClick={logAttendance}
-                disabled={attendanceLogged}
-                style={{
-                  borderRadius: 12, padding: '12px 20px',
-                  fontWeight: 900, fontSize: '.92rem', whiteSpace: 'nowrap',
-                  border: 'none', cursor: !attendanceLogged ? 'pointer' : 'not-allowed',
-                  fontFamily: 'inherit', transition: '.25s',
-                  background: attendanceLogged
-                    ? '#16a34a'
-                    : isActive ? '#fff' : 'rgba(255,255,255,.15)',
-                  color: attendanceLogged
-                    ? '#fff'
-                    : isActive ? '#185FA5' : 'rgba(255,255,255,.6)',
-                  boxShadow: isActive && !attendanceLogged ? '0 4px 16px rgba(0,0,0,.18)' : 'none',
-                  animation: isActive && !attendanceLogged ? 'attPulse 1.8s ease-in-out infinite' : 'none',
-                }}
-              >
-                {attendanceLogged
-                  ? '✅ سُجِّل حضورك'
-                  : liveStatus === 'active'
-                    ? '🎥 دخول الحصة الآن'
-                    : isActive
-                      ? '🟢 سجّل حضورك'
-                      : `🔒 ${countdown ? countdown : 'قبل الموعد'}`}
-              </button>
-            </div>
             );
           })()}
 
