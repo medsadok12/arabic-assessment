@@ -28,9 +28,9 @@ export default async function DashboardPage() {
   const [{ data: sessionsRaw }, { data: supportLinks }] = await Promise.all([
     admin
       .from('sessions')
-      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, meet_link')
+      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, meet_link, status, attended')
       .ilike('student_email', user.email)
-      .eq('status', 'scheduled')
+      .in('status', ['scheduled', 'active'])
       .gte('session_date', today)
       .order('session_date', { ascending: true })
       .order('start_time',   { ascending: true })
@@ -49,9 +49,9 @@ export default async function DashboardPage() {
   if (supportIds.length > 0) {
     const { data: supRaw } = await admin
       .from('sessions')
-      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, meet_link')
+      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, meet_link, status, attended')
       .in('id', supportIds)
-      .eq('status', 'scheduled')
+      .in('status', ['scheduled', 'active'])
       .gte('session_date', today);
     supportSessions = (supRaw ?? []).map(s => ({ ...s, is_support: true }));
   }

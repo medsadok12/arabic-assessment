@@ -59,8 +59,8 @@ export default function DashboardContent({
   useEffect(() => {
     if (!nextSession?.id) return;
     setLiveStatus(nextSession.status ?? 'scheduled');
-    setAttendanceLogged(false); // إعادة تعيين عند تغيير الحصة
-    announcedActiveRef.current = false; // reset when session changes
+    setAttendanceLogged(nextSession.attended === true);
+    announcedActiveRef.current = false;
   }, [nextSession?.id]);
 
   useEffect(() => {
@@ -197,8 +197,8 @@ export default function DashboardContent({
     }
   }, [remainingSecs, nextSession?.id, liveStatus]);
 
-  // ── Attendance state ──
-  const [attendanceLogged, setAttendanceLogged] = useState(false);
+  // ── Attendance state — seed from server value so refresh shows correct state ──
+  const [attendanceLogged, setAttendanceLogged] = useState(nextSession?.attended === true);
   const [attLoading,       setAttLoading]       = useState(false);
 
   // تُجلب حالة الحضور فقط بعد أن يبدأ المعلم الحصة (liveStatus === 'active')
