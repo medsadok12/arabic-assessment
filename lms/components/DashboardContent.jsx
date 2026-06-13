@@ -212,15 +212,24 @@ export default function DashboardContent({
 
   async function logAttendance() {
     if (!nextSession || attLoading || attendanceLogged) return;
-    // Change button immediately — don't wait for API
-    setAttendanceLogged(true);
-    if (nextSession.meet_link) window.open(nextSession.meet_link, '_blank', 'noopener');
-    // Log attendance in background (fire-and-forget)
-    fetch('/api/student/attendance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: nextSession.id }),
-    }).catch(() => {});
+    setAttLoading(true);
+    try {
+      const res  = await fetch('/api/student/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: nextSession.id }),
+      });
+      const data = await res.json();
+      if (data.ok || data.already) {
+        setAttendanceLogged(true);
+        if (nextSession.meet_link) window.open(nextSession.meet_link, '_blank', 'noopener');
+      } else {
+        alert(data.error ?? 'تعذّر تسجيل الحضور — حاول مرة أخرى');
+      }
+    } catch {
+      alert('خطأ في الاتصال — تحقق من الإنترنت وحاول مرة أخرى');
+    }
+    setAttLoading(false);
   }
 
   // ── Time label ──
@@ -399,13 +408,13 @@ export default function DashboardContent({
                       style={{
                         borderRadius:12, padding:'12px 22px',
                         fontWeight:900, fontSize:'.92rem', whiteSpace:'nowrap',
-                        border:'none', cursor:'pointer', fontFamily:'inherit',
+                        border:'none', cursor: attLoading ? 'wait' : 'pointer', fontFamily:'inherit',
                         background:'#fff', color:'#1a7c40',
                         boxShadow:'0 4px 16px rgba(0,0,0,.18)',
-                        animation:'attPulse 1.8s ease-in-out infinite',
-                        display:'block', width:'100%',
+                        animation: attLoading ? 'none' : 'attPulse 1.8s ease-in-out infinite',
+                        display:'block', width:'100%', opacity: attLoading ? .7 : 1,
                       }}>
-                      🟢 سجّل حضورك
+                      {attLoading ? '⏳ جارٍ التسجيل...' : '🟢 سجّل حضورك'}
                     </button>
                   </div>
                 );
