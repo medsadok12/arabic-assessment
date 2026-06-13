@@ -18,49 +18,34 @@ export async function POST(req) {
   // تحقق من أن الحصة تخص هذا الطالب
   const { data: session } = await admin
     .from('sessions')
-    .select('id, student_email, student_name, session_date, start_time, attended, status')
+    .select('id, student_email, student_name, session_date, start_time, attended, status, meet_link')
     .eq('id', session_id)
     .ilike('student_email', user.email)
     .single();
 
   if (!session) return NextResponse.json({ error: 'الحصة غير موجودة' }, { status: 404 });
+  if (session.status === 'cancelled') return NextResponse.json({ error: 'الحصة ملغاة' }, { status: 400 });
 
-  // إذا كان الحضور مسجلاً مسبقاً في حقل sessions.attended → اعتبره مكرراً
-  if (session.attended === true) return NextResponse.json({ ok: true, already: true });
-
-  // إذا بدأ المعلم الحصة (status = active) → تجاوز فحص الوقت، البوابة هي إشارة المعلم
-  if (session.status !== 'active') {
-    // نافذة التسجيل: من 10 دقائق قبل البدء حتى 15 دقيقة بعده
-    const sessionDT = new Date(`${session.session_date}T${session.start_time}`);
-    const nowTime   = new Date();
-    const diffMins  = (sessionDT - nowTime) / 60000;
-
-    if (diffMins > 10)
-      return NextResponse.json({ error: 'لم يحن وقت التسجيل — يفتح قبل الحصة بـ 10 دقائق' }, { status: 400 });
-    if (diffMins < -60)
-      return NextResponse.json({ error: 'انتهى وقت تسجيل الحضور' }, { status: 400 });
+  // إذا كان الحضور مسجلاً مسبقاً
+  if (session.attended === true) {
+    return NextResponse.json({ ok: true, already: true, meet_link: session.meet_link ?? null });
   }
 
-  // تحديث sessions.attended — هذا هو المصدر الموثوق (يعمل دائماً)
+  // ✅ لا فحص للوقت — الزر لا يظهر إلا عند إشارة المعلم أو حلول الوقت (منطق الواجهة)
+
+  // تحديث sessions.attended — المصدر الموثوق
   await admin.from('sessions').update({ attended: true }).eq('id', session_id);
 
-  // محاولة تسجيل في attendance_logs (best-effort — لا يوقف العملية إذا فشل)
-  const { error: logError } = await admin
-    .from('attendance_logs')
-    .insert({
-      session_id,
-      student_id:    user.id,
-      student_email: user.email,
-      student_name:  session.student_name || user.user_metadata?.full_name || '',
-      session_date:  session.session_date,
-    });
+  // attendance_logs — best-effort
+  await admin.from('attendance_logs').insert({
+    session_id,
+    student_id:    user.id,
+    student_email: user.email,
+    student_name:  session.student_name || user.user_metadata?.full_name || '',
+    session_date:  session.session_date,
+  }).then(() => null).catch(() => null);
 
-  // تجاهل خطأ التكرار أو غياب الجدول — sessions.attended كافٍ
-  if (logError && logError.code !== '23505' && logError.code !== '42P01') {
-    console.error('attendance_logs insert:', logError.message);
-  }
-
-  // جلب أحدث نسخة من الحصة للحصول على رابط Meet (قد يكون المعلم حدّثه للتو)
+  // جلب أحدث meet_link (قد يكون المعلم حدّثه للتو)
   const { data: fresh } = await admin
     .from('sessions')
     .select('meet_link')
@@ -82,7 +67,7 @@ export async function GET(req) {
 
   const admin = createAdminClient();
 
-  // المصدر الأساسي: حقل attended في sessions
+  // المصدر الأساسي: sessions.attended
   const { data: sessionData } = await admin
     .from('sessions')
     .select('attended')
@@ -92,7 +77,7 @@ export async function GET(req) {
 
   if (sessionData?.attended === true) return NextResponse.json({ logged: true });
 
-  // مصدر احتياطي: attendance_logs (إذا كان الجدول موجوداً)
+  // مصدر احتياطي: attendance_logs
   const { data: logData } = await admin
     .from('attendance_logs')
     .select('id')
