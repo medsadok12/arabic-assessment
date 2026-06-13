@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   subject TEXT,
   room_name TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'scheduled'
-    CONSTRAINT valid_status CHECK (status IN ('scheduled','completed','cancelled')),
+    CONSTRAINT valid_status CHECK (status IN ('scheduled','active','completed','cancelled')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -186,6 +186,10 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS meet_event_id TEXT;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS recording_url TEXT;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE sessions ALTER COLUMN room_name DROP NOT NULL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS attended BOOLEAN;
+-- تحديث قيد الحالة ليشمل 'active' (بدء الحصة الفعلي)
+ALTER TABLE sessions DROP CONSTRAINT IF EXISTS valid_status;
+ALTER TABLE sessions ADD CONSTRAINT  valid_status CHECK (status IN ('scheduled','active','completed','cancelled'));
 CREATE INDEX IF NOT EXISTS interviews_slot_idx ON interviews (interviewer_name, interview_date, start_time);
 CREATE INDEX IF NOT EXISTS sessions_teacher_idx ON sessions (teacher_id, session_date);
 CREATE INDEX IF NOT EXISTS sessions_student_idx ON sessions (student_email, session_date);
