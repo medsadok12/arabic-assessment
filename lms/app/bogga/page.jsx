@@ -184,7 +184,9 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS rating INT CHECK (rating BETWEEN 1
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS meet_link     TEXT;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS meet_event_id TEXT;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS recording_url TEXT;
-ALTER TABLE sessions ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS reminder_sent      BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS reminder_5min_sent BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS reminder_24h_sent  BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE sessions ALTER COLUMN room_name DROP NOT NULL;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS attended BOOLEAN;
 -- تحديث قيد الحالة ليشمل 'active' (بدء الحصة الفعلي)
