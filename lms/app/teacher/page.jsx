@@ -202,16 +202,20 @@ export default function TeacherPage() {
   }, [user]);
 
   const today      = new Date().toISOString().slice(0, 10);
-  const upcoming   = sessions.filter(s => s.status === 'scheduled' && s.session_date >= today);
-  const past       = sessions.filter(s => s.status !== 'scheduled' || s.session_date < today);
+  // تشمل الحصص الجارية (active) في القائمة حتى يراها المعلم
+  const upcoming   = sessions.filter(s => (s.status === 'scheduled' || s.status === 'active') && s.session_date >= today);
+  const past       = sessions.filter(s => s.status === 'completed' || s.status === 'cancelled' || (s.status === 'scheduled' && s.session_date < today));
 
   // ── 30-minute teacher banner ──
-  const bannerSession  = upcoming[0] ?? null;
-  const bannerDT       = bannerSession ? new Date(`${bannerSession.session_date}T${bannerSession.start_time}`) : null;
-  const bannerDiffMs   = bannerDT ? bannerDT - now : null;
-  const bannerDiffMins = bannerDiffMs != null ? bannerDiffMs / 60000 : null;
-  const showBanner     = bannerDiffMins != null && bannerDiffMins <= 30 && bannerDiffMins > -120;
-  const bannerIsLive   = bannerDiffMins != null && bannerDiffMins <= 0;
+  const bannerSession      = upcoming[0] ?? null;
+  const bannerDT           = bannerSession ? new Date(`${bannerSession.session_date}T${bannerSession.start_time}`) : null;
+  const bannerDiffMs       = bannerDT ? bannerDT - now : null;
+  const bannerDiffMins     = bannerDiffMs != null ? bannerDiffMs / 60000 : null;
+  const showBanner         = bannerDiffMins != null && bannerDiffMins <= 30 && bannerDiffMins > -120;
+  const bannerIsLive       = bannerDiffMins != null && bannerDiffMins <= 0;
+  const bannerAlreadyStart = bannerSession
+    ? (startedIds.has(bannerSession.id) || bannerSession.status === 'active')
+    : false;
 
   const weekStart  = (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10); })();
   const monthStart = new Date().toISOString().slice(0, 7) + '-01';
@@ -491,19 +495,32 @@ export default function TeacherPage() {
         {/* ── 30-min pre-session banner ── */}
         {showBanner && bannerSession && (
           <div style={{
-            background: bannerIsLive
+            background: bannerAlreadyStart
               ? 'linear-gradient(135deg,#1a7c40,#15803d)'
-              : 'linear-gradient(135deg,#d97706,#b45309)',
+              : bannerIsLive
+                ? 'linear-gradient(135deg,#1a7c40,#15803d)'
+                : 'linear-gradient(135deg,#d97706,#b45309)',
             borderRadius:16, padding:'16px 22px', marginBottom:20,
             display:'flex', alignItems:'center', gap:16, flexWrap:'wrap',
             color:'#fff', boxShadow:'0 6px 24px rgba(0,0,0,.18)',
           }}>
-            <div style={{ fontSize:'2.2rem', flexShrink:0 }}>{bannerIsLive ? '🔴' : '⏰'}</div>
+            <div style={{ fontSize:'2.2rem', flexShrink:0 }}>
+              {bannerAlreadyStart ? '🟢' : bannerIsLive ? '🔴' : '⏰'}
+            </div>
             <div style={{ flex:1, minWidth:200 }}>
-              {bannerIsLive ? (
+              {bannerAlreadyStart ? (
                 <>
                   <div style={{ fontWeight:900, fontSize:'1.08rem', marginBottom:4 }}>
-                    الحصة تبدأ الآن! الطلاب في انتظارك 🎓
+                    🟢 الحصة جارية الآن — أنت في البث
+                  </div>
+                  <div style={{ opacity:.9, fontSize:'.88rem' }}>
+                    {bannerSession.subject || 'حصة عامة'} — {bannerSession.student_name} — {bannerSession.start_time?.slice(0,5)}
+                  </div>
+                </>
+              ) : bannerIsLive ? (
+                <>
+                  <div style={{ fontWeight:900, fontSize:'1.08rem', marginBottom:4 }}>
+                    حان وقت الحصة! الطلاب في انتظارك 🎓
                   </div>
                   <div style={{ opacity:.9, fontSize:'.88rem' }}>
                     {bannerSession.subject || 'حصة عامة'} — {bannerSession.student_name} — {bannerSession.start_time?.slice(0,5)}
@@ -528,13 +545,13 @@ export default function TeacherPage() {
                   background:'#fff', border:'none', borderRadius:12,
                   padding:'11px 24px', fontWeight:900, fontSize:'.95rem',
                   cursor:'pointer', whiteSpace:'nowrap',
-                  color: bannerIsLive ? '#1a7c40' : '#92400e',
+                  color: '#1a7c40',
                   boxShadow:'0 4px 14px rgba(0,0,0,.2)',
                   fontFamily:'inherit',
                 }}>
-                {bannerIsLive ? '▶️ ابدأ الحصة الآن' : '🎥 فتح Google Meet'}
+                {bannerAlreadyStart ? '🎥 دخول البث' : bannerIsLive ? '▶️ ابدأ الحصة الآن' : '🎥 فتح Google Meet'}
               </button>
-              {!(bannerSession.meet_link ?? personalMeetLink) && (
+              {!(bannerSession.meet_link ?? personalMeetLink) && !bannerAlreadyStart && (
                 <div style={{ fontSize:'.75rem', opacity:.85, textAlign:'center' }}>
                   ⚠️ أضف رابطك في <button onClick={() => setActiveTab('settings')}
                     style={{ background:'none', border:'none', color:'#fff', textDecoration:'underline',
