@@ -170,7 +170,11 @@ export default function TeacherPage() {
   function sessionCountdown(s) {
     const dt   = new Date(`${s.session_date}T${s.start_time}`);
     const diff = dt - now;
-    if (diff <= 0) return { label: '🔴 الآن', active: true };
+    if (diff <= 0) {
+      const endDT = new Date(dt.getTime() + (s.duration_minutes || 60) * 60000);
+      if (now >= endDT) return { label: '⏹️ انتهت', active: false, ended: true };
+      return { label: '🔴 الآن', active: true };
+    }
     if (diff < 86400000) {
       const totalSecs = Math.floor(diff / 1000);
       const hh = Math.floor(totalSecs / 3600);
@@ -241,10 +245,15 @@ export default function TeacherPage() {
   const bannerAlreadyStart = bannerSession
     ? (startedIds.has(bannerSession.id) || bannerSession.status === 'active')
     : false;
+  // هل انتهت الحصة فعلياً (تجاوزت وقت البداية + المدة)؟
+  const bannerEndDT        = bannerDT && bannerSession
+    ? new Date(bannerDT.getTime() + (bannerSession.duration_minutes || 60) * 60000)
+    : null;
+  const bannerSessionEnded = bannerEndDT ? now >= bannerEndDT : false;
   // البانر يظهر: ضمن نافذة 30 دقيقة، أو دائماً إذا الحصة active في DB
   const showBanner = bannerAlreadyStart
     || (bannerDiffMins != null && bannerDiffMins <= 30 && bannerDiffMins > -120);
-  const bannerIsLive = bannerDiffMins != null && bannerDiffMins <= 0;
+  const bannerIsLive = bannerDiffMins != null && bannerDiffMins <= 0 && !bannerSessionEnded;
 
   const weekStart  = (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10); })();
   const monthStart = new Date().toISOString().slice(0, 7) + '-01';
@@ -524,20 +533,31 @@ export default function TeacherPage() {
         {/* ── 30-min pre-session banner ── */}
         {showBanner && bannerSession && (
           <div style={{
-            background: bannerAlreadyStart
-              ? 'linear-gradient(135deg,#1a7c40,#15803d)'
-              : bannerIsLive
+            background: bannerAlreadyStart && bannerSessionEnded
+              ? 'linear-gradient(135deg,#475569,#334155)'
+              : bannerAlreadyStart
                 ? 'linear-gradient(135deg,#1a7c40,#15803d)'
-                : 'linear-gradient(135deg,#d97706,#b45309)',
+                : bannerIsLive
+                  ? 'linear-gradient(135deg,#1a7c40,#15803d)'
+                  : 'linear-gradient(135deg,#d97706,#b45309)',
             borderRadius:16, padding:'16px 22px', marginBottom:20,
             display:'flex', alignItems:'center', gap:16, flexWrap:'wrap',
             color:'#fff', boxShadow:'0 6px 24px rgba(0,0,0,.18)',
           }}>
             <div style={{ fontSize:'2.2rem', flexShrink:0 }}>
-              {bannerAlreadyStart ? '🟢' : bannerIsLive ? '🔴' : '⏰'}
+              {bannerAlreadyStart && bannerSessionEnded ? '⏹️' : bannerAlreadyStart ? '🟢' : bannerIsLive ? '🔴' : '⏰'}
             </div>
             <div style={{ flex:1, minWidth:200 }}>
-              {bannerAlreadyStart ? (
+              {bannerAlreadyStart && bannerSessionEnded ? (
+                <>
+                  <div style={{ fontWeight:900, fontSize:'1.08rem', marginBottom:4 }}>
+                    انتهى وقت الحصة — هل أنهيت البث؟
+                  </div>
+                  <div style={{ opacity:.9, fontSize:'.88rem' }}>
+                    {bannerSession.subject || 'حصة عامة'} — {bannerSession.student_name} — {bannerSession.start_time?.slice(0,5)}
+                  </div>
+                </>
+              ) : bannerAlreadyStart ? (
                 <>
                   <div style={{ fontWeight:900, fontSize:'1.08rem', marginBottom:4 }}>
                     🟢 الحصة جارية الآن — أنت في البث
@@ -568,26 +588,39 @@ export default function TeacherPage() {
               )}
             </div>
             <div style={{ flexShrink:0, display:'flex', flexDirection:'column', gap:8, alignItems:'center' }}>
-              <button
-                onClick={() => startSession(bannerSession)}
-                disabled={startingId === bannerSession.id}
-                style={{
-                  background:'#fff', border:'none', borderRadius:12,
-                  padding:'11px 24px', fontWeight:900, fontSize:'.95rem',
-                  cursor: startingId === bannerSession.id ? 'wait' : 'pointer',
-                  whiteSpace:'nowrap', color: '#1a7c40',
-                  boxShadow:'0 4px 14px rgba(0,0,0,.2)',
-                  fontFamily:'inherit',
-                  opacity: startingId === bannerSession.id ? .7 : 1,
-                }}>
-                {startingId === bannerSession.id
-                  ? '⏳ جارٍ البدء...'
-                  : bannerAlreadyStart
-                    ? '🎥 دخول البث'
-                    : bannerIsLive
-                      ? '▶️ ابدأ الحصة الآن'
-                      : '🎥 فتح Google Meet'}
-              </button>
+              {bannerAlreadyStart && bannerSessionEnded ? (
+                <button
+                  onClick={() => openComplete(bannerSession)}
+                  style={{
+                    background:'#fff', border:'none', borderRadius:12,
+                    padding:'11px 24px', fontWeight:900, fontSize:'.95rem',
+                    cursor:'pointer', whiteSpace:'nowrap', color:'#334155',
+                    boxShadow:'0 4px 14px rgba(0,0,0,.2)', fontFamily:'inherit',
+                  }}>
+                  ✅ أنهيت الحصة
+                </button>
+              ) : (
+                <button
+                  onClick={() => startSession(bannerSession)}
+                  disabled={startingId === bannerSession.id}
+                  style={{
+                    background:'#fff', border:'none', borderRadius:12,
+                    padding:'11px 24px', fontWeight:900, fontSize:'.95rem',
+                    cursor: startingId === bannerSession.id ? 'wait' : 'pointer',
+                    whiteSpace:'nowrap', color: '#1a7c40',
+                    boxShadow:'0 4px 14px rgba(0,0,0,.2)',
+                    fontFamily:'inherit',
+                    opacity: startingId === bannerSession.id ? .7 : 1,
+                  }}>
+                  {startingId === bannerSession.id
+                    ? '⏳ جارٍ البدء...'
+                    : bannerAlreadyStart
+                      ? '🎥 دخول البث'
+                      : bannerIsLive
+                        ? '▶️ ابدأ الحصة الآن'
+                        : '🎥 فتح Google Meet'}
+                </button>
+              )}
               {!(bannerSession.meet_link ?? personalMeetLink) && !bannerAlreadyStart && (
                 <div style={{ fontSize:'.75rem', opacity:.85, textAlign:'center' }}>
                   ⚠️ أضف رابطك في <button onClick={() => setActiveTab('settings')}
@@ -695,9 +728,10 @@ export default function TeacherPage() {
                       <div className="si">
                         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                           <div className="ss">{s.subject || 'حصة عامة'}</div>
-                          <span style={{ fontSize:'.82rem', fontWeight:700, color: ct.active ? '#1a7c40' : 'var(--primary)',
-                            background: ct.active ? '#d4edda' : '#e8f0fe', borderRadius:20,
-                            padding:'2px 10px', whiteSpace:'nowrap' }}>{ct.label}</span>
+                          <span style={{ fontSize:'.82rem', fontWeight:700,
+                            color: ct.ended ? '#64748b' : ct.active ? '#1a7c40' : 'var(--primary)',
+                            background: ct.ended ? '#f1f5f9' : ct.active ? '#d4edda' : '#e8f0fe',
+                            borderRadius:20, padding:'2px 10px', whiteSpace:'nowrap' }}>{ct.label}</span>
                         </div>
                         <div className="sm">
                           <span>👤 {s.student_name}</span>
