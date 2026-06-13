@@ -194,7 +194,45 @@ CREATE INDEX IF NOT EXISTS interviews_slot_idx ON interviews (interviewer_name, 
 CREATE INDEX IF NOT EXISTS sessions_teacher_idx ON sessions (teacher_id, session_date);
 CREATE INDEX IF NOT EXISTS sessions_student_idx ON sessions (student_email, session_date);
 
--- 7. جدول قاعدة معرفة فهيم للزوار
+-- 7. جداول مساندة للحصص
+CREATE TABLE IF NOT EXISTS attendance_logs (
+  id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id    UUID         NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  student_id    UUID         NOT NULL,
+  student_email TEXT         NOT NULL,
+  student_name  TEXT,
+  session_date  DATE         NOT NULL,
+  created_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+ALTER TABLE attendance_logs DISABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS attendance_logs_session_idx ON attendance_logs (session_id);
+CREATE INDEX IF NOT EXISTS attendance_logs_student_idx ON attendance_logs (student_email);
+
+CREATE TABLE IF NOT EXISTS session_support_students (
+  id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id    UUID         NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  student_name  TEXT         NOT NULL,
+  student_email TEXT,
+  created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  UNIQUE (session_id, student_email)
+);
+ALTER TABLE session_support_students DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS session_teacher_invites (
+  id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id    UUID         NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  teacher_id    UUID         NOT NULL,
+  teacher_email TEXT         NOT NULL,
+  teacher_name  TEXT,
+  status        TEXT         NOT NULL DEFAULT 'pending'
+    CONSTRAINT valid_invite_status CHECK (status IN ('pending','accepted','declined')),
+  invited_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  responded_at  TIMESTAMPTZ,
+  UNIQUE (session_id, teacher_id)
+);
+ALTER TABLE session_teacher_invites DISABLE ROW LEVEL SECURITY;
+
+-- 8. جدول قاعدة معرفة فهيم للزوار
 CREATE TABLE IF NOT EXISTS faheem_visitor_qa (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   question TEXT NOT NULL,

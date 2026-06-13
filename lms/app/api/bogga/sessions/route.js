@@ -87,7 +87,8 @@ export async function PATCH(req) {
   const user = await checkAdmin();
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
-  const body = await req.json();
+  let body;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 }); }
   const { id, status, notes, recording_url, attended } = body;
   if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
 

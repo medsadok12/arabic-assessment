@@ -78,14 +78,15 @@ export async function POST(req) {
       .ilike('student_email', user.email);
   }
 
-  // جميع الطلاب: تسجيل في attendance_logs
-  await admin.from('attendance_logs').insert({
+  // جميع الطلاب: تسجيل في attendance_logs (best-effort — لا يُوقف العملية)
+  const { error: logErr } = await admin.from('attendance_logs').insert({
     session_id,
     student_id:    user.id,
     student_email: user.email,
     student_name:  session.student_name || user.user_metadata?.full_name || '',
     session_date:  session.session_date,
-  }).then(() => null).catch(() => null);
+  });
+  if (logErr) console.error('[attendance_logs] insert failed:', logErr.message);
 
   // جلب أحدث meet_link من الـ DB ثم user_metadata المعلم كـ fallback
   const { data: fresh } = await admin

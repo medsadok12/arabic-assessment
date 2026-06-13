@@ -28,7 +28,7 @@ export default async function DashboardPage() {
   const [{ data: sessionsRaw }, { data: supportLinks }] = await Promise.all([
     admin
       .from('sessions')
-      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, meet_link, status, attended')
+      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, meet_link, status, attended')
       .ilike('student_email', user.email)
       .in('status', ['scheduled', 'active'])
       .gte('session_date', today)
@@ -49,7 +49,7 @@ export default async function DashboardPage() {
   if (supportIds.length > 0) {
     const { data: supRaw } = await admin
       .from('sessions')
-      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, meet_link, status, attended')
+      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, meet_link, status, attended')
       .in('id', supportIds)
       .in('status', ['scheduled', 'active'])
       .gte('session_date', today);
@@ -115,7 +115,6 @@ export default async function DashboardPage() {
     <DashboardContent
       user={user}
       assessments={assessments ?? []}
-      role={role}
       isStudent={isStudent}
       upcomingSessions={upcomingSessions}
       displayName={displayName}

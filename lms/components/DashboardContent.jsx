@@ -40,7 +40,7 @@ const ACTION_CARDS = [
 ];
 
 export default function DashboardContent({
-  user, assessments, role, isStudent,
+  user, assessments, isStudent,
   upcomingSessions, displayName, studentGender,
   attendancePct, attendedCount, attendanceTotal,
   homework = [], sessionNotes = [],

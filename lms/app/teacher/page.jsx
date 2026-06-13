@@ -94,7 +94,7 @@ export default function TeacherPage() {
   const [showColleague,        setShowColleague]        = useState(false);
   const [colleagues,           setColleagues]           = useState([]);
   const [colleaguesLoading,    setColleaguesLoading]    = useState(false);
-  const [selectedColleague,    setSelectedColleague]    = useState('');
+  const [selectedColleague,    setSelectedColleague]    = useState(null);
   // Pending invites received by this teacher
   const [pendingInvites,       setPendingInvites]       = useState([]);
   const [inviteResponding,     setInviteResponding]     = useState(null);
