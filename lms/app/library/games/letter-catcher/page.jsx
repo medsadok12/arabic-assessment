@@ -1,9 +1,16 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 const ARABIC_LETTERS = 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي';
+
+const TOPIC_EMOJI = {
+  'الحيوانات':     '🐾',
+  'النباتات':      '🌿',
+  'الروتين اليومي':'⏰',
+  'الأدوات':       '🔧',
+  'الأسرة':        '👨‍👩‍👧',
+};
 
 function stripHarakat(text) {
   return text.replace(/[ؐ-ًؚ-ٰٟ]/g, '');
@@ -21,8 +28,8 @@ function pickMissingLetter(word) {
   if (candidates.length === 0) return null;
   const idx = candidates[Math.floor(Math.random() * candidates.length)];
   const letter = stripped[idx];
-  const display = stripped.slice(0, idx) + '___' + stripped.slice(idx + 1);
-  return { letter, display, idx };
+  const display = stripped.slice(0, idx) + ' ___ ' + stripped.slice(idx + 1);
+  return { letter, display };
 }
 
 function getDistractors(correct, count = 4) {
@@ -60,32 +67,38 @@ function speak(text) {
   else { window.speechSynthesis.addEventListener('voiceschanged', go, { once: true }); setTimeout(go, 600); }
 }
 
+function playBase64Audio(b64) {
+  try {
+    const audio = new Audio(`data:audio/mp3;base64,${b64}`);
+    audio.play();
+  } catch {}
+}
+
 const BUBBLE_COLORS = ['#FF6B6B','#4ECDC4','#FFE66D','#A8E6CF','#DDA0DD','#87CEEB','#FFA07A','#98D8C8'];
 const ROUND_SIZE = 10;
 
 export default function LetterCatcherPage() {
-  const router = useRouter();
-  const [phase, setPhase] = useState('loading'); // loading | intro | playing | victory
-  const [allWords, setAllWords] = useState([]);
-  const [queue, setQueue] = useState([]);
-  const [current, setCurrent] = useState(null);
-  const [choices, setChoices] = useState([]);
-  const [answered, setAnswered] = useState(null); // null | 'correct' | 'wrong'
-  const [wrongIdx, setWrongIdx] = useState(null);
-  const [score, setScore] = useState(0);
-  const [round, setRound] = useState(0);
-  const [confetti, setConfetti] = useState([]);
-  const [shaking, setShaking] = useState(false);
+  const [phase, setPhase]           = useState('loading');
+  const [allWords, setAllWords]     = useState([]);
+  const [queue, setQueue]           = useState([]);
+  const [current, setCurrent]       = useState(null);
+  const [choices, setChoices]       = useState([]);
+  const [answered, setAnswered]     = useState(null);
+  const [wrongIdx, setWrongIdx]     = useState(null);
+  const [score, setScore]           = useState(0);
+  const [round, setRound]           = useState(0);
+  const [confetti, setConfetti]     = useState([]);
+  const [shaking, setShaking]       = useState(false);
+  const [mediaCache, setMediaCache] = useState({});
+  const [mediaLoading, setMediaLoading] = useState(false);
   const timerRef = useRef(null);
 
+  // Load word list
   useEffect(() => {
     fetch('/api/student/lexicon')
       .then(r => r.json())
       .then(({ words }) => {
-        const valid = (words ?? []).filter(w => {
-          const s = stripHarakat(w.word ?? '');
-          return s.length >= 3;
-        });
+        const valid = (words ?? []).filter(w => stripHarakat(w.word ?? '').length >= 3);
         setAllWords(valid);
         setPhase('intro');
       })
@@ -93,57 +106,89 @@ export default function LetterCatcherPage() {
   }, []);
 
   const buildRound = useCallback((words) => {
-    const pool = [...words].sort(() => Math.random() - 0.5).slice(0, ROUND_SIZE);
+    const pool = [...words].sort(() => Math.random() - 0.5).slice(0, ROUND_SIZE * 2);
     const items = [];
     for (const w of pool) {
+      if (items.length >= ROUND_SIZE) break;
       const miss = pickMissingLetter(w.word);
       if (!miss) continue;
-      items.push({ word: w.word, sentence: w.sentence, ...miss });
+      items.push({
+        id: w.id, word: w.word, topic: w.topic,
+        has_image: w.has_image, has_audio: w.has_audio,
+        ...miss,
+      });
     }
     return items;
   }, []);
 
-  const startGame = () => {
-    const q = buildRound(allWords.length >= ROUND_SIZE ? allWords : allWords.concat(allWords).slice(0, ROUND_SIZE * 2));
+  const fetchRoundMedia = async (items) => {
+    const toFetch = items.filter(it => it.has_image || it.has_audio);
+    if (!toFetch.length) return {};
+    const results = {};
+    await Promise.all(toFetch.map(async item => {
+      try {
+        const res = await fetch(`/api/student/lexicon/${item.id}`);
+        if (!res.ok) return;
+        const { image, audio } = await res.json();
+        results[item.id] = { image: image ?? null, audio: audio ?? null };
+      } catch {}
+    }));
+    return results;
+  };
+
+  const playWordAudio = (item, media) => {
+    const m = media[item?.id];
+    if (m?.audio) playBase64Audio(m.audio);
+    else speak(item?.word ?? '');
+  };
+
+  const startGame = async () => {
+    const pool = allWords.length >= ROUND_SIZE
+      ? allWords
+      : [...allWords, ...allWords].slice(0, ROUND_SIZE * 2);
+    const q = buildRound(pool);
     setQueue(q);
     setScore(0);
     setRound(0);
-    loadQuestion(q, 0);
     setPhase('playing');
+    setMediaLoading(true);
+    const media = await fetchRoundMedia(q);
+    setMediaCache(media);
+    setMediaLoading(false);
+    doLoadQuestion(q, 0, media);
   };
 
-  const loadQuestion = (q, idx) => {
+  const doLoadQuestion = (q, idx, media) => {
     if (idx >= q.length) { setPhase('victory'); return; }
     const item = q[idx];
-    const distractors = getDistractors(item.letter, 4);
-    setChoices(shuffle([item.letter, ...distractors]));
+    setChoices(shuffle([item.letter, ...getDistractors(item.letter, 4)]));
     setCurrent(item);
     setAnswered(null);
     setWrongIdx(null);
     setRound(idx);
+    setTimeout(() => playWordAudio(item, media), 350);
   };
 
   const handleChoice = (letter, choiceIdx) => {
     if (answered) return;
+    clearTimeout(timerRef.current);
     if (letter === current.letter) {
       setAnswered('correct');
       setScore(s => s + 1);
       spawnConfetti();
-      speak(current.word);
-      timerRef.current = setTimeout(() => loadQuestion(queue, round + 1), 1800);
+      playWordAudio(current, mediaCache);
+      timerRef.current = setTimeout(() => doLoadQuestion(queue, round + 1, mediaCache), 1900);
     } else {
       setAnswered('wrong');
       setWrongIdx(choiceIdx);
       setShaking(true);
       setTimeout(() => setShaking(false), 500);
-      timerRef.current = setTimeout(() => {
-        setAnswered(null); setWrongIdx(null);
-      }, 900);
+      timerRef.current = setTimeout(() => { setAnswered(null); setWrongIdx(null); }, 950);
     }
   };
 
   const spawnConfetti = () => {
-    const pieces = Array.from({ length: 22 }, (_, i) => ({
+    const pieces = Array.from({ length: 24 }, (_, i) => ({
       id: Date.now() + i,
       x: Math.random() * 100,
       color: BUBBLE_COLORS[i % BUBBLE_COLORS.length],
@@ -151,72 +196,103 @@ export default function LetterCatcherPage() {
       size: 8 + Math.random() * 10,
     }));
     setConfetti(pieces);
-    setTimeout(() => setConfetti([]), 1800);
+    setTimeout(() => setConfetti([]), 2000);
   };
 
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
-  if (phase === 'loading') {
-    return (
-      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(135deg,#667eea,#764ba2)', fontFamily:'Cairo,Tajawal,sans-serif' }}>
-        <div style={{ color:'#fff', fontSize:'1.4rem', fontWeight:700 }}>جاري التحميل... ⏳</div>
-      </div>
-    );
-  }
+  /* ─────────── RENDER ─────────── */
 
-  if (phase === 'intro') {
-    return (
-      <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#667eea 0%,#764ba2 100%)', fontFamily:'Cairo,Tajawal,sans-serif', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
-        <div style={{ background:'#fff', borderRadius:24, padding:'40px 32px', maxWidth:460, width:'100%', textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,.25)' }}>
-          <div style={{ fontSize:'4rem', marginBottom:8 }}>🦉</div>
-          <h1 style={{ fontSize:'1.7rem', fontWeight:800, color:'#2d3748', marginBottom:8 }}>صيّاد الحروف المفقودة!</h1>
-          <p style={{ color:'#718096', lineHeight:1.8, marginBottom:24, fontSize:'1rem' }}>
-            أنا فهيم، وسأريك كلمة فيها حرف ناقص.<br/>
-            اختر الحرف الصحيح لتكملها — لديك ١٠ كلمات لكل جولة!
-          </p>
-          <div style={{ background:'#F0F4FF', borderRadius:16, padding:'16px 20px', marginBottom:28, textAlign:'right' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-              <span style={{ fontSize:'1.4rem' }}>✅</span>
-              <span style={{ color:'#2d3748', fontSize:'.95rem' }}>الإجابة الصحيحة = نقطة + مفاجأة!</span>
-            </div>
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ fontSize:'1.4rem' }}>🎯</span>
-              <span style={{ color:'#2d3748', fontSize:'.95rem' }}>أكمل الجولة وانظر نتيجتك</span>
-            </div>
+  const css = `
+    @keyframes floatBubble  { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-9px) scale(1.04)} }
+    @keyframes confettiFall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
+    @keyframes correctPop   { 0%{transform:scale(1)} 40%{transform:scale(1.28)} 100%{transform:scale(1)} }
+    @keyframes shake        { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
+    @keyframes popIn        { 0%{transform:scale(0) rotate(-12deg);opacity:0} 70%{transform:scale(1.08) rotate(3deg)} 100%{transform:scale(1);opacity:1} }
+    @keyframes fadeIn       { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    .bubble-btn {
+      border:none; border-radius:50%; cursor:pointer;
+      font-size:1.85rem; font-weight:900;
+      width:82px; height:82px;
+      display:flex; align-items:center; justify-content:center;
+      animation:floatBubble 2.5s ease-in-out infinite;
+      transition:transform .15s, box-shadow .15s;
+      box-shadow:0 6px 22px rgba(0,0,0,.28);
+      font-family:Cairo,Tajawal,sans-serif;
+      color:#fff;
+    }
+    .bubble-btn:hover:not(:disabled) { transform:scale(1.12) !important; box-shadow:0 10px 30px rgba(0,0,0,.38); }
+  `;
+
+  /* — LOADING — */
+  if (phase === 'loading') return (
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(135deg,#667eea,#764ba2)', fontFamily:'Cairo,Tajawal,sans-serif' }}>
+      <style>{css}</style>
+      <div style={{ color:'#fff', fontSize:'1.4rem', fontWeight:700 }}>جاري التحميل… ⏳</div>
+    </div>
+  );
+
+  /* — INTRO — */
+  if (phase === 'intro') return (
+    <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#667eea 0%,#764ba2 100%)', fontFamily:'Cairo,Tajawal,sans-serif', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
+      <style>{css}</style>
+      <div style={{ background:'#fff', borderRadius:24, padding:'40px 32px', maxWidth:460, width:'100%', textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,.25)' }}>
+        <div style={{ fontSize:'4rem', marginBottom:8 }}>🦉</div>
+        <h1 style={{ fontSize:'1.7rem', fontWeight:800, color:'#2d3748', marginBottom:8 }}>صيّاد الحروف المفقودة!</h1>
+        <p style={{ color:'#718096', lineHeight:1.9, marginBottom:24, fontSize:'1rem' }}>
+          سأريك صورة وكلمة فيها حرف ناقص.<br/>
+          استمع للكلمة، انظر للصورة، ثم اختر الحرف الصحيح!
+        </p>
+        <div style={{ background:'#F0F4FF', borderRadius:16, padding:'16px 20px', marginBottom:28, textAlign:'right' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+            <span style={{ fontSize:'1.4rem' }}>🖼️</span>
+            <span style={{ color:'#2d3748', fontSize:'.95rem' }}>صورة الكلمة تساعدك على الفهم</span>
           </div>
-          <button onClick={startGame} style={{ background:'linear-gradient(135deg,#667eea,#764ba2)', color:'#fff', border:'none', borderRadius:50, padding:'14px 48px', fontSize:'1.15rem', fontWeight:800, cursor:'pointer', boxShadow:'0 6px 20px rgba(102,126,234,.5)', transition:'transform .15s' }}
-            onMouseEnter={e => e.target.style.transform='scale(1.05)'}
-            onMouseLeave={e => e.target.style.transform='scale(1)'}>
-            ابدأ اللعبة 🚀
-          </button>
-          <div style={{ marginTop:20 }}>
-            <Link href="/library" style={{ color:'#718096', fontSize:'.9rem', textDecoration:'none' }}>← العودة للمكتبة</Link>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+            <span style={{ fontSize:'1.4rem' }}>🔊</span>
+            <span style={{ color:'#2d3748', fontSize:'.95rem' }}>الكلمة تُنطق تلقائياً عند كل سؤال</span>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:'1.4rem' }}>🎯</span>
+            <span style={{ color:'#2d3748', fontSize:'.95rem' }}>أكمل ١٠ كلمات وانظر نتيجتك</span>
           </div>
         </div>
+        <button onClick={startGame}
+          style={{ background:'linear-gradient(135deg,#667eea,#764ba2)', color:'#fff', border:'none', borderRadius:50, padding:'14px 48px', fontSize:'1.15rem', fontWeight:800, cursor:'pointer', boxShadow:'0 6px 20px rgba(102,126,234,.5)' }}>
+          ابدأ اللعبة 🚀
+        </button>
+        <div style={{ marginTop:20 }}>
+          <Link href="/library" style={{ color:'#718096', fontSize:'.9rem', textDecoration:'none' }}>← العودة للمكتبة</Link>
+        </div>
       </div>
-    );
-  }
+    </div>
+  );
 
+  /* — VICTORY — */
   if (phase === 'victory') {
-    const pct = Math.round((score / queue.length) * 100);
+    const pct = queue.length > 0 ? Math.round((score / queue.length) * 100) : 0;
     const stars = pct >= 90 ? 3 : pct >= 60 ? 2 : 1;
     return (
       <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#f093fb,#f5576c)', fontFamily:'Cairo,Tajawal,sans-serif', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
-        <style>{`@keyframes popIn{0%{transform:scale(0) rotate(-15deg);opacity:0}70%{transform:scale(1.1) rotate(3deg)}100%{transform:scale(1);opacity:1}}`}</style>
+        <style>{css}</style>
         <div style={{ background:'#fff', borderRadius:24, padding:'40px 32px', maxWidth:460, width:'100%', textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,.25)', animation:'popIn .5s ease' }}>
           <div style={{ fontSize:'3.5rem', marginBottom:4 }}>🏆</div>
           <h1 style={{ fontSize:'1.8rem', fontWeight:800, color:'#2d3748', marginBottom:4 }}>أحسنت!</h1>
-          <p style={{ color:'#718096', marginBottom:20, fontSize:'1.05rem' }}>انتهت الجولة</p>
-          <div style={{ fontSize:'2rem', marginBottom:8 }}>{'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}</div>
-          <div style={{ fontSize:'3rem', fontWeight:900, color:'#667eea', marginBottom:4 }}>{score}<span style={{ fontSize:'1.2rem', color:'#718096' }}>/{queue.length}</span></div>
+          <p style={{ color:'#718096', marginBottom:16, fontSize:'1.05rem' }}>انتهت الجولة</p>
+          <div style={{ fontSize:'2.2rem', marginBottom:10 }}>{'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}</div>
+          <div style={{ fontSize:'3rem', fontWeight:900, color:'#667eea', marginBottom:4 }}>
+            {score}<span style={{ fontSize:'1.2rem', color:'#718096' }}>/{queue.length}</span>
+          </div>
           <p style={{ color:'#4a5568', marginBottom:28, fontSize:'1rem' }}>
             {pct >= 90 ? 'ممتاز! أنت بطل الحروف 🥇' : pct >= 60 ? 'جيد جداً! استمر في التدريب 💪' : 'لا تيأس، حاول مرة أخرى! 🎯'}
           </p>
           <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap' }}>
-            <button onClick={startGame} style={{ background:'linear-gradient(135deg,#667eea,#764ba2)', color:'#fff', border:'none', borderRadius:50, padding:'12px 32px', fontSize:'1rem', fontWeight:700, cursor:'pointer' }}>
+            <button onClick={startGame}
+              style={{ background:'linear-gradient(135deg,#667eea,#764ba2)', color:'#fff', border:'none', borderRadius:50, padding:'12px 32px', fontSize:'1rem', fontWeight:700, cursor:'pointer' }}>
               جولة جديدة 🔄
             </button>
-            <Link href="/library" style={{ background:'#f7fafc', color:'#4a5568', border:'2px solid #e2e8f0', borderRadius:50, padding:'12px 32px', fontSize:'1rem', fontWeight:700, cursor:'pointer', textDecoration:'none', display:'inline-flex', alignItems:'center' }}>
+            <Link href="/library"
+              style={{ background:'#f7fafc', color:'#4a5568', border:'2px solid #e2e8f0', borderRadius:50, padding:'12px 32px', fontSize:'1rem', fontWeight:700, textDecoration:'none', display:'inline-flex', alignItems:'center' }}>
               المكتبة 📚
             </Link>
           </div>
@@ -225,111 +301,110 @@ export default function LetterCatcherPage() {
     );
   }
 
-  // playing phase
-  const progress = queue.length > 0 ? ((round) / queue.length) * 100 : 0;
+  /* — PLAYING — */
+  const progress = queue.length > 0 ? (round / queue.length) * 100 : 0;
+  const img   = current ? mediaCache[current.id]?.image : null;
+  const emoji = current ? (TOPIC_EMOJI[current.topic] ?? '📖') : '📖';
 
   return (
-    <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#667eea 0%,#764ba2 100%)', fontFamily:'Cairo,Tajawal,sans-serif', padding:'16px 16px 80px', direction:'rtl', position:'relative', overflow:'hidden' }}>
-      <style>{`
-        @keyframes floatBubble {
-          0%   { transform: translateY(0) scale(1); }
-          50%  { transform: translateY(-8px) scale(1.03); }
-          100% { transform: translateY(0) scale(1); }
-        }
-        @keyframes confettiFall {
-          0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-        }
-        @keyframes correctPop {
-          0%   { transform: scale(1); }
-          40%  { transform: scale(1.25); }
-          100% { transform: scale(1); }
-        }
-        @keyframes shake {
-          0%,100% { transform: translateX(0); }
-          20%     { transform: translateX(-8px); }
-          40%     { transform: translateX(8px); }
-          60%     { transform: translateX(-6px); }
-          80%     { transform: translateX(6px); }
-        }
-        .bubble-btn {
-          border: none; border-radius: 50%; cursor: pointer;
-          font-size: 1.8rem; font-weight: 900;
-          width: 80px; height: 80px;
-          display: flex; align-items: center; justify-content: center;
-          animation: floatBubble 2.5s ease-in-out infinite;
-          transition: transform .15s, box-shadow .15s;
-          box-shadow: 0 6px 20px rgba(0,0,0,.25);
-          font-family: Cairo,Tajawal,sans-serif;
-        }
-        .bubble-btn:hover { transform: scale(1.1) !important; box-shadow: 0 10px 28px rgba(0,0,0,.35); }
-      `}</style>
+    <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#667eea 0%,#764ba2 100%)', fontFamily:'Cairo,Tajawal,sans-serif', padding:'16px 16px 90px', direction:'rtl', position:'relative', overflow:'hidden' }}>
+      <style>{css}</style>
 
       {/* Confetti */}
       {confetti.map(p => (
         <div key={p.id} style={{
           position:'fixed', top:0, left:`${p.x}%`, zIndex:999, pointerEvents:'none',
-          width:p.size, height:p.size, borderRadius:'50%',
-          background:p.color,
-          animation:`confettiFall 1.6s ${p.delay}s ease-in forwards`,
+          width:p.size, height:p.size, borderRadius:'50%', background:p.color,
+          animation:`confettiFall 1.7s ${p.delay}s ease-in forwards`,
         }} />
       ))}
 
       {/* Top bar */}
-      <div style={{ maxWidth:540, margin:'0 auto 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      <div style={{ maxWidth:540, margin:'0 auto 16px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <Link href="/library" style={{ color:'rgba(255,255,255,.8)', textDecoration:'none', fontSize:'.9rem', fontWeight:600 }}>← مكتبة</Link>
         <span style={{ color:'#fff', fontWeight:800, fontSize:'1rem' }}>صيّاد الحروف 🎯</span>
-        <span style={{ background:'rgba(255,255,255,.2)', color:'#fff', borderRadius:50, padding:'4px 14px', fontWeight:700, fontSize:'.9rem' }}>
-          {score} ⭐
-        </span>
+        <span style={{ background:'rgba(255,255,255,.2)', color:'#fff', borderRadius:50, padding:'4px 14px', fontWeight:700, fontSize:'.9rem' }}>{score} ⭐</span>
       </div>
 
-      {/* Progress bar */}
-      <div style={{ maxWidth:540, margin:'0 auto 24px', background:'rgba(255,255,255,.25)', borderRadius:50, height:10, overflow:'hidden' }}>
+      {/* Progress */}
+      <div style={{ maxWidth:540, margin:'0 auto 20px', background:'rgba(255,255,255,.25)', borderRadius:50, height:10, overflow:'hidden' }}>
         <div style={{ width:`${progress}%`, height:'100%', background:'#FFE66D', borderRadius:50, transition:'width .4s' }} />
       </div>
 
       {/* Question card */}
       {current && (
-        <div style={{ maxWidth:540, margin:'0 auto 32px', background:'#fff', borderRadius:24, padding:'28px 24px', textAlign:'center', boxShadow:'0 12px 40px rgba(0,0,0,.2)', animation: shaking ? 'shake .5s ease' : undefined }}>
-          <p style={{ color:'#718096', fontSize:'.88rem', marginBottom:8 }}>
+        <div style={{
+          maxWidth:540, margin:'0 auto 28px', background:'#fff', borderRadius:24,
+          padding:'24px 20px', textAlign:'center',
+          boxShadow:'0 12px 40px rgba(0,0,0,.2)',
+          animation: shaking ? 'shake .5s ease' : 'fadeIn .35s ease',
+        }}>
+
+          {/* Image / emoji */}
+          <div style={{ marginBottom:14 }}>
+            {img ? (
+              <img
+                src={`data:image/jpeg;base64,${img}`}
+                alt={current.word}
+                style={{ width:130, height:130, objectFit:'cover', borderRadius:16, boxShadow:'0 4px 16px rgba(0,0,0,.15)' }}
+              />
+            ) : (
+              <div style={{ width:130, height:130, borderRadius:16, background:'linear-gradient(135deg,#f0f4ff,#e8eeff)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'4rem', boxShadow:'0 4px 16px rgba(0,0,0,.1)' }}>
+                {emoji}
+              </div>
+            )}
+          </div>
+
+          {/* Word with gap */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10, marginBottom:8 }}>
+            <div style={{ fontSize:'2.6rem', fontWeight:900, color:'#2d3748', letterSpacing:6, direction:'rtl', lineHeight:1.3 }}>
+              {current.display}
+            </div>
+
+            {/* Speaker button */}
+            <button
+              onClick={() => playWordAudio(current, mediaCache)}
+              title="استمع للكلمة"
+              style={{ background:'#EBF4FF', border:'none', borderRadius:'50%', width:40, height:40, cursor:'pointer', fontSize:'1.2rem', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 2px 8px rgba(0,0,0,.1)', transition:'transform .15s' }}
+              onMouseEnter={e => e.currentTarget.style.transform='scale(1.15)'}
+              onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
+              🔊
+            </button>
+          </div>
+
+          <p style={{ color:'#a0aec0', fontSize:'.82rem', marginBottom:4 }}>
             السؤال {round + 1} من {queue.length}
           </p>
-          <div style={{ fontSize:'2.8rem', fontWeight:900, color:'#2d3748', marginBottom:12, letterSpacing:4, direction:'rtl' }}>
-            {current.display}
-          </div>
-          {current.sentence && (
-            <div style={{ background:'#F0F4FF', borderRadius:12, padding:'10px 16px', fontSize:'.93rem', color:'#4a5568', lineHeight:1.8 }}>
-              {current.sentence}
-            </div>
-          )}
+
+          {/* Correct feedback */}
           {answered === 'correct' && (
-            <div style={{ marginTop:14, color:'#38A169', fontWeight:700, fontSize:'1.05rem', animation:'correctPop .4s ease' }}>
-              ✅ ممتاز! الكلمة: {stripHarakat(current.word)}
+            <div style={{ marginTop:8, color:'#38A169', fontWeight:700, fontSize:'1.05rem', animation:'correctPop .4s ease' }}>
+              ✅ {stripHarakat(current.word)}
             </div>
           )}
         </div>
       )}
 
-      {/* Bubbles */}
+      {/* Bubble choices */}
       {current && (
         <div style={{ maxWidth:540, margin:'0 auto', display:'flex', flexWrap:'wrap', gap:18, justifyContent:'center' }}>
           {choices.map((letter, i) => {
             const isCorrect = letter === current.letter;
-            const isWrong = answered === 'wrong' && i === wrongIdx;
-            const isRight = answered === 'correct' && isCorrect;
+            const isWrong   = answered === 'wrong'   && i === wrongIdx;
+            const isRight   = answered === 'correct' && isCorrect;
             return (
               <button
                 key={i}
+                disabled={!!answered}
                 className="bubble-btn"
                 onClick={() => handleChoice(letter, i)}
                 style={{
                   background: isRight ? '#38A169' : isWrong ? '#E53E3E' : BUBBLE_COLORS[i % BUBBLE_COLORS.length],
-                  color: '#fff',
                   animationDelay: `${i * 0.18}s`,
                   animationPlayState: answered ? 'paused' : 'running',
                   animation: isRight ? 'correctPop .4s ease' : isWrong ? 'shake .5s ease' : `floatBubble 2.5s ${i * 0.18}s ease-in-out infinite`,
-                  opacity: answered && !isRight && !isWrong ? 0.6 : 1,
+                  opacity: answered && !isRight && !isWrong ? 0.55 : 1,
+                  cursor: answered ? 'default' : 'pointer',
                 }}>
                 {letter}
               </button>
@@ -338,8 +413,15 @@ export default function LetterCatcherPage() {
         </div>
       )}
 
+      {/* Loading media indicator */}
+      {mediaLoading && (
+        <div style={{ position:'fixed', top:16, left:'50%', transform:'translateX(-50%)', background:'rgba(255,255,255,.15)', color:'#fff', borderRadius:50, padding:'6px 18px', fontSize:'.85rem', fontWeight:600 }}>
+          ⏳ تحميل الصور…
+        </div>
+      )}
+
       {/* Fahim owl */}
-      <div style={{ position:'fixed', bottom:20, left:20, fontSize:'2.8rem', filter:'drop-shadow(0 4px 8px rgba(0,0,0,.3))', animation:'floatBubble 3s ease-in-out infinite', zIndex:10 }}>
+      <div style={{ position:'fixed', bottom:20, left:20, fontSize:'2.8rem', filter:'drop-shadow(0 4px 8px rgba(0,0,0,.3))', animation:'floatBubble 3s ease-in-out infinite', zIndex:10, userSelect:'none' }}>
         🦉
       </div>
     </div>
