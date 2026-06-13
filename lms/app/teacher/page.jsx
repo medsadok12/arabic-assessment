@@ -99,6 +99,7 @@ export default function TeacherPage() {
   const [pendingInvites,       setPendingInvites]       = useState([]);
   const [inviteResponding,     setInviteResponding]     = useState(null);
   const [startedIds,           setStartedIds]           = useState(new Set());
+  const [startingId,           setStartingId]           = useState(null);
   const [personalMeetLink,     setPersonalMeetLink]     = useState('');
   const [meetLinkSaving,       setMeetLinkSaving]       = useState(false);
   const [meetLinkMsg,          setMeetLinkMsg]          = useState(null);
@@ -113,14 +114,28 @@ export default function TeacherPage() {
       setMeetLinkMsg({ type: 'error', text: '⬆️ أضف رابط Google Meet الشخصي ثم اضغط حفظ' });
       return;
     }
-    setStartedIds(prev => new Set([...prev, s.id]));
-    window.open(link, '_blank', 'noopener');
-    // حفظ الرابط في DB حتى يصل للطالب تلقائياً
-    fetch('/api/teacher/sessions', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: s.id, status: 'active', meet_link: link }),
-    }).catch(() => {});
+    setStartingId(s.id);
+    try {
+      const res  = await fetch('/api/teacher/sessions', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id: s.id, status: 'active', meet_link: link }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg({ type: 'error', text: data.error || 'فشل بدء الحصة — حاول مرة أخرى' });
+        return;
+      }
+      // تحديث sessions المحلية بالرد الفعلي من DB حتى يعكس refresh الحالة الصحيحة
+      const updated = data.session ?? { ...s, status: 'active', meet_link: link };
+      setSessions(prev => prev.map(x => x.id === s.id ? updated : x));
+      setStartedIds(prev => new Set([...prev, s.id]));
+      window.open(link, '_blank', 'noopener');
+    } catch {
+      setMsg({ type: 'error', text: 'خطأ في الاتصال — تحقق من الإنترنت وحاول مرة أخرى' });
+    } finally {
+      setStartingId(null);
+    }
   }
 
   async function saveMeetLink() {
@@ -546,15 +561,23 @@ export default function TeacherPage() {
             <div style={{ flexShrink:0, display:'flex', flexDirection:'column', gap:8, alignItems:'center' }}>
               <button
                 onClick={() => startSession(bannerSession)}
+                disabled={startingId === bannerSession.id}
                 style={{
                   background:'#fff', border:'none', borderRadius:12,
                   padding:'11px 24px', fontWeight:900, fontSize:'.95rem',
-                  cursor:'pointer', whiteSpace:'nowrap',
-                  color: '#1a7c40',
+                  cursor: startingId === bannerSession.id ? 'wait' : 'pointer',
+                  whiteSpace:'nowrap', color: '#1a7c40',
                   boxShadow:'0 4px 14px rgba(0,0,0,.2)',
                   fontFamily:'inherit',
+                  opacity: startingId === bannerSession.id ? .7 : 1,
                 }}>
-                {bannerAlreadyStart ? '🎥 دخول البث' : bannerIsLive ? '▶️ ابدأ الحصة الآن' : '🎥 فتح Google Meet'}
+                {startingId === bannerSession.id
+                  ? '⏳ جارٍ البدء...'
+                  : bannerAlreadyStart
+                    ? '🎥 دخول البث'
+                    : bannerIsLive
+                      ? '▶️ ابدأ الحصة الآن'
+                      : '🎥 فتح Google Meet'}
               </button>
               {!(bannerSession.meet_link ?? personalMeetLink) && !bannerAlreadyStart && (
                 <div style={{ fontSize:'.75rem', opacity:.85, textAlign:'center' }}>
@@ -728,7 +751,11 @@ export default function TeacherPage() {
                             </button>
                           ) : (
                             <button onClick={() => startSession(s)}
-                              className="btn btn-primary btn-sm">ابدأ الحصة 🎥</button>
+                              disabled={startingId === s.id}
+                              className="btn btn-primary btn-sm"
+                              style={{ opacity: startingId === s.id ? .7 : 1, cursor: startingId === s.id ? 'wait' : 'pointer' }}>
+                              {startingId === s.id ? '⏳ جارٍ...' : 'ابدأ الحصة 🎥'}
+                            </button>
                           )}
                           <button onClick={() => openComplete(s)}
                             className="btn btn-outline btn-sm" style={{ color:'#1a7c40', borderColor:'#1a7c40' }}>
