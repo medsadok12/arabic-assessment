@@ -423,8 +423,14 @@ export default function DashboardContent({
                       🔒 سجّل حضورك
                     </button>
                     {cardCountdown && (
-                      <div style={{ marginTop:7, fontSize:'.82rem', color:'rgba(255,255,255,.7)', fontWeight:700, fontVariantNumeric:'tabular-nums', letterSpacing:1 }}>
-                        ⏱️ {cardCountdown}
+                      <div style={{
+                        marginTop:8, display:'inline-block',
+                        background:'rgba(239,68,68,.28)', border:'1.5px solid rgba(239,68,68,.55)',
+                        borderRadius:20, padding:'4px 14px',
+                        fontSize:'.9rem', color:'#fca5a5',
+                        fontWeight:900, fontVariantNumeric:'tabular-nums', letterSpacing:2,
+                      }}>
+                        🔴 {cardCountdown}
                       </div>
                     )}
                     <div style={{ marginTop:4, fontSize:'.74rem', color:'rgba(255,255,255,.5)' }}>
