@@ -222,7 +222,9 @@ export default function DashboardContent({
       const data = await res.json();
       if (data.ok || data.already) {
         setAttendanceLogged(true);
-        if (nextSession.meet_link) window.open(nextSession.meet_link, '_blank', 'noopener');
+        // الرابط يأتي من الـ API (أحدث) أو من بيانات الحصة المحلية
+        const meetUrl = data.meet_link || nextSession.meet_link;
+        if (meetUrl) window.open(meetUrl, '_blank', 'noopener');
       } else {
         alert(data.error ?? 'تعذّر تسجيل الحضور — حاول مرة أخرى');
       }

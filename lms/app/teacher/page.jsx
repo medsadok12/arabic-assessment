@@ -115,10 +115,11 @@ export default function TeacherPage() {
     }
     setStartedIds(prev => new Set([...prev, s.id]));
     window.open(link, '_blank', 'noopener');
+    // حفظ الرابط في DB حتى يصل للطالب تلقائياً
     fetch('/api/teacher/sessions', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: s.id, status: 'active' }),
+      body: JSON.stringify({ id: s.id, status: 'active', meet_link: link }),
     }).catch(() => {});
   }
 

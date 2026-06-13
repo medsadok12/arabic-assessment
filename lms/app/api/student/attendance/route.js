@@ -60,7 +60,14 @@ export async function POST(req) {
     console.error('attendance_logs insert:', logError.message);
   }
 
-  return NextResponse.json({ ok: true });
+  // جلب أحدث نسخة من الحصة للحصول على رابط Meet (قد يكون المعلم حدّثه للتو)
+  const { data: fresh } = await admin
+    .from('sessions')
+    .select('meet_link')
+    .eq('id', session_id)
+    .single();
+
+  return NextResponse.json({ ok: true, meet_link: fresh?.meet_link ?? session.meet_link ?? null });
 }
 
 // GET — هل سُجِّل الحضور لهذه الحصة؟
