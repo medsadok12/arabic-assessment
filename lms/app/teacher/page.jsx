@@ -723,7 +723,9 @@ export default function TeacherPage() {
                   {upcoming.map(s => {
                     const ct = sessionCountdown(s);
                     return (
-                    <div key={s.id} className="sc" style={ct.active ? { background:'linear-gradient(135deg,#e8f5e9,#f1f8ff)', borderColor:'#4caf50' } : {}}>
+                    <div key={s.id} className="sc" style={
+                      ct.ended  ? { background:'#f8fafc', borderColor:'#cbd5e1', opacity:.85 } :
+                      ct.active ? { background:'linear-gradient(135deg,#e8f5e9,#f1f8ff)', borderColor:'#4caf50' } : {}}>
                       <div style={{ fontSize:'1.8rem', paddingTop:2 }}>🎥</div>
                       <div className="si">
                         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
@@ -786,7 +788,7 @@ export default function TeacherPage() {
                           <button onClick={() => openEdit(s)} title="تعديل" className="icon-btn">✏️</button>
                         </div>
                         <div className="action-row" style={{ marginTop:4 }}>
-                          {(s.status === 'active' || startedIds.has(s.id)) ? (
+                          {ct.ended ? null : (s.status === 'active' || startedIds.has(s.id)) ? (
                             <button onClick={() => window.open(effectiveLink(s), '_blank', 'noopener')}
                               className="btn btn-sm"
                               style={{ background:'#1a7c40', color:'#fff', border:'none' }}>
