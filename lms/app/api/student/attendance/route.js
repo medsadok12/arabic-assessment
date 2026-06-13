@@ -15,33 +15,70 @@ export async function POST(req) {
 
   const admin = createAdminClient();
 
-  // تحقق من أن الحصة تخص هذا الطالب
-  const { data: session } = await admin
+  // محاولة 1: الطالب الأساسي (student_email يطابق البريد)
+  const { data: primarySession } = await admin
     .from('sessions')
     .select('id, student_email, student_name, session_date, start_time, attended, status, meet_link, teacher_id')
     .eq('id', session_id)
     .ilike('student_email', user.email)
     .single();
 
-  if (!session) return NextResponse.json({ error: 'الحصة غير موجودة' }, { status: 404 });
-  if (session.status === 'cancelled') return NextResponse.json({ error: 'الحصة ملغاة' }, { status: 400 });
+  let session   = primarySession;
+  let isSupport = false;
 
-  // إذا كان الحضور مسجلاً مسبقاً — ارجع الرابط أيضاً
-  if (session.attended === true) {
-    let link = session.meet_link ?? null;
-    if (!link && session.teacher_id) {
-      const { data: td } = await admin.auth.admin.getUserById(session.teacher_id);
-      link = td?.user?.user_metadata?.meet_link ?? null;
-    }
+  // محاولة 2: الطالب المُضاف (support student)
+  if (!session) {
+    const { data: supportRow } = await admin
+      .from('session_support_students')
+      .select('session_id')
+      .eq('session_id', session_id)
+      .ilike('student_email', user.email)
+      .maybeSingle()
+      .then(r => r.error ? { data: null } : r);
+
+    if (!supportRow) return NextResponse.json({ error: 'الحصة غير موجودة' }, { status: 404 });
+
+    isSupport = true;
+    const { data: sess } = await admin
+      .from('sessions')
+      .select('id, student_name, session_date, start_time, attended, status, meet_link, teacher_id')
+      .eq('id', session_id)
+      .single();
+    session = sess;
+  }
+
+  if (!session)                        return NextResponse.json({ error: 'الحصة غير موجودة' }, { status: 404 });
+  if (session.status === 'cancelled')  return NextResponse.json({ error: 'الحصة ملغاة' }, { status: 400 });
+
+  // ─── هل سُجِّل الحضور مسبقاً؟ ───────────────────────────────────────────
+  const alreadyAttended = isSupport
+    // الطالب الإضافي → المصدر الوحيد هو attendance_logs
+    ? await admin
+        .from('attendance_logs')
+        .select('id')
+        .eq('session_id', session_id)
+        .ilike('student_email', user.email)
+        .maybeSingle()
+        .then(r => !!r.data)
+    // الطالب الأساسي → sessions.attended
+    : session.attended === true;
+
+  if (alreadyAttended) {
+    const link = await resolveLink(admin, session);
     return NextResponse.json({ ok: true, already: true, meet_link: link });
   }
 
-  // ✅ لا فحص للوقت — الزر لا يظهر إلا عند إشارة المعلم أو حلول الوقت (منطق الواجهة)
+  // ✅ لا فحص للوقت — منطق الواجهة هو البوابة
 
-  // تحديث sessions.attended — المصدر الموثوق
-  await admin.from('sessions').update({ attended: true }).eq('id', session_id);
+  // الطالب الأساسي: تحديث sessions.attended مع guard مزدوج
+  if (!isSupport) {
+    await admin.from('sessions')
+      .update({ attended: true })
+      .eq('id', session_id)
+      .ilike('student_email', user.email);
+  }
 
-  // attendance_logs — best-effort
+  // جميع الطلاب: تسجيل في attendance_logs
   await admin.from('attendance_logs').insert({
     session_id,
     student_id:    user.id,
@@ -50,7 +87,7 @@ export async function POST(req) {
     session_date:  session.session_date,
   }).then(() => null).catch(() => null);
 
-  // جلب أحدث meet_link (قد يكون المعلم حدّثه للتو)
+  // جلب أحدث meet_link من الـ DB ثم user_metadata المعلم كـ fallback
   const { data: fresh } = await admin
     .from('sessions')
     .select('meet_link, teacher_id')
@@ -58,15 +95,25 @@ export async function POST(req) {
     .single();
 
   let meetLink = fresh?.meet_link ?? session.meet_link ?? null;
-
-  // إذا لا يزال الرابط غائباً، اجلبه من user_metadata المعلم
-  if (!meetLink && (fresh?.teacher_id ?? session.teacher_id)) {
+  if (!meetLink) {
     const teacherId = fresh?.teacher_id ?? session.teacher_id;
-    const { data: teacherUser } = await admin.auth.admin.getUserById(teacherId);
-    meetLink = teacherUser?.user?.user_metadata?.meet_link ?? null;
+    if (teacherId) {
+      const { data: teacherUser } = await admin.auth.admin.getUserById(teacherId).catch(() => ({ data: null }));
+      meetLink = teacherUser?.user?.user_metadata?.meet_link ?? null;
+    }
   }
 
   return NextResponse.json({ ok: true, meet_link: meetLink });
+}
+
+// جلب رابط Meet: من الحصة أولاً، ثم user_metadata المعلم
+async function resolveLink(admin, session) {
+  let link = session.meet_link ?? null;
+  if (!link && session.teacher_id) {
+    const { data: td } = await admin.auth.admin.getUserById(session.teacher_id).catch(() => ({ data: null }));
+    link = td?.user?.user_metadata?.meet_link ?? null;
+  }
+  return link;
 }
 
 // GET — هل سُجِّل الحضور لهذه الحصة؟
@@ -81,7 +128,7 @@ export async function GET(req) {
 
   const admin = createAdminClient();
 
-  // المصدر الأساسي: sessions.attended
+  // الطالب الأساسي: sessions.attended
   const { data: sessionData } = await admin
     .from('sessions')
     .select('attended')
@@ -91,7 +138,7 @@ export async function GET(req) {
 
   if (sessionData?.attended === true) return NextResponse.json({ logged: true });
 
-  // مصدر احتياطي: attendance_logs
+  // الطالب الإضافي والمصدر الاحتياطي: attendance_logs
   const { data: logData } = await admin
     .from('attendance_logs')
     .select('id')

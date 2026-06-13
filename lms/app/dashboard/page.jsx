@@ -53,7 +53,8 @@ export default async function DashboardPage() {
       .in('id', supportIds)
       .in('status', ['scheduled', 'active'])
       .gte('session_date', today);
-    supportSessions = (supRaw ?? []).map(s => ({ ...s, is_support: true }));
+    // attended على الحصة يخص الطالب الأساسي — لا نمرره للطالب الإضافي
+    supportSessions = (supRaw ?? []).map(s => ({ ...s, is_support: true, attended: null }));
   }
 
   const mainIds  = new Set((sessionsRaw ?? []).map(s => s.id));

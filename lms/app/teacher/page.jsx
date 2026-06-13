@@ -202,9 +202,14 @@ export default function TeacherPage() {
   }, [user]);
 
   const today      = new Date().toISOString().slice(0, 10);
-  // تشمل الحصص الجارية (active) في القائمة حتى يراها المعلم
-  const upcoming   = sessions.filter(s => (s.status === 'scheduled' || s.status === 'active') && s.session_date >= today);
-  const past       = sessions.filter(s => s.status === 'completed' || s.status === 'cancelled' || (s.status === 'scheduled' && s.session_date < today));
+  // active+today → upcoming حتى يرى المعلم الحصة الجارية
+  // active+ماضٍ → past لئلا تختفي إن تجاوزت منتصف الليل دون إنهاء
+  const upcoming = sessions.filter(s =>
+    (s.status === 'scheduled' || s.status === 'active') && s.session_date >= today);
+  const past     = sessions.filter(s =>
+    s.status === 'completed' || s.status === 'cancelled' ||
+    (s.status === 'active'    && s.session_date < today) ||
+    (s.status === 'scheduled' && s.session_date < today));
 
   // ── 30-minute teacher banner ──
   const bannerSession      = upcoming[0] ?? null;
