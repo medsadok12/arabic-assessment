@@ -356,7 +356,7 @@ export default function TeacherPage() {
   }
 
   // ── Complete session ──
-  function openComplete(s) { setCompleteFor(s); setRecordingUrl(''); }
+  function openComplete(s) { setCompleteFor(s); setRecordingUrl('https://drive.google.com/drive/folders/1jdsF69TWQOJAq47Q6-UCN5hUbGWzYCqD?usp=drive_link'); }
 
   async function handleComplete() {
     setCompleteSaving(true);
