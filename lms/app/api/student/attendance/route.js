@@ -1,6 +1,7 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { notifyUser }        from '../../../../lib/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,7 @@ export async function POST(req) {
   // محاولة 1: الطالب الأساسي (student_email يطابق البريد)
   const { data: primarySession } = await admin
     .from('sessions')
-    .select('id, student_email, student_name, session_date, start_time, attended, status, meet_link, teacher_id')
+    .select('id, student_email, student_name, session_date, start_time, attended, status, meet_link, teacher_id, subject')
     .eq('id', session_id)
     .ilike('student_email', user.email)
     .single();
@@ -41,7 +42,7 @@ export async function POST(req) {
     isSupport = true;
     const { data: sess } = await admin
       .from('sessions')
-      .select('id, student_name, session_date, start_time, attended, status, meet_link, teacher_id')
+      .select('id, student_name, session_date, start_time, attended, status, meet_link, teacher_id, subject')
       .eq('id', session_id)
       .single();
     session = sess;
@@ -87,6 +88,17 @@ export async function POST(req) {
     session_date:  session.session_date,
   });
   if (logErr) console.error('[attendance_logs] insert failed:', logErr.message);
+
+  // إشعار فوري للمعلم (best-effort)
+  const teacherId   = session.teacher_id;
+  const studentName = session.student_name || user.user_metadata?.full_name || user.email;
+  const subject     = session.subject || 'حصة عامة';
+  if (teacherId) {
+    notifyUser(teacherId, 'attendance',
+      `✅ انضم ${studentName} للحصة`,
+      subject
+    ).catch(() => {});
+  }
 
   // جلب أحدث meet_link من الـ DB ثم user_metadata المعلم كـ fallback
   const { data: fresh } = await admin
