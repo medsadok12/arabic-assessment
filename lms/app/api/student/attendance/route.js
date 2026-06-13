@@ -18,7 +18,7 @@ export async function POST(req) {
   // تحقق من أن الحصة تخص هذا الطالب
   const { data: session } = await admin
     .from('sessions')
-    .select('id, student_email, student_name, session_date, start_time, attended, status, meet_link')
+    .select('id, student_email, student_name, session_date, start_time, attended, status, meet_link, teacher_id')
     .eq('id', session_id)
     .ilike('student_email', user.email)
     .single();
@@ -26,9 +26,14 @@ export async function POST(req) {
   if (!session) return NextResponse.json({ error: 'الحصة غير موجودة' }, { status: 404 });
   if (session.status === 'cancelled') return NextResponse.json({ error: 'الحصة ملغاة' }, { status: 400 });
 
-  // إذا كان الحضور مسجلاً مسبقاً
+  // إذا كان الحضور مسجلاً مسبقاً — ارجع الرابط أيضاً
   if (session.attended === true) {
-    return NextResponse.json({ ok: true, already: true, meet_link: session.meet_link ?? null });
+    let link = session.meet_link ?? null;
+    if (!link && session.teacher_id) {
+      const { data: td } = await admin.auth.admin.getUserById(session.teacher_id);
+      link = td?.user?.user_metadata?.meet_link ?? null;
+    }
+    return NextResponse.json({ ok: true, already: true, meet_link: link });
   }
 
   // ✅ لا فحص للوقت — الزر لا يظهر إلا عند إشارة المعلم أو حلول الوقت (منطق الواجهة)
@@ -48,11 +53,20 @@ export async function POST(req) {
   // جلب أحدث meet_link (قد يكون المعلم حدّثه للتو)
   const { data: fresh } = await admin
     .from('sessions')
-    .select('meet_link')
+    .select('meet_link, teacher_id')
     .eq('id', session_id)
     .single();
 
-  return NextResponse.json({ ok: true, meet_link: fresh?.meet_link ?? session.meet_link ?? null });
+  let meetLink = fresh?.meet_link ?? session.meet_link ?? null;
+
+  // إذا لا يزال الرابط غائباً، اجلبه من user_metadata المعلم
+  if (!meetLink && (fresh?.teacher_id ?? session.teacher_id)) {
+    const teacherId = fresh?.teacher_id ?? session.teacher_id;
+    const { data: teacherUser } = await admin.auth.admin.getUserById(teacherId);
+    meetLink = teacherUser?.user?.user_metadata?.meet_link ?? null;
+  }
+
+  return NextResponse.json({ ok: true, meet_link: meetLink });
 }
 
 // GET — هل سُجِّل الحضور لهذه الحصة؟
