@@ -18,7 +18,7 @@ export async function POST(req) {
   // تحقق من أن الحصة تخص هذا الطالب
   const { data: session } = await admin
     .from('sessions')
-    .select('id, student_email, student_name, session_date, start_time, attended')
+    .select('id, student_email, student_name, session_date, start_time, attended, status')
     .eq('id', session_id)
     .ilike('student_email', user.email)
     .single();
@@ -28,15 +28,18 @@ export async function POST(req) {
   // إذا كان الحضور مسجلاً مسبقاً في حقل sessions.attended → اعتبره مكرراً
   if (session.attended === true) return NextResponse.json({ ok: true, already: true });
 
-  // نافذة التسجيل: من 10 دقائق قبل البدء حتى 15 دقيقة بعده
-  const sessionDT = new Date(`${session.session_date}T${session.start_time}`);
-  const nowTime   = new Date();
-  const diffMins  = (sessionDT - nowTime) / 60000;
+  // إذا بدأ المعلم الحصة (status = active) → تجاوز فحص الوقت، البوابة هي إشارة المعلم
+  if (session.status !== 'active') {
+    // نافذة التسجيل: من 10 دقائق قبل البدء حتى 15 دقيقة بعده
+    const sessionDT = new Date(`${session.session_date}T${session.start_time}`);
+    const nowTime   = new Date();
+    const diffMins  = (sessionDT - nowTime) / 60000;
 
-  if (diffMins > 10)
-    return NextResponse.json({ error: 'لم يحن وقت التسجيل — يفتح قبل الحصة بـ 10 دقائق' }, { status: 400 });
-  if (diffMins < -15)
-    return NextResponse.json({ error: 'انتهى وقت تسجيل الحضور — مضت أكثر من 15 دقيقة على بدء الحصة' }, { status: 400 });
+    if (diffMins > 10)
+      return NextResponse.json({ error: 'لم يحن وقت التسجيل — يفتح قبل الحصة بـ 10 دقائق' }, { status: 400 });
+    if (diffMins < -60)
+      return NextResponse.json({ error: 'انتهى وقت تسجيل الحضور' }, { status: 400 });
+  }
 
   // تحديث sessions.attended — هذا هو المصدر الموثوق (يعمل دائماً)
   await admin.from('sessions').update({ attended: true }).eq('id', session_id);
