@@ -65,17 +65,16 @@ export default async function LibraryPage() {
             قريباً — يجري العمل على إضافة محتوى تفاعلي متكامل لكل مستوى.
           </div>
 
+          <style>{`
+            .lib-card-ready { transition: box-shadow .18s, transform .18s; border: 2px solid #185FA520 !important; }
+            .lib-card-ready:hover { box-shadow: 0 6px 24px rgba(24,95,165,.2) !important; transform: translateY(-2px); }
+          `}</style>
+
           <div className="card-grid">
             {RESOURCES.map(r => (
               r.ready ? (
                 <Link key={r.title} href={r.link} style={{ textDecoration: 'none' }}>
-                  <div className="lib-card" style={{
-                    cursor: 'pointer', border: '2px solid #185FA520',
-                    transition: 'box-shadow .18s, transform .18s',
-                  }}
-                    onMouseOver={e => { e.currentTarget.style.boxShadow = '0 6px 24px rgba(24,95,165,.18)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseOut={e => { e.currentTarget.style.boxShadow = ''; e.currentTarget.style.transform = ''; }}
-                  >
+                  <div className="lib-card lib-card-ready" style={{ cursor: 'pointer' }}>
                     <span className="lib-card-icon">{r.icon}</span>
                     <div className="lib-card-title">{r.title}</div>
                     <p className="lib-card-desc">{r.desc}</p>
