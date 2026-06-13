@@ -106,24 +106,20 @@ export default function DashboardContent({
   /** الحصة جارية فعلياً (بدأت ولم تنتهِ بعد) */
   const sessionIsLive = diffMs != null && diffMs <= 0 && !sessionHasEnded;
 
-  // Countdown string — MM:SS when < 1 hour (used for navbar), HH:MM:SS beyond that
-  let countdown = null;
+  // عداد تنازلي داخل بطاقة الحصة (يظهر فقط عند ≤ 60 دقيقة)
+  let cardCountdown = null;
   if (diffMs != null && diffMs > 0 && diffMs <= 3600000) {
     const secs = Math.floor(diffMs / 1000);
-    countdown = `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
+    const hh   = Math.floor(secs / 3600);
+    const mm   = Math.floor((secs % 3600) / 60);
+    const ss   = secs % 60;
+    cardCountdown = hh > 0
+      ? `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`
+      : `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
   }
 
-  // Live badge label — always precise for sessions within 24 hours
-  let liveLabel = null;
-  if (diffMs != null && diffMs > 0 && diffMs < 86400000) {
-    const totalSecs = Math.floor(diffMs / 1000);
-    const hh = Math.floor(totalSecs / 3600);
-    const mm = Math.floor((totalSecs % 3600) / 60);
-    const ss = totalSecs % 60;
-    liveLabel = hh > 0
-      ? `⏱️ ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`
-      : `⏱️ ${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
-  }
+  // liveLabel بقي للتوافق مع timeLabel (سيُحذف في خطوة لاحقة)
+  const liveLabel = cardCountdown ? `⏱️ ${cardCountdown}` : null;
 
   // ── Audio reminders — fires ONCE per session at precise second thresholds ──
   const announced1hRef   = useRef(false);
@@ -307,7 +303,7 @@ export default function DashboardContent({
         }
       `}</style>
 
-      <Navbar user={user} sessionCountdown={isStudent ? countdown : null} />
+      <Navbar user={user} />
       <main className="page-wrap">
         <div className="db-wrap">
 
@@ -353,74 +349,93 @@ export default function DashboardContent({
             )}
           </div>
 
-          {/* ── Next session ── */}
+          {/* ── Next session — 3 حالات زمنية ── */}
           {nextSession && (() => {
             const isLiveOrActive = liveStatus === 'active' || sessionIsLive;
 
-            // لون البطاقة بحسب الحالة
+            // ── لون البطاقة ──
             const cardBg = sessionHasEnded
               ? 'linear-gradient(135deg,#64748b,#475569)'
               : isLiveOrActive
                 ? 'linear-gradient(135deg,#1a7c40,#15803d)'
                 : 'linear-gradient(135deg,#185FA5,#1d4ed8)';
 
-            // تسمية حالة الحصة
+            // ── تسمية الحالة ──
             const statusLabel = sessionHasEnded
               ? '⏹️ انتهت الحصة'
               : isLiveOrActive
-                ? '🔴 الحصة جارية الآن'
-                : canRegisterAttendance
-                  ? '🔔 الحصة على وشك البدء'
+                ? '🔴 بدأت الحصة جارية الآن'
+                : diffMins != null && diffMins <= 60
+                  ? '🔔 الحصة قادمة قريباً'
                   : 'الحصة القادمة';
 
-            // منطقة زر الحضور — 4 حالات
-            let attendanceArea;
+            // ── الحالة 1: أكثر من 60 دقيقة — لا زر، لا عداد ──
+            const showAttendArea = diffMins != null && diffMins <= 60 || isLiveOrActive || sessionHasEnded;
 
-            if (attendanceLogged) {
-              // ✅ تم التسجيل (في أي وقت)
-              attendanceArea = (
-                <div style={{ background:'rgba(34,197,94,.25)', border:'1.5px solid rgba(34,197,94,.5)', borderRadius:12, padding:'11px 18px', color:'#fff', fontWeight:800, fontSize:'.9rem', whiteSpace:'nowrap', flexShrink:0, textAlign:'center' }}>
-                  ✅ تم تسجيل الحضور
-                </div>
-              );
-            } else if (sessionHasEnded) {
-              // ⏰ الحصة انتهت ولم يُسجَّل
-              attendanceArea = (
-                <div style={{ background:'rgba(239,68,68,.18)', border:'1.5px solid rgba(239,68,68,.4)', borderRadius:12, padding:'11px 18px', color:'rgba(255,255,255,.8)', fontWeight:700, fontSize:'.88rem', whiteSpace:'nowrap', flexShrink:0, textAlign:'center' }}>
-                  ⏰ انتهى وقت تسجيل الحضور
-                </div>
-              );
-            } else if (canRegisterAttendance) {
-              // 🟢 النافذة مفتوحة — الزر نشط
-              attendanceArea = (
-                <button
-                  onClick={logAttendance}
-                  disabled={attLoading}
-                  style={{
-                    borderRadius:12, padding:'12px 20px',
-                    fontWeight:900, fontSize:'.92rem', whiteSpace:'nowrap',
-                    border:'none', cursor:'pointer', fontFamily:'inherit',
-                    transition:'.25s', flexShrink:0,
-                    background:'#fff', color:'#185FA5',
-                    boxShadow:'0 4px 16px rgba(0,0,0,.18)',
-                    animation:'attPulse 1.8s ease-in-out infinite',
-                  }}>
-                  {isLiveOrActive ? '🎥 سجّل حضورك' : '🟢 سجّل حضورك'}
-                </button>
-              );
-            } else {
-              // 🔒 قبل نافذة التسجيل (أكثر من 10 دقائق على الموعد)
-              const minsUntilOpen = diffMins != null ? Math.ceil(diffMins - 10) : null;
-              attendanceArea = (
-                <div style={{ background:'rgba(255,255,255,.1)', border:'1.5px solid rgba(255,255,255,.2)', borderRadius:12, padding:'11px 18px', color:'rgba(255,255,255,.6)', fontWeight:700, fontSize:'.88rem', whiteSpace:'nowrap', flexShrink:0, textAlign:'center' }}>
-                  🔒 {minsUntilOpen != null && minsUntilOpen > 0 ? `يفتح بعد ${minsUntilOpen} د` : countdown ?? 'قبل الموعد'}
-                </div>
-              );
+            // ── منطقة الحضور ──
+            let attendanceArea = null;
+            if (showAttendArea) {
+              if (attendanceLogged) {
+                attendanceArea = (
+                  <div style={{ background:'rgba(34,197,94,.25)', border:'1.5px solid rgba(34,197,94,.5)', borderRadius:12, padding:'11px 18px', color:'#fff', fontWeight:800, fontSize:'.9rem', whiteSpace:'nowrap', flexShrink:0, textAlign:'center' }}>
+                    ✅ تم تسجيل الحضور
+                  </div>
+                );
+              } else if (sessionHasEnded) {
+                attendanceArea = (
+                  <div style={{ background:'rgba(239,68,68,.18)', border:'1.5px solid rgba(239,68,68,.4)', borderRadius:12, padding:'11px 18px', color:'rgba(255,255,255,.8)', fontWeight:700, fontSize:'.88rem', flexShrink:0, textAlign:'center' }}>
+                    ⏰ انتهى وقت التسجيل
+                  </div>
+                );
+              } else if (isLiveOrActive || canRegisterAttendance) {
+                // ── الحالة 3: المعلم ضغط "ابدأ الحصة" → الزر نشط ──
+                attendanceArea = (
+                  <div style={{ flexShrink:0, textAlign:'center' }}>
+                    <button
+                      onClick={logAttendance}
+                      disabled={attLoading}
+                      style={{
+                        borderRadius:12, padding:'12px 22px',
+                        fontWeight:900, fontSize:'.92rem', whiteSpace:'nowrap',
+                        border:'none', cursor:'pointer', fontFamily:'inherit',
+                        background:'#fff', color:'#1a7c40',
+                        boxShadow:'0 4px 16px rgba(0,0,0,.18)',
+                        animation:'attPulse 1.8s ease-in-out infinite',
+                        display:'block', width:'100%',
+                      }}>
+                      🟢 سجّل حضورك
+                    </button>
+                  </div>
+                );
+              } else {
+                // ── الحالة 2: ≤ 60 دقيقة لكن المعلم لم يبدأ بعد — الزر مقفل + عداد ──
+                attendanceArea = (
+                  <div style={{ flexShrink:0, textAlign:'center', minWidth:130 }}>
+                    <button disabled style={{
+                      borderRadius:12, padding:'11px 20px',
+                      fontWeight:800, fontSize:'.88rem', whiteSpace:'nowrap',
+                      border:'none', fontFamily:'inherit',
+                      background:'rgba(255,255,255,.15)', color:'rgba(255,255,255,.55)',
+                      cursor:'not-allowed', display:'block', width:'100%',
+                    }}>
+                      🔒 سجّل حضورك
+                    </button>
+                    {cardCountdown && (
+                      <div style={{ marginTop:7, fontSize:'.82rem', color:'rgba(255,255,255,.7)', fontWeight:700, fontVariantNumeric:'tabular-nums', letterSpacing:1 }}>
+                        ⏱️ {cardCountdown}
+                      </div>
+                    )}
+                    <div style={{ marginTop:4, fontSize:'.74rem', color:'rgba(255,255,255,.5)' }}>
+                      ينتظر إشارة المعلم
+                    </div>
+                  </div>
+                );
+              }
             }
 
             return (
-              <div className="db-session" style={{ background: cardBg }}>
-                <div style={{ fontSize:'2.8rem', lineHeight:1 }}>
+              <div className="db-session" style={{ background: cardBg, alignItems: 'flex-start' }}>
+                <div style={{ fontSize:'2.8rem', lineHeight:1, paddingTop:2 }}>
                   {sessionHasEnded ? '✅' : isLiveOrActive ? '📹' : '🎥'}
                 </div>
                 <div className="db-session-body">
@@ -436,8 +451,11 @@ export default function DashboardContent({
                     <span>⏰ {nextSession.start_time?.slice(0, 5)}</span>
                     {nextSession.duration_minutes && <span>⌛ {nextSession.duration_minutes} د</span>}
                   </div>
-                  {!sessionHasEnded && (
-                    <span className="db-session-badge">{timeLabel}</span>
+                  {/* الحصة هادئة عند >60 دقيقة — عداد فقط في نافذة الـ 60 دقيقة */}
+                  {!sessionHasEnded && !isLiveOrActive && diffMins != null && diffMins > 60 && (
+                    <span className="db-session-badge">
+                      📆 بعد {Math.floor(diffMins / 1440) >= 1 ? `${Math.floor(diffMins / 1440)} يوم` : `${Math.ceil(diffMins)} دقيقة`}
+                    </span>
                   )}
                 </div>
                 {attendanceArea}

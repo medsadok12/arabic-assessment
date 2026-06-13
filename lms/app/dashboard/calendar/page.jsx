@@ -74,7 +74,7 @@ export default function CalendarPage() {
     setSelected(today);
   }
 
-  const joinUrl = s => s.meet_link || `https://meet.jit.si/${s.room_name}`;
+  const joinUrl = s => s.meet_link ?? null;
   const isPast  = s => s.status === 'completed' || s.session_date < today;
 
   if (!user) return null;
@@ -198,7 +198,7 @@ export default function CalendarPage() {
                         {s.duration_minutes && <span>⏱️ {s.duration_minutes} د</span>}
                       </div>
                     </div>
-                    {!isPast(s) && (
+                    {!isPast(s) && joinUrl(s) && (
                       <a href={joinUrl(s)} target="_blank" rel="noopener noreferrer"
                         className="btn btn-primary btn-sm" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
                         انضم 🎥

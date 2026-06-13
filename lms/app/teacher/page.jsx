@@ -35,7 +35,7 @@ function dayName(iso) {
 }
 
 function joinLink(s) {
-  return s.meet_link || `https://meet.jit.si/${s.room_name}`;
+  return s.meet_link ?? null;   // Google Meet حصراً — لا Jitsi
 }
 
 function sessionMessage(s, teacherName) {
@@ -108,11 +108,13 @@ export default function TeacherPage() {
   const setInv = k => e => setInviteForm(p => ({ ...p, [k]: e.target.value }));
 
   async function startSession(s) {
-    // Mark active optimistically
+    const link = joinLink(s);
+    if (!link) {
+      alert('لم يُعثر على رابط Google Meet لهذه الحصة.\nتأكد من إعداد متغيرات Google في Vercel.');
+      return;
+    }
     setStartedIds(prev => new Set([...prev, s.id]));
-    // Open meet link immediately
-    window.open(joinLink(s), '_blank', 'noopener');
-    // Update DB status to 'active' (fire-and-forget)
+    window.open(link, '_blank', 'noopener');
     fetch('/api/teacher/sessions', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -185,6 +187,14 @@ export default function TeacherPage() {
   const today      = new Date().toISOString().slice(0, 10);
   const upcoming   = sessions.filter(s => s.status === 'scheduled' && s.session_date >= today);
   const past       = sessions.filter(s => s.status !== 'scheduled' || s.session_date < today);
+
+  // ── 30-minute teacher banner ──
+  const bannerSession  = upcoming[0] ?? null;
+  const bannerDT       = bannerSession ? new Date(`${bannerSession.session_date}T${bannerSession.start_time}`) : null;
+  const bannerDiffMs   = bannerDT ? bannerDT - now : null;
+  const bannerDiffMins = bannerDiffMs != null ? bannerDiffMs / 60000 : null;
+  const showBanner     = bannerDiffMins != null && bannerDiffMins <= 30 && bannerDiffMins > -120;
+  const bannerIsLive   = bannerDiffMins != null && bannerDiffMins <= 0;
 
   const weekStart  = (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10); })();
   const monthStart = new Date().toISOString().slice(0, 7) + '-01';
@@ -457,6 +467,54 @@ export default function TeacherPage() {
         {msg && !showModal && (
           <div className={`alert alert-${msg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom:20 }}>
             {msg.text}
+          </div>
+        )}
+
+        {/* ── 30-min pre-session banner ── */}
+        {showBanner && bannerSession && (
+          <div style={{
+            background: bannerIsLive
+              ? 'linear-gradient(135deg,#1a7c40,#15803d)'
+              : 'linear-gradient(135deg,#d97706,#b45309)',
+            borderRadius:16, padding:'16px 22px', marginBottom:20,
+            display:'flex', alignItems:'center', gap:16, flexWrap:'wrap',
+            color:'#fff', boxShadow:'0 6px 24px rgba(0,0,0,.18)',
+          }}>
+            <div style={{ fontSize:'2.2rem', flexShrink:0 }}>{bannerIsLive ? '🔴' : '⏰'}</div>
+            <div style={{ flex:1, minWidth:200 }}>
+              {bannerIsLive ? (
+                <>
+                  <div style={{ fontWeight:900, fontSize:'1.08rem', marginBottom:4 }}>
+                    الحصة تبدأ الآن! الطلاب في انتظارك 🎓
+                  </div>
+                  <div style={{ opacity:.9, fontSize:'.88rem' }}>
+                    {bannerSession.subject || 'حصة عامة'} — {bannerSession.student_name} — {bannerSession.start_time?.slice(0,5)}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontWeight:900, fontSize:'1.08rem', marginBottom:4 }}>
+                    تذكير: لديك حصة بعد {Math.ceil(bannerDiffMins)} دقيقة
+                  </div>
+                  <div style={{ opacity:.9, fontSize:'.88rem', lineHeight:1.7 }}>
+                    يرجى تجهيز العرض التقديمي المخصص وفتح الفصل في الوقت المحدد —
+                    الطلاب أجانب وغير ناطقين بالعربية
+                  </div>
+                </>
+              )}
+            </div>
+            <button
+              onClick={() => startSession(bannerSession)}
+              style={{
+                background:'#fff', border:'none', borderRadius:12,
+                padding:'11px 24px', fontWeight:900, fontSize:'.95rem',
+                cursor:'pointer', whiteSpace:'nowrap', flexShrink:0,
+                color: bannerIsLive ? '#1a7c40' : '#92400e',
+                boxShadow:'0 4px 14px rgba(0,0,0,.2)',
+                fontFamily:'inherit',
+              }}>
+              {bannerIsLive ? '▶️ ابدأ الحصة الآن' : '🎥 فتح Google Meet'}
+            </button>
           </div>
         )}
 
@@ -1084,7 +1142,7 @@ export default function TeacherPage() {
                       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                         {accepted.map(inv => {
                           const s = inv.session;
-                          const link = s?.meet_link || (s?.room_name ? `https://meet.jit.si/${s.room_name}` : null);
+                          const link = s?.meet_link ?? null;
                           return (
                             <div key={inv.id} className="sc" style={{ border:'1.5px solid #6ee7b7', background:'#f0fdf4' }}>
                               <div style={{ fontSize:'1.8rem' }}>🎥</div>

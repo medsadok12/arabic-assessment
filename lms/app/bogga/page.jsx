@@ -1308,7 +1308,7 @@ export default function BoggarAdminPage() {
             const dayName = iso => (lang === 'ar'
               ? ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']
               : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'])[new Date(iso).getDay()];
-            const joinLink = s => s.meet_link || `https://meet.jit.si/${s.room_name}`;
+            const joinLink = s => s.meet_link ?? null;
 
             return (
               <div>
@@ -1387,7 +1387,7 @@ export default function BoggarAdminPage() {
                                 {s.student_email && <div style={{ fontSize: '.79rem', color: 'var(--accent)', marginTop: 3 }}>✉️ {s.student_email}</div>}
                               </div>
                               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start', flexShrink: 0 }}>
-                                <a href={joinLink(s)} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">{lang === 'ar' ? 'ابدأ' : 'Start'} 🎥</a>
+                                {joinLink(s) && <a href={joinLink(s)} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">{lang === 'ar' ? 'ابدأ' : 'Start'} 🎥</a>}
                                 <button onClick={() => { setAdminCompleteFor(s); setAdminRecordingUrl(''); }}
                                   className="btn btn-outline btn-sm" style={{ color: '#1a7c40', borderColor: '#1a7c40' }}>✅ {lang === 'ar' ? 'أنهِ' : 'Complete'}</button>
                                 <button onClick={() => handleAdminCancel(s.id)} disabled={adminCancellingId === s.id}
