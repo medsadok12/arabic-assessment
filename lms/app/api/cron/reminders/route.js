@@ -28,7 +28,7 @@ export async function GET(req) {
   // نجلب الحصص التي تبدأ في هذه النافذة ولم يُرسل تذكيرها
   const { data: sessions, error } = await admin
     .from('sessions')
-    .select('id, student_email, student_name, teacher_name, session_date, start_time, duration_minutes, subject, meet_link, room_name, reminder_sent')
+    .select('id, student_email, student_name, teacher_name, session_date, start_time, duration_minutes, subject, meet_link, reminder_sent')
     .eq('status', 'scheduled')
     .eq('reminder_sent', false)
     .gte('session_date', from.date)
@@ -50,10 +50,13 @@ export async function GET(req) {
         startTime:       s.start_time,
         durationMinutes: s.duration_minutes,
         subject:         s.subject,
+        reminderType:    '30min',
       });
       await admin.from('sessions').update({ reminder_sent: true }).eq('id', s.id);
       sent.push(s.id);
-    } catch (_) {}
+    } catch (err) {
+      console.error(`[cron/reminders] failed for session ${s.id}:`, err?.message ?? err);
+    }
   }
 
   return NextResponse.json({ sent: sent.length, ids: sent });

@@ -106,13 +106,20 @@ export async function sendRejectionEmail({ to, candidateName }) {
 
 export async function sendSessionEmail({ to, studentName, teacherName, sessionDate, startTime, durationMinutes, subject, reminderType }) {
   const is24h    = reminderType === '24h';
-  const subtitle = is24h ? 'تذكير: حصتك غداً' : 'موعد حصتك القادمة';
+  const is30min  = reminderType === '30min';
+  const subtitle = is24h  ? 'تذكير: حصتك غداً'
+                 : is30min ? 'تذكير: حصتك بعد 30 دقيقة'
+                 : 'موعد حصتك القادمة';
   const intro    = is24h
     ? `تذكيرٌ بأن لديك حصة <strong>غداً</strong>، <strong>${studentName}</strong>. إليك التفاصيل:`
-    : `تمّ جدولة حصة جديدة لك، <strong>${studentName}</strong>. إليك التفاصيل:`;
+    : is30min
+      ? `تذكير: حصتك ستبدأ <strong>خلال 30 دقيقة</strong>، <strong>${studentName}</strong>. استعدّ!`
+      : `تمّ جدولة حصة جديدة لك، <strong>${studentName}</strong>. إليك التفاصيل:`;
   const emailSubject = is24h
     ? `⏰ تذكير: حصتك غداً مع ${teacherName} الساعة ${startTime}`
-    : `📅 حصتك مع ${teacherName} — ${sessionDate} الساعة ${startTime}`;
+    : is30min
+      ? `🔔 تذكير: حصتك بعد 30 دقيقة مع ${teacherName}`
+      : `📅 حصتك مع ${teacherName} — ${sessionDate} الساعة ${startTime}`;
 
   const html = baseHtml(`
     <div class="card">

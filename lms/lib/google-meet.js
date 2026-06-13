@@ -7,7 +7,7 @@
 //   GOOGLE_REFRESH_TOKEN     ← refresh token لحساب الأكاديمية (Workspace)
 //   GOOGLE_CALENDAR_ACCOUNT  ← بريد الأكاديمية (اختياري — الافتراضي 'primary')
 //
-// إن لم تُضَف هذه المتغيرات → ترجع الدوال null والنظام يرجع تلقائياً إلى Jitsi.
+// إن لم تُضَف هذه المتغيرات → ترجع الدوال null ويبقى meet_link فارغاً.
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const CAL_BASE  = 'https://www.googleapis.com/calendar/v3/calendars';
