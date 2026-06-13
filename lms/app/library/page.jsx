@@ -41,8 +41,8 @@ const RESOURCES = [
   },
   {
     icon: '🎮', title: 'ألعاب لغوية',
-    desc: 'ألعاب تفاعلية ممتعة لتعزيز المفردات وقواعد اللغة.',
-    tag: 'تعزيزي', link: '#', ready: false,
+    desc: 'ألعاب تفاعلية ممتعة لتعزيز المفردات وقواعد اللغة — ابدأ بلعبة صيّاد الحروف!',
+    tag: 'تعزيزي', link: '/library/games/letter-catcher', ready: true,
   },
 ];
 
