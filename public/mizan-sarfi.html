@@ -709,47 +709,6 @@ html,body{height:100%;font-family:'Cairo',sans-serif;background:#fff;overflow:hi
   </div>
 </div>
 
-<!-- ══ 11. EXERCISE 3 — TABLE ════════════════════════════════ -->
-<div class="slide th-green">
-  <div class="s-header">
-    <span class="s-icon">📊</span>
-    <span class="s-title" style="color:#fff">تدريب ٣ — زِن الكلمات من الفقرة</span>
-    <span class="s-tag">صفحة ١٢٠</span>
-  </div>
-  <div class="s-body" style="gap:14px">
-    <div class="card card-green" style="max-width:760px;text-align:center">
-      <p style="font-size:.95rem;color:#065f46;margin-bottom:6px">من النص المدروس:</p>
-      <p style="font-size:1rem;line-height:1.85;color:#1a1a2e">
-        "...تُبادر قطر <strong style="color:#dc2626">تَحْتَفِي</strong> بـ<strong style="color:#dc2626">أَصْحَاب</strong> المبادرات والإرادات لتنمية المهارات،
-        وتقدّم لهم الدعم الحيوي، حتى يكون لأصحابها دور فعّال في جعل قطر دولة في طريق
-        <strong style="color:#dc2626">تَقَدُّم</strong> اقتصادي..."
-      </p>
-    </div>
-    <table class="fill-table">
-      <thead><tr><th>الكلمة</th><th>جذر الكلمة</th><th>الوزن الصرفي</th></tr></thead>
-      <tbody>
-        <tr>
-          <td class="ar-big" style="color:#059669">تَحْتَفِي</td>
-          <td><input class="fill-input" data-ans="حفو" placeholder="اكتب الجذر..." id="f1r"/></td>
-          <td><input class="fill-input" data-ans="تفتعل" placeholder="الوزن..." id="f1w"/></td>
-        </tr>
-        <tr>
-          <td class="ar-big" style="color:#059669">أَصْحَاب</td>
-          <td><input class="fill-input" data-ans="صحب" placeholder="اكتب الجذر..." id="f2r"/></td>
-          <td><input class="fill-input" data-ans="افعال" placeholder="الوزن..." id="f2w"/></td>
-        </tr>
-        <tr>
-          <td class="ar-big" style="color:#059669">تَقَدُّم</td>
-          <td><input class="fill-input" data-ans="قدم" placeholder="اكتب الجذر..." id="f3r"/></td>
-          <td><input class="fill-input" data-ans="تفعل" placeholder="الوزن..." id="f3w"/></td>
-        </tr>
-      </tbody>
-    </table>
-    <button class="btn btn-green" onclick="checkFill()">تحقق ✓</button>
-    <div id="fill-result" class="result-msg"></div>
-  </div>
-</div>
-
 <!-- ══ 12. END ══════════════════════════════════════════════════ -->
 <div class="slide th-navy">
   <div class="s-header" style="justify-content:center;padding:24px 40px">
@@ -775,7 +734,7 @@ html,body{height:100%;font-family:'Cairo',sans-serif;background:#fff;overflow:hi
 </div><!-- /deck -->
 
 <script>
-const TOTAL=13;
+const TOTAL=12;
 let current=0;
 const slides=Array.from(document.querySelectorAll('.slide'));
 const pbar=document.getElementById('pbar');
