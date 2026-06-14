@@ -792,7 +792,7 @@ export default function TeacherPage() {
                             <button onClick={() => window.open(effectiveLink(s), '_blank', 'noopener')}
                               className="btn btn-sm"
                               style={{ background:'#1a7c40', color:'#fff', border:'none' }}>
-                              🟢 الحصة جارية — دخول البث
+                              🟢 الحصة جارية الآن — دخول البث
                             </button>
                           ) : (
                             <button onClick={() => startSession(s)}
