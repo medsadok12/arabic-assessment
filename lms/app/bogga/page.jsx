@@ -195,6 +195,8 @@ ALTER TABLE sessions ADD CONSTRAINT  valid_status CHECK (status IN ('scheduled',
 CREATE INDEX IF NOT EXISTS interviews_slot_idx ON interviews (interviewer_name, interview_date, start_time);
 CREATE INDEX IF NOT EXISTS sessions_teacher_idx ON sessions (teacher_id, session_date);
 CREATE INDEX IF NOT EXISTS sessions_student_idx ON sessions (student_email, session_date);
+-- تفعيل Realtime على sessions حتى يصل الطالب تحديث فوري عند بدء الحصة
+ALTER publication supabase_realtime ADD TABLE sessions;
 
 -- 7. جداول مساندة للحصص
 CREATE TABLE IF NOT EXISTS attendance_logs (

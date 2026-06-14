@@ -66,6 +66,7 @@ export default function DashboardContent({
   useEffect(() => {
     if (!nextSession?.id) return;
     const supabase = createClient();
+
     async function pollStatus() {
       const { data } = await supabase
         .from('sessions')
@@ -75,8 +76,25 @@ export default function DashboardContent({
       if (data?.status) setLiveStatus(data.status);
     }
     pollStatus();
-    const id = setInterval(pollStatus, 15000);
-    return () => clearInterval(id);
+    const intervalId = setInterval(pollStatus, 15000);
+
+    // Realtime — تحديث فوري لحظة يغيّر المعلم الحالة إلى active
+    const channel = supabase
+      .channel(`session-status-${nextSession.id}`)
+      .on('postgres_changes', {
+        event:  'UPDATE',
+        schema: 'public',
+        table:  'sessions',
+        filter: `id=eq.${nextSession.id}`,
+      }, (payload) => {
+        if (payload.new?.status) setLiveStatus(payload.new.status);
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(intervalId);
+      supabase.removeChannel(channel);
+    };
   }, [nextSession?.id]);
 
 
