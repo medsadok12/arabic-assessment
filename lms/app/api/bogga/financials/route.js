@@ -61,12 +61,21 @@ export async function POST(request) {
   const dateFrom = `${period}-01`;
   const lastDay = new Date(pYear, pMonth, 0).getDate(); // day 0 of next month = last day of this month
   const dateEnd  = `${period}-${String(lastDay).padStart(2, '0')}`;
-  const { data: sessions, error: sessErr } = await admin
+  const { data: rawSessions, error: sessErr } = await admin
     .from('sessions')
-    .select('id,teacher_id,teacher_name,student_name,student_email,session_date,start_time,duration_minutes,subject')
-    .eq('status', 'completed')
+    .select('id,teacher_id,teacher_name,student_name,student_email,session_date,start_time,duration_minutes,subject,status')
+    .in('status', ['completed', 'active'])
     .gte('session_date', dateFrom)
     .lte('session_date', dateEnd);
+
+  // حصة مستحقة: مكتملة رسمياً، أو active تجاوزت 45 دقيقة من وقت البداية
+  const now = new Date();
+  const sessions = (rawSessions ?? []).filter(s => {
+    if (s.status === 'completed') return true;
+    const startDT     = new Date(`${s.session_date}T${s.start_time}`);
+    const elapsedMins = (now - startDT) / 60000;
+    return elapsedMins >= 45;
+  });
 
   if (sessErr) return Response.json({ error: sessErr.message }, { status: 500 });
 
