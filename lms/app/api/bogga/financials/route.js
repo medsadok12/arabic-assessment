@@ -263,7 +263,7 @@ export async function POST(request) {
 
   const toInsert = [];
   const toUpdate = [];
-  const now = new Date().toISOString();
+  const nowISO = new Date().toISOString();
 
   for (const g of Object.values(groups)) {
     const hours = parseFloat((g.totalMinutes / 60).toFixed(2));
@@ -272,7 +272,7 @@ export async function POST(request) {
       // Invoice already exists — preserve admin-set rate/amount/status/items
       // Only refresh sessions_count and total_hours if no rate has been set yet
       if (Number(ex.rate_per_hour) === 0) {
-        toUpdate.push({ id: ex.id, total_hours: hours, sessions_count: g.sessions_count, items: g.items, updated_at: now });
+        toUpdate.push({ id: ex.id, total_hours: hours, sessions_count: g.sessions_count, items: g.items, updated_at: nowISO });
       }
       // If rate > 0: admin has edited → treat as locked snapshot, skip
     } else {
@@ -288,7 +288,7 @@ export async function POST(request) {
         amount:         0,
         status:         'draft',
         items:          g.items,
-        updated_at:     now,
+        updated_at:     nowISO,
       });
     }
   }
