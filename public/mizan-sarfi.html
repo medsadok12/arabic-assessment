@@ -735,10 +735,10 @@ html,body{height:100%;font-family:'Cairo',sans-serif;background:#fff;overflow:hi
   <div class="s-body" style="gap:16px">
     <p class="body-text" style="font-size:1rem;color:#4c1d95">ضع علامة ✓ على الجمل الصحيحة ثم اضغط "تحقق"</p>
     <ul class="chk-list" id="chklist">
-      <li class="chk-item" data-correct="true"  onclick="toggle(this)"><input type="checkbox" id="c1"/> انتبَهَ الطلابُ لشرح المعلم</li>
-      <li class="chk-item" data-correct="true"  onclick="toggle(this)"><input type="checkbox" id="c2"/> انتصَرَ الجيشُ في كل معاركه</li>
+      <li class="chk-item" data-correct="false" onclick="toggle(this)"><input type="checkbox" id="c1"/> انتبَهَ الطلابُ لشرح المعلم</li>
+      <li class="chk-item" data-correct="false" onclick="toggle(this)"><input type="checkbox" id="c2"/> انتصَرَ الجيشُ في كل معاركه</li>
       <li class="chk-item" data-correct="false" onclick="toggle(this)"><input type="checkbox" id="c3"/> تَحَمَّلَ المواطنون مسؤولياتهم</li>
-      <li class="chk-item" data-correct="true"  onclick="toggle(this)"><input type="checkbox" id="c4"/> انتقَلَ أخي إلى صفوف المرحلة الثانوية</li>
+      <li class="chk-item" data-correct="false" onclick="toggle(this)"><input type="checkbox" id="c4"/> انتقَلَ أخي إلى صفوف المرحلة الثانوية</li>
       <li class="chk-item" data-correct="true"  onclick="toggle(this)"><input type="checkbox" id="c5"/> انطلَقَ المُسعفون مُسرعين لإنقاذ المريض</li>
     </ul>
     <button class="btn btn-purple" onclick="checkChk()">تحقق من إجاباتي ✓</button>
@@ -867,10 +867,12 @@ function checkChk(){
     }
   });
   const res=document.getElementById('chk-result');
-  if(ok===4){
-    res.innerHTML='<span style="color:#059669">🎉 ممتاز! وجدتَ الجمل الأربع الصحيحة!</span>';
+  const totalCorrect=Array.from(items).filter(li=>li.dataset.correct==='true').length;
+  const wrong=Array.from(items).filter(li=>li.querySelector('input').checked && li.dataset.correct==='false').length;
+  if(ok===totalCorrect && wrong===0){
+    res.innerHTML='<span style="color:#059669">🎉 ممتاز! أصبتَ الجواب الصحيح!</span>';
   } else {
-    res.innerHTML='<span style="color:#ea580c">راجع إجاباتك — الجمل الصحيحة مُضاءة باللون الأخضر</span>';
+    res.innerHTML='<span style="color:#ea580c">راجع إجاباتك — الجملة الصحيحة مُضاءة باللون الأخضر</span>';
   }
 }
 
