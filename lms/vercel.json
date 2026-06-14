@@ -2,10 +2,5 @@
   "buildCommand": "next build",
   "devCommand": "next dev",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "crons": [
-    { "path": "/api/cron/reminders-5min", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/reminders",      "schedule": "*/30 * * * *" },
-    { "path": "/api/cron/reminders-24h",  "schedule": "*/30 * * * *" }
-  ]
+  "framework": "nextjs"
 }
