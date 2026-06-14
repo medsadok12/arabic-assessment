@@ -151,17 +151,17 @@ function SettingsPanel({ config, onSave, onClose, allWords }) {
           <button onClick={onClose} style={{ background:'#f7fafc', border:'none', borderRadius:'50%', width:34, height:34, cursor:'pointer', fontSize:'1.1rem', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
         </div>
 
-        {/* عداد الكلمات المتاحة */}
-        <div style={{ background: countAfterFilter === 0 ? '#FFF5F5' : '#F0FFF4', border:`1px solid ${countAfterFilter === 0 ? '#FED7D7' : '#C6F6D5'}`, borderRadius:12, padding:'10px 14px', marginBottom:18, fontSize:'.88rem', color: countAfterFilter === 0 ? '#C53030' : '#276749', fontWeight:700, textAlign:'center' }}>
-          {countAfterFilter === 0
-            ? '⚠️ لا توجد كلمات تطابق هذه الإعدادات'
-            : `✅ ${countAfterFilter} كلمة ستظهر في اللعبة`}
-        </div>
+        {/* عداد الكلمات المتاحة — معلومة فقط، لا تمنع الحفظ */}
+        {countAfterFilter > 0 && (
+          <div style={{ background:'#F0FFF4', border:'1px solid #C6F6D5', borderRadius:12, padding:'10px 14px', marginBottom:18, fontSize:'.88rem', color:'#276749', fontWeight:700, textAlign:'center' }}>
+            ✅ {countAfterFilter} كلمة ستظهر في اللعبة
+          </div>
+        )}
 
         {/* ─ عدد الأسئلة ─ */}
         <label style={lbStyle}>🎯 عدد الأسئلة في الجولة</label>
         <div style={rowStyle}>
-          {[5, 10, 15, 20].map(n => (
+          {[5, 10, 15, 20, 30, 50].map(n => (
             <button key={n} onClick={() => set('ROUND_SIZE', n)}
               style={chipStyle(local.ROUND_SIZE === n, BG)}>
               {n}
@@ -211,7 +211,7 @@ function SettingsPanel({ config, onSave, onClose, allWords }) {
           <div style={{ flex:1 }}>
             <div style={{ color:'#718096', fontSize:'.78rem', marginBottom:4, textAlign:'center' }}>الحد الأدنى</div>
             <div style={rowStyle}>
-              {[2,3,4].map(n => (
+              {[2,3,4,5].map(n => (
                 <button key={n} onClick={() => set('MIN_WORD_LEN', n)} style={chipStyle(local.MIN_WORD_LEN === n, BG)}>{n}</button>
               ))}
             </div>
@@ -220,7 +220,7 @@ function SettingsPanel({ config, onSave, onClose, allWords }) {
           <div style={{ flex:1 }}>
             <div style={{ color:'#718096', fontSize:'.78rem', marginBottom:4, textAlign:'center' }}>الحد الأقصى</div>
             <div style={rowStyle}>
-              {[6,8,10].map(n => (
+              {[5,6,7,8,10,12].map(n => (
                 <button key={n} onClick={() => set('MAX_WORD_LEN', n)} style={chipStyle(local.MAX_WORD_LEN === n, BG)}>{n}</button>
               ))}
             </div>
@@ -249,11 +249,10 @@ function SettingsPanel({ config, onSave, onClose, allWords }) {
         {/* أزرار الحفظ */}
         <div style={{ display:'flex', gap:10, marginTop:20 }}>
           <button onClick={() => { onSave(local); onClose(); }}
-            disabled={countAfterFilter === 0}
             style={{
-              flex:1, background: countAfterFilter > 0 ? BG : '#e2e8f0',
+              flex:1, background: BG,
               color:'#fff', border:'none', borderRadius:50, padding:'13px',
-              fontSize:'1rem', fontWeight:800, cursor: countAfterFilter > 0 ? 'pointer' : 'not-allowed',
+              fontSize:'1rem', fontWeight:800, cursor:'pointer',
             }}>
             ✅ حفظ الإعدادات
           </button>
