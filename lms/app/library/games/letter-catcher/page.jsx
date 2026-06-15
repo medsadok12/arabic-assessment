@@ -376,10 +376,10 @@ function SettingsPanel({ config, onSave, onClose, allWords, onRefresh, isAdmin }
           <button onClick={onClose} style={{ background:'#f7fafc', border:'none', borderRadius:'50%', width:34, height:34, cursor:'pointer', fontSize:'1.1rem', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
         </div>
 
-        {/* التبويبان */}
+        {/* التبويبان — تبويب الكلمات للمشرفين فقط */}
         <div style={{ display:'flex', gap:6, marginBottom:20, background:'#f7fafc', borderRadius:14, padding:4 }}>
           {tabBtn('settings', '⚙️ إعدادات اللعبة')}
-          {tabBtn('words',    `📖 الكلمات (${allWords.length})`)}
+          {isAdmin && tabBtn('words', `📖 الكلمات (${allWords.length})`)}
         </div>
 
         {/* ── تبويب الإعدادات ───────────────────────────────── */}
@@ -486,6 +486,7 @@ export default function LetterCatcherPage() {
   const [building,      setBuilding]      = useState(false);
   const [showSettings,  setShowSettings]  = useState(false);
   const [isAdmin,       setIsAdmin]       = useState(false);
+  const [canSettings,   setCanSettings]   = useState(false);
   const timer = useRef(null);
 
   // فحص دور المستخدم الحالي
@@ -494,6 +495,7 @@ export default function LetterCatcherPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       const role = user?.user_metadata?.role ?? '';
       setIsAdmin(role === 'super_admin' || role === 'admin');
+      setCanSettings(role === 'super_admin' || role === 'admin' || role === 'teacher');
     });
   }, []);
 
@@ -609,7 +611,7 @@ export default function LetterCatcherPage() {
 
   const base = { minHeight:'100vh', fontFamily:'Cairo,Tajawal,sans-serif' };
 
-  const SettingsModal = showSettings && (
+  const SettingsModal = showSettings && canSettings && (
     <SettingsPanel
       config={config}
       allWords={allWords}
@@ -636,12 +638,14 @@ export default function LetterCatcherPage() {
         <style>{css}</style>
         {SettingsModal}
         <div style={{ background:'#fff', borderRadius:24, padding:'40px 32px', maxWidth:460, width:'100%', textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,.25)' }}>
-          <div style={{ display:'flex', justifyContent:'flex-start', marginBottom:8 }}>
-            <button onClick={() => setShowSettings(true)}
-              style={{ background:'#F0F4FF', border:'none', borderRadius:12, padding:'7px 14px', cursor:'pointer', fontSize:'.85rem', fontWeight:700, color:'#667eea', display:'flex', alignItems:'center', gap:6, fontFamily:'Cairo,Tajawal,sans-serif' }}>
-              ⚙️ الإعدادات
-            </button>
-          </div>
+          {canSettings && (
+            <div style={{ display:'flex', justifyContent:'flex-start', marginBottom:8 }}>
+              <button onClick={() => setShowSettings(true)}
+                style={{ background:'#F0F4FF', border:'none', borderRadius:12, padding:'7px 14px', cursor:'pointer', fontSize:'.85rem', fontWeight:700, color:'#667eea', display:'flex', alignItems:'center', gap:6, fontFamily:'Cairo,Tajawal,sans-serif' }}>
+                ⚙️ الإعدادات
+              </button>
+            </div>
+          )}
 
           <div style={{ fontSize:'4rem', marginBottom:8 }}>🦉</div>
           <h1 style={{ fontSize:'1.7rem', fontWeight:800, color:'#2d3748', marginBottom:4 }}>صيّاد الحروف{topicLabel}!</h1>
@@ -738,10 +742,12 @@ export default function LetterCatcherPage() {
         <Link href="/library" style={{ color:'rgba(255,255,255,.8)', textDecoration:'none', fontSize:'.9rem', fontWeight:600 }}>← مكتبة</Link>
         <span style={{ color:'#fff', fontWeight:800 }}>صيّاد الحروف 🎯</span>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <button className="stg-btn" onClick={() => setShowSettings(true)} title="الإعدادات"
-            style={{ background:'rgba(255,255,255,.2)', border:'none', borderRadius:'50%', width:34, height:34, cursor:'pointer', fontSize:'1.1rem', display:'flex', alignItems:'center', justifyContent:'center', transition:'background .15s' }}>
-            ⚙️
-          </button>
+          {canSettings && (
+            <button className="stg-btn" onClick={() => setShowSettings(true)} title="الإعدادات"
+              style={{ background:'rgba(255,255,255,.2)', border:'none', borderRadius:'50%', width:34, height:34, cursor:'pointer', fontSize:'1.1rem', display:'flex', alignItems:'center', justifyContent:'center', transition:'background .15s' }}>
+              ⚙️
+            </button>
+          )}
           <span style={{ background:'rgba(255,255,255,.2)', color:'#fff', borderRadius:50, padding:'4px 14px', fontWeight:700, fontSize:'.9rem' }}>{score} ⭐</span>
         </div>
       </div>
