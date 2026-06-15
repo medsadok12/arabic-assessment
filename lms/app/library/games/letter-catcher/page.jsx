@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { createClient as createBrowserClient } from '../../../../lib/supabase';
 
 // ─── إعدادات اللعبة الافتراضية ────────────────────────────────────────
 const DEFAULT_CONFIG = {
@@ -116,7 +117,7 @@ const chipStyle = (active) => ({
 });
 
 // ─── تبويب الكلمات ─────────────────────────────────────────────────────
-function WordsTab({ allWords, onRefresh }) {
+function WordsTab({ allWords, onRefresh, isAdmin }) {
   const [word,      setWord]      = useState('');
   const [topic,     setTopic]     = useState('');
   const [gradeFrom, setGradeFrom] = useState(1);
@@ -183,6 +184,36 @@ function WordsTab({ allWords, onRefresh }) {
 
   const filtered = allWords.filter(w =>
     !search || w.word?.includes(search) || w.topic?.includes(search)
+  );
+
+  // غير مشرف — عرض رسالة مع رابط تسجيل الدخول
+  if (!isAdmin) return (
+    <div>
+      <div style={{ background:'#FFF8E7', border:'1px solid #F6E05E', borderRadius:14, padding:16, marginBottom:16, textAlign:'center' }}>
+        <div style={{ fontSize:'2rem', marginBottom:6 }}>🔐</div>
+        <div style={{ fontWeight:800, color:'#744210', marginBottom:4 }}>هذه الميزة للمشرفين فقط</div>
+        <div style={{ color:'#975A16', fontSize:'.88rem', marginBottom:12 }}>
+          سجّل دخولك كمشرف لإضافة أو حذف الكلمات
+        </div>
+        <Link href="/auth/login"
+          style={{ display:'inline-block', background:'linear-gradient(135deg,#667eea,#764ba2)', color:'#fff', borderRadius:50, padding:'9px 24px', textDecoration:'none', fontWeight:700, fontSize:'.9rem' }}>
+          تسجيل الدخول
+        </Link>
+      </div>
+
+      {/* قائمة الكلمات للقراءة فقط */}
+      <div style={{ fontWeight:700, color:'#4a5568', marginBottom:8, fontSize:'.88rem' }}>📚 الكلمات المتاحة ({allWords.length})</div>
+      <div style={{ display:'flex', flexDirection:'column', gap:5, maxHeight:220, overflowY:'auto' }}>
+        {allWords.map(w => (
+          <div key={w.id} style={{ display:'flex', alignItems:'center', gap:8, background:'#f7fafc', borderRadius:10, padding:'7px 12px', border:'1px solid #e2e8f0' }}>
+            {w.has_image && <span style={{ fontSize:'1rem' }}>🖼️</span>}
+            <span style={{ flex:1, fontWeight:700, color:'#2d3748', fontSize:'.9rem' }}>{w.word}</span>
+            {w.topic && <span style={{ background:'#EEF2FF', color:'#667eea', borderRadius:20, padding:'2px 8px', fontSize:'.72rem', fontWeight:700 }}>{w.topic}</span>}
+          </div>
+        ))}
+        {allWords.length === 0 && <div style={{ textAlign:'center', color:'#a0aec0', padding:16, fontSize:'.88rem' }}>لا توجد كلمات بعد</div>}
+      </div>
+    </div>
   );
 
   return (
@@ -305,7 +336,7 @@ function WordsTab({ allWords, onRefresh }) {
 }
 
 // ─── لوحة الإعدادات (تبويبين) ──────────────────────────────────────────
-function SettingsPanel({ config, onSave, onClose, allWords, onRefresh }) {
+function SettingsPanel({ config, onSave, onClose, allWords, onRefresh, isAdmin }) {
   const [tab,   setTab]   = useState('settings');
   const [local, setLocal] = useState({ ...config });
 
@@ -423,7 +454,7 @@ function SettingsPanel({ config, onSave, onClose, allWords, onRefresh }) {
 
         {/* ── تبويب الكلمات ─────────────────────────────────── */}
         {tab === 'words' && (
-          <WordsTab allWords={allWords} onRefresh={onRefresh} />
+          <WordsTab allWords={allWords} onRefresh={onRefresh} isAdmin={isAdmin} />
         )}
       </div>
     </div>
@@ -454,7 +485,17 @@ export default function LetterCatcherPage() {
   const [shaking,       setShaking]       = useState(false);
   const [building,      setBuilding]      = useState(false);
   const [showSettings,  setShowSettings]  = useState(false);
+  const [isAdmin,       setIsAdmin]       = useState(false);
   const timer = useRef(null);
+
+  // فحص دور المستخدم الحالي
+  useEffect(() => {
+    const supabase = createBrowserClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      const role = user?.user_metadata?.role ?? '';
+      setIsAdmin(role === 'super_admin' || role === 'admin');
+    });
+  }, []);
 
   useEffect(() => {
     try { localStorage.setItem('letterCatcherConfig', JSON.stringify(config)); } catch {}
@@ -575,6 +616,7 @@ export default function LetterCatcherPage() {
       onSave={setConfig}
       onClose={() => setShowSettings(false)}
       onRefresh={fetchWords}
+      isAdmin={isAdmin}
     />
   );
 
