@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
 /* ────────────────────────── helpers ────────────────────────── */
@@ -42,7 +42,198 @@ const FALLBACK_WORDS = [
   { id: 12, word:"دَجَاجَة",   missing_letter:"د", options:["د","ذ","ر","ز","و"], emoji:"🐔" },
 ];
 
-/* ────────────────────── sub-components ─────────────────────── */
+/* ────────────────── word manager in settings ────────────────── */
+function WordManager({ dbWords, onRefresh }) {
+  const [word,    setWord]    = useState('');
+  const [missing, setMissing] = useState('');
+  const [emoji,   setEmoji]   = useState('');
+  const [saving,  setSaving]  = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [msg,     setMsg]     = useState(null);
+
+  const handleAdd = async () => {
+    if (!word.trim() || !missing.trim()) {
+      setMsg({ ok: false, text: 'اكتب الكلمة والحرف الناقص أولاً' });
+      return;
+    }
+    setSaving(true); setMsg(null);
+    try {
+      const res = await fetch('/api/games/letter-catcher', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word: word.trim(), missing_letter: missing.trim(), emoji: emoji.trim() || null }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'فشل الحفظ');
+      setMsg({ ok: true, text: `✅ أُضيفت "${word.trim()}" بنجاح` });
+      setWord(''); setMissing(''); setEmoji('');
+      onRefresh();
+    } catch (e) {
+      setMsg({ ok: false, text: `❌ ${e.message}` });
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id, w) => {
+    if (!confirm(`حذف كلمة "${w}"؟`)) return;
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/games/letter-catcher?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      onRefresh();
+    } catch {
+      alert('فشل الحذف');
+    }
+    setDeleting(null);
+  };
+
+  return (
+    <div>
+      {/* Add form */}
+      <div style={{ background: '#f5f3ff', borderRadius: 14, padding: 16, marginBottom: 18, border: '1.5px dashed #7c3aed' }}>
+        <div style={{ fontWeight: 800, color: '#7c3aed', marginBottom: 12, fontSize: '.92rem' }}>➕ إضافة كلمة جديدة</div>
+
+        <input
+          value={word}
+          onChange={e => setWord(e.target.value)}
+          placeholder="الكلمة (مثال: قَلَم)"
+          style={S.input}
+          dir="rtl"
+        />
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <input
+            value={missing}
+            onChange={e => setMissing(e.target.value)}
+            placeholder="الحرف الناقص (مثال: ق)"
+            style={{ ...S.input, flex: 2, margin: 0 }}
+            dir="rtl"
+            maxLength={2}
+          />
+          <input
+            value={emoji}
+            onChange={e => setEmoji(e.target.value)}
+            placeholder="إيموجي 🎯"
+            style={{ ...S.input, flex: 1, margin: 0, textAlign: 'center' }}
+            maxLength={4}
+          />
+        </div>
+
+        {msg && (
+          <div style={{
+            marginTop: 10, padding: '8px 12px', borderRadius: 8, fontSize: '.85rem', fontWeight: 700,
+            background: msg.ok ? '#d4edda' : '#f8d7da',
+            color: msg.ok ? '#155724' : '#721c24',
+          }}>
+            {msg.text}
+          </div>
+        )}
+
+        <button
+          onClick={handleAdd}
+          disabled={saving || !word.trim() || !missing.trim()}
+          style={{
+            ...S.addBtn,
+            opacity: (saving || !word.trim() || !missing.trim()) ? 0.6 : 1,
+            cursor: (saving || !word.trim() || !missing.trim()) ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {saving ? 'جارٍ الحفظ…' : '💾 حفظ في قاعدة البيانات'}
+        </button>
+      </div>
+
+      {/* Word list */}
+      <div style={{ fontWeight: 700, color: '#374151', marginBottom: 8, fontSize: '.88rem' }}>
+        📚 الكلمات في قاعدة البيانات ({dbWords.length})
+      </div>
+      {dbWords.length === 0 ? (
+        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '16px 0', fontSize: '.88rem' }}>
+          لا توجد كلمات بعد — أضف أولى كلماتك أعلاه
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
+          {dbWords.map(w => (
+            <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f9fafb', borderRadius: 10, padding: '8px 12px', border: '1px solid #e5e7eb' }}>
+              {w.emoji && <span style={{ fontSize: '1.2rem' }}>{w.emoji}</span>}
+              <span style={{ flex: 1, fontWeight: 700, color: '#1f2937', fontSize: '.9rem' }}>{w.word}</span>
+              <span style={{ background: '#ede9fe', color: '#7c3aed', borderRadius: 20, padding: '2px 8px', fontSize: '.75rem', fontWeight: 700 }}>{w.missing_letter}</span>
+              <button
+                onClick={() => handleDelete(w.id, w.word)}
+                disabled={deleting === w.id}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '1.05rem', padding: '2px 4px', lineHeight: 1 }}
+                title="حذف"
+              >
+                {deleting === w.id ? '…' : '🗑️'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────── settings panel (modal) ─────────────────── */
+function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh }) {
+  const [tab, setTab] = useState('settings');
+  const tabStyle = (id) => ({
+    flex: 1, padding: '9px 0', border: 'none', borderRadius: 10, fontFamily: "'Tajawal', sans-serif",
+    fontWeight: 700, fontSize: '.88rem', cursor: 'pointer', transition: 'all .15s',
+    background: tab === id ? 'linear-gradient(135deg,#5b4fc4,#7c3aed)' : '#f3f4f6',
+    color: tab === id ? '#fff' : '#6b7280',
+  });
+
+  return (
+    <div style={S.settingsOverlay} onClick={onClose}>
+      <div style={S.settingsCard} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem' }}>⚙️ إعدادات اللعبة</h3>
+          <button onClick={onClose} style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+          <button style={tabStyle('settings')} onClick={() => setTab('settings')}>⚙️ الإعدادات</button>
+          <button style={tabStyle('words')} onClick={() => setTab('words')}>📖 الكلمات ({dbWords.length})</button>
+        </div>
+
+        {tab === 'settings' && (
+          <>
+            <label style={S.settingsLabel}>
+              عدد الأسئلة في الجولة
+              <select
+                value={cfg.questionsPerRound}
+                onChange={e => onChange({ ...cfg, questionsPerRound: Number(e.target.value) })}
+                style={S.settingsSelect}
+              >
+                {[10, 20, 30, 50].map(v => <option key={v} value={v}>{v} سؤال</option>)}
+              </select>
+            </label>
+
+            <label style={S.settingsLabel}>
+              عدد الخيارات لكل سؤال
+              <select
+                value={cfg.optionsCount}
+                onChange={e => onChange({ ...cfg, optionsCount: Number(e.target.value) })}
+                style={S.settingsSelect}
+              >
+                {[3, 4, 5].map(v => <option key={v} value={v}>{v} خيارات</option>)}
+              </select>
+            </label>
+
+            <button style={S.btnGold} onClick={onClose}>حفظ الإعدادات ✓</button>
+          </>
+        )}
+
+        {tab === 'words' && (
+          <WordManager dbWords={dbWords} onRefresh={onRefresh} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ────────────────────── image with fallback ─────────────────── */
 function WordImage({ imageUrl, emoji }) {
   const [err, setErr] = useState(false);
   if (!imageUrl || err) {
@@ -51,46 +242,11 @@ function WordImage({ imageUrl, emoji }) {
   return <img src={imageUrl} alt="" style={S.wordImg} onError={() => setErr(true)} />;
 }
 
-function SettingsPanel({ cfg, onChange, onClose, totalWords }) {
-  return (
-    <div style={S.settingsOverlay} onClick={onClose}>
-      <div style={S.settingsCard} onClick={e => e.stopPropagation()}>
-        <h3 style={{ margin: '0 0 20px', color: '#185FA5', fontSize: '1.2rem' }}>⚙️ إعدادات اللعبة</h3>
-
-        <label style={S.settingsLabel}>
-          عدد الأسئلة في الجولة
-          <select
-            value={cfg.questionsPerRound}
-            onChange={e => onChange({ ...cfg, questionsPerRound: Number(e.target.value) })}
-            style={S.settingsSelect}
-          >
-            {[10, 20, 30, 50, totalWords].filter((v, i, a) => a.indexOf(v) === i).sort((a,b)=>a-b).map(v =>
-              <option key={v} value={v}>{v} سؤال</option>
-            )}
-          </select>
-        </label>
-
-        <label style={S.settingsLabel}>
-          عدد الخيارات لكل سؤال
-          <select
-            value={cfg.optionsCount}
-            onChange={e => onChange({ ...cfg, optionsCount: Number(e.target.value) })}
-            style={S.settingsSelect}
-          >
-            {[3, 4, 5].map(v => <option key={v} value={v}>{v} خيارات</option>)}
-          </select>
-        </label>
-
-        <button style={S.btnGold} onClick={onClose}>حفظ الإعدادات ✓</button>
-      </div>
-    </div>
-  );
-}
-
 /* ═══════════════════════ MAIN COMPONENT ════════════════════════ */
 export default function LetterCatcherGame() {
-  const [phase,   setPhase]   = useState('start');  // start | loading | playing | finished
-  const [allWords, setAllWords] = useState([]);
+  const [phase,   setPhase]   = useState('start');
+  const [dbWords, setDbWords] = useState([]);        // words from DB (empty = none saved yet)
+  const [gameWords, setGameWords] = useState(FALLBACK_WORDS); // words used for play
   const [queue,   setQueue]   = useState([]);
   const [cur,     setCur]     = useState(0);
   const [score,   setScore]   = useState(0);
@@ -99,24 +255,28 @@ export default function LetterCatcherGame() {
   const [showCfg, setShowCfg] = useState(false);
   const [cfg, setCfg] = useState({ questionsPerRound: 50, optionsCount: 5 });
 
-  /* ── load words once ── */
-  const ensureWords = useCallback(async () => {
-    if (allWords.length > 0) return allWords;
+  /* ── fetch words from DB on mount and after mutations ── */
+  const loadWords = useCallback(async () => {
     try {
-      const res = await fetch('/api/games/letter-catcher');
-      if (!res.ok) throw new Error();
+      const res  = await fetch('/api/games/letter-catcher');
       const json = await res.json();
-      const loaded = (json.words || []).filter(
-        w => w.word && w.missing_letter && Array.isArray(w.options) && w.options.filter(Boolean).length >= 2
-      );
-      const result = loaded.length ? loaded : FALLBACK_WORDS;
-      setAllWords(result);
-      return result;
+      if (json.source === 'database' && json.words?.length) {
+        const valid = json.words.filter(
+          w => w.word && w.missing_letter && Array.isArray(w.options) && w.options.filter(Boolean).length >= 2
+        );
+        setDbWords(valid);
+        setGameWords(valid.length > 0 ? valid : FALLBACK_WORDS);
+      } else {
+        setDbWords([]);
+        setGameWords(FALLBACK_WORDS);
+      }
     } catch {
-      setAllWords(FALLBACK_WORDS);
-      return FALLBACK_WORDS;
+      setDbWords([]);
+      setGameWords(FALLBACK_WORDS);
     }
-  }, [allWords]);
+  }, []);
+
+  useEffect(() => { loadWords(); }, [loadWords]);
 
   /* ── build round queue ── */
   const buildQueue = useCallback((words, count, optCount) => {
@@ -131,54 +291,42 @@ export default function LetterCatcherGame() {
   }, []);
 
   /* ── start game ── */
-  const startGame = useCallback(async () => {
-    setPhase('loading');
-    const words = await ensureWords();
+  const startGame = useCallback(() => {
+    const words = gameWords;
     const count = Math.min(cfg.questionsPerRound, words.length);
     setQueue(buildQueue(words, count, cfg.optionsCount));
-    setCur(0);
-    setScore(0);
-    setChosen(null);
-    setCorrect(null);
+    setCur(0); setScore(0); setChosen(null); setCorrect(null);
     setPhase('playing');
-  }, [ensureWords, buildQueue, cfg]);
+  }, [gameWords, buildQueue, cfg]);
 
   /* ── pick option ── */
   const pick = useCallback((opt) => {
     if (chosen !== null) return;
     const w       = queue[cur];
     const isRight = stripDia(opt) === stripDia(w.missing_letter);
-    setChosen(opt);
-    setCorrect(isRight);
+    setChosen(opt); setCorrect(isRight);
     if (isRight) setScore(s => s + 1);
   }, [chosen, cur, queue]);
 
   /* ── next word ── */
   const next = useCallback(() => {
     const n = cur + 1;
-    if (n >= queue.length) {
-      setPhase('finished');
-    } else {
-      setCur(n);
-      setChosen(null);
-      setCorrect(null);
-    }
+    if (n >= queue.length) setPhase('finished');
+    else { setCur(n); setChosen(null); setCorrect(null); }
   }, [cur, queue.length]);
 
   /* ── restart ── */
   const restart = useCallback(() => {
-    setPhase('start');
-    setQueue([]);
-    setCur(0);
-    setScore(0);
-    setChosen(null);
-    setCorrect(null);
+    setPhase('start'); setQueue([]); setCur(0);
+    setScore(0); setChosen(null); setCorrect(null);
   }, []);
 
-  const totalWords = allWords.length || FALLBACK_WORDS.length;
+  const displayCount = dbWords.length;                   // real DB count
+  const playCount    = gameWords.length;                 // what game plays with
+  const totalForRound = Math.min(cfg.questionsPerRound, playCount);
 
   /* ══════════════════════ RENDER: START ══════════════════════ */
-  if (phase === 'start' || phase === 'loading') {
+  if (phase === 'start') {
     return (
       <div style={S.page}>
         {showCfg && (
@@ -186,7 +334,8 @@ export default function LetterCatcherGame() {
             cfg={cfg}
             onChange={setCfg}
             onClose={() => setShowCfg(false)}
-            totalWords={totalWords}
+            dbWords={dbWords}
+            onRefresh={loadWords}
           />
         )}
 
@@ -203,12 +352,14 @@ export default function LetterCatcherGame() {
           {/* stats row */}
           <div style={S.statsRow}>
             <div style={S.statBox}>
-              <span style={S.statNum}>{totalWords}</span>
-              <span style={S.statLbl}>كلمة متاحة</span>
+              <span style={{ ...S.statNum, color: displayCount > 0 ? '#7c3aed' : '#9ca3af' }}>
+                {displayCount}
+              </span>
+              <span style={S.statLbl}>كلمة في البنك</span>
             </div>
             <div style={S.statDiv} />
             <div style={S.statBox}>
-              <span style={S.statNum}>{Math.min(cfg.questionsPerRound, totalWords)}</span>
+              <span style={S.statNum}>{totalForRound}</span>
               <span style={S.statLbl}>سؤال</span>
             </div>
             <div style={S.statDiv} />
@@ -218,19 +369,14 @@ export default function LetterCatcherGame() {
             </div>
           </div>
 
-          {/* feature bullets */}
-          <div style={S.bullets}>
-            <div style={S.bullet}><span>📚</span><span>بنك الكلمات</span></div>
-            <div style={S.bullet}><span>🎯</span><span>كل جولة</span></div>
-            <div style={S.bullet}><span>🖥️</span><span>لكل سؤال</span></div>
-          </div>
+          {displayCount === 0 && (
+            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 14px', fontSize: '.82rem', color: '#92400e', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}>
+              🎯 تلعب بـ 12 كلمة احتياطية — أضف كلمات من الإعدادات
+            </div>
+          )}
 
-          <button
-            style={{ ...S.btnGold, opacity: phase === 'loading' ? 0.7 : 1 }}
-            disabled={phase === 'loading'}
-            onClick={startGame}
-          >
-            {phase === 'loading' ? '⏳ جارٍ التحميل…' : '🚀 ابدأ اللعبة'}
+          <button style={S.btnGold} onClick={startGame}>
+            🚀 ابدأ اللعبة
           </button>
 
           <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
@@ -290,8 +436,8 @@ export default function LetterCatcherGame() {
           <span style={{
             ...S.blank,
             background:  correct === null ? '#eef3fc' : correct ? '#d4edda' : '#f8d7da',
-            borderColor: correct === null ? '#185FA5'  : correct ? '#27ae60' : '#e74c3c',
-            color:       correct === null ? '#185FA5'  : correct ? '#27ae60' : '#e74c3c',
+            borderColor: correct === null ? '#7c3aed'  : correct ? '#27ae60' : '#e74c3c',
+            color:       correct === null ? '#7c3aed'  : correct ? '#27ae60' : '#e74c3c',
           }}>
             {correct !== null ? w.missing_letter : '؟'}
           </span>
@@ -317,9 +463,9 @@ export default function LetterCatcherGame() {
             const revealed = chosen !== null;
             let btn = { ...S.optBtn };
             if (revealed) {
-              if (isRight)  btn = { ...btn, ...S.optCorrect };
+              if (isRight)     btn = { ...btn, ...S.optCorrect };
               else if (picked) btn = { ...btn, ...S.optWrong };
-              else           btn = { ...btn, opacity: 0.32 };
+              else             btn = { ...btn, opacity: 0.32 };
             }
             return (
               <button key={`${opt}-${idx}`} style={btn} onClick={() => pick(opt)} disabled={revealed}>
@@ -396,12 +542,12 @@ const S = {
   statsRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: 0,
     background: '#f9fafb',
     borderRadius: 14,
     padding: '14px 20px',
     width: '100%',
     justifyContent: 'space-around',
+    boxSizing: 'border-box',
   },
   statBox: {
     display: 'flex',
@@ -424,23 +570,6 @@ const S = {
     height: 36,
     background: '#e5e7eb',
   },
-  bullets: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    width: '100%',
-    textAlign: 'right',
-  },
-  bullet: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    fontSize: '0.92rem',
-    color: '#4b5563',
-    background: '#f9fafb',
-    borderRadius: 10,
-    padding: '8px 14px',
-  },
   btnGold: {
     background: 'linear-gradient(135deg, #f59e0b, #f97316)',
     color: '#fff',
@@ -453,6 +582,28 @@ const S = {
     fontFamily: "'Tajawal', sans-serif",
     width: '100%',
     boxShadow: '0 4px 16px rgba(245,158,11,0.4)',
+  },
+  addBtn: {
+    marginTop: 12,
+    width: '100%',
+    background: 'linear-gradient(135deg,#5b4fc4,#7c3aed)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 10,
+    padding: '11px 0',
+    fontSize: '.9rem',
+    fontWeight: 700,
+    fontFamily: "'Tajawal', sans-serif",
+  },
+  input: {
+    width: '100%',
+    border: '1.5px solid #e5e7eb',
+    borderRadius: 10,
+    padding: '9px 12px',
+    fontSize: '1rem',
+    fontFamily: "'Tajawal', sans-serif",
+    boxSizing: 'border-box',
+    outline: 'none',
   },
   backLink: {
     color: '#9ca3af',
@@ -472,13 +623,16 @@ const S = {
   settingsCard: {
     background: '#fff',
     borderRadius: 20,
-    padding: '32px 28px',
+    padding: '24px 20px',
     width: '100%',
-    maxWidth: 380,
+    maxWidth: 420,
     display: 'flex',
     flexDirection: 'column',
-    gap: 18,
+    gap: 0,
     boxShadow: '0 16px 48px rgba(0,0,0,0.3)',
+    maxHeight: '90vh',
+    overflowY: 'auto',
+    fontFamily: "'Tajawal', sans-serif",
   },
   settingsLabel: {
     display: 'flex',
@@ -488,6 +642,7 @@ const S = {
     fontWeight: 600,
     color: '#374151',
     textAlign: 'right',
+    marginBottom: 16,
   },
   settingsSelect: {
     padding: '10px 14px',
