@@ -13,7 +13,10 @@ const DEFAULT_CONFIG = {
   MAX_WORD_LEN:  12,
 };
 
+// حروف الفقاعات (28 حرفاً أساسياً)
 const ARABIC_LETTERS = 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي';
+// حروف قابلة للإخفاء (تشمل ة ء أ إ ئ ؤ)
+const PICKABLE = 'ابتةثجحخدذرزسشصضطظعغفقكلمنهويءأإئؤ';
 
 const TOPIC_EMOJI = {
   'الحيوانات':'🐾','النباتات':'🌿','الروتين اليومي':'⏰',
@@ -30,19 +33,30 @@ function stripHarakat(t) { return (t ?? '').replace(/[ؐ-ًؚ-ٰٟ]/g, ''); }
 function pickMissing(word) {
   const stripped = stripHarakat(word);
   const avoid = new Set(['ا','و','ي','ى']);
-  const candidates = [];
+  // أولاً: حاول بدون حروف المد
+  let candidates = [];
   for (let i = 0; i < stripped.length; i++) {
-    if (!avoid.has(stripped[i]) && ARABIC_LETTERS.includes(stripped[i])) candidates.push(i);
+    if (!avoid.has(stripped[i]) && PICKABLE.includes(stripped[i])) candidates.push(i);
+  }
+  // احتياطي: إذا كانت كل الحروف ممنوعة → اختر من أي حرف في الكلمة
+  if (!candidates.length) {
+    for (let i = 0; i < stripped.length; i++) {
+      if (PICKABLE.includes(stripped[i])) candidates.push(i);
+    }
   }
   if (!candidates.length) return null;
   const idx = candidates[Math.floor(Math.random() * candidates.length)];
-  return { letter: stripped[idx], missingIdx: idx, stripped };
+  const letter = stripped[idx];
+  // إذا الحرف المختار ليس في فقاعات الاختيار → أضفه مؤقتاً للعرض
+  return { letter, missingIdx: idx, stripped };
 }
 
 function makeDistractors(correct, count) {
-  const pool = ARABIC_LETTERS.split('').filter(l => l !== correct);
+  // استخدم PICKABLE إذا الحرف الصحيح منها، وإلا ARABIC_LETTERS
+  const base = PICKABLE.includes(correct) ? PICKABLE : ARABIC_LETTERS;
+  const pool = base.split('').filter(l => l !== correct);
   const out = []; const seen = new Set();
-  while (out.length < count) {
+  while (out.length < count && pool.length > out.length) {
     const l = pool[Math.floor(Math.random() * pool.length)];
     if (!seen.has(l)) { seen.add(l); out.push(l); }
   }
@@ -540,7 +554,7 @@ export default function LetterCatcherPage() {
       base.push({ id:w.id, word:w.word, topic:w.topic, has_image:w.has_image, has_audio:w.has_audio, ...miss });
     }
     const rich = await Promise.all(base.map(async item => {
-      if (!item.has_image && !item.has_audio) return { ...item, image:null, audio:null };
+      // جلب الصورة/الصوت لكل كلمة — has_image/has_audio قد تكون undefined فنجلب دائماً
       try {
         const res = await fetch(`/api/student/lexicon/${item.id}`);
         if (!res.ok) return { ...item, image:null, audio:null };
@@ -568,13 +582,19 @@ export default function LetterCatcherPage() {
   const startGame = useCallback(async () => {
     clearTimeout(timer.current);
     setBuilding(true); setScore(0); setPhase('playing');
-    const pool = filteredWords.length > 0
-      ? (filteredWords.length >= config.ROUND_SIZE ? filteredWords : [...filteredWords,...filteredWords,...filteredWords])
-      : [];
-    const q = await buildRound(pool);
-    setBuilding(false);
-    if (!q.length) { setPhase('intro'); return; }
-    loadQ(q, 0);
+    try {
+      const pool = filteredWords.length > 0
+        ? (filteredWords.length >= config.ROUND_SIZE ? filteredWords : [...filteredWords,...filteredWords,...filteredWords])
+        : [];
+      const q = await buildRound(pool);
+      setBuilding(false);
+      if (!q.length) { setPhase('intro'); return; }
+      loadQ(q, 0);
+    } catch (err) {
+      console.error('startGame error:', err);
+      setBuilding(false);
+      setPhase('intro');
+    }
   }, [filteredWords, config.ROUND_SIZE, buildRound, loadQ]);
 
   const handleChoice = (letter, ci) => {
