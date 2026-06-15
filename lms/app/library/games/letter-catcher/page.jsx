@@ -54,21 +54,6 @@ function toContextual(letter, form) {
   }
 }
 
-/* ────────────────────── fallback word bank ──────────────────── */
-const FALLBACK_WORDS = [
-  { id:  1, word:"قَلَم",      missing_letter:"ق", options:["ق","ف","ك","ح","ع"], emoji:"✏️" },
-  { id:  2, word:"كِتَاب",     missing_letter:"ا", options:["ا","و","ي","ه","ء"], emoji:"📚" },
-  { id:  3, word:"تُفَّاحَة",  missing_letter:"ت", options:["ت","ب","ث","ن","ي"], emoji:"🍎" },
-  { id:  4, word:"بَيت",       missing_letter:"ب", options:["ب","ت","ن","م","ه"], emoji:"🏠" },
-  { id:  5, word:"شَجَرَة",    missing_letter:"ش", options:["ش","س","ص","ض","ز"], emoji:"🌳" },
-  { id:  6, word:"نَجمَة",     missing_letter:"ن", options:["ن","م","ل","ب","ر"], emoji:"⭐" },
-  { id:  7, word:"سَيَّارَة",  missing_letter:"س", options:["س","ش","ص","ز","ط"], emoji:"🚗" },
-  { id:  8, word:"طَيَّارَة",  missing_letter:"ط", options:["ط","ض","ظ","ت","ذ"], emoji:"✈️" },
-  { id:  9, word:"مَدرَسَة",   missing_letter:"م", options:["م","ن","ب","ه","و"], emoji:"🏫" },
-  { id: 10, word:"بَحر",       missing_letter:"ب", options:["ب","ت","ن","ف","ه"], emoji:"🌊" },
-  { id: 11, word:"سَمَكَة",    missing_letter:"س", options:["س","ص","ش","ز","ث"], emoji:"🐟" },
-  { id: 12, word:"دَجَاجَة",   missing_letter:"د", options:["د","ذ","ر","ز","و"], emoji:"🐔" },
-];
 
 /* ────────────────── word manager in settings ────────────────── */
 function WordManager({ dbWords, onRefresh }) {
@@ -274,7 +259,7 @@ function WordImage({ imageUrl, emoji }) {
 export default function LetterCatcherGame() {
   const [phase,   setPhase]   = useState('start');
   const [dbWords, setDbWords] = useState([]);        // words from DB (empty = none saved yet)
-  const [gameWords, setGameWords] = useState(FALLBACK_WORDS); // words used for play
+  const [gameWords, setGameWords] = useState([]);
   const [queue,   setQueue]   = useState([]);
   const [cur,     setCur]     = useState(0);
   const [score,   setScore]   = useState(0);
@@ -288,19 +273,14 @@ export default function LetterCatcherGame() {
     try {
       const res  = await fetch('/api/games/letter-catcher');
       const json = await res.json();
-      if (json.source === 'database' && json.words?.length) {
-        const valid = json.words.filter(
-          w => w.word && w.missing_letter && Array.isArray(w.options) && w.options.filter(Boolean).length >= 2
-        );
-        setDbWords(valid);
-        setGameWords(valid.length > 0 ? valid : FALLBACK_WORDS);
-      } else {
-        setDbWords([]);
-        setGameWords(FALLBACK_WORDS);
-      }
+      const valid = (json.words || []).filter(
+        w => w.word && w.missing_letter && Array.isArray(w.options) && w.options.filter(Boolean).length >= 2
+      );
+      setDbWords(valid);
+      setGameWords(valid);
     } catch {
       setDbWords([]);
-      setGameWords(FALLBACK_WORDS);
+      setGameWords([]);
     }
   }, []);
 
@@ -353,9 +333,7 @@ export default function LetterCatcherGame() {
     setScore(0); setChosen(null); setCorrect(null);
   }, []);
 
-  const displayCount = dbWords.length;                   // real DB count
-  const playCount    = gameWords.length;                 // what game plays with
-  const totalForRound = Math.min(cfg.questionsPerRound, playCount);
+  const totalForRound = Math.min(cfg.questionsPerRound, gameWords.length);
 
   /* ══════════════════════ RENDER: START ══════════════════════ */
   if (phase === 'start') {
@@ -381,35 +359,46 @@ export default function LetterCatcherGame() {
             استمع للكلمة، انظر للصورة، ثم اختر الحرف الصحيح!
           </p>
 
-          {/* stats row */}
-          <div style={S.statsRow}>
-            <div style={S.statBox}>
-              <span style={{ ...S.statNum, color: displayCount > 0 ? '#7c3aed' : '#9ca3af' }}>
-                {displayCount}
-              </span>
-              <span style={S.statLbl}>كلمة في البنك</span>
-            </div>
-            <div style={S.statDiv} />
-            <div style={S.statBox}>
-              <span style={S.statNum}>{totalForRound}</span>
-              <span style={S.statLbl}>سؤال</span>
-            </div>
-            <div style={S.statDiv} />
-            <div style={S.statBox}>
-              <span style={S.statNum}>{cfg.optionsCount}</span>
-              <span style={S.statLbl}>خيارات</span>
-            </div>
-          </div>
+          {gameWords.length > 0 ? (
+            <>
+              {/* stats row */}
+              <div style={S.statsRow}>
+                <div style={S.statBox}>
+                  <span style={S.statNum}>{gameWords.length}</span>
+                  <span style={S.statLbl}>كلمة في البنك</span>
+                </div>
+                <div style={S.statDiv} />
+                <div style={S.statBox}>
+                  <span style={S.statNum}>{totalForRound}</span>
+                  <span style={S.statLbl}>سؤال</span>
+                </div>
+                <div style={S.statDiv} />
+                <div style={S.statBox}>
+                  <span style={S.statNum}>{cfg.optionsCount}</span>
+                  <span style={S.statLbl}>خيارات</span>
+                </div>
+              </div>
 
-          {displayCount === 0 && (
-            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 14px', fontSize: '.82rem', color: '#92400e', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}>
-              🎯 تلعب بـ 12 كلمة احتياطية — أضف كلمات من الإعدادات
+              <button style={S.btnGold} onClick={startGame}>
+                🚀 ابدأ اللعبة
+              </button>
+            </>
+          ) : (
+            /* ── Empty state ── */
+            <div style={S.emptyState}>
+              <div style={{ fontSize: '3rem' }}>📭</div>
+              <div style={{ fontWeight: 800, color: '#374151', fontSize: '1.05rem' }}>
+                بنك الكلمات فارغ
+              </div>
+              <p style={{ color: '#6b7280', fontSize: '.9rem', lineHeight: 1.8, margin: 0, textAlign: 'center' }}>
+                لم يتم إضافة أي كلمات بعد.<br />
+                يرجى التواصل مع المعلم لإضافة كلمات اللعبة.
+              </p>
+              <button style={S.btnOutline} onClick={() => setShowCfg(true)}>
+                ⚙️ إضافة كلمات (للمعلم)
+              </button>
             </div>
           )}
-
-          <button style={S.btnGold} onClick={startGame}>
-            🚀 ابدأ اللعبة
-          </button>
 
           <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
         </div>
@@ -601,6 +590,30 @@ const S = {
     width: 1,
     height: 36,
     background: '#e5e7eb',
+  },
+  emptyState: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 12,
+    background: '#f9fafb',
+    border: '2px dashed #d1d5db',
+    borderRadius: 16,
+    padding: '28px 20px',
+    width: '100%',
+    boxSizing: 'border-box',
+  },
+  btnOutline: {
+    background: 'transparent',
+    color: '#7c3aed',
+    border: '2px solid #7c3aed',
+    borderRadius: 12,
+    padding: '10px 24px',
+    fontSize: '.92rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: "'Tajawal', sans-serif",
+    marginTop: 4,
   },
   btnGold: {
     background: 'linear-gradient(135deg, #f59e0b, #f97316)',

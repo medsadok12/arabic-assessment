@@ -5,16 +5,6 @@ import Link from 'next/link';
 
 const DIACRITICS = /[ً-ْٰ]/g;
 
-const FALLBACK_WORDS = [
-  { id: 1, word: "قَلَم",     missing_letter: "ق", options: ["ق", "ف", "ك"], image_url: null, emoji: "✏️" },
-  { id: 2, word: "كِتَاب",    missing_letter: "ا", options: ["ا", "و", "ي"], image_url: null, emoji: "📚" },
-  { id: 3, word: "تُفَّاحَة", missing_letter: "ت", options: ["ت", "ب", "ث"], image_url: null, emoji: "🍎" },
-  { id: 4, word: "بَيت",      missing_letter: "ب", options: ["ب", "ت", "ن"], image_url: null, emoji: "🏠" },
-  { id: 5, word: "شَجَرَة",   missing_letter: "ش", options: ["ش", "س", "ص"], image_url: null, emoji: "🌳" },
-  { id: 6, word: "نَجمَة",    missing_letter: "ن", options: ["ن", "م", "ل"], image_url: null, emoji: "⭐" },
-  { id: 7, word: "سَيَّارَة", missing_letter: "س", options: ["س", "ش", "ص"], image_url: null, emoji: "🚗" },
-  { id: 8, word: "طَيَّارَة", missing_letter: "ط", options: ["ط", "ض", "ظ"], image_url: null, emoji: "✈️" },
-];
 
 function splitWord(word, missingLetter) {
   const base = missingLetter.replace(DIACRITICS, '');
@@ -49,9 +39,9 @@ export default function LetterCatcherGame() {
       const res = await fetch('/api/games/letter-catcher');
       if (!res.ok) throw new Error();
       const json = await res.json();
-      setWords(json.words?.length ? json.words : FALLBACK_WORDS);
+      setWords(json.words || []);
     } catch {
-      setWords(FALLBACK_WORDS);
+      setWords([]);
     }
     setCur(0);
     setScore(0);

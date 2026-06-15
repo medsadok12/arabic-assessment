@@ -1,16 +1,5 @@
 import { NextResponse } from 'next/server';
 
-const FALLBACK_WORDS = [
-  { id: 1, word: "قَلَم",     missing_letter: "ق", options: ["ق", "ف", "ك", "ح", "ع"], image_url: null, emoji: "✏️" },
-  { id: 2, word: "كِتَاب",    missing_letter: "ا", options: ["ا", "و", "ي", "ه", "ء"], image_url: null, emoji: "📚" },
-  { id: 3, word: "تُفَّاحَة", missing_letter: "ت", options: ["ت", "ب", "ث", "ن", "ي"], image_url: null, emoji: "🍎" },
-  { id: 4, word: "بَيت",      missing_letter: "ب", options: ["ب", "ت", "ن", "م", "ه"], image_url: null, emoji: "🏠" },
-  { id: 5, word: "شَجَرَة",   missing_letter: "ش", options: ["ش", "س", "ص", "ض", "ز"], image_url: null, emoji: "🌳" },
-  { id: 6, word: "نَجمَة",    missing_letter: "ن", options: ["ن", "م", "ل", "ب", "ر"], image_url: null, emoji: "⭐" },
-  { id: 7, word: "سَيَّارَة", missing_letter: "س", options: ["س", "ش", "ص", "ز", "ط"], image_url: null, emoji: "🚗" },
-  { id: 8, word: "طَيَّارَة", missing_letter: "ط", options: ["ط", "ض", "ظ", "ت", "ذ"], image_url: null, emoji: "✈️" },
-];
-
 const ARABIC_LETTERS = 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي';
 
 function buildOptions(correctLetter, total = 5) {
@@ -39,7 +28,7 @@ export async function GET() {
       .order('id');
 
     if (error || !data || data.length === 0) {
-      return NextResponse.json({ words: FALLBACK_WORDS, source: 'fallback' });
+      return NextResponse.json({ words: [], source: 'empty' });
     }
 
     const valid = data.filter(
@@ -47,12 +36,12 @@ export async function GET() {
     );
 
     if (valid.length === 0) {
-      return NextResponse.json({ words: FALLBACK_WORDS, source: 'fallback' });
+      return NextResponse.json({ words: [], source: 'empty' });
     }
 
     return NextResponse.json({ words: valid, source: 'database' });
   } catch {
-    return NextResponse.json({ words: FALLBACK_WORDS, source: 'fallback' });
+    return NextResponse.json({ words: [], source: 'empty' });
   }
 }
 
