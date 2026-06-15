@@ -27,18 +27,33 @@ const TOPIC_EMOJI = {
 const BUBBLE_COLORS = ['#FF6B6B','#4ECDC4','#FFE66D','#A8E6CF','#DDA0DD','#87CEEB','#FFA07A','#98D8C8'];
 const BG = 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)';
 
+// ─── بنك احتياطي يضمن تشغيل اللعبة فوراً إذا فشل API ─────────────────
+const FALLBACK_PREBUILT = [
+  { id:'fb1',  word:'قلم',    stripped:'قلم',     missingIdx:0, letter:'ق', topic:'أدوات',    image:null, audio:null },
+  { id:'fb2',  word:'بيت',    stripped:'بيت',     missingIdx:0, letter:'ب', topic:'أماكن',    image:null, audio:null },
+  { id:'fb3',  word:'شمس',    stripped:'شمس',     missingIdx:0, letter:'ش', topic:'طبيعة',    image:null, audio:null },
+  { id:'fb4',  word:'كتاب',   stripped:'كتاب',    missingIdx:0, letter:'ك', topic:'مدرسة',    image:null, audio:null },
+  { id:'fb5',  word:'سمكة',   stripped:'سمكة',    missingIdx:0, letter:'س', topic:'حيوانات',  image:null, audio:null },
+  { id:'fb6',  word:'مدرسة',  stripped:'مدرسة',   missingIdx:0, letter:'م', topic:'مدرسة',    image:null, audio:null },
+  { id:'fb7',  word:'سيارة',  stripped:'سيارة',   missingIdx:0, letter:'س', topic:'مواصلات',  image:null, audio:null },
+  { id:'fb8',  word:'نجمة',   stripped:'نجمة',    missingIdx:0, letter:'ن', topic:'طبيعة',    image:null, audio:null },
+  { id:'fb9',  word:'طائر',   stripped:'طائر',    missingIdx:0, letter:'ط', topic:'حيوانات',  image:null, audio:null },
+  { id:'fb10', word:'فيل',    stripped:'فيل',     missingIdx:0, letter:'ف', topic:'حيوانات',  image:null, audio:null },
+  { id:'fb11', word:'رياح',   stripped:'رياح',    missingIdx:0, letter:'ر', topic:'طبيعة',    image:null, audio:null },
+  { id:'fb12', word:'جبل',    stripped:'جبل',     missingIdx:0, letter:'ج', topic:'طبيعة',    image:null, audio:null },
+];
+
 // ─── دوال مساعدة ──────────────────────────────────────────────────────
 function stripHarakat(t) { return (t ?? '').replace(/[ؐ-ًؚ-ٰٟ]/g, ''); }
 
 function pickMissing(word) {
   const stripped = stripHarakat(word);
+  if (!stripped) return null;
   const avoid = new Set(['ا','و','ي','ى']);
-  // أولاً: حاول بدون حروف المد
   let candidates = [];
   for (let i = 0; i < stripped.length; i++) {
     if (!avoid.has(stripped[i]) && PICKABLE.includes(stripped[i])) candidates.push(i);
   }
-  // احتياطي: إذا كانت كل الحروف ممنوعة → اختر من أي حرف في الكلمة
   if (!candidates.length) {
     for (let i = 0; i < stripped.length; i++) {
       if (PICKABLE.includes(stripped[i])) candidates.push(i);
@@ -47,12 +62,10 @@ function pickMissing(word) {
   if (!candidates.length) return null;
   const idx = candidates[Math.floor(Math.random() * candidates.length)];
   const letter = stripped[idx];
-  // إذا الحرف المختار ليس في فقاعات الاختيار → أضفه مؤقتاً للعرض
   return { letter, missingIdx: idx, stripped };
 }
 
 function makeDistractors(correct, count) {
-  // استخدم PICKABLE إذا الحرف الصحيح منها، وإلا ARABIC_LETTERS
   const base = PICKABLE.includes(correct) ? PICKABLE : ARABIC_LETTERS;
   const pool = base.split('').filter(l => l !== correct);
   const out = []; const seen = new Set();
@@ -200,22 +213,17 @@ function WordsTab({ allWords, onRefresh, isAdmin }) {
     !search || w.word?.includes(search) || w.topic?.includes(search)
   );
 
-  // غير مشرف — عرض رسالة مع رابط تسجيل الدخول
   if (!isAdmin) return (
     <div>
       <div style={{ background:'#FFF8E7', border:'1px solid #F6E05E', borderRadius:14, padding:16, marginBottom:16, textAlign:'center' }}>
         <div style={{ fontSize:'2rem', marginBottom:6 }}>🔐</div>
         <div style={{ fontWeight:800, color:'#744210', marginBottom:4 }}>هذه الميزة للمشرفين فقط</div>
-        <div style={{ color:'#975A16', fontSize:'.88rem', marginBottom:12 }}>
-          سجّل دخولك كمشرف لإضافة أو حذف الكلمات
-        </div>
+        <div style={{ color:'#975A16', fontSize:'.88rem', marginBottom:12 }}>سجّل دخولك كمشرف لإضافة أو حذف الكلمات</div>
         <Link href="/auth/login"
           style={{ display:'inline-block', background:'linear-gradient(135deg,#667eea,#764ba2)', color:'#fff', borderRadius:50, padding:'9px 24px', textDecoration:'none', fontWeight:700, fontSize:'.9rem' }}>
           تسجيل الدخول
         </Link>
       </div>
-
-      {/* قائمة الكلمات للقراءة فقط */}
       <div style={{ fontWeight:700, color:'#4a5568', marginBottom:8, fontSize:'.88rem' }}>📚 الكلمات المتاحة ({allWords.length})</div>
       <div style={{ display:'flex', flexDirection:'column', gap:5, maxHeight:220, overflowY:'auto' }}>
         {allWords.map(w => (
@@ -232,18 +240,13 @@ function WordsTab({ allWords, onRefresh, isAdmin }) {
 
   return (
     <div>
-      {/* ── نموذج إضافة كلمة ─────────────────────────────── */}
       <div style={{ background:'#F7F9FF', border:'1.5px dashed #667eea', borderRadius:16, padding:16, marginBottom:18 }}>
         <div style={{ fontWeight:800, color:'#667eea', marginBottom:12, fontSize:'.95rem' }}>➕ إضافة كلمة جديدة</div>
-
-        {/* الكلمة */}
         <label style={lbStyle}>الكلمة *</label>
         <input value={word} onChange={e => setWord(e.target.value)}
           placeholder="اكتب الكلمة بالعربية..."
           style={{ width:'100%', border:'1.5px solid #e2e8f0', borderRadius:10, padding:'9px 12px', fontSize:'1rem', fontFamily:'Cairo,Tajawal,sans-serif', direction:'rtl', marginBottom:12, boxSizing:'border-box' }}
         />
-
-        {/* الموضوع */}
         <label style={lbStyle}>الموضوع (اختياري)</label>
         <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
           {TOPICS.map(t => (
@@ -253,8 +256,6 @@ function WordsTab({ allWords, onRefresh, isAdmin }) {
             </button>
           ))}
         </div>
-
-        {/* المستوى الدراسي */}
         <div style={{ display:'flex', gap:16, marginBottom:12 }}>
           <div style={{ flex:1 }}>
             <label style={lbStyle}>من الصف</label>
@@ -271,8 +272,6 @@ function WordsTab({ allWords, onRefresh, isAdmin }) {
             </select>
           </div>
         </div>
-
-        {/* صورة */}
         <label style={lbStyle}>صورة للكلمة (اختياري)</label>
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
           {imgPrev && (
@@ -285,14 +284,10 @@ function WordsTab({ allWords, onRefresh, isAdmin }) {
           </button>
           {imgPrev && (
             <button onClick={() => { setImgFile(null); setImgPrev(null); if(fileRef.current) fileRef.current.value=''; }}
-              style={{ background:'#FFF5F5', border:'none', borderRadius:10, padding:'8px 12px', cursor:'pointer', color:'#C53030', fontWeight:700 }}>
-              ✕
-            </button>
+              style={{ background:'#FFF5F5', border:'none', borderRadius:10, padding:'8px 12px', cursor:'pointer', color:'#C53030', fontWeight:700 }}>✕</button>
           )}
           <input ref={fileRef} type="file" accept="image/*" onChange={handleImg} style={{ display:'none' }} />
         </div>
-
-        {/* رسالة النتيجة */}
         {msg && (
           <div style={{ borderRadius:10, padding:'8px 12px', marginBottom:10, fontSize:'.85rem', fontWeight:700,
             background: msg.ok ? '#F0FFF4' : '#FFF5F5',
@@ -301,29 +296,22 @@ function WordsTab({ allWords, onRefresh, isAdmin }) {
             {msg.text}
           </div>
         )}
-
         <button onClick={addWord} disabled={saving || !word.trim()}
           style={{ width:'100%', background: (saving || !word.trim()) ? '#e2e8f0' : BG, color:'#fff', border:'none', borderRadius:50, padding:'12px', fontSize:'.95rem', fontWeight:800, cursor: (saving || !word.trim()) ? 'not-allowed' : 'pointer', fontFamily:'Cairo,Tajawal,sans-serif' }}>
           {saving ? 'جاري الحفظ…' : '✅ إضافة الكلمة'}
         </button>
       </div>
-
-      {/* ── قائمة الكلمات ────────────────────────────────── */}
       <div style={{ fontWeight:800, color:'#4a5568', marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <span>📚 الكلمات ({allWords.length})</span>
       </div>
-
       {allWords.length > 5 && (
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="ابحث في الكلمات..."
           style={{ width:'100%', border:'1.5px solid #e2e8f0', borderRadius:10, padding:'8px 12px', fontSize:'.88rem', fontFamily:'Cairo,Tajawal,sans-serif', direction:'rtl', marginBottom:10, boxSizing:'border-box' }}
         />
       )}
-
       {allWords.length === 0 ? (
-        <div style={{ textAlign:'center', color:'#a0aec0', padding:'20px 0', fontSize:'.9rem' }}>
-          لا توجد كلمات بعد — أضف أولى كلماتك أعلاه!
-        </div>
+        <div style={{ textAlign:'center', color:'#a0aec0', padding:'20px 0', fontSize:'.9rem' }}>لا توجد كلمات بعد — أضف أولى كلماتك أعلاه!</div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:260, overflowY:'auto' }}>
           {filtered.map(w => (
@@ -331,9 +319,7 @@ function WordsTab({ allWords, onRefresh, isAdmin }) {
               {w.has_image && <span title="لها صورة" style={{ fontSize:'1.1rem' }}>🖼️</span>}
               <span style={{ flex:1, fontWeight:700, color:'#2d3748', fontSize:'.92rem' }}>{w.word}</span>
               {w.topic && (
-                <span style={{ background:'#EEF2FF', color:'#667eea', borderRadius:20, padding:'2px 8px', fontSize:'.75rem', fontWeight:700 }}>
-                  {w.topic}
-                </span>
+                <span style={{ background:'#EEF2FF', color:'#667eea', borderRadius:20, padding:'2px 8px', fontSize:'.75rem', fontWeight:700 }}>{w.topic}</span>
               )}
               <span style={{ color:'#a0aec0', fontSize:'.75rem' }}>ص{w.grade_from}-{w.grade_to}</span>
               <button onClick={() => deleteWord(w.id, w.word)} disabled={deleting === w.id}
@@ -383,20 +369,14 @@ function SettingsPanel({ config, onSave, onClose, allWords, onRefresh, isAdmin }
       onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:24, padding:'24px 20px', maxWidth:500, width:'100%', boxShadow:'0 24px 64px rgba(0,0,0,.35)', maxHeight:'92vh', overflowY:'auto', fontFamily:'Cairo,Tajawal,sans-serif' }}
         onClick={e => e.stopPropagation()}>
-
-        {/* رأس اللوحة */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
           <h2 style={{ margin:0, fontSize:'1.2rem', fontWeight:800, color:'#2d3748' }}>⚙️ إعدادات اللعبة</h2>
           <button onClick={onClose} style={{ background:'#f7fafc', border:'none', borderRadius:'50%', width:34, height:34, cursor:'pointer', fontSize:'1.1rem', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
         </div>
-
-        {/* التبويبان — تبويب الكلمات للمشرفين فقط */}
         <div style={{ display:'flex', gap:6, marginBottom:20, background:'#f7fafc', borderRadius:14, padding:4 }}>
           {tabBtn('settings', '⚙️ إعدادات اللعبة')}
           {isAdmin && tabBtn('words', `📖 الكلمات (${allWords.length})`)}
         </div>
-
-        {/* ── تبويب الإعدادات ───────────────────────────────── */}
         {tab === 'settings' && (
           <>
             {countAfterFilter > 0 && (
@@ -404,14 +384,12 @@ function SettingsPanel({ config, onSave, onClose, allWords, onRefresh, isAdmin }
                 ✅ {countAfterFilter} كلمة ستظهر في اللعبة
               </div>
             )}
-
             <label style={lbStyle}>🎯 عدد الأسئلة في الجولة</label>
             <div style={rowStyle}>
               {[5, 10, 15, 20, 30, 50].map(n => (
                 <button key={n} onClick={() => set('ROUND_SIZE', n)} style={chipStyle(local.ROUND_SIZE === n)}>{n}</button>
               ))}
             </div>
-
             <label style={lbStyle}>🔤 عدد خيارات الحرف</label>
             <div style={rowStyle}>
               {[[3,'سهل'],[4,''],[5,''],[6,'صعب']].map(([n,hint]) => (
@@ -420,7 +398,6 @@ function SettingsPanel({ config, onSave, onClose, allWords, onRefresh, isAdmin }
                 </button>
               ))}
             </div>
-
             <label style={lbStyle}>📂 الموضوع</label>
             <div style={{ ...rowStyle, flexWrap:'wrap' }}>
               <button onClick={() => set('TOPIC_FILTER', null)} style={chipStyle(local.TOPIC_FILTER === null)}>الكل</button>
@@ -431,7 +408,6 @@ function SettingsPanel({ config, onSave, onClose, allWords, onRefresh, isAdmin }
               ))}
               {topics.length === 0 && <span style={{ color:'#a0aec0', fontSize:'.82rem' }}>لا توجد مواضيع بعد — أضف كلمات من تبويب الكلمات</span>}
             </div>
-
             <label style={lbStyle}>🎓 المستوى الدراسي</label>
             <div style={rowStyle}>
               <button onClick={() => set('GRADE_FILTER', null)} style={chipStyle(local.GRADE_FILTER === null)}>الكل</button>
@@ -439,7 +415,6 @@ function SettingsPanel({ config, onSave, onClose, allWords, onRefresh, isAdmin }
                 <button key={g} onClick={() => set('GRADE_FILTER', g)} style={chipStyle(local.GRADE_FILTER === g)}>{g}</button>
               ))}
             </div>
-
             <label style={lbStyle}>📏 طول الكلمة (عدد الحروف)</label>
             <div style={{ display:'flex', gap:12, alignItems:'flex-start', marginBottom:20 }}>
               <div style={{ flex:1 }}>
@@ -452,7 +427,6 @@ function SettingsPanel({ config, onSave, onClose, allWords, onRefresh, isAdmin }
                 <div style={rowStyle}>{[5,6,7,8,10,12].map(n => <button key={n} onClick={() => set('MAX_WORD_LEN', n)} style={chipStyle(local.MAX_WORD_LEN === n)}>{n}</button>)}</div>
               </div>
             </div>
-
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={() => { onSave(local); onClose(); }}
                 style={{ flex:1, background:BG, color:'#fff', border:'none', borderRadius:50, padding:'13px', fontSize:'1rem', fontWeight:800, cursor:'pointer', fontFamily:'Cairo,Tajawal,sans-serif' }}>
@@ -465,8 +439,6 @@ function SettingsPanel({ config, onSave, onClose, allWords, onRefresh, isAdmin }
             </div>
           </>
         )}
-
-        {/* ── تبويب الكلمات ─────────────────────────────────── */}
         {tab === 'words' && (
           <WordsTab allWords={allWords} onRefresh={onRefresh} isAdmin={isAdmin} />
         )}
@@ -501,9 +473,12 @@ export default function LetterCatcherPage() {
   const [showSettings,  setShowSettings]  = useState(false);
   const [isAdmin,       setIsAdmin]       = useState(false);
   const [canSettings,   setCanSettings]   = useState(false);
-  const timer = useRef(null);
+  const timer     = useRef(null);
+  // ref يضمن أن startGame دائماً يرى أحدث قيمة لـ filteredWords
+  const filteredWordsRef = useRef([]);
 
-  // فحص دور المستخدم الحالي
+  useEffect(() => { filteredWordsRef.current = filteredWords; }, [filteredWords]);
+
   useEffect(() => {
     const supabase = createBrowserClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -517,7 +492,6 @@ export default function LetterCatcherPage() {
     try { localStorage.setItem('letterCatcherConfig', JSON.stringify(config)); } catch {}
   }, [config]);
 
-  // ── جلب الكلمات (قابل للاستدعاء من الإعدادات) ────────────────────────
   const fetchWords = useCallback(() => {
     fetch('/api/student/lexicon')
       .then(r => r.json())
@@ -527,7 +501,6 @@ export default function LetterCatcherPage() {
 
   useEffect(() => { fetchWords(); }, [fetchWords]);
 
-  // ── تحديث قائمة الكلمات المفلترة (fallback تلقائي لكل الكلمات إذا حجب الفلتر الكل) ──
   useEffect(() => {
     const pool = allWords.filter(w => {
       const s = stripHarakat(w.word ?? '');
@@ -540,21 +513,19 @@ export default function LetterCatcherPage() {
       }
       return true;
     });
-    // إذا حجب الفلتر كل الكلمات → استخدم كل البنك تلقائياً
     setFilteredWords(pool.length > 0 ? pool : allWords);
   }, [allWords, config]);
 
-  const buildRound = useCallback(async (words) => {
+  const buildRound = useCallback(async (words, roundSize) => {
     const shuffled = [...words].sort(() => Math.random() - 0.5);
     const base = [];
     for (const w of shuffled) {
-      if (base.length >= config.ROUND_SIZE) break;
+      if (base.length >= roundSize) break;
       const miss = pickMissing(w.word);
       if (!miss) continue;
       base.push({ id:w.id, word:w.word, topic:w.topic, has_image:w.has_image, has_audio:w.has_audio, ...miss });
     }
     const rich = await Promise.all(base.map(async item => {
-      // جلب الصورة/الصوت لكل كلمة — has_image/has_audio قد تكون undefined فنجلب دائماً
       try {
         const res = await fetch(`/api/student/lexicon/${item.id}`);
         if (!res.ok) return { ...item, image:null, audio:null };
@@ -563,7 +534,7 @@ export default function LetterCatcherPage() {
       } catch { return { ...item, image:null, audio:null }; }
     }));
     return rich;
-  }, [config.ROUND_SIZE]);
+  }, []);
 
   const playItem = useCallback((item) => {
     if (item?.audio) playB64(item.audio);
@@ -583,19 +554,40 @@ export default function LetterCatcherPage() {
     clearTimeout(timer.current);
     setBuilding(true); setScore(0); setPhase('playing');
     try {
-      const pool = filteredWords.length > 0
-        ? (filteredWords.length >= config.ROUND_SIZE ? filteredWords : [...filteredWords,...filteredWords,...filteredWords])
-        : [];
-      const q = await buildRound(pool);
+      // استخدم الـ ref لضمان أحدث قيمة بغض النظر عن الـ closure
+      const currentFiltered = filteredWordsRef.current;
+      const roundSize = config.ROUND_SIZE;
+
+      let q = [];
+      if (currentFiltered.length > 0) {
+        const pool = currentFiltered.length >= roundSize
+          ? currentFiltered
+          : [...currentFiltered, ...currentFiltered, ...currentFiltered];
+        q = await buildRound(pool, roundSize);
+      }
+
       setBuilding(false);
-      if (!q.length) { setPhase('intro'); return; }
-      loadQ(q, 0);
+
+      if (q.length > 0) {
+        // اللعبة من البنك
+        loadQ(q, 0);
+      } else {
+        // fallback: ابدأ اللعبة فوراً بكلمات مدمجة حتى لو لم يكن في البنك شيء
+        const fb = shuffle(FALLBACK_PREBUILT).slice(0, roundSize);
+        const fbWithChoices = fb.map(item => ({
+          ...item,
+          // choices تُحسب في loadQ عبر item.letter
+        }));
+        loadQ(fbWithChoices, 0);
+      }
     } catch (err) {
       console.error('startGame error:', err);
       setBuilding(false);
-      setPhase('intro');
+      // حتى في حالة الخطأ: ابدأ بالبيانات الاحتياطية
+      const fb = shuffle(FALLBACK_PREBUILT).slice(0, config.ROUND_SIZE);
+      loadQ(fb, 0);
     }
-  }, [filteredWords, config.ROUND_SIZE, buildRound, loadQ]);
+  }, [buildRound, loadQ, config.ROUND_SIZE, config.CHOICES_COUNT]);
 
   const handleChoice = (letter, ci) => {
     if (answered || !current) return;
@@ -643,7 +635,6 @@ export default function LetterCatcherPage() {
     />
   );
 
-  // ── شاشة التحميل ──────────────────────────────────────────────────────
   if (phase === 'loading') return (
     <div style={{ ...base, background:BG, display:'flex', alignItems:'center', justifyContent:'center' }}>
       <style>{css}</style>
@@ -651,7 +642,6 @@ export default function LetterCatcherPage() {
     </div>
   );
 
-  // ── شاشة المقدمة ──────────────────────────────────────────────────────
   if (phase === 'intro') {
     const topicLabel = config.TOPIC_FILTER ? ` (${config.TOPIC_FILTER})` : '';
     return (
@@ -667,19 +657,17 @@ export default function LetterCatcherPage() {
               </button>
             </div>
           )}
-
           <div style={{ fontSize:'4rem', marginBottom:8 }}>🦉</div>
           <h1 style={{ fontSize:'1.7rem', fontWeight:800, color:'#2d3748', marginBottom:4 }}>صيّاد الحروف{topicLabel}!</h1>
           <p style={{ color:'#718096', lineHeight:1.9, marginBottom:20 }}>
             سأريك صورة وكلمة فيها حرف ناقص.<br />
             استمع للكلمة، انظر للصورة، ثم اختر الحرف الصحيح!
           </p>
-
           {canSettings && (
             <div style={{ background:'#F0F4FF', borderRadius:16, padding:'12px 20px', marginBottom:20, fontSize:'.9rem', color:'#4a5568', textAlign:'right' }}>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                <span style={{ color: allWords.length === 0 ? '#E53E3E' : '#667eea', fontWeight:700 }}>
-                  {allWords.length === 0 ? 'لا توجد كلمات في البنك بعد' : `${filteredWords.length} كلمة متاحة`}
+                <span style={{ color: filteredWords.length === 0 ? '#E53E3E' : '#667eea', fontWeight:700 }}>
+                  {allWords.length === 0 ? 'لا توجد كلمات في البنك — سيبدأ بكلمات تجريبية' : `${filteredWords.length} كلمة متاحة`}
                 </span>
                 <span>📚 بنك الكلمات</span>
               </div>
@@ -693,19 +681,10 @@ export default function LetterCatcherPage() {
               </div>
             </div>
           )}
-
-          {canSettings && allWords.length === 0 ? (
-            <button onClick={() => setShowSettings(true)}
-              style={{ background:BG, color:'#fff', border:'none', borderRadius:50, padding:'14px 48px', fontSize:'1.1rem', fontWeight:800, cursor:'pointer', boxShadow:'0 6px 20px rgba(102,126,234,.5)', fontFamily:'Cairo,Tajawal,sans-serif' }}>
-              ➕ أضف كلمات الآن
-            </button>
-          ) : (
-            <button onClick={startGame}
-              style={{ background:BG, color:'#fff', border:'none', borderRadius:50, padding:'14px 48px', fontSize:'1.15rem', fontWeight:800, cursor:'pointer', boxShadow:'0 6px 20px rgba(102,126,234,.5)', fontFamily:'Cairo,Tajawal,sans-serif' }}>
-              ابدأ اللعبة 🚀
-            </button>
-          )}
-
+          <button onClick={startGame}
+            style={{ background:BG, color:'#fff', border:'none', borderRadius:50, padding:'14px 48px', fontSize:'1.15rem', fontWeight:800, cursor:'pointer', boxShadow:'0 6px 20px rgba(102,126,234,.5)', fontFamily:'Cairo,Tajawal,sans-serif' }}>
+            ابدأ اللعبة 🚀
+          </button>
           <div style={{ marginTop:20 }}>
             <Link href="/library" style={{ color:'#718096', fontSize:'.9rem', textDecoration:'none' }}>← العودة للمكتبة</Link>
           </div>
@@ -714,7 +693,6 @@ export default function LetterCatcherPage() {
     );
   }
 
-  // ── شاشة النجاح ───────────────────────────────────────────────────────
   if (phase === 'victory') {
     const total = queue.length;
     const pct   = total > 0 ? Math.round((score / total) * 100) : 0;
@@ -740,7 +718,6 @@ export default function LetterCatcherPage() {
     );
   }
 
-  // ── شاشة اللعب ────────────────────────────────────────────────────────
   const total    = queue.length;
   const progress = total > 0 ? (qIdx / total) * 100 : 0;
 
@@ -748,19 +725,15 @@ export default function LetterCatcherPage() {
     <div style={{ ...base, background:BG, padding:'16px 16px 90px', direction:'rtl', position:'relative', overflow:'hidden' }}>
       <style>{css}</style>
       {SettingsModal}
-
       {confetti.map(p => (
         <div key={p.id} style={{ position:'fixed', top:0, left:`${p.x}%`, zIndex:999, pointerEvents:'none', width:p.size, height:p.size, borderRadius:'50%', background:p.color, animation:`cfall 1.7s ${p.delay}s ease-in forwards` }} />
       ))}
-
       {building && (
         <div style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(102,126,234,.8)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:'#fff', gap:12 }}>
           <div style={{ fontSize:'2rem' }}>⏳</div>
           <div style={{ fontSize:'1.2rem', fontWeight:700 }}>جاري تحضير الأسئلة…</div>
         </div>
       )}
-
-      {/* شريط علوي */}
       <div style={{ maxWidth:560, margin:'0 auto 14px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <Link href="/library" style={{ color:'rgba(255,255,255,.8)', textDecoration:'none', fontSize:'.9rem', fontWeight:600 }}>← مكتبة</Link>
         <span style={{ color:'#fff', fontWeight:800 }}>صيّاد الحروف 🎯</span>
@@ -774,7 +747,6 @@ export default function LetterCatcherPage() {
           <span style={{ background:'rgba(255,255,255,.2)', color:'#fff', borderRadius:50, padding:'4px 14px', fontWeight:700, fontSize:'.9rem' }}>{score} ⭐</span>
         </div>
       </div>
-
       <div style={{ maxWidth:560, margin:'0 auto 6px', display:'flex', justifyContent:'space-between', color:'rgba(255,255,255,.7)', fontSize:'.82rem' }}>
         <span>السؤال {qIdx + 1}</span>
         <span>من أصل {total}</span>
@@ -782,7 +754,6 @@ export default function LetterCatcherPage() {
       <div style={{ maxWidth:560, margin:'0 auto 18px', background:'rgba(255,255,255,.25)', borderRadius:50, height:10, overflow:'hidden' }}>
         <div style={{ width:`${progress}%`, height:'100%', background:'#FFE66D', borderRadius:50, transition:'width .4s' }} />
       </div>
-
       {current && (
         <div style={{ maxWidth:560, margin:'0 auto 24px', background:'#fff', borderRadius:24, padding:'22px 20px', textAlign:'center', boxShadow:'0 12px 40px rgba(0,0,0,.2)', animation: shaking ? 'shake .5s ease' : 'fadeIn .35s ease' }}>
           <div style={{ marginBottom:16 }}>
@@ -810,7 +781,6 @@ export default function LetterCatcherPage() {
           )}
         </div>
       )}
-
       {current && (
         <div style={{ maxWidth:560, margin:'0 auto', display:'flex', flexWrap:'wrap', gap:16, justifyContent:'center' }}>
           {choices.map((letter, i) => {
@@ -826,7 +796,6 @@ export default function LetterCatcherPage() {
           })}
         </div>
       )}
-
       <div style={{ position:'fixed', bottom:20, left:20, fontSize:'2.8rem', filter:'drop-shadow(0 4px 8px rgba(0,0,0,.3))', animation:'floatB 3s ease-in-out infinite', zIndex:10, userSelect:'none' }}>
         🦉
       </div>
