@@ -4,6 +4,16 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase';
+import { useLanguage } from '../contexts/LanguageContext';
+import TeamChat        from './TeamChat';
+
+/* ── Global style for navbar pulse ── */
+if (typeof document !== 'undefined' && !document.getElementById('nav-pulse-style')) {
+  const s = document.createElement('style');
+  s.id = 'nav-pulse-style';
+  s.textContent = '@keyframes navPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.82;transform:scale(1.04)}}';
+  document.head.appendChild(s);
+}
 
 /* ── أيقونات التواصل الاجتماعي ── */
 function WhatsAppIcon() {
@@ -92,34 +102,77 @@ function Initials({ name, size = 34 }) {
   );
 }
 
-const ROLE_LABELS = { admin: 'مدير', teacher: 'معلم', student: 'طالب' };
+/* ── Language Toggle ── */
+function LangToggle() {
+  const { lang, setLang } = useLanguage();
+  const next = lang === 'ar' ? 'en' : 'ar';
+  return (
+    <button
+      onClick={() => setLang(next)}
+      title={next === 'en' ? 'Switch to English' : 'التبديل للعربية'}
+      style={{
+        background: 'rgba(255,255,255,0.12)',
+        border: '1.5px solid rgba(255,255,255,0.3)',
+        borderRadius: 8,
+        color: '#fff',
+        fontWeight: 700,
+        fontSize: '.8rem',
+        padding: '5px 10px',
+        cursor: 'pointer',
+        letterSpacing: '.5px',
+        transition: 'background .2s',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+      }}
+      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.24)'}
+      onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+    >
+      {lang === 'ar' ? 'EN' : 'AR'}
+    </button>
+  );
+}
+
+const ROLE_LABELS_AR = { admin: 'مدير', teacher: 'معلم', student: 'طالب', supervisor: 'مرشد' };
+const ROLE_LABELS_EN = { admin: 'Admin', teacher: 'Teacher', student: 'Student', supervisor: 'Supervisor' };
 
 function dashboardPath(role) {
-  if (role === 'admin')   return '/admin';
-  if (role === 'teacher') return '/dashboard';
+  if (role === 'admin' || role === 'super_admin') return '/bogga';
+  if (role === 'teacher') return '/teacher';
+  if (role === 'supervisor') return '/supervisor';
   return '/dashboard';
 }
 
-export default function Navbar({ user: initialUser }) {
+export default function Navbar({ user: initialUser, sessionCountdown = null }) {
   const pathname  = usePathname();
   const router    = useRouter();
   const dropRef   = useRef(null);
+  const { t, lang } = useLanguage();
 
   const [user,     setUser]     = useState(initialUser ?? null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropOpen, setDropOpen] = useState(false);
 
   useEffect(() => {
+    const supabase = createClient();
+
+    // Initial load
     if (!initialUser) {
-      const supabase = createClient();
       supabase.auth.getUser().then(({ data: { user } }) => setUser(user ?? null));
     }
+
+    // Listen for metadata changes (avatar upload, name change, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) setUser(session.user);
+    });
 
     function onOutsideClick(e) {
       if (dropRef.current && !dropRef.current.contains(e.target)) setDropOpen(false);
     }
     document.addEventListener('mousedown', onOutsideClick);
-    return () => document.removeEventListener('mousedown', onOutsideClick);
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('mousedown', onOutsideClick);
+    };
   }, [initialUser]);
 
   async function handleLogout() {
@@ -137,19 +190,29 @@ export default function Navbar({ user: initialUser }) {
   const avatarURL = user?.user_metadata?.avatar_url ?? null;
   const destPath  = dashboardPath(role);
 
+  const ROLE_LABELS = lang === 'ar' ? ROLE_LABELS_AR : ROLE_LABELS_EN;
+
   const navLinks = [
-    { href: destPath,   label: 'الرئيسية' },
-    { href: '/library', label: 'المكتبة'  },
-    ...(role === 'admin' ? [{ href: '/admin', label: 'الإدارة' }] : []),
+    { href: destPath,   label: t('nav.home') },
+    { href: '/library', label: t('nav.library') },
+    ...(role === 'admin' || role === 'super_admin' ? [{ href: '/bogga', label: t('nav.admin') }] : []),
   ];
 
   return (
+    <>
     <nav className="navbar">
       <div className="container navbar-inner">
 
         {/* ── الجانب الأيمن: الشعار ── */}
-        <Link href={user ? destPath : '/'} className="navbar-brand">
-          <span>📚</span> أكاديمية عارم
+        <Link href={user ? destPath : '/'} className="navbar-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+          <img
+            src="/logo.svg"
+            alt={t('siteName')}
+            style={{ height: 42, width: 42, borderRadius: '50%', flexShrink: 0, display: 'block' }}
+          />
+          <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff', letterSpacing: '.3px' }}>
+            {t('siteName')}
+          </span>
         </Link>
 
         {/* ── الوسط: روابط التنقل (desktop) — تظهر فقط عند تسجيل الدخول ── */}
@@ -168,15 +231,61 @@ export default function Navbar({ user: initialUser }) {
         {/* ── الجانب الأيسر: رابط تعريفي + أيقونات التواصل + أزرار الدخول/الحساب ── */}
         <div className="navbar-user">
 
-          {/* رابط تعريفي — desktop فقط، محاذٍ لليسار بجانب أيقونات التواصل */}
-          <Link href="/#about" className="navbar-about-link">
-            تعرّف على أكاديمية عارم
-          </Link>
+          {/* رابط تعريفي — للزوار غير المسجلين فقط */}
+          {!user && (
+            <Link href="/#about" className="navbar-about-link">
+              {t('nav.about')}
+            </Link>
+          )}
 
           {/* أيقونات التواصل الاجتماعي — desktop فقط */}
-          <div className="navbar-social-desktop">
+          <div className="navbar-social-desktop" style={{ borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: 20 }}>
             <SocialIcons />
           </div>
+
+          {/* عداد تنازلي للحصة القادمة */}
+          {sessionCountdown && (
+            <div style={{
+              background: 'linear-gradient(135deg,#dc2626,#b91c1c)',
+              color: '#fff', borderRadius: 20, padding: '5px 14px',
+              fontSize: '.82rem', fontWeight: 900, letterSpacing: '.5px',
+              fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+              boxShadow: '0 0 12px rgba(220,38,38,.5)',
+              animation: 'navPulse 1.5s ease-in-out infinite',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <span>⏱️</span> {sessionCountdown}
+            </div>
+          )}
+
+          {/* زر تبديل اللغة */}
+          <LangToggle />
+
+          {/* زر لوحة الطالب — للزوار غير المسجلين فقط */}
+          {!user && (
+            <Link
+              href="/auth/login?for=student"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(255,255,255,0.15)',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '.88rem',
+                padding: '7px 14px',
+                borderRadius: 10,
+                textDecoration: 'none',
+                border: '1.5px solid rgba(255,255,255,0.35)',
+                transition: 'background .2s',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.26)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+            >
+              {t('nav.studentPortal')}
+            </Link>
+          )}
 
           {user ? (
             <div className="nav-dropdown" ref={dropRef}>
@@ -197,17 +306,17 @@ export default function Navbar({ user: initialUser }) {
                 <div className="nav-dropdown-menu">
                   <div className="nav-dropdown-header">
                     <div style={{ fontWeight: 700, fontSize: '.92rem' }}>{fullName}</div>
-                    <div style={{ fontSize: '.78rem', opacity: .65 }}>{ROLE_LABELS[role] ?? 'طالب'}</div>
+                    <div style={{ fontSize: '.78rem', opacity: .65 }}>{ROLE_LABELS[role] ?? t('nav.roleStudent')}</div>
                   </div>
                   <Link href="/profile" className="nav-dropdown-item" onClick={() => setDropOpen(false)}>
-                    👤 الملف الشخصي
+                    {t('nav.profile')}
                   </Link>
                   <Link href={destPath} className="nav-dropdown-item" onClick={() => setDropOpen(false)}>
-                    🏠 لوحة التحكم
+                    {t('nav.dashboard')}
                   </Link>
                   <div className="nav-dropdown-divider" />
                   <button className="nav-dropdown-item nav-dropdown-logout" onClick={handleLogout}>
-                    🚪 تسجيل الخروج
+                    {t('nav.signOut')}
                   </button>
                 </div>
               )}
@@ -218,7 +327,7 @@ export default function Navbar({ user: initialUser }) {
           <button
             className="nav-hamburger"
             onClick={() => setMenuOpen(o => !o)}
-            aria-label="القائمة"
+            aria-label={t('nav.menu')}
           >
             {menuOpen ? '✕' : '☰'}
           </button>
@@ -231,9 +340,14 @@ export default function Navbar({ user: initialUser }) {
           {/* أيقونات التواصل في الموبايل */}
           <div style={{ borderBottom: '1px solid rgba(255,255,255,.1)', paddingBottom: 12, marginBottom: 4 }}>
             <div style={{ fontSize: '.75rem', color: 'rgba(255,255,255,.5)', textAlign: 'center', marginBottom: 8 }}>
-              تواصل معنا
+              {t('nav.contactUs')}
             </div>
             <SocialIcons mobile />
+          </div>
+
+          {/* Language toggle in mobile menu */}
+          <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 8 }}>
+            <LangToggle />
           </div>
 
           {user ? (
@@ -245,7 +359,7 @@ export default function Navbar({ user: initialUser }) {
                 }
                 <div>
                   <div style={{ fontWeight: 700 }}>{fullName}</div>
-                  <div style={{ fontSize: '.8rem', opacity: .65 }}>{ROLE_LABELS[role] ?? 'طالب'}</div>
+                  <div style={{ fontSize: '.8rem', opacity: .65 }}>{ROLE_LABELS[role] ?? t('nav.roleStudent')}</div>
                 </div>
               </div>
               {navLinks.map(l => (
@@ -254,23 +368,28 @@ export default function Navbar({ user: initialUser }) {
                 </Link>
               ))}
               <Link href="/profile" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>
-                👤 الملف الشخصي
+                {t('nav.profile')}
               </Link>
               <div className="nav-mobile-divider" />
               <button className="nav-mobile-item nav-mobile-logout" onClick={handleLogout}>
-                🚪 تسجيل الخروج
+                {t('nav.signOut')}
               </button>
             </>
           ) : (
             <>
-              <Link href="/#about" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>تعرّف على أكاديمية عارم</Link>
+              <Link href="/#about" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>{t('nav.about')}</Link>
+              <Link href="/auth/login?for=student" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>
+                {t('nav.studentPortal')}
+              </Link>
               <a href="https://api.whatsapp.com/send/?phone=447400755914" target="_blank" rel="noopener noreferrer" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>
-                💬 تواصل مع الإدارة
+                {t('nav.contactAdmin')}
               </a>
             </>
           )}
         </div>
       )}
     </nav>
+    <TeamChat user={user} />
+    </>
   );
 }
