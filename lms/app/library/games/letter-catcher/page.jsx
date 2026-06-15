@@ -54,6 +54,25 @@ function toContextual(letter, form) {
 
 const TOPICS = ['الحيوانات', 'الأشكال', 'الأسرة', 'الألوان', 'الفواكه', 'المدرسة', 'الطقس', 'الأرقام'];
 
+/* ── Arabic TTS ─────────────────────────────────────────────── */
+function speak(text) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ar-SA';
+  u.rate = 0.82;
+  function go() {
+    window.speechSynthesis.cancel();
+    // prefer Arabic voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const ar = voices.find(v => v.lang.startsWith('ar'));
+    if (ar) u.voice = ar;
+    window.speechSynthesis.speak(u);
+  }
+  if (window.speechSynthesis.getVoices().length > 0) go();
+  else { window.speechSynthesis.addEventListener('voiceschanged', go, { once: true }); setTimeout(go, 500); }
+}
+
 /* ────────────────── word manager in settings ────────────────── */
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -140,14 +159,22 @@ function WordManager({ dbWords, onRefresh }) {
           dir="rtl"
         />
 
-        <input
-          value={missing}
-          onChange={e => setMissing(e.target.value)}
-          placeholder="الحرف الناقص (مثال: ق)"
-          style={{ ...S.input, marginTop: 8 }}
-          dir="rtl"
-          maxLength={2}
-        />
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+          <input
+            value={missing}
+            onChange={e => setMissing(e.target.value)}
+            placeholder="الحرف الناقص (مثال: ق)"
+            style={{ ...S.input, flex: 1, marginTop: 0 }}
+            dir="rtl"
+            maxLength={2}
+          />
+          <button
+            type="button"
+            onClick={() => word.trim() && speak(word.trim())}
+            title="استمع للكلمة"
+            style={{ flexShrink: 0, background: '#ede9fe', border: 'none', borderRadius: 10, width: 42, height: 42, cursor: 'pointer', fontSize: '1.2rem' }}
+          >🔊</button>
+        </div>
 
         {/* image picker */}
         <div
@@ -217,6 +244,7 @@ function WordManager({ dbWords, onRefresh }) {
               <span style={{ flex: 1, fontWeight: 700, color: '#1f2937', fontSize: '.9rem' }}>{w.word}</span>
               {w.topic && <span style={{ background: '#e0f2fe', color: '#0369a1', borderRadius: 20, padding: '2px 8px', fontSize: '.7rem', fontWeight: 700 }}>{w.topic}</span>}
               <span style={{ background: '#ede9fe', color: '#7c3aed', borderRadius: 20, padding: '2px 8px', fontSize: '.75rem', fontWeight: 700 }}>{w.missing_letter}</span>
+              <button onClick={() => speak(w.word)} title="استمع" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '2px 4px', lineHeight: 1 }}>🔊</button>
               <button
                 onClick={() => handleDelete(w.id, w.word)}
                 disabled={deleting === w.id}
@@ -402,7 +430,10 @@ export default function LetterCatcherGame() {
     const w       = queue[cur];
     const isRight = stripDia(opt) === stripDia(w.missing_letter);
     setChosen(opt); setCorrect(isRight);
-    if (isRight) setScore(s => s + 1);
+    if (isRight) {
+      setScore(s => s + 1);
+      speak(w.word);
+    }
   }, [chosen, cur, queue]);
 
   const next = useCallback(() => {
