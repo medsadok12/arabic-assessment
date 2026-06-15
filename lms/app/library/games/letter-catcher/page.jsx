@@ -84,21 +84,55 @@ function fileToBase64(file) {
 }
 
 function WordManager({ dbWords, onRefresh }) {
-  const [word,     setWord]     = useState('');
-  const [missing,  setMissing]  = useState('');
-  const [topic,    setTopic]    = useState('');
-  const [imgFile,  setImgFile]  = useState(null);
-  const [imgPrev,  setImgPrev]  = useState(null);
-  const [saving,   setSaving]   = useState(false);
-  const [deleting, setDeleting] = useState(null);
-  const [msg,      setMsg]      = useState(null);
-  const fileRef = useRef();
+  const [word,      setWord]      = useState('');
+  const [missing,   setMissing]   = useState('');
+  const [topic,     setTopic]     = useState('');
+  const [imgFile,   setImgFile]   = useState(null);
+  const [imgPrev,   setImgPrev]   = useState(null);
+  const [audioUrl,  setAudioUrl]  = useState(null);  // recorded audio (base64 data URL)
+  const [recording, setRecording] = useState(false);
+  const [recSecs,   setRecSecs]   = useState(0);
+  const [saving,    setSaving]    = useState(false);
+  const [deleting,  setDeleting]  = useState(null);
+  const [msg,       setMsg]       = useState(null);
+  const fileRef   = useRef();
+  const mediaRef  = useRef(null);   // MediaRecorder
+  const chunksRef = useRef([]);
+  const timerRef  = useRef(null);
 
   const handleImg = (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
     setImgFile(f);
     setImgPrev(URL.createObjectURL(f));
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunksRef.current = [];
+      const mr = new MediaRecorder(stream);
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType || 'audio/webm' });
+        const reader = new FileReader();
+        reader.onload = () => setAudioUrl(reader.result);
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRef.current = mr;
+      mr.start();
+      setRecording(true); setRecSecs(0);
+      timerRef.current = setInterval(() => setRecSecs(s => s + 1), 1000);
+    } catch {
+      alert('تعذّر الوصول إلى الميكروفون — تأكد من منح الإذن');
+    }
+  };
+
+  const stopRecording = () => {
+    clearInterval(timerRef.current);
+    mediaRef.current?.stop();
+    setRecording(false);
   };
 
   const handleAdd = async () => {
@@ -118,13 +152,15 @@ function WordManager({ dbWords, onRefresh }) {
           word: word.trim(),
           missing_letter: missing.trim(),
           image_url,
+          audio_url: audioUrl || null,
           topic: topic || null,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'فشل الحفظ');
       setMsg({ ok: true, text: `✅ أُضيفت "${word.trim()}" بنجاح` });
-      setWord(''); setMissing(''); setTopic(''); setImgFile(null); setImgPrev(null);
+      setWord(''); setMissing(''); setTopic('');
+      setImgFile(null); setImgPrev(null); setAudioUrl(null);
       if (fileRef.current) fileRef.current.value = '';
       onRefresh();
     } catch (e) {
@@ -193,6 +229,30 @@ function WordManager({ dbWords, onRefresh }) {
         </div>
         <input ref={fileRef} type="file" accept="image/*" onChange={handleImg} style={{ display: 'none' }} />
 
+        {/* audio recorder */}
+        <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={recording ? stopRecording : startRecording}
+            style={{
+              flexShrink: 0, border: 'none', borderRadius: 10, padding: '9px 14px',
+              fontSize: '.85rem', fontWeight: 700, cursor: 'pointer',
+              fontFamily: "'Tajawal', sans-serif",
+              background: recording ? '#fee2e2' : '#f0fdf4',
+              color: recording ? '#dc2626' : '#16a34a',
+            }}
+          >
+            {recording ? `⏹️ إيقاف (${recSecs}ث)` : '🎙️ تسجيل صوت المعلم'}
+          </button>
+          {audioUrl && !recording && (
+            <>
+              <audio src={audioUrl} controls style={{ flex: 1, minWidth: 120, height: 32 }} />
+              <button type="button" onClick={() => setAudioUrl(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '1rem' }}>✕</button>
+            </>
+          )}
+        </div>
+
         <select
           value={topic}
           onChange={e => setTopic(e.target.value)}
@@ -244,7 +304,8 @@ function WordManager({ dbWords, onRefresh }) {
               <span style={{ flex: 1, fontWeight: 700, color: '#1f2937', fontSize: '.9rem' }}>{w.word}</span>
               {w.topic && <span style={{ background: '#e0f2fe', color: '#0369a1', borderRadius: 20, padding: '2px 8px', fontSize: '.7rem', fontWeight: 700 }}>{w.topic}</span>}
               <span style={{ background: '#ede9fe', color: '#7c3aed', borderRadius: 20, padding: '2px 8px', fontSize: '.75rem', fontWeight: 700 }}>{w.missing_letter}</span>
-              <button onClick={() => speak(w.word)} title="استمع" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '2px 4px', lineHeight: 1 }}>🔊</button>
+              {w.audio_url && <span title="يحتوي على تسجيل" style={{ fontSize: '.75rem' }}>🎙️</span>}
+              <button onClick={() => w.audio_url ? new Audio(w.audio_url).play() : speak(w.word)} title="استمع" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '2px 4px', lineHeight: 1 }}>🔊</button>
               <button
                 onClick={() => handleDelete(w.id, w.word)}
                 disabled={deleting === w.id}
@@ -432,7 +493,8 @@ export default function LetterCatcherGame() {
     setChosen(opt); setCorrect(isRight);
     if (isRight) {
       setScore(s => s + 1);
-      speak(w.word);
+      if (w.audio_url) { try { new Audio(w.audio_url).play(); } catch {} }
+      else speak(w.word);
     }
   }, [chosen, cur, queue]);
 

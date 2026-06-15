@@ -50,7 +50,7 @@ export async function POST(request) {
     const { createClient } = await import('../../../../lib/supabase-server');
     const supabase = createClient();
 
-    const { word, missing_letter, emoji, image_url, topic, grade_level } = await request.json();
+    const { word, missing_letter, emoji, image_url, audio_url, topic, grade_level } = await request.json();
 
     if (!word?.trim() || !missing_letter?.trim()) {
       return NextResponse.json({ error: 'الكلمة والحرف الناقص مطلوبان' }, { status: 400 });
@@ -66,6 +66,7 @@ export async function POST(request) {
         options,
         emoji: emoji?.trim() || null,
         image_url: image_url || null,
+        audio_url: audio_url || null,
         topic: topic?.trim() || null,
         grade_level: grade_level ? Number(grade_level) : null,
       })
