@@ -657,7 +657,9 @@ export default function LetterCatcherPage() {
           <div style={{ background:'#F0F4FF', borderRadius:16, padding:'12px 20px', marginBottom:20, fontSize:'.9rem', color:'#4a5568', textAlign:'right' }}>
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
               <span style={{ color: filteredWords.length === 0 ? '#E53E3E' : '#667eea', fontWeight:700 }}>
-                {filteredWords.length === 0 ? '⚠️ لا توجد كلمات — أضفها من الإعدادات' : `${filteredWords.length} كلمة متاحة`}
+                {filteredWords.length === 0
+                  ? (canSettings ? '⚠️ لا توجد كلمات — أضفها من الإعدادات' : '0 كلمة متاحة')
+                  : `${filteredWords.length} كلمة متاحة`}
               </span>
               <span>📚 بنك الكلمات</span>
             </div>
@@ -672,10 +674,22 @@ export default function LetterCatcherPage() {
           </div>
 
           {filteredWords.length === 0 ? (
-            <button onClick={() => setShowSettings(true)}
-              style={{ background:BG, color:'#fff', border:'none', borderRadius:50, padding:'14px 48px', fontSize:'1.1rem', fontWeight:800, cursor:'pointer', boxShadow:'0 6px 20px rgba(102,126,234,.5)', fontFamily:'Cairo,Tajawal,sans-serif' }}>
-              ➕ أضف كلمات الآن
-            </button>
+            canSettings ? (
+              <button onClick={() => setShowSettings(true)}
+                style={{ background:BG, color:'#fff', border:'none', borderRadius:50, padding:'14px 48px', fontSize:'1.1rem', fontWeight:800, cursor:'pointer', boxShadow:'0 6px 20px rgba(102,126,234,.5)', fontFamily:'Cairo,Tajawal,sans-serif' }}>
+                ➕ أضف كلمات الآن
+              </button>
+            ) : (
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontSize:'2.5rem', marginBottom:8 }}>🔒</div>
+                <div style={{ color:'#718096', fontSize:'.95rem', fontWeight:600 }}>
+                  اللعبة غير متاحة حالياً
+                </div>
+                <div style={{ color:'#a0aec0', fontSize:'.85rem', marginTop:4 }}>
+                  تواصل مع المعلم لتفعيل اللعبة
+                </div>
+              </div>
+            )
           ) : (
             <button onClick={startGame}
               style={{ background:BG, color:'#fff', border:'none', borderRadius:50, padding:'14px 48px', fontSize:'1.15rem', fontWeight:800, cursor:'pointer', boxShadow:'0 6px 20px rgba(102,126,234,.5)', fontFamily:'Cairo,Tajawal,sans-serif' }}>
