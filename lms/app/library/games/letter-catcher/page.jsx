@@ -26,6 +26,34 @@ function shuffle(arr) {
   return a;
 }
 
+/* ── contextual Arabic letter forms ─────────────────────────── */
+// Letters that do NOT connect to the letter that follows them (non-left-joiners)
+const NON_CONNECTORS = new Set('اأإآءوردذزىة');
+
+function getLetterForm(stripped, idx) {
+  const letter   = stripped[idx];
+  const prev     = idx > 0                    ? stripped[idx - 1] : null;
+  const next     = idx < stripped.length - 1  ? stripped[idx + 1] : null;
+  const joinsPrev = prev !== null && !NON_CONNECTORS.has(prev);
+  const joinsNext = next !== null && !NON_CONNECTORS.has(letter);
+  if (joinsPrev && joinsNext) return 'medial';
+  if (joinsPrev)              return 'final';
+  if (joinsNext)              return 'initial';
+  return 'isolated';
+}
+
+const ZWJ = '‍';
+
+function toContextual(letter, form) {
+  const base = (letter || '').replace(DIACRITICS, '');
+  switch (form) {
+    case 'initial': return base + ZWJ;
+    case 'medial':  return ZWJ + base + ZWJ;
+    case 'final':   return ZWJ + base;
+    default:        return base;
+  }
+}
+
 /* ────────────────────── fallback word bank ──────────────────── */
 const FALLBACK_WORDS = [
   { id:  1, word:"قَلَم",      missing_letter:"ق", options:["ق","ف","ك","ح","ع"], emoji:"✏️" },
@@ -282,11 +310,15 @@ export default function LetterCatcherGame() {
   const buildQueue = useCallback((words, count, optCount) => {
     const shuffled = shuffle(words).slice(0, count);
     return shuffled.map(w => {
-      const correct  = stripDia(w.missing_letter);
-      const pool     = (w.options || []).filter(Boolean).filter(o => stripDia(o) !== correct);
+      const correct    = stripDia(w.missing_letter);
+      const strippedW  = stripDia(w.word);
+      const missingIdx = strippedW.indexOf(correct);
+      const form       = missingIdx >= 0 ? getLetterForm(strippedW, missingIdx) : 'isolated';
+
+      const pool        = (w.options || []).filter(Boolean).filter(o => stripDia(o) !== correct);
       const distractors = shuffle(pool).slice(0, optCount - 1);
-      const opts     = shuffle([w.missing_letter, ...distractors]);
-      return { ...w, _opts: opts };
+      const opts        = shuffle([w.missing_letter, ...distractors]);
+      return { ...w, _opts: opts, _form: form };
     });
   }, []);
 
@@ -439,7 +471,7 @@ export default function LetterCatcherGame() {
             borderColor: correct === null ? '#7c3aed'  : correct ? '#27ae60' : '#e74c3c',
             color:       correct === null ? '#7c3aed'  : correct ? '#27ae60' : '#e74c3c',
           }}>
-            {correct !== null ? w.missing_letter : '؟'}
+            {correct !== null ? toContextual(w.missing_letter, w._form || 'isolated') : '؟'}
           </span>
           {after && <span style={S.wordTxt}>{after}</span>}
         </div>
@@ -469,7 +501,7 @@ export default function LetterCatcherGame() {
             }
             return (
               <button key={`${opt}-${idx}`} style={btn} onClick={() => pick(opt)} disabled={revealed}>
-                {opt}
+                {toContextual(opt, w._form || 'isolated')}
               </button>
             );
           })}
