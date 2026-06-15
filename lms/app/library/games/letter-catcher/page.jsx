@@ -657,9 +657,15 @@ export default function LetterCatcherPage() {
           {canSettings && (
             <div style={{ background:'#F0F4FF', borderRadius:16, padding:'12px 20px', marginBottom:20, fontSize:'.9rem', color:'#4a5568', textAlign:'right' }}>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                <span style={{ color: filteredWords.length === 0 ? '#E53E3E' : '#667eea', fontWeight:700 }}>
-                  {filteredWords.length === 0 ? '⚠️ لا توجد كلمات — أضفها من الإعدادات' : `${filteredWords.length} كلمة متاحة`}
-                </span>
+                {filteredWords.length === 0 && allWords.length > 0 ? (
+                  <span style={{ color:'#D69E2E', fontWeight:700 }}>
+                    ⚠️ {allWords.length} كلمة في البنك — الفلتر يحجبها
+                  </span>
+                ) : filteredWords.length === 0 ? (
+                  <span style={{ color:'#E53E3E', fontWeight:700 }}>لا توجد كلمات في البنك بعد</span>
+                ) : (
+                  <span style={{ color:'#667eea', fontWeight:700 }}>{filteredWords.length} كلمة متاحة</span>
+                )}
                 <span>📚 بنك الكلمات</span>
               </div>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
@@ -673,7 +679,20 @@ export default function LetterCatcherPage() {
             </div>
           )}
 
-          {canSettings && filteredWords.length === 0 ? (
+          {canSettings && filteredWords.length === 0 && allWords.length > 0 ? (
+            /* الكلمات موجودة لكن الفلتر يحجبها */
+            <div style={{ display:'flex', flexDirection:'column', gap:10, alignItems:'center' }}>
+              <button onClick={() => { setConfig(DEFAULT_CONFIG); }}
+                style={{ background:BG, color:'#fff', border:'none', borderRadius:50, padding:'13px 40px', fontSize:'1rem', fontWeight:800, cursor:'pointer', boxShadow:'0 6px 20px rgba(102,126,234,.5)', fontFamily:'Cairo,Tajawal,sans-serif' }}>
+                🔄 إعادة ضبط الفلتر وعرض كل الكلمات
+              </button>
+              <button onClick={() => setShowSettings(true)}
+                style={{ background:'none', border:'1.5px solid #667eea', color:'#667eea', borderRadius:50, padding:'9px 28px', fontSize:'.88rem', fontWeight:700, cursor:'pointer', fontFamily:'Cairo,Tajawal,sans-serif' }}>
+                ⚙️ تعديل الفلتر يدوياً
+              </button>
+            </div>
+          ) : canSettings && filteredWords.length === 0 ? (
+            /* البنك فارغ تماماً */
             <button onClick={() => setShowSettings(true)}
               style={{ background:BG, color:'#fff', border:'none', borderRadius:50, padding:'14px 48px', fontSize:'1.1rem', fontWeight:800, cursor:'pointer', boxShadow:'0 6px 20px rgba(102,126,234,.5)', fontFamily:'Cairo,Tajawal,sans-serif' }}>
               ➕ أضف كلمات الآن
