@@ -1,330 +1,195 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { createClient as createBrowserClient } from '../../../../lib/supabase';
 
-// ─── إعدادات اللعبة الافتراضية ────────────────────────────────────────
-const DEFAULT_CONFIG = {
-  ROUND_SIZE:    10,
-  CHOICES_COUNT:  5,
-  TOPIC_FILTER:  null,
-  GRADE_FILTER:  null,
-  MIN_WORD_LEN:   2,
-  MAX_WORD_LEN:  12,
-};
+/* ────────────────────────── helpers ────────────────────────── */
+const DIACRITICS = /[ً-ْٰ]/g;
+function stripDia(s) { return (s || '').replace(DIACRITICS, ''); }
 
-// حروف الفقاعات (28 حرفاً أساسياً)
-const ARABIC_LETTERS = 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي';
-// حروف قابلة للإخفاء (تشمل ة ء أ إ ئ ؤ)
-const PICKABLE = 'ابتةثجحخدذرزسشصضطظعغفقكلمنهويءأإئؤ';
-
-const TOPIC_EMOJI = {
-  'الحيوانات':'🐾','النباتات':'🌿','الروتين اليومي':'⏰',
-  'الأدوات':'🔧','الأسرة':'👨‍👩‍👧','الطعام':'🍎','المدرسة':'🏫',
-  'المواصلات':'🚗','الملابس':'👕','الطبيعة':'🌄',
-};
-
-const BUBBLE_COLORS = ['#FF6B6B','#4ECDC4','#FFE66D','#A8E6CF','#DDA0DD','#87CEEB','#FFA07A','#98D8C8'];
-const BG = 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)';
-
-// ─── بنك احتياطي يضمن تشغيل اللعبة فوراً إذا فشل API ─────────────────
-const FALLBACK_PREBUILT = [
-  { id:'fb1',  word:'قلم',    stripped:'قلم',     missingIdx:0, letter:'ق', topic:'أدوات',    image:null, audio:null },
-  { id:'fb2',  word:'بيت',    stripped:'بيت',     missingIdx:0, letter:'ب', topic:'أماكن',    image:null, audio:null },
-  { id:'fb3',  word:'شمس',    stripped:'شمس',     missingIdx:0, letter:'ش', topic:'طبيعة',    image:null, audio:null },
-  { id:'fb4',  word:'كتاب',   stripped:'كتاب',    missingIdx:0, letter:'ك', topic:'مدرسة',    image:null, audio:null },
-  { id:'fb5',  word:'سمكة',   stripped:'سمكة',    missingIdx:0, letter:'س', topic:'حيوانات',  image:null, audio:null },
-  { id:'fb6',  word:'مدرسة',  stripped:'مدرسة',   missingIdx:0, letter:'م', topic:'مدرسة',    image:null, audio:null },
-  { id:'fb7',  word:'سيارة',  stripped:'سيارة',   missingIdx:0, letter:'س', topic:'مواصلات',  image:null, audio:null },
-  { id:'fb8',  word:'نجمة',   stripped:'نجمة',    missingIdx:0, letter:'ن', topic:'طبيعة',    image:null, audio:null },
-  { id:'fb9',  word:'طائر',   stripped:'طائر',    missingIdx:0, letter:'ط', topic:'حيوانات',  image:null, audio:null },
-  { id:'fb10', word:'فيل',    stripped:'فيل',     missingIdx:0, letter:'ف', topic:'حيوانات',  image:null, audio:null },
-  { id:'fb11', word:'رياح',   stripped:'رياح',    missingIdx:0, letter:'ر', topic:'طبيعة',    image:null, audio:null },
-  { id:'fb12', word:'جبل',    stripped:'جبل',     missingIdx:0, letter:'ج', topic:'طبيعة',    image:null, audio:null },
-];
-
-// ─── دوال مساعدة ──────────────────────────────────────────────────────
-function stripHarakat(t) { return (t ?? '').replace(/[ؐ-ًؚ-ٰٟ]/g, ''); }
-
-function pickMissing(word) {
-  const stripped = stripHarakat(word);
-  if (!stripped) return null;
-  const avoid = new Set(['ا','و','ي','ى']);
-  let candidates = [];
-  for (let i = 0; i < stripped.length; i++) {
-    if (!avoid.has(stripped[i]) && PICKABLE.includes(stripped[i])) candidates.push(i);
-  }
-  if (!candidates.length) {
-    for (let i = 0; i < stripped.length; i++) {
-      if (PICKABLE.includes(stripped[i])) candidates.push(i);
-    }
-  }
-  if (!candidates.length) return null;
-  const idx = candidates[Math.floor(Math.random() * candidates.length)];
-  const letter = stripped[idx];
-  return { letter, missingIdx: idx, stripped };
+function splitWord(word, missingLetter) {
+  const base = stripDia(missingLetter);
+  const re   = new RegExp(base + '[\\u064B-\\u0652\\u0670]?');
+  const m    = word.match(re);
+  if (!m) return [word, ''];
+  const i = word.indexOf(m[0]);
+  return [word.slice(0, i), word.slice(i + m[0].length)];
 }
 
-function makeDistractors(correct, count) {
-  const base = PICKABLE.includes(correct) ? PICKABLE : ARABIC_LETTERS;
-  const pool = base.split('').filter(l => l !== correct);
-  const out = []; const seen = new Set();
-  while (out.length < count && pool.length > out.length) {
-    const l = pool[Math.floor(Math.random() * pool.length)];
-    if (!seen.has(l)) { seen.add(l); out.push(l); }
-  }
-  return out;
-}
-
-function shuffle(a) {
-  const b = [...a];
-  for (let i = b.length - 1; i > 0; i--) {
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [b[i], b[j]] = [b[j], b[i]];
+    [a[i], a[j]] = [a[j], a[i]];
   }
-  return b;
+  return a;
 }
 
-function speak(text) {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  let fired = false;
-  function go() {
-    if (fired) return; fired = true;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ar-SA'; u.rate = 0.8;
-    window.speechSynthesis.speak(u);
+/* ── contextual Arabic letter forms ─────────────────────────── */
+const NON_CONNECTORS = new Set('اأإآءوردذزىة');
+
+function getLetterForm(stripped, idx) {
+  const letter    = stripped[idx];
+  const prev      = idx > 0                   ? stripped[idx - 1] : null;
+  const next      = idx < stripped.length - 1 ? stripped[idx + 1] : null;
+  const joinsPrev = prev !== null && !NON_CONNECTORS.has(prev);
+  const joinsNext = next !== null && !NON_CONNECTORS.has(letter);
+  if (joinsPrev && joinsNext) return 'medial';
+  if (joinsPrev)              return 'final';
+  if (joinsNext)              return 'initial';
+  return 'isolated';
+}
+
+const ZWJ = '‍'; // U+200D zero-width joiner
+
+function toContextual(letter, form) {
+  const base = (letter || '').replace(DIACRITICS, '');
+  switch (form) {
+    case 'initial': return base + ZWJ;
+    case 'medial':  return ZWJ + base + ZWJ;
+    case 'final':   return ZWJ + base;
+    default:        return base;
   }
-  if (window.speechSynthesis.getVoices().length > 0) go();
-  else { window.speechSynthesis.addEventListener('voiceschanged', go, { once: true }); setTimeout(go, 600); }
 }
 
-function playB64(b64) {
-  try { new Audio(`data:audio/mp3;base64,${b64}`).play(); } catch {}
-}
+const TOPICS = ['الحيوانات', 'الأشكال', 'الأسرة', 'الألوان', 'الفواكه', 'المدرسة', 'الطقس', 'الأرقام'];
 
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+/* ────────────────── word manager in settings ────────────────── */
+function WordManager({ dbWords, onRefresh }) {
+  const [word,     setWord]     = useState('');
+  const [missing,  setMissing]  = useState('');
+  const [emoji,    setEmoji]    = useState('');
+  const [topic,    setTopic]    = useState('');
+  const [saving,   setSaving]   = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [msg,      setMsg]      = useState(null);
 
-// ─── مكوّن عرض الكلمة حرفاً بحرف ─────────────────────────────────────
-function WordDisplay({ stripped, missingIdx }) {
-  const chars = stripped.split('');
-  const sz = Math.max(42, Math.min(60, Math.floor(290 / chars.length)));
-  return (
-    <div style={{ display:'flex', direction:'rtl', gap:5, justifyContent:'center', alignItems:'center', flexWrap:'nowrap' }}>
-      {chars.map((ch, i) =>
-        i === missingIdx ? (
-          <div key={i} style={{ width:sz, height:sz+8, borderRadius:10, flexShrink:0, border:'3px dashed #667eea', background:'#EEF2FF', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1rem', color:'#667eea', fontWeight:900 }}>؟</div>
-        ) : (
-          <div key={i} style={{ width:sz, height:sz+8, borderRadius:10, flexShrink:0, border:'2px solid #e2e8f0', background:'#f7fafc', display:'flex', alignItems:'center', justifyContent:'center', fontSize: sz > 50 ? '2rem' : '1.65rem', fontWeight:900, color:'#2d3748' }}>{ch}</div>
-        )
-      )}
-    </div>
-  );
-}
-
-// ─── Chip زر الاختيار ──────────────────────────────────────────────────
-const lbStyle   = { display:'block', fontWeight:700, color:'#4a5568', fontSize:'.88rem', marginBottom:8 };
-const rowStyle  = { display:'flex', gap:8, flexWrap:'wrap', marginBottom:16 };
-const chipStyle = (active) => ({
-  background: active ? BG : '#f7fafc',
-  color: active ? '#fff' : '#4a5568',
-  border: active ? 'none' : '1px solid #e2e8f0',
-  borderRadius:50, padding:'6px 16px', fontSize:'.85rem', fontWeight:700,
-  cursor:'pointer', transition:'all .15s',
-  boxShadow: active ? '0 2px 8px rgba(102,126,234,.4)' : 'none',
-  whiteSpace:'nowrap',
-});
-
-// ─── تبويب الكلمات ─────────────────────────────────────────────────────
-function WordsTab({ allWords, onRefresh, isAdmin }) {
-  const [word,      setWord]      = useState('');
-  const [topic,     setTopic]     = useState('');
-  const [gradeFrom, setGradeFrom] = useState(1);
-  const [gradeTo,   setGradeTo]   = useState(7);
-  const [imgFile,   setImgFile]   = useState(null);
-  const [imgPrev,   setImgPrev]   = useState(null);
-  const [saving,    setSaving]    = useState(false);
-  const [msg,       setMsg]       = useState(null);
-  const [deleting,  setDeleting]  = useState(null);
-  const [search,    setSearch]    = useState('');
-  const fileRef = useRef();
-
-  const TOPICS = ['الحيوانات','النباتات','الروتين اليومي','الأدوات','الأسرة','الطعام','المدرسة','المواصلات','الملابس','الطبيعة','أخرى'];
-
-  const handleImg = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setImgFile(f);
-    setImgPrev(URL.createObjectURL(f));
-  };
-
-  const addWord = async () => {
-    if (!word.trim()) { setMsg({ ok:false, text:'اكتب الكلمة أولاً' }); return; }
+  const handleAdd = async () => {
+    if (!word.trim() || !missing.trim()) {
+      setMsg({ ok: false, text: 'اكتب الكلمة والحرف الناقص أولاً' });
+      return;
+    }
     setSaving(true); setMsg(null);
     try {
-      const body = {
-        word: word.trim(),
-        word_type: 'اسم',
-        topic: topic || null,
-        grade_from: gradeFrom,
-        grade_to:   gradeTo,
-        sentence: '',
-      };
-      if (imgFile) {
-        body.image_base64 = await fileToBase64(imgFile);
-        body.has_image = true;
-      }
-      const res = await fetch('/api/bogga/lexicon', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(body),
+      const res = await fetch('/api/games/letter-catcher', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          word: word.trim(),
+          missing_letter: missing.trim(),
+          emoji: emoji.trim() || null,
+          topic: topic || null,
+        }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'فشل الحفظ');
-      }
-      setMsg({ ok:true, text:`✅ أُضيفت كلمة "${word.trim()}" بنجاح` });
-      setWord(''); setTopic(''); setImgFile(null); setImgPrev(null);
-      if (fileRef.current) fileRef.current.value = '';
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'فشل الحفظ');
+      setMsg({ ok: true, text: `✅ أُضيفت "${word.trim()}" بنجاح` });
+      setWord(''); setMissing(''); setEmoji(''); setTopic('');
       onRefresh();
-    } catch(e) {
-      setMsg({ ok:false, text:`❌ ${e.message}` });
+    } catch (e) {
+      setMsg({ ok: false, text: `❌ ${e.message}` });
     }
     setSaving(false);
   };
 
-  const deleteWord = async (id, w) => {
-    if (!confirm(`هل تريد حذف كلمة "${w}"؟`)) return;
+  const handleDelete = async (id, w) => {
+    if (!confirm(`حذف كلمة "${w}"؟`)) return;
     setDeleting(id);
-    await fetch(`/api/bogga/lexicon/${id}`, { method:'DELETE' }).catch(() => {});
+    try {
+      const res = await fetch(`/api/games/letter-catcher?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      onRefresh();
+    } catch {
+      alert('فشل الحذف');
+    }
     setDeleting(null);
-    onRefresh();
   };
-
-  const filtered = allWords.filter(w =>
-    !search || w.word?.includes(search) || w.topic?.includes(search)
-  );
-
-  if (!isAdmin) return (
-    <div>
-      <div style={{ background:'#FFF8E7', border:'1px solid #F6E05E', borderRadius:14, padding:16, marginBottom:16, textAlign:'center' }}>
-        <div style={{ fontSize:'2rem', marginBottom:6 }}>🔐</div>
-        <div style={{ fontWeight:800, color:'#744210', marginBottom:4 }}>هذه الميزة للمشرفين فقط</div>
-        <div style={{ color:'#975A16', fontSize:'.88rem', marginBottom:12 }}>سجّل دخولك كمشرف لإضافة أو حذف الكلمات</div>
-        <Link href="/auth/login"
-          style={{ display:'inline-block', background:'linear-gradient(135deg,#667eea,#764ba2)', color:'#fff', borderRadius:50, padding:'9px 24px', textDecoration:'none', fontWeight:700, fontSize:'.9rem' }}>
-          تسجيل الدخول
-        </Link>
-      </div>
-      <div style={{ fontWeight:700, color:'#4a5568', marginBottom:8, fontSize:'.88rem' }}>📚 الكلمات المتاحة ({allWords.length})</div>
-      <div style={{ display:'flex', flexDirection:'column', gap:5, maxHeight:220, overflowY:'auto' }}>
-        {allWords.map(w => (
-          <div key={w.id} style={{ display:'flex', alignItems:'center', gap:8, background:'#f7fafc', borderRadius:10, padding:'7px 12px', border:'1px solid #e2e8f0' }}>
-            {w.has_image && <span style={{ fontSize:'1rem' }}>🖼️</span>}
-            <span style={{ flex:1, fontWeight:700, color:'#2d3748', fontSize:'.9rem' }}>{w.word}</span>
-            {w.topic && <span style={{ background:'#EEF2FF', color:'#667eea', borderRadius:20, padding:'2px 8px', fontSize:'.72rem', fontWeight:700 }}>{w.topic}</span>}
-          </div>
-        ))}
-        {allWords.length === 0 && <div style={{ textAlign:'center', color:'#a0aec0', padding:16, fontSize:'.88rem' }}>لا توجد كلمات بعد</div>}
-      </div>
-    </div>
-  );
 
   return (
     <div>
-      <div style={{ background:'#F7F9FF', border:'1.5px dashed #667eea', borderRadius:16, padding:16, marginBottom:18 }}>
-        <div style={{ fontWeight:800, color:'#667eea', marginBottom:12, fontSize:'.95rem' }}>➕ إضافة كلمة جديدة</div>
-        <label style={lbStyle}>الكلمة *</label>
-        <input value={word} onChange={e => setWord(e.target.value)}
-          placeholder="اكتب الكلمة بالعربية..."
-          style={{ width:'100%', border:'1.5px solid #e2e8f0', borderRadius:10, padding:'9px 12px', fontSize:'1rem', fontFamily:'Cairo,Tajawal,sans-serif', direction:'rtl', marginBottom:12, boxSizing:'border-box' }}
+      <div style={{ background: '#f5f3ff', borderRadius: 14, padding: 16, marginBottom: 18, border: '1.5px dashed #7c3aed' }}>
+        <div style={{ fontWeight: 800, color: '#7c3aed', marginBottom: 12, fontSize: '.92rem' }}>➕ إضافة كلمة جديدة</div>
+
+        <input
+          value={word}
+          onChange={e => setWord(e.target.value)}
+          placeholder="الكلمة (مثال: قَلَم)"
+          style={S.input}
+          dir="rtl"
         />
-        <label style={lbStyle}>الموضوع (اختياري)</label>
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
-          {TOPICS.map(t => (
-            <button key={t} onClick={() => setTopic(topic === t ? '' : t)}
-              style={{ ...chipStyle(topic === t), padding:'4px 12px', fontSize:'.78rem' }}>
-              {TOPIC_EMOJI[t] ?? '📌'} {t}
-            </button>
-          ))}
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <input
+            value={missing}
+            onChange={e => setMissing(e.target.value)}
+            placeholder="الحرف الناقص (مثال: ق)"
+            style={{ ...S.input, flex: 2, margin: 0 }}
+            dir="rtl"
+            maxLength={2}
+          />
+          <input
+            value={emoji}
+            onChange={e => setEmoji(e.target.value)}
+            placeholder="إيموجي 🎯"
+            style={{ ...S.input, flex: 1, margin: 0, textAlign: 'center' }}
+            maxLength={4}
+          />
         </div>
-        <div style={{ display:'flex', gap:16, marginBottom:12 }}>
-          <div style={{ flex:1 }}>
-            <label style={lbStyle}>من الصف</label>
-            <select value={gradeFrom} onChange={e => setGradeFrom(+e.target.value)}
-              style={{ width:'100%', border:'1.5px solid #e2e8f0', borderRadius:10, padding:'8px 10px', fontFamily:'Cairo,Tajawal,sans-serif', fontSize:'.9rem' }}>
-              {[1,2,3,4,5,6,7].map(g => <option key={g}>{g}</option>)}
-            </select>
-          </div>
-          <div style={{ flex:1 }}>
-            <label style={lbStyle}>حتى الصف</label>
-            <select value={gradeTo} onChange={e => setGradeTo(+e.target.value)}
-              style={{ width:'100%', border:'1.5px solid #e2e8f0', borderRadius:10, padding:'8px 10px', fontFamily:'Cairo,Tajawal,sans-serif', fontSize:'.9rem' }}>
-              {[1,2,3,4,5,6,7].map(g => <option key={g}>{g}</option>)}
-            </select>
-          </div>
-        </div>
-        <label style={lbStyle}>صورة للكلمة (اختياري)</label>
-        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
-          {imgPrev && (
-            <img src={imgPrev} alt="preview"
-              style={{ width:60, height:60, objectFit:'cover', borderRadius:10, border:'2px solid #e2e8f0' }} />
-          )}
-          <button onClick={() => fileRef.current?.click()}
-            style={{ background:'#EEF2FF', border:'1.5px dashed #667eea', borderRadius:10, padding:'8px 16px', cursor:'pointer', color:'#667eea', fontWeight:700, fontSize:'.85rem', fontFamily:'Cairo,Tajawal,sans-serif' }}>
-            {imgPrev ? '🔄 تغيير الصورة' : '🖼️ رفع صورة'}
-          </button>
-          {imgPrev && (
-            <button onClick={() => { setImgFile(null); setImgPrev(null); if(fileRef.current) fileRef.current.value=''; }}
-              style={{ background:'#FFF5F5', border:'none', borderRadius:10, padding:'8px 12px', cursor:'pointer', color:'#C53030', fontWeight:700 }}>✕</button>
-          )}
-          <input ref={fileRef} type="file" accept="image/*" onChange={handleImg} style={{ display:'none' }} />
-        </div>
+
+        <select
+          value={topic}
+          onChange={e => setTopic(e.target.value)}
+          style={{ ...S.input, marginTop: 8 }}
+          dir="rtl"
+        >
+          <option value=''>بدون موضوع</option>
+          {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+
         {msg && (
-          <div style={{ borderRadius:10, padding:'8px 12px', marginBottom:10, fontSize:'.85rem', fontWeight:700,
-            background: msg.ok ? '#F0FFF4' : '#FFF5F5',
-            color: msg.ok ? '#276749' : '#C53030',
-            border: `1px solid ${msg.ok ? '#C6F6D5' : '#FED7D7'}` }}>
+          <div style={{
+            marginTop: 10, padding: '8px 12px', borderRadius: 8, fontSize: '.85rem', fontWeight: 700,
+            background: msg.ok ? '#d4edda' : '#f8d7da',
+            color: msg.ok ? '#155724' : '#721c24',
+          }}>
             {msg.text}
           </div>
         )}
-        <button onClick={addWord} disabled={saving || !word.trim()}
-          style={{ width:'100%', background: (saving || !word.trim()) ? '#e2e8f0' : BG, color:'#fff', border:'none', borderRadius:50, padding:'12px', fontSize:'.95rem', fontWeight:800, cursor: (saving || !word.trim()) ? 'not-allowed' : 'pointer', fontFamily:'Cairo,Tajawal,sans-serif' }}>
-          {saving ? 'جاري الحفظ…' : '✅ إضافة الكلمة'}
+
+        <button
+          onClick={handleAdd}
+          disabled={saving || !word.trim() || !missing.trim()}
+          style={{
+            ...S.addBtn,
+            opacity: (saving || !word.trim() || !missing.trim()) ? 0.6 : 1,
+            cursor:  (saving || !word.trim() || !missing.trim()) ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {saving ? 'جارٍ الحفظ…' : '💾 حفظ في قاعدة البيانات'}
         </button>
       </div>
-      <div style={{ fontWeight:800, color:'#4a5568', marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <span>📚 الكلمات ({allWords.length})</span>
+
+      <div style={{ fontWeight: 700, color: '#374151', marginBottom: 8, fontSize: '.88rem' }}>
+        📚 الكلمات في قاعدة البيانات ({dbWords.length})
       </div>
-      {allWords.length > 5 && (
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="ابحث في الكلمات..."
-          style={{ width:'100%', border:'1.5px solid #e2e8f0', borderRadius:10, padding:'8px 12px', fontSize:'.88rem', fontFamily:'Cairo,Tajawal,sans-serif', direction:'rtl', marginBottom:10, boxSizing:'border-box' }}
-        />
-      )}
-      {allWords.length === 0 ? (
-        <div style={{ textAlign:'center', color:'#a0aec0', padding:'20px 0', fontSize:'.9rem' }}>لا توجد كلمات بعد — أضف أولى كلماتك أعلاه!</div>
+      {dbWords.length === 0 ? (
+        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '16px 0', fontSize: '.88rem' }}>
+          لا توجد كلمات بعد — أضف أولى كلماتك أعلاه
+        </div>
       ) : (
-        <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:260, overflowY:'auto' }}>
-          {filtered.map(w => (
-            <div key={w.id} style={{ display:'flex', alignItems:'center', gap:8, background:'#f7fafc', borderRadius:10, padding:'8px 12px', border:'1px solid #e2e8f0' }}>
-              {w.has_image && <span title="لها صورة" style={{ fontSize:'1.1rem' }}>🖼️</span>}
-              <span style={{ flex:1, fontWeight:700, color:'#2d3748', fontSize:'.92rem' }}>{w.word}</span>
-              {w.topic && (
-                <span style={{ background:'#EEF2FF', color:'#667eea', borderRadius:20, padding:'2px 8px', fontSize:'.75rem', fontWeight:700 }}>{w.topic}</span>
-              )}
-              <span style={{ color:'#a0aec0', fontSize:'.75rem' }}>ص{w.grade_from}-{w.grade_to}</span>
-              <button onClick={() => deleteWord(w.id, w.word)} disabled={deleting === w.id}
-                style={{ background:'none', border:'none', cursor:'pointer', color:'#FC8181', fontSize:'1.1rem', padding:'2px 4px', lineHeight:1 }}
-                title="حذف">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
+          {dbWords.map(w => (
+            <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f9fafb', borderRadius: 10, padding: '8px 12px', border: '1px solid #e5e7eb' }}>
+              {w.emoji && <span style={{ fontSize: '1.2rem' }}>{w.emoji}</span>}
+              <span style={{ flex: 1, fontWeight: 700, color: '#1f2937', fontSize: '.9rem' }}>{w.word}</span>
+              {w.topic && <span style={{ background: '#e0f2fe', color: '#0369a1', borderRadius: 20, padding: '2px 8px', fontSize: '.7rem', fontWeight: 700 }}>{w.topic}</span>}
+              <span style={{ background: '#ede9fe', color: '#7c3aed', borderRadius: 20, padding: '2px 8px', fontSize: '.75rem', fontWeight: 700 }}>{w.missing_letter}</span>
+              <button
+                onClick={() => handleDelete(w.id, w.word)}
+                disabled={deleting === w.id}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '1.05rem', padding: '2px 4px', lineHeight: 1 }}
+                title="حذف"
+              >
                 {deleting === w.id ? '…' : '🗑️'}
               </button>
             </div>
@@ -335,470 +200,488 @@ function WordsTab({ allWords, onRefresh, isAdmin }) {
   );
 }
 
-// ─── لوحة الإعدادات (تبويبين) ──────────────────────────────────────────
-function SettingsPanel({ config, onSave, onClose, allWords, onRefresh, isAdmin }) {
-  const [tab,   setTab]   = useState('settings');
-  const [local, setLocal] = useState({ ...config });
-
-  const topics = [...new Set((allWords ?? []).map(w => w.topic).filter(Boolean))].sort();
-  const set = (key, val) => setLocal(prev => ({ ...prev, [key]: val }));
-
-  const countAfterFilter = (allWords ?? []).filter(w => {
-    const s = stripHarakat(w.word ?? '');
-    if (s.length < local.MIN_WORD_LEN) return false;
-    if (s.length > local.MAX_WORD_LEN)  return false;
-    if (local.TOPIC_FILTER && w.topic !== local.TOPIC_FILTER) return false;
-    if (local.GRADE_FILTER) {
-      const g = Number(local.GRADE_FILTER);
-      if (g < (w.grade_from ?? 1) || g > (w.grade_to ?? 7)) return false;
-    }
-    return true;
-  }).length;
-
-  const tabBtn = (id, label) => (
-    <button key={id} onClick={() => setTab(id)} style={{
-      flex:1, background: tab === id ? BG : '#f7fafc',
-      color: tab === id ? '#fff' : '#718096',
-      border:'none', borderRadius:12, padding:'10px', fontWeight:700, fontSize:'.9rem',
-      cursor:'pointer', fontFamily:'Cairo,Tajawal,sans-serif', transition:'all .15s',
-    }}>{label}</button>
-  );
+/* ─────────────────── settings panel (modal) ─────────────────── */
+function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh }) {
+  const [tab, setTab] = useState('settings');
+  const tabStyle = (id) => ({
+    flex: 1, padding: '9px 0', border: 'none', borderRadius: 10,
+    fontFamily: "'Tajawal', sans-serif", fontWeight: 700, fontSize: '.88rem',
+    cursor: 'pointer', transition: 'all .15s',
+    background: tab === id ? 'linear-gradient(135deg,#5b4fc4,#7c3aed)' : '#f3f4f6',
+    color: tab === id ? '#fff' : '#6b7280',
+  });
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:500, background:'rgba(0,0,0,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:16, direction:'rtl' }}
-      onClick={onClose}>
-      <div style={{ background:'#fff', borderRadius:24, padding:'24px 20px', maxWidth:500, width:'100%', boxShadow:'0 24px 64px rgba(0,0,0,.35)', maxHeight:'92vh', overflowY:'auto', fontFamily:'Cairo,Tajawal,sans-serif' }}
-        onClick={e => e.stopPropagation()}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <h2 style={{ margin:0, fontSize:'1.2rem', fontWeight:800, color:'#2d3748' }}>⚙️ إعدادات اللعبة</h2>
-          <button onClick={onClose} style={{ background:'#f7fafc', border:'none', borderRadius:'50%', width:34, height:34, cursor:'pointer', fontSize:'1.1rem', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+    <div style={S.settingsOverlay} onClick={onClose}>
+      <div style={S.settingsCard} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem' }}>⚙️ إعدادات اللعبة</h3>
+          <button onClick={onClose} style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
-        <div style={{ display:'flex', gap:6, marginBottom:20, background:'#f7fafc', borderRadius:14, padding:4 }}>
-          {tabBtn('settings', '⚙️ إعدادات اللعبة')}
-          {isAdmin && tabBtn('words', `📖 الكلمات (${allWords.length})`)}
+
+        <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+          <button style={tabStyle('settings')} onClick={() => setTab('settings')}>⚙️ الإعدادات</button>
+          <button style={tabStyle('words')} onClick={() => setTab('words')}>📖 الكلمات ({dbWords.length})</button>
         </div>
+
         {tab === 'settings' && (
           <>
-            {countAfterFilter > 0 && (
-              <div style={{ background:'#F0FFF4', border:'1px solid #C6F6D5', borderRadius:12, padding:'9px 14px', marginBottom:16, fontSize:'.88rem', color:'#276749', fontWeight:700, textAlign:'center' }}>
-                ✅ {countAfterFilter} كلمة ستظهر في اللعبة
+            <label style={S.settingsLabel}>
+              عدد الأسئلة في الجولة
+              <select value={cfg.questionsPerRound} onChange={e => onChange({ ...cfg, questionsPerRound: Number(e.target.value) })} style={S.settingsSelect}>
+                {[10, 20, 30, 50].map(v => <option key={v} value={v}>{v} سؤال</option>)}
+              </select>
+            </label>
+
+            <label style={S.settingsLabel}>
+              عدد الخيارات لكل سؤال
+              <select value={cfg.optionsCount} onChange={e => onChange({ ...cfg, optionsCount: Number(e.target.value) })} style={S.settingsSelect}>
+                {[3, 4, 5].map(v => <option key={v} value={v}>{v} خيارات</option>)}
+              </select>
+            </label>
+
+            <label style={S.settingsLabel}>
+              الموضوع
+              <select value={cfg.topic} onChange={e => onChange({ ...cfg, topic: e.target.value })} style={S.settingsSelect}>
+                <option value=''>كل المواضيع</option>
+                {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </label>
+
+            <label style={S.settingsLabel}>
+              الصف الدراسي
+              <select value={cfg.grade} onChange={e => onChange({ ...cfg, grade: Number(e.target.value) })} style={S.settingsSelect}>
+                <option value={0}>كل الصفوف</option>
+                {[1, 2, 3, 4, 5, 6].map(g => <option key={g} value={g}>الصف {g}</option>)}
+              </select>
+            </label>
+
+            <label style={S.settingsLabel}>
+              طول الكلمة: {cfg.minLen} – {cfg.maxLen} حرفاً
+              <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '.75rem', color: '#9ca3af', marginBottom: 4, textAlign: 'center' }}>أدنى: {cfg.minLen}</div>
+                  <input type="range" min={2} max={cfg.maxLen} value={cfg.minLen}
+                    onChange={e => onChange({ ...cfg, minLen: Number(e.target.value) })}
+                    style={{ width: '100%', accentColor: '#7c3aed' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '.75rem', color: '#9ca3af', marginBottom: 4, textAlign: 'center' }}>أقصى: {cfg.maxLen}</div>
+                  <input type="range" min={cfg.minLen} max={12} value={cfg.maxLen}
+                    onChange={e => onChange({ ...cfg, maxLen: Number(e.target.value) })}
+                    style={{ width: '100%', accentColor: '#7c3aed' }} />
+                </div>
               </div>
-            )}
-            <label style={lbStyle}>🎯 عدد الأسئلة في الجولة</label>
-            <div style={rowStyle}>
-              {[5, 10, 15, 20, 30, 50].map(n => (
-                <button key={n} onClick={() => set('ROUND_SIZE', n)} style={chipStyle(local.ROUND_SIZE === n)}>{n}</button>
-              ))}
-            </div>
-            <label style={lbStyle}>🔤 عدد خيارات الحرف</label>
-            <div style={rowStyle}>
-              {[[3,'سهل'],[4,''],[5,''],[6,'صعب']].map(([n,hint]) => (
-                <button key={n} onClick={() => set('CHOICES_COUNT', n)} style={chipStyle(local.CHOICES_COUNT === n)}>
-                  {n}{hint ? ` (${hint})` : ''}
-                </button>
-              ))}
-            </div>
-            <label style={lbStyle}>📂 الموضوع</label>
-            <div style={{ ...rowStyle, flexWrap:'wrap' }}>
-              <button onClick={() => set('TOPIC_FILTER', null)} style={chipStyle(local.TOPIC_FILTER === null)}>الكل</button>
-              {topics.map(t => (
-                <button key={t} onClick={() => set('TOPIC_FILTER', t)} style={chipStyle(local.TOPIC_FILTER === t)}>
-                  {TOPIC_EMOJI[t] ?? '📌'} {t}
-                </button>
-              ))}
-              {topics.length === 0 && <span style={{ color:'#a0aec0', fontSize:'.82rem' }}>لا توجد مواضيع بعد — أضف كلمات من تبويب الكلمات</span>}
-            </div>
-            <label style={lbStyle}>🎓 المستوى الدراسي</label>
-            <div style={rowStyle}>
-              <button onClick={() => set('GRADE_FILTER', null)} style={chipStyle(local.GRADE_FILTER === null)}>الكل</button>
-              {[1,2,3,4,5,6,7].map(g => (
-                <button key={g} onClick={() => set('GRADE_FILTER', g)} style={chipStyle(local.GRADE_FILTER === g)}>{g}</button>
-              ))}
-            </div>
-            <label style={lbStyle}>📏 طول الكلمة (عدد الحروف)</label>
-            <div style={{ display:'flex', gap:12, alignItems:'flex-start', marginBottom:20 }}>
-              <div style={{ flex:1 }}>
-                <div style={{ color:'#718096', fontSize:'.75rem', marginBottom:4, textAlign:'center' }}>الحد الأدنى</div>
-                <div style={rowStyle}>{[2,3,4,5].map(n => <button key={n} onClick={() => set('MIN_WORD_LEN', n)} style={chipStyle(local.MIN_WORD_LEN === n)}>{n}</button>)}</div>
-              </div>
-              <div style={{ color:'#cbd5e0', fontWeight:700, paddingTop:28 }}>—</div>
-              <div style={{ flex:1 }}>
-                <div style={{ color:'#718096', fontSize:'.75rem', marginBottom:4, textAlign:'center' }}>الحد الأقصى</div>
-                <div style={rowStyle}>{[5,6,7,8,10,12].map(n => <button key={n} onClick={() => set('MAX_WORD_LEN', n)} style={chipStyle(local.MAX_WORD_LEN === n)}>{n}</button>)}</div>
-              </div>
-            </div>
-            <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => { onSave(local); onClose(); }}
-                style={{ flex:1, background:BG, color:'#fff', border:'none', borderRadius:50, padding:'13px', fontSize:'1rem', fontWeight:800, cursor:'pointer', fontFamily:'Cairo,Tajawal,sans-serif' }}>
-                ✅ حفظ الإعدادات
-              </button>
-              <button onClick={() => { onSave(DEFAULT_CONFIG); setLocal({ ...DEFAULT_CONFIG }); }}
-                style={{ background:'#f7fafc', color:'#718096', border:'1px solid #e2e8f0', borderRadius:50, padding:'13px 18px', fontSize:'.88rem', fontWeight:700, cursor:'pointer', fontFamily:'Cairo,Tajawal,sans-serif' }}>
-                إعادة ضبط
-              </button>
-            </div>
+            </label>
+
+            <button style={S.btnGold} onClick={onClose}>حفظ الإعدادات ✓</button>
           </>
         )}
+
         {tab === 'words' && (
-          <WordsTab allWords={allWords} onRefresh={onRefresh} isAdmin={isAdmin} />
+          <WordManager dbWords={dbWords} onRefresh={onRefresh} />
         )}
       </div>
     </div>
   );
 }
 
-// ─── المكوّن الرئيسي ───────────────────────────────────────────────────
-export default function LetterCatcherPage() {
-  const [config, setConfig] = useState(() => {
-    if (typeof window === 'undefined') return DEFAULT_CONFIG;
-    try {
-      const saved = localStorage.getItem('letterCatcherConfig');
-      return saved ? { ...DEFAULT_CONFIG, ...JSON.parse(saved) } : DEFAULT_CONFIG;
-    } catch { return DEFAULT_CONFIG; }
+/* ────────────────────── image with fallback ─────────────────── */
+function WordImage({ imageUrl, emoji }) {
+  const [err, setErr] = useState(false);
+  if (!imageUrl || err) return <div style={S.emojiBox}>{emoji || '❓'}</div>;
+  return <img src={imageUrl} alt="" style={S.wordImg} onError={() => setErr(true)} />;
+}
+
+/* ═══════════════════════ MAIN COMPONENT ════════════════════════ */
+export default function LetterCatcherGame() {
+  const [phase,    setPhase]    = useState('start');
+  const [dbWords,  setDbWords]  = useState([]);     // all words from DB (for word manager)
+  const [gameWords, setGameWords] = useState([]);   // words matching active filters (for game)
+  const [queue,    setQueue]    = useState([]);
+  const [cur,      setCur]      = useState(0);
+  const [score,    setScore]    = useState(0);
+  const [chosen,   setChosen]   = useState(null);
+  const [correct,  setCorrect]  = useState(null);
+  const [showCfg,  setShowCfg]  = useState(false);
+  const [cfg, setCfg] = useState({
+    questionsPerRound: 10,
+    optionsCount: 5,
+    topic: '',
+    grade: 0,
+    minLen: 2,
+    maxLen: 12,
   });
 
-  const [phase,         setPhase]         = useState('loading');
-  const [allWords,      setAllWords]      = useState([]);
-  const [filteredWords, setFilteredWords] = useState([]);
-  const [queue,         setQueue]         = useState([]);
-  const [qIdx,          setQIdx]          = useState(0);
-  const [current,       setCurrent]       = useState(null);
-  const [choices,       setChoices]       = useState([]);
-  const [answered,      setAnswered]      = useState(null);
-  const [wrongIdx,      setWrongIdx]      = useState(null);
-  const [score,         setScore]         = useState(0);
-  const [confetti,      setConfetti]      = useState([]);
-  const [shaking,       setShaking]       = useState(false);
-  const [building,      setBuilding]      = useState(false);
-  const [showSettings,  setShowSettings]  = useState(false);
-  const [isAdmin,       setIsAdmin]       = useState(false);
-  const [canSettings,   setCanSettings]   = useState(false);
-  const timer     = useRef(null);
-  // ref يضمن أن startGame دائماً يرى أحدث قيمة لـ filteredWords
-  const filteredWordsRef = useRef([]);
-
-  useEffect(() => { filteredWordsRef.current = filteredWords; }, [filteredWords]);
-
-  useEffect(() => {
-    const supabase = createBrowserClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      const role = user?.user_metadata?.role ?? '';
-      setIsAdmin(role === 'super_admin' || role === 'admin');
-      setCanSettings(role === 'super_admin' || role === 'admin' || role === 'teacher');
-    });
+  /* ── load all words from DB (no filters) ── */
+  const loadWords = useCallback(async () => {
+    try {
+      const res  = await fetch('/api/games/letter-catcher');
+      const json = await res.json();
+      const valid = (json.words || []).filter(
+        w => w.word && w.missing_letter && Array.isArray(w.options) && w.options.filter(Boolean).length >= 2
+      );
+      setDbWords(valid);
+    } catch {
+      setDbWords([]);
+    }
   }, []);
 
+  useEffect(() => { loadWords(); }, [loadWords]);
+
+  /* ── derive gameWords by applying all active filters client-side ── */
   useEffect(() => {
-    try { localStorage.setItem('letterCatcherConfig', JSON.stringify(config)); } catch {}
-  }, [config]);
-
-  const fetchWords = useCallback(() => {
-    fetch('/api/student/lexicon')
-      .then(r => r.json())
-      .then(({ words }) => { setAllWords(words ?? []); setPhase(p => p === 'loading' ? 'intro' : p); })
-      .catch(() => { setAllWords([]); setPhase(p => p === 'loading' ? 'intro' : p); });
-  }, []);
-
-  useEffect(() => { fetchWords(); }, [fetchWords]);
-
-  useEffect(() => {
-    const pool = allWords.filter(w => {
-      const s = stripHarakat(w.word ?? '');
-      if (s.length < config.MIN_WORD_LEN) return false;
-      if (s.length > config.MAX_WORD_LEN)  return false;
-      if (config.TOPIC_FILTER && w.topic !== config.TOPIC_FILTER) return false;
-      if (config.GRADE_FILTER) {
-        const grade = Number(config.GRADE_FILTER);
-        if (grade < (w.grade_from ?? 1) || grade > (w.grade_to ?? 7)) return false;
-      }
+    const { topic, grade, minLen, maxLen } = cfg;
+    const filtered = dbWords.filter(w => {
+      if (topic && (w.topic || '') !== topic) return false;
+      if (grade > 0 && w.grade_level !== grade) return false;
+      const len = stripDia(w.word).length;
+      if (len < minLen || len > maxLen) return false;
       return true;
     });
-    setFilteredWords(pool.length > 0 ? pool : allWords);
-  }, [allWords, config]);
+    setGameWords(filtered);
+  }, [dbWords, cfg]);
 
-  const buildRound = useCallback(async (words, roundSize) => {
-    const shuffled = [...words].sort(() => Math.random() - 0.5);
-    const base = [];
-    for (const w of shuffled) {
-      if (base.length >= roundSize) break;
-      const miss = pickMissing(w.word);
-      if (!miss) continue;
-      base.push({ id:w.id, word:w.word, topic:w.topic, has_image:w.has_image, has_audio:w.has_audio, ...miss });
-    }
-    const rich = await Promise.all(base.map(async item => {
-      try {
-        const res = await fetch(`/api/student/lexicon/${item.id}`);
-        if (!res.ok) return { ...item, image:null, audio:null };
-        const { image, audio } = await res.json();
-        return { ...item, image:image ?? null, audio:audio ?? null };
-      } catch { return { ...item, image:null, audio:null }; }
-    }));
-    return rich;
+  /* ── build round queue ── */
+  const buildQueue = useCallback((words, count, optCount) => {
+    return shuffle(words).slice(0, count).map(w => {
+      const correctLetter = stripDia(w.missing_letter);
+      const strippedW     = stripDia(w.word);
+      const missingIdx    = strippedW.indexOf(correctLetter);
+      const form          = missingIdx >= 0 ? getLetterForm(strippedW, missingIdx) : 'isolated';
+      const pool          = (w.options || []).filter(Boolean).filter(o => stripDia(o) !== correctLetter);
+      const distractors   = shuffle(pool).slice(0, optCount - 1);
+      const opts          = shuffle([w.missing_letter, ...distractors]);
+      return { ...w, _opts: opts, _form: form };
+    });
   }, []);
 
-  const playItem = useCallback((item) => {
-    if (item?.audio) playB64(item.audio);
-    else speak(item?.word ?? '');
+  /* ── start game — only if enough matching words ── */
+  const startGame = useCallback(() => {
+    if (gameWords.length < cfg.questionsPerRound) return;
+    setQueue(buildQueue(gameWords, cfg.questionsPerRound, cfg.optionsCount));
+    setCur(0); setScore(0); setChosen(null); setCorrect(null);
+    setPhase('playing');
+  }, [gameWords, buildQueue, cfg]);
+
+  const pick = useCallback((opt) => {
+    if (chosen !== null) return;
+    const w       = queue[cur];
+    const isRight = stripDia(opt) === stripDia(w.missing_letter);
+    setChosen(opt); setCorrect(isRight);
+    if (isRight) setScore(s => s + 1);
+  }, [chosen, cur, queue]);
+
+  const next = useCallback(() => {
+    const n = cur + 1;
+    if (n >= queue.length) setPhase('finished');
+    else { setCur(n); setChosen(null); setCorrect(null); }
+  }, [cur, queue.length]);
+
+  const restart = useCallback(() => {
+    setPhase('start'); setQueue([]); setCur(0);
+    setScore(0); setChosen(null); setCorrect(null);
   }, []);
 
-  const loadQ = useCallback((q, idx) => {
-    if (idx >= q.length) { setPhase('victory'); return; }
-    const item = q[idx];
-    setQueue(q); setQIdx(idx); setCurrent(item);
-    setChoices(shuffle([item.letter, ...makeDistractors(item.letter, config.CHOICES_COUNT - 1)]));
-    setAnswered(null); setWrongIdx(null);
-    setTimeout(() => playItem(item), 350);
-  }, [playItem, config.CHOICES_COUNT]);
+  /* is the round size larger than available matching words? */
+  const notEnough = gameWords.length > 0 && gameWords.length < cfg.questionsPerRound;
+  const filtersActive = cfg.topic || cfg.grade > 0 || cfg.minLen > 2 || cfg.maxLen < 12;
 
-  const startGame = useCallback(async () => {
-    clearTimeout(timer.current);
-    setBuilding(true); setScore(0); setPhase('playing');
-    try {
-      // استخدم الـ ref لضمان أحدث قيمة بغض النظر عن الـ closure
-      const currentFiltered = filteredWordsRef.current;
-      const roundSize = config.ROUND_SIZE;
-
-      let q = [];
-      if (currentFiltered.length > 0) {
-        const pool = currentFiltered.length >= roundSize
-          ? currentFiltered
-          : [...currentFiltered, ...currentFiltered, ...currentFiltered];
-        q = await buildRound(pool, roundSize);
-      }
-
-      setBuilding(false);
-
-      if (q.length > 0) {
-        // اللعبة من البنك
-        loadQ(q, 0);
-      } else {
-        // fallback: ابدأ اللعبة فوراً بكلمات مدمجة حتى لو لم يكن في البنك شيء
-        const fb = shuffle(FALLBACK_PREBUILT).slice(0, roundSize);
-        const fbWithChoices = fb.map(item => ({
-          ...item,
-          // choices تُحسب في loadQ عبر item.letter
-        }));
-        loadQ(fbWithChoices, 0);
-      }
-    } catch (err) {
-      console.error('startGame error:', err);
-      setBuilding(false);
-      // حتى في حالة الخطأ: ابدأ بالبيانات الاحتياطية
-      const fb = shuffle(FALLBACK_PREBUILT).slice(0, config.ROUND_SIZE);
-      loadQ(fb, 0);
-    }
-  }, [buildRound, loadQ, config.ROUND_SIZE, config.CHOICES_COUNT]);
-
-  const handleChoice = (letter, ci) => {
-    if (answered || !current) return;
-    clearTimeout(timer.current);
-    if (letter === current.letter) {
-      setAnswered('correct'); setScore(s => s + 1); boom(); playItem(current);
-      const nextIdx = qIdx + 1, q = queue;
-      timer.current = setTimeout(() => loadQ(q, nextIdx), 1900);
-    } else {
-      setAnswered('wrong'); setWrongIdx(ci); setShaking(true);
-      setTimeout(() => setShaking(false), 500);
-      timer.current = setTimeout(() => { setAnswered(null); setWrongIdx(null); }, 950);
-    }
-  };
-
-  const boom = () => {
-    const p = Array.from({ length:24 }, (_,i) => ({ id:Date.now()+i, x:Math.random()*100, color:BUBBLE_COLORS[i%BUBBLE_COLORS.length], delay:Math.random()*0.4, size:8+Math.random()*10 }));
-    setConfetti(p); setTimeout(() => setConfetti([]), 2000);
-  };
-
-  useEffect(() => () => clearTimeout(timer.current), []);
-
-  const css = `
-    @keyframes floatB { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
-    @keyframes cfall  { 0%{transform:translateY(-20px) rotate(0);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
-    @keyframes cpop   { 0%{transform:scale(1)} 40%{transform:scale(1.28)} 100%{transform:scale(1)} }
-    @keyframes shake  { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
-    @keyframes popIn  { 0%{transform:scale(0);opacity:0} 80%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
-    @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-    .bb { border:none; border-radius:50%; cursor:pointer; font-size:1.85rem; font-weight:900; width:80px; height:80px; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 22px rgba(0,0,0,.28); font-family:Cairo,Tajawal,sans-serif; color:#fff; transition:transform .15s; }
-    .bb:hover:not(:disabled) { transform:scale(1.13) !important; }
-    .stg-btn:hover { background:rgba(255,255,255,.35) !important; }
-  `;
-
-  const base = { minHeight:'100vh', fontFamily:'Cairo,Tajawal,sans-serif' };
-
-  const SettingsModal = showSettings && canSettings && (
-    <SettingsPanel
-      config={config}
-      allWords={allWords}
-      onSave={setConfig}
-      onClose={() => setShowSettings(false)}
-      onRefresh={fetchWords}
-      isAdmin={isAdmin}
-    />
-  );
-
-  if (phase === 'loading') return (
-    <div style={{ ...base, background:BG, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <style>{css}</style>
-      <div style={{ color:'#fff', fontSize:'1.4rem', fontWeight:700 }}>جاري التحميل… ⏳</div>
-    </div>
-  );
-
-  if (phase === 'intro') {
-    const topicLabel = config.TOPIC_FILTER ? ` (${config.TOPIC_FILTER})` : '';
+  /* ══════════════════════ RENDER: START ══════════════════════ */
+  if (phase === 'start') {
     return (
-      <div style={{ ...base, background:BG, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
-        <style>{css}</style>
-        {SettingsModal}
-        <div style={{ background:'#fff', borderRadius:24, padding:'40px 32px', maxWidth:460, width:'100%', textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,.25)' }}>
-          {canSettings && (
-            <div style={{ display:'flex', justifyContent:'flex-start', marginBottom:8 }}>
-              <button onClick={() => setShowSettings(true)}
-                style={{ background:'#F0F4FF', border:'none', borderRadius:12, padding:'7px 14px', cursor:'pointer', fontSize:'.85rem', fontWeight:700, color:'#667eea', display:'flex', alignItems:'center', gap:6, fontFamily:'Cairo,Tajawal,sans-serif' }}>
-                ⚙️ الإعدادات
+      <div style={S.page}>
+        {showCfg && (
+          <SettingsPanel
+            cfg={cfg}
+            onChange={setCfg}
+            onClose={() => setShowCfg(false)}
+            dbWords={dbWords}
+            onRefresh={loadWords}
+          />
+        )}
+
+        <div style={S.centerCard}>
+          <button style={S.cfgBtn} onClick={() => setShowCfg(true)}>⚙️ الإعدادات</button>
+
+          <div style={{ fontSize: '4.5rem', lineHeight: 1 }}>🦉</div>
+          <h1 style={S.mainTitle}>صيّاد الحروف!</h1>
+          <p style={S.sub}>
+            سأريك صورة وكلمة فيها حرف ناقص.<br />
+            انظر للصورة، ثم اختر الحرف الصحيح!
+          </p>
+
+          {gameWords.length > 0 ? (
+            <>
+              <div style={S.statsRow}>
+                <div style={S.statBox}>
+                  <span style={{ ...S.statNum, color: notEnough ? '#e74c3c' : '#7c3aed' }}>{gameWords.length}</span>
+                  <span style={S.statLbl}>كلمة مطابقة</span>
+                </div>
+                <div style={S.statDiv} />
+                <div style={S.statBox}>
+                  <span style={S.statNum}>{cfg.questionsPerRound}</span>
+                  <span style={S.statLbl}>سؤال مطلوب</span>
+                </div>
+                <div style={S.statDiv} />
+                <div style={S.statBox}>
+                  <span style={S.statNum}>{cfg.optionsCount}</span>
+                  <span style={S.statLbl}>خيارات</span>
+                </div>
+              </div>
+
+              {notEnough && (
+                <div style={S.warningBanner}>
+                  ⚠️ بنك الكلمات الحالي يحتوي على <strong>({gameWords.length})</strong> من الكلمات المطابقة لإعداداتك فقط. يرجى إضافة المزيد من الكلمات أو تقليل عدد أسئلة الجولة لبدء اللعب.
+                </div>
+              )}
+
+              <button
+                style={{ ...S.btnGold, opacity: notEnough ? 0.4 : 1, cursor: notEnough ? 'not-allowed' : 'pointer' }}
+                onClick={startGame}
+                disabled={notEnough}
+              >
+                🚀 ابدأ اللعبة
+              </button>
+            </>
+          ) : (
+            <div style={S.emptyState}>
+              <div style={{ fontSize: '3rem' }}>{filtersActive ? '🔍' : '📭'}</div>
+              <div style={{ fontWeight: 800, color: '#374151', fontSize: '1.05rem' }}>
+                {filtersActive ? 'لا توجد كلمات مطابقة للفلاتر الحالية' : 'بنك الكلمات فارغ'}
+              </div>
+              <p style={{ color: '#6b7280', fontSize: '.9rem', lineHeight: 1.8, margin: 0, textAlign: 'center' }}>
+                {filtersActive
+                  ? 'جرّب تغيير الموضوع أو الصف أو نطاق طول الكلمة في الإعدادات.'
+                  : 'لم يتم إضافة أي كلمات بعد.\nيرجى التواصل مع المعلم لإضافة كلمات اللعبة.'}
+              </p>
+              <button style={S.btnOutline} onClick={() => setShowCfg(true)}>
+                ⚙️ {filtersActive ? 'تعديل الفلاتر' : 'إضافة كلمات (للمعلم)'}
               </button>
             </div>
           )}
-          <div style={{ fontSize:'4rem', marginBottom:8 }}>🦉</div>
-          <h1 style={{ fontSize:'1.7rem', fontWeight:800, color:'#2d3748', marginBottom:4 }}>صيّاد الحروف{topicLabel}!</h1>
-          <p style={{ color:'#718096', lineHeight:1.9, marginBottom:20 }}>
-            سأريك صورة وكلمة فيها حرف ناقص.<br />
-            استمع للكلمة، انظر للصورة، ثم اختر الحرف الصحيح!
-          </p>
-          {canSettings && (
-            <div style={{ background:'#F0F4FF', borderRadius:16, padding:'12px 20px', marginBottom:20, fontSize:'.9rem', color:'#4a5568', textAlign:'right' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                <span style={{ color: filteredWords.length === 0 ? '#E53E3E' : '#667eea', fontWeight:700 }}>
-                  {allWords.length === 0 ? 'لا توجد كلمات في البنك — سيبدأ بكلمات تجريبية' : `${filteredWords.length} كلمة متاحة`}
-                </span>
-                <span>📚 بنك الكلمات</span>
-              </div>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                <span style={{ color:'#667eea', fontWeight:700 }}>{config.ROUND_SIZE} سؤال</span>
-                <span>🎯 كل جولة</span>
-              </div>
-              <div style={{ display:'flex', justifyContent:'space-between' }}>
-                <span style={{ color:'#667eea', fontWeight:700 }}>{config.CHOICES_COUNT} خيارات</span>
-                <span>🔤 لكل سؤال</span>
-              </div>
-            </div>
-          )}
-          <button onClick={startGame}
-            style={{ background:BG, color:'#fff', border:'none', borderRadius:50, padding:'14px 48px', fontSize:'1.15rem', fontWeight:800, cursor:'pointer', boxShadow:'0 6px 20px rgba(102,126,234,.5)', fontFamily:'Cairo,Tajawal,sans-serif' }}>
-            ابدأ اللعبة 🚀
-          </button>
-          <div style={{ marginTop:20 }}>
-            <Link href="/library" style={{ color:'#718096', fontSize:'.9rem', textDecoration:'none' }}>← العودة للمكتبة</Link>
-          </div>
+
+          <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
         </div>
       </div>
     );
   }
 
-  if (phase === 'victory') {
-    const total = queue.length;
-    const pct   = total > 0 ? Math.round((score / total) * 100) : 0;
-    const stars = pct >= 90 ? 3 : pct >= 60 ? 2 : 1;
+  /* ══════════════════════ RENDER: FINISHED ══════════════════════ */
+  if (phase === 'finished') {
+    const pct   = Math.round((score / queue.length) * 100);
+    const stars = pct >= 80 ? 3 : pct >= 50 ? 2 : 1;
+    const msg   = pct >= 80
+      ? 'ممتاز! أنت صياد حروف بارع 🏆'
+      : pct >= 50 ? 'جيد! تستطيع أن تتحسن أكثر 💪'
+      : 'لا تيأس! المحاولة مفتاح النجاح 🌟';
     return (
-      <div style={{ ...base, background:'linear-gradient(135deg,#f093fb,#f5576c)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
-        <style>{css}</style>
-        <div style={{ background:'#fff', borderRadius:24, padding:'40px 32px', maxWidth:460, width:'100%', textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,.25)', animation:'popIn .5s ease' }}>
-          <div style={{ fontSize:'3.5rem' }}>🏆</div>
-          <h1 style={{ fontSize:'1.8rem', fontWeight:800, color:'#2d3748', margin:'8px 0 4px' }}>أحسنت!</h1>
-          <p style={{ color:'#718096', marginBottom:8 }}>{total} سؤال من بنك يضم {filteredWords.length} كلمة</p>
-          <div style={{ fontSize:'2.2rem', margin:'10px 0' }}>{'⭐'.repeat(stars)}{'☆'.repeat(3-stars)}</div>
-          <div style={{ fontSize:'3rem', fontWeight:900, color:'#667eea' }}>{score}<span style={{ fontSize:'1.2rem', color:'#718096' }}>/{total}</span></div>
-          <div style={{ background:'#F0F4FF', borderRadius:12, padding:'10px 16px', margin:'16px 0', fontSize:'.9rem', color:'#4a5568' }}>
-            {pct>=90?'ممتاز! أنت بطل الحروف 🥇':pct>=60?'جيد جداً! استمر في التدريب 💪':'لا تيأس، حاول مرة أخرى! 🎯'}
-          </div>
-          <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap' }}>
-            <button onClick={startGame} style={{ background:BG, color:'#fff', border:'none', borderRadius:50, padding:'12px 32px', fontSize:'1rem', fontWeight:700, cursor:'pointer', fontFamily:'Cairo,Tajawal,sans-serif' }}>جولة جديدة 🔄</button>
-            <Link href="/library" style={{ background:'#f7fafc', color:'#4a5568', border:'2px solid #e2e8f0', borderRadius:50, padding:'12px 32px', fontSize:'1rem', fontWeight:700, textDecoration:'none', display:'inline-flex', alignItems:'center' }}>المكتبة 📚</Link>
-          </div>
+      <div style={S.page}>
+        <div style={S.centerCard}>
+          <div style={{ fontSize: '3rem' }}>{'⭐'.repeat(stars)}</div>
+          <h2 style={S.mainTitle}>أحسنت!</h2>
+          <div style={{ fontSize: '3.5rem', fontWeight: 800, color: '#F5A623' }}>{score} / {queue.length}</div>
+          <p style={S.sub}>{msg}</p>
+          <button style={S.btnGold} onClick={restart}>🔄 العب مرة أخرى</button>
+          <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
         </div>
       </div>
     );
   }
 
-  const total    = queue.length;
-  const progress = total > 0 ? (qIdx / total) * 100 : 0;
+  /* ══════════════════════ RENDER: PLAYING ══════════════════════ */
+  const w             = queue[cur];
+  const [before, after] = splitWord(w.word, w.missing_letter);
+  const opts          = w._opts || [];
+  const isLast        = cur + 1 >= queue.length;
 
   return (
-    <div style={{ ...base, background:BG, padding:'16px 16px 90px', direction:'rtl', position:'relative', overflow:'hidden' }}>
-      <style>{css}</style>
-      {SettingsModal}
-      {confetti.map(p => (
-        <div key={p.id} style={{ position:'fixed', top:0, left:`${p.x}%`, zIndex:999, pointerEvents:'none', width:p.size, height:p.size, borderRadius:'50%', background:p.color, animation:`cfall 1.7s ${p.delay}s ease-in forwards` }} />
-      ))}
-      {building && (
-        <div style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(102,126,234,.8)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:'#fff', gap:12 }}>
-          <div style={{ fontSize:'2rem' }}>⏳</div>
-          <div style={{ fontSize:'1.2rem', fontWeight:700 }}>جاري تحضير الأسئلة…</div>
+    <div style={S.page}>
+      <div style={S.headerRow}>
+        <span style={S.scoreBadge}>✨ {score}</span>
+        <div style={S.bar}>
+          <div style={{ ...S.barFill, width: `${((cur + 1) / queue.length) * 100}%` }} />
         </div>
-      )}
-      <div style={{ maxWidth:560, margin:'0 auto 14px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <Link href="/library" style={{ color:'rgba(255,255,255,.8)', textDecoration:'none', fontSize:'.9rem', fontWeight:600 }}>← مكتبة</Link>
-        <span style={{ color:'#fff', fontWeight:800 }}>صيّاد الحروف 🎯</span>
-        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          {canSettings && (
-            <button className="stg-btn" onClick={() => setShowSettings(true)} title="الإعدادات"
-              style={{ background:'rgba(255,255,255,.2)', border:'none', borderRadius:'50%', width:34, height:34, cursor:'pointer', fontSize:'1.1rem', display:'flex', alignItems:'center', justifyContent:'center', transition:'background .15s' }}>
-              ⚙️
-            </button>
-          )}
-          <span style={{ background:'rgba(255,255,255,.2)', color:'#fff', borderRadius:50, padding:'4px 14px', fontWeight:700, fontSize:'.9rem' }}>{score} ⭐</span>
+        <span style={S.barLabel}>{cur + 1} / {queue.length}</span>
+      </div>
+
+      <div style={S.card}>
+        <WordImage imageUrl={w.image_url} emoji={w.emoji} />
+
+        <div style={S.wordRow}>
+          {before && <span style={S.wordTxt}>{before}</span>}
+          <span style={{
+            ...S.blank,
+            background:  correct === null ? '#eef3fc' : correct ? '#d4edda' : '#f8d7da',
+            borderColor: correct === null ? '#7c3aed'  : correct ? '#27ae60' : '#e74c3c',
+            color:       correct === null ? '#7c3aed'  : correct ? '#27ae60' : '#e74c3c',
+          }}>
+            {correct !== null ? toContextual(w.missing_letter, w._form || 'isolated') : '؟'}
+          </span>
+          {after && <span style={S.wordTxt}>{after}</span>}
         </div>
-      </div>
-      <div style={{ maxWidth:560, margin:'0 auto 6px', display:'flex', justifyContent:'space-between', color:'rgba(255,255,255,.7)', fontSize:'.82rem' }}>
-        <span>السؤال {qIdx + 1}</span>
-        <span>من أصل {total}</span>
-      </div>
-      <div style={{ maxWidth:560, margin:'0 auto 18px', background:'rgba(255,255,255,.25)', borderRadius:50, height:10, overflow:'hidden' }}>
-        <div style={{ width:`${progress}%`, height:'100%', background:'#FFE66D', borderRadius:50, transition:'width .4s' }} />
-      </div>
-      {current && (
-        <div style={{ maxWidth:560, margin:'0 auto 24px', background:'#fff', borderRadius:24, padding:'22px 20px', textAlign:'center', boxShadow:'0 12px 40px rgba(0,0,0,.2)', animation: shaking ? 'shake .5s ease' : 'fadeIn .35s ease' }}>
-          <div style={{ marginBottom:16 }}>
-            {current.image ? (
-              <img src={`data:image/jpeg;base64,${current.image}`} alt={current.word}
-                style={{ width:120, height:120, objectFit:'cover', borderRadius:16, boxShadow:'0 4px 16px rgba(0,0,0,.15)' }} />
-            ) : (
-              <div style={{ width:120, height:120, borderRadius:16, background:'linear-gradient(135deg,#f0f4ff,#e8eeff)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'3.8rem', boxShadow:'0 4px 12px rgba(0,0,0,.1)' }}>
-                {TOPIC_EMOJI[current.topic] ?? '📖'}
-              </div>
-            )}
+
+        {correct !== null && (
+          <div style={{ ...S.feedback, color: correct ? '#1a6b38' : '#9b1c1c', background: correct ? '#d4edda' : '#f8d7da' }}>
+            {correct ? '✅ أحسنت! إجابة صحيحة' : `❌ الصحيح: ${w.missing_letter}`}
           </div>
-          <WordDisplay stripped={current.stripped} missingIdx={current.missingIdx} />
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12, marginTop:14 }}>
-            <button onClick={() => playItem(current)} title="استمع للكلمة"
-              style={{ background:'#EBF4FF', border:'none', borderRadius:'50%', width:40, height:40, cursor:'pointer', fontSize:'1.25rem', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,.1)' }}>
-              🔊
-            </button>
-            <span style={{ color:'#a0aec0', fontSize:'.82rem' }}>{qIdx + 1} / {total}</span>
-          </div>
-          {answered === 'correct' && (
-            <div style={{ marginTop:10, color:'#38A169', fontWeight:700, fontSize:'1.1rem', animation:'cpop .4s ease' }}>
-              ✅ {current.word}
-            </div>
-          )}
-        </div>
-      )}
-      {current && (
-        <div style={{ maxWidth:560, margin:'0 auto', display:'flex', flexWrap:'wrap', gap:16, justifyContent:'center' }}>
-          {choices.map((letter, i) => {
-            const isRight = answered === 'correct' && letter === current.letter;
-            const isWrong = answered === 'wrong'   && i === wrongIdx;
+        )}
+
+        <div style={{ ...S.optRow, gridTemplateColumns: `repeat(${Math.min(opts.length, 5)}, 1fr)` }}>
+          {opts.filter(Boolean).map((opt, idx) => {
+            const isRight  = stripDia(opt) === stripDia(w.missing_letter);
+            const picked   = chosen === opt;
+            const revealed = chosen !== null;
+            let btn = { ...S.optBtn };
+            if (revealed) {
+              if (isRight)     btn = { ...btn, ...S.optCorrect };
+              else if (picked) btn = { ...btn, ...S.optWrong };
+              else             btn = { ...btn, opacity: 0.32 };
+            }
             return (
-              <button key={i} disabled={!!answered} className="bb"
-                onClick={() => handleChoice(letter, i)}
-                style={{ background: isRight ? '#38A169' : isWrong ? '#E53E3E' : BUBBLE_COLORS[i % BUBBLE_COLORS.length], animation: isRight ? 'cpop .4s ease' : isWrong ? 'shake .5s ease' : `floatB 2.5s ${i*0.18}s ease-in-out infinite`, opacity: answered && !isRight && !isWrong ? 0.5 : 1, cursor: answered ? 'default' : 'pointer' }}>
-                {letter}
+              <button key={`${opt}-${idx}`} style={btn} onClick={() => pick(opt)} disabled={revealed}>
+                {toContextual(opt, w._form || 'isolated')}
               </button>
             );
           })}
         </div>
-      )}
-      <div style={{ position:'fixed', bottom:20, left:20, fontSize:'2.8rem', filter:'drop-shadow(0 4px 8px rgba(0,0,0,.3))', animation:'floatB 3s ease-in-out infinite', zIndex:10, userSelect:'none' }}>
-        🦉
+
+        {chosen !== null && (
+          <button style={S.btnBlue} onClick={next}>
+            {isLast ? '🏁 النتيجة النهائية' : 'التالي ←'}
+          </button>
+        )}
       </div>
     </div>
   );
 }
+
+/* ═══════════════════════════ STYLES ════════════════════════════ */
+const S = {
+  page: {
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #5b4fc4 0%, #7c3aed 50%, #9c3ec4 100%)',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    padding: 20, fontFamily: "'Tajawal', sans-serif", direction: 'rtl',
+  },
+  centerCard: {
+    position: 'relative', background: '#fff', borderRadius: 24, padding: '44px 36px',
+    textAlign: 'center', maxWidth: 440, width: '100%',
+    boxShadow: '0 24px 64px rgba(0,0,0,0.32)',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
+  },
+  cfgBtn: {
+    position: 'absolute', top: 16, left: 16, background: '#f3f4f6', border: 'none',
+    borderRadius: 10, padding: '7px 14px', fontSize: '0.85rem', fontWeight: 600,
+    cursor: 'pointer', color: '#374151', fontFamily: "'Tajawal', sans-serif",
+  },
+  mainTitle: { fontSize: '2rem', fontWeight: 800, color: '#1a1a2e', margin: 0 },
+  sub: { fontSize: '0.97rem', color: '#6b7280', lineHeight: 1.8, margin: 0 },
+  statsRow: {
+    display: 'flex', alignItems: 'center', background: '#f9fafb', borderRadius: 14,
+    padding: '14px 20px', width: '100%', justifyContent: 'space-around', boxSizing: 'border-box',
+  },
+  statBox: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
+  statNum: { fontSize: '1.6rem', fontWeight: 800, color: '#7c3aed' },
+  statLbl: { fontSize: '0.8rem', color: '#9ca3af', fontWeight: 500 },
+  statDiv: { width: 1, height: 36, background: '#e5e7eb' },
+  warningBanner: {
+    background: '#fff7e6', border: '2px solid #f59e0b', borderRadius: 12,
+    padding: '12px 16px', color: '#92400e', fontSize: '0.88rem', fontWeight: 600,
+    textAlign: 'center', lineHeight: 1.7, width: '100%', boxSizing: 'border-box',
+  },
+  emptyState: {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+    background: '#f9fafb', border: '2px dashed #d1d5db', borderRadius: 16,
+    padding: '28px 20px', width: '100%', boxSizing: 'border-box',
+  },
+  btnOutline: {
+    background: 'transparent', color: '#7c3aed', border: '2px solid #7c3aed',
+    borderRadius: 12, padding: '10px 24px', fontSize: '.92rem', fontWeight: 700,
+    cursor: 'pointer', fontFamily: "'Tajawal', sans-serif", marginTop: 4,
+  },
+  btnGold: {
+    background: 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#fff', border: 'none',
+    borderRadius: 14, padding: '14px 0', fontSize: '1.1rem', fontWeight: 700,
+    cursor: 'pointer', fontFamily: "'Tajawal', sans-serif", width: '100%',
+    boxShadow: '0 4px 16px rgba(245,158,11,0.4)',
+  },
+  addBtn: {
+    marginTop: 12, width: '100%', background: 'linear-gradient(135deg,#5b4fc4,#7c3aed)',
+    color: '#fff', border: 'none', borderRadius: 10, padding: '11px 0',
+    fontSize: '.9rem', fontWeight: 700, fontFamily: "'Tajawal', sans-serif",
+  },
+  input: {
+    width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10,
+    padding: '9px 12px', fontSize: '1rem', fontFamily: "'Tajawal', sans-serif",
+    boxSizing: 'border-box', outline: 'none',
+  },
+  backLink: { color: '#9ca3af', fontSize: '0.87rem', textDecoration: 'none' },
+  settingsOverlay: {
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 20,
+  },
+  settingsCard: {
+    background: '#fff', borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 420,
+    display: 'flex', flexDirection: 'column', gap: 0,
+    boxShadow: '0 16px 48px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto',
+    fontFamily: "'Tajawal', sans-serif",
+  },
+  settingsLabel: {
+    display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.95rem', fontWeight: 600,
+    color: '#374151', textAlign: 'right', marginBottom: 16,
+  },
+  settingsSelect: {
+    padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb',
+    fontSize: '1rem', fontFamily: "'Tajawal', sans-serif", direction: 'rtl',
+    color: '#1a1a2e', cursor: 'pointer',
+  },
+  headerRow: {
+    display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 540,
+    marginBottom: 14, color: '#fff',
+  },
+  scoreBadge: {
+    fontSize: '1rem', fontWeight: 700, flexShrink: 0,
+    background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 14px',
+  },
+  bar: { flex: 1, height: 8, background: 'rgba(255,255,255,0.25)', borderRadius: 4, overflow: 'hidden' },
+  barFill: { height: '100%', background: '#fbbf24', borderRadius: 4, transition: 'width 0.4s' },
+  barLabel: { fontSize: '0.88rem', flexShrink: 0, opacity: 0.82 },
+  card: {
+    background: '#fff', borderRadius: 24, padding: '32px 28px', width: '100%', maxWidth: 540,
+    boxShadow: '0 24px 64px rgba(0,0,0,0.32)',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22,
+  },
+  emojiBox: {
+    width: 110, height: 110, background: '#f5f3ff', borderRadius: 18,
+    fontSize: '3.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  },
+  wordImg: { width: 110, height: 110, objectFit: 'contain', borderRadius: 14 },
+  wordRow: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    flexWrap: 'wrap', justifyContent: 'center', direction: 'rtl',
+  },
+  wordTxt: { fontSize: '2.4rem', fontWeight: 700, color: '#1a1a2e' },
+  blank: {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    minWidth: 58, height: 66, border: '3px dashed', borderRadius: 12,
+    fontSize: '2.4rem', fontWeight: 700, transition: 'all 0.3s', padding: '0 8px',
+  },
+  feedback: {
+    padding: '10px 22px', borderRadius: 10, fontSize: '1rem',
+    fontWeight: 600, textAlign: 'center', width: '100%',
+  },
+  optRow: { display: 'grid', gap: 12, width: '100%', justifyItems: 'center' },
+  optBtn: {
+    width: 76, height: 76, borderRadius: 16, border: '2px solid #e5e7eb',
+    background: '#f9fafb', fontSize: '1.9rem', fontWeight: 700, cursor: 'pointer',
+    transition: 'all 0.18s', fontFamily: "'Tajawal', sans-serif", color: '#1a1a2e',
+  },
+  optCorrect: { background: '#d4edda', borderColor: '#27ae60', color: '#1a6b38' },
+  optWrong:   { background: '#f8d7da', borderColor: '#e74c3c', color: '#9b1c1c' },
+  btnBlue: {
+    background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 14,
+    padding: '13px 0', fontSize: '1.05rem', fontWeight: 700, cursor: 'pointer',
+    fontFamily: "'Tajawal', sans-serif", width: '100%', maxWidth: 280,
+  },
+};
