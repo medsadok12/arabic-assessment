@@ -71,6 +71,22 @@ export default async function AdminPage() {
           {/* Promo Video */}
           <PromoVideoAdmin />
 
+          {/* Games Preview */}
+          <div className="dash-section-title">ألعاب تعليمية</div>
+          <div className="card" style={{ padding: '20px 24px', marginTop: 16, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <span style={{ fontSize: '2.5rem' }}>🎯</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>صياد الحروف</div>
+                <div style={{ color: 'var(--muted)', fontSize: '.88rem' }}>لعبة تفاعلية لتعزيز التعرف على الحروف العربية</div>
+              </div>
+            </div>
+            <a href="/games/letter-catcher" target="_blank" rel="noreferrer"
+              style={{ background: 'var(--primary)', color: '#fff', padding: '8px 20px', borderRadius: 10, textDecoration: 'none', fontWeight: 600, fontSize: '.9rem', flexShrink: 0 }}>
+              معاينة اللعبة ←
+            </a>
+          </div>
+
           {/* Assessments Table */}
           <div className="dash-section-title">سجل التقييمات</div>
           {assessments && assessments.length > 0 ? (

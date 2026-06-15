@@ -32,8 +32,8 @@ const RESOURCES = [
     tag: 'مستوى 3', link: '#'
   },
   {
-    icon: '🎮', title: 'ألعاب لغوية', desc: 'ألعاب تفاعلية ممتعة لتعزيز المفردات وقواعد اللغة.',
-    tag: 'تعزيزي', link: '#'
+    icon: '🎯', title: 'صياد الحروف', desc: 'العب وأعد الحرف الضائع إلى مكانه في الكلمة — لعبة ممتعة لتعزيز التعرف على الحروف.',
+    tag: 'تعزيزي', link: '/games/letter-catcher'
   },
 ];
 
@@ -58,13 +58,16 @@ export default async function LibraryPage() {
 
           <div className="card-grid">
             {RESOURCES.map(r => (
-              <div key={r.title} className="lib-card">
+              <div key={r.title} className="lib-card" style={r.link !== '#' ? { cursor: 'pointer' } : {}}>
                 <span className="lib-card-icon">{r.icon}</span>
                 <div className="lib-card-title">{r.title}</div>
                 <p className="lib-card-desc">{r.desc}</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className="lib-tag">{r.tag}</span>
-                  <span style={{ color: 'var(--muted)', fontSize: '.82rem' }}>قريباً</span>
+                  {r.link !== '#'
+                    ? <a href={r.link} style={{ color: 'var(--primary)', fontSize: '.82rem', fontWeight: 600, textDecoration: 'none' }}>ابدأ اللعب ←</a>
+                    : <span style={{ color: 'var(--muted)', fontSize: '.82rem' }}>قريباً</span>
+                  }
                 </div>
               </div>
             ))}
