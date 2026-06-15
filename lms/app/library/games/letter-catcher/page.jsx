@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
 /* ────────────────────────── helpers ────────────────────────── */
@@ -55,14 +55,32 @@ function toContextual(letter, form) {
 const TOPICS = ['الحيوانات', 'الأشكال', 'الأسرة', 'الألوان', 'الفواكه', 'المدرسة', 'الطقس', 'الأرقام'];
 
 /* ────────────────── word manager in settings ────────────────── */
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
 function WordManager({ dbWords, onRefresh }) {
   const [word,     setWord]     = useState('');
   const [missing,  setMissing]  = useState('');
-  const [emoji,    setEmoji]    = useState('');
   const [topic,    setTopic]    = useState('');
+  const [imgFile,  setImgFile]  = useState(null);
+  const [imgPrev,  setImgPrev]  = useState(null);
   const [saving,   setSaving]   = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [msg,      setMsg]      = useState(null);
+  const fileRef = useRef();
+
+  const handleImg = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setImgFile(f);
+    setImgPrev(URL.createObjectURL(f));
+  };
 
   const handleAdd = async () => {
     if (!word.trim() || !missing.trim()) {
@@ -71,20 +89,24 @@ function WordManager({ dbWords, onRefresh }) {
     }
     setSaving(true); setMsg(null);
     try {
+      let image_url = null;
+      if (imgFile) image_url = await fileToBase64(imgFile);
+
       const res = await fetch('/api/games/letter-catcher', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           word: word.trim(),
           missing_letter: missing.trim(),
-          emoji: emoji.trim() || null,
+          image_url,
           topic: topic || null,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'فشل الحفظ');
       setMsg({ ok: true, text: `✅ أُضيفت "${word.trim()}" بنجاح` });
-      setWord(''); setMissing(''); setEmoji(''); setTopic('');
+      setWord(''); setMissing(''); setTopic(''); setImgFile(null); setImgPrev(null);
+      if (fileRef.current) fileRef.current.value = '';
       onRefresh();
     } catch (e) {
       setMsg({ ok: false, text: `❌ ${e.message}` });
@@ -118,23 +140,31 @@ function WordManager({ dbWords, onRefresh }) {
           dir="rtl"
         />
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <input
-            value={missing}
-            onChange={e => setMissing(e.target.value)}
-            placeholder="الحرف الناقص (مثال: ق)"
-            style={{ ...S.input, flex: 2, margin: 0 }}
-            dir="rtl"
-            maxLength={2}
-          />
-          <input
-            value={emoji}
-            onChange={e => setEmoji(e.target.value)}
-            placeholder="إيموجي 🎯"
-            style={{ ...S.input, flex: 1, margin: 0, textAlign: 'center' }}
-            maxLength={4}
-          />
+        <input
+          value={missing}
+          onChange={e => setMissing(e.target.value)}
+          placeholder="الحرف الناقص (مثال: ق)"
+          style={{ ...S.input, marginTop: 8 }}
+          dir="rtl"
+          maxLength={2}
+        />
+
+        {/* image picker */}
+        <div
+          onClick={() => fileRef.current?.click()}
+          style={{
+            marginTop: 8, borderRadius: 12, border: '2px dashed #c4b5fd',
+            background: '#faf5ff', cursor: 'pointer', overflow: 'hidden',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: imgPrev ? 'auto' : 72, minHeight: 72,
+          }}
+        >
+          {imgPrev
+            ? <img src={imgPrev} alt="preview" style={{ width: '100%', maxHeight: 140, objectFit: 'contain', display: 'block' }} />
+            : <span style={{ color: '#a78bfa', fontSize: '.85rem', fontWeight: 700 }}>📷 انقر لاختيار صورة الكلمة</span>
+          }
         </div>
+        <input ref={fileRef} type="file" accept="image/*" onChange={handleImg} style={{ display: 'none' }} />
 
         <select
           value={topic}
@@ -180,7 +210,10 @@ function WordManager({ dbWords, onRefresh }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
           {dbWords.map(w => (
             <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f9fafb', borderRadius: 10, padding: '8px 12px', border: '1px solid #e5e7eb' }}>
-              {w.emoji && <span style={{ fontSize: '1.2rem' }}>{w.emoji}</span>}
+              {w.image_url
+                ? <img src={w.image_url} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                : w.emoji ? <span style={{ fontSize: '1.2rem' }}>{w.emoji}</span> : null
+              }
               <span style={{ flex: 1, fontWeight: 700, color: '#1f2937', fontSize: '.9rem' }}>{w.word}</span>
               {w.topic && <span style={{ background: '#e0f2fe', color: '#0369a1', borderRadius: 20, padding: '2px 8px', fontSize: '.7rem', fontWeight: 700 }}>{w.topic}</span>}
               <span style={{ background: '#ede9fe', color: '#7c3aed', borderRadius: 20, padding: '2px 8px', fontSize: '.75rem', fontWeight: 700 }}>{w.missing_letter}</span>
