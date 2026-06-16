@@ -468,23 +468,26 @@ export default function LetterCatcherGame() {
     setGameWords(filtered);
   }, [dbWords, cfg]);
 
-  /* ── build round queue ── */
+  /* ── build round queue (repeats words if fewer than count) ── */
   const buildQueue = useCallback((words, count, optCount) => {
-    return shuffle(words).slice(0, count).map(w => {
+    // Expand pool by repeating if not enough words
+    let pool = [...words];
+    while (pool.length < count) pool = [...pool, ...words];
+    return shuffle(pool).slice(0, count).map(w => {
       const correctLetter = stripDia(w.missing_letter);
       const strippedW     = stripDia(w.word);
       const missingIdx    = strippedW.indexOf(correctLetter);
       const form          = missingIdx >= 0 ? getLetterForm(strippedW, missingIdx) : 'isolated';
-      const pool          = (w.options || []).filter(Boolean).filter(o => stripDia(o) !== correctLetter);
-      const distractors   = shuffle(pool).slice(0, optCount - 1);
+      const pool2         = (w.options || []).filter(Boolean).filter(o => stripDia(o) !== correctLetter);
+      const distractors   = shuffle(pool2).slice(0, optCount - 1);
       const opts          = shuffle([w.missing_letter, ...distractors]);
       return { ...w, _opts: opts, _form: form };
     });
   }, []);
 
-  /* ── start game — only if enough matching words ── */
+  /* ── start game ── */
   const startGame = useCallback(() => {
-    if (gameWords.length < cfg.questionsPerRound) return;
+    if (!gameWords.length) return;
     setQueue(buildQueue(gameWords, cfg.questionsPerRound, cfg.optionsCount));
     setCur(0); setScore(0); setChosen(null); setCorrect(null);
     setPhase('playing');
@@ -513,8 +516,6 @@ export default function LetterCatcherGame() {
     setScore(0); setChosen(null); setCorrect(null);
   }, []);
 
-  /* is the round size larger than available matching words? */
-  const notEnough = gameWords.length > 0 && gameWords.length < cfg.questionsPerRound;
   const filtersActive = cfg.topic || cfg.grade > 0 || cfg.minLen > 2 || cfg.maxLen < 12;
 
   /* ══════════════════════ RENDER: START ══════════════════════ */
@@ -545,13 +546,13 @@ export default function LetterCatcherGame() {
             <>
               <div style={S.statsRow}>
                 <div style={S.statBox}>
-                  <span style={{ ...S.statNum, color: notEnough ? '#e74c3c' : '#7c3aed' }}>{gameWords.length}</span>
-                  <span style={S.statLbl}>كلمة مطابقة</span>
+                  <span style={S.statNum}>{gameWords.length}</span>
+                  <span style={S.statLbl}>كلمة متاحة</span>
                 </div>
                 <div style={S.statDiv} />
                 <div style={S.statBox}>
                   <span style={S.statNum}>{cfg.questionsPerRound}</span>
-                  <span style={S.statLbl}>سؤال مطلوب</span>
+                  <span style={S.statLbl}>سؤال في الجولة</span>
                 </div>
                 <div style={S.statDiv} />
                 <div style={S.statBox}>
@@ -560,17 +561,7 @@ export default function LetterCatcherGame() {
                 </div>
               </div>
 
-              {notEnough && (
-                <div style={S.warningBanner}>
-                  ⚠️ بنك الكلمات الحالي يحتوي على <strong>({gameWords.length})</strong> من الكلمات المطابقة لإعداداتك فقط. يرجى إضافة المزيد من الكلمات أو تقليل عدد أسئلة الجولة لبدء اللعب.
-                </div>
-              )}
-
-              <button
-                style={{ ...S.btnGold, opacity: notEnough ? 0.4 : 1, cursor: notEnough ? 'not-allowed' : 'pointer' }}
-                onClick={startGame}
-                disabled={notEnough}
-              >
+              <button style={S.btnGold} onClick={startGame}>
                 🚀 ابدأ اللعبة
               </button>
             </>
