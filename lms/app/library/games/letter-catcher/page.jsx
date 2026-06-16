@@ -350,9 +350,13 @@ function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh }) {
           <>
             <label style={S.settingsLabel}>
               عدد الأسئلة في الجولة
-              <select value={cfg.questionsPerRound} onChange={e => onChange({ ...cfg, questionsPerRound: Number(e.target.value) })} style={S.settingsSelect}>
-                {[10, 20, 30, 50].map(v => <option key={v} value={v}>{v} سؤال</option>)}
-              </select>
+              <input
+                type="number"
+                min={1}
+                value={cfg.questionsPerRound}
+                onChange={e => onChange({ ...cfg, questionsPerRound: Math.max(1, Number(e.target.value) || 1) })}
+                style={S.settingsSelect}
+              />
             </label>
 
             <label style={S.settingsLabel}>
