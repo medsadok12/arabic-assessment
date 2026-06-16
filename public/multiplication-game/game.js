@@ -210,7 +210,7 @@
 
   /* ---------- طرح سؤال ---------- */
   function nextQuestion() {
-    session.typed = ''; $('hint-area').hidden = true; $('hint-area').innerHTML = '';
+    session.typed = ''; session.erred = false; session.tries = 0; $('hint-area').hidden = true; $('hint-area').innerHTML = '';
     if (session.mode === 'pattern') {
       if (session.idx >= session.total) return finishSession();
       session.current = genPattern(session.level);
@@ -272,29 +272,44 @@
     if (session.locked || session.typed === '') return;
     var c = session.current, ok = parseInt(session.typed, 10) === c.answer;
     session.locked = true;
+    var fb = $('feedback');
+
+    if (ok) {
+      // حُلّ السؤال — يُسجَّل مرّة واحدة فقط إن لم يُخطئ فيه سابقاً
+      if (!session.erred) {
+        session.correct++; session.streak++; session.best = Math.max(session.best, session.streak);
+        recordOutcome(c, true);
+      }
+      renderProblem('right'); fb.className = 'feedback good';
+      fb.textContent = session.erred ? 'أحسنت! حللتها ✅' : praise(session.streak);
+      sfx.correct(); if (!session.erred && session.streak >= 3) { sfx.streak(); confetti(14); }
+      setMascot('🥳', 'bounce'); if (!session.erred) showStreak();
+      if (session.mode !== 'time') session.idx++;
+      advanceId = setTimeout(function () {
+        session.locked = false; $('feedback').textContent = ' '; $('feedback').className = 'feedback'; nextQuestion();
+      }, 750);
+    } else {
+      // خطأ — لا ينتقل ولا نكشف الإجابة؛ يبقى على نفس السؤال حتى يحلّه
+      session.tries = (session.tries || 0) + 1;
+      if (!session.erred) { session.erred = true; session.wrong++; session.streak = 0; recordOutcome(c, false); }
+      renderProblem('wrong'); fb.className = 'feedback bad';
+      fb.textContent = session.tries >= 2 ? 'حاول مجدداً — اضغط «ساعدني أفهم» 💡' : 'غير صحيح، حاول مرة أخرى 🤔';
+      sfx.wrong(); setMascot('🤔', 'shake'); $('streak').hidden = true;
+      advanceId = setTimeout(function () {
+        session.locked = false; session.typed = ''; renderProblem();
+      }, 900);
+    }
+  }
+  // يسجّل النتيجة (التكرار المتباعد / إحصاءات النمط) مرّة واحدة لكل سؤال
+  function recordOutcome(c, correct) {
     if (session.mode === 'pattern') {
-      progress.patterns.seen++; if (ok) progress.patterns.correct++; save();
-      if (ok) { session.up = (session.up || 0) + 1; if (session.up >= 2) { session.level = Math.min(5, session.level + 1); session.up = 0; } }
+      progress.patterns.seen++; if (correct) progress.patterns.correct++; save();
+      if (correct) { session.up = (session.up || 0) + 1; if (session.up >= 2) { session.level = Math.min(5, session.level + 1); session.up = 0; } }
       else { session.level = Math.max(1, session.level - 1); session.up = 0; }
     } else {
       session.lastKey = key(c.n, c.k);
-      updateFact(session.op, c.n, c.k, ok, Date.now() - session.qStart);
+      updateFact(session.op, c.n, c.k, correct, Date.now() - session.qStart);
     }
-    var fb = $('feedback');
-    if (ok) {
-      session.correct++; session.streak++; session.best = Math.max(session.best, session.streak);
-      renderProblem('right'); fb.className = 'feedback good'; fb.textContent = praise(session.streak);
-      sfx.correct(); if (session.streak >= 3) { sfx.streak(); confetti(14); }
-      setMascot(session.streak >= 3 ? '🤩' : '🥳', 'bounce'); showStreak();
-    } else {
-      session.wrong++; session.streak = 0;
-      renderProblem('wrong'); fb.className = 'feedback bad'; fb.textContent = 'الإجابة: ' + c.answer;
-      sfx.wrong(); setMascot('🤔', 'shake'); $('streak').hidden = true;
-    }
-    if (session.mode !== 'time') session.idx++;
-    advanceId = setTimeout(function () {
-      session.locked = false; $('feedback').textContent = ' '; $('feedback').className = 'feedback'; nextQuestion();
-    }, ok ? 750 : 1500);
   }
   function showStreak() {
     if (session.streak >= 2) { var s = $('streak'); s.hidden = false; $('streak-n').textContent = session.streak; s.classList.remove('pump'); void s.offsetWidth; s.classList.add('pump'); }

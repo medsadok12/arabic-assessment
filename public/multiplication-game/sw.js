@@ -1,5 +1,5 @@
 /* خدمة العامل — تخزين التطبيق مؤقّتاً ليعمل أوفلاين بعد أول فتح */
-const CACHE = 'ayat-v5';
+const CACHE = 'ayat-v6';
 const ASSETS = [
   './',
   './index.html',
