@@ -132,6 +132,10 @@ function WordManager({ dbWords, onRefresh }) {
       setMsg({ ok: false, text: 'اكتب الكلمة والحرف الناقص أولاً' });
       return;
     }
+    if (!word.includes('_')) {
+      setMsg({ ok: false, text: 'ضع رمز _ في مكان الحرف الناقص\nمثال: مَد_رَسة' });
+      return;
+    }
     setSaving(true); setMsg(null);
     try {
       let image_url = null;
@@ -150,7 +154,8 @@ function WordManager({ dbWords, onRefresh }) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'فشل الحفظ');
-      setMsg({ ok: true, text: `✅ أُضيفت "${word.trim()}" بنجاح` });
+      const fullW = word.trim().replace('_', missing.trim());
+      setMsg({ ok: true, text: `✅ أُضيفت "${fullW}" بنجاح` });
       setWord(''); setMissing(''); setTopic('');
       setImgFile(null); setImgPrev(null); setAudioUrl(null);
       if (fileRef.current) fileRef.current.value = '';
@@ -182,10 +187,13 @@ function WordManager({ dbWords, onRefresh }) {
         <input
           value={word}
           onChange={e => setWord(e.target.value)}
-          placeholder="الكلمة (مثال: قَلَم)"
+          placeholder="مثال: مَد_رَسة  (ضع _ مكان الحرف الناقص)"
           style={S.input}
           dir="rtl"
         />
+        <div style={{ fontSize: '.78rem', color: '#7c3aed', marginTop: 3, textAlign: 'right', fontWeight: 600 }}>
+          💡 اكتب الكلمة وضع رمز الشرطة السفلية _ في مكان الحرف الناقص
+        </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
           <input
@@ -198,7 +206,7 @@ function WordManager({ dbWords, onRefresh }) {
           />
           <button
             type="button"
-            onClick={() => word.trim() && speak(word.trim())}
+            onClick={() => word.trim() && speak(word.includes('_') ? word.replace('_', missing.trim() || '') : word.trim())}
             title="استمع للكلمة"
             style={{ flexShrink: 0, background: '#ede9fe', border: 'none', borderRadius: 10, width: 42, height: 42, cursor: 'pointer', fontSize: '1.2rem' }}
           >🔊</button>
@@ -293,7 +301,9 @@ function WordManager({ dbWords, onRefresh }) {
                 ? <img src={w.image_url} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
                 : w.emoji ? <span style={{ fontSize: '1.2rem' }}>{w.emoji}</span> : null
               }
-              <span style={{ flex: 1, fontWeight: 700, color: '#1f2937', fontSize: '.9rem' }}>{w.word}</span>
+              <span style={{ flex: 1, fontWeight: 700, color: '#1f2937', fontSize: '.9rem' }}>
+                {w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word}
+              </span>
               {w.topic && <span style={{ background: '#e0f2fe', color: '#0369a1', borderRadius: 20, padding: '2px 8px', fontSize: '.7rem', fontWeight: 700 }}>{w.topic}</span>}
               <span style={{ background: '#ede9fe', color: '#7c3aed', borderRadius: 20, padding: '2px 8px', fontSize: '.75rem', fontWeight: 700 }}>{w.missing_letter}</span>
               {w.audio_url && <span title="يحتوي على تسجيل" style={{ fontSize: '.75rem' }}>🎙️</span>}
@@ -613,9 +623,20 @@ export default function LetterCatcherGame() {
 
   /* ══════════════════════ RENDER: PLAYING ══════════════════════ */
   const w    = queue[cur];
-  const sw   = stripDia(w.word);
-  const mi   = sw.indexOf(stripDia(w.missing_letter));  // index of missing letter
   const opts = w._opts || [];
+
+  // Resolve blank position: use explicit '_' marker if present, else fall back to indexOf
+  let sw, mi;
+  if ((w.word || '').includes('_')) {
+    const [bef, aft] = w.word.split('_');
+    const bs = stripDia(bef  || '');
+    const as = stripDia(aft  || '');
+    sw = bs + stripDia(w.missing_letter) + as;
+    mi = bs.length;
+  } else {
+    sw = stripDia(w.word);
+    mi = sw.indexOf(stripDia(w.missing_letter));
+  }
   const isLast        = cur + 1 >= queue.length;
 
   return (
