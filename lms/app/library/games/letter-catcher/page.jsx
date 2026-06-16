@@ -230,26 +230,47 @@ function WordManager({ dbWords, onRefresh }) {
         <input ref={fileRef} type="file" accept="image/*" onChange={handleImg} style={{ display: 'none' }} />
 
         {/* audio recorder */}
-        <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={recording ? stopRecording : startRecording}
-            style={{
-              flexShrink: 0, border: 'none', borderRadius: 10, padding: '9px 14px',
-              fontSize: '.85rem', fontWeight: 700, cursor: 'pointer',
-              fontFamily: "'Tajawal', sans-serif",
-              background: recording ? '#fee2e2' : '#f0fdf4',
-              color: recording ? '#dc2626' : '#16a34a',
-            }}
-          >
-            {recording ? `⏹️ إيقاف (${recSecs}ث)` : '🎙️ تسجيل صوت المعلم'}
-          </button>
-          {audioUrl && !recording && (
-            <>
-              <audio src={audioUrl} controls style={{ flex: 1, minWidth: 120, height: 32 }} />
-              <button type="button" onClick={() => setAudioUrl(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '1rem' }}>✕</button>
-            </>
+        <div style={{ marginTop: 8 }}>
+          {!audioUrl ? (
+            <button
+              type="button"
+              onClick={recording ? stopRecording : startRecording}
+              style={{
+                width: '100%', border: 'none', borderRadius: 10, padding: '11px',
+                fontSize: '.88rem', fontWeight: 700, cursor: 'pointer',
+                fontFamily: "'Tajawal', sans-serif",
+                background: recording ? '#fee2e2' : '#f0fdf4',
+                color: recording ? '#dc2626' : '#16a34a',
+              }}
+            >
+              {recording ? `⏹️ إيقاف التسجيل (${recSecs}ث)` : '🎙️ تسجيل صوت الكلمة (اختياري)'}
+            </button>
+          ) : (
+            <div style={{ background: '#f0fdf4', borderRadius: 10, padding: 10, border: '1.5px solid #86efac' }}>
+              <div style={{ fontSize: '.78rem', color: '#16a34a', fontWeight: 700, marginBottom: 6, textAlign: 'right' }}>
+                ✅ التسجيل جاهز — سيُحفظ مع الكلمة عند الضغط على زر الحفظ
+              </div>
+              <audio src={audioUrl} controls style={{ width: '100%', height: 36, display: 'block', borderRadius: 6 }} />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button type="button" onClick={recording ? stopRecording : startRecording}
+                  style={{
+                    flex: 1, border: 'none', borderRadius: 8, padding: '7px', fontSize: '.8rem',
+                    fontWeight: 700, cursor: 'pointer', fontFamily: "'Tajawal', sans-serif",
+                    background: recording ? '#fee2e2' : '#ede9fe',
+                    color: recording ? '#dc2626' : '#7c3aed',
+                  }}>
+                  {recording ? `⏹️ إيقاف (${recSecs}ث)` : '🔄 إعادة التسجيل'}
+                </button>
+                <button type="button" onClick={() => setAudioUrl(null)}
+                  style={{
+                    border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: '.8rem',
+                    fontWeight: 700, cursor: 'pointer', fontFamily: "'Tajawal', sans-serif",
+                    background: '#fee2e2', color: '#dc2626',
+                  }}>
+                  🗑️ حذف
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
