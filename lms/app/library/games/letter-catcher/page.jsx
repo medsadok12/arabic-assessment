@@ -7,14 +7,6 @@ import Link from 'next/link';
 const DIACRITICS = /[ً-ْٰ]/g;
 function stripDia(s) { return (s || '').replace(DIACRITICS, ''); }
 
-function splitWord(word, missingLetter) {
-  const base = stripDia(missingLetter);
-  const re   = new RegExp(base + '[\\u064B-\\u0652\\u0670]?');
-  const m    = word.match(re);
-  if (!m) return [word, ''];
-  const i = word.indexOf(m[0]);
-  return [word.slice(0, i), word.slice(i + m[0].length)];
-}
 
 function shuffle(arr) {
   const a = [...arr];
@@ -611,9 +603,10 @@ export default function LetterCatcherGame() {
   }
 
   /* ══════════════════════ RENDER: PLAYING ══════════════════════ */
-  const w             = queue[cur];
-  const [before, after] = splitWord(w.word, w.missing_letter);
-  const opts          = w._opts || [];
+  const w    = queue[cur];
+  const sw   = stripDia(w.word);
+  const mi   = sw.indexOf(stripDia(w.missing_letter));  // index of missing letter
+  const opts = w._opts || [];
   const isLast        = cur + 1 >= queue.length;
 
   return (
@@ -630,16 +623,31 @@ export default function LetterCatcherGame() {
         <WordImage imageUrl={w.image_url} emoji={w.emoji} />
 
         <div style={S.wordRow}>
-          {before && <span style={S.wordTxt}>{before}</span>}
-          <span style={{
-            ...S.blank,
-            background:  correct === null ? '#eef3fc' : correct ? '#d4edda' : '#f8d7da',
-            borderColor: correct === null ? '#7c3aed'  : correct ? '#27ae60' : '#e74c3c',
-            color:       correct === null ? '#7c3aed'  : correct ? '#27ae60' : '#e74c3c',
-          }}>
-            {correct !== null ? toContextual(w.missing_letter, w._form || 'isolated') : '؟'}
-          </span>
-          {after && <span style={S.wordTxt}>{after}</span>}
+          {mi < 0 ? (
+            <>
+              <span style={S.wordLetterBox}>{w.word}</span>
+              <span style={{ ...S.blank, background: '#eef3fc', borderColor: '#7c3aed', color: '#7c3aed' }}>؟</span>
+            </>
+          ) : sw.split('').map((ch, i) => {
+            const form = getLetterForm(sw, i);
+            if (i === mi) {
+              return (
+                <span key={i} style={{
+                  ...S.blank,
+                  background:  correct === null ? '#eef3fc' : correct ? '#d4edda' : '#f8d7da',
+                  borderColor: correct === null ? '#7c3aed'  : correct ? '#27ae60' : '#e74c3c',
+                  color:       correct === null ? '#7c3aed'  : correct ? '#27ae60' : '#e74c3c',
+                }}>
+                  {correct !== null ? toContextual(w.missing_letter, form) : '؟'}
+                </span>
+              );
+            }
+            return (
+              <span key={i} style={S.wordLetterBox}>
+                {toContextual(ch, form)}
+              </span>
+            );
+          })}
         </div>
 
         {correct !== null && (
@@ -782,7 +790,12 @@ const S = {
     display: 'flex', alignItems: 'center', gap: 6,
     flexWrap: 'wrap', justifyContent: 'center', direction: 'rtl',
   },
-  wordTxt: { fontSize: '2.4rem', fontWeight: 700, color: '#1a1a2e' },
+  wordLetterBox: {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    minWidth: 54, height: 66, borderRadius: 12,
+    background: '#f5f3ff', border: '2px solid #ede9fe',
+    fontSize: '2.4rem', fontWeight: 700, color: '#1a1a2e', padding: '0 8px',
+  },
   blank: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     minWidth: 58, height: 66, border: '3px dashed', borderRadius: 12,
