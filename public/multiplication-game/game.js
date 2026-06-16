@@ -1,5 +1,6 @@
 /* ============================================================
    آيات — تطبيق الحساب: أربع عمليات (ضرب، قسمة، جمع، طرح)
+   + نشاط «أكمل النمط» لتنمية التفكير الرياضي.
    تطبيق مستقل بلا تبعيات، يعمل أوفلاين. أرقام لاتينية، المدى 1..10.
    ============================================================ */
 
@@ -8,10 +9,9 @@
 
   /* ---------- إعداد العمليات ---------- */
   var MIN = 1, MAX = 10;
-  var ADVENTURE_LEN = 10, SMART_LEN = 15, TIME_SECONDS = 60;
+  var ADVENTURE_LEN = 10, SMART_LEN = 15, TIME_SECONDS = 60, PATTERN_LEN = 12;
   var STORE_KEY = 'batal_alhisab_v1';
 
-  // لكل عملية: n = «الخانة/الجدول» (1..10)، k = العامل (1..10)
   var OPS = {
     mul: { name: 'الضرب',  icon: '✖️', sym: '×', color: '#6d28d9',
            order: [1, 10, 2, 5, 3, 4, 6, 7, 8, 9],
@@ -27,10 +27,11 @@
            fact: function (n, k) { return { a: n + k, b: n, answer: k, text: (n + k) + ' − ' + n }; } }
   };
   var OP_LIST = ['mul', 'div', 'add', 'sub'];
+  var PATTERN_COLOR = '#db2777';
 
   /* ---------- التخزين ---------- */
   function freshProgress() {
-    var p = { ops: {}, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
+    var p = { ops: {}, patterns: { stars: 0, best: 0, plays: 0, bestLevel: 1, seen: 0, correct: 0 }, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
     OP_LIST.forEach(function (o) { p.ops[o] = { facts: {}, worlds: {} }; p.stats.bestTime[o] = 0; });
     return p;
   }
@@ -44,10 +45,10 @@
       if (raw) {
         var p = JSON.parse(raw);
         if (p.ops) OP_LIST.forEach(function (o) { base.ops[o] = { facts: (p.ops[o] && p.ops[o].facts) || {}, worlds: (p.ops[o] && p.ops[o].worlds) || {} }; });
+        if (p.patterns) base.patterns = Object.assign(base.patterns, p.patterns);
         if (p.stats) { base.stats.sessions = p.stats.sessions || 0; OP_LIST.forEach(function (o) { base.stats.bestTime[o] = (p.stats.bestTime && p.stats.bestTime[o]) || 0; }); }
         if (p.settings) base.settings = Object.assign(base.settings, p.settings);
       } else {
-        // ترحيل بيانات النسخة القديمة (الضرب فقط)
         var oldRaw = localStorage.getItem('batal_aldarb_v1');
         if (oldRaw) {
           var old = JSON.parse(oldRaw);
@@ -98,6 +99,25 @@
   function masteredCount(op) { var c = 0, f = progress.ops[op].facts; for (var x in f) if (f[x].box >= 4) c++; return c; }
   function totalStars(op) { var s = 0, w = progress.ops[op].worlds; for (var x in w) s += (w[x].stars || 0); return s; }
 
+  /* ---------- توليد الأنماط (أكمل النمط) ---------- */
+  function rand(m) { return Math.floor(Math.random() * m); }
+  function genPattern(level) {
+    var rules;
+    if (level <= 1)      rules = [{ t: '+', s: 1 }, { t: '+', s: 2 }, { t: '+', s: 5 }, { t: '+', s: 10 }];
+    else if (level === 2) rules = [{ t: '+', s: 2 }, { t: '+', s: 3 }, { t: '+', s: 5 }, { t: '+', s: 10 }, { t: '-', s: 1 }];
+    else if (level === 3) rules = [{ t: '+', s: 3 }, { t: '+', s: 4 }, { t: '+', s: 6 }, { t: '-', s: 2 }, { t: '-', s: 3 }];
+    else if (level === 4) rules = [{ t: '+', s: 7 }, { t: '+', s: 9 }, { t: '-', s: 4 }, { t: '-', s: 5 }, { t: 'x', s: 2 }];
+    else                  rules = [{ t: 'x', s: 2 }, { t: 'x', s: 3 }, { t: '+', s: 11 }, { t: '-', s: 6 }, { t: '+', s: 12 }];
+    var rule = rules[rand(rules.length)], n = 5, seq = [], i, start;
+    if (rule.t === 'x') { start = rule.s === 2 ? (2 + rand(4)) : (1 + rand(3)); seq[0] = start; for (i = 1; i < n; i++) seq[i] = seq[i - 1] * rule.s; }
+    else if (rule.t === '+') { start = 1 + rand(9); seq[0] = start; for (i = 1; i < n; i++) seq[i] = seq[i - 1] + rule.s; }
+    else { start = rule.s * n + rand(6); seq[0] = start; for (i = 1; i < n; i++) seq[i] = seq[i - 1] - rule.s; }
+    var blankIdx = n - 1;
+    if (level >= 3 && Math.random() < 0.3) blankIdx = 1 + rand(n - 2);
+    var rt = rule.t === '+' ? ('القاعدة: نزيد ' + rule.s + ' في كل مرة') : rule.t === '-' ? ('القاعدة: ننقص ' + rule.s + ' في كل مرة') : ('القاعدة: نضرب في ' + rule.s + ' في كل مرة');
+    return { seq: seq, blankIdx: blankIdx, answer: seq[blankIdx], ruleText: rt };
+  }
+
   /* ---------- الأصوات (Web Audio، بلا ملفات) ---------- */
   var actx = null;
   function ac() {
@@ -147,7 +167,8 @@
   }
   function setTheme(op) {
     var app = $('app');
-    if (op) { app.style.setProperty('--bg1', OPS[op].color); app.setAttribute('data-op', op); }
+    var color = !op ? null : (op === 'pattern' ? PATTERN_COLOR : OPS[op].color);
+    if (color) { app.style.setProperty('--bg1', color); app.setAttribute('data-op', op); }
     else { app.style.removeProperty('--bg1'); app.removeAttribute('data-op'); }
   }
 
@@ -161,6 +182,11 @@
   function startAdventure(n) { session = baseSession('adventure'); session.world = n; session.queue = shuffle(worldFacts(n)); session.total = ADVENTURE_LEN; enterGame(); }
   function startSmart() { session = baseSession('smart'); session.total = SMART_LEN; enterGame(); }
   function startTime() { session = baseSession('time'); session.endAt = Date.now() + TIME_SECONDS * 1000; enterGame(); }
+  function startPatterns() {
+    state.op = null; setTheme('pattern');
+    session = { op: null, mode: 'pattern', total: PATTERN_LEN, idx: 0, correct: 0, wrong: 0, streak: 0, best: 0, typed: '', current: null, qStart: 0, level: 1, up: 0, locked: false };
+    enterGame();
+  }
 
   function enterGame() {
     show('game');
@@ -185,6 +211,11 @@
   /* ---------- طرح سؤال ---------- */
   function nextQuestion() {
     session.typed = ''; $('hint-area').hidden = true; $('hint-area').innerHTML = '';
+    if (session.mode === 'pattern') {
+      if (session.idx >= session.total) return finishSession();
+      session.current = genPattern(session.level);
+      session.qStart = Date.now(); renderProblem(); updateProgressBar(); return;
+    }
     var op = session.op, pick;
     if (session.mode === 'adventure') {
       if (session.idx >= session.queue.length) return finishSession();
@@ -202,9 +233,19 @@
     renderProblem(); updateProgressBar();
   }
   function renderProblem(stateCls) {
+    if (session.mode === 'pattern') return renderPattern(stateCls);
     var c = session.current, shown = session.typed === '' ? '?' : session.typed;
     var p = $('problem'); p.className = 'problem' + (stateCls ? ' ' + stateCls : '');
     p.innerHTML = c.text + ' = <b class="ans">' + shown + '</b>';
+  }
+  function renderPattern(stateCls) {
+    var c = session.current, p = $('problem');
+    var parts = c.seq.map(function (v, i) {
+      if (i === c.blankIdx) { var shown = session.typed === '' ? '؟' : session.typed; return '<b class="ans blank">' + shown + '</b>'; }
+      return '<span class="seq-n">' + v + '</span>';
+    });
+    p.className = 'problem pattern' + (stateCls ? ' ' + stateCls : '');
+    p.innerHTML = '<span class="seq" dir="ltr">' + parts.join('<i class="seq-arrow">→</i>') + '</span>';
   }
   function updateProgressBar() {
     var pct;
@@ -230,8 +271,15 @@
   function submit() {
     if (session.locked || session.typed === '') return;
     var c = session.current, ok = parseInt(session.typed, 10) === c.answer;
-    session.lastKey = key(c.n, c.k); session.locked = true;
-    updateFact(session.op, c.n, c.k, ok, Date.now() - session.qStart);
+    session.locked = true;
+    if (session.mode === 'pattern') {
+      progress.patterns.seen++; if (ok) progress.patterns.correct++; save();
+      if (ok) { session.up = (session.up || 0) + 1; if (session.up >= 2) { session.level = Math.min(5, session.level + 1); session.up = 0; } }
+      else { session.level = Math.max(1, session.level - 1); session.up = 0; }
+    } else {
+      session.lastKey = key(c.n, c.k);
+      updateFact(session.op, c.n, c.k, ok, Date.now() - session.qStart);
+    }
     var fb = $('feedback');
     if (ok) {
       session.correct++; session.streak++; session.best = Math.max(session.best, session.streak);
@@ -254,12 +302,13 @@
   var PRAISE = ['أحسنت! ✅', 'رائع! 🌟', 'ممتاز! 👏', 'بطل! 💪', 'مذهل! 🚀', 'عبقري! 🧠'];
   function praise(st) { if (st >= 5) return 'لا يُوقَف! ' + st + ' متتالية! 🔥'; return PRAISE[Math.min(PRAISE.length - 1, st - 1)] || 'أحسنت! ✅'; }
 
-  /* ---------- التلميح البصري (يختلف حسب العملية) ---------- */
+  /* ---------- التلميح البصري ---------- */
   function dots(count, cls) { var s = ''; for (var i = 0; i < count; i++) s += '<span class="dot ' + (cls || '') + '"></span>'; return s; }
   function rowsOf(rows, cols, cls) { var h = ''; for (var r = 0; r < rows; r++) h += '<div class="hint-row">' + dots(cols, cls) + '</div>'; return h; }
   function toggleHint() {
     var h = $('hint-area');
     if (!h.hidden) { h.hidden = true; h.innerHTML = ''; return; }
+    if (session.mode === 'pattern') { h.innerHTML = '<div class="hint-caption">💡 ' + session.current.ruleText + '</div>'; h.hidden = false; return; }
     var c = session.current, op = session.op, body = '', cap = '';
     if (op === 'mul') { body = rowsOf(c.a, c.b); cap = c.a + ' صفوف × ' + c.b + ' — عُدّ كل النقاط'; }
     else if (op === 'div') { body = rowsOf(c.b, c.answer); cap = 'وزّع ' + c.a + ' على ' + c.b + ' صفوف — كم في كل صف؟'; }
@@ -274,6 +323,15 @@
     clearTimers();
     progress.stats.sessions = (progress.stats.sessions || 0) + 1;
     var op = session.op, total = session.correct + session.wrong, acc = total ? session.correct / total : 0;
+    if (session.mode === 'pattern') {
+      var pstars = total === 0 ? 0 : acc >= 0.9 ? 3 : acc >= 0.7 ? 2 : 1;
+      var pp = progress.patterns;
+      pp.plays = (pp.plays || 0) + 1; pp.stars = Math.max(pp.stars || 0, pstars); pp.best = Math.max(pp.best || 0, session.best); pp.bestLevel = Math.max(pp.bestLevel || 1, session.level);
+      save();
+      renderSummaryPattern(pstars, acc);
+      if (pstars >= 1) { sfx.win(); confetti(60); }
+      return;
+    }
     if (session.mode === 'adventure') {
       var stars = total === 0 ? 0 : acc >= 0.9 ? 3 : acc >= 0.7 ? 2 : 1;
       var w = progress.ops[op].worlds[session.world] || { stars: 0, bestAcc: 0, plays: 0 };
@@ -337,8 +395,17 @@
       '<div class="summary-actions"><button class="btn btn-primary" data-act="time">تحدٍّ جديد ⚡</button><button class="btn btn-soft" data-act="ops">رجوع</button></div>'
     );
   }
+  function renderSummaryPattern(stars, acc) {
+    summaryShell(
+      '<div class="big-emoji">' + (stars === 3 ? '🏆' : stars === 2 ? '🎉' : '👍') + '</div><h2>🔢 أكمل النمط</h2>' +
+      '<div class="stars">' + starsHtml(stars) + '</div>' +
+      summaryStats(session.correct, session.correct + session.wrong, Math.round(acc * 100)) +
+      '<p class="summary-msg">أطول سلسلة: 🔥 ' + session.best + '<br>وصلتَ إلى المستوى ' + session.level + ' 🚀</p>' +
+      '<div class="summary-actions"><button class="btn btn-primary" data-act="patterns">مرة أخرى</button><button class="btn btn-soft" data-act="home">🏠 الرئيسية</button></div>'
+    );
+  }
 
-  /* ---------- الرئيسية: أربع خانات ---------- */
+  /* ---------- الرئيسية: أربع خانات + نشاط النمط ---------- */
   function renderHome() {
     var grid = $('op-grid'); grid.innerHTML = '';
     OP_LIST.forEach(function (op) {
@@ -350,6 +417,7 @@
       card.addEventListener('click', function () { showOps(op); });
       grid.appendChild(card);
     });
+    var ps = $('patterns-stars'); if (ps) ps.textContent = '⭐ ' + (progress.patterns.stars || 0) + '/3';
   }
 
   /* ---------- قائمة العملية ---------- */
@@ -417,7 +485,9 @@
       case 'worlds': renderWorlds(); show('worlds'); break;
       case 'smart': startSmart(); break;
       case 'time': startTime(); break;
+      case 'patterns': startPatterns(); break;
       case 'mastery': renderMastery(); show('mastery'); break;
+      case 'home': showHome(); break;
       case 'settings': renderSettings(); show('settings'); break;
     }
   }
