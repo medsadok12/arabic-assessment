@@ -49,6 +49,11 @@ const RESOURCES = [
     desc: 'حروف مبعثرة — رتّبها لتكوّن الكلمة الصحيحة! لعبة تقوّي التهجئة والمفردات.',
     tag: 'تعزيزي', link: '/library/games/word-scramble', ready: true,
   },
+  {
+    icon: '🖼️', title: 'صِل الكلمة بصورتها',
+    desc: 'وصّل كل كلمة بالصورة المناسبة لها — لعبة تعزّز المفردات والتعرف البصري.',
+    tag: 'تعزيزي', link: '/library/games/word-image-match', ready: true,
+  },
 ];
 
 export default async function LibraryPage() {
