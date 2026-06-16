@@ -444,15 +444,16 @@ function WordImage({ imageUrl, emoji }) {
 
 /* ═══════════════════════ MAIN COMPONENT ════════════════════════ */
 export default function LetterCatcherGame() {
-  const [phase,    setPhase]    = useState('start');
-  const [dbWords,  setDbWords]  = useState([]);     // all words from DB (for word manager)
-  const [gameWords, setGameWords] = useState([]);   // words matching active filters (for game)
-  const [queue,    setQueue]    = useState([]);
-  const [cur,      setCur]      = useState(0);
-  const [score,    setScore]    = useState(0);
-  const [chosen,   setChosen]   = useState(null);
-  const [correct,  setCorrect]  = useState(null);
-  const [showCfg,  setShowCfg]  = useState(false);
+  const [phase,      setPhase]      = useState('start');
+  const [dbWords,    setDbWords]    = useState([]);
+  const [gameWords,  setGameWords]  = useState([]);
+  const [queue,      setQueue]      = useState([]);
+  const [cur,        setCur]        = useState(0);
+  const [score,      setScore]      = useState(0);
+  const [chosen,     setChosen]     = useState(null);
+  const [correct,    setCorrect]    = useState(null);
+  const [showCfg,    setShowCfg]    = useState(false);
+  const [isTeacher,  setIsTeacher]  = useState(false);
   const [cfg, setCfg] = useState({
     questionsPerRound: 10,
     optionsCount: 5,
@@ -462,10 +463,22 @@ export default function LetterCatcherGame() {
     maxLen: 12,
   });
 
+  /* ── detect teacher/admin role ── */
+  useEffect(() => {
+    import('../../../../lib/supabase').then(({ createClient }) => {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        const role = user?.user_metadata?.role ?? '';
+        setIsTeacher(['super_admin', 'admin', 'teacher'].includes(role));
+      }).catch(() => {});
+    }).catch(() => {});
+  }, []);
+
   const isValid = w => w.word && w.missing_letter && Array.isArray(w.options) && w.options.filter(Boolean).length >= 2;
 
-  /* ── load ALL words (for word manager, no filters) ── */
+  /* ── load ALL words — teachers only (for word manager) ── */
   const loadWords = useCallback(async () => {
+    if (!isTeacher) return;
     try {
       const res  = await fetch('/api/games/letter-catcher');
       const json = await res.json();
@@ -473,7 +486,7 @@ export default function LetterCatcherGame() {
     } catch {
       setDbWords([]);
     }
-  }, []);
+  }, [isTeacher]);
 
   /* ── load game words with active filters from API ── */
   const loadGameWords = useCallback(async () => {
@@ -508,13 +521,17 @@ export default function LetterCatcherGame() {
     });
   }, []);
 
-  /* ── start game — only if enough matching words ── */
+  /* ── start game ── */
   const startGame = useCallback(() => {
-    if (gameWords.length < cfg.questionsPerRound) return;
-    setQueue(buildQueue(gameWords, cfg.questionsPerRound, cfg.optionsCount));
+    if (gameWords.length === 0) return;
+    const count = isTeacher
+      ? cfg.questionsPerRound
+      : Math.min(gameWords.length, 20);  // students play all available (up to 20)
+    if (gameWords.length < count) return;
+    setQueue(buildQueue(gameWords, count, cfg.optionsCount));
     setCur(0); setScore(0); setChosen(null); setCorrect(null);
     setPhase('playing');
-  }, [gameWords, buildQueue, cfg]);
+  }, [gameWords, buildQueue, cfg, isTeacher]);
 
   const pick = useCallback((opt) => {
     if (chosen !== null) return;
@@ -539,13 +556,14 @@ export default function LetterCatcherGame() {
     setScore(0); setChosen(null); setCorrect(null);
   }, []);
 
-  const notEnough = gameWords.length > 0 && gameWords.length < cfg.questionsPerRound;
+  const notEnough = isTeacher && gameWords.length > 0 && gameWords.length < cfg.questionsPerRound;
 
   /* ══════════════════════ RENDER: START ══════════════════════ */
   if (phase === 'start') {
     return (
       <div style={S.page}>
-        {showCfg && (
+        {/* settings panel — teachers only */}
+        {isTeacher && showCfg && (
           <SettingsPanel
             cfg={cfg}
             onChange={setCfg}
@@ -556,7 +574,10 @@ export default function LetterCatcherGame() {
         )}
 
         <div style={S.centerCard}>
-          <button style={S.cfgBtn} onClick={() => setShowCfg(true)}>⚙️ الإعدادات</button>
+          {/* settings button — teachers only */}
+          {isTeacher && (
+            <button style={S.cfgBtn} onClick={() => setShowCfg(true)}>⚙️ الإعدادات</button>
+          )}
 
           <div style={{ fontSize: '4.5rem', lineHeight: 1 }}>🦉</div>
           <h1 style={S.mainTitle}>صيّاد الحروف!</h1>
@@ -565,53 +586,82 @@ export default function LetterCatcherGame() {
             انظر للصورة، ثم اختر الحرف الصحيح!
           </p>
 
-          {gameWords.length === 0 ? (
-            <div style={S.emptyState}>
-              <div style={{ fontSize: '3rem' }}>📭</div>
-              <p style={{ color: '#374151', fontSize: '.97rem', fontWeight: 700, lineHeight: 1.9, margin: 0, textAlign: 'center' }}>
-                عذراً، لا توجد كلمات مضافة في قاعدة البيانات تطابق هذه الإعدادات.<br />
-                يرجى إضافة كلمات جديدة أولاً.
-              </p>
-              <button style={S.btnOutline} onClick={() => setShowCfg(true)}>⚙️ إضافة كلمات أو تعديل الإعدادات</button>
-            </div>
-          ) : notEnough ? (
-            <>
-              <div style={S.statsRow}>
-                <div style={S.statBox}>
-                  <span style={{ ...S.statNum, color: '#e74c3c' }}>{gameWords.length}</span>
-                  <span style={S.statLbl}>كلمة متاحة</span>
-                </div>
-                <div style={S.statDiv} />
-                <div style={S.statBox}>
-                  <span style={S.statNum}>{cfg.questionsPerRound}</span>
-                  <span style={S.statLbl}>سؤال مطلوب</span>
-                </div>
+          {isTeacher ? (
+            /* ─── TEACHER VIEW: full config controls ─── */
+            gameWords.length === 0 ? (
+              <div style={S.emptyState}>
+                <div style={{ fontSize: '3rem' }}>📭</div>
+                <p style={{ color: '#374151', fontSize: '.97rem', fontWeight: 700, lineHeight: 1.9, margin: 0, textAlign: 'center' }}>
+                  عذراً، لا توجد كلمات مضافة في قاعدة البيانات تطابق هذه الإعدادات.<br />
+                  يرجى إضافة كلمات جديدة أولاً.
+                </p>
+                <button style={S.btnOutline} onClick={() => setShowCfg(true)}>⚙️ إضافة كلمات أو تعديل الإعدادات</button>
               </div>
-              <div style={S.warningBanner}>
-                ⚠️ الكلمات المتاحة ({gameWords.length}) أقل من عدد الأسئلة المطلوبة ({cfg.questionsPerRound}). أضف المزيد من الكلمات أو قلّل عدد الأسئلة في الإعدادات.
-              </div>
-              <button style={{ ...S.btnGold, opacity: 0.4, cursor: 'not-allowed' }} disabled>🚀 ابدأ اللعبة</button>
-            </>
+            ) : notEnough ? (
+              <>
+                <div style={S.statsRow}>
+                  <div style={S.statBox}>
+                    <span style={{ ...S.statNum, color: '#e74c3c' }}>{gameWords.length}</span>
+                    <span style={S.statLbl}>كلمة متاحة</span>
+                  </div>
+                  <div style={S.statDiv} />
+                  <div style={S.statBox}>
+                    <span style={S.statNum}>{cfg.questionsPerRound}</span>
+                    <span style={S.statLbl}>سؤال مطلوب</span>
+                  </div>
+                </div>
+                <div style={S.warningBanner}>
+                  ⚠️ الكلمات المتاحة ({gameWords.length}) أقل من عدد الأسئلة المطلوبة ({cfg.questionsPerRound}). أضف المزيد من الكلمات أو قلّل عدد الأسئلة في الإعدادات.
+                </div>
+                <button style={{ ...S.btnGold, opacity: 0.4, cursor: 'not-allowed' }} disabled>🚀 ابدأ اللعبة</button>
+              </>
+            ) : (
+              <>
+                <div style={S.statsRow}>
+                  <div style={S.statBox}>
+                    <span style={S.statNum}>{gameWords.length}</span>
+                    <span style={S.statLbl}>كلمة متاحة</span>
+                  </div>
+                  <div style={S.statDiv} />
+                  <div style={S.statBox}>
+                    <span style={S.statNum}>{cfg.questionsPerRound}</span>
+                    <span style={S.statLbl}>سؤال في الجولة</span>
+                  </div>
+                  <div style={S.statDiv} />
+                  <div style={S.statBox}>
+                    <span style={S.statNum}>{cfg.optionsCount}</span>
+                    <span style={S.statLbl}>خيارات</span>
+                  </div>
+                </div>
+                <button style={S.btnGold} onClick={startGame}>🚀 ابدأ اللعبة</button>
+              </>
+            )
           ) : (
-            <>
-              <div style={S.statsRow}>
-                <div style={S.statBox}>
-                  <span style={S.statNum}>{gameWords.length}</span>
-                  <span style={S.statLbl}>كلمة متاحة</span>
+            /* ─── STUDENT VIEW: just play ─── */
+            gameWords.length > 0 ? (
+              <>
+                <div style={S.statsRow}>
+                  <div style={S.statBox}>
+                    <span style={S.statNum}>{Math.min(gameWords.length, 20)}</span>
+                    <span style={S.statLbl}>سؤال</span>
+                  </div>
+                  <div style={S.statDiv} />
+                  <div style={S.statBox}>
+                    <span style={S.statNum}>{cfg.optionsCount}</span>
+                    <span style={S.statLbl}>خيارات</span>
+                  </div>
                 </div>
-                <div style={S.statDiv} />
-                <div style={S.statBox}>
-                  <span style={S.statNum}>{cfg.questionsPerRound}</span>
-                  <span style={S.statLbl}>سؤال في الجولة</span>
-                </div>
-                <div style={S.statDiv} />
-                <div style={S.statBox}>
-                  <span style={S.statNum}>{cfg.optionsCount}</span>
-                  <span style={S.statLbl}>خيارات</span>
-                </div>
+                <button style={S.btnGold} onClick={startGame}>🚀 ابدأ اللعبة</button>
+              </>
+            ) : (
+              <div style={S.emptyState}>
+                <div style={{ fontSize: '3rem' }}>🔒</div>
+                <p style={{ color: '#374151', fontSize: '.97rem', fontWeight: 700, lineHeight: 1.9, margin: 0, textAlign: 'center' }}>
+                  اللعبة غير متاحة حالياً.<br />
+                  تواصل مع معلمك لإعداد الكلمات.
+                </p>
               </div>
-              <button style={S.btnGold} onClick={startGame}>🚀 ابدأ اللعبة</button>
-            </>
+            )
           )}
 
           <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
