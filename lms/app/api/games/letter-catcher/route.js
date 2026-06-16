@@ -3,9 +3,7 @@ import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 
 const ARABIC_LETTERS = 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي';
-const PICKABLE       = 'ابتةثجحخدذرزسشصضطظعغفقكلمنهويءأإئؤ';
 const DIACRITICS     = /[ً-ْٰ]/g;
-const AVOID_LETTERS  = new Set(['ا','و','ي','ى']);
 
 function buildOptions(correctLetter, total = 5) {
   const stripped = (correctLetter || '').replace(DIACRITICS, '');
@@ -22,75 +20,39 @@ function buildOptions(correctLetter, total = 5) {
   return opts;
 }
 
-function pickMissingLetter(word) {
-  const stripped = (word || '').replace(DIACRITICS, '');
-  let candidates = [];
-  for (let i = 0; i < stripped.length; i++) {
-    if (!AVOID_LETTERS.has(stripped[i]) && PICKABLE.includes(stripped[i])) candidates.push(i);
-  }
-  if (!candidates.length) {
-    for (let i = 0; i < stripped.length; i++) {
-      if (PICKABLE.includes(stripped[i])) candidates.push(i);
+// GET — returns only words from letter_catcher_words, filtered by query params
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const topic  = searchParams.get('topic') || '';
+    const grade  = Number(searchParams.get('grade')  || 0);
+    const minLen = Number(searchParams.get('minLen') || 0);
+    const maxLen = Number(searchParams.get('maxLen') || 99);
+
+    const admin = createAdminClient();
+    let query = admin.from('letter_catcher_words').select('*').order('id');
+    if (topic)    query = query.eq('topic', topic);
+    if (grade > 0) query = query.eq('grade_level', grade);
+
+    const { data, error } = await query;
+
+    if (error || !data) {
+      return NextResponse.json({ words: [], source: 'error' });
     }
+
+    const valid = data.filter(w => {
+      if (!w.word || !w.missing_letter) return false;
+      if (!Array.isArray(w.options) || w.options.filter(Boolean).length === 0) return false;
+      const len = w.word.replace(DIACRITICS, '').length;
+      if (minLen > 0 && len < minLen) return false;
+      if (maxLen < 99 && len > maxLen) return false;
+      return true;
+    });
+
+    return NextResponse.json({ words: valid, source: 'database' });
+  } catch {
+    return NextResponse.json({ words: [], source: 'error' });
   }
-  if (!candidates.length) return null;
-  return stripped[candidates[Math.floor(Math.random() * candidates.length)]];
-}
-
-// GET — public read; admin client bypasses RLS
-export async function GET() {
-  const admin = createAdminClient();
-
-  // 1. Try dedicated letter_catcher_words table first
-  const { data: gameData } = await admin
-    .from('letter_catcher_words')
-    .select('*')
-    .order('id');
-
-  if (gameData && gameData.length > 0) {
-    const valid = gameData.filter(
-      w => w.word && w.missing_letter && Array.isArray(w.options) && w.options.filter(Boolean).length > 0
-    );
-    if (valid.length > 0) {
-      return NextResponse.json({ words: valid, source: 'game' });
-    }
-  }
-
-  // 2. Fall back to lexicon_words (existing word bank)
-  let { data: lexData, error } = await admin
-    .from('lexicon_words')
-    .select('id, word, word_type, topic, grade_from, grade_to, has_image')
-    .order('word');
-
-  if (error?.message?.includes('has_image')) {
-    ({ data: lexData, error } = await admin
-      .from('lexicon_words')
-      .select('id, word, word_type, topic, grade_from, grade_to')
-      .order('word'));
-  }
-
-  if (error || !lexData || lexData.length === 0) {
-    return NextResponse.json({ words: [], source: 'empty' });
-  }
-
-  // Transform lexicon_words → game format (compute missing_letter + options dynamically)
-  const transformed = lexData.map(w => {
-    const missing_letter = pickMissingLetter(w.word);
-    if (!missing_letter) return null;
-    return {
-      id: w.id,
-      word: w.word,
-      missing_letter,
-      options: buildOptions(missing_letter),
-      image_url: null,
-      audio_url: null,
-      emoji: null,
-      topic: w.topic || null,
-      grade_level: w.grade_from || null,
-    };
-  }).filter(Boolean);
-
-  return NextResponse.json({ words: transformed, source: 'lexicon' });
 }
 
 // POST — add word (admin/teacher only)

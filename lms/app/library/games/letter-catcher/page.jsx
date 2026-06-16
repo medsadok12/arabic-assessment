@@ -431,41 +431,41 @@ export default function LetterCatcherGame() {
     maxLen: 12,
   });
 
-  /* ── load all words from DB (no filters) ── */
+  const isValid = w => w.word && w.missing_letter && Array.isArray(w.options) && w.options.filter(Boolean).length >= 2;
+
+  /* ── load ALL words (for word manager, no filters) ── */
   const loadWords = useCallback(async () => {
     try {
       const res  = await fetch('/api/games/letter-catcher');
       const json = await res.json();
-      const valid = (json.words || []).filter(
-        w => w.word && w.missing_letter && Array.isArray(w.options) && w.options.filter(Boolean).length >= 2
-      );
-      setDbWords(valid);
+      setDbWords((json.words || []).filter(isValid));
     } catch {
       setDbWords([]);
     }
   }, []);
 
+  /* ── load game words with active filters from API ── */
+  const loadGameWords = useCallback(async () => {
+    try {
+      const p = new URLSearchParams();
+      if (cfg.topic)    p.set('topic',  cfg.topic);
+      if (cfg.grade > 0) p.set('grade', String(cfg.grade));
+      p.set('minLen', String(cfg.minLen));
+      p.set('maxLen', String(cfg.maxLen));
+      const res  = await fetch(`/api/games/letter-catcher?${p}`);
+      const json = await res.json();
+      setGameWords((json.words || []).filter(isValid));
+    } catch {
+      setGameWords([]);
+    }
+  }, [cfg]);
+
   useEffect(() => { loadWords(); }, [loadWords]);
+  useEffect(() => { loadGameWords(); }, [loadGameWords]);
 
-  /* ── derive gameWords by applying all active filters client-side ── */
-  useEffect(() => {
-    const { topic, grade, minLen, maxLen } = cfg;
-    const filtered = dbWords.filter(w => {
-      if (topic && (w.topic || '') !== topic) return false;
-      if (grade > 0 && w.grade_level !== grade) return false;
-      const len = stripDia(w.word).length;
-      if (len < minLen || len > maxLen) return false;
-      return true;
-    });
-    setGameWords(filtered);
-  }, [dbWords, cfg]);
-
-  /* ── build round queue (repeats words if fewer than count) ── */
+  /* ── build round queue ── */
   const buildQueue = useCallback((words, count, optCount) => {
-    // Expand pool by repeating if not enough words
-    let pool = [...words];
-    while (pool.length < count) pool = [...pool, ...words];
-    return shuffle(pool).slice(0, count).map(w => {
+    return shuffle(words).slice(0, count).map(w => {
       const correctLetter = stripDia(w.missing_letter);
       const strippedW     = stripDia(w.word);
       const missingIdx    = strippedW.indexOf(correctLetter);
@@ -477,9 +477,9 @@ export default function LetterCatcherGame() {
     });
   }, []);
 
-  /* ── start game ── */
+  /* ── start game — only if enough matching words ── */
   const startGame = useCallback(() => {
-    if (!gameWords.length) return;
+    if (gameWords.length < cfg.questionsPerRound) return;
     setQueue(buildQueue(gameWords, cfg.questionsPerRound, cfg.optionsCount));
     setCur(0); setScore(0); setChosen(null); setCorrect(null);
     setPhase('playing');
@@ -508,7 +508,7 @@ export default function LetterCatcherGame() {
     setScore(0); setChosen(null); setCorrect(null);
   }, []);
 
-  const filtersActive = cfg.topic || cfg.grade > 0 || cfg.minLen > 2 || cfg.maxLen < 12;
+  const notEnough = gameWords.length > 0 && gameWords.length < cfg.questionsPerRound;
 
   /* ══════════════════════ RENDER: START ══════════════════════ */
   if (phase === 'start') {
@@ -534,7 +534,34 @@ export default function LetterCatcherGame() {
             انظر للصورة، ثم اختر الحرف الصحيح!
           </p>
 
-          {gameWords.length > 0 ? (
+          {gameWords.length === 0 ? (
+            <div style={S.emptyState}>
+              <div style={{ fontSize: '3rem' }}>📭</div>
+              <p style={{ color: '#374151', fontSize: '.97rem', fontWeight: 700, lineHeight: 1.9, margin: 0, textAlign: 'center' }}>
+                عذراً، لا توجد كلمات مضافة في قاعدة البيانات تطابق هذه الإعدادات.<br />
+                يرجى إضافة كلمات جديدة أولاً.
+              </p>
+              <button style={S.btnOutline} onClick={() => setShowCfg(true)}>⚙️ إضافة كلمات أو تعديل الإعدادات</button>
+            </div>
+          ) : notEnough ? (
+            <>
+              <div style={S.statsRow}>
+                <div style={S.statBox}>
+                  <span style={{ ...S.statNum, color: '#e74c3c' }}>{gameWords.length}</span>
+                  <span style={S.statLbl}>كلمة متاحة</span>
+                </div>
+                <div style={S.statDiv} />
+                <div style={S.statBox}>
+                  <span style={S.statNum}>{cfg.questionsPerRound}</span>
+                  <span style={S.statLbl}>سؤال مطلوب</span>
+                </div>
+              </div>
+              <div style={S.warningBanner}>
+                ⚠️ الكلمات المتاحة ({gameWords.length}) أقل من عدد الأسئلة المطلوبة ({cfg.questionsPerRound}). أضف المزيد من الكلمات أو قلّل عدد الأسئلة في الإعدادات.
+              </div>
+              <button style={{ ...S.btnGold, opacity: 0.4, cursor: 'not-allowed' }} disabled>🚀 ابدأ اللعبة</button>
+            </>
+          ) : (
             <>
               <div style={S.statsRow}>
                 <div style={S.statBox}>
@@ -552,26 +579,8 @@ export default function LetterCatcherGame() {
                   <span style={S.statLbl}>خيارات</span>
                 </div>
               </div>
-
-              <button style={S.btnGold} onClick={startGame}>
-                🚀 ابدأ اللعبة
-              </button>
+              <button style={S.btnGold} onClick={startGame}>🚀 ابدأ اللعبة</button>
             </>
-          ) : (
-            <div style={S.emptyState}>
-              <div style={{ fontSize: '3rem' }}>{filtersActive ? '🔍' : '📭'}</div>
-              <div style={{ fontWeight: 800, color: '#374151', fontSize: '1.05rem' }}>
-                {filtersActive ? 'لا توجد كلمات مطابقة للفلاتر الحالية' : 'بنك الكلمات فارغ'}
-              </div>
-              <p style={{ color: '#6b7280', fontSize: '.9rem', lineHeight: 1.8, margin: 0, textAlign: 'center' }}>
-                {filtersActive
-                  ? 'جرّب تغيير الموضوع أو الصف أو نطاق طول الكلمة في الإعدادات.'
-                  : 'لم يتم إضافة أي كلمات بعد.\nيرجى التواصل مع المعلم لإضافة كلمات اللعبة.'}
-              </p>
-              <button style={S.btnOutline} onClick={() => setShowCfg(true)}>
-                ⚙️ {filtersActive ? 'تعديل الفلاتر' : 'إضافة كلمات (للمعلم)'}
-              </button>
-            </div>
           )}
 
           <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
