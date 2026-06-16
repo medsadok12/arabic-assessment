@@ -284,8 +284,26 @@ body {
 .dot.d-x { background: #fca5a5; opacity: .45; }
 .hint-row.hint-wrap { flex-wrap: wrap; justify-content: center; max-width: 320px; }
 
+/* ===== نشاط أكمل النمط ===== */
+.activity-tile { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 360px; margin: 2px 0 6px; border: none; border-radius: 20px; padding: 14px 16px; cursor: pointer; color: #fff; text-align: start; background: linear-gradient(150deg, #ec4899, #db2777); box-shadow: var(--shadow); transition: transform .15s; }
+.activity-tile:active { transform: scale(.97); }
+.activity-tile:hover { transform: translateY(-2px); }
+.act-ic { font-size: 2rem; width: 52px; height: 52px; flex: none; display: grid; place-items: center; background: rgba(255,255,255,.2); border-radius: 14px; }
+.act-tx { display: flex; flex-direction: column; flex: 1; }
+.act-tx b { font-size: 1.15rem; }
+.act-tx small { font-size: .8rem; opacity: .92; margin-top: 2px; }
+.act-stars { font-size: .85rem; font-weight: 800; white-space: nowrap; }
+
+/* عرض المتتالية */
+.problem.pattern { font-size: 2rem; }
+.seq { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.seq-n { font-weight: 900; }
+.seq-arrow { font-style: normal; color: #cbd5e1; font-weight: 700; }
+.problem.pattern .ans.blank { min-width: 1.5em; padding: 0 .18em; border: 3px dashed currentColor; border-radius: 10px; }
+
 @media (max-width: 360px) {
   .problem { font-size: 2.2rem; }
+  .problem.pattern { font-size: 1.6rem; }
   .key { font-size: 1.5rem; padding: 13px 0; }
   .home-title { font-size: 2rem; }
   .op-sym { font-size: 2.8rem; }
