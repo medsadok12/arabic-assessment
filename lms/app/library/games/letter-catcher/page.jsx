@@ -415,9 +415,151 @@ function WordManager({ dbWords, onRefresh }) {
   );
 }
 
+/* ─────────────────── category icon editor ────────────────────── */
+function CatEditor({ categories, catMeta, onRefresh }) {
+  const fileRefs  = useRef({});
+  const [editEmoji, setEditEmoji] = useState({});
+  const [editImg,   setEditImg]   = useState({});
+  const [saving,    setSaving]    = useState(null);
+  const [msg,       setMsg]       = useState(null);
+
+  const currentEmoji = (cat, idx) => {
+    if (editEmoji[cat] !== undefined) return editEmoji[cat];
+    if (catMeta[cat]?.emoji) return catMeta[cat].emoji;
+    return getCatStyle(cat, idx).emoji;
+  };
+  const currentImg = (cat) =>
+    editImg[cat] !== undefined ? editImg[cat] : (catMeta[cat]?.image_url || null);
+
+  const handleSave = async (cat, idx) => {
+    setSaving(cat); setMsg(null);
+    try {
+      const res = await fetch('/api/games/letter-catcher/categories', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: cat,
+          emoji: currentEmoji(cat, idx) || null,
+          image_url: currentImg(cat) || null,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setMsg({ ok: true, text: `✅ تم حفظ "${cat}"` });
+      onRefresh();
+    } catch {
+      setMsg({ ok: false, text: '❌ فشل الحفظ' });
+    }
+    setSaving(null);
+  };
+
+  const handleReset = async (cat) => {
+    setSaving(cat + '_reset'); setMsg(null);
+    try {
+      await fetch(`/api/games/letter-catcher/categories?name=${encodeURIComponent(cat)}`, { method: 'DELETE' });
+      setEditEmoji(p => { const n = { ...p }; delete n[cat]; return n; });
+      setEditImg(p =>   { const n = { ...p }; delete n[cat]; return n; });
+      setMsg({ ok: true, text: `✅ أُعيد "${cat}" للافتراضي` });
+      onRefresh();
+    } catch {
+      setMsg({ ok: false, text: '❌ فشل الحذف' });
+    }
+    setSaving(null);
+  };
+
+  if (categories.length === 0) return (
+    <div style={{ color:'#9ca3af', fontSize:'.85rem', textAlign:'center', padding:12 }}>
+      لا توجد تصنيفات — أضف كلمات مع تصنيفاتها أولاً
+    </div>
+  );
+
+  return (
+    <div>
+      {categories.map((cat, idx) => {
+        const cs  = getCatStyle(cat, idx);
+        const img = currentImg(cat);
+        const emo = currentEmoji(cat, idx);
+        const isCustom = !!(catMeta[cat]?.emoji || catMeta[cat]?.image_url);
+        return (
+          <div key={cat} style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 0', borderBottom:'1px solid #f3f4f6' }}>
+            {/* preview bubble */}
+            <div
+              onClick={() => fileRefs.current[cat]?.click()}
+              title="انقر لتغيير الصورة"
+              style={{ width:42, height:42, borderRadius:10, overflow:'hidden', background:cs.grad, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer', boxShadow:'0 2px 8px rgba(0,0,0,.18)' }}
+            >
+              {img
+                ? <img src={img} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                : <span style={{ fontSize:'1.4rem', lineHeight:1 }}>{emo}</span>
+              }
+            </div>
+
+            {/* category name */}
+            <span style={{ fontWeight:800, color:'#1f2937', fontSize:'.86rem', minWidth:60 }}>{cat}</span>
+
+            {/* emoji input */}
+            <input
+              value={img ? '' : emo}
+              onChange={e => { setEditEmoji(p => ({ ...p, [cat]: e.target.value })); setEditImg(p => ({ ...p, [cat]: null })); }}
+              placeholder="🔤"
+              disabled={!!img}
+              style={{ width:44, textAlign:'center', fontSize:'1.15rem', border:'1.5px solid #e5e7eb', borderRadius:8, padding:'4px', fontFamily:'inherit', background: img ? '#f3f4f6' : '#fff' }}
+              maxLength={2}
+            />
+
+            {/* image upload button */}
+            <button
+              onClick={() => fileRefs.current[cat]?.click()}
+              style={{ background:'#f0fdf4', border:'1.5px solid #86efac', borderRadius:8, padding:'5px 9px', cursor:'pointer', fontSize:'.72rem', fontWeight:700, color:'#166534', flexShrink:0 }}
+            >🖼️</button>
+            <input type="file" accept="image/*" hidden ref={el => { fileRefs.current[cat] = el; }}
+              onChange={async e => {
+                const f = e.target.files?.[0]; if (!f) return;
+                const b64 = await fileToBase64(f);
+                setEditImg(p => ({ ...p, [cat]: b64 }));
+                setEditEmoji(p => ({ ...p, [cat]: '' }));
+              }}
+            />
+
+            {/* clear image */}
+            {img && (
+              <button onClick={() => setEditImg(p => ({ ...p, [cat]: null }))}
+                style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:'.85rem', padding:'2px', flexShrink:0 }}
+                title="مسح الصورة">✕</button>
+            )}
+
+            {/* save */}
+            <button
+              onClick={() => handleSave(cat, idx)}
+              disabled={!!saving}
+              style={{ background:'linear-gradient(135deg,#5b4fc4,#7c3aed)', border:'none', borderRadius:8, padding:'5px 11px', color:'#fff', fontSize:'.75rem', fontWeight:700, cursor:'pointer', flexShrink:0 }}
+            >{saving === cat ? '…' : 'حفظ'}</button>
+
+            {/* reset to default */}
+            {isCustom && (
+              <button
+                onClick={() => handleReset(cat)}
+                disabled={!!saving}
+                style={{ background:'none', border:'1.5px solid #e5e7eb', borderRadius:8, padding:'4px 8px', color:'#9ca3af', fontSize:'.7rem', fontWeight:700, cursor:'pointer', flexShrink:0 }}
+                title="إعادة للافتراضي"
+              >↩️</button>
+            )}
+          </div>
+        );
+      })}
+      {msg && (
+        <div style={{ marginTop:8, padding:'6px 10px', borderRadius:8, fontSize:'.82rem', fontWeight:700, background: msg.ok ? '#d4edda' : '#f8d7da', color: msg.ok ? '#155724' : '#721c24' }}>
+          {msg.text}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─────────────────── settings panel (modal) ─────────────────── */
-function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh }) {
+function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
   const [cfgOpen, setCfgOpen] = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
+  const uniqueCats = [...new Set(dbWords.map(w => w.category).filter(Boolean))];
 
   return (
     <div style={S.settingsOverlay} onClick={onClose}>
@@ -493,6 +635,27 @@ function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh }) {
           )}
         </div>
 
+        {/* category customization accordion */}
+        <div style={{ marginBottom: 16, borderRadius: 12, border: '1.5px solid #e5e7eb', overflow: 'hidden' }}>
+          <button
+            onClick={() => setCatOpen(o => !o)}
+            style={{
+              width: '100%', background: catOpen ? '#f0fdf4' : '#f9fafb',
+              border: 'none', padding: '10px 14px', display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', cursor: 'pointer',
+              fontFamily: "'Tajawal', sans-serif",
+            }}
+          >
+            <span style={{ fontWeight: 700, color: '#15803d', fontSize: '.9rem' }}>🎨 تخصيص أيقونات التصنيفات</span>
+            <span style={{ color: '#9ca3af', fontSize: '.78rem' }}>{catOpen ? '▲ طي' : '▼ توسيع'}</span>
+          </button>
+          {catOpen && (
+            <div style={{ padding: '14px', borderTop: '1px solid #e5e7eb' }}>
+              <CatEditor categories={uniqueCats} catMeta={catMeta} onRefresh={onCatMetaRefresh} />
+            </div>
+          )}
+        </div>
+
         <WordManager dbWords={dbWords} onRefresh={onRefresh} />
       </div>
     </div>
@@ -517,6 +680,7 @@ export default function LetterCatcherGame() {
   const [chosen,     setChosen]     = useState(null);
   const [correct,    setCorrect]    = useState(null);
   const [showCfg,    setShowCfg]    = useState(false);
+  const [catMeta,    setCatMeta]    = useState({});
   const [isTeacher,        setIsTeacher]        = useState(false);
   const [isLoading,        setIsLoading]        = useState(true);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -573,8 +737,19 @@ export default function LetterCatcherGame() {
     }
   }, [cfg.topic, cfg.grade, cfg.minLen, cfg.maxLen]);
 
+  const loadCatMeta = useCallback(async () => {
+    try {
+      const res  = await fetch('/api/games/letter-catcher/categories');
+      const json = await res.json();
+      const m = {};
+      (json.categories || []).forEach(c => { m[c.name] = c; });
+      setCatMeta(m);
+    } catch {}
+  }, []);
+
   useEffect(() => { loadWords(); }, [loadWords]);
   useEffect(() => { loadGameWords(); }, [loadGameWords]);
+  useEffect(() => { loadCatMeta(); }, [loadCatMeta]);
 
   /* ── build round queue ── */
   const buildQueue = useCallback((words, count, optCount) => {
@@ -692,7 +867,7 @@ export default function LetterCatcherGame() {
         `}</style>
 
         {isTeacher && showCfg && (
-          <SettingsPanel cfg={cfg} onChange={setCfg} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={loadWords} />
+          <SettingsPanel cfg={cfg} onChange={setCfg} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={loadWords} catMeta={catMeta} onCatMetaRefresh={loadCatMeta} />
         )}
 
         <div style={{ width:'100%', maxWidth:480, textAlign:'center', position:'relative', padding:'0 16px' }}>
@@ -782,14 +957,16 @@ export default function LetterCatcherGame() {
               {/* category circles */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:12 }}>
                 {categories.map((cat, idx) => {
-                  const cs    = getCatStyle(cat, idx);
-                  const count = gameWords.filter(w => w.category === cat).length;
+                  const cs      = getCatStyle(cat, idx);
+                  const custom  = catMeta[cat];
+                  const bgGrad  = custom?.gradient || cs.grad;
+                  const count   = gameWords.filter(w => w.category === cat).length;
                   return (
                     <div
                       key={cat}
                       className="lc-cat"
                       style={{
-                        background: cs.grad,
+                        background: bgGrad,
                         borderRadius: 22,
                         padding: '22px 8px 18px',
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
@@ -798,7 +975,10 @@ export default function LetterCatcherGame() {
                       }}
                       onClick={() => startGame(cat)}
                     >
-                      <span style={{ fontSize:'2.4rem', lineHeight:1 }}>{cs.emoji}</span>
+                      {custom?.image_url
+                        ? <img src={custom.image_url} style={{ width:54, height:54, borderRadius:12, objectFit:'cover', boxShadow:'0 2px 8px rgba(0,0,0,.22)' }} />
+                        : <span style={{ fontSize:'2.4rem', lineHeight:1 }}>{custom?.emoji || cs.emoji}</span>
+                      }
                       <span style={{
                         fontSize:'.78rem', fontWeight:800, color:'#fff',
                         textShadow:'0 1px 4px rgba(0,0,0,.3)', lineHeight:1.3,
