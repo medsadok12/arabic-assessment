@@ -24,15 +24,17 @@ function buildOptions(correctLetter, total = 5) {
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const topic  = searchParams.get('topic') || '';
-    const grade  = Number(searchParams.get('grade')  || 0);
-    const minLen = Number(searchParams.get('minLen') || 0);
-    const maxLen = Number(searchParams.get('maxLen') || 99);
+    const topic    = searchParams.get('topic')    || '';
+    const grade    = Number(searchParams.get('grade')  || 0);
+    const minLen   = Number(searchParams.get('minLen') || 0);
+    const maxLen   = Number(searchParams.get('maxLen') || 99);
+    const category = searchParams.get('category') || '';
 
     const admin = createAdminClient();
     let query = admin.from('letter_catcher_words').select('*').order('id');
     if (topic)    query = query.eq('topic', topic);
     if (grade > 0) query = query.eq('grade_level', grade);
+    if (category) query = query.eq('category', category);
 
     const { data, error } = await query;
 
@@ -65,7 +67,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
     }
 
-    const { word, missing_letter, emoji, image_url, audio_url, topic, grade_level } = await request.json();
+    const { word, missing_letter, emoji, image_url, audio_url, topic, grade_level, category } = await request.json();
 
     if (!word?.trim() || !missing_letter?.trim()) {
       return NextResponse.json({ error: 'الكلمة والحرف الناقص مطلوبان' }, { status: 400 });
@@ -85,6 +87,7 @@ export async function POST(request) {
         audio_url:   audio_url           || null,
         topic:       topic?.trim()       || null,
         grade_level: grade_level ? Number(grade_level) : null,
+        category:    category?.trim()    || null,
       })
       .select()
       .single();

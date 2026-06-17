@@ -46,6 +46,30 @@ function toContextual(letter, form) {
 
 const TOPICS = ['الحيوانات', 'الأشكال', 'الأسرة', 'الألوان', 'الفواكه', 'المدرسة', 'الطقس', 'الأرقام'];
 
+/* ── category visual metadata ────────────────────────────────── */
+const CAT_META = {
+  'الحيوانات': { emoji:'🦁', grad:'linear-gradient(135deg,#f59e0b,#f97316)' },
+  'الفواكه':   { emoji:'🍎', grad:'linear-gradient(135deg,#ef4444,#fb923c)' },
+  'الغلال':    { emoji:'🍇', grad:'linear-gradient(135deg,#8b5cf6,#a855f7)' },
+  'الخضروات':  { emoji:'🥦', grad:'linear-gradient(135deg,#10b981,#34d399)' },
+  'الأشكال':   { emoji:'🔷', grad:'linear-gradient(135deg,#3b82f6,#60a5fa)' },
+  'الأسرة':    { emoji:'👨‍👩‍👧‍👦', grad:'linear-gradient(135deg,#ec4899,#f472b6)' },
+  'الألوان':   { emoji:'🎨', grad:'linear-gradient(135deg,#eab308,#f59e0b)' },
+  'المدرسة':   { emoji:'📚', grad:'linear-gradient(135deg,#06b6d4,#0ea5e9)' },
+  'الطقس':     { emoji:'⛅', grad:'linear-gradient(135deg,#818cf8,#60a5fa)' },
+  'الأرقام':   { emoji:'🔢', grad:'linear-gradient(135deg,#84cc16,#10b981)' },
+};
+const FALLBACK_CAT_STYLES = [
+  { emoji:'🌟', grad:'linear-gradient(135deg,#f59e0b,#f97316)' },
+  { emoji:'🎯', grad:'linear-gradient(135deg,#7c3aed,#8b5cf6)' },
+  { emoji:'🚀', grad:'linear-gradient(135deg,#3b82f6,#06b6d4)' },
+  { emoji:'🌈', grad:'linear-gradient(135deg,#10b981,#84cc16)' },
+  { emoji:'🎪', grad:'linear-gradient(135deg,#ec4899,#f43f5e)' },
+];
+function getCatStyle(cat, idx) {
+  return CAT_META[cat] || FALLBACK_CAT_STYLES[idx % FALLBACK_CAT_STYLES.length];
+}
+
 /* ── Arabic TTS ─────────────────────────────────────────────── */
 function speak(text) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -87,6 +111,7 @@ function WordManager({ dbWords, onRefresh }) {
   const [saving,    setSaving]    = useState(false);
   const [deleting,  setDeleting]  = useState(null);
   const [msg,       setMsg]       = useState(null);
+  const [category,  setCategory]  = useState('');
   const fileRef   = useRef();
   const mediaRef  = useRef(null);   // MediaRecorder
   const chunksRef = useRef([]);
@@ -150,13 +175,14 @@ function WordManager({ dbWords, onRefresh }) {
           image_url,
           audio_url: audioUrl || null,
           topic: topic || null,
+          category: category.trim() || null,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'فشل الحفظ');
       const fullW = word.trim().replace('_', missing.trim());
       setMsg({ ok: true, text: `✅ أُضيفت "${fullW}" بنجاح` });
-      setWord(''); setMissing(''); setTopic('');
+      setWord(''); setMissing(''); setTopic(''); setCategory('');
       setImgFile(null); setImgPrev(null); setAudioUrl(null);
       if (fileRef.current) fileRef.current.value = '';
       onRefresh();
@@ -284,6 +310,21 @@ function WordManager({ dbWords, onRefresh }) {
           {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
 
+        <input
+          list="lc-cat-list"
+          value={category}
+          onChange={e => setCategory(e.target.value)}
+          placeholder="التصنيف التعليمي: الحيوانات، الفواكه، الخضروات... (اختياري)"
+          style={{ ...S.input, marginTop: 8 }}
+          dir="rtl"
+        />
+        <datalist id="lc-cat-list">
+          {Object.keys(CAT_META).map(c => <option key={c} value={c} />)}
+        </datalist>
+        <div style={{ fontSize: '.72rem', color: '#7c3aed', marginTop: 3, textAlign: 'right', fontWeight: 600 }}>
+          💡 التصنيف يُظهر الكلمة في دائرة مجموعتها في شاشة الاختيار
+        </div>
+
         {msg && (
           <div style={{
             marginTop: 10, padding: '8px 12px', borderRadius: 8, fontSize: '.85rem', fontWeight: 700,
@@ -325,6 +366,7 @@ function WordManager({ dbWords, onRefresh }) {
               <span style={{ flex: 1, fontWeight: 700, color: '#1f2937', fontSize: '.9rem' }}>
                 {w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word}
               </span>
+              {w.category && <span style={{ background: '#f5f3ff', color: '#7c3aed', borderRadius: 20, padding: '2px 8px', fontSize: '.7rem', fontWeight: 700 }}>{w.category}</span>}
               {w.topic && <span style={{ background: '#e0f2fe', color: '#0369a1', borderRadius: 20, padding: '2px 8px', fontSize: '.7rem', fontWeight: 700 }}>{w.topic}</span>}
               <span style={{ background: '#ede9fe', color: '#7c3aed', borderRadius: 20, padding: '2px 8px', fontSize: '.75rem', fontWeight: 700 }}>{w.missing_letter}</span>
               {w.audio_url && <span title="يحتوي على تسجيل" style={{ fontSize: '.75rem' }}>🎙️</span>}
@@ -453,8 +495,9 @@ export default function LetterCatcherGame() {
   const [chosen,     setChosen]     = useState(null);
   const [correct,    setCorrect]    = useState(null);
   const [showCfg,    setShowCfg]    = useState(false);
-  const [isTeacher,  setIsTeacher]  = useState(false);
-  const [isLoading,  setIsLoading]  = useState(true);
+  const [isTeacher,        setIsTeacher]        = useState(false);
+  const [isLoading,        setIsLoading]        = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [cfg, setCfg] = useState({
     questionsPerRound: 10,
     optionsCount: 5,
@@ -525,14 +568,17 @@ export default function LetterCatcherGame() {
     });
   }, []);
 
-  /* ── start game ── */
-  const startGame = useCallback(() => {
-    if (gameWords.length === 0) return;
+  /* ── start game (catFilter = null → all words) ── */
+  const startGame = useCallback((catFilter) => {
+    const filtered = catFilter === null
+      ? gameWords
+      : gameWords.filter(w => w.category === catFilter);
+    if (filtered.length === 0) return;
     const count = isTeacher
-      ? cfg.questionsPerRound
-      : Math.min(gameWords.length, 20);  // students play all available (up to 20)
-    if (gameWords.length < count) return;
-    setQueue(buildQueue(gameWords, count, cfg.optionsCount));
+      ? Math.min(filtered.length, cfg.questionsPerRound)
+      : Math.min(filtered.length, 20);
+    setSelectedCategory(catFilter);
+    setQueue(buildQueue(filtered, count, cfg.optionsCount));
     setCur(0); setScore(0); setChosen(null); setCorrect(null);
     setPhase('playing');
   }, [gameWords, buildQueue, cfg, isTeacher]);
@@ -556,9 +602,16 @@ export default function LetterCatcherGame() {
   }, [cur, queue.length]);
 
   const restart = useCallback(() => {
-    setPhase('start'); setQueue([]); setCur(0);
-    setScore(0); setChosen(null); setCorrect(null);
-  }, []);
+    const filtered = selectedCategory === null
+      ? gameWords
+      : gameWords.filter(w => w.category === selectedCategory);
+    const count = isTeacher
+      ? Math.min(filtered.length, cfg.questionsPerRound)
+      : Math.min(filtered.length, 20);
+    setQueue(buildQueue(filtered, count, cfg.optionsCount));
+    setCur(0); setScore(0); setChosen(null); setCorrect(null);
+    setPhase('playing');
+  }, [selectedCategory, gameWords, buildQueue, cfg, isTeacher]);
 
   const notEnough = isTeacher && gameWords.length > 0 && gameWords.length < cfg.questionsPerRound;
 
@@ -598,111 +651,152 @@ export default function LetterCatcherGame() {
 
   /* ══════════════════════ RENDER: START ══════════════════════ */
   if (phase === 'start') {
+    const categories = [...new Set(gameWords.map(w => w.category).filter(Boolean))];
+
     return (
-      <div style={S.page}>
-        {/* settings panel — teachers only */}
+      <div style={{ ...S.page, justifyContent: 'flex-start', paddingTop: 36, paddingBottom: 44 }}>
+        <style>{`
+          @keyframes lcCatIn {
+            0%  { opacity:0; transform:scale(.28) rotate(-10deg); }
+            55% { transform:scale(1.14) rotate(2deg); }
+            100%{ opacity:1; transform:scale(1) rotate(0deg); }
+          }
+          .lc-cat {
+            cursor:pointer;
+            transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease;
+          }
+          .lc-cat:hover  { transform:scale(1.11) !important; box-shadow:0 22px 48px rgba(0,0,0,.32) !important; }
+          .lc-cat:active { transform:scale(0.94) !important; }
+        `}</style>
+
         {isTeacher && showCfg && (
-          <SettingsPanel
-            cfg={cfg}
-            onChange={setCfg}
-            onClose={() => setShowCfg(false)}
-            dbWords={dbWords}
-            onRefresh={loadWords}
-          />
+          <SettingsPanel cfg={cfg} onChange={setCfg} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={loadWords} />
         )}
 
-        <div style={S.centerCard}>
-          {/* settings button — teachers only */}
+        <div style={{ width:'100%', maxWidth:480, textAlign:'center', position:'relative', padding:'0 16px' }}>
+
+          {/* settings button */}
           {isTeacher && (
-            <button style={S.cfgBtn} onClick={() => setShowCfg(true)}>⚙️ الإعدادات</button>
+            <div style={{ textAlign:'left', marginBottom:8 }}>
+              <button style={{ ...S.cfgBtn, position:'static' }} onClick={() => setShowCfg(true)}>⚙️ الإعدادات</button>
+            </div>
           )}
 
-          <div style={{ fontSize: '4.5rem', lineHeight: 1 }}>🦉</div>
-          <h1 style={S.mainTitle}>صيّاد الحروف!</h1>
-          <p style={S.sub}>
-            سأريك صورة وكلمة فيها حرف ناقص.<br />
-            انظر للصورة، ثم اختر الحرف الصحيح!
-          </p>
+          {/* header */}
+          <div style={{ marginBottom:28 }}>
+            <div style={{ fontSize:'4rem', lineHeight:1 }}>🦉</div>
+            <h1 style={{ fontSize:'1.9rem', fontWeight:900, color:'#fff', margin:'8px 0 4px', textShadow:'0 2px 14px rgba(0,0,0,.35)' }}>
+              صيّاد الحروف!
+            </h1>
+            {gameWords.length > 0 && (
+              <p style={{ fontSize:'.9rem', color:'rgba(255,255,255,.8)', margin:0 }}>
+                اختر مجموعتك وابدأ الصيد 🎯
+              </p>
+            )}
+          </div>
 
-          {isTeacher ? (
-            /* ─── TEACHER VIEW: full config controls ─── */
-            gameWords.length === 0 ? (
-              <div style={S.emptyState}>
-                <div style={{ fontSize: '3rem' }}>📭</div>
-                <p style={{ color: '#374151', fontSize: '.97rem', fontWeight: 700, lineHeight: 1.9, margin: 0, textAlign: 'center' }}>
-                  عذراً، لا توجد كلمات مضافة في قاعدة البيانات تطابق هذه الإعدادات.<br />
-                  يرجى إضافة كلمات جديدة أولاً.
-                </p>
-                <button style={S.btnOutline} onClick={() => setShowCfg(true)}>⚙️ إضافة كلمات أو تعديل الإعدادات</button>
+          {/* ── empty / lock ── */}
+          {gameWords.length === 0 ? (
+            <div style={{ ...S.centerCard, padding:'32px 24px' }}>
+              {isTeacher ? (
+                <>
+                  <div style={{ fontSize:'3rem' }}>📭</div>
+                  <p style={{ color:'#374151', fontSize:'.97rem', fontWeight:700, lineHeight:1.9, margin:0, textAlign:'center' }}>
+                    عذراً، لا توجد كلمات مضافة.<br />أضف كلمات أولاً من لوحة الإعدادات.
+                  </p>
+                  <button style={S.btnOutline} onClick={() => setShowCfg(true)}>⚙️ إضافة كلمات</button>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize:'3rem' }}>🔒</div>
+                  <p style={{ color:'#374151', fontSize:'.97rem', fontWeight:700, lineHeight:1.9, margin:0, textAlign:'center' }}>
+                    اللعبة غير متاحة حالياً.<br />تواصل مع معلمك لإعداد الكلمات.
+                  </p>
+                </>
+              )}
+            </div>
+
+          ) : categories.length === 0 ? (
+            /* ── no categories yet — simple start ── */
+            <div style={{ ...S.centerCard, padding:'28px 20px' }}>
+              <div style={S.statsRow}>
+                <div style={S.statBox}>
+                  <span style={S.statNum}>{Math.min(gameWords.length, isTeacher ? cfg.questionsPerRound : 20)}</span>
+                  <span style={S.statLbl}>سؤال</span>
+                </div>
+                <div style={S.statDiv} />
+                <div style={S.statBox}>
+                  <span style={S.statNum}>{cfg.optionsCount}</span>
+                  <span style={S.statLbl}>خيارات</span>
+                </div>
               </div>
-            ) : notEnough ? (
-              <>
-                <div style={S.statsRow}>
-                  <div style={S.statBox}>
-                    <span style={{ ...S.statNum, color: '#e74c3c' }}>{gameWords.length}</span>
-                    <span style={S.statLbl}>كلمة متاحة</span>
-                  </div>
-                  <div style={S.statDiv} />
-                  <div style={S.statBox}>
-                    <span style={S.statNum}>{cfg.questionsPerRound}</span>
-                    <span style={S.statLbl}>سؤال مطلوب</span>
-                  </div>
-                </div>
-                <div style={S.warningBanner}>
-                  ⚠️ الكلمات المتاحة ({gameWords.length}) أقل من عدد الأسئلة المطلوبة ({cfg.questionsPerRound}). أضف المزيد من الكلمات أو قلّل عدد الأسئلة في الإعدادات.
-                </div>
-                <button style={{ ...S.btnGold, opacity: 0.4, cursor: 'not-allowed' }} disabled>🚀 ابدأ اللعبة</button>
-              </>
-            ) : (
-              <>
-                <div style={S.statsRow}>
-                  <div style={S.statBox}>
-                    <span style={S.statNum}>{gameWords.length}</span>
-                    <span style={S.statLbl}>كلمة متاحة</span>
-                  </div>
-                  <div style={S.statDiv} />
-                  <div style={S.statBox}>
-                    <span style={S.statNum}>{cfg.questionsPerRound}</span>
-                    <span style={S.statLbl}>سؤال في الجولة</span>
-                  </div>
-                  <div style={S.statDiv} />
-                  <div style={S.statBox}>
-                    <span style={S.statNum}>{cfg.optionsCount}</span>
-                    <span style={S.statLbl}>خيارات</span>
-                  </div>
-                </div>
-                <button style={S.btnGold} onClick={startGame}>🚀 ابدأ اللعبة</button>
-              </>
-            )
+              <button style={S.btnGold} onClick={() => startGame(null)}>🚀 ابدأ اللعبة</button>
+            </div>
+
           ) : (
-            /* ─── STUDENT VIEW: just play ─── */
-            gameWords.length > 0 ? (
-              <>
-                <div style={S.statsRow}>
-                  <div style={S.statBox}>
-                    <span style={S.statNum}>{Math.min(gameWords.length, 20)}</span>
-                    <span style={S.statLbl}>سؤال</span>
-                  </div>
-                  <div style={S.statDiv} />
-                  <div style={S.statBox}>
-                    <span style={S.statNum}>{cfg.optionsCount}</span>
-                    <span style={S.statLbl}>خيارات</span>
-                  </div>
+            /* ── category grid ── */
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+
+              {/* play-all card */}
+              <div
+                className="lc-cat"
+                style={{
+                  background:'rgba(255,255,255,.18)', backdropFilter:'blur(10px)',
+                  border:'2px solid rgba(255,255,255,.3)', borderRadius:18,
+                  padding:'16px 20px', display:'flex', alignItems:'center', gap:14,
+                  boxShadow:'0 6px 22px rgba(0,0,0,.2)',
+                  animation:'lcCatIn .4s cubic-bezier(.34,1.56,.64,1) both',
+                }}
+                onClick={() => startGame(null)}
+              >
+                <span style={{ fontSize:'2.2rem', lineHeight:1, flexShrink:0 }}>🌟</span>
+                <div style={{ flex:1, textAlign:'right' }}>
+                  <div style={{ fontSize:'1.08rem', fontWeight:800, color:'#fff', textShadow:'0 1px 6px rgba(0,0,0,.25)' }}>العب الكل</div>
+                  <div style={{ fontSize:'.75rem', color:'rgba(255,255,255,.75)', marginTop:2 }}>{gameWords.length} كلمة من كل المجموعات</div>
                 </div>
-                <button style={S.btnGold} onClick={startGame}>🚀 ابدأ اللعبة</button>
-              </>
-            ) : (
-              <div style={S.emptyState}>
-                <div style={{ fontSize: '3rem' }}>🔒</div>
-                <p style={{ color: '#374151', fontSize: '.97rem', fontWeight: 700, lineHeight: 1.9, margin: 0, textAlign: 'center' }}>
-                  اللعبة غير متاحة حالياً.<br />
-                  تواصل مع معلمك لإعداد الكلمات.
-                </p>
+                <span style={{ fontSize:'1.4rem', color:'rgba(255,255,255,.65)', flexShrink:0 }}>←</span>
               </div>
-            )
+
+              {/* category circles */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:12 }}>
+                {categories.map((cat, idx) => {
+                  const cs    = getCatStyle(cat, idx);
+                  const count = gameWords.filter(w => w.category === cat).length;
+                  return (
+                    <div
+                      key={cat}
+                      className="lc-cat"
+                      style={{
+                        background: cs.grad,
+                        borderRadius: 22,
+                        padding: '22px 8px 18px',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                        boxShadow: '0 8px 28px rgba(0,0,0,.26)',
+                        animation: `lcCatIn .45s ${(idx + 1) * 0.07}s cubic-bezier(.34,1.56,.64,1) both`,
+                      }}
+                      onClick={() => startGame(cat)}
+                    >
+                      <span style={{ fontSize:'2.4rem', lineHeight:1 }}>{cs.emoji}</span>
+                      <span style={{
+                        fontSize:'.78rem', fontWeight:800, color:'#fff',
+                        textShadow:'0 1px 4px rgba(0,0,0,.3)', lineHeight:1.3,
+                        textAlign:'center', padding:'0 4px',
+                      }}>
+                        {cat}
+                      </span>
+                      <span style={{ fontSize:'.68rem', color:'rgba(255,255,255,.82)', fontWeight:600 }}>
+                        {count} كلمة
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
-          <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
+          <Link href="/library" style={{ ...S.backLink, color:'rgba(255,255,255,.6)', display:'block', marginTop:28 }}>
+            ← العودة للمكتبة
+          </Link>
         </div>
       </div>
     );
@@ -724,6 +818,10 @@ export default function LetterCatcherGame() {
           <div style={{ fontSize: '3.5rem', fontWeight: 800, color: '#F5A623' }}>{score} / {queue.length}</div>
           <p style={S.sub}>{msg}</p>
           <button style={S.btnGold} onClick={restart}>🔄 العب مرة أخرى</button>
+          <button
+            style={{ ...S.btnGold, background:'linear-gradient(135deg,#5b4fc4,#7c3aed)', marginTop:-8 }}
+            onClick={() => { setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); }}
+          >🏠 اختر مجموعة أخرى</button>
           <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
         </div>
       </div>
@@ -751,6 +849,10 @@ export default function LetterCatcherGame() {
   return (
     <div style={S.page}>
       <div style={S.headerRow}>
+        <button
+          onClick={() => { setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); }}
+          style={{ flexShrink:0, background:'rgba(255,255,255,.18)', border:'none', borderRadius:10, padding:'5px 12px', color:'#fff', cursor:'pointer', fontSize:'.82rem', fontWeight:700, fontFamily:"'Tajawal', sans-serif" }}
+        >← رجوع</button>
         <span style={S.scoreBadge}>✨ {score}</span>
         <div style={S.bar}>
           <div style={{ ...S.barFill, width: `${((cur + 1) / queue.length) * 100}%` }} />
