@@ -543,73 +543,85 @@ export default function WordSmashGame() {
                   <div style={{ fontSize: '.78rem', color: '#9ca3af', marginTop: 2, fontWeight: 600 }}>فهيم</div>
                 </div>
 
-                {/* 3 choice cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, width: '100%' }}>
+                {/* 3 choice cards — stacked vertically so each has full width for the syllable row */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
                   {opts.map((opt, idx) => {
-                    const segs     = (opt.segs || []).filter(Boolean);
-                    const picked   = chosen === idx;
-                    const revealed = chosen !== null;
-                    let cardBorder = '#e2e8f0';
-                    let cardBg     = '#fff';
-                    let opacity    = 1;
-                    if (revealed) {
-                      if (opt.isCorrect) { cardBorder = '#10b981'; cardBg = '#f0fdf4'; }
-                      else if (picked)   { cardBorder = '#ef4444'; cardBg = '#fef2f2'; }
-                      else               { opacity = 0.35; }
-                    }
-                    /* pill colours based on card state */
-                    const pillBg  = !revealed ? '#f0f4ff'
-                      : opt.isCorrect ? '#d1fae5'
-                      : picked        ? '#fee2e2'
-                      : '#f1f5f9';
-                    const pillClr = !revealed ? '#1a1a2e'
-                      : opt.isCorrect ? '#065f46'
-                      : picked        ? '#991b1b'
-                      : '#94a3b8';
+                    const segs   = (opt.segs || []).filter(Boolean);
+                    const picked = chosen === idx;
+                    const rev    = chosen !== null;
+                    const cardBorder = !rev ? '#d1d5db' : opt.isCorrect ? '#10b981' : picked ? '#ef4444' : '#e5e7eb';
+                    const cardBg    = !rev ? '#fff'     : opt.isCorrect ? '#ecfdf5' : picked ? '#fef2f2' : '#fff';
+                    const opacity   = rev && !opt.isCorrect && !picked ? 0.32 : 1;
+                    const badgeBg   = !rev ? '#eef2ff'  : opt.isCorrect ? '#d1fae5' : picked ? '#fee2e2' : '#f1f5f9';
+                    const badgeClr  = !rev ? '#1a1a2e'  : opt.isCorrect ? '#065f46' : picked ? '#991b1b' : '#9ca3af';
                     return (
                       <div
                         key={idx}
                         className="ws-card"
                         onClick={() => pick(idx)}
-                        style={{ borderColor: cardBorder, background: cardBg, opacity, animationDelay: `${idx * .06}s`, cursor: revealed ? 'default' : 'pointer', padding: '14px 6px', minHeight: 100, gap: 8 }}
+                        style={{
+                          /* override column flex from class → make card a row */
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '14px 18px',
+                          minHeight: 68,
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          borderColor: cardBorder,
+                          background: cardBg,
+                          opacity,
+                          cursor: rev ? 'default' : 'pointer',
+                          animationDelay: `${idx * .08}s`,
+                          gap: 10,
+                        }}
                       >
-                        {segs.length === 0 ? (
-                          <span style={{ color: '#94a3b8', fontSize: '.85rem' }}>—</span>
-                        ) : (
-                          /* horizontal RTL row — each segment is one connected pill */
-                          <div style={{ display: 'flex', flexDirection: 'row', direction: 'rtl', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 5 }}>
-                            {segs.map((seg, si) => (
-                              <span
-                                key={si}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  background: pillBg,
-                                  borderRadius: 10,
-                                  padding: '5px 13px',
-                                  fontSize: '1.35rem',
-                                  fontWeight: 800,
-                                  color: pillClr,
-                                  minWidth: 44,
-                                  lineHeight: 1.4,
-                                  fontFamily: "'Cairo','Tajawal',sans-serif",
-                                  letterSpacing: 0,
-                                  direction: 'rtl',
-                                  unicodeBidi: 'isolate',
-                                }}
-                              >
-                                {/* addArm appends tatweel (ـ) so the letter shows its connecting arm */}
-                                {addArm(seg, si === segs.length - 1)}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        {revealed && opt.isCorrect && (
-                          <div style={{ fontSize: '.7rem', color: '#065f46', fontWeight: 700 }}>✓ صحيح</div>
-                        )}
-                        {revealed && picked && !opt.isCorrect && (
-                          <div style={{ fontSize: '.7rem', color: '#dc2626', fontWeight: 700 }}>✗ خطأ</div>
+                        {/* ── syllables: single strict RTL horizontal row, never wrap ── */}
+                        <div style={{
+                          flex: 1,
+                          display: 'flex',
+                          flexDirection: 'row',
+                          direction: 'rtl',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexWrap: 'nowrap',   /* ← NO WRAP — syllables stay on one line */
+                          gap: 8,
+                          overflow: 'hidden',
+                        }}>
+                          {segs.length === 0 ? (
+                            <span style={{ color: '#9ca3af', fontSize: '.9rem' }}>—</span>
+                          ) : segs.map((seg, si) => (
+                            <span
+                              key={si}
+                              style={{
+                                /* each syllable is ONE connected Arabic text in its own badge */
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: badgeBg,
+                                borderRadius: 12,
+                                padding: '5px 16px',
+                                fontSize: '1.45rem',
+                                fontWeight: 800,
+                                color: badgeClr,
+                                minWidth: 52,
+                                flexShrink: 0,
+                                whiteSpace: 'nowrap',
+                                fontFamily: "'Cairo','Tajawal',sans-serif",
+                                direction: 'rtl',
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {addArm(seg, si === segs.length - 1)}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* status tick */}
+                        {rev && (
+                          <span style={{ fontSize: '1.1rem', fontWeight: 800, flexShrink: 0, color: opt.isCorrect ? '#10b981' : picked ? '#ef4444' : 'transparent' }}>
+                            {opt.isCorrect ? '✓' : '✗'}
+                          </span>
                         )}
                       </div>
                     );
