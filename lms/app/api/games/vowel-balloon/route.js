@@ -44,6 +44,8 @@ export async function POST(request) {
 
     if (!base_letter?.trim())
       return NextResponse.json({ error: 'الحرف مطلوب' }, { status: 400 });
+    if ([...base_letter.trim()].length !== 1)
+      return NextResponse.json({ error: 'يجب أن يكون الحرف حرفاً واحداً فقط (بدون مدود)' }, { status: 400 });
     if (!['fatha', 'kasra', 'damma'].includes(correct_vowel))
       return NextResponse.json({ error: 'الحركة الصحيحة مطلوبة' }, { status: 400 });
     if (!rule_text?.trim())

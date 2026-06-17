@@ -151,7 +151,9 @@ function WordManager({ user }) {
   function cancelEdit() { setEditId(null); setForm({ base_letter:'', correct_vowel:'fatha', rule_text:'', topic:'', grade_level:'' }); setAudioB64(''); }
 
   async function save() {
-    if (!form.base_letter.trim() || !form.rule_text.trim()) { flash('الحرف والقاعدة مطلوبان',false); return; }
+    const letter = form.base_letter.trim();
+    if (!letter || !form.rule_text.trim()) { flash('الحرف والقاعدة مطلوبان', false); return; }
+    if ([...letter].length !== 1) { flash('يجب إدخال حرف عربي واحد فقط — المدود (را، رو، ري) لا تُستخدم هنا', false); return; }
     setSaving(true);
     const body = { ...form, audio_url: audioB64||null, grade_level: form.grade_level ? Number(form.grade_level) : null };
     const url  = editId ? `/api/games/vowel-balloon?id=${editId}` : '/api/games/vowel-balloon';
@@ -232,8 +234,9 @@ function WordManager({ user }) {
         <div style={S.row}>
           <div>
             <label style={S.label}>الحرف</label>
-            <input style={S.input} maxLength={2} value={form.base_letter}
+            <input style={S.input} maxLength={1} value={form.base_letter}
               onChange={e => setForm(f => ({...f, base_letter: e.target.value}))} placeholder="ب" />
+            <span style={{ fontSize:'.72rem', color:'#94a3b8', marginTop:3, display:'block' }}>حرف واحد فقط — بدون مدود</span>
           </div>
           <div>
             <label style={S.label}>الحركة الصحيحة</label>
