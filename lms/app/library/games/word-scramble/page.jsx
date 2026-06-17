@@ -734,13 +734,17 @@ export default function WordScrambleGame() {
 const S = {
   page: {
     minHeight: '100vh',
+    width: '100%',
+    boxSizing: 'border-box',
+    overflowX: 'hidden',
     background: 'linear-gradient(135deg, #5b4fc4 0%, #7c3aed 50%, #9c3ec4 100%)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    padding: 20, fontFamily: "'Tajawal', sans-serif", direction: 'rtl',
+    padding: '16px 12px', fontFamily: "'Tajawal', sans-serif", direction: 'rtl',
   },
   centerCard: {
-    position: 'relative', background: '#fff', borderRadius: 24, padding: '44px 36px',
-    textAlign: 'center', maxWidth: 480, width: '100%',
+    position: 'relative', background: '#fff', borderRadius: 24, padding: '32px 22px',
+    textAlign: 'center', maxWidth: 580, width: '100%',
+    boxSizing: 'border-box',
     boxShadow: '0 24px 64px rgba(0,0,0,0.32)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
   },
@@ -783,10 +787,11 @@ const S = {
   backLink: { color: '#9ca3af', fontSize: '0.87rem', textDecoration: 'none' },
   settingsOverlay: {
     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 20,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: '16px 12px',
   },
   settingsCard: {
-    background: '#fff', borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 420,
+    background: '#fff', borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 520,
+    boxSizing: 'border-box',
     display: 'flex', flexDirection: 'column', gap: 0,
     boxShadow: '0 16px 48px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto',
     fontFamily: "'Tajawal', sans-serif",
@@ -806,8 +811,9 @@ const S = {
     boxSizing: 'border-box', outline: 'none',
   },
   headerRow: {
-    display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 560,
-    marginBottom: 14, color: '#fff',
+    display: 'flex', alignItems: 'center', gap: 10, width: '100%', maxWidth: 640,
+    boxSizing: 'border-box',
+    marginBottom: 12, color: '#fff',
   },
   scoreBadge: {
     fontSize: '1rem', fontWeight: 700, flexShrink: 0,
@@ -817,21 +823,22 @@ const S = {
   barFill: { height: '100%', background: '#fbbf24', borderRadius: 4, transition: 'width 0.4s' },
   barLabel: { fontSize: '0.88rem', flexShrink: 0, opacity: 0.82 },
   card: {
-    background: '#fff', borderRadius: 24, padding: '28px 24px', width: '100%', maxWidth: 560,
+    background: '#fff', borderRadius: 24, padding: '24px 18px', width: '100%', maxWidth: 640,
+    boxSizing: 'border-box',
     boxShadow: '0 24px 64px rgba(0,0,0,0.32)',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18,
   },
   emojiBox: {
-    width: 100, height: 100, background: '#f5f3ff', borderRadius: 18,
-    fontSize: '3.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    width: 130, height: 130, background: '#f5f3ff', borderRadius: 20,
+    fontSize: '4.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
-  wordImg:  { width: 100, height: 100, objectFit: 'contain', borderRadius: 14 },
+  wordImg:  { width: 130, height: 130, objectFit: 'contain', borderRadius: 16 },
   answerRow: {
     display: 'flex', direction: 'rtl', gap: 6,
-    justifyContent: 'center', flexWrap: 'wrap', minHeight: 76,
+    justifyContent: 'center', flexWrap: 'wrap', minHeight: 68,
   },
   answerSlot: {
-    width: 64, height: 72, border: '3px dashed', borderRadius: 14,
+    width: 58, height: 64, border: '3px dashed', borderRadius: 12,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     transition: 'all 0.25s',
   },
@@ -843,14 +850,16 @@ const S = {
     display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center',
   },
   letterBtn: {
-    width: 72, height: 72, borderRadius: 16, border: '2px solid #e5e7eb',
+    width: 76, height: 76, borderRadius: 16, border: '2px solid #e5e7eb',
     background: '#f9fafb', fontSize: '2rem', fontWeight: 700, cursor: 'pointer',
     transition: 'all 0.15s', fontFamily: "'Tajawal', sans-serif", color: '#1a1a2e',
     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxSizing: 'border-box',
   },
   btnBlue: {
     background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 14,
     padding: '13px 0', fontSize: '1.05rem', fontWeight: 700, cursor: 'pointer',
-    fontFamily: "'Tajawal', sans-serif", width: '100%', maxWidth: 280,
+    fontFamily: "'Tajawal', sans-serif", width: '100%', maxWidth: 420,
   },
 };
