@@ -329,82 +329,15 @@ function WordManager({ dbWords, onRefresh }) {
 }
 
 /* ─────────────────── settings panel ─────────────────────────── */
-function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh }) {
-  const [cfgOpen, setCfgOpen] = useState(true);
-
+function SettingsPanel({ onClose, dbWords, onRefresh }) {
   return (
     <div style={S.settingsOverlay} onClick={onClose}>
       <div style={S.settingsCard} onClick={e => e.stopPropagation()}>
 
         {/* header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem' }}>⚙️ إعدادات اللعبة</h3>
+          <h3 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem' }}>📚 إدارة الكلمات</h3>
           <button onClick={onClose} style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-        </div>
-
-        {/* settings section */}
-        <div style={{ marginBottom: 16, borderRadius: 12, border: '1.5px solid #e5e7eb' }}>
-          <button
-            onClick={() => setCfgOpen(o => !o)}
-            style={{
-              width: '100%', background: cfgOpen ? '#f5f3ff' : '#f9fafb',
-              border: 'none', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between', cursor: 'pointer',
-              fontFamily: "'Tajawal', sans-serif",
-            }}
-          >
-            <span style={{ fontWeight: 700, color: '#5b4fc4', fontSize: '.9rem' }}>⚙️ إعدادات الجولة</span>
-            <span style={{ color: '#9ca3af', fontSize: '.78rem' }}>{cfgOpen ? '▲ طي' : '▼ توسيع'}</span>
-          </button>
-          {cfgOpen && (
-            <div style={{ padding: '14px', borderTop: '1px solid #e5e7eb' }}>
-              <label style={S.settingsLabel}>
-                عدد الأسئلة في الجولة
-                <input type="number" min={1} value={cfg.questionsPerRound}
-                  onChange={e => onChange({ ...cfg, questionsPerRound: Math.max(1, Number(e.target.value) || 1) })}
-                  style={S.settingsSelect} />
-              </label>
-              <label style={S.settingsLabel}>
-                الموضوع
-                <select value={cfg.topic} onChange={e => onChange({ ...cfg, topic: e.target.value })} style={S.settingsSelect}>
-                  <option value=''>كل المواضيع</option>
-                  {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </label>
-              <label style={S.settingsLabel}>
-                الصف الدراسي
-                <select value={cfg.grade} onChange={e => onChange({ ...cfg, grade: Number(e.target.value) })} style={S.settingsSelect}>
-                  <option value={0}>كل الصفوف</option>
-                  {[1, 2, 3, 4, 5, 6].map(g => <option key={g} value={g}>الصف {g}</option>)}
-                </select>
-              </label>
-              <label style={S.settingsLabel}>
-                طول الكلمة: {cfg.minLen} – {cfg.maxLen} حرفاً
-                <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '.75rem', color: '#9ca3af', marginBottom: 4, textAlign: 'center' }}>أدنى: {cfg.minLen}</div>
-                    <input type="range" min={2} max={cfg.maxLen} value={cfg.minLen}
-                      onChange={e => onChange({ ...cfg, minLen: Number(e.target.value) })}
-                      style={{ width: '100%', accentColor: '#7c3aed' }} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '.75rem', color: '#9ca3af', marginBottom: 4, textAlign: 'center' }}>أقصى: {cfg.maxLen}</div>
-                    <input type="range" min={cfg.minLen} max={12} value={cfg.maxLen}
-                      onChange={e => onChange({ ...cfg, maxLen: Number(e.target.value) })}
-                      style={{ width: '100%', accentColor: '#7c3aed' }} />
-                  </div>
-                </div>
-              </label>
-              <button style={S.btnGold} onClick={() => setCfgOpen(false)}>حفظ الإعدادات ✓</button>
-            </div>
-          )}
-        </div>
-
-        {/* divider */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-          <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-          <span style={{ fontSize: '.78rem', fontWeight: 700, color: '#9ca3af', whiteSpace: 'nowrap' }}>📚 الكلمات</span>
-          <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
         </div>
 
         {/* words list */}
@@ -570,7 +503,7 @@ export default function WordScrambleGame() {
     return (
       <div style={S.page}>
         {isTeacher && showCfg && (
-          <SettingsPanel cfg={cfg} onChange={setCfg}
+          <SettingsPanel
             onClose={() => setShowCfg(false)}
             dbWords={dbWords} onRefresh={loadWords} />
         )}
