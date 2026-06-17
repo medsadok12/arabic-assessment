@@ -454,6 +454,7 @@ export default function LetterCatcherGame() {
   const [correct,    setCorrect]    = useState(null);
   const [showCfg,    setShowCfg]    = useState(false);
   const [isTeacher,  setIsTeacher]  = useState(false);
+  const [isLoading,  setIsLoading]  = useState(true);
   const [cfg, setCfg] = useState({
     questionsPerRound: 10,
     optionsCount: 5,
@@ -490,6 +491,7 @@ export default function LetterCatcherGame() {
 
   /* ── load game words with active filters from API ── */
   const loadGameWords = useCallback(async () => {
+    setIsLoading(true);
     try {
       const p = new URLSearchParams();
       if (cfg.topic)    p.set('topic',  cfg.topic);
@@ -501,6 +503,8 @@ export default function LetterCatcherGame() {
       setGameWords((json.words || []).filter(isValid));
     } catch {
       setGameWords([]);
+    } finally {
+      setIsLoading(false);
     }
   }, [cfg]);
 
@@ -557,6 +561,40 @@ export default function LetterCatcherGame() {
   }, []);
 
   const notEnough = isTeacher && gameWords.length > 0 && gameWords.length < cfg.questionsPerRound;
+
+  /* ══════════════════════ RENDER: LOADING ══════════════════════ */
+  if (phase === 'start' && isLoading) {
+    return (
+      <div style={S.page}>
+        <style>{`
+          @keyframes lcOwlBob {
+            0%,100% { transform: translateY(0px) rotate(-4deg); }
+            50%      { transform: translateY(-16px) rotate(4deg); }
+          }
+          @keyframes lcDot {
+            0%,80%,100% { opacity: .2; transform: scale(.65); }
+            40%         { opacity: 1;  transform: scale(1.2);  }
+          }
+        `}</style>
+        <div style={S.centerCard}>
+          <div style={{ fontSize:'4.8rem', lineHeight:1, animation:'lcOwlBob 1.6s ease-in-out infinite', display:'inline-block' }}>🦉</div>
+          <h1 style={S.mainTitle}>صيّاد الحروف!</h1>
+          <p style={{ ...S.sub, color:'#7c3aed', fontWeight:700, margin:0 }}>
+            انتظر، فهيم يُجهّز اللعبة... 🎈
+          </p>
+          <div style={{ display:'flex', gap:10 }}>
+            {[0, 180, 360].map(delay => (
+              <div key={delay} style={{
+                width:13, height:13, borderRadius:'50%', background:'#7c3aed',
+                animation:`lcDot 1.3s ${delay}ms ease-in-out infinite`,
+              }} />
+            ))}
+          </div>
+          <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
+        </div>
+      </div>
+    );
+  }
 
   /* ══════════════════════ RENDER: START ══════════════════════ */
   if (phase === 'start') {
