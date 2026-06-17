@@ -210,23 +210,45 @@ function ParticleBurst() {
   );
 }
 
+const TOPIC_EMOJIS = {
+  'الحيوانات':'🐾','الأشكال':'🔷','الأسرة':'👨‍👩‍👧','الألوان':'🎨',
+  'الفواكه':'🍎','المدرسة':'📚','الطقس':'⛅','الأرقام':'🔢',
+  'المهن':'👷','الأدوات':'🔧','عام':'📋',
+};
+
 /* ─────────────── game area ─────────────── */
 function GameArea({ gamePairs, cfg, isTeacher }) {
   const containerRef  = useRef(null);
   const dragWordIdRef = useRef(null);
 
-  const [phase,        setPhase]        = useState('idle');
-  const [currentPairs, setCurrentPairs] = useState([]);
-  const [wordOrder,    setWordOrder]    = useState([]);
-  const [imageOrder,   setImageOrder]   = useState([]);
-  const [connections,  setConnections]  = useState([]);
-  const [correct,      setCorrect]      = useState(new Set());
-  const [shaking,      setShaking]      = useState(null);
-  const [selectedWord, setSelectedWord] = useState(null);
-  const [dragPos,      setDragPos]      = useState(null);
-  const [lines,        setLines]        = useState([]);
-  const [bursting,     setBursting]     = useState(new Set());
-  const [imgBursting,  setImgBursting]  = useState(new Set());
+  const [phase,           setPhase]           = useState('topics');
+  const [currentPairs,    setCurrentPairs]    = useState([]);
+  const [wordOrder,       setWordOrder]       = useState([]);
+  const [imageOrder,      setImageOrder]      = useState([]);
+  const [connections,     setConnections]     = useState([]);
+  const [correct,         setCorrect]         = useState(new Set());
+  const [shaking,         setShaking]         = useState(null);
+  const [selectedWord,    setSelectedWord]    = useState(null);
+  const [dragPos,         setDragPos]         = useState(null);
+  const [lines,           setLines]           = useState([]);
+  const [bursting,        setBursting]        = useState(new Set());
+  const [imgBursting,     setImgBursting]     = useState(new Set());
+  const [completedTopics, setCompletedTopics] = useState(new Set());
+  const [currentTopic,    setCurrentTopic]    = useState(null);
+
+  /* group pairs by topic */
+  const topicGroups = useMemo(() => {
+    const g = {};
+    gamePairs.forEach(p => {
+      const key = p.topic || 'عام';
+      if (!g[key]) g[key] = [];
+      g[key].push(p);
+    });
+    return g;
+  }, [gamePairs]);
+
+  const topicList = Object.keys(topicGroups);
+  const allDone   = topicList.length > 0 && topicList.every(t => completedTopics.has(t));
 
   const pairMap = useMemo(() => {
     const m = {};
@@ -261,14 +283,19 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
     return () => window.removeEventListener('resize', recalcLines);
   }, [recalcLines]);
 
+  /* topic completion → topicDone */
   useEffect(() => {
-    if (phase === 'playing' && currentPairs.length > 0 && correct.size === currentPairs.length)
-      setTimeout(() => setPhase('done'), 800);
-  }, [correct.size, currentPairs.length, phase]);
+    if (phase === 'playing' && currentPairs.length > 0 && correct.size === currentPairs.length) {
+      setTimeout(() => {
+        setCompletedTopics(prev => new Set([...prev, currentTopic]));
+        setPhase('topicDone');
+      }, 800);
+    }
+  }, [correct.size, currentPairs.length, phase, currentTopic]);
 
-  const startGame = useCallback(() => {
-    const count = Math.min(cfg.pairsCount, gamePairs.length);
-    const sel   = shuffle(gamePairs).slice(0, count);
+  const startTopicGame = useCallback((topic) => {
+    const pairs = topicGroups[topic] || [];
+    const sel   = shuffle(pairs).slice(0, 4);
     const ids   = sel.map(p => p.id);
     setCurrentPairs(sel);
     setWordOrder(shuffle([...ids]));
@@ -277,8 +304,9 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
     setDragPos(null); setShaking(null);
     setBursting(new Set()); setImgBursting(new Set());
     dragWordIdRef.current = null;
+    setCurrentTopic(topic);
     setPhase('playing');
-  }, [gamePairs, cfg.pairsCount]);
+  }, [topicGroups]);
 
   const attemptConnect = useCallback((wordId, imgId) => {
     if (correct.has(wordId)) return;
@@ -378,44 +406,92 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
   const handleWordClick  = (wordId) => { if (correct.has(wordId) || dragWordIdRef.current) return; setSelectedWord(p => p===wordId ? null : wordId); };
   const handleImageClick = (imgId)  => { if (dragWordIdRef.current || !selectedWord) return; attemptConnect(selectedWord, imgId); };
 
-  /* idle */
-  if (phase === 'idle') {
-    const canStart = gamePairs.length >= (isTeacher ? 1 : 3);
-    return (
+  const btnStyle = { background:'linear-gradient(135deg,#7c3aed,#5b4fc4)', color:'#fff', border:'none', borderBottom:'5px solid #4338ca', borderRadius:18, cursor:'pointer', fontFamily:"'Cairo',sans-serif", fontWeight:800, fontSize:'1rem', boxShadow:'0 8px 24px rgba(124,58,237,.28)' };
+
+  /* ── topic selection ── */
+  if (phase === 'topics') {
+    if (gamePairs.length === 0) return (
       <div style={{ textAlign:'center', padding:'44px 20px', fontFamily:"'Cairo',sans-serif" }}>
-        <div style={{ fontSize:'4rem', marginBottom:14, lineHeight:1 }}>🖼️</div>
-        <h2 style={{ fontSize:'1.5rem', fontWeight:900, color:'#3730a3', margin:'0 0 6px' }}>صِل الكلمة بصورتها</h2>
-        <p style={{ color:'#64748b', fontSize:'.95rem', marginBottom:28 }}>وصّل كل كلمة بالصورة المناسبة لها 🎯</p>
-        {gamePairs.length === 0 ? (
-          <div style={{ background:'#fffbeb', border:'2px solid #fde68a', borderRadius:14, padding:'14px 20px', color:'#92400e', fontWeight:600 }}>
-            {isTeacher ? '⚠️ لا توجد كلمات بعد — أضف كلمات من لوحة الإدارة.' : '⚠️ لا توجد كلمات متاحة حاليًا.'}
+        <div style={{ fontSize:'3.5rem', marginBottom:14 }}>🖼️</div>
+        <h2 style={{ fontSize:'1.4rem', fontWeight:900, color:'#3730a3', margin:'0 0 8px' }}>صِل الكلمة بصورتها</h2>
+        <div style={{ background:'#fffbeb', border:'2px solid #fde68a', borderRadius:14, padding:'14px 20px', color:'#92400e', fontWeight:600 }}>
+          {isTeacher ? '⚠️ لا توجد كلمات بعد — أضف كلمات من لوحة الإدارة.' : '⚠️ لا توجد كلمات متاحة حاليًا.'}
+        </div>
+      </div>
+    );
+
+    return (
+      <div style={{ fontFamily:"'Cairo',sans-serif", padding:'16px 4px' }}>
+        <div style={{ textAlign:'center', marginBottom:20 }}>
+          <div style={{ fontSize:'2.8rem', lineHeight:1, marginBottom:8 }}>🖼️</div>
+          <h2 style={{ fontSize:'1.3rem', fontWeight:900, color:'#3730a3', margin:'0 0 4px' }}>صِل الكلمة بصورتها</h2>
+          <p style={{ color:'#7c3aed', fontSize:'.88rem', fontWeight:600, margin:0 }}>اختر موضوعاً لتبدأ 🎯</p>
+        </div>
+
+        {allDone && (
+          <div style={{ textAlign:'center', marginBottom:16 }}>
+            <div style={{ fontSize:'2.2rem', marginBottom:6 }}>🏆</div>
+            <p style={{ color:'#059669', fontWeight:800, fontSize:'1rem', margin:'0 0 10px' }}>أحسنت! أكملت جميع المواضيع!</p>
+            <button onClick={() => setCompletedTopics(new Set())} style={{ ...btnStyle, padding:'10px 28px' }}>🔄 إعادة من البداية</button>
           </div>
-        ) : !canStart ? (
-          <div style={{ background:'#fffbeb', border:'2px solid #fde68a', borderRadius:14, padding:'14px 20px', color:'#92400e', fontWeight:600 }}>
-            يجب إضافة 3 كلمات على الأقل لبدء اللعبة.
-          </div>
-        ) : (
-          <>
-            <button onClick={startGame} style={{ background:'linear-gradient(135deg,#7c3aed,#5b4fc4)', color:'#fff', border:'none', borderBottom:'5px solid #4338ca', padding:'14px 44px', borderRadius:20, cursor:'pointer', fontFamily:"'Cairo',sans-serif", fontWeight:900, fontSize:'1.1rem', boxShadow:'0 8px 24px rgba(124,58,237,.35)' }}>
-              🚀 ابدأ اللعبة
-            </button>
-            <div style={{ color:'#94a3b8', fontSize:'.82rem', marginTop:12 }}>{gamePairs.length} كلمة متاحة</div>
-          </>
         )}
+
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px, 1fr))', gap:12 }}>
+          {topicList.map(topic => {
+            const isDone  = completedTopics.has(topic);
+            const count   = topicGroups[topic].length;
+            const emoji   = TOPIC_EMOJIS[topic] || '📋';
+            const rounds  = Math.ceil(count / 4);
+            return (
+              <button key={topic} onClick={() => startTopicGame(topic)} className="wim-topic-card" style={{
+                background: isDone ? 'linear-gradient(135deg,#d1fae5,#a7f3d0)' : 'linear-gradient(135deg,#faf5ff,#ede9fe)',
+                border:`3px solid ${isDone?'#10b981':'#ddd6fe'}`,
+                borderBottom:`6px solid ${isDone?'#059669':'#a5b4fc'}`,
+                borderRadius:20, padding:'18px 10px 14px', cursor:'pointer',
+                textAlign:'center', fontFamily:"'Cairo',sans-serif",
+                boxShadow: isDone ? '0 5px 0 #059669, 0 10px 20px rgba(5,150,105,.12)' : '0 5px 0 #a5b4fc, 0 10px 20px rgba(0,0,0,.09)',
+              }}>
+                <div style={{ fontSize:'2.2rem', lineHeight:1, marginBottom:6 }}>{emoji}</div>
+                <div style={{ fontWeight:800, fontSize:'1rem', color:isDone?'#065f46':'#3730a3', marginBottom:4 }}>{topic}</div>
+                <div style={{ fontSize:'.74rem', color:isDone?'#059669':'#7c3aed', fontWeight:600 }}>
+                  {count} كلمة{rounds > 1 ? ` · ${rounds} جولات` : ''}
+                </div>
+                {isDone && <div style={{ fontSize:'1.1rem', marginTop:4 }}>✅</div>}
+              </button>
+            );
+          })}
+        </div>
       </div>
     );
   }
 
-  /* done */
-  if (phase === 'done') {
+  /* ── topic done ── */
+  if (phase === 'topicDone') {
+    const remaining = topicList.filter(t => !completedTopics.has(t));
+    const nextTopic = remaining[0];
     return (
-      <div style={{ textAlign:'center', padding:'44px 20px', fontFamily:"'Cairo',sans-serif" }}>
-        <div style={{ fontSize:'4rem', marginBottom:14 }}>🎉</div>
-        <h2 style={{ fontSize:'1.5rem', fontWeight:900, color:'#059669', margin:'0 0 6px' }}>أحسنت! وصّلت كل الكلمات! 🏆</h2>
-        <p style={{ color:'#64748b', marginBottom:28 }}>لقد أجبت على {currentPairs.length} أزواج بشكل صحيح</p>
-        <button onClick={startGame} style={{ background:'linear-gradient(135deg,#7c3aed,#5b4fc4)', color:'#fff', border:'none', borderBottom:'5px solid #4338ca', padding:'12px 36px', borderRadius:18, cursor:'pointer', fontFamily:"'Cairo',sans-serif", fontWeight:800, fontSize:'1rem', boxShadow:'0 8px 24px rgba(124,58,237,.3)' }}>
-          🔄 جولة جديدة
-        </button>
+      <div style={{ textAlign:'center', padding:'36px 20px', fontFamily:"'Cairo',sans-serif" }}>
+        <div style={{ fontSize:'3.5rem', marginBottom:10 }}>🌟</div>
+        <h2 style={{ fontSize:'1.3rem', fontWeight:900, color:'#059669', margin:'0 0 6px' }}>
+          أحسنت! أكملت موضوع "{currentTopic}" 🎉
+        </h2>
+        <p style={{ color:'#64748b', marginBottom:22, fontSize:'.92rem' }}>
+          وصّلت {currentPairs.length} كلمة بصورتها بشكل صحيح
+        </p>
+        <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
+          {nextTopic ? (
+            <button onClick={() => startTopicGame(nextTopic)} style={{ ...btnStyle, padding:'12px 28px' }}>
+              {TOPIC_EMOJIS[nextTopic]||'📋'} {nextTopic} ←
+            </button>
+          ) : (
+            <button onClick={() => setCompletedTopics(new Set())} style={{ ...btnStyle, padding:'12px 28px', background:'linear-gradient(135deg,#059669,#10b981)', borderBottom:'5px solid #047857' }}>
+              🔄 إعادة من البداية
+            </button>
+          )}
+          <button onClick={() => setPhase('topics')} style={{ background:'#f5f3ff', color:'#6d28d9', border:'3px solid #ddd6fe', borderBottom:'5px solid #a5b4fc', borderRadius:18, padding:'12px 24px', cursor:'pointer', fontFamily:"'Cairo',sans-serif", fontWeight:700 }}>
+            📋 اختر موضوعاً آخر
+          </button>
+        </div>
       </div>
     );
   }
@@ -426,14 +502,21 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
   return (
     <div>
       {/* progress */}
-      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18, direction:'rtl' }}>
-        <span style={{ fontFamily:"'Cairo',sans-serif", fontWeight:800, fontSize:'1rem', color:'#7c3aed', whiteSpace:'nowrap' }}>
-          ✅ {correct.size} / {currentPairs.length}
-        </span>
-        <div style={{ flex:1, height:10, background:'#ede9fe', borderRadius:99, overflow:'hidden' }}>
-          <div style={{ height:'100%', background:'linear-gradient(90deg,#7c3aed,#10b981)', borderRadius:99, width:`${(correct.size/currentPairs.length)*100}%`, transition:'width .5s cubic-bezier(.34,1.56,.64,1)' }} />
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, direction:'rtl' }}>
+        <div style={{ flex:1 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:5 }}>
+            <span style={{ fontFamily:"'Cairo',sans-serif", fontWeight:800, fontSize:'.95rem', color:'#7c3aed' }}>
+              {TOPIC_EMOJIS[currentTopic]||'📋'} {currentTopic}
+            </span>
+            <span style={{ fontFamily:"'Cairo',sans-serif", fontSize:'.82rem', color:'#9ca3af' }}>
+              · {correct.size}/{currentPairs.length} ✅
+            </span>
+          </div>
+          <div style={{ height:9, background:'#ede9fe', borderRadius:99, overflow:'hidden' }}>
+            <div style={{ height:'100%', background:'linear-gradient(90deg,#7c3aed,#10b981)', borderRadius:99, width:`${(correct.size/currentPairs.length)*100}%`, transition:'width .5s cubic-bezier(.34,1.56,.64,1)' }} />
+          </div>
         </div>
-        <button onClick={() => setPhase('idle')} style={{ background:'#fef2f2', color:'#ef4444', border:'1.5px solid #fca5a5', borderRadius:10, padding:'5px 12px', cursor:'pointer', fontFamily:"'Cairo',sans-serif", fontSize:'.8rem', fontWeight:700, whiteSpace:'nowrap' }}>✕ إنهاء</button>
+        <button onClick={() => setPhase('topics')} style={{ background:'#fef2f2', color:'#ef4444', border:'1.5px solid #fca5a5', borderRadius:10, padding:'5px 12px', cursor:'pointer', fontFamily:"'Cairo',sans-serif", fontSize:'.8rem', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>✕ إنهاء</button>
       </div>
 
       {/* columns */}
@@ -657,6 +740,8 @@ export default function WordImageMatchPage() {
         @keyframes wimStar5{ 0%{transform:translate(0,0) scale(1.2);opacity:1} 100%{transform:translate(58px,-18px)   scale(0) rotate(-90deg);opacity:0} }
         @keyframes wimStar6{ 0%{transform:translate(0,0) scale(1.2);opacity:1} 100%{transform:translate(16px,-62px)   scale(0);opacity:0} }
 
+        @keyframes wsDot { 0%,80%,100%{opacity:.2;transform:scale(.65)} 40%{opacity:1;transform:scale(1.2)} }
+
         .wim-word-card { transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .15s; }
         .wim-word-card:not(.wim-done):hover  { transform: scale(1.05) translateY(-3px) !important; box-shadow: 0 14px 32px rgba(92,79,196,.28) !important; }
         .wim-word-card:not(.wim-done):active { transform: scale(.96) translateY(3px) !important; }
@@ -664,6 +749,10 @@ export default function WordImageMatchPage() {
         .wim-img-card  { transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .15s; }
         .wim-img-card:not(.wim-done):hover  { transform: scale(1.05) translateY(-3px) !important; box-shadow: 0 14px 32px rgba(92,79,196,.28) !important; }
         .wim-img-card:not(.wim-done):active { transform: scale(.96) translateY(3px) !important; }
+
+        .wim-topic-card { transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .15s; }
+        .wim-topic-card:hover  { transform: scale(1.07) translateY(-3px) !important; }
+        .wim-topic-card:active { transform: scale(.94) translateY(4px) !important; }
 
         @media (max-width: 520px) {
           .wim-cols .wim-word-card, .wim-cols .wim-img-card { height: 74px !important; font-size: 1rem !important; }
