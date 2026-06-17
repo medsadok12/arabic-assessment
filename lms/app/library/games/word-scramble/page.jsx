@@ -498,6 +498,40 @@ export default function WordScrambleGame() {
     setAnswer([]); setAvailable([]); setResult(null);
   }, []);
 
+  /* ══════ RENDER: LOADING ══════ */
+  if (phase === 'start' && loadingWords) {
+    return (
+      <div style={S.page}>
+        <style>{`
+          @keyframes wsIconBob {
+            0%,100% { transform: translateY(0px) rotate(-5deg); }
+            50%      { transform: translateY(-18px) rotate(5deg); }
+          }
+          @keyframes wsDot {
+            0%,80%,100% { opacity: .2; transform: scale(.65); }
+            40%         { opacity: 1;  transform: scale(1.2);  }
+          }
+        `}</style>
+        <div style={S.centerCard}>
+          <div style={{ fontSize: '4.8rem', lineHeight: 1, animation: 'wsIconBob 1.6s ease-in-out infinite', display: 'inline-block' }}>🔡</div>
+          <h1 style={S.mainTitle}>رتّب الكلمة!</h1>
+          <p style={{ ...S.sub, color: '#7c3aed', fontWeight: 700, margin: 0 }}>
+            انتظر، جارٍ تجهيز الكلمات... 🎈
+          </p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {[0, 180, 360].map(delay => (
+              <div key={delay} style={{
+                width: 13, height: 13, borderRadius: '50%', background: '#7c3aed',
+                animation: `wsDot 1.3s ${delay}ms ease-in-out infinite`,
+              }} />
+            ))}
+          </div>
+          <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
+        </div>
+      </div>
+    );
+  }
+
   /* ══════ RENDER: START ══════ */
   if (phase === 'start') {
     return (
@@ -508,7 +542,6 @@ export default function WordScrambleGame() {
             dbWords={dbWords} onRefresh={loadWords} />
         )}
         <style>{`
-          @keyframes ws-dot { 0%,100%{transform:translateY(0);opacity:.4} 50%{transform:translateY(-8px);opacity:1} }
           @keyframes ws-fadein { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         `}</style>
         <div style={S.centerCard}>
@@ -522,20 +555,7 @@ export default function WordScrambleGame() {
             انقر عليها بالترتيب الصحيح من اليمين لليسار!
           </p>
 
-          {loadingWords ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '18px 0' }}>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {[0, 1, 2].map(i => (
-                  <div key={i} style={{
-                    width: 13, height: 13, borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #7c3aed, #5b4fc4)',
-                    animation: `ws-dot 0.75s ease-in-out ${i * 0.18}s infinite`,
-                  }} />
-                ))}
-              </div>
-              <span style={{ color: '#9ca3af', fontSize: '.88rem', fontWeight: 600 }}>جارٍ تحميل الكلمات…</span>
-            </div>
-          ) : gameWords.length === 0 ? (
+          {gameWords.length === 0 ? (
             <div style={{ ...S.emptyState, animation: 'ws-fadein 0.4s ease-out' }}>
               <div style={{ fontSize: '3rem' }}>📭</div>
               <p style={{ color: '#374151', fontSize: '.97rem', fontWeight: 700, lineHeight: 1.9, margin: 0, textAlign: 'center' }}>
