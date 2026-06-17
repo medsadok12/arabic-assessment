@@ -439,7 +439,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
           <div style={{ fontSize:'3.2rem', lineHeight:1, marginBottom:8, animation:'wimIconBob 2s ease-in-out infinite', display:'inline-block' }}>🖼️</div>
           <h2 style={{ fontSize:'1.4rem', fontWeight:900, color:'#3730a3', margin:'0 0 4px' }}>صِل الكلمة بصورتها!</h2>
           <p style={{ color:'#7c3aed', fontSize:'.9rem', fontWeight:700, margin:0 }}>
-            {allDone ? '🏆 رائع! أكملت جميع المواضيع!' : '👆 اختر موضوعاً وابدأ الصيد 🎯'}
+            {allDone ? '🏆 رائع! أكملت جميع المواضيع!' : '✨ اختر موضوعاً وابدأ الصيد! 🎯'}
           </p>
           {allDone && (
             <button onClick={() => setCompletedTopics(new Set())} style={{ ...btnStyle, padding:'10px 28px', marginTop:12, fontSize:'.95rem' }}>
@@ -471,9 +471,9 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
                 {isDone && (
                   <div style={{ position:'absolute', top:8, left:8, fontSize:'1.1rem', background:'#fff', borderRadius:'50%', width:26, height:26, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 6px rgba(0,0,0,.15)' }}>✅</div>
                 )}
-                <div style={{ fontSize:'2.8rem', lineHeight:1, marginBottom:8 }}>{emoji}</div>
-                <div style={{ fontWeight:900, fontSize:'1rem', color:colors.text, marginBottom:4 }}>{topic}</div>
-                <div style={{ fontSize:'.72rem', color:colors.text, opacity:.75, fontWeight:700, background:'rgba(255,255,255,.4)', borderRadius:20, padding:'2px 8px', display:'inline-block' }}>
+                <div className="wim-topic-icon" style={{ fontSize:'4.2rem', lineHeight:1, marginBottom:10, display:'inline-block' }}>{emoji}</div>
+                <div style={{ fontWeight:900, fontSize:'1rem', color:colors.text, marginBottom:6 }}>{topic}</div>
+                <div style={{ fontSize:'.72rem', color:'#1e293b', fontWeight:800, background:'rgba(255,255,255,.78)', borderRadius:20, padding:'3px 10px', display:'inline-block', boxShadow:'0 1px 4px rgba(0,0,0,.1)' }}>
                   {count} كلمة{rounds > 1 ? ` · ${rounds} جولات` : ''}
                 </div>
               </button>
@@ -773,6 +773,11 @@ export default function WordImageMatchPage() {
         .wim-topic-card { transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .15s; }
         .wim-topic-card:hover  { transform: scale(1.07) translateY(-3px) !important; }
         .wim-topic-card:active { transform: scale(.94) translateY(4px) !important; }
+        .wim-topic-card:hover .wim-topic-icon { animation: wimIconCardBob .5s ease-in-out; }
+        @keyframes wimIconCardBob { 0%,100%{transform:scale(1) rotate(0deg)} 40%{transform:scale(1.35) rotate(-18deg)} 70%{transform:scale(1.15) rotate(10deg)} }
+        .wim-nav-pill { background:rgba(255,255,255,.75); color:#6d28d9; border:1.5px solid #ddd6fe; border-radius:99px; padding:6px 14px; font-family:'Cairo',sans-serif; font-weight:700; font-size:.8rem; text-decoration:none; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:background .15s, box-shadow .15s; white-space:nowrap; }
+        .wim-nav-pill:hover { background:#ede9fe; box-shadow:0 2px 8px rgba(109,40,217,.15); }
+        .wim-nav-pill.active { background:#ede9fe; }
 
         @media (max-width: 520px) {
           .wim-cols .wim-word-card, .wim-cols .wim-img-card { height: 74px !important; font-size: 1rem !important; }
@@ -782,21 +787,15 @@ export default function WordImageMatchPage() {
 
       <div style={{ maxWidth:700, margin:'0 auto', padding:'16px 12px', fontFamily:"'Cairo',sans-serif" }}>
 
-        {/* header */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18, direction:'rtl' }}>
-          <div>
-            <div style={{ fontSize:'1.3rem', fontWeight:900, color:'#3730a3' }}>🖼️ صِل الكلمة بصورتها</div>
-            <div style={{ fontSize:'.82rem', color:'#7c3aed', marginTop:2, fontWeight:600 }}>وصّل كل كلمة بالصورة المناسبة لها</div>
-          </div>
-          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            {isTeacher && (
-              <>
-                <button onClick={() => setShowCfg(s=>!s)} style={{ background:showCfg?'#ede9fe':'#f5f3ff', color:'#6d28d9', border:'2px solid #ddd6fe', borderRadius:12, padding:'7px 14px', cursor:'pointer', fontFamily:"'Cairo',sans-serif", fontWeight:700, fontSize:'.85rem' }}>⚙️ إعدادات</button>
-                <button onClick={() => setShowMgr(s=>!s)} style={{ background:showMgr?'#ede9fe':'#f5f3ff', color:'#6d28d9', border:'2px solid #ddd6fe', borderRadius:12, padding:'7px 14px', cursor:'pointer', fontFamily:"'Cairo',sans-serif", fontWeight:700, fontSize:'.85rem' }}>📚 إدارة</button>
-              </>
-            )}
-            <Link href="/library" style={{ background:'#f5f3ff', color:'#6d28d9', border:'2px solid #ddd6fe', borderRadius:12, padding:'7px 14px', textDecoration:'none', fontFamily:"'Cairo',sans-serif", fontWeight:700, fontSize:'.85rem' }}>← المكتبة</Link>
-          </div>
+        {/* header — minimal nav pills only; title lives inside the game card banner */}
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10, direction:'rtl', flexWrap:'wrap' }}>
+          <Link href="/library" className="wim-nav-pill">← المكتبة</Link>
+          {isTeacher && (
+            <>
+              <button onClick={() => setShowCfg(s=>!s)} className={`wim-nav-pill${showCfg?' active':''}`}>⚙️ إعدادات</button>
+              <button onClick={() => setShowMgr(s=>!s)} className={`wim-nav-pill${showMgr?' active':''}`}>📚 إدارة</button>
+            </>
+          )}
         </div>
 
         {isTeacher && showCfg && <SettingsPanel cfg={cfg} setCfg={setCfg} />}
