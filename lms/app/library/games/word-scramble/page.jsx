@@ -327,7 +327,7 @@ function WordManager({ dbWords, onRefresh }) {
 
 /* ─────────────────── settings panel ─────────────────────────── */
 function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh }) {
-  const [cfgOpen, setCfgOpen] = useState(false);
+  const [cfgOpen, setCfgOpen] = useState(true);
 
   return (
     <div style={S.settingsOverlay} onClick={onClose}>
@@ -335,17 +335,17 @@ function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh }) {
 
         {/* header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem' }}>📖 إدارة الكلمات</h3>
+          <h3 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem' }}>⚙️ إعدادات اللعبة</h3>
           <button onClick={onClose} style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
 
-        {/* collapsible settings accordion */}
-        <div style={{ marginBottom: 16, borderRadius: 12, border: '1.5px solid #e5e7eb', overflow: 'hidden' }}>
+        {/* settings section */}
+        <div style={{ marginBottom: 16, borderRadius: 12, border: '1.5px solid #e5e7eb' }}>
           <button
             onClick={() => setCfgOpen(o => !o)}
             style={{
               width: '100%', background: cfgOpen ? '#f5f3ff' : '#f9fafb',
-              border: 'none', padding: '10px 14px', display: 'flex', alignItems: 'center',
+              border: 'none', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center',
               justifyContent: 'space-between', cursor: 'pointer',
               fontFamily: "'Tajawal', sans-serif",
             }}
@@ -392,9 +392,16 @@ function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh }) {
                   </div>
                 </div>
               </label>
-              <button style={S.btnGold} onClick={() => { setCfgOpen(false); onClose(); }}>حفظ الإعدادات ✓</button>
+              <button style={S.btnGold} onClick={() => setCfgOpen(false)}>حفظ الإعدادات ✓</button>
             </div>
           )}
+        </div>
+
+        {/* divider */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+          <span style={{ fontSize: '.78rem', fontWeight: 700, color: '#9ca3af', whiteSpace: 'nowrap' }}>📚 الكلمات</span>
+          <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
         </div>
 
         {/* words list */}
