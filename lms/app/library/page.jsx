@@ -14,8 +14,9 @@ const RESOURCES = [
   {
     icon: '🔊', title: 'الحركات والتشكيل',
     desc: 'اكتشف الفتحة والكسرة والضمة مع أمثلة صوتية!',
-    tag: 'مستوى 1', link: '#', ready: false,
+    tag: 'مستوى 1', link: '/library/games/vowel-balloon', ready: true,
     accent: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE', iconBg: '#EDE9FE',
+    btnBg: 'linear-gradient(135deg,#8B5CF6,#7C3AED)',
   },
   {
     icon: '📖', title: 'القراءة المقطعية',
