@@ -370,7 +370,7 @@ function WordManager({ dbWords, onRefresh }) {
               {w.topic && <span style={{ background: '#e0f2fe', color: '#0369a1', borderRadius: 20, padding: '2px 8px', fontSize: '.7rem', fontWeight: 700 }}>{w.topic}</span>}
               <span style={{ background: '#ede9fe', color: '#7c3aed', borderRadius: 20, padding: '2px 8px', fontSize: '.75rem', fontWeight: 700 }}>{w.missing_letter}</span>
               {w.audio_url && <span title="يحتوي على تسجيل" style={{ fontSize: '.75rem' }}>🎙️</span>}
-              <button onClick={() => w.audio_url ? new Audio(w.audio_url).play() : speak(w.word)} title="استمع" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '2px 4px', lineHeight: 1 }}>🔊</button>
+              <button onClick={() => w.audio_url ? new Audio(w.audio_url).play() : speak(w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word)} title="استمع" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '2px 4px', lineHeight: 1 }}>🔊</button>
               <button
                 onClick={() => handleDelete(w.id, w.word)}
                 disabled={deleting === w.id}
@@ -591,7 +591,7 @@ export default function LetterCatcherGame() {
     if (isRight) {
       setScore(s => s + 1);
       if (w.audio_url) { try { new Audio(w.audio_url).play(); } catch {} }
-      else speak(w.word);
+      else speak(w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word);
     }
   }, [chosen, cur, queue]);
 
