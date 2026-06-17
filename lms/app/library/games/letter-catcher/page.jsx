@@ -1046,6 +1046,8 @@ export default function LetterCatcherGame() {
           50%     { box-shadow:0 0 36px 8px rgba(34,197,94,.38), 0 8px 32px rgba(0,0,0,.12); }
         }
       `}</style>
+
+      <div style={S.headerRow}>
         <button
           onClick={() => { setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); }}
           style={{ flexShrink:0, background:'rgba(255,255,255,.18)', border:'none', borderRadius:10, padding:'5px 12px', color:'#fff', cursor:'pointer', fontSize:'.82rem', fontWeight:700, fontFamily:"'Tajawal', sans-serif" }}
