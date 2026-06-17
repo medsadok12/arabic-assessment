@@ -549,7 +549,7 @@ export default function LetterCatcherGame() {
     } finally {
       setIsLoading(false);
     }
-  }, [cfg]);
+  }, [cfg.topic, cfg.grade, cfg.minLen, cfg.maxLen]);
 
   useEffect(() => { loadWords(); }, [loadWords]);
   useEffect(() => { loadGameWords(); }, [loadGameWords]);
