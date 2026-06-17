@@ -831,7 +831,7 @@ export default function LetterCatcherGame() {
           <SettingsPanel cfg={cfg} onChange={setCfg} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={loadWords} catMeta={catMeta} onCatMetaRefresh={loadCatMeta} />
         )}
 
-        <div style={{ width:'100%', maxWidth:'min(96vw, 640px)', textAlign:'center', position:'relative', padding:'0 6px' }}>
+        <div style={{ width:'100%', maxWidth:580, boxSizing:'border-box', textAlign:'center', position:'relative' }}>
 
           {/* settings button */}
           {isTeacher && (
@@ -1183,13 +1183,17 @@ export default function LetterCatcherGame() {
 const S = {
   page: {
     minHeight: '100vh',
+    width: '100%',
+    boxSizing: 'border-box',
+    overflowX: 'hidden',
     background: 'linear-gradient(135deg, #5b4fc4 0%, #7c3aed 50%, #9c3ec4 100%)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    padding: '12px 6px', fontFamily: "'Tajawal', sans-serif", direction: 'rtl',
+    padding: '16px 12px', fontFamily: "'Tajawal', sans-serif", direction: 'rtl',
   },
   centerCard: {
-    position: 'relative', background: '#fff', borderRadius: 24, padding: '36px 28px',
-    textAlign: 'center', maxWidth: 'min(96vw, 600px)', width: '100%',
+    position: 'relative', background: '#fff', borderRadius: 24, padding: '32px 22px',
+    textAlign: 'center', maxWidth: 580, width: '100%',
+    boxSizing: 'border-box',
     boxShadow: '0 24px 64px rgba(0,0,0,0.32)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
   },
@@ -1245,7 +1249,8 @@ const S = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 20,
   },
   settingsCard: {
-    background: '#fff', borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 'min(96vw, 540px)',
+    background: '#fff', borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 520,
+    boxSizing: 'border-box',
     display: 'flex', flexDirection: 'column', gap: 0,
     boxShadow: '0 16px 48px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto',
     fontFamily: "'Tajawal', sans-serif",
@@ -1260,8 +1265,9 @@ const S = {
     color: '#1a1a2e', cursor: 'pointer',
   },
   headerRow: {
-    display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 'min(98vw, 700px)',
-    marginBottom: 14, color: '#fff',
+    display: 'flex', alignItems: 'center', gap: 10, width: '100%', maxWidth: 640,
+    boxSizing: 'border-box',
+    marginBottom: 12, color: '#fff',
   },
   scoreBadge: {
     fontSize: '1rem', fontWeight: 700, flexShrink: 0,
@@ -1271,9 +1277,10 @@ const S = {
   barFill: { height: '100%', background: '#fbbf24', borderRadius: 4, transition: 'width 0.4s' },
   barLabel: { fontSize: '0.88rem', flexShrink: 0, opacity: 0.82 },
   card: {
-    background: '#fff', borderRadius: 24, padding: '28px 20px', width: '100%', maxWidth: 'min(98vw, 700px)',
+    background: '#fff', borderRadius: 24, padding: '24px 18px', width: '100%', maxWidth: 640,
+    boxSizing: 'border-box',
     boxShadow: '0 24px 64px rgba(0,0,0,0.32)',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22,
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18,
   },
   emojiBox: {
     width: 140, height: 140, background: '#f5f3ff', borderRadius: 20,
@@ -1286,24 +1293,28 @@ const S = {
   },
   wordLetterBox: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    minWidth: 54, height: 66, borderRadius: 12,
+    minWidth: 44, height: 56, borderRadius: 10,
     background: '#f5f3ff', border: '2px solid #ede9fe',
-    fontSize: '2.4rem', fontWeight: 700, color: '#1a1a2e', padding: '0 8px',
+    fontSize: '2rem', fontWeight: 700, color: '#1a1a2e', padding: '0 6px',
   },
   blank: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    minWidth: 58, height: 66, border: '3px dashed', borderRadius: 12,
-    fontSize: '2.4rem', fontWeight: 700, transition: 'all 0.3s', padding: '0 8px',
+    minWidth: 48, height: 56, border: '3px dashed', borderRadius: 10,
+    fontSize: '2rem', fontWeight: 700, transition: 'all 0.3s', padding: '0 6px',
   },
   feedback: {
     padding: '10px 22px', borderRadius: 10, fontSize: '1rem',
     fontWeight: 600, textAlign: 'center', width: '100%',
   },
-  optRow: { display: 'grid', gap: 12, width: '100%', justifyItems: 'center' },
+  optRow: { display: 'grid', gap: 10, width: '100%', boxSizing: 'border-box' },
   optBtn: {
-    width: 86, height: 86, borderRadius: 18, border: '2px solid #e5e7eb',
-    background: '#f9fafb', fontSize: '1.9rem', fontWeight: 700, cursor: 'pointer',
+    width: '100%',
+    aspectRatio: '1',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    borderRadius: 16, border: '2px solid #e5e7eb',
+    background: '#f9fafb', fontSize: '1.8rem', fontWeight: 700, cursor: 'pointer',
     transition: 'all 0.18s', fontFamily: "'Tajawal', sans-serif", color: '#1a1a2e',
+    boxSizing: 'border-box',
   },
   optCorrect: { background: '#d4edda', borderColor: '#27ae60', color: '#1a6b38' },
   optWrong:   { background: '#f8d7da', borderColor: '#e74c3c', color: '#9b1c1c' },
