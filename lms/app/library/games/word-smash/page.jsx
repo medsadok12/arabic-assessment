@@ -239,6 +239,43 @@ function WordManager({ dbWords, onRefresh }) {
   );
 }
 
+/* ─── confetti burst (preset positions — no Math.random in render) ─── */
+const CONFETTI_DOTS = [
+  { tx:-80,  ty:-100, c:'#fbbf24', sz:11, dl:0   },
+  { tx:0,    ty:-120, c:'#10b981', sz:13, dl:40  },
+  { tx:80,   ty:-100, c:'#3b82f6', sz:9,  dl:80  },
+  { tx:115,  ty:0,    c:'#ec4899', sz:12, dl:120 },
+  { tx:80,   ty:90,   c:'#f97316', sz:10, dl:160 },
+  { tx:0,    ty:115,  c:'#8b5cf6', sz:11, dl:200 },
+  { tx:-80,  ty:90,   c:'#fbbf24', sz:9,  dl:240 },
+  { tx:-115, ty:0,    c:'#10b981', sz:13, dl:280 },
+  { tx:-55,  ty:-110, c:'#ef4444', sz:8,  dl:20  },
+  { tx:55,   ty:-110, c:'#3b82f6', sz:10, dl:60  },
+  { tx:110,  ty:-55,  c:'#8b5cf6', sz:9,  dl:100 },
+  { tx:110,  ty:55,   c:'#fbbf24', sz:11, dl:140 },
+  { tx:55,   ty:110,  c:'#ec4899', sz:8,  dl:180 },
+  { tx:-55,  ty:110,  c:'#10b981', sz:12, dl:220 },
+  { tx:-110, ty:55,   c:'#f97316', sz:9,  dl:260 },
+  { tx:-110, ty:-55,  c:'#3b82f6', sz:10, dl:300 },
+];
+function ConfettiBurst() {
+  return (
+    <div style={{ position:'absolute', left:'50%', top:'50%', pointerEvents:'none', zIndex:50 }}>
+      {CONFETTI_DOTS.map((d, i) => (
+        <div key={i} style={{
+          position:'absolute',
+          width:d.sz, height:d.sz,
+          background:d.c,
+          borderRadius:'50%',
+          left:-d.sz/2, top:-d.sz/2,
+          animation:`confettiBurst .75s ${d.dl}ms cubic-bezier(0,.9,.57,1) both`,
+          '--tx':`${d.tx}px`, '--ty':`${d.ty}px`,
+        }} />
+      ))}
+    </div>
+  );
+}
+
 /* ─── shared styles ─── */
 const S = {
   label:      { display: 'block', fontSize: '.8rem', fontWeight: 600, color: '#475569', marginBottom: 4, fontFamily: 'Cairo, sans-serif' },
@@ -257,7 +294,10 @@ export default function WordSmashGame() {
   const [score,     setScore]     = useState(0);
   const [chosen,    setChosen]    = useState(null);
   const [isRight,   setIsRight]   = useState(null);
-  const [charAnim,  setCharAnim]  = useState('idle');
+  const [charAnim,    setCharAnim]    = useState('idle');
+  const [wordAnim,    setWordAnim]    = useState('idle');    // 'idle' | 'shake'
+  const [showConfetti,setShowConfetti]= useState(false);
+  const [confettiKey, setConfettiKey] = useState(0);        // increment → remount burst
   const [isTeacher, setIsTeacher] = useState(false);
   const [showMgr,   setShowMgr]   = useState(false);
   const [cfg,       setCfg]       = useState({ topic: '', grade: 0, questionsPerRound: 10 });
@@ -326,74 +366,135 @@ export default function WordSmashGame() {
     setChosen(idx);
     setIsRight(right);
     setCharAnim(right ? 'smash' : 'wrong');
-    if (right) { setScore(s => s + 1); speak(w.word_text); }
+    if (right) {
+      setScore(s => s + 1);
+      speak(w.word_text);
+      setWordAnim('shake');
+      setConfettiKey(k => k + 1);
+      setShowConfetti(true);
+      setTimeout(() => { setWordAnim('idle'); setShowConfetti(false); }, 900);
+    }
   }, [chosen, cur, queue]);
 
   const next = useCallback(() => {
     const n = cur + 1;
     if (n >= queue.length) setPhase('finished');
-    else { setCur(n); setChosen(null); setIsRight(null); setCharAnim('idle'); }
+    else { setCur(n); setChosen(null); setIsRight(null); setCharAnim('idle'); setWordAnim('idle'); }
   }, [cur, queue.length]);
 
   const restart = () => {
     setPhase('start'); setQueue([]); setCur(0); setScore(0);
-    setChosen(null); setIsRight(null); setCharAnim('idle');
+    setChosen(null); setIsRight(null); setCharAnim('idle'); setWordAnim('idle'); setShowConfetti(false);
   };
 
   /* ══════ RENDER ══════ */
   return (
     <>
       <style>{`
+        /* ── hammer animations ── */
         @keyframes hammerSmash {
-          0%   { transform: rotate(-20deg) translateY(0); }
-          30%  { transform: rotate(15deg)  translateY(14px); }
-          55%  { transform: rotate(-8deg)  translateY(6px); }
-          80%  { transform: rotate(5deg)   translateY(4px); }
+          0%   { transform: rotate(-42deg) translateY(-12px); }
+          35%  { transform: rotate(28deg)  translateY(26px); }
+          55%  { transform: rotate(-14deg) translateY(12px); }
+          72%  { transform: rotate(10deg)  translateY(18px); }
+          87%  { transform: rotate(-5deg)  translateY(8px); }
           100% { transform: rotate(-5deg)  translateY(0); }
         }
         @keyframes hammerWrong {
-          0%,100% { transform: translateX(0); }
-          15%     { transform: translateX(-10px); }
-          35%     { transform: translateX(10px); }
-          55%     { transform: translateX(-7px); }
-          75%     { transform: translateX(7px); }
-          90%     { transform: translateX(-3px); }
+          0%,100% { transform: translateX(0) rotate(0); }
+          15%     { transform: translateX(-12px) rotate(-8deg); }
+          35%     { transform: translateX(12px)  rotate(8deg); }
+          55%     { transform: translateX(-8px)  rotate(-5deg); }
+          75%     { transform: translateX(8px)   rotate(5deg); }
+          90%     { transform: translateX(-3px)  rotate(-2deg); }
         }
+        /* ── word shake on correct ── */
+        @keyframes wordShake {
+          0%   { transform: scale(1) rotate(0deg); }
+          12%  { transform: scale(1.14) rotate(-4deg); }
+          28%  { transform: scale(0.9)  rotate(4deg); }
+          44%  { transform: scale(1.08) rotate(-3deg); }
+          60%  { transform: scale(0.96) rotate(2deg); }
+          78%  { transform: scale(1.03) rotate(-1deg); }
+          100% { transform: scale(1)    rotate(0deg); }
+        }
+        /* ── fahim gentle float ── */
+        @keyframes fahimFloat {
+          0%,100% { transform: translateY(0px); }
+          50%     { transform: translateY(-8px); }
+        }
+        /* ── card entrance ── */
         @keyframes cardPop {
-          0%   { transform: scale(.88); opacity: 0; }
+          0%   { transform: scale(.86); opacity: 0; }
+          60%  { transform: scale(1.03); opacity: 1; }
           100% { transform: scale(1);   opacity: 1; }
         }
-        @keyframes ruleSlide {
-          0%   { transform: translateY(12px); opacity: 0; }
-          100% { transform: translateY(0);    opacity: 1; }
+        /* ── correct badge wave (cascades via animation-delay) ── */
+        @keyframes badgeWave {
+          0%,100% { transform: translateY(0)   scale(1); }
+          30%     { transform: translateY(-10px) scale(1.14); }
+          60%     { transform: translateY(4px)   scale(0.94); }
+          80%     { transform: translateY(-3px)  scale(1.04); }
         }
-        @keyframes confetti {
-          0%   { transform: scale(1);   opacity: 1; }
-          50%  { transform: scale(1.18); }
-          100% { transform: scale(1);   opacity: 1; }
+        /* ── feedback slide-up bounce ── */
+        @keyframes slideUpBounce {
+          0%   { transform: translateY(32px); opacity: 0; }
+          55%  { transform: translateY(-6px); opacity: 1; }
+          75%  { transform: translateY(3px); }
+          100% { transform: translateY(0);   opacity: 1; }
         }
+        /* ── confetti particle (uses CSS custom props set inline) ── */
+        @keyframes confettiBurst {
+          from { transform: translate(0,0) scale(1);   opacity: 1; }
+          to   { transform: translate(var(--tx),var(--ty)) scale(.15); opacity: 0; }
+        }
+        /* ── start screen hammer pulse ── */
+        @keyframes hammerPulse {
+          0%,100% { transform: scale(1) rotate(0deg); }
+          40%     { transform: scale(1.2) rotate(-15deg); }
+          60%     { transform: scale(1.1) rotate(10deg); }
+        }
+        /* ── card ring on correct ── */
+        @keyframes correctRing {
+          0%   { box-shadow: 0 0 0 0 rgba(16,185,129,.55); }
+          60%  { box-shadow: 0 0 0 18px rgba(16,185,129,0); }
+          100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+        }
+
+        /* ── base card ── */
         .ws-card {
           border-radius: 16px;
           padding: 16px 12px;
           cursor: pointer;
-          transition: box-shadow .15s, transform .15s;
+          transition: transform .18s, box-shadow .18s;
           user-select: none;
-          animation: cardPop .28s both;
+          animation: cardPop .32s both;
           border: 2.5px solid #e2e8f0;
           background: #fff;
-          min-height: 90px;
+          min-height: 68px;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           gap: 6px;
+          position: relative;
+          overflow: visible;
         }
-        .ws-card:hover:not([disabled]) {
-          transform: translateY(-3px);
-          box-shadow: 0 8px 24px rgba(0,0,0,.12);
+        /* hover lift — only when interactive class is present */
+        .ws-card-interactive:hover {
+          transform: translateY(-4px) scale(1.03);
+          box-shadow: 0 14px 36px rgba(0,0,0,.16);
+        }
+        .ws-card-interactive:active {
+          transform: scale(0.97);
+          box-shadow: 0 3px 10px rgba(0,0,0,.1);
+        }
+        /* green ring on correct reveal */
+        .ws-card-correct-ring {
+          animation: correctRing .7s ease forwards;
         }
         @media (max-width: 480px) {
-          .ws-card { padding: 12px 8px; min-height: 76px; }
+          .ws-card { padding: 12px 8px; }
         }
       `}</style>
 
@@ -419,7 +520,7 @@ export default function WordSmashGame() {
             )}
 
             {/* header */}
-            <div style={{ fontSize: '3.8rem', lineHeight: 1, animation: 'confetti 2s infinite' }}>🔨</div>
+            <div style={{ fontSize: '3.8rem', lineHeight: 1, display: 'inline-block', animation: 'hammerPulse 1.8s ease-in-out infinite' }}>🔨</div>
             <h1 style={{ fontSize: '1.9rem', fontWeight: 900, color: '#1a1a2e', margin: 0 }}>مطرقة التفكيك!</h1>
             <p style={{ fontSize: '.97rem', color: '#6b7280', lineHeight: 1.8, margin: 0 }}>
               سأريك كلمة مُشكَّلة.<br />
@@ -517,50 +618,64 @@ export default function WordSmashGame() {
               {/* main card */}
               <div style={{ background: '#fff', borderRadius: 24, padding: '28px 20px', width: '100%', maxWidth: 540, boxShadow: '0 24px 64px rgba(0,0,0,.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
 
-                {/* word display */}
-                <div style={{ textAlign: 'center' }}>
+                {/* word display — shakes on correct answer */}
+                <div style={{ textAlign: 'center', position: 'relative' }}>
                   <div style={{ fontSize: '.8rem', color: '#94a3b8', marginBottom: 6, fontWeight: 600 }}>قطّع هذه الكلمة إلى مقاطع:</div>
-                  <div style={{ fontSize: '2.8rem', fontWeight: 900, color: '#1a1a2e', lineHeight: 1.3, letterSpacing: 2 }}>
+                  <div style={{
+                    fontSize: '2.8rem', fontWeight: 900, color: '#1a1a2e', lineHeight: 1.3, letterSpacing: 2,
+                    display: 'inline-block',
+                    animation: wordAnim === 'shake' ? 'wordShake .65s ease both' : 'none',
+                  }}>
                     {w.word_text}
                   </div>
+                  <br />
                   <button onClick={() => speak(w.word_text)} title="استمع" style={{ marginTop: 6, background: '#f0fdf4', border: 'none', borderRadius: 20, padding: '4px 14px', cursor: 'pointer', fontSize: '.85rem', color: '#065f46', fontWeight: 700 }}>
                     🔊 استمع
                   </button>
                 </div>
 
-                {/* فهيم character */}
+                {/* فهيم — hammer animates, robot floats gently */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
                   <div style={{
-                    fontSize: '2.4rem',
+                    fontSize: '2.6rem',
                     transformOrigin: 'bottom right',
-                    animation: charAnim === 'smash' ? 'hammerSmash .55s ease'
-                             : charAnim === 'wrong'  ? 'hammerWrong .55s ease'
-                             : 'none',
                     display: 'inline-block',
-                    marginBottom: -6,
+                    marginBottom: -8,
+                    animation: charAnim === 'smash' ? 'hammerSmash .6s ease both'
+                             : charAnim === 'wrong'  ? 'hammerWrong .55s ease both'
+                             : 'none',
                   }}>🔨</div>
-                  <div style={{ fontSize: '2.8rem', lineHeight: 1 }}>🤖</div>
-                  <div style={{ fontSize: '.78rem', color: '#9ca3af', marginTop: 2, fontWeight: 600 }}>فهيم</div>
+                  <div style={{
+                    fontSize: '3rem', lineHeight: 1,
+                    display: 'inline-block',
+                    animation: charAnim === 'idle' ? 'fahimFloat 2.6s ease-in-out infinite' : 'none',
+                  }}>🤖</div>
+                  <div style={{ fontSize: '.78rem', color: '#9ca3af', marginTop: 3, fontWeight: 600 }}>فهيم</div>
                 </div>
 
                 {/* 3 choice cards — stacked vertically so each has full width for the syllable row */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
                   {opts.map((opt, idx) => {
                     const segs   = (opt.segs || []).filter(Boolean);
                     const picked = chosen === idx;
                     const rev    = chosen !== null;
                     const cardBorder = !rev ? '#d1d5db' : opt.isCorrect ? '#10b981' : picked ? '#ef4444' : '#e5e7eb';
-                    const cardBg    = !rev ? '#fff'     : opt.isCorrect ? '#ecfdf5' : picked ? '#fef2f2' : '#fff';
-                    const opacity   = rev && !opt.isCorrect && !picked ? 0.32 : 1;
+                    const cardBg    = !rev ? '#fff'     : opt.isCorrect ? '#ecfdf5' : picked ? '#fef2f2' : '#f9fafb';
+                    const opacity   = rev && !opt.isCorrect && !picked ? 0.28 : 1;
                     const badgeBg   = !rev ? '#eef2ff'  : opt.isCorrect ? '#d1fae5' : picked ? '#fee2e2' : '#f1f5f9';
-                    const badgeClr  = !rev ? '#1a1a2e'  : opt.isCorrect ? '#065f46' : picked ? '#991b1b' : '#9ca3af';
+                    const badgeClr  = !rev ? '#1e3a5f'  : opt.isCorrect ? '#065f46' : picked ? '#991b1b' : '#9ca3af';
+                    /* card classes: add hover/tap class only when not yet answered */
+                    const cardClass = [
+                      'ws-card',
+                      !rev ? 'ws-card-interactive' : '',
+                      rev && opt.isCorrect ? 'ws-card-correct-ring' : '',
+                    ].filter(Boolean).join(' ');
                     return (
                       <div
                         key={idx}
-                        className="ws-card"
+                        className={cardClass}
                         onClick={() => pick(idx)}
                         style={{
-                          /* override column flex from class → make card a row */
                           flexDirection: 'row',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -572,10 +687,15 @@ export default function WordSmashGame() {
                           background: cardBg,
                           opacity,
                           cursor: rev ? 'default' : 'pointer',
-                          animationDelay: `${idx * .08}s`,
+                          animationDelay: `${idx * .09}s`,
                           gap: 10,
                         }}
                       >
+                        {/* confetti burst — anchored to card centre on correct */}
+                        {rev && opt.isCorrect && showConfetti && (
+                          <ConfettiBurst key={confettiKey} />
+                        )}
+
                         {/* ── syllables: single strict RTL horizontal row, never wrap ── */}
                         <div style={{
                           flex: 1,
@@ -584,7 +704,7 @@ export default function WordSmashGame() {
                           direction: 'rtl',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          flexWrap: 'nowrap',   /* ← NO WRAP — syllables stay on one line */
+                          flexWrap: 'nowrap',
                           gap: 8,
                           overflow: 'hidden',
                         }}>
@@ -594,7 +714,6 @@ export default function WordSmashGame() {
                             <span
                               key={si}
                               style={{
-                                /* each syllable is ONE connected Arabic text in its own badge */
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -610,6 +729,10 @@ export default function WordSmashGame() {
                                 fontFamily: "'Cairo','Tajawal',sans-serif",
                                 direction: 'rtl',
                                 lineHeight: 1.4,
+                                /* wave animation on each correct badge with cascade delay */
+                                animation: rev && opt.isCorrect
+                                  ? `badgeWave .55s ${si * 80}ms ease both`
+                                  : 'none',
                               }}
                             >
                               {addArm(seg, si === segs.length - 1)}
@@ -617,10 +740,14 @@ export default function WordSmashGame() {
                           ))}
                         </div>
 
-                        {/* status tick */}
+                        {/* status icon */}
                         {rev && (
-                          <span style={{ fontSize: '1.1rem', fontWeight: 800, flexShrink: 0, color: opt.isCorrect ? '#10b981' : picked ? '#ef4444' : 'transparent' }}>
-                            {opt.isCorrect ? '✓' : '✗'}
+                          <span style={{
+                            fontSize: '1.25rem', fontWeight: 800, flexShrink: 0,
+                            color: opt.isCorrect ? '#10b981' : picked ? '#ef4444' : 'transparent',
+                            animation: rev && (opt.isCorrect || picked) ? 'cardPop .3s ease both' : 'none',
+                          }}>
+                            {opt.isCorrect ? '✅' : picked ? '❌' : '✗'}
                           </span>
                         )}
                       </div>
@@ -628,18 +755,21 @@ export default function WordSmashGame() {
                   })}
                 </div>
 
-                {/* feedback & rule */}
+                {/* feedback & rule — slide-up bounce entrance */}
                 {chosen !== null && (
                   <>
+                    {/* status banner */}
                     <div style={{
-                      padding: '10px 18px',
-                      borderRadius: 10,
+                      padding: '11px 18px',
+                      borderRadius: 12,
                       width: '100%',
                       textAlign: 'center',
-                      fontWeight: 700,
-                      fontSize: '1rem',
+                      fontWeight: 800,
+                      fontSize: '1.05rem',
                       background: isRight ? '#d1fae5' : '#fee2e2',
                       color:      isRight ? '#065f46' : '#991b1b',
+                      animation: 'slideUpBounce .42s ease both',
+                      border: `1.5px solid ${isRight ? '#6ee7b7' : '#fca5a5'}`,
                     }}>
                       {isRight ? '✅ أحسنت! إجابة صحيحة 🎉' : `❌ الإجابة الصحيحة: ${formatSegs(queue[cur].correct_segments)}`}
                     </div>
@@ -648,23 +778,30 @@ export default function WordSmashGame() {
                     <div style={{
                       background: '#fffbeb',
                       border: '1.5px solid #fde68a',
-                      borderRadius: 12,
-                      padding: '12px 16px',
+                      borderRadius: 14,
+                      padding: '13px 16px',
                       width: '100%',
-                      animation: 'ruleSlide .3s ease',
+                      animation: 'slideUpBounce .45s .08s ease both',
                       direction: 'rtl',
                       textAlign: 'right',
                     }}>
-                      <div style={{ fontWeight: 800, color: '#92400e', marginBottom: 4, fontSize: '.82rem' }}>📌 القاعدة:</div>
-                      <div style={{ color: '#78350f', fontSize: '.92rem', lineHeight: 1.7 }}>{queue[cur].rule_text}</div>
+                      <div style={{ fontWeight: 800, color: '#92400e', marginBottom: 5, fontSize: '.84rem' }}>📌 القاعدة:</div>
+                      <div style={{ color: '#78350f', fontSize: '.93rem', lineHeight: 1.75 }}>{queue[cur].rule_text}</div>
                     </div>
 
+                    {/* next button — pops in */}
                     <button onClick={next} style={{
                       background: 'linear-gradient(135deg,#10b981,#059669)',
-                      color: '#fff', border: 'none', borderRadius: 12,
-                      padding: '12px 0', fontSize: '1.05rem', fontWeight: 700,
-                      cursor: 'pointer', width: '100%', maxWidth: 280,
-                    }}>
+                      color: '#fff', border: 'none', borderRadius: 14,
+                      padding: '13px 0', fontSize: '1.08rem', fontWeight: 800,
+                      cursor: 'pointer', width: '100%', maxWidth: 300,
+                      animation: 'cardPop .35s .2s ease both',
+                      boxShadow: '0 6px 20px rgba(16,185,129,.4)',
+                      transition: 'transform .15s, box-shadow .15s',
+                    }}
+                      onMouseEnter={e => { e.currentTarget.style.transform='scale(1.04)'; e.currentTarget.style.boxShadow='0 10px 28px rgba(16,185,129,.5)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform='scale(1)';    e.currentTarget.style.boxShadow='0 6px 20px rgba(16,185,129,.4)'; }}
+                    >
                       {cur + 1 >= queue.length ? '🏁 النتيجة النهائية' : 'التالي ←'}
                     </button>
                   </>
