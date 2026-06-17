@@ -32,6 +32,21 @@ function formatSegs(segs) {
   return segs.filter(Boolean).join(' ▪ ');
 }
 
+const NON_CONN = new Set('اأإآءودرذزوىة');
+const ZWJ = '‍';
+function stripDia(s) { return (s || '').replace(/[ً-ْٰ]/g, ''); }
+function segWithContext(segs, idx) {
+  const seg      = segs[idx] || '';
+  const prevSeg  = segs[idx - 1] || '';
+  const prevLast = stripDia(prevSeg).slice(-1);
+  const segLast  = stripDia(seg).slice(-1);
+  const hasNext  = idx < segs.length - 1;
+  let out = seg;
+  if (prevLast && !NON_CONN.has(prevLast)) out = ZWJ + out;
+  if (hasNext && segLast && !NON_CONN.has(segLast)) out = out + ZWJ;
+  return out;
+}
+
 const TOPICS = ['الحيوانات', 'المدرسة', 'الأسرة', 'الطبيعة', 'الفواكه', 'الألوان', 'المهن', 'الأدوات'];
 
 /* ─── Word Manager (admin/teacher panel) ─── */
@@ -536,48 +551,62 @@ export default function WordSmashGame() {
                 {/* 3 choice cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, width: '100%' }}>
                   {opts.map((opt, idx) => {
-                    const segs     = opt.segs || [];
+                    const segs     = (opt.segs || []).filter(Boolean);
                     const picked   = chosen === idx;
                     const revealed = chosen !== null;
                     let borderColor = '#e2e8f0';
                     let bgColor     = '#fff';
                     let opacity     = 1;
                     if (revealed) {
-                      if (opt.isCorrect)         { borderColor = '#10b981'; bgColor = '#f0fdf4'; }
-                      else if (picked)           { borderColor = '#ef4444'; bgColor = '#fef2f2'; }
-                      else                       { opacity = 0.38; }
+                      if (opt.isCorrect) { borderColor = '#10b981'; bgColor = '#f0fdf4'; }
+                      else if (picked)   { borderColor = '#ef4444'; bgColor = '#fef2f2'; }
+                      else               { opacity = 0.38; }
                     }
+                    const segPillBg = revealed
+                      ? (opt.isCorrect ? '#d1fae5' : picked ? '#fecaca' : '#f8fafc')
+                      : '#f0f4ff';
+                    const segPillBorder = revealed
+                      ? (opt.isCorrect ? '#6ee7b7' : picked ? '#fca5a5' : '#e2e8f0')
+                      : '#dde3f5';
                     return (
                       <div
                         key={idx}
                         className="ws-card"
                         onClick={() => pick(idx)}
-                        style={{ borderColor, background: bgColor, opacity, animationDelay: `${idx * .06}s`, cursor: revealed ? 'default' : 'pointer' }}
+                        style={{ borderColor, background: bgColor, opacity, animationDelay: `${idx * .06}s`, cursor: revealed ? 'default' : 'pointer', padding: '14px 8px', minHeight: 96 }}
                       >
                         {segs.length === 0 ? (
                           <span style={{ color: '#94a3b8', fontSize: '.8rem' }}>—</span>
-                        ) : segs.map((seg, si) => (
-                          <div key={si} style={{
-                            background: picked && !opt.isCorrect && revealed ? '#fecaca'
-                              : opt.isCorrect && revealed ? '#d1fae5'
-                              : '#f8fafc',
-                            borderRadius: 8,
-                            padding: '4px 8px',
-                            fontSize: '1.15rem',
-                            fontWeight: 700,
-                            color: '#1a1a2e',
-                            minWidth: 32,
-                            textAlign: 'center',
-                            fontFamily: "'Cairo','Tajawal',sans-serif",
-                          }}>
-                            {seg}
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'row', direction: 'rtl', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 4 }}>
+                            {segs.map((seg, si) => (
+                              <span key={si} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                  background: segPillBg,
+                                  border: `1.5px solid ${segPillBorder}`,
+                                  borderRadius: 10,
+                                  padding: '5px 12px',
+                                  fontSize: '1.3rem',
+                                  fontWeight: 800,
+                                  color: '#1a1a2e',
+                                  minWidth: 42,
+                                  fontFamily: "'Cairo','Tajawal',sans-serif",
+                                }}>
+                                  {segWithContext(segs, si)}
+                                </span>
+                                {si < segs.length - 1 && (
+                                  <span style={{ color: '#9ca3af', fontSize: '.9rem', fontWeight: 700 }}>▪</span>
+                                )}
+                              </span>
+                            ))}
                           </div>
-                        ))}
+                        )}
                         {revealed && opt.isCorrect && (
-                          <div style={{ fontSize: '.7rem', color: '#065f46', fontWeight: 700, marginTop: 2 }}>✓ صحيح</div>
+                          <div style={{ fontSize: '.7rem', color: '#065f46', fontWeight: 700, marginTop: 6 }}>✓ صحيح</div>
                         )}
                         {revealed && picked && !opt.isCorrect && (
-                          <div style={{ fontSize: '.7rem', color: '#dc2626', fontWeight: 700, marginTop: 2 }}>✗ خطأ</div>
+                          <div style={{ fontSize: '.7rem', color: '#dc2626', fontWeight: 700, marginTop: 6 }}>✗ خطأ</div>
                         )}
                       </div>
                     );
