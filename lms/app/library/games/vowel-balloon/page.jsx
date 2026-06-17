@@ -344,6 +344,7 @@ export default function VowelBalloonPage() {
   const [isRight,    setIsRight]    = useState(null);
   const [score,      setScore]      = useState(0);
   const [showRule,   setShowRule]   = useState(false);
+  const [wrongFeedback, setWrongFeedback] = useState(false);
   const [showConf,   setShowConf]   = useState(false);
   const [confKey,    setConfKey]    = useState(0);
   const [done,       setDone]       = useState(false);
@@ -406,7 +407,7 @@ export default function VowelBalloonPage() {
       setTimeout(() => {
         setShowConf(false); setLetterAnim('idle');
         setBalloonStates({ fatha:'idle', kasra:'idle', damma:'idle' });
-        setChosen(null); setIsRight(null); setShowRule(false);
+        setChosen(null); setIsRight(null); setShowRule(false); setWrongFeedback(false);
         if (cur + 1 >= queue.length) { setDone(true); return; }
         setCur(c => c + 1);
       }, 1200);
@@ -414,11 +415,14 @@ export default function VowelBalloonPage() {
       setBalloonStates(s => ({ ...s, [vowelKey]: 'shake' }));
       setLetterAnim('shake');
       setShowRule(true);
+      setWrongFeedback(true);
       speak(q.base_letter + VOWELS[q.correct_vowel].mark);
       setTimeout(() => {
         setBalloonStates(s => ({ ...s, [vowelKey]: 'idle' }));
         setLetterAnim('idle');
-      }, 600);
+        setChosen(null);
+        setIsRight(null);
+      }, 700);
     }
   }, [chosen, cur, done, queue]);
 
@@ -427,7 +431,7 @@ export default function VowelBalloonPage() {
     setQueue(shuffled); setCur(0); setScore(0);
     setBalloonStates({ fatha:'idle', kasra:'idle', damma:'idle' });
     setChosen(null); setIsRight(null); setShowRule(false);
-    setShowConf(false); setDone(false); setLetterAnim('idle');
+    setShowConf(false); setDone(false); setLetterAnim('idle'); setWrongFeedback(false);
   }
 
   const role = user?.user_metadata?.role ?? '';
@@ -612,7 +616,7 @@ export default function VowelBalloonPage() {
                   </div>
 
                   {/* feedback */}
-                  {chosen !== null && (
+                  {(chosen !== null || wrongFeedback) && (
                     <div style={{
                       textAlign:'center', padding:'14px 18px', borderRadius:16, marginBottom:12,
                       background: isRight ? '#ecfdf5' : '#fef2f2',
