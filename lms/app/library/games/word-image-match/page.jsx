@@ -572,7 +572,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
         <div style={{ display: 'flex', direction: 'rtl', gap: 0, alignItems: 'flex-start' }}>
 
           {/* WORDS column (right in RTL) */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, paddingRight: 4 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, paddingRight: 4 }}>
             {wordOrder.map(wordId => {
               const pair      = pairMap[wordId];
               const isCorrect = correct.has(wordId);
@@ -587,7 +587,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
                   onClick={() => handleWordClick(wordId)}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    gap: 8, padding: '10px 14px', borderRadius: 10,
+                    gap: 8, padding: '0 14px', borderRadius: 10,
                     border: `2px solid ${isCorrect ? '#22c55e' : isSelected ? '#3b82f6' : '#d1d5db'}`,
                     background: isCorrect ? '#f0fdf4' : isSelected ? '#eff6ff' : '#fff',
                     cursor: isCorrect ? 'default' : 'grab',
@@ -595,7 +595,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
                     fontFamily: 'Cairo, sans-serif', fontSize: '1.1rem', fontWeight: 600,
                     animation: 'popIn .25s',
                     transition: 'border-color .2s, background .2s',
-                    minHeight: 52,
+                    height: 90,
                   }}
                 >
                   <span>{pair.word_text}</span>
@@ -614,7 +614,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
           <div style={{ width: 56, flexShrink: 0 }} />
 
           {/* IMAGES column (left in RTL) */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 4 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, paddingLeft: 4 }}>
             {imageOrder.map(imgId => {
               const pair      = pairMap[imgId];
               const isCor     = imgIsCorrect(imgId);
@@ -630,21 +630,21 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
                     borderRadius: 10,
                     border: `2px solid ${isCor ? '#22c55e' : isSel ? '#93c5fd' : '#d1d5db'}`,
                     background: isCor ? '#f0fdf4' : isSel ? '#eff6ff' : '#fff',
-                    padding: 6, cursor: isCor ? 'default' : 'pointer',
+                    padding: '6px 8px', cursor: isCor ? 'default' : 'pointer',
                     animation: isShake ? 'shake .55s' : 'popIn .25s',
                     userSelect: 'none', touchAction: 'none',
                     display: 'flex', justifyContent: 'center', alignItems: 'center',
-                    minHeight: 52,
+                    height: 90,
                     transition: 'border-color .2s, background .2s',
                   }}
                 >
                   {pair.image_url ? (
                     <img
                       src={pair.image_url} alt=""
-                      style={{ width: '100%', maxWidth: 100, height: 80, objectFit: 'contain', borderRadius: 6, display: 'block', pointerEvents: 'none' }}
+                      style={{ width: '100%', maxWidth: 110, height: 70, objectFit: 'contain', borderRadius: 6, display: 'block', pointerEvents: 'none' }}
                     />
                   ) : (
-                    <div style={{ width: 80, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', color: '#94a3b8' }}>❓</div>
+                    <div style={{ width: 70, height: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', color: '#94a3b8' }}>❓</div>
                   )}
                 </div>
               );
@@ -722,7 +722,8 @@ export default function WordImageMatchPage() {
         body { background: #f8fafc; }
         @media (max-width: 540px) {
           .wim-cols { gap: 0 !important; }
-          .wim-cols [data-word], .wim-cols [data-img] { font-size: .95rem !important; min-height: 46px !important; }
+          .wim-cols [data-word] { font-size: .95rem !important; height: 72px !important; }
+          .wim-cols [data-img]  { height: 72px !important; }
           .wim-spacer { width: 36px !important; }
         }
       `}</style>
