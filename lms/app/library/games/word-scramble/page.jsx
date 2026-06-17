@@ -360,6 +360,7 @@ export default function WordScrambleGame() {
   const [result,    setResult]    = useState(null); // null|'correct'|'wrong'
   const [showCfg,   setShowCfg]   = useState(false);
   const [isTeacher, setIsTeacher] = useState(false);
+  const [loadingWords, setLoadingWords] = useState(true);
   const [cfg, setCfg] = useState({
     questionsPerRound: 10,
     topic: '',
@@ -393,6 +394,7 @@ export default function WordScrambleGame() {
 
   // Load filtered game words from API
   const loadGameWords = useCallback(async () => {
+    setLoadingWords(true);
     try {
       const p = new URLSearchParams();
       if (cfg.topic)    p.set('topic',  cfg.topic);
@@ -403,6 +405,7 @@ export default function WordScrambleGame() {
       const json = await res.json();
       setGameWords((json.words || []).filter(isValid));
     } catch { setGameWords([]); }
+    finally { setLoadingWords(false); }
   }, [cfg]);
 
   useEffect(() => { loadWords();     }, [loadWords]);
@@ -504,6 +507,10 @@ export default function WordScrambleGame() {
             onClose={() => setShowCfg(false)}
             dbWords={dbWords} onRefresh={loadWords} />
         )}
+        <style>{`
+          @keyframes ws-dot { 0%,100%{transform:translateY(0);opacity:.4} 50%{transform:translateY(-8px);opacity:1} }
+          @keyframes ws-fadein { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+        `}</style>
         <div style={S.centerCard}>
           {isTeacher && (
             <button style={S.cfgBtn} onClick={() => setShowCfg(true)}>⚙️ الإعدادات</button>
@@ -515,8 +522,21 @@ export default function WordScrambleGame() {
             انقر عليها بالترتيب الصحيح من اليمين لليسار!
           </p>
 
-          {gameWords.length === 0 ? (
-            <div style={S.emptyState}>
+          {loadingWords ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '18px 0' }}>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {[0, 1, 2].map(i => (
+                  <div key={i} style={{
+                    width: 13, height: 13, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #7c3aed, #5b4fc4)',
+                    animation: `ws-dot 0.75s ease-in-out ${i * 0.18}s infinite`,
+                  }} />
+                ))}
+              </div>
+              <span style={{ color: '#9ca3af', fontSize: '.88rem', fontWeight: 600 }}>جارٍ تحميل الكلمات…</span>
+            </div>
+          ) : gameWords.length === 0 ? (
+            <div style={{ ...S.emptyState, animation: 'ws-fadein 0.4s ease-out' }}>
               <div style={{ fontSize: '3rem' }}>📭</div>
               <p style={{ color: '#374151', fontSize: '.97rem', fontWeight: 700, lineHeight: 1.9, margin: 0, textAlign: 'center' }}>
                 لا توجد كلمات مضافة بعد.<br />
@@ -527,12 +547,12 @@ export default function WordScrambleGame() {
               )}
             </div>
           ) : (
-            <>
-              <div style={S.statsRow}>
+            <div style={{ display: 'contents', animation: 'ws-fadein 0.4s ease-out' }}>
+              <div style={{ ...S.statsRow, animation: 'ws-fadein 0.4s ease-out' }}>
                 <div style={S.statBox}><span style={S.statNum}>{gameWords.length}</span><span style={S.statLbl}>كلمة</span></div>
               </div>
-              <button style={S.btnGold} onClick={startGame}>🚀 ابدأ اللعبة</button>
-            </>
+              <button style={{ ...S.btnGold, animation: 'ws-fadein 0.5s ease-out 0.1s both' }} onClick={startGame}>🚀 ابدأ اللعبة</button>
+            </div>
           )}
 
           <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
