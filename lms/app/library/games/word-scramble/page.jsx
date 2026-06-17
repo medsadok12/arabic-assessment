@@ -569,6 +569,30 @@ export default function WordScrambleGame() {
 
   return (
     <div style={S.page}>
+      <style>{`
+        @keyframes ws-stamp {
+          0%   { transform: scale(2.5) rotate(8deg); opacity: 0; filter: blur(6px); }
+          45%  { transform: scale(0.88) rotate(-3deg); opacity: 1; filter: blur(0); }
+          65%  { transform: scale(1.07) rotate(1.5deg); }
+          82%  { transform: scale(0.97); }
+          100% { transform: scale(1) rotate(0deg); }
+        }
+        @keyframes ws-glowring {
+          0%   { box-shadow: 0 0 0 0 #10b98160; }
+          60%  { box-shadow: 0 0 0 14px #10b98100; }
+          100% { box-shadow: 0 0 0 0 #10b98100; }
+        }
+        @keyframes ws-sp1 { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(-26px,-52px) scale(0) rotate(180deg);opacity:0} }
+        @keyframes ws-sp2 { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(30px,-56px) scale(0) rotate(-180deg);opacity:0} }
+        @keyframes ws-sp3 { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(-40px,-28px) scale(0);opacity:0} }
+        @keyframes ws-sp4 { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(36px,-30px) scale(0);opacity:0} }
+        @keyframes ws-sp5 { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(10px,-60px) scale(0);opacity:0} }
+        @keyframes ws-label-in {
+          0%   { opacity: 0; transform: translateY(8px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
       <div style={S.headerRow}>
         <span style={S.scoreBadge}>✨ {score}</span>
         <div style={S.bar}>
@@ -580,45 +604,67 @@ export default function WordScrambleGame() {
       <div style={S.card}>
         <WordImage imageUrl={w.image_url} emoji={w.emoji} />
 
-        {/* Answer slots — RTL: slot[0] is rightmost (first Arabic letter) */}
-        <div style={S.answerRow}>
-          {answer.map((chunk, i) => (
-            <div key={i}
-              style={{
-                ...S.answerSlot,
-                background:  result === 'correct' ? '#d4edda' : result === 'wrong' ? '#f8d7da' : chunk ? '#ede9fe' : '#f5f3ff',
-                borderColor: result === 'correct' ? '#27ae60' : result === 'wrong' ? '#e74c3c' : chunk ? '#7c3aed' : '#c4b5fd',
-                cursor: chunk && result === null ? 'pointer' : 'default',
-              }}
-              onClick={() => chunk && result === null && removeFromAnswer(i)}
-              title={chunk && result === null ? 'انقر للإزالة' : ''}
-            >
-              {chunk && (
+        {/* ── Correct: stamp reveal ── */}
+        {result === 'correct' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              {/* Floating sparkles */}
+              {[['⭐','ws-sp1','0.15s'],['✨','ws-sp2','0.22s'],['🌟','ws-sp3','0.10s'],['💫','ws-sp4','0.28s'],['✨','ws-sp5','0.18s']].map(([e, a, d], i) => (
+                <span key={i} style={{
+                  position: 'absolute', top: '50%', left: '50%',
+                  fontSize: i === 4 ? '.9rem' : '1.2rem',
+                  pointerEvents: 'none',
+                  animation: `${a} 0.75s ease-out forwards ${d}`,
+                  opacity: 0,
+                }}>{e}</span>
+              ))}
+              {/* Connected word pill */}
+              <div style={{
+                background: 'linear-gradient(135deg, #047857 0%, #059669 45%, #10b981 100%)',
+                borderRadius: 22,
+                padding: '12px 38px',
+                animation: 'ws-stamp 0.55s cubic-bezier(0.175,0.885,0.32,1.275) forwards, ws-glowring 1.2s ease-out 0.5s 2',
+              }}>
                 <span style={{
-                  fontSize: '2.2rem', fontWeight: 800,
-                  color: result === 'correct' ? '#1a6b38' : result === 'wrong' ? '#9b1c1c' : '#5b4fc4',
-                }}>
-                  {chunk.ch}
-                </span>
-              )}
+                  fontSize: '2.6rem', fontWeight: 900, color: '#fff',
+                  letterSpacing: 8, fontFamily: "'Tajawal','Cairo',sans-serif",
+                  textShadow: '0 2px 10px rgba(0,0,0,0.25)',
+                  display: 'block',
+                }}>{w.word}</span>
+              </div>
             </div>
-          ))}
-        </div>
+            <div style={{ color: '#059669', fontWeight: 700, fontSize: '.9rem', animation: 'ws-label-in 0.4s ease-out 0.5s both' }}>
+              ✅ أحسنت! رتّبت الكلمة بشكل صحيح
+            </div>
+          </div>
+        ) : (
+          /* ── Normal: answer slots ── */
+          <div style={S.answerRow}>
+            {answer.map((chunk, i) => (
+              <div key={i}
+                style={{
+                  ...S.answerSlot,
+                  background:  result === 'wrong' ? '#f8d7da' : chunk ? '#ede9fe' : '#f5f3ff',
+                  borderColor: result === 'wrong' ? '#e74c3c' : chunk ? '#7c3aed' : '#c4b5fd',
+                  cursor: chunk && result === null ? 'pointer' : 'default',
+                }}
+                onClick={() => chunk && result === null && removeFromAnswer(i)}
+                title={chunk && result === null ? 'انقر للإزالة' : ''}
+              >
+                {chunk && (
+                  <span style={{ fontSize: '2.2rem', fontWeight: 800, color: result === 'wrong' ? '#9b1c1c' : '#5b4fc4' }}>
+                    {chunk.ch}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
-        {/* Feedback */}
-        {result !== null && (
-          <div style={{
-            ...S.feedback,
-            color:      result === 'correct' ? '#1a6b38' : '#9b1c1c',
-            background: result === 'correct' ? '#d4edda' : '#f8d7da',
-            flexDirection: 'column', gap: 4,
-          }}>
-            {result === 'correct' ? (
-              <>
-                <span>✅ أحسنت!</span>
-                <span style={{ fontSize: '1.7rem', fontWeight: 800, letterSpacing: 4 }}>{w.word}</span>
-              </>
-            ) : '❌ حاول مرة أخرى! ستتم إعادة الحروف'}
+        {/* Wrong feedback */}
+        {result === 'wrong' && (
+          <div style={{ ...S.feedback, color: '#9b1c1c', background: '#f8d7da' }}>
+            ❌ حاول مرة أخرى! ستتم إعادة الحروف
           </div>
         )}
 
