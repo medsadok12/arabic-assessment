@@ -420,8 +420,7 @@ export default function WordScrambleGame() {
   // Start game
   const startGame = useCallback(() => {
     if (gameWords.length === 0) return;
-    const count = isTeacher ? cfg.questionsPerRound : Math.min(gameWords.length, 20);
-    if (gameWords.length < count) return;
+    const count = gameWords.length;
     const q = buildQueue(gameWords, count);
     setQueue(q);
     setCur(0);
@@ -496,8 +495,6 @@ export default function WordScrambleGame() {
     setAnswer([]); setAvailable([]); setResult(null);
   }, []);
 
-  const notEnough = isTeacher && gameWords.length > 0 && gameWords.length < cfg.questionsPerRound;
-
   /* ══════ RENDER: START ══════ */
   if (phase === 'start') {
     return (
@@ -518,55 +515,24 @@ export default function WordScrambleGame() {
             انقر عليها بالترتيب الصحيح من اليمين لليسار!
           </p>
 
-          {isTeacher ? (
-            gameWords.length === 0 ? (
-              <div style={S.emptyState}>
-                <div style={{ fontSize: '3rem' }}>📭</div>
-                <p style={{ color: '#374151', fontSize: '.97rem', fontWeight: 700, lineHeight: 1.9, margin: 0, textAlign: 'center' }}>
-                  عذراً، لا توجد كلمات مضافة في قاعدة البيانات تطابق هذه الإعدادات.<br />
-                  يرجى إضافة كلمات جديدة أولاً.
-                </p>
-                <button style={S.btnOutline} onClick={() => setShowCfg(true)}>⚙️ إضافة كلمات أو تعديل الإعدادات</button>
-              </div>
-            ) : notEnough ? (
-              <>
-                <div style={S.statsRow}>
-                  <div style={S.statBox}><span style={{ ...S.statNum, color: '#e74c3c' }}>{gameWords.length}</span><span style={S.statLbl}>كلمة متاحة</span></div>
-                  <div style={S.statDiv} />
-                  <div style={S.statBox}><span style={S.statNum}>{cfg.questionsPerRound}</span><span style={S.statLbl}>سؤال مطلوب</span></div>
-                </div>
-                <div style={S.warningBanner}>
-                  عذراً، لا توجد كلمات كافية مضافة في قاعدة البيانات تطابق هذه الإعدادات. يرجى إضافة كلمات جديدة أو تعديل خيارات اللعبة لبدء التحدي.
-                </div>
-                <button style={{ ...S.btnGold, opacity: 0.4, cursor: 'not-allowed' }} disabled>🚀 ابدأ اللعبة</button>
-              </>
-            ) : (
-              <>
-                <div style={S.statsRow}>
-                  <div style={S.statBox}><span style={S.statNum}>{gameWords.length}</span><span style={S.statLbl}>كلمة متاحة</span></div>
-                  <div style={S.statDiv} />
-                  <div style={S.statBox}><span style={S.statNum}>{cfg.questionsPerRound}</span><span style={S.statLbl}>سؤال في الجولة</span></div>
-                </div>
-                <button style={S.btnGold} onClick={startGame}>🚀 ابدأ اللعبة</button>
-              </>
-            )
+          {gameWords.length === 0 ? (
+            <div style={S.emptyState}>
+              <div style={{ fontSize: '3rem' }}>📭</div>
+              <p style={{ color: '#374151', fontSize: '.97rem', fontWeight: 700, lineHeight: 1.9, margin: 0, textAlign: 'center' }}>
+                لا توجد كلمات مضافة بعد.<br />
+                {isTeacher ? 'يرجى إضافة كلمات من قائمة الإعدادات.' : 'يرجى مراجعة المعلم لإضافة كلمات.'}
+              </p>
+              {isTeacher && (
+                <button style={S.btnOutline} onClick={() => setShowCfg(true)}>⚙️ إضافة كلمات</button>
+              )}
+            </div>
           ) : (
-            gameWords.length > 0 ? (
-              <>
-                <div style={S.statsRow}>
-                  <div style={S.statBox}><span style={S.statNum}>{Math.min(gameWords.length, 20)}</span><span style={S.statLbl}>كلمة</span></div>
-                </div>
-                <button style={S.btnGold} onClick={startGame}>🚀 ابدأ اللعبة</button>
-              </>
-            ) : (
-              <div style={S.emptyState}>
-                <div style={{ fontSize: '3rem' }}>🔒</div>
-                <p style={{ color: '#374151', fontSize: '.97rem', fontWeight: 700, lineHeight: 1.9, margin: 0, textAlign: 'center' }}>
-                  اللعبة غير متاحة حالياً.<br />
-                  تواصل مع معلمك لإعداد الكلمات.
-                </p>
+            <>
+              <div style={S.statsRow}>
+                <div style={S.statBox}><span style={S.statNum}>{gameWords.length}</span><span style={S.statLbl}>كلمة</span></div>
               </div>
-            )
+              <button style={S.btnGold} onClick={startGame}>🚀 ابدأ اللعبة</button>
+            </>
           )}
 
           <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
