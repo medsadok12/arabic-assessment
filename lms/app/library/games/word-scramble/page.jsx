@@ -513,7 +513,7 @@ export default function WordScrambleGame() {
           }
         `}</style>
         <div style={S.centerCard}>
-          <div style={{ fontSize: '4.8rem', lineHeight: 1, animation: 'wsIconBob 1.6s ease-in-out infinite', display: 'inline-block' }}>🔡</div>
+          <div style={{ fontSize: '4.8rem', lineHeight: 1, animation: 'wsIconBob 1.6s ease-in-out infinite', display: 'inline-block' }}>🦉</div>
           <h1 style={S.mainTitle}>رتّب الكلمة!</h1>
           <p style={{ ...S.sub, color: '#7c3aed', fontWeight: 700, margin: 0 }}>
             انتظر، جارٍ تجهيز الكلمات... 🎈
@@ -548,7 +548,7 @@ export default function WordScrambleGame() {
           {isTeacher && (
             <button style={S.cfgBtn} onClick={() => setShowCfg(true)}>⚙️ الإعدادات</button>
           )}
-          <div style={{ fontSize: '4.5rem', lineHeight: 1 }}>🔡</div>
+          <div style={{ fontSize: '4.5rem', lineHeight: 1 }}>🦉</div>
           <h1 style={S.mainTitle}>رتّب الكلمة!</h1>
           <p style={S.sub}>
             حروف الكلمة مبعثرة أمامك.<br />
