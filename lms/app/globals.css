@@ -604,6 +604,54 @@ body {
 .nav-mobile-divider { height: 1px; background: rgba(255,255,255,.15); margin: 4px 0; }
 .nav-mobile-logout { color: #ff8a80 !important; }
 
+/* ── Bottom Navigation Bar (mobile only) ── */
+.nav-bottom-bar {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--primary);
+  z-index: 1100;
+  border-top: 2px solid rgba(255,255,255,0.18);
+  padding: 6px 0 env(safe-area-inset-bottom, 6px);
+  justify-content: space-around;
+  align-items: flex-end;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.18);
+}
+.nav-bottom-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-decoration: none;
+  color: rgba(255,255,255,0.6);
+  flex: 1;
+  padding: 4px 2px 2px;
+  transition: color .2s;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+.nav-bottom-item.active { color: #fff; }
+.nav-bottom-icon {
+  font-size: 1.45rem;
+  line-height: 1;
+  width: 40px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 14px;
+  transition: background .2s, transform .15s;
+}
+.nav-bottom-item.active .nav-bottom-icon {
+  background: rgba(255,255,255,0.2);
+  transform: scale(1.12);
+}
+.nav-bottom-label {
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .3px;
+  white-space: nowrap;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .hero h1 { font-size: 1.9rem; }
@@ -626,15 +674,19 @@ body {
   .hero-photo { width: 100%; margin-bottom: -28px; }
   .navbar-links-desktop { display: none !important; }
   .nav-auth-btns { display: none; }
-  .nav-hamburger { display: block; }
+  .nav-hamburger { display: none !important; }
   .auth-card { padding: 28px 20px; }
   .stat-card { padding: 18px; }
   .navbar-social-desktop { display: none !important; }
   .navbar-about-link { display: none !important; }
+  /* Show bottom nav & add body padding so content isn't hidden */
+  .nav-bottom-bar { display: flex; }
+  body { padding-bottom: 70px; }
 }
 @media (min-width: 769px) {
   .nav-mobile-menu { display: none !important; }
   .navbar-social-desktop { display: flex; }
+  .nav-bottom-bar { display: none !important; }
 }
 
 /* ══════════════════════════════════════

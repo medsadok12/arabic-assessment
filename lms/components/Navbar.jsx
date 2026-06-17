@@ -135,6 +135,37 @@ function LangToggle() {
 const ROLE_LABELS_AR = { admin: 'مدير', teacher: 'معلم', student: 'طالب', supervisor: 'مرشد' };
 const ROLE_LABELS_EN = { admin: 'Admin', teacher: 'Teacher', student: 'Student', supervisor: 'Supervisor' };
 
+const NAV_ICONS = {
+  '/dashboard':  '🏠',
+  '/bogga':      '⚙️',
+  '/teacher':    '🏫',
+  '/supervisor': '👁️',
+  '/library':    '📚',
+};
+
+function BottomNav({ navLinks, pathname, onLogout }) {
+  const allItems = [
+    ...navLinks,
+    { href: '/profile', label: 'حسابي', icon: '👤' },
+  ];
+  return (
+    <div className="nav-bottom-bar">
+      {allItems.map(l => {
+        const icon = l.icon ?? NAV_ICONS[l.href] ?? '📄';
+        const active = l.href === '/profile'
+          ? pathname === '/profile'
+          : pathname.startsWith(l.href);
+        return (
+          <Link key={l.href} href={l.href} className={`nav-bottom-item${active ? ' active' : ''}`}>
+            <span className="nav-bottom-icon">{icon}</span>
+            <span className="nav-bottom-label">{l.label}</span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 function dashboardPath(role) {
   if (role === 'admin' || role === 'super_admin') return '/bogga';
   if (role === 'teacher') return '/teacher';
@@ -149,7 +180,6 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
   const { t, lang } = useLanguage();
 
   const [user,     setUser]     = useState(initialUser ?? null);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [dropOpen, setDropOpen] = useState(false);
 
   useEffect(() => {
@@ -179,7 +209,6 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
     const supabase = createClient();
     await supabase.auth.signOut();
     setUser(null);
-    setMenuOpen(false);
     setDropOpen(false);
     router.push('/');
     router.refresh();
@@ -323,73 +352,12 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
             </div>
           ) : null}
 
-          {/* ── Hamburger (mobile) ── */}
-          <button
-            className="nav-hamburger"
-            onClick={() => setMenuOpen(o => !o)}
-            aria-label={t('nav.menu')}
-          >
-            {menuOpen ? '✕' : '☰'}
-          </button>
         </div>
       </div>
 
-      {/* ── Mobile Menu ── */}
-      {menuOpen && (
-        <div className="nav-mobile-menu">
-          {/* أيقونات التواصل في الموبايل */}
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,.1)', paddingBottom: 12, marginBottom: 4 }}>
-            <div style={{ fontSize: '.75rem', color: 'rgba(255,255,255,.5)', textAlign: 'center', marginBottom: 8 }}>
-              {t('nav.contactUs')}
-            </div>
-            <SocialIcons mobile />
-          </div>
-
-          {/* Language toggle in mobile menu */}
-          <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 8 }}>
-            <LangToggle />
-          </div>
-
-          {user ? (
-            <>
-              <div className="nav-mobile-user">
-                {avatarURL
-                  ? <img src={avatarURL} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
-                  : <Initials name={fullName} size={40} />
-                }
-                <div>
-                  <div style={{ fontWeight: 700 }}>{fullName}</div>
-                  <div style={{ fontSize: '.8rem', opacity: .65 }}>{ROLE_LABELS[role] ?? t('nav.roleStudent')}</div>
-                </div>
-              </div>
-              {navLinks.map(l => (
-                <Link key={l.href} href={l.href} className="nav-mobile-item" onClick={() => setMenuOpen(false)}>
-                  {l.label}
-                </Link>
-              ))}
-              <Link href="/profile" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>
-                {t('nav.profile')}
-              </Link>
-              <div className="nav-mobile-divider" />
-              <button className="nav-mobile-item nav-mobile-logout" onClick={handleLogout}>
-                {t('nav.signOut')}
-              </button>
-            </>
-          ) : (
-            <>
-              <Link href="/#about" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>{t('nav.about')}</Link>
-              <Link href="/auth/login?for=student" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>
-                {t('nav.studentPortal')}
-              </Link>
-              <a href="https://api.whatsapp.com/send/?phone=447400755914" target="_blank" rel="noopener noreferrer" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>
-                {t('nav.contactAdmin')}
-              </a>
-            </>
-          )}
-        </div>
-      )}
     </nav>
     <TeamChat user={user} />
+    {user && <BottomNav navLinks={navLinks} pathname={pathname} onLogout={handleLogout} />}
     </>
   );
 }
