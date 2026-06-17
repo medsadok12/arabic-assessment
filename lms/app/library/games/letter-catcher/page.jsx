@@ -1008,10 +1008,44 @@ export default function LetterCatcherGame() {
     mi = sw.indexOf(stripDia(w.missing_letter));
   }
   const isLast        = cur + 1 >= queue.length;
+  const fullWordDisplay = w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word;
 
   return (
     <div style={S.page}>
-      <div style={S.headerRow}>
+      <style>{`
+        @keyframes lcWordReveal {
+          0%   { opacity:0; transform:scale(.15) rotate(-10deg); filter:blur(12px); }
+          55%  { transform:scale(1.18) rotate(2deg);  filter:blur(0); }
+          75%  { transform:scale(.95)  rotate(-1deg); }
+          100% { opacity:1; transform:scale(1)   rotate(0); }
+        }
+        @keyframes lcWordFloat {
+          0%,100% { transform:translateY(0px); }
+          50%     { transform:translateY(-6px); }
+        }
+        @keyframes lcWordShimmer {
+          0%   { background-position: 200% center; }
+          100% { background-position:-200% center; }
+        }
+        @keyframes lcWrongShake {
+          0%,100%{ transform:translateX(0); }
+          20%   { transform:translateX(-7px); }
+          40%   { transform:translateX(7px); }
+          60%   { transform:translateX(-5px); }
+          80%   { transform:translateX(5px); }
+        }
+        @keyframes lcSpark0 { 0%{opacity:0;transform:translate(0,0) scale(0)} 50%{opacity:1;transform:translate(-58px,-38px) scale(1.4)} 100%{opacity:0;transform:translate(-80px,-60px) scale(0)} }
+        @keyframes lcSpark1 { 0%{opacity:0;transform:translate(0,0) scale(0)} 50%{opacity:1;transform:translate(55px,-46px) scale(1.4)} 100%{opacity:0;transform:translate(78px,-68px) scale(0)} }
+        @keyframes lcSpark2 { 0%{opacity:0;transform:translate(0,0) scale(0)} 50%{opacity:1;transform:translate(-45px,44px) scale(1.2)} 100%{opacity:0;transform:translate(-64px,66px) scale(0)} }
+        @keyframes lcSpark3 { 0%{opacity:0;transform:translate(0,0) scale(0)} 50%{opacity:1;transform:translate(58px,40px) scale(1.3)} 100%{opacity:0;transform:translate(80px,62px) scale(0)} }
+        @keyframes lcSpark4 { 0%{opacity:0;transform:translate(0,0) scale(0)} 50%{opacity:1;transform:translate(0,-68px) scale(1.5)} 100%{opacity:0;transform:translate(0,-95px) scale(0)} }
+        @keyframes lcSpark5 { 0%{opacity:0;transform:translate(0,0) scale(0)} 50%{opacity:1;transform:translate(-30px,58px) scale(1.2)} 100%{opacity:0;transform:translate(-44px,80px) scale(0)} }
+        @keyframes lcSpark6 { 0%{opacity:0;transform:translate(0,0) scale(0)} 50%{opacity:1;transform:translate(36px,62px) scale(1.3)} 100%{opacity:0;transform:translate(52px,88px) scale(0)} }
+        @keyframes lcGlowPulse {
+          0%,100% { box-shadow:0 0 18px 2px rgba(34,197,94,.22), 0 6px 28px rgba(0,0,0,.1); }
+          50%     { box-shadow:0 0 36px 8px rgba(34,197,94,.38), 0 8px 32px rgba(0,0,0,.12); }
+        }
+      `}</style>
         <button
           onClick={() => { setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); }}
           style={{ flexShrink:0, background:'rgba(255,255,255,.18)', border:'none', borderRadius:10, padding:'5px 12px', color:'#fff', cursor:'pointer', fontSize:'.82rem', fontWeight:700, fontFamily:"'Tajawal', sans-serif" }}
@@ -1026,37 +1060,91 @@ export default function LetterCatcherGame() {
       <div style={S.card}>
         <WordImage imageUrl={w.image_url} emoji={w.emoji} />
 
-        <div style={S.wordRow}>
-          {mi < 0 ? (
-            <>
-              <span style={S.wordLetterBox}>{w.word}</span>
-              <span style={{ ...S.blank, background: '#eef3fc', borderColor: '#7c3aed', color: '#7c3aed' }}>؟</span>
-            </>
-          ) : sw.split('').map((ch, i) => {
-            const form = getLetterForm(sw, i);
-            if (i === mi) {
+        {/* ── word display area ── */}
+        {correct === true ? (
+          /* ── correct: beautiful full-word reveal ── */
+          <div style={{ position:'relative', padding:'10px 0 14px', textAlign:'center', overflow:'visible' }}>
+            {/* sparkle particles */}
+            {[
+              { em:'✨', an:'lcSpark0', delay:'0ms',   fs:'1.3rem' },
+              { em:'⭐', an:'lcSpark1', delay:'80ms',  fs:'1.1rem' },
+              { em:'💫', an:'lcSpark2', delay:'50ms',  fs:'1.2rem' },
+              { em:'🌟', an:'lcSpark3', delay:'130ms', fs:'1.1rem' },
+              { em:'✨', an:'lcSpark4', delay:'30ms',  fs:'1.4rem' },
+              { em:'⭐', an:'lcSpark5', delay:'100ms', fs:'1rem'   },
+              { em:'💫', an:'lcSpark6', delay:'60ms',  fs:'1.1rem' },
+            ].map((p, i) => (
+              <span key={i} style={{
+                position:'absolute', top:'50%', left:'50%',
+                fontSize: p.fs, lineHeight:1, pointerEvents:'none',
+                animation: `${p.an} .9s ${p.delay} cubic-bezier(.25,.46,.45,.94) both`,
+              }}>{p.em}</span>
+            ))}
+
+            {/* reveal container */}
+            <div style={{
+              display:'inline-flex', flexDirection:'column', alignItems:'center',
+              background:'linear-gradient(135deg,#f0fdf4,#dcfce7)',
+              borderRadius:28, padding:'10px 28px 14px',
+              border:'2.5px solid #86efac',
+              animation:'lcGlowPulse 1.8s .4s ease-in-out infinite, lcWordReveal .55s cubic-bezier(.34,1.56,.64,1) both',
+            }}>
+              <div style={{ fontSize:'.8rem', fontWeight:800, color:'#15803d', marginBottom:3, letterSpacing:'.02em' }}>
+                ✅ أحسنت! 🎉
+              </div>
+              <div style={{
+                fontSize: fullWordDisplay.length > 6 ? '2.1rem' : '2.7rem',
+                fontWeight:900,
+                fontFamily:"'Cairo','Tajawal',sans-serif",
+                direction:'rtl',
+                background:'linear-gradient(90deg,#f59e0b,#10b981,#3b82f6,#8b5cf6,#f59e0b)',
+                backgroundSize:'300% auto',
+                WebkitBackgroundClip:'text',
+                WebkitTextFillColor:'transparent',
+                backgroundClip:'text',
+                lineHeight:1.45,
+                animation:'lcWordShimmer 2.5s .55s linear infinite, lcWordFloat 2.8s .55s ease-in-out infinite',
+                willChange:'transform',
+              }}>
+                {fullWordDisplay}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ── unanswered / wrong: segmented letter boxes ── */
+          <div style={{ ...S.wordRow, animation: correct === false ? 'lcWrongShake .45s cubic-bezier(.36,.07,.19,.97) both' : 'none' }}>
+            {mi < 0 ? (
+              <>
+                <span style={S.wordLetterBox}>{w.word}</span>
+                <span style={{ ...S.blank, background:'#eef3fc', borderColor:'#7c3aed', color:'#7c3aed' }}>؟</span>
+              </>
+            ) : sw.split('').map((ch, i) => {
+              const form = getLetterForm(sw, i);
+              if (i === mi) {
+                return (
+                  <span key={i} style={{
+                    ...S.blank,
+                    background:  correct === null ? '#eef3fc' : '#f8d7da',
+                    borderColor: correct === null ? '#7c3aed'  : '#e74c3c',
+                    color:       correct === null ? '#7c3aed'  : '#e74c3c',
+                  }}>
+                    {correct !== null ? toContextual(w.missing_letter, form) : '؟'}
+                  </span>
+                );
+              }
               return (
-                <span key={i} style={{
-                  ...S.blank,
-                  background:  correct === null ? '#eef3fc' : correct ? '#d4edda' : '#f8d7da',
-                  borderColor: correct === null ? '#7c3aed'  : correct ? '#27ae60' : '#e74c3c',
-                  color:       correct === null ? '#7c3aed'  : correct ? '#27ae60' : '#e74c3c',
-                }}>
-                  {correct !== null ? toContextual(w.missing_letter, form) : '؟'}
+                <span key={i} style={S.wordLetterBox}>
+                  {toContextual(ch, form)}
                 </span>
               );
-            }
-            return (
-              <span key={i} style={S.wordLetterBox}>
-                {toContextual(ch, form)}
-              </span>
-            );
-          })}
-        </div>
+            })}
+          </div>
+        )}
 
-        {correct !== null && (
-          <div style={{ ...S.feedback, color: correct ? '#1a6b38' : '#9b1c1c', background: correct ? '#d4edda' : '#f8d7da' }}>
-            {correct ? '✅ أحسنت! إجابة صحيحة' : `❌ الصحيح: ${w.missing_letter}`}
+        {/* feedback for wrong answer only */}
+        {correct === false && (
+          <div style={{ ...S.feedback, color:'#9b1c1c', background:'#f8d7da' }}>
+            {`❌ الصحيح: ${w.missing_letter}`}
           </div>
         )}
 
