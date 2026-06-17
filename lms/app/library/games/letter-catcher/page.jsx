@@ -99,7 +99,7 @@ function fileToBase64(file) {
   });
 }
 
-function WordManager({ dbWords, onRefresh }) {
+function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
   const [word,      setWord]      = useState('');
   const [missing,   setMissing]   = useState('');
   const [topic,     setTopic]     = useState('');
@@ -112,10 +112,56 @@ function WordManager({ dbWords, onRefresh }) {
   const [deleting,  setDeleting]  = useState(null);
   const [msg,       setMsg]       = useState(null);
   const [category,  setCategory]  = useState('');
-  const fileRef   = useRef();
-  const mediaRef  = useRef(null);   // MediaRecorder
-  const chunksRef = useRef([]);
-  const timerRef  = useRef(null);
+  const fileRef    = useRef();
+  const catImgRef  = useRef();
+  const mediaRef   = useRef(null);
+  const chunksRef  = useRef([]);
+  const timerRef   = useRef(null);
+
+  /* ── inline category icon editor ── */
+  const [editingCat,  setEditingCat]  = useState(null);
+  const [catEmojiVal, setCatEmojiVal] = useState('');
+  const [catImgVal,   setCatImgVal]   = useState(null);
+  const [catSaving,   setCatSaving]   = useState(false);
+  const [catMsg,      setCatMsg]      = useState(null);
+
+  const openCatEdit = (cat, idx) => {
+    setEditingCat(cat);
+    setCatEmojiVal(catMeta?.[cat]?.emoji ?? getCatStyle(cat, idx).emoji);
+    setCatImgVal(catMeta?.[cat]?.image_url ?? null);
+    setCatMsg(null);
+  };
+
+  const saveCatMeta = async () => {
+    setCatSaving(true); setCatMsg(null);
+    try {
+      const res = await fetch('/api/games/letter-catcher/categories', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editingCat, emoji: catImgVal ? null : catEmojiVal, image_url: catImgVal || null }),
+      });
+      if (!res.ok) throw new Error();
+      setCatMsg({ ok: true, text: '✅ تم الحفظ' });
+      onCatMetaRefresh?.();
+      setTimeout(() => setEditingCat(null), 800);
+    } catch {
+      setCatMsg({ ok: false, text: '❌ فشل الحفظ' });
+    }
+    setCatSaving(false);
+  };
+
+  const resetCatMeta = async () => {
+    setCatSaving(true); setCatMsg(null);
+    try {
+      await fetch(`/api/games/letter-catcher/categories?name=${encodeURIComponent(editingCat)}`, { method: 'DELETE' });
+      setCatMsg({ ok: true, text: '↩️ أُعيد للافتراضي' });
+      onCatMetaRefresh?.();
+      setTimeout(() => setEditingCat(null), 800);
+    } catch {
+      setCatMsg({ ok: false, text: '❌ فشل' });
+    }
+    setCatSaving(false);
+  };
 
   const handleImg = (e) => {
     const f = e.target.files?.[0];
@@ -364,20 +410,98 @@ function WordManager({ dbWords, onRefresh }) {
               const cat = key === '__none__' ? null : key;
               const words = groups[key];
               const cs = getCatStyle(cat, gIdx);
-              const accentColor = cs.grad.match(/#[0-9a-fA-F]{3,6}/g)?.[0] || '#7c3aed';
+              const customMeta = catMeta?.[cat];
+              const displayEmoji = customMeta?.emoji || cs.emoji;
+              const displayImg   = customMeta?.image_url || null;
+              const accentColor  = cs.grad.match(/#[0-9a-fA-F]{3,6}/g)?.[0] || '#7c3aed';
+              const isEditing    = editingCat === cat;
               return (
                 <div key={key}>
                   {/* category header */}
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '5px 10px', borderRadius: 8, marginBottom: 6,
+                    padding: '5px 10px', borderRadius: 8, marginBottom: isEditing ? 0 : 6,
                     background: accentColor + '12',
                     borderRight: `3px solid ${accentColor}`,
+                    borderBottomLeftRadius: isEditing ? 0 : 8,
+                    borderBottomRightRadius: isEditing ? 0 : 8,
                   }}>
-                    <span style={{ fontSize: '1rem' }}>{cs.emoji}</span>
+                    {displayImg
+                      ? <img src={displayImg} style={{ width:22, height:22, borderRadius:5, objectFit:'cover', flexShrink:0 }} />
+                      : <span style={{ fontSize: '1rem' }}>{displayEmoji}</span>
+                    }
                     <span style={{ fontWeight: 800, color: '#1f2937', fontSize: '.86rem' }}>{cat || 'بدون تصنيف'}</span>
                     <span style={{ marginRight: 'auto', background: '#f3f4f6', borderRadius: 20, padding: '1px 8px', fontSize: '.72rem', color: '#6b7280', fontWeight: 700 }}>{words.length}</span>
+                    {cat && (
+                      <button
+                        onClick={() => isEditing ? setEditingCat(null) : openCatEdit(cat, gIdx)}
+                        style={{ background: isEditing ? '#fef2f2' : '#f5f3ff', border: 'none', borderRadius: 6, padding: '3px 7px', cursor: 'pointer', fontSize: '.72rem', fontWeight: 700, color: isEditing ? '#ef4444' : '#7c3aed', flexShrink: 0 }}
+                      >{isEditing ? '✕ إغلاق' : '✏️ تعديل الأيقونة'}</button>
+                    )}
                   </div>
+
+                  {/* inline category icon editor */}
+                  {isEditing && (
+                    <div style={{ background: '#faf5ff', border: `1.5px solid ${accentColor}40`, borderTop: 'none', borderRadius: '0 0 8px 8px', padding: '10px 12px', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        {/* preview */}
+                        <div
+                          onClick={() => catImgRef.current?.click()}
+                          title="انقر لتغيير الصورة"
+                          style={{ width:44, height:44, borderRadius:10, overflow:'hidden', background:cs.grad, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'0 2px 8px rgba(0,0,0,.18)', flexShrink:0 }}
+                        >
+                          {catImgVal
+                            ? <img src={catImgVal} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                            : <span style={{ fontSize:'1.5rem', lineHeight:1 }}>{catEmojiVal}</span>
+                          }
+                        </div>
+
+                        {/* emoji input */}
+                        <input
+                          value={catImgVal ? '' : catEmojiVal}
+                          onChange={e => { setCatEmojiVal(e.target.value); setCatImgVal(null); }}
+                          placeholder="🔤 أيقونة"
+                          disabled={!!catImgVal}
+                          maxLength={2}
+                          style={{ width:54, textAlign:'center', fontSize:'1.2rem', border:'1.5px solid #ddd6fe', borderRadius:8, padding:'5px', fontFamily:'inherit', background: catImgVal ? '#f3f4f6' : '#fff' }}
+                        />
+
+                        {/* upload image */}
+                        <button onClick={() => catImgRef.current?.click()}
+                          style={{ background:'#f0fdf4', border:'1.5px solid #86efac', borderRadius:8, padding:'6px 10px', cursor:'pointer', fontSize:'.78rem', fontWeight:700, color:'#15803d' }}
+                        >🖼️ صورة</button>
+                        <input type="file" accept="image/*" hidden ref={catImgRef}
+                          onChange={async e => {
+                            const f = e.target.files?.[0]; if (!f) return;
+                            const b64 = await fileToBase64(f);
+                            setCatImgVal(b64); setCatEmojiVal('');
+                          }}
+                        />
+
+                        {/* clear image */}
+                        {catImgVal && (
+                          <button onClick={() => setCatImgVal(null)}
+                            style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:'.9rem', padding:'2px 4px' }}
+                          >✕ مسح</button>
+                        )}
+
+                        {/* save */}
+                        <button onClick={saveCatMeta} disabled={catSaving}
+                          style={{ background:'linear-gradient(135deg,#5b4fc4,#7c3aed)', border:'none', borderRadius:8, padding:'6px 14px', color:'#fff', fontSize:'.8rem', fontWeight:700, cursor:'pointer' }}
+                        >{catSaving ? '…' : 'حفظ'}</button>
+
+                        {/* reset */}
+                        {(customMeta?.emoji || customMeta?.image_url) && (
+                          <button onClick={resetCatMeta} disabled={catSaving}
+                            style={{ background:'none', border:'1.5px solid #e5e7eb', borderRadius:8, padding:'5px 10px', color:'#9ca3af', fontSize:'.75rem', fontWeight:700, cursor:'pointer' }}
+                          >↩️ افتراضي</button>
+                        )}
+                      </div>
+                      {catMsg && (
+                        <div style={{ marginTop:6, fontSize:'.78rem', fontWeight:700, color: catMsg.ok ? '#15803d' : '#b91c1c' }}>{catMsg.text}</div>
+                      )}
+                    </div>
+                  )}
                   {/* words under this category */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingRight: 10 }}>
                     {words.map(w => (
@@ -415,151 +539,9 @@ function WordManager({ dbWords, onRefresh }) {
   );
 }
 
-/* ─────────────────── category icon editor ────────────────────── */
-function CatEditor({ categories, catMeta, onRefresh }) {
-  const fileRefs  = useRef({});
-  const [editEmoji, setEditEmoji] = useState({});
-  const [editImg,   setEditImg]   = useState({});
-  const [saving,    setSaving]    = useState(null);
-  const [msg,       setMsg]       = useState(null);
-
-  const currentEmoji = (cat, idx) => {
-    if (editEmoji[cat] !== undefined) return editEmoji[cat];
-    if (catMeta[cat]?.emoji) return catMeta[cat].emoji;
-    return getCatStyle(cat, idx).emoji;
-  };
-  const currentImg = (cat) =>
-    editImg[cat] !== undefined ? editImg[cat] : (catMeta[cat]?.image_url || null);
-
-  const handleSave = async (cat, idx) => {
-    setSaving(cat); setMsg(null);
-    try {
-      const res = await fetch('/api/games/letter-catcher/categories', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: cat,
-          emoji: currentEmoji(cat, idx) || null,
-          image_url: currentImg(cat) || null,
-        }),
-      });
-      if (!res.ok) throw new Error();
-      setMsg({ ok: true, text: `✅ تم حفظ "${cat}"` });
-      onRefresh();
-    } catch {
-      setMsg({ ok: false, text: '❌ فشل الحفظ' });
-    }
-    setSaving(null);
-  };
-
-  const handleReset = async (cat) => {
-    setSaving(cat + '_reset'); setMsg(null);
-    try {
-      await fetch(`/api/games/letter-catcher/categories?name=${encodeURIComponent(cat)}`, { method: 'DELETE' });
-      setEditEmoji(p => { const n = { ...p }; delete n[cat]; return n; });
-      setEditImg(p =>   { const n = { ...p }; delete n[cat]; return n; });
-      setMsg({ ok: true, text: `✅ أُعيد "${cat}" للافتراضي` });
-      onRefresh();
-    } catch {
-      setMsg({ ok: false, text: '❌ فشل الحذف' });
-    }
-    setSaving(null);
-  };
-
-  if (categories.length === 0) return (
-    <div style={{ color:'#9ca3af', fontSize:'.85rem', textAlign:'center', padding:12 }}>
-      لا توجد تصنيفات — أضف كلمات مع تصنيفاتها أولاً
-    </div>
-  );
-
-  return (
-    <div>
-      {categories.map((cat, idx) => {
-        const cs  = getCatStyle(cat, idx);
-        const img = currentImg(cat);
-        const emo = currentEmoji(cat, idx);
-        const isCustom = !!(catMeta[cat]?.emoji || catMeta[cat]?.image_url);
-        return (
-          <div key={cat} style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 0', borderBottom:'1px solid #f3f4f6' }}>
-            {/* preview bubble */}
-            <div
-              onClick={() => fileRefs.current[cat]?.click()}
-              title="انقر لتغيير الصورة"
-              style={{ width:42, height:42, borderRadius:10, overflow:'hidden', background:cs.grad, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer', boxShadow:'0 2px 8px rgba(0,0,0,.18)' }}
-            >
-              {img
-                ? <img src={img} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                : <span style={{ fontSize:'1.4rem', lineHeight:1 }}>{emo}</span>
-              }
-            </div>
-
-            {/* category name */}
-            <span style={{ fontWeight:800, color:'#1f2937', fontSize:'.86rem', minWidth:60 }}>{cat}</span>
-
-            {/* emoji input */}
-            <input
-              value={img ? '' : emo}
-              onChange={e => { setEditEmoji(p => ({ ...p, [cat]: e.target.value })); setEditImg(p => ({ ...p, [cat]: null })); }}
-              placeholder="🔤"
-              disabled={!!img}
-              style={{ width:44, textAlign:'center', fontSize:'1.15rem', border:'1.5px solid #e5e7eb', borderRadius:8, padding:'4px', fontFamily:'inherit', background: img ? '#f3f4f6' : '#fff' }}
-              maxLength={2}
-            />
-
-            {/* image upload button */}
-            <button
-              onClick={() => fileRefs.current[cat]?.click()}
-              style={{ background:'#f0fdf4', border:'1.5px solid #86efac', borderRadius:8, padding:'5px 9px', cursor:'pointer', fontSize:'.72rem', fontWeight:700, color:'#166534', flexShrink:0 }}
-            >🖼️</button>
-            <input type="file" accept="image/*" hidden ref={el => { fileRefs.current[cat] = el; }}
-              onChange={async e => {
-                const f = e.target.files?.[0]; if (!f) return;
-                const b64 = await fileToBase64(f);
-                setEditImg(p => ({ ...p, [cat]: b64 }));
-                setEditEmoji(p => ({ ...p, [cat]: '' }));
-              }}
-            />
-
-            {/* clear image */}
-            {img && (
-              <button onClick={() => setEditImg(p => ({ ...p, [cat]: null }))}
-                style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:'.85rem', padding:'2px', flexShrink:0 }}
-                title="مسح الصورة">✕</button>
-            )}
-
-            {/* save */}
-            <button
-              onClick={() => handleSave(cat, idx)}
-              disabled={!!saving}
-              style={{ background:'linear-gradient(135deg,#5b4fc4,#7c3aed)', border:'none', borderRadius:8, padding:'5px 11px', color:'#fff', fontSize:'.75rem', fontWeight:700, cursor:'pointer', flexShrink:0 }}
-            >{saving === cat ? '…' : 'حفظ'}</button>
-
-            {/* reset to default */}
-            {isCustom && (
-              <button
-                onClick={() => handleReset(cat)}
-                disabled={!!saving}
-                style={{ background:'none', border:'1.5px solid #e5e7eb', borderRadius:8, padding:'4px 8px', color:'#9ca3af', fontSize:'.7rem', fontWeight:700, cursor:'pointer', flexShrink:0 }}
-                title="إعادة للافتراضي"
-              >↩️</button>
-            )}
-          </div>
-        );
-      })}
-      {msg && (
-        <div style={{ marginTop:8, padding:'6px 10px', borderRadius:8, fontSize:'.82rem', fontWeight:700, background: msg.ok ? '#d4edda' : '#f8d7da', color: msg.ok ? '#155724' : '#721c24' }}>
-          {msg.text}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ─────────────────── settings panel (modal) ─────────────────── */
 function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
   const [cfgOpen, setCfgOpen] = useState(false);
-  const [catOpen, setCatOpen] = useState(false);
-  const uniqueCats = [...new Set(dbWords.map(w => w.category).filter(Boolean))];
 
   return (
     <div style={S.settingsOverlay} onClick={onClose}>
@@ -635,28 +617,7 @@ function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh, catMeta, on
           )}
         </div>
 
-        {/* category customization accordion */}
-        <div style={{ marginBottom: 16, borderRadius: 12, border: '1.5px solid #e5e7eb', overflow: 'hidden' }}>
-          <button
-            onClick={() => setCatOpen(o => !o)}
-            style={{
-              width: '100%', background: catOpen ? '#f0fdf4' : '#f9fafb',
-              border: 'none', padding: '10px 14px', display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between', cursor: 'pointer',
-              fontFamily: "'Tajawal', sans-serif",
-            }}
-          >
-            <span style={{ fontWeight: 700, color: '#15803d', fontSize: '.9rem' }}>🎨 تخصيص أيقونات التصنيفات</span>
-            <span style={{ color: '#9ca3af', fontSize: '.78rem' }}>{catOpen ? '▲ طي' : '▼ توسيع'}</span>
-          </button>
-          {catOpen && (
-            <div style={{ padding: '14px', borderTop: '1px solid #e5e7eb' }}>
-              <CatEditor categories={uniqueCats} catMeta={catMeta} onRefresh={onCatMetaRefresh} />
-            </div>
-          )}
-        </div>
-
-        <WordManager dbWords={dbWords} onRefresh={onRefresh} />
+        <WordManager dbWords={dbWords} onRefresh={onRefresh} catMeta={catMeta} onCatMetaRefresh={onCatMetaRefresh} />
       </div>
     </div>
   );
