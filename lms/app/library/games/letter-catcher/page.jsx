@@ -831,7 +831,7 @@ export default function LetterCatcherGame() {
           <SettingsPanel cfg={cfg} onChange={setCfg} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={loadWords} catMeta={catMeta} onCatMetaRefresh={loadCatMeta} />
         )}
 
-        <div style={{ width:'100%', maxWidth:480, textAlign:'center', position:'relative', padding:'0 16px' }}>
+        <div style={{ width:'100%', maxWidth:'min(96vw, 640px)', textAlign:'center', position:'relative', padding:'0 6px' }}>
 
           {/* settings button */}
           {isTeacher && (
@@ -916,7 +916,7 @@ export default function LetterCatcherGame() {
               </div>
 
               {/* category circles */}
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:12 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:14 }}>
                 {categories.map((cat, idx) => {
                   const cs      = getCatStyle(cat, idx);
                   const custom  = catMeta[cat];
@@ -937,11 +937,11 @@ export default function LetterCatcherGame() {
                       onClick={() => startGame(cat)}
                     >
                       {custom?.image_url
-                        ? <img src={custom.image_url} style={{ width:54, height:54, borderRadius:12, objectFit:'cover', boxShadow:'0 2px 8px rgba(0,0,0,.22)' }} />
-                        : <span style={{ fontSize:'2.4rem', lineHeight:1 }}>{custom?.emoji || cs.emoji}</span>
+                        ? <img src={custom.image_url} style={{ width:64, height:64, borderRadius:14, objectFit:'cover', boxShadow:'0 2px 8px rgba(0,0,0,.22)' }} />
+                        : <span style={{ fontSize:'2.8rem', lineHeight:1 }}>{custom?.emoji || cs.emoji}</span>
                       }
                       <span style={{
-                        fontSize:'.78rem', fontWeight:800, color:'#fff',
+                        fontSize:'.82rem', fontWeight:800, color:'#fff',
                         textShadow:'0 1px 4px rgba(0,0,0,.3)', lineHeight:1.3,
                         textAlign:'center', padding:'0 4px',
                       }}>
@@ -1185,11 +1185,11 @@ const S = {
     minHeight: '100vh',
     background: 'linear-gradient(135deg, #5b4fc4 0%, #7c3aed 50%, #9c3ec4 100%)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    padding: 20, fontFamily: "'Tajawal', sans-serif", direction: 'rtl',
+    padding: '12px 6px', fontFamily: "'Tajawal', sans-serif", direction: 'rtl',
   },
   centerCard: {
-    position: 'relative', background: '#fff', borderRadius: 24, padding: '44px 36px',
-    textAlign: 'center', maxWidth: 440, width: '100%',
+    position: 'relative', background: '#fff', borderRadius: 24, padding: '36px 28px',
+    textAlign: 'center', maxWidth: 'min(96vw, 600px)', width: '100%',
     boxShadow: '0 24px 64px rgba(0,0,0,0.32)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
   },
@@ -1245,7 +1245,7 @@ const S = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 20,
   },
   settingsCard: {
-    background: '#fff', borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 420,
+    background: '#fff', borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 'min(96vw, 540px)',
     display: 'flex', flexDirection: 'column', gap: 0,
     boxShadow: '0 16px 48px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto',
     fontFamily: "'Tajawal', sans-serif",
@@ -1260,7 +1260,7 @@ const S = {
     color: '#1a1a2e', cursor: 'pointer',
   },
   headerRow: {
-    display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 540,
+    display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 'min(98vw, 700px)',
     marginBottom: 14, color: '#fff',
   },
   scoreBadge: {
@@ -1271,15 +1271,15 @@ const S = {
   barFill: { height: '100%', background: '#fbbf24', borderRadius: 4, transition: 'width 0.4s' },
   barLabel: { fontSize: '0.88rem', flexShrink: 0, opacity: 0.82 },
   card: {
-    background: '#fff', borderRadius: 24, padding: '32px 28px', width: '100%', maxWidth: 540,
+    background: '#fff', borderRadius: 24, padding: '28px 20px', width: '100%', maxWidth: 'min(98vw, 700px)',
     boxShadow: '0 24px 64px rgba(0,0,0,0.32)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22,
   },
   emojiBox: {
-    width: 110, height: 110, background: '#f5f3ff', borderRadius: 18,
-    fontSize: '3.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    width: 140, height: 140, background: '#f5f3ff', borderRadius: 20,
+    fontSize: '4.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
-  wordImg: { width: 110, height: 110, objectFit: 'contain', borderRadius: 14 },
+  wordImg: { width: 140, height: 140, objectFit: 'contain', borderRadius: 16 },
   wordRow: {
     display: 'flex', alignItems: 'center', gap: 6,
     flexWrap: 'wrap', justifyContent: 'center', direction: 'rtl',
@@ -1301,7 +1301,7 @@ const S = {
   },
   optRow: { display: 'grid', gap: 12, width: '100%', justifyItems: 'center' },
   optBtn: {
-    width: 76, height: 76, borderRadius: 16, border: '2px solid #e5e7eb',
+    width: 86, height: 86, borderRadius: 18, border: '2px solid #e5e7eb',
     background: '#f9fafb', fontSize: '1.9rem', fontWeight: 700, cursor: 'pointer',
     transition: 'all 0.18s', fontFamily: "'Tajawal', sans-serif", color: '#1a1a2e',
   },
@@ -1310,6 +1310,6 @@ const S = {
   btnBlue: {
     background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 14,
     padding: '13px 0', fontSize: '1.05rem', fontWeight: 700, cursor: 'pointer',
-    fontFamily: "'Tajawal', sans-serif", width: '100%', maxWidth: 280,
+    fontFamily: "'Tajawal', sans-serif", width: '100%', maxWidth: 420,
   },
 };
