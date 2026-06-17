@@ -32,19 +32,14 @@ function formatSegs(segs) {
   return segs.filter(Boolean).join(' ▪ ');
 }
 
+/* Arabic letters that cannot extend a connecting arm to the left */
 const NON_CONN = new Set('اأإآءودرذزوىة');
-const ZWJ = '‍';
-function stripDia(s) { return (s || '').replace(/[ً-ْٰ]/g, ''); }
-function segWithContext(segs, idx) {
-  const seg      = segs[idx] || '';
-  const prevSeg  = segs[idx - 1] || '';
-  const prevLast = stripDia(prevSeg).slice(-1);
-  const segLast  = stripDia(seg).slice(-1);
-  const hasNext  = idx < segs.length - 1;
-  let out = seg;
-  if (prevLast && !NON_CONN.has(prevLast)) out = ZWJ + out;
-  if (hasNext && segLast && !NON_CONN.has(segLast)) out = out + ZWJ;
-  return out;
+/* Add Tatweel (ـ) arm at end of a segment when it connects to the next */
+function addArm(seg, isLast) {
+  if (isLast || !seg) return seg;
+  const stripped = seg.replace(/[ً-ْٰ]/g, '');
+  const last = stripped[stripped.length - 1] || '';
+  return NON_CONN.has(last) ? seg : seg + 'ـ';
 }
 
 const TOPICS = ['الحيوانات', 'المدرسة', 'الأسرة', 'الطبيعة', 'الفواكه', 'الألوان', 'المهن', 'الأدوات'];
@@ -554,59 +549,67 @@ export default function WordSmashGame() {
                     const segs     = (opt.segs || []).filter(Boolean);
                     const picked   = chosen === idx;
                     const revealed = chosen !== null;
-                    let borderColor = '#e2e8f0';
-                    let bgColor     = '#fff';
-                    let opacity     = 1;
+                    let cardBorder = '#e2e8f0';
+                    let cardBg     = '#fff';
+                    let opacity    = 1;
                     if (revealed) {
-                      if (opt.isCorrect) { borderColor = '#10b981'; bgColor = '#f0fdf4'; }
-                      else if (picked)   { borderColor = '#ef4444'; bgColor = '#fef2f2'; }
-                      else               { opacity = 0.38; }
+                      if (opt.isCorrect) { cardBorder = '#10b981'; cardBg = '#f0fdf4'; }
+                      else if (picked)   { cardBorder = '#ef4444'; cardBg = '#fef2f2'; }
+                      else               { opacity = 0.35; }
                     }
-                    const segPillBg = revealed
-                      ? (opt.isCorrect ? '#d1fae5' : picked ? '#fecaca' : '#f8fafc')
-                      : '#f0f4ff';
-                    const segPillBorder = revealed
-                      ? (opt.isCorrect ? '#6ee7b7' : picked ? '#fca5a5' : '#e2e8f0')
-                      : '#dde3f5';
+                    /* pill colours based on card state */
+                    const pillBg  = !revealed ? '#f0f4ff'
+                      : opt.isCorrect ? '#d1fae5'
+                      : picked        ? '#fee2e2'
+                      : '#f1f5f9';
+                    const pillClr = !revealed ? '#1a1a2e'
+                      : opt.isCorrect ? '#065f46'
+                      : picked        ? '#991b1b'
+                      : '#94a3b8';
                     return (
                       <div
                         key={idx}
                         className="ws-card"
                         onClick={() => pick(idx)}
-                        style={{ borderColor, background: bgColor, opacity, animationDelay: `${idx * .06}s`, cursor: revealed ? 'default' : 'pointer', padding: '14px 8px', minHeight: 96 }}
+                        style={{ borderColor: cardBorder, background: cardBg, opacity, animationDelay: `${idx * .06}s`, cursor: revealed ? 'default' : 'pointer', padding: '14px 6px', minHeight: 100, gap: 8 }}
                       >
                         {segs.length === 0 ? (
-                          <span style={{ color: '#94a3b8', fontSize: '.8rem' }}>—</span>
+                          <span style={{ color: '#94a3b8', fontSize: '.85rem' }}>—</span>
                         ) : (
-                          <div style={{ display: 'flex', flexDirection: 'row', direction: 'rtl', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 4 }}>
+                          /* horizontal RTL row — each segment is one connected pill */
+                          <div style={{ display: 'flex', flexDirection: 'row', direction: 'rtl', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 5 }}>
                             {segs.map((seg, si) => (
-                              <span key={si} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                <span style={{
-                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                  background: segPillBg,
-                                  border: `1.5px solid ${segPillBorder}`,
+                              <span
+                                key={si}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  background: pillBg,
                                   borderRadius: 10,
-                                  padding: '5px 12px',
-                                  fontSize: '1.3rem',
+                                  padding: '5px 13px',
+                                  fontSize: '1.35rem',
                                   fontWeight: 800,
-                                  color: '#1a1a2e',
-                                  minWidth: 42,
+                                  color: pillClr,
+                                  minWidth: 44,
+                                  lineHeight: 1.4,
                                   fontFamily: "'Cairo','Tajawal',sans-serif",
-                                }}>
-                                  {segWithContext(segs, si)}
-                                </span>
-                                {si < segs.length - 1 && (
-                                  <span style={{ color: '#9ca3af', fontSize: '.9rem', fontWeight: 700 }}>▪</span>
-                                )}
+                                  letterSpacing: 0,
+                                  direction: 'rtl',
+                                  unicodeBidi: 'isolate',
+                                }}
+                              >
+                                {/* addArm appends tatweel (ـ) so the letter shows its connecting arm */}
+                                {addArm(seg, si === segs.length - 1)}
                               </span>
                             ))}
                           </div>
                         )}
                         {revealed && opt.isCorrect && (
-                          <div style={{ fontSize: '.7rem', color: '#065f46', fontWeight: 700, marginTop: 6 }}>✓ صحيح</div>
+                          <div style={{ fontSize: '.7rem', color: '#065f46', fontWeight: 700 }}>✓ صحيح</div>
                         )}
                         {revealed && picked && !opt.isCorrect && (
-                          <div style={{ fontSize: '.7rem', color: '#dc2626', fontWeight: 700, marginTop: 6 }}>✗ خطأ</div>
+                          <div style={{ fontSize: '.7rem', color: '#dc2626', fontWeight: 700 }}>✗ خطأ</div>
                         )}
                       </div>
                     );
