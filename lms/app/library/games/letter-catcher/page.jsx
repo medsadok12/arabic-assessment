@@ -338,130 +338,162 @@ function WordManager({ dbWords, onRefresh }) {
         </button>
       </div>
 
-      <div style={{ fontWeight: 700, color: '#374151', marginBottom: 8, fontSize: '.88rem' }}>
-        📚 الكلمات في قاعدة البيانات ({dbWords.length})
-      </div>
+      {dbWords.length > 0 && (
+        <div style={{ fontWeight: 700, color: '#374151', marginBottom: 10, fontSize: '.88rem' }}>
+          📚 الكلمات ({dbWords.length})
+        </div>
+      )}
       {dbWords.length === 0 ? (
         <div style={{ textAlign: 'center', color: '#9ca3af', padding: '16px 0', fontSize: '.88rem' }}>
           لا توجد كلمات بعد — أضف أولى كلماتك أعلاه
         </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
-          {dbWords.map(w => (
-            <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f9fafb', borderRadius: 10, padding: '8px 12px', border: '1px solid #e5e7eb' }}>
-              {w.image_url
-                ? <img src={w.image_url} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
-                : w.emoji ? <span style={{ fontSize: '1.2rem' }}>{w.emoji}</span> : null
-              }
-              <span style={{ flex: 1, fontWeight: 700, color: '#1f2937', fontSize: '.9rem' }}>
-                {w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word}
-              </span>
-              {w.category && <span style={{ background: '#f5f3ff', color: '#7c3aed', borderRadius: 20, padding: '2px 8px', fontSize: '.7rem', fontWeight: 700 }}>{w.category}</span>}
-              {w.topic && <span style={{ background: '#e0f2fe', color: '#0369a1', borderRadius: 20, padding: '2px 8px', fontSize: '.7rem', fontWeight: 700 }}>{w.topic}</span>}
-              <span style={{ background: '#ede9fe', color: '#7c3aed', borderRadius: 20, padding: '2px 8px', fontSize: '.75rem', fontWeight: 700 }}>{w.missing_letter}</span>
-              {w.audio_url && <span title="يحتوي على تسجيل" style={{ fontSize: '.75rem' }}>🎙️</span>}
-              <button onClick={() => w.audio_url ? new Audio(w.audio_url).play() : speak(w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word)} title="استمع" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '2px 4px', lineHeight: 1 }}>🔊</button>
-              <button
-                onClick={() => handleDelete(w.id, w.word)}
-                disabled={deleting === w.id}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '1.05rem', padding: '2px 4px', lineHeight: 1 }}
-                title="حذف"
-              >
-                {deleting === w.id ? '…' : '🗑️'}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      ) : (() => {
+        const groups = {};
+        dbWords.forEach(w => {
+          const key = w.category || '__none__';
+          (groups[key] = groups[key] || []).push(w);
+        });
+        const keys = Object.keys(groups).sort((a, b) => {
+          if (a === '__none__') return 1;
+          if (b === '__none__') return -1;
+          return a.localeCompare(b, 'ar');
+        });
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {keys.map((key, gIdx) => {
+              const cat = key === '__none__' ? null : key;
+              const words = groups[key];
+              const cs = getCatStyle(cat, gIdx);
+              const accentColor = cs.grad.match(/#[0-9a-fA-F]{3,6}/g)?.[0] || '#7c3aed';
+              return (
+                <div key={key}>
+                  {/* category header */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '5px 10px', borderRadius: 8, marginBottom: 6,
+                    background: accentColor + '12',
+                    borderRight: `3px solid ${accentColor}`,
+                  }}>
+                    <span style={{ fontSize: '1rem' }}>{cs.emoji}</span>
+                    <span style={{ fontWeight: 800, color: '#1f2937', fontSize: '.86rem' }}>{cat || 'بدون تصنيف'}</span>
+                    <span style={{ marginRight: 'auto', background: '#f3f4f6', borderRadius: 20, padding: '1px 8px', fontSize: '.72rem', color: '#6b7280', fontWeight: 700 }}>{words.length}</span>
+                  </div>
+                  {/* words under this category */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingRight: 10 }}>
+                    {words.map(w => (
+                      <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#f9fafb', borderRadius: 8, padding: '6px 10px', border: '1px solid #e5e7eb' }}>
+                        {w.image_url
+                          ? <img src={w.image_url} alt="" style={{ width: 26, height: 26, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />
+                          : w.emoji ? <span style={{ fontSize: '1rem' }}>{w.emoji}</span> : null
+                        }
+                        <span style={{ flex: 1, fontWeight: 700, color: '#1f2937', fontSize: '.88rem' }}>
+                          {w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word}
+                        </span>
+                        <span style={{ background: '#ede9fe', color: '#7c3aed', borderRadius: 20, padding: '1px 7px', fontSize: '.72rem', fontWeight: 700 }}>{w.missing_letter}</span>
+                        {w.audio_url && <span title="يحتوي على تسجيل" style={{ fontSize: '.7rem' }}>🎙️</span>}
+                        <button
+                          onClick={() => w.audio_url ? new Audio(w.audio_url).play() : speak(w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word)}
+                          title="استمع"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '.9rem', padding: '2px 3px', lineHeight: 1 }}
+                        >🔊</button>
+                        <button
+                          onClick={() => handleDelete(w.id, w.word)}
+                          disabled={deleting === w.id}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '.9rem', padding: '2px 3px', lineHeight: 1 }}
+                          title="حذف"
+                        >{deleting === w.id ? '…' : '🗑️'}</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
     </div>
   );
 }
 
 /* ─────────────────── settings panel (modal) ─────────────────── */
 function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh }) {
-  const [tab, setTab] = useState('settings');
-  const tabStyle = (id) => ({
-    flex: 1, padding: '9px 0', border: 'none', borderRadius: 10,
-    fontFamily: "'Tajawal', sans-serif", fontWeight: 700, fontSize: '.88rem',
-    cursor: 'pointer', transition: 'all .15s',
-    background: tab === id ? 'linear-gradient(135deg,#5b4fc4,#7c3aed)' : '#f3f4f6',
-    color: tab === id ? '#fff' : '#6b7280',
-  });
+  const [cfgOpen, setCfgOpen] = useState(false);
 
   return (
     <div style={S.settingsOverlay} onClick={onClose}>
       <div style={S.settingsCard} onClick={e => e.stopPropagation()}>
+
+        {/* header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem' }}>⚙️ إعدادات اللعبة</h3>
+          <h3 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem' }}>📖 إدارة الكلمات</h3>
           <button onClick={onClose} style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
 
-        <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
-          <button style={tabStyle('settings')} onClick={() => setTab('settings')}>⚙️ الإعدادات</button>
-          <button style={tabStyle('words')} onClick={() => setTab('words')}>📖 الكلمات ({dbWords.length})</button>
+        {/* collapsible settings accordion */}
+        <div style={{ marginBottom: 16, borderRadius: 12, border: '1.5px solid #e5e7eb', overflow: 'hidden' }}>
+          <button
+            onClick={() => setCfgOpen(o => !o)}
+            style={{
+              width: '100%', background: cfgOpen ? '#f5f3ff' : '#f9fafb',
+              border: 'none', padding: '10px 14px', display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', cursor: 'pointer',
+              fontFamily: "'Tajawal', sans-serif",
+            }}
+          >
+            <span style={{ fontWeight: 700, color: '#5b4fc4', fontSize: '.9rem' }}>⚙️ إعدادات الجولة</span>
+            <span style={{ color: '#9ca3af', fontSize: '.78rem' }}>{cfgOpen ? '▲ طي' : '▼ توسيع'}</span>
+          </button>
+          {cfgOpen && (
+            <div style={{ padding: '14px', borderTop: '1px solid #e5e7eb' }}>
+              <label style={S.settingsLabel}>
+                عدد الأسئلة في الجولة
+                <input type="number" min={1} value={cfg.questionsPerRound}
+                  onChange={e => onChange({ ...cfg, questionsPerRound: Math.max(1, Number(e.target.value) || 1) })}
+                  style={S.settingsSelect} />
+              </label>
+              <label style={S.settingsLabel}>
+                عدد الخيارات لكل سؤال
+                <select value={cfg.optionsCount} onChange={e => onChange({ ...cfg, optionsCount: Number(e.target.value) })} style={S.settingsSelect}>
+                  {[3, 4, 5].map(v => <option key={v} value={v}>{v} خيارات</option>)}
+                </select>
+              </label>
+              <label style={S.settingsLabel}>
+                الموضوع
+                <select value={cfg.topic} onChange={e => onChange({ ...cfg, topic: e.target.value })} style={S.settingsSelect}>
+                  <option value=''>كل المواضيع</option>
+                  {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
+              <label style={S.settingsLabel}>
+                الصف الدراسي
+                <select value={cfg.grade} onChange={e => onChange({ ...cfg, grade: Number(e.target.value) })} style={S.settingsSelect}>
+                  <option value={0}>كل الصفوف</option>
+                  {[1, 2, 3, 4, 5, 6].map(g => <option key={g} value={g}>الصف {g}</option>)}
+                </select>
+              </label>
+              <label style={S.settingsLabel}>
+                طول الكلمة: {cfg.minLen} – {cfg.maxLen} حرفاً
+                <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '.75rem', color: '#9ca3af', marginBottom: 4, textAlign: 'center' }}>أدنى: {cfg.minLen}</div>
+                    <input type="range" min={2} max={cfg.maxLen} value={cfg.minLen}
+                      onChange={e => onChange({ ...cfg, minLen: Number(e.target.value) })}
+                      style={{ width: '100%', accentColor: '#7c3aed' }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '.75rem', color: '#9ca3af', marginBottom: 4, textAlign: 'center' }}>أقصى: {cfg.maxLen}</div>
+                    <input type="range" min={cfg.minLen} max={12} value={cfg.maxLen}
+                      onChange={e => onChange({ ...cfg, maxLen: Number(e.target.value) })}
+                      style={{ width: '100%', accentColor: '#7c3aed' }} />
+                  </div>
+                </div>
+              </label>
+              <button style={S.btnGold} onClick={() => { setCfgOpen(false); onClose(); }}>حفظ الإعدادات ✓</button>
+            </div>
+          )}
         </div>
 
-        {tab === 'settings' && (
-          <>
-            <label style={S.settingsLabel}>
-              عدد الأسئلة في الجولة
-              <input
-                type="number"
-                min={1}
-                value={cfg.questionsPerRound}
-                onChange={e => onChange({ ...cfg, questionsPerRound: Math.max(1, Number(e.target.value) || 1) })}
-                style={S.settingsSelect}
-              />
-            </label>
-
-            <label style={S.settingsLabel}>
-              عدد الخيارات لكل سؤال
-              <select value={cfg.optionsCount} onChange={e => onChange({ ...cfg, optionsCount: Number(e.target.value) })} style={S.settingsSelect}>
-                {[3, 4, 5].map(v => <option key={v} value={v}>{v} خيارات</option>)}
-              </select>
-            </label>
-
-            <label style={S.settingsLabel}>
-              الموضوع
-              <select value={cfg.topic} onChange={e => onChange({ ...cfg, topic: e.target.value })} style={S.settingsSelect}>
-                <option value=''>كل المواضيع</option>
-                {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </label>
-
-            <label style={S.settingsLabel}>
-              الصف الدراسي
-              <select value={cfg.grade} onChange={e => onChange({ ...cfg, grade: Number(e.target.value) })} style={S.settingsSelect}>
-                <option value={0}>كل الصفوف</option>
-                {[1, 2, 3, 4, 5, 6].map(g => <option key={g} value={g}>الصف {g}</option>)}
-              </select>
-            </label>
-
-            <label style={S.settingsLabel}>
-              طول الكلمة: {cfg.minLen} – {cfg.maxLen} حرفاً
-              <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '.75rem', color: '#9ca3af', marginBottom: 4, textAlign: 'center' }}>أدنى: {cfg.minLen}</div>
-                  <input type="range" min={2} max={cfg.maxLen} value={cfg.minLen}
-                    onChange={e => onChange({ ...cfg, minLen: Number(e.target.value) })}
-                    style={{ width: '100%', accentColor: '#7c3aed' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '.75rem', color: '#9ca3af', marginBottom: 4, textAlign: 'center' }}>أقصى: {cfg.maxLen}</div>
-                  <input type="range" min={cfg.minLen} max={12} value={cfg.maxLen}
-                    onChange={e => onChange({ ...cfg, maxLen: Number(e.target.value) })}
-                    style={{ width: '100%', accentColor: '#7c3aed' }} />
-                </div>
-              </div>
-            </label>
-
-            <button style={S.btnGold} onClick={onClose}>حفظ الإعدادات ✓</button>
-          </>
-        )}
-
-        {tab === 'words' && (
-          <WordManager dbWords={dbWords} onRefresh={onRefresh} />
-        )}
+        <WordManager dbWords={dbWords} onRefresh={onRefresh} />
       </div>
     </div>
   );
