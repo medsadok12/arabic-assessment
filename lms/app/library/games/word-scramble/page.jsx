@@ -248,7 +248,10 @@ function WordManager({ dbWords, onRefresh }) {
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <div style={{ fontSize: '.8rem', fontWeight: 700, color: '#6b7280', marginTop: 10, textAlign: 'right' }}>
+          🏷️ تصنيف الكلمة (اختياري):
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
           <select value={topic} onChange={e => setTopic(e.target.value)}
             style={{ ...S.input, flex: 1, marginTop: 0 }} dir="rtl">
             <option value=''>بدون موضوع</option>
