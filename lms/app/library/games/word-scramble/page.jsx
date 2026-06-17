@@ -451,8 +451,8 @@ export default function WordScrambleGame() {
       setResult(isRight ? 'correct' : 'wrong');
       if (isRight) {
         setScore(s => s + 1);
-        if (w.audio_url) { try { new Audio(w.audio_url).play(); } catch {} }
-        else speak(w.word);
+        setTimeout(() => speak(w.word), 200);
+        if (w.audio_url) { try { new Audio(w.audio_url).play().catch(() => {}); } catch {} }
       }
     }
   }, [answer, available, result, queue, cur]);
@@ -611,8 +611,14 @@ export default function WordScrambleGame() {
             ...S.feedback,
             color:      result === 'correct' ? '#1a6b38' : '#9b1c1c',
             background: result === 'correct' ? '#d4edda' : '#f8d7da',
+            flexDirection: 'column', gap: 4,
           }}>
-            {result === 'correct' ? `✅ أحسنت! الكلمة: ${w.word}` : '❌ حاول مرة أخرى! ستتم إعادة الحروف'}
+            {result === 'correct' ? (
+              <>
+                <span>✅ أحسنت!</span>
+                <span style={{ fontSize: '1.7rem', fontWeight: 800, letterSpacing: 4 }}>{w.word}</span>
+              </>
+            ) : '❌ حاول مرة أخرى! ستتم إعادة الحروف'}
           </div>
         )}
 
@@ -762,6 +768,7 @@ const S = {
   feedback: {
     padding: '10px 22px', borderRadius: 10, fontSize: '1rem',
     fontWeight: 600, textAlign: 'center', width: '100%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
   availableRow: {
     display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center',
