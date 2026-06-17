@@ -174,7 +174,7 @@ function WordManager({ dbWords, onRefresh }) {
           missing_letter: missing.trim(),
           image_url,
           audio_url: audioUrl || null,
-          topic: topic || null,
+          topic: category.trim() || null,
           category: category.trim() || null,
         }),
       });
@@ -299,16 +299,6 @@ function WordManager({ dbWords, onRefresh }) {
             </div>
           )}
         </div>
-
-        <select
-          value={topic}
-          onChange={e => setTopic(e.target.value)}
-          style={{ ...S.input, marginTop: 8 }}
-          dir="rtl"
-        >
-          <option value=''>بدون موضوع</option>
-          {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
 
         <input
           list="lc-cat-list"
