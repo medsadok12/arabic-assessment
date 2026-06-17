@@ -10,10 +10,10 @@ async function checkAuth() {
 }
 
 function isValid(r) {
-  return r.base_letter && r.correct_vowel && r.rule_text;
+  return r.target_text && r.correct_option && r.rule_text;
 }
 
-// GET — public, returns vowel_balloons rows
+// GET — public
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -21,7 +21,7 @@ export async function GET(request) {
     const grade = Number(searchParams.get('grade') || 0);
 
     const admin = createAdminClient();
-    let query = admin.from('vowel_balloons').select('*').order('created_at', { ascending: false });
+    let query = admin.from('vowel_balloon_games').select('*').order('created_at', { ascending: false });
     if (topic)    query = query.eq('topic', topic);
     if (grade > 0) query = query.eq('grade_level', grade);
 
@@ -34,33 +34,33 @@ export async function GET(request) {
   }
 }
 
-// POST — add item (admin/teacher only)
+// POST — add (admin/teacher only)
 export async function POST(request) {
   try {
     const { user, allowed } = await checkAuth();
     if (!user || !allowed) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
 
-    const { base_letter, correct_vowel, audio_url, rule_text, topic, grade_level } = await request.json();
+    const { target_text, correct_option, wrong_option_1, wrong_option_2, audio_url, rule_text, topic, grade_level } = await request.json();
 
-    if (!base_letter?.trim())
-      return NextResponse.json({ error: 'الحرف مطلوب' }, { status: 400 });
-    if ([...base_letter.trim()].length !== 1)
-      return NextResponse.json({ error: 'يجب أن يكون الحرف حرفاً واحداً فقط (بدون مدود)' }, { status: 400 });
-    if (!['fatha', 'kasra', 'damma'].includes(correct_vowel))
-      return NextResponse.json({ error: 'الحركة الصحيحة مطلوبة' }, { status: 400 });
+    if (!target_text?.trim())
+      return NextResponse.json({ error: 'الصوت أو المقطع المستهدف مطلوب' }, { status: 400 });
+    if (!correct_option?.trim())
+      return NextResponse.json({ error: 'الخيار الصحيح مطلوب' }, { status: 400 });
     if (!rule_text?.trim())
       return NextResponse.json({ error: 'نص القاعدة مطلوب' }, { status: 400 });
 
     const admin = createAdminClient();
     const { data, error } = await admin
-      .from('vowel_balloons')
+      .from('vowel_balloon_games')
       .insert({
-        base_letter:   base_letter.trim(),
-        correct_vowel,
-        audio_url:     audio_url || null,
-        rule_text:     rule_text.trim(),
-        topic:         topic?.trim() || null,
-        grade_level:   grade_level ? Number(grade_level) : null,
+        target_text:    target_text.trim(),
+        correct_option: correct_option.trim(),
+        wrong_option_1: wrong_option_1?.trim() || null,
+        wrong_option_2: wrong_option_2?.trim() || null,
+        audio_url:      audio_url || null,
+        rule_text:      rule_text.trim(),
+        topic:          topic?.trim() || null,
+        grade_level:    grade_level ? Number(grade_level) : null,
       })
       .select()
       .single();
@@ -72,7 +72,7 @@ export async function POST(request) {
   }
 }
 
-// PUT — edit item (admin/teacher only)
+// PUT — edit (admin/teacher only)
 export async function PUT(request) {
   try {
     const { user, allowed } = await checkAuth();
@@ -82,18 +82,20 @@ export async function PUT(request) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'المعرّف مطلوب' }, { status: 400 });
 
-    const { base_letter, correct_vowel, audio_url, rule_text, topic, grade_level } = await request.json();
+    const { target_text, correct_option, wrong_option_1, wrong_option_2, audio_url, rule_text, topic, grade_level } = await request.json();
 
     const admin = createAdminClient();
     const { data, error } = await admin
-      .from('vowel_balloons')
+      .from('vowel_balloon_games')
       .update({
-        base_letter:   base_letter?.trim(),
-        correct_vowel,
-        audio_url:     audio_url ?? null,
-        rule_text:     rule_text?.trim(),
-        topic:         topic?.trim() || null,
-        grade_level:   grade_level ? Number(grade_level) : null,
+        target_text:    target_text?.trim(),
+        correct_option: correct_option?.trim(),
+        wrong_option_1: wrong_option_1?.trim() || null,
+        wrong_option_2: wrong_option_2?.trim() || null,
+        audio_url:      audio_url ?? null,
+        rule_text:      rule_text?.trim(),
+        topic:          topic?.trim() || null,
+        grade_level:    grade_level ? Number(grade_level) : null,
       })
       .eq('id', id)
       .select()
@@ -117,7 +119,7 @@ export async function DELETE(request) {
     if (!id) return NextResponse.json({ error: 'معرّف العنصر مطلوب' }, { status: 400 });
 
     const admin = createAdminClient();
-    const { error } = await admin.from('vowel_balloons').delete().eq('id', id);
+    const { error } = await admin.from('vowel_balloon_games').delete().eq('id', id);
     if (error) throw error;
 
     return NextResponse.json({ success: true });
