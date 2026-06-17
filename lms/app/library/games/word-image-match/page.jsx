@@ -420,43 +420,62 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
       </div>
     );
 
+    const CARD_COLORS = [
+      { bg:'linear-gradient(135deg,#fde68a,#fbbf24)', border:'#f59e0b', shadow:'#d97706', text:'#78350f' },
+      { bg:'linear-gradient(135deg,#a5f3fc,#67e8f9)', border:'#06b6d4', shadow:'#0891b2', text:'#164e63' },
+      { bg:'linear-gradient(135deg,#bbf7d0,#6ee7b7)', border:'#10b981', shadow:'#059669', text:'#064e3b' },
+      { bg:'linear-gradient(135deg,#fecaca,#f87171)', border:'#ef4444', shadow:'#dc2626', text:'#7f1d1d' },
+      { bg:'linear-gradient(135deg,#ddd6fe,#c4b5fd)', border:'#8b5cf6', shadow:'#7c3aed', text:'#4c1d95' },
+      { bg:'linear-gradient(135deg,#fed7aa,#fb923c)', border:'#f97316', shadow:'#ea580c', text:'#7c2d12' },
+      { bg:'linear-gradient(135deg,#e9d5ff,#d8b4fe)', border:'#a855f7', shadow:'#9333ea', text:'#581c87' },
+      { bg:'linear-gradient(135deg,#bfdbfe,#93c5fd)', border:'#3b82f6', shadow:'#2563eb', text:'#1e3a8a' },
+    ];
+
     return (
-      <div style={{ fontFamily:"'Cairo',sans-serif", padding:'16px 4px' }}>
-        <div style={{ textAlign:'center', marginBottom:20 }}>
-          <div style={{ fontSize:'2.8rem', lineHeight:1, marginBottom:8 }}>🖼️</div>
-          <h2 style={{ fontSize:'1.3rem', fontWeight:900, color:'#3730a3', margin:'0 0 4px' }}>صِل الكلمة بصورتها</h2>
-          <p style={{ color:'#7c3aed', fontSize:'.88rem', fontWeight:600, margin:0 }}>اختر موضوعاً لتبدأ 🎯</p>
+      <div style={{ fontFamily:"'Cairo',sans-serif", padding:'12px 2px' }}>
+
+        {/* header banner */}
+        <div style={{ textAlign:'center', marginBottom:22, background:'linear-gradient(135deg,#faf5ff,#ede9fe)', borderRadius:20, padding:'20px 16px', border:'2px solid #ddd6fe' }}>
+          <div style={{ fontSize:'3.2rem', lineHeight:1, marginBottom:8, animation:'wimIconBob 2s ease-in-out infinite', display:'inline-block' }}>🖼️</div>
+          <h2 style={{ fontSize:'1.4rem', fontWeight:900, color:'#3730a3', margin:'0 0 4px' }}>صِل الكلمة بصورتها!</h2>
+          <p style={{ color:'#7c3aed', fontSize:'.9rem', fontWeight:700, margin:0 }}>
+            {allDone ? '🏆 رائع! أكملت جميع المواضيع!' : '👆 اختر موضوعاً وابدأ الصيد 🎯'}
+          </p>
+          {allDone && (
+            <button onClick={() => setCompletedTopics(new Set())} style={{ ...btnStyle, padding:'10px 28px', marginTop:12, fontSize:'.95rem' }}>
+              🔄 إعادة من البداية
+            </button>
+          )}
         </div>
 
-        {allDone && (
-          <div style={{ textAlign:'center', marginBottom:16 }}>
-            <div style={{ fontSize:'2.2rem', marginBottom:6 }}>🏆</div>
-            <p style={{ color:'#059669', fontWeight:800, fontSize:'1rem', margin:'0 0 10px' }}>أحسنت! أكملت جميع المواضيع!</p>
-            <button onClick={() => setCompletedTopics(new Set())} style={{ ...btnStyle, padding:'10px 28px' }}>🔄 إعادة من البداية</button>
-          </div>
-        )}
-
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px, 1fr))', gap:12 }}>
-          {topicList.map(topic => {
+        {/* topic cards grid */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(138px, 1fr))', gap:14 }}>
+          {topicList.map((topic, idx) => {
             const isDone  = completedTopics.has(topic);
             const count   = topicGroups[topic].length;
             const emoji   = TOPIC_EMOJIS[topic] || '📋';
             const rounds  = Math.ceil(count / 4);
+            const colors  = isDone
+              ? { bg:'linear-gradient(135deg,#d1fae5,#a7f3d0)', border:'#10b981', shadow:'#059669', text:'#065f46' }
+              : CARD_COLORS[idx % CARD_COLORS.length];
             return (
               <button key={topic} onClick={() => startTopicGame(topic)} className="wim-topic-card" style={{
-                background: isDone ? 'linear-gradient(135deg,#d1fae5,#a7f3d0)' : 'linear-gradient(135deg,#faf5ff,#ede9fe)',
-                border:`3px solid ${isDone?'#10b981':'#ddd6fe'}`,
-                borderBottom:`6px solid ${isDone?'#059669':'#a5b4fc'}`,
-                borderRadius:20, padding:'18px 10px 14px', cursor:'pointer',
+                background: colors.bg,
+                border:`3px solid ${colors.border}`,
+                borderBottom:`7px solid ${colors.shadow}`,
+                borderRadius:22, padding:'20px 10px 16px', cursor:'pointer',
                 textAlign:'center', fontFamily:"'Cairo',sans-serif",
-                boxShadow: isDone ? '0 5px 0 #059669, 0 10px 20px rgba(5,150,105,.12)' : '0 5px 0 #a5b4fc, 0 10px 20px rgba(0,0,0,.09)',
+                boxShadow:`0 6px 0 ${colors.shadow}, 0 12px 24px rgba(0,0,0,.1)`,
+                position:'relative',
               }}>
-                <div style={{ fontSize:'2.2rem', lineHeight:1, marginBottom:6 }}>{emoji}</div>
-                <div style={{ fontWeight:800, fontSize:'1rem', color:isDone?'#065f46':'#3730a3', marginBottom:4 }}>{topic}</div>
-                <div style={{ fontSize:'.74rem', color:isDone?'#059669':'#7c3aed', fontWeight:600 }}>
+                {isDone && (
+                  <div style={{ position:'absolute', top:8, left:8, fontSize:'1.1rem', background:'#fff', borderRadius:'50%', width:26, height:26, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 6px rgba(0,0,0,.15)' }}>✅</div>
+                )}
+                <div style={{ fontSize:'2.8rem', lineHeight:1, marginBottom:8 }}>{emoji}</div>
+                <div style={{ fontWeight:900, fontSize:'1rem', color:colors.text, marginBottom:4 }}>{topic}</div>
+                <div style={{ fontSize:'.72rem', color:colors.text, opacity:.75, fontWeight:700, background:'rgba(255,255,255,.4)', borderRadius:20, padding:'2px 8px', display:'inline-block' }}>
                   {count} كلمة{rounds > 1 ? ` · ${rounds} جولات` : ''}
                 </div>
-                {isDone && <div style={{ fontSize:'1.1rem', marginTop:4 }}>✅</div>}
               </button>
             );
           })}
@@ -740,7 +759,8 @@ export default function WordImageMatchPage() {
         @keyframes wimStar5{ 0%{transform:translate(0,0) scale(1.2);opacity:1} 100%{transform:translate(58px,-18px)   scale(0) rotate(-90deg);opacity:0} }
         @keyframes wimStar6{ 0%{transform:translate(0,0) scale(1.2);opacity:1} 100%{transform:translate(16px,-62px)   scale(0);opacity:0} }
 
-        @keyframes wsDot { 0%,80%,100%{opacity:.2;transform:scale(.65)} 40%{opacity:1;transform:scale(1.2)} }
+        @keyframes wsDot     { 0%,80%,100%{opacity:.2;transform:scale(.65)} 40%{opacity:1;transform:scale(1.2)} }
+        @keyframes wimIconBob{ 0%,100%{transform:translateY(0) rotate(-5deg)} 50%{transform:translateY(-18px) rotate(5deg)} }
 
         .wim-word-card { transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .15s; }
         .wim-word-card:not(.wim-done):hover  { transform: scale(1.05) translateY(-3px) !important; box-shadow: 0 14px 32px rgba(92,79,196,.28) !important; }
@@ -785,13 +805,15 @@ export default function WordImageMatchPage() {
         {/* game card */}
         <div style={{ background:'#fff', borderRadius:28, padding:'22px 20px', boxShadow:'0 8px 40px rgba(92,79,196,.15), 0 2px 8px rgba(0,0,0,.06)', border:'2px solid #ede9fe' }}>
           {loading ? (
-            <div style={{ textAlign:'center', padding:'40px 20px', fontFamily:"'Cairo',sans-serif" }}>
-              <div style={{ display:'flex', gap:10, justifyContent:'center', marginBottom:12 }}>
+            <div style={{ textAlign:'center', padding:'36px 20px', fontFamily:"'Cairo',sans-serif" }}>
+              <div style={{ fontSize:'4.4rem', lineHeight:1, marginBottom:14, display:'inline-block', animation:'wimIconBob 1.6s ease-in-out infinite' }}>🖼️</div>
+              <h2 style={{ fontSize:'1.3rem', fontWeight:900, color:'#3730a3', margin:'0 0 6px' }}>صِل الكلمة بصورتها</h2>
+              <p style={{ color:'#7c3aed', fontWeight:700, margin:'0 0 18px', fontSize:'.9rem' }}>انتظر، جارٍ تجهيز المواضيع... 🎈</p>
+              <div style={{ display:'flex', gap:10, justifyContent:'center' }}>
                 {[0,180,360].map(d => (
                   <div key={d} style={{ width:13, height:13, borderRadius:'50%', background:'#7c3aed', animation:`wsDot 1.3s ${d}ms ease-in-out infinite` }} />
                 ))}
               </div>
-              <div style={{ color:'#9ca3af', fontWeight:600 }}>جارٍ تحميل اللعبة…</div>
             </div>
           ) : (
             <GameArea gamePairs={gamePairs} cfg={cfg} isTeacher={isTeacher} key={`${cfg.topic}-${cfg.grade}-${cfg.pairsCount}`} />
