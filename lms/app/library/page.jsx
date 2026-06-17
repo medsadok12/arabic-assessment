@@ -68,6 +68,13 @@ const RESOURCES = [
     accent: '#06B6D4', bg: '#ECFEFF', border: '#A5F3FC', iconBg: '#CFFAFE',
     btnBg: 'linear-gradient(135deg,#06B6D4,#0891B2)',
   },
+  {
+    icon: '🔨', title: 'مطرقة التفكيك',
+    desc: 'فكّك الكلمة إلى مقاطعها — اضرب الإجابة الصحيحة!',
+    tag: 'تعزيزي', link: '/library/games/word-smash', ready: true,
+    accent: '#84CC16', bg: '#F7FEE7', border: '#BEF264', iconBg: '#ECFCCB',
+    btnBg: 'linear-gradient(135deg,#84CC16,#65A30D)',
+  },
 ];
 
 const TAG_COLORS = {
