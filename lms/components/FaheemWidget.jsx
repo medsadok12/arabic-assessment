@@ -424,7 +424,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
           onClick={() => setOpen(true)}
           title="تَحَدَّثْ مَعَ فَهِيمٍ"
           style={{
-            position: 'fixed', bottom: 24, right: 24, zIndex: 1000,
+            position: 'fixed', bottom: 'var(--faheem-btn-bottom, 24px)', right: 24, zIndex: 1000,
             width: 72, height: 72, borderRadius: '50%',
             border: '3px solid #d4952a',
             background: 'linear-gradient(135deg,#1f2d5a,#2d4a8a)',
@@ -440,7 +440,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
 
       {open && (
         <div style={{
-          position: 'fixed', bottom: 16, right: 16, zIndex: 1000,
+          position: 'fixed', bottom: 'var(--faheem-panel-bottom, 16px)', right: 16, zIndex: 1000,
           width: 348, maxWidth: 'calc(100vw - 32px)',
           background: '#fff', borderRadius: 24,
           boxShadow: '0 20px 64px rgba(0,0,0,.22), 0 0 0 1px rgba(31,45,90,.08)',

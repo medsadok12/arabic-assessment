@@ -8,6 +8,9 @@
   --success:    #27ae60;
   --danger:     #e74c3c;
   --text:       #1a1a2e;
+  /* Faheem widget offsets — adjusted on mobile to float above bottom nav */
+  --faheem-btn-bottom: 24px;
+  --faheem-panel-bottom: 16px;
   --muted:      #6b7280;
   --border:     #d1d5db;
   --bg:         #f4f7fc;
@@ -682,6 +685,11 @@ body {
   /* Show bottom nav & add body padding so content isn't hidden */
   .nav-bottom-bar { display: flex; }
   body { padding-bottom: 70px; }
+  /* Lift Faheem widget above the bottom nav bar */
+  :root {
+    --faheem-btn-bottom: 90px;
+    --faheem-panel-bottom: 82px;
+  }
 }
 @media (min-width: 769px) {
   .nav-mobile-menu { display: none !important; }
