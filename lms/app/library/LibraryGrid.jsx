@@ -86,6 +86,14 @@ const RESOURCES = [
     accent: '#84CC16', bg: '#F7FEE7', border: '#BEF264', iconBg: '#ECFCCB',
     btnBg: 'linear-gradient(135deg,#84CC16,#65A30D)',
   },
+  {
+    key: 'challenge',
+    icon: '⚡', title: 'وضع التحدي',
+    desc: 'تحدّى صديقك في الوقت الحقيقي — من يجيب أولاً يفوز!',
+    tag: 'تعزيزي', link: '/library/games/challenge', ready: true,
+    accent: '#6366F1', bg: '#EEF2FF', border: '#C7D2FE', iconBg: '#E0E7FF',
+    btnBg: 'linear-gradient(135deg,#6366F1,#4F46E5)',
+  },
 ];
 
 const TAG_COLORS = {
