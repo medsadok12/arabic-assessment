@@ -671,58 +671,54 @@ export default function WordSmashGame() {
               {/* main card */}
               <div style={{ background: '#fff', borderRadius: 24, padding: '28px 20px', width: '100%', maxWidth: 540, boxShadow: '0 24px 64px rgba(0,0,0,.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
 
-                {/* word display — shakes on correct answer */}
-                <div style={{ textAlign: 'center', position: 'relative' }}>
-                  <div style={{ fontSize: '.8rem', color: '#94a3b8', marginBottom: 6, fontWeight: 600 }}>قطّع هذه الكلمة إلى مقاطع:</div>
+                {/* ── word display ── */}
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '.8rem', color: '#94a3b8', marginBottom: 10, fontWeight: 600 }}>قطّع هذه الكلمة إلى مقاطع:</div>
 
-                  {/* word image illustration */}
-                  {w.image_url && (
-                    <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}>
+                  {/* 🔨 hammer + image side-by-side (or hammer alone) */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
+                    <div style={{
+                      fontSize: w.image_url ? '2.2rem' : '2.8rem',
+                      transformOrigin: 'bottom right',
+                      display: 'inline-block',
+                      animation: charAnim === 'smash' ? 'hammerSmash .6s ease both'
+                               : charAnim === 'wrong'  ? 'hammerWrong .55s ease both'
+                               : 'none',
+                    }}>🔨</div>
+                    {w.image_url && (
                       <img
                         src={w.image_url}
                         alt={w.word_text}
                         style={{
-                          width: 100, height: 100,
+                          width: 96, height: 96,
                           objectFit: 'contain',
                           borderRadius: 18,
                           border: '3px solid #d1fae5',
                           background: '#f0fdf4',
-                          boxShadow: '0 6px 20px rgba(16,185,129,.2)',
+                          boxShadow: '0 6px 20px rgba(16,185,129,.22)',
                         }}
                       />
-                    </div>
-                  )}
-
-                  <div style={{
-                    fontSize: '2.8rem', fontWeight: 900, color: '#1a1a2e', lineHeight: 1.3, letterSpacing: 2,
-                    display: 'inline-block',
-                    animation: wordAnim === 'shake' ? 'wordShake .65s ease both' : 'none',
-                  }}>
-                    {w.word_text}
+                    )}
                   </div>
-                  <br />
-                  <button onClick={() => speak(w.word_text)} title="استمع" style={{ marginTop: 6, background: '#f0fdf4', border: 'none', borderRadius: 20, padding: '4px 14px', cursor: 'pointer', fontSize: '.85rem', color: '#065f46', fontWeight: 700 }}>
-                    🔊 استمع
-                  </button>
-                </div>
 
-                {/* فهيم — hammer animates, robot floats gently */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
-                  <div style={{
-                    fontSize: '2.6rem',
-                    transformOrigin: 'bottom right',
-                    display: 'inline-block',
-                    marginBottom: -8,
-                    animation: charAnim === 'smash' ? 'hammerSmash .6s ease both'
-                             : charAnim === 'wrong'  ? 'hammerWrong .55s ease both'
-                             : 'none',
-                  }}>🔨</div>
-                  <div style={{
-                    fontSize: '3rem', lineHeight: 1,
-                    display: 'inline-block',
-                    animation: charAnim === 'idle' ? 'fahimFloat 2.6s ease-in-out infinite' : 'none',
-                  }}>🤖</div>
-                  <div style={{ fontSize: '.78rem', color: '#9ca3af', marginTop: 3, fontWeight: 600 }}>فهيم</div>
+                  {/* word + listen button in one flex row */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{
+                      fontSize: '2.8rem', fontWeight: 900, color: '#1a1a2e', lineHeight: 1.3, letterSpacing: 2,
+                      display: 'inline-block',
+                      animation: wordAnim === 'shake' ? 'wordShake .65s ease both' : 'none',
+                    }}>
+                      {w.word_text}
+                    </div>
+                    <button onClick={() => speak(w.word_text)} title="استمع" style={{
+                      background: '#f0fdf4', border: '1.5px solid #86efac',
+                      borderRadius: 20, padding: '6px 14px',
+                      cursor: 'pointer', fontSize: '.85rem',
+                      color: '#065f46', fontWeight: 700, flexShrink: 0,
+                    }}>
+                      🔊 استمع
+                    </button>
+                  </div>
                 </div>
 
                 {/* 3 choice cards — stacked vertically so each has full width for the syllable row */}
