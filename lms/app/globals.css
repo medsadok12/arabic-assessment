@@ -684,7 +684,8 @@ body {
   .navbar-about-link { display: none !important; }
   /* Show bottom nav & add body padding so content isn't hidden */
   .nav-bottom-bar { display: flex; }
-  body { padding-bottom: 70px; }
+  body { padding-bottom: 120px; }
+  .page-wrap { padding-bottom: 120px; }
   /* Lift Faheem widget above the bottom nav bar */
   :root {
     --faheem-btn-bottom: 90px;
@@ -901,12 +902,12 @@ body {
   .fsr-icon { width: 32px; height: 32px; border-radius: 8px; }
   .fsr-label { font-size: .6rem; }
   .fsr::before { display: none; }
-  body { padding-bottom: 76px; }
+  body { padding-bottom: 120px; }
 }
 
 /* ── Mobile: dashboard & shared components ── */
 @media (max-width: 640px) {
-  .page-wrap { padding: 20px 0; }
+  .page-wrap { padding: 20px 0 120px; }
   .container { padding: 0 14px; }
 
   /* Dashboard welcome */
