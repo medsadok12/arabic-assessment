@@ -674,6 +674,25 @@ export default function WordSmashGame() {
                 {/* word display — shakes on correct answer */}
                 <div style={{ textAlign: 'center', position: 'relative' }}>
                   <div style={{ fontSize: '.8rem', color: '#94a3b8', marginBottom: 6, fontWeight: 600 }}>قطّع هذه الكلمة إلى مقاطع:</div>
+
+                  {/* word image illustration */}
+                  {w.image_url && (
+                    <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}>
+                      <img
+                        src={w.image_url}
+                        alt={w.word_text}
+                        style={{
+                          width: 100, height: 100,
+                          objectFit: 'contain',
+                          borderRadius: 18,
+                          border: '3px solid #d1fae5',
+                          background: '#f0fdf4',
+                          boxShadow: '0 6px 20px rgba(16,185,129,.2)',
+                        }}
+                      />
+                    </div>
+                  )}
+
                   <div style={{
                     fontSize: '2.8rem', fontWeight: 900, color: '#1a1a2e', lineHeight: 1.3, letterSpacing: 2,
                     display: 'inline-block',
