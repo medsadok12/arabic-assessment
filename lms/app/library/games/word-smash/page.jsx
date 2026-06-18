@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 
 /* ─── helpers ─── */
@@ -43,6 +43,15 @@ function addArm(seg, isLast) {
 }
 
 const TOPICS = ['الحيوانات', 'المدرسة', 'الأسرة', 'الطبيعة', 'الفواكه', 'الألوان', 'المهن', 'الأدوات'];
+
+const TOPIC_EMOJIS = {
+  'الحيوانات': '🐘', 'المدرسة': '🏫', 'الأسرة': '👨‍👩‍👧',
+  'الطبيعة': '🌿', 'الفواكه': '🍎', 'الألوان': '🎨',
+  'المهن': '👷', 'الأدوات': '🔧', 'الجسم': '💪',
+  'الطعام': '🍜', 'الملابس': '👕', 'المنزل': '🏠',
+  'المواصلات': '🚗', 'الرياضة': '⚽',
+};
+const WORM_COLS = 3;
 
 function fileToBase64(file) {
   return new Promise((res, rej) => {
@@ -329,6 +338,117 @@ function ConfettiBurst() {
   );
 }
 
+/* ─── Worm Topic Select ─── */
+function WormTopicSelect({ topics, completedTopics, onPickTopic }) {
+  const R     = 50;
+  const W     = 340;
+  const ROW_H = 145;
+  const PAD_Y = 72;
+
+  const positions = useMemo(() => {
+    const RTL_X = [280, 170, 60];
+    const LTR_X = [60, 170, 280];
+    return topics.map((_, i) => {
+      const row  = Math.floor(i / WORM_COLS);
+      const col  = i % WORM_COLS;
+      const xArr = row % 2 === 0 ? RTL_X : LTR_X;
+      return { x: xArr[col] ?? W / 2, y: PAD_Y + row * ROW_H };
+    });
+  }, [topics]);
+
+  const rows = Math.ceil(topics.length / WORM_COLS);
+  const H    = PAD_Y + (rows > 0 ? rows - 1 : 0) * ROW_H + R + 60;
+
+  const pathD = useMemo(() => {
+    if (positions.length < 2) return '';
+    let d = `M ${positions[0].x} ${positions[0].y}`;
+    for (let i = 1; i < positions.length; i++) {
+      const p = positions[i - 1];
+      const c = positions[i];
+      if (Math.floor((i - 1) / WORM_COLS) === Math.floor(i / WORM_COLS)) {
+        d += ` L ${c.x} ${c.y}`;
+      } else {
+        /* row-end U-turn: control points bow outward from the turn side */
+        const leftTurn = p.x < W / 2;
+        const off = leftTurn ? -42 : 42;
+        const mY  = (p.y + c.y) / 2;
+        d += ` C ${p.x + off} ${mY - 18}, ${c.x + off} ${mY + 18}, ${c.x} ${c.y}`;
+      }
+    }
+    return d;
+  }, [positions]);
+
+  return (
+    <div style={{ position: 'relative', width: W, height: H, margin: '0 auto' }}>
+      {/* SVG worm body — layered strokes for 3D tube look */}
+      <svg width={W} height={H} style={{ position: 'absolute', top: 0, left: 0, zIndex: 0, overflow: 'visible' }}>
+        <path d={pathD} fill="none" stroke="rgba(21,128,61,0.16)" strokeWidth={R * 2.7} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={pathD} fill="none" stroke="#14532d"               strokeWidth={R * 2.3} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={pathD} fill="none" stroke="#15803d"               strokeWidth={R * 2.05} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={pathD} fill="none" stroke="#16a34a"               strokeWidth={R * 1.65} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={pathD} fill="none" stroke="#22c55e"               strokeWidth={R * 1.15} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={pathD} fill="none" stroke="#86efac"               strokeWidth={R * 0.38} strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.55" />
+        <path d={pathD} fill="none" stroke="rgba(220,252,231,0.5)" strokeWidth={R * 0.14} strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+
+      {/* Segment spheres */}
+      {topics.map((topic, i) => {
+        const pos    = positions[i];
+        const done   = completedTopics.has(topic);
+        const emoji  = TOPIC_EMOJIS[topic] || '📚';
+        const isHead = i === 0;
+        return (
+          <div
+            key={topic}
+            className={`worm-sphere${done ? ' done' : ''}${isHead ? ' head' : ''}`}
+            onClick={() => !done && onPickTopic(topic)}
+            style={{
+              position: 'absolute',
+              left: pos.x - R, top: pos.y - R,
+              width: R * 2, height: R * 2,
+              zIndex: 2,
+              borderRadius: '50%',
+              background: done
+                ? 'radial-gradient(circle at 32% 28%, #fef08a 0%, #ca8a04 45%, #78350f 100%)'
+                : isHead
+                  ? 'radial-gradient(circle at 32% 28%, #bbf7d0 0%, #16a34a 42%, #14532d 100%)'
+                  : 'radial-gradient(circle at 32% 28%, #d1fae5 0%, #059669 48%, #064e3b 100%)',
+              boxShadow: done
+                ? '0 4px 18px rgba(202,138,4,.6), inset 0 -5px 12px rgba(0,0,0,.4)'
+                : '0 8px 24px rgba(21,128,61,.65), inset 0 -6px 14px rgba(0,0,0,.4)',
+              border: done
+                ? '2.5px solid rgba(250,204,21,.8)'
+                : isHead
+                  ? '2.5px solid rgba(134,239,172,.85)'
+                  : '2.5px solid rgba(74,222,128,.5)',
+              cursor: done ? 'default' : 'pointer',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 2,
+              transition: 'transform .22s ease, box-shadow .22s ease',
+              userSelect: 'none',
+            }}
+          >
+            <span style={{ fontSize: isHead ? '1.9rem' : '1.5rem', lineHeight: 1, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,.45))' }}>
+              {done ? '✅' : emoji}
+            </span>
+            <span style={{
+              fontSize: '.58rem', fontWeight: 800,
+              color: done ? '#fef9c3' : '#ecfdf5',
+              textShadow: '0 1px 4px rgba(0,0,0,.75)',
+              textAlign: 'center', lineHeight: 1.3,
+              maxWidth: R * 1.72, wordBreak: 'break-word',
+              fontFamily: "'Cairo','Tajawal',sans-serif",
+              padding: '0 3px',
+            }}>
+              {topic}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ─── shared styles ─── */
 const S = {
   label:      { display: 'block', fontSize: '.8rem', fontWeight: 600, color: '#475569', marginBottom: 4, fontFamily: 'Cairo, sans-serif' },
@@ -355,6 +475,9 @@ export default function WordSmashGame() {
   const [showMgr,   setShowMgr]   = useState(false);
   const [cfg,       setCfg]       = useState({ topic: '', grade: 0, questionsPerRound: 10 });
   const [loadingWords, setLoadingWords] = useState(true);
+  const [completedTopics, setCompletedTopics] = useState(new Set());
+  const [currentTopic,    setCurrentTopic]    = useState('');
+  const [wormTotals,      setWormTotals]      = useState({ right: 0, total: 0 });
 
   /* role detection */
   useEffect(() => {
@@ -390,6 +513,16 @@ export default function WordSmashGame() {
   useEffect(() => { loadDbWords(); },   [loadDbWords]);
   useEffect(() => { loadGameWords(); }, [loadGameWords]);
 
+  const uniqueTopics = useMemo(() => {
+    const seen = new Set(); const result = [];
+    for (const w of gameWords) {
+      if (w.topic && !seen.has(w.topic)) { seen.add(w.topic); result.push(w.topic); }
+    }
+    return result;
+  }, [gameWords]);
+
+  const useWormFlow = !isTeacher && uniqueTopics.length >= 2;
+
   /* build queue */
   const buildQueue = useCallback((words, count) => {
     let pool = shuffle([...words]);
@@ -408,9 +541,20 @@ export default function WordSmashGame() {
     if (gameWords.length === 0) return;
     const count = isTeacher ? cfg.questionsPerRound : Math.min(gameWords.length, 15);
     setQueue(buildQueue(gameWords, count));
+    setCurrentTopic('');
     setCur(0); setScore(0); setChosen(null); setIsRight(null); setCharAnim('idle');
     setPhase('playing');
   }, [gameWords, cfg, isTeacher, buildQueue]);
+
+  const startGameForTopic = useCallback((topicName) => {
+    const words = gameWords.filter(w => w.topic === topicName);
+    if (!words.length) return;
+    const count = Math.min(words.length, 12);
+    setQueue(buildQueue(words, count));
+    setCurrentTopic(topicName);
+    setCur(0); setScore(0); setChosen(null); setIsRight(null); setCharAnim('idle'); setWordAnim('idle');
+    setPhase('playing');
+  }, [gameWords, buildQueue]);
 
   const pick = useCallback((idx) => {
     if (chosen !== null) return;
@@ -431,13 +575,26 @@ export default function WordSmashGame() {
 
   const next = useCallback(() => {
     const n = cur + 1;
-    if (n >= queue.length) setPhase('finished');
-    else { setCur(n); setChosen(null); setIsRight(null); setCharAnim('idle'); setWordAnim('idle'); }
-  }, [cur, queue.length]);
+    if (n >= queue.length) {
+      if (currentTopic) {
+        setCompletedTopics(prev => new Set([...prev, currentTopic]));
+        setWormTotals(prev => ({ right: prev.right + score, total: prev.total + queue.length }));
+        setCurrentTopic('');
+        setPhase('worm');
+      } else {
+        setPhase('finished');
+      }
+    } else {
+      setCur(n); setChosen(null); setIsRight(null); setCharAnim('idle'); setWordAnim('idle');
+    }
+  }, [cur, queue.length, currentTopic, score]);
 
   const restart = () => {
-    setPhase('start'); setQueue([]); setCur(0); setScore(0);
+    const goWorm = !isTeacher && uniqueTopics.length >= 2;
+    setPhase(goWorm ? 'worm' : 'start');
+    setQueue([]); setCur(0); setScore(0);
     setChosen(null); setIsRight(null); setCharAnim('idle'); setWordAnim('idle'); setShowConfetti(false);
+    if (goWorm) { setCompletedTopics(new Set()); setWormTotals({ right: 0, total: 0 }); }
   };
 
   /* ══════ RENDER ══════ */
@@ -549,6 +706,28 @@ export default function WordSmashGame() {
         @media (max-width: 480px) {
           .ws-card { padding: 12px 8px; }
         }
+
+        /* ── worm topic spheres ── */
+        @keyframes wormHeadBob {
+          0%,100% { transform: translateY(0) scale(1); }
+          50%     { transform: translateY(-7px) scale(1.05); }
+        }
+        @keyframes wormSegPulse {
+          0%,100% { box-shadow: 0 8px 24px rgba(21,128,61,.65), inset 0 -6px 14px rgba(0,0,0,.4); }
+          50%     { box-shadow: 0 12px 34px rgba(21,128,61,.9), inset 0 -6px 14px rgba(0,0,0,.4), 0 0 0 7px rgba(74,222,128,.18); }
+        }
+        .worm-sphere.head { animation: wormHeadBob 2.1s ease-in-out infinite; }
+        .worm-sphere:not(.done):not(.head) { animation: wormSegPulse 2.9s ease-in-out infinite; }
+        .worm-sphere:not(.done):not(.head):nth-child(2)  { animation-delay: .35s; }
+        .worm-sphere:not(.done):not(.head):nth-child(3)  { animation-delay: .7s; }
+        .worm-sphere:not(.done):not(.head):nth-child(4)  { animation-delay: 1.05s; }
+        .worm-sphere:not(.done):not(.head):nth-child(5)  { animation-delay: 1.4s; }
+        .worm-sphere:not(.done):not(.head):nth-child(6)  { animation-delay: 1.75s; }
+        .worm-sphere:not(.done):hover {
+          transform: scale(1.14) translateY(-5px);
+          box-shadow: 0 18px 44px rgba(21,128,61,.85), inset 0 -6px 14px rgba(0,0,0,.4);
+        }
+        .worm-sphere:not(.done):active { transform: scale(0.94); }
       `}</style>
 
       <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#065f46 0%,#10b981 50%,#34d399 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 12px', fontFamily: "'Cairo','Tajawal',sans-serif", direction: 'rtl' }}>
@@ -637,7 +816,7 @@ export default function WordSmashGame() {
                   </div>
                 </div>
 
-                <button onClick={startGame} style={{
+                <button onClick={useWormFlow ? () => setPhase('worm') : startGame} style={{
                   background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', border: 'none',
                   borderRadius: 14, padding: '14px 0', fontSize: '1.1rem', fontWeight: 800,
                   cursor: 'pointer', width: '100%', boxShadow: '0 4px 16px rgba(16,185,129,.4)',
@@ -650,6 +829,85 @@ export default function WordSmashGame() {
             <Link href="/library" style={{ color: '#9ca3af', fontSize: '.87rem', textDecoration: 'none' }}>← العودة للمكتبة</Link>
           </div>
         )}
+
+        {/* ── WORM TOPIC SELECTION ── */}
+        {phase === 'worm' && (() => {
+          const allDone = uniqueTopics.length > 0 && completedTopics.size >= uniqueTopics.length;
+          return (
+            <div style={{
+              background: '#fff', borderRadius: 24, padding: '28px 20px',
+              maxWidth: 420, width: '100%',
+              boxShadow: '0 24px 64px rgba(0,0,0,.3)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+              textAlign: 'center',
+            }}>
+              {allDone ? (
+                <>
+                  <div style={{ fontSize: '3.5rem' }}>🎉</div>
+                  <h2 style={{ fontSize: '1.7rem', fontWeight: 900, color: '#15803d', margin: 0 }}>
+                    أتقنت جميع المواضيع!
+                  </h2>
+                  <div style={{ fontSize: '2.4rem', fontWeight: 800, color: '#065f46' }}>
+                    {wormTotals.right} / {wormTotals.total}
+                  </div>
+                  <div style={{ fontSize: '.9rem', color: '#6b7280' }}>
+                    {wormTotals.total > 0 ? Math.round((wormTotals.right / wormTotals.total) * 100) : 0}٪ إجابات صحيحة
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                    {Array.from({ length: uniqueTopics.length }).map((_, i) => (
+                      <span key={i} style={{ fontSize: '1.6rem' }}>⭐</span>
+                    ))}
+                  </div>
+                  <button onClick={restart} style={{
+                    background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', border: 'none',
+                    borderRadius: 14, padding: '13px 0', fontSize: '1rem', fontWeight: 800,
+                    cursor: 'pointer', width: '100%',
+                    boxShadow: '0 4px 16px rgba(16,185,129,.4)',
+                  }}>
+                    🔄 ابدأ من جديد
+                  </button>
+                  <Link href="/library" style={{ color: '#9ca3af', fontSize: '.87rem', textDecoration: 'none' }}>
+                    ← العودة للمكتبة
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontSize: '2.4rem', lineHeight: 1 }}>🐛</div>
+                    <h2 style={{ fontSize: '1.45rem', fontWeight: 900, color: '#1a1a2e', margin: 0 }}>
+                      اختر موضوعاً وابدأ!
+                    </h2>
+                    {completedTopics.size > 0 && (
+                      <div style={{
+                        fontSize: '.8rem', color: '#065f46', fontWeight: 700,
+                        background: '#d1fae5', borderRadius: 20, padding: '3px 14px',
+                      }}>
+                        {completedTopics.size} / {uniqueTopics.length} مكتملة ✓
+                      </div>
+                    )}
+                  </div>
+
+                  <WormTopicSelect
+                    topics={uniqueTopics}
+                    completedTopics={completedTopics}
+                    onPickTopic={startGameForTopic}
+                  />
+
+                  <button
+                    onClick={() => setPhase('start')}
+                    style={{
+                      color: '#9ca3af', background: 'none', border: 'none',
+                      cursor: 'pointer', fontSize: '.85rem', marginTop: -4,
+                      fontFamily: "'Cairo','Tajawal',sans-serif",
+                    }}
+                  >
+                    ← العودة
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── PLAYING ── */}
         {phase === 'playing' && (() => {
@@ -876,7 +1134,10 @@ export default function WordSmashGame() {
                 )}
               </div>
 
-              <button onClick={() => setPhase('start')} style={{ color: 'rgba(255,255,255,.65)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 16, fontSize: '.87rem' }}>
+              <button
+                onClick={() => { const t = currentTopic; setCurrentTopic(''); setPhase(t ? 'worm' : 'start'); }}
+                style={{ color: 'rgba(255,255,255,.65)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 16, fontSize: '.87rem' }}
+              >
                 ✕ إنهاء اللعبة
               </button>
             </>
