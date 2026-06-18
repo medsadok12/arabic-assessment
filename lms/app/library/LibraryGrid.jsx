@@ -94,6 +94,14 @@ const RESOURCES = [
     accent: '#6366F1', bg: '#EEF2FF', border: '#C7D2FE', iconBg: '#E0E7FF',
     btnBg: 'linear-gradient(135deg,#6366F1,#4F46E5)',
   },
+  {
+    key: 'flashcards',
+    icon: '🃏', title: 'بطاقات الحفظ',
+    desc: 'راجع مفرداتك يومياً — الكلمات الصعبة تعود تلقائياً!',
+    tag: 'تعزيزي', link: '/library/flashcards', ready: true,
+    accent: '#312E81', bg: '#EEF2FF', border: '#A5B4FC', iconBg: '#E0E7FF',
+    btnBg: 'linear-gradient(135deg,#312E81,#4338CA)',
+  },
 ];
 
 const TAG_COLORS = {
