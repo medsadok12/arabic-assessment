@@ -348,11 +348,20 @@ function WormTopicSelect({ topics, completedTopics, onPickTopic }) {
   const positions = useMemo(() => {
     const RTL_X = [280, 170, 60];
     const LTR_X = [60, 170, 280];
+    const STEP  = 110;
     return topics.map((_, i) => {
-      const row  = Math.floor(i / WORM_COLS);
-      const col  = i % WORM_COLS;
-      const xArr = row % 2 === 0 ? RTL_X : LTR_X;
-      return { x: xArr[col] ?? W / 2, y: PAD_Y + row * ROW_H };
+      const row   = Math.floor(i / WORM_COLS);
+      const col   = i % WORM_COLS;
+      const count = Math.min(WORM_COLS, topics.length - row * WORM_COLS);
+      if (count === WORM_COLS) {
+        /* full row — follow snake direction */
+        const xArr = row % 2 === 0 ? RTL_X : LTR_X;
+        return { x: xArr[col], y: PAD_Y + row * ROW_H };
+      }
+      /* incomplete last row — center horizontally so the worm looks balanced */
+      const span = (count - 1) * STEP;
+      const x0   = W / 2 - span / 2;
+      return { x: x0 + col * STEP, y: PAD_Y + row * ROW_H };
     });
   }, [topics]);
 
@@ -368,18 +377,22 @@ function WormTopicSelect({ topics, completedTopics, onPickTopic }) {
       if (Math.floor((i - 1) / WORM_COLS) === Math.floor(i / WORM_COLS)) {
         d += ` L ${c.x} ${c.y}`;
       } else {
-        /* row-end U-turn: control points bow outward from the turn side */
-        const leftTurn = p.x < W / 2;
-        const off = leftTurn ? -42 : 42;
-        const mY  = (p.y + c.y) / 2;
-        d += ` C ${p.x + off} ${mY - 18}, ${c.x + off} ${mY + 18}, ${c.x} ${c.y}`;
+        const mY = (p.y + c.y) / 2;
+        if (Math.abs(p.x - c.x) < 20) {
+          /* same-side snake U-turn: control points bow outward */
+          const off = p.x < W / 2 ? -38 : 38;
+          d += ` C ${p.x + off} ${mY - 18}, ${c.x + off} ${mY + 18}, ${c.x} ${c.y}`;
+        } else {
+          /* cross-side: incomplete centered row — smooth S-curve, no extreme side bow */
+          d += ` C ${p.x} ${mY + 22}, ${c.x} ${mY - 22}, ${c.x} ${c.y}`;
+        }
       }
     }
     return d;
   }, [positions]);
 
   return (
-    <div style={{ position: 'relative', width: W, height: H, margin: '0 auto' }}>
+    <div style={{ position: 'relative', width: W, height: H, margin: '0 auto', overflow: 'visible' }}>
       {/* SVG worm body — layered strokes for 3D tube look */}
       <svg width={W} height={H} style={{ position: 'absolute', top: 0, left: 0, zIndex: 0, overflow: 'visible' }}>
         <path d={pathD} fill="none" stroke="rgba(21,128,61,0.16)" strokeWidth={R * 2.7} strokeLinecap="round" strokeLinejoin="round" />
@@ -840,6 +853,7 @@ export default function WordSmashGame() {
               boxShadow: '0 24px 64px rgba(0,0,0,.3)',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
               textAlign: 'center',
+              overflow: 'visible',
             }}>
               {allDone ? (
                 <>
