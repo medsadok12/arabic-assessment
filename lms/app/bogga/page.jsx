@@ -1151,8 +1151,24 @@ export default function BoggarAdminPage() {
         .admin-tab-btn:hover { background: #eef5ff !important; color: var(--primary) !important; }
         @media (max-width: 800px) {
           .admin-layout { flex-direction: column !important; }
-          .admin-sidebar { width: 100% !important; position: static !important; flex-direction: row !important; flex-wrap: wrap !important; border-radius: 14px !important; }
-          .admin-sidebar-nav { flex-direction: row !important; flex-wrap: wrap !important; }
+          .admin-sidebar {
+            width: 100% !important; position: static !important;
+            flex-direction: column !important; border-radius: 14px !important;
+            overflow: hidden !important;
+          }
+          .admin-sidebar-nav {
+            flex-direction: row !important; flex-wrap: nowrap !important;
+            overflow-x: auto !important; padding: 8px 8px 10px !important;
+            gap: 5px !important; -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; flex: none !important;
+          }
+          .admin-sidebar-nav::-webkit-scrollbar { display: none; }
+          .admin-sidebar-nav > div { flex-shrink: 0 !important; width: auto !important; }
+          .admin-sidebar-nav > div > button:first-child {
+            flex: none !important; white-space: nowrap !important;
+            padding: 8px 14px !important; font-size: .82rem !important;
+          }
+          .admin-sidebar .perm-icon { display: none !important; }
         }
       `}</style>
 
