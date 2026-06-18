@@ -44,6 +44,7 @@ export default function DashboardContent({
   upcomingSessions, displayName, studentGender,
   attendancePct, attendedCount, attendanceTotal,
   homework = [], sessionNotes = [],
+  streakCount = 0, loggedToday = false, last7Days = [],
 }) {
   const { t, lang } = useLanguage();
   const locale = 'en-GB';
@@ -327,6 +328,43 @@ export default function DashboardContent({
           0%,100% { box-shadow:0 4px 16px rgba(0,0,0,.18); transform:scale(1); }
           50%     { box-shadow:0 6px 24px rgba(24,95,165,.45); transform:scale(1.04); }
         }
+
+        /* ── Streak widget ── */
+        .streak-card {
+          background: linear-gradient(135deg,#fff7ed,#fef3c7);
+          border: 2px solid #fcd34d; border-radius: 20px;
+          padding: 18px 20px; margin-bottom: 24px;
+          display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        }
+        .streak-flame { display:flex; align-items:baseline; gap:6px; flex-shrink:0; }
+        .streak-fire  { font-size:2.4rem; line-height:1; animation:streakFlicker 1.4s ease-in-out infinite; }
+        .streak-num   { font-size:2.8rem; font-weight:900; color:#b45309; line-height:1; }
+        .streak-right { flex:1; min-width:140px; }
+        .streak-label { font-size:.82rem; font-weight:700; color:#92400e; margin-bottom:10px; }
+        .streak-dots  { display:flex; gap:7px; align-items:center; margin-bottom:6px; }
+        .streak-dot-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; }
+        .streak-dot  {
+          width:28px; height:28px; border-radius:50%;
+          display:flex; align-items:center; justif-content:center;
+          font-size:.7rem; font-weight:900;
+        }
+        .streak-dot.on  { background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff;
+                          box-shadow:0 3px 8px rgba(245,158,11,.4); }
+        .streak-dot.off { background:#f1f5f9; color:#94a3b8; border:1.5px dashed #cbd5e1; }
+        .streak-dot.today.on  { box-shadow:0 0 0 3px #fcd34d, 0 3px 8px rgba(245,158,11,.4); }
+        .streak-dot.today.off { border-color:#f59e0b; border-style:solid; color:#d97706; }
+        .streak-dayname { font-size:.65rem; color:#94a3b8; font-weight:700; }
+        .streak-msg { font-size:.78rem; color:#78350f; font-weight:700; }
+        .streak-badge { display:inline-block; background:#fef3c7; border:1.5px solid #fcd34d;
+                        border-radius:20px; padding:3px 10px; font-size:.72rem; font-weight:800;
+                        color:#92400e; margin-right:8px; }
+        @keyframes streakFlicker {
+          0%,100%{transform:scale(1) rotate(-3deg)} 50%{transform:scale(1.12) rotate(3deg)}
+        }
+        @media(max-width:500px){
+          .streak-card{gap:10px;} .streak-num{font-size:2.2rem;} .streak-dots{gap:4px;}
+          .streak-dot{width:24px;height:24px;font-size:.6rem;}
+        }
       `}</style>
 
       <Navbar user={user} />
@@ -374,6 +412,45 @@ export default function DashboardContent({
               </div>
             )}
           </div>
+
+          {/* ── Streak ── */}
+          {(() => {
+            const msg =
+              streakCount === 0 ? 'ابدأ رحلتك اليوم — العب أي لعبة! 💪'
+            : streakCount === 1 ? 'بداية رائعة! واصل غداً 🌟'
+            : streakCount < 5  ? 'أنت في المسار الصحيح! 🚀'
+            : streakCount < 10 ? 'ممتاز! سلسلتك تشتعل 🔥'
+            : streakCount < 20 ? `${streakCount} يوماً بلا توقف — إنجاز رائع! 🏅`
+            : `${streakCount} يوماً! أنت أسطوري 🏆`;
+            return (
+              <div className="streak-card">
+                <div className="streak-flame">
+                  <span className="streak-fire">{streakCount > 0 ? '🔥' : '💤'}</span>
+                  <span className="streak-num">{streakCount}</span>
+                </div>
+                <div className="streak-right">
+                  <div className="streak-label">
+                    {streakCount === 1 ? 'يوم متتالٍ' : streakCount === 0 ? 'لا توجد سلسلة بعد' : 'يوم متتاليًا'}
+                    {loggedToday && <span className="streak-badge">✅ لعبت اليوم</span>}
+                  </div>
+                  <div className="streak-dots">
+                    {last7Days.map((d, i) => {
+                      const isToday = i === 6;
+                      return (
+                        <div key={d.date} className="streak-dot-wrap">
+                          <div className={`streak-dot ${d.active ? 'on' : 'off'} ${isToday ? 'today' : ''}`}>
+                            {d.active ? '★' : '·'}
+                          </div>
+                          <span className="streak-dayname">{d.day}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="streak-msg">{msg}</div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── Next session ── */}
           {nextSession && (() => {

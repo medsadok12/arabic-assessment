@@ -111,6 +111,43 @@ export default async function DashboardPage() {
   const displayName   = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '';
   const studentGender = user.user_metadata?.gender === 'female' ? 'female' : 'male';
 
+  /* ── Streak ── */
+  const { data: logsRaw } = await admin
+    .from('daily_logs')
+    .select('log_date')
+    .eq('user_id', user.id)
+    .order('log_date', { ascending: false })
+    .limit(365)
+    .then(r => r.error?.code === '42P01' ? { data: [] } : r);
+
+  const logDates  = (logsRaw || []).map(r => r.log_date);
+  const dateSet   = new Set(logDates);
+  const todayStr  = new Date().toISOString().slice(0, 10);
+
+  function calcStreak(dates) {
+    if (!dates.length) return 0;
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (dates[0] !== todayStr && dates[0] !== yesterday) return 0;
+    let streak = 0, expected = dates[0];
+    for (const d of dates) {
+      if (d === expected) {
+        streak++;
+        const dt = new Date(expected); dt.setDate(dt.getDate() - 1);
+        expected = dt.toISOString().slice(0, 10);
+      } else break;
+    }
+    return streak;
+  }
+
+  const AR_DAYS = ['ح','ن','ث','ر','خ','ج','س'];
+  const streakCount  = calcStreak(logDates);
+  const loggedToday  = dateSet.has(todayStr);
+  const last7Days    = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+    const ds = d.toISOString().slice(0, 10);
+    return { date: ds, active: dateSet.has(ds), day: AR_DAYS[d.getDay()] };
+  });
+
   return (
     <DashboardContent
       user={user}
@@ -124,6 +161,9 @@ export default async function DashboardPage() {
       attendanceTotal={attendanceRecords.length}
       homework={homework}
       sessionNotes={sessionNotes}
+      streakCount={streakCount}
+      loggedToday={loggedToday}
+      last7Days={last7Days}
     />
   );
 }
