@@ -23,6 +23,8 @@ function makeCode() {
 
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
+const DIACRITICS = /[ً-ْٰ]/g;
+
 async function loadQuestions(gameType) {
   const admin = createAdminClient();
 
@@ -31,7 +33,7 @@ async function loadQuestions(gameType) {
     const valid = (data || []).filter(r => r.target_text && r.correct_option);
     const pool = valid.length >= 6 ? valid : FALLBACK_VB;
     return shuffle(pool).slice(0, 10).map(r => ({
-      id: r.id,
+      id: r.id, question_type: 'text',
       target_text:    r.target_text,
       correct_option: r.correct_option,
       wrong_option_1: r.wrong_option_1 || '',
@@ -39,19 +41,60 @@ async function loadQuestions(gameType) {
     }));
   }
 
-  // word-smash: first syllable challenge
-  const { data } = await admin.from('syllable_games').select('*');
-  const valid = (data || []).filter(
-    r => r.word_text && r.correct_segments?.length && r.wrong_options?.length >= 2
-  );
-  if (valid.length < 3) return null;
-  return shuffle(valid).slice(0, 10).map(r => ({
-    id: r.id,
-    target_text:    r.word_text,
-    correct_option: r.correct_segments[0],
-    wrong_option_1: r.wrong_options[0],
-    wrong_option_2: r.wrong_options[1],
-  }));
+  if (gameType === 'word-smash') {
+    const { data } = await admin.from('syllable_games').select('*');
+    const valid = (data || []).filter(
+      r => r.word_text && r.correct_segments?.length && r.wrong_options?.length >= 2
+    );
+    if (valid.length < 3) return null;
+    return shuffle(valid).slice(0, 10).map(r => ({
+      id: r.id, question_type: 'text',
+      target_text:    r.word_text,
+      correct_option: r.correct_segments[0],
+      wrong_option_1: r.wrong_options[0],
+      wrong_option_2: r.wrong_options[1],
+    }));
+  }
+
+  if (gameType === 'letter-catcher') {
+    const { data } = await admin.from('letter_catcher_words').select('*');
+    const valid = (data || []).filter(r => r.word && r.missing_letter && r.options?.length >= 3);
+    if (valid.length < 3) return null;
+    return shuffle(valid).slice(0, 10).map(r => {
+      const letter = r.missing_letter.replace(DIACRITICS, '');
+      // Replace first occurrence of the missing letter in word with □
+      const wordWithBlank = r.word.replace(letter, '□');
+      const wrongOpts = (r.options || []).filter(o => o !== letter);
+      return {
+        id: r.id, question_type: 'text',
+        target_text:    wordWithBlank,
+        correct_option: letter,
+        wrong_option_1: wrongOpts[0] || 'ب',
+        wrong_option_2: wrongOpts[1] || 'ت',
+      };
+    });
+  }
+
+  if (gameType === 'word-image-match') {
+    const { data } = await admin.from('word_image_matches').select('*');
+    const valid = (data || []).filter(r => r.word_text && r.image_url);
+    if (valid.length < 3) return null;
+    const pool = shuffle(valid).slice(0, 10);
+    // Build wrong options from same pool (other words)
+    return pool.map((r, i) => {
+      const others = pool.filter((_, j) => j !== i).map(x => x.word_text);
+      shuffle(others);
+      return {
+        id: r.id, question_type: 'image',
+        target_text:    r.image_url,
+        correct_option: r.word_text,
+        wrong_option_1: others[0] || 'كلمة',
+        wrong_option_2: others[1] || 'كلمة',
+      };
+    });
+  }
+
+  return null;
 }
 
 // POST — create room

@@ -320,19 +320,21 @@ export default function ChallengePage() {
             {/* Game type */}
             <div style={{ marginBottom:24 }}>
               <label style={{ display:'block', fontSize:'.85rem', fontWeight:700, color:'#374151', marginBottom:8 }}>اللعبة</label>
-              <div style={{ display:'flex', gap:10 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                 {[
-                  { key:'vowel-balloon', label:'🎈 منطاد الحركات' },
-                  { key:'word-smash',    label:'🔨 مطرقة التفكيك' },
+                  { key:'vowel-balloon',   label:'🎈 منطاد الحركات'   },
+                  { key:'word-smash',      label:'🔨 مطرقة التفكيك'   },
+                  { key:'letter-catcher',  label:'🎯 صيّاد الحروف'    },
+                  { key:'word-image-match',label:'🖼️ صِل الكلمة بصورتها' },
                 ].map(g => (
                   <button key={g.key} onClick={() => setGameType(g.key)} style={{
-                    flex:1, padding:'11px 8px', borderRadius:12,
+                    padding:'11px 8px', borderRadius:12,
                     border: gameType === g.key ? '2px solid #6366f1' : '2px solid #e5e7eb',
                     background: gameType === g.key ? '#eef2ff' : 'white',
                     color: gameType === g.key ? '#4338ca' : '#6b7280',
                     fontFamily:"'Cairo','Tajawal',sans-serif",
-                    fontSize:'.82rem', fontWeight:700, cursor:'pointer',
-                    transition:'all .2s',
+                    fontSize:'.8rem', fontWeight:700, cursor:'pointer',
+                    transition:'all .2s', textAlign:'center',
                   }}>{g.label}</button>
                 ))}
               </div>
@@ -470,12 +472,27 @@ export default function ChallengePage() {
                 </div>
               )}
 
-              {/* Question text */}
-              <div style={{
-                fontSize:'4.5rem', fontWeight:900, color:'#312e81',
-                lineHeight:1.2, marginBottom:28,
-                fontFamily:"'Cairo','Tajawal',sans-serif",
-              }}>{curQ.target_text}</div>
+              {/* Question — image or text */}
+              {curQ.question_type === 'image' ? (
+                <div style={{ marginBottom:24, display:'flex', justifyContent:'center' }}>
+                  <img
+                    src={curQ.target_text}
+                    alt="؟"
+                    style={{
+                      maxHeight:140, maxWidth:'100%', borderRadius:16,
+                      objectFit:'contain',
+                      boxShadow:'0 6px 24px rgba(0,0,0,.18)',
+                    }}
+                  />
+                </div>
+              ) : (
+                <div style={{
+                  fontSize: curQ.target_text?.length > 6 ? '2.8rem' : '4.5rem',
+                  fontWeight:900, color:'#312e81',
+                  lineHeight:1.3, marginBottom:28,
+                  fontFamily:"'Cairo','Tajawal',sans-serif",
+                }}>{curQ.target_text}</div>
+              )}
 
               {/* Options */}
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
