@@ -1150,25 +1150,53 @@ export default function BoggarAdminPage() {
         .quick-link:hover { opacity:.75; }
         .admin-tab-btn:hover { background: #eef5ff !important; color: var(--primary) !important; }
         @media (max-width: 800px) {
+          /* Stack sidebar above content */
           .admin-layout { flex-direction: column !important; }
+
+          /* Sidebar: full width, column layout, properly contained */
           .admin-sidebar {
-            width: 100% !important; position: static !important;
-            flex-direction: column !important; border-radius: 14px !important;
+            width: 100% !important;
+            position: static !important;
+            flex-direction: column !important;
+            border-radius: 14px !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          /* Nav: 2-column grid — stays inside white box, no overflow */
+          .admin-sidebar-nav {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 6px !important;
+            padding: 10px !important;
+            overflow: visible !important;
+          }
+
+          /* Each tab button: centred text, readable size, can wrap */
+          .admin-sidebar-nav > div {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+          .admin-sidebar-nav > div > button:first-child {
+            width: 100% !important;
+            justify-content: center !important;
+            text-align: center !important;
+            font-size: .78rem !important;
+            padding: 9px 6px !important;
+            white-space: normal !important;
+            line-height: 1.35 !important;
+            word-break: keep-all !important;
+          }
+
+          /* Hide permission lock icons on mobile — not actionable on small screens */
+          .admin-sidebar .perm-icon { display: none !important; }
+
+          /* Ensure content area doesn't overflow screen */
+          .admin-layout > div:last-child {
+            min-width: 0 !important;
+            max-width: 100% !important;
             overflow: hidden !important;
           }
-          .admin-sidebar-nav {
-            flex-direction: row !important; flex-wrap: nowrap !important;
-            overflow-x: auto !important; padding: 8px 8px 10px !important;
-            gap: 5px !important; -webkit-overflow-scrolling: touch;
-            scrollbar-width: none; flex: none !important;
-          }
-          .admin-sidebar-nav::-webkit-scrollbar { display: none; }
-          .admin-sidebar-nav > div { flex-shrink: 0 !important; width: auto !important; }
-          .admin-sidebar-nav > div > button:first-child {
-            flex: none !important; white-space: nowrap !important;
-            padding: 8px 14px !important; font-size: .82rem !important;
-          }
-          .admin-sidebar .perm-icon { display: none !important; }
         }
       `}</style>
 

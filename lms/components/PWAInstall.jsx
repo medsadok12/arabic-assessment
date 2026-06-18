@@ -1,7 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+
+// Admin-area paths where the install prompt must not appear
+const ADMIN_PATHS = ['/bogga', '/teacher', '/supervisor', '/dashboard', '/profile'];
 
 export default function PWAInstall() {
+  const pathname   = usePathname();
   const [prompt,      setPrompt]      = useState(null);
   const [showInstall, setShowInstall] = useState(false);
   const [showUpdate,  setShowUpdate]  = useState(false);
@@ -84,6 +89,9 @@ export default function PWAInstall() {
     navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
   }
 
+  // On authenticated / admin pages the install prompt blocks the UI — hide it
+  const onAdminPath = ADMIN_PATHS.some(p => pathname?.startsWith(p));
+
   return (
     <>
       <style>{`
@@ -154,8 +162,8 @@ export default function PWAInstall() {
         </div>
       )}
 
-      {/* ── Install prompt ── */}
-      {showInstall && (
+      {/* ── Install prompt (hidden on admin/authenticated paths) ── */}
+      {showInstall && !onAdminPath && (
         isMobile ? (
           /* ── Mobile: compact strip above bottom nav ── */
           <div className={`pwa-mob-strip ${visible ? 'pwa-strip-in' : 'pwa-strip-out'}`}>
