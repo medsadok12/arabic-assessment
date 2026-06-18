@@ -81,8 +81,8 @@ export default function PWAInstall() {
   return (
     <>
       <style>{`
-        @keyframes pwa-slide-up   { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes pwa-slide-down { from { transform: translateY(0);    opacity: 1; } to { transform: translateY(100%); opacity: 0; } }
+        @keyframes pwa-slide-up   { from { transform: translateX(-50%) translateY(100%); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+        @keyframes pwa-slide-down { from { transform: translateX(-50%) translateY(0);    opacity: 1; } to { transform: translateX(-50%) translateY(100%); opacity: 0; } }
         @keyframes pwa-banner-in  { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes pwa-pulse      { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .pwa-card  { animation: pwa-slide-up   .4s cubic-bezier(.34,1.56,.64,1) forwards; }
@@ -91,6 +91,26 @@ export default function PWAInstall() {
         .pwa-btn-install:hover { transform: scale(1.03); filter: brightness(1.08); }
         .pwa-btn-install:active{ transform: scale(.97); }
         .pwa-btn-update:hover  { background: #1d4ed8 !important; }
+        .pwa-install-card {
+          position: fixed;
+          bottom: 28px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: min(92vw, 400px);
+          background: #fff;
+          border-radius: 24px;
+          box-shadow: 0 20px 60px rgba(24,95,165,.22), 0 4px 16px rgba(0,0,0,.08);
+          border: 1.5px solid rgba(24,95,165,.12);
+          z-index: 99998;
+          direction: rtl;
+          overflow: hidden;
+        }
+        @media (max-width: 768px) {
+          .pwa-install-card {
+            bottom: 90px;
+            border-radius: 20px;
+          }
+        }
       `}</style>
 
       {/* ── Update Banner (top) ── */}
@@ -132,19 +152,8 @@ export default function PWAInstall() {
       {/* ── Install Card (bottom) ── */}
       {showInstall && (
         <div
-          className={visible ? 'pwa-card' : 'pwa-hide'}
-          style={{
-            position: 'fixed', bottom: 24, left: '50%',
-            transform: 'translateX(-50%)',
-            width: 'min(92vw, 400px)',
-            background: '#fff',
-            borderRadius: 24,
-            boxShadow: '0 20px 60px rgba(24,95,165,.22), 0 4px 16px rgba(0,0,0,.08)',
-            border: '1.5px solid rgba(24,95,165,.12)',
-            zIndex: 99998,
-            direction: 'rtl',
-            overflow: 'hidden',
-          }}>
+          className={`pwa-install-card ${visible ? 'pwa-card' : 'pwa-hide'}`}
+        >
 
           {/* Top gradient stripe */}
           <div style={{
