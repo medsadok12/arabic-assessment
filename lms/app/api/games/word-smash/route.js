@@ -45,7 +45,7 @@ export async function POST(request) {
     const { user, allowed } = await checkAuth();
     if (!user || !allowed) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
 
-    const { word_text, correct_segments, wrong_options, rule_text, topic, grade_level } = await request.json();
+    const { word_text, correct_segments, wrong_options, rule_text, topic, grade_level, image_url } = await request.json();
 
     if (!word_text?.trim())
       return NextResponse.json({ error: 'الكلمة مطلوبة' }, { status: 400 });
@@ -66,6 +66,7 @@ export async function POST(request) {
         rule_text:        rule_text.trim(),
         topic:            topic?.trim() || null,
         grade_level:      grade_level ? Number(grade_level) : null,
+        image_url:        image_url || null,
       })
       .select()
       .single();
@@ -87,7 +88,7 @@ export async function PUT(request) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'المعرّف مطلوب' }, { status: 400 });
 
-    const { word_text, correct_segments, wrong_options, rule_text, topic, grade_level } = await request.json();
+    const { word_text, correct_segments, wrong_options, rule_text, topic, grade_level, image_url } = await request.json();
 
     const admin = createAdminClient();
     const { data, error } = await admin
@@ -99,6 +100,7 @@ export async function PUT(request) {
         rule_text:        rule_text?.trim(),
         topic:            topic?.trim() || null,
         grade_level:      grade_level ? Number(grade_level) : null,
+        image_url:        image_url ?? null,
       })
       .eq('id', id)
       .select()

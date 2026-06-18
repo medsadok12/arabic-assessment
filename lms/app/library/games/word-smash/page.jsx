@@ -44,6 +44,15 @@ function addArm(seg, isLast) {
 
 const TOPICS = ['الحيوانات', 'المدرسة', 'الأسرة', 'الطبيعة', 'الفواكه', 'الألوان', 'المهن', 'الأدوات'];
 
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
 /* ─── Word Manager (admin/teacher panel) ─── */
 function WordManager({ dbWords, onRefresh }) {
   const [editId,  setEditId]  = useState(null);
@@ -54,6 +63,8 @@ function WordManager({ dbWords, onRefresh }) {
   const [rule,    setRule]    = useState('');
   const [topic,   setTopic]   = useState('');
   const [grade,   setGrade]   = useState(0);
+  const [imgUrl,  setImgUrl]  = useState('');
+  const [imgPrev, setImgPrev] = useState('');
   const [saving,  setSaving]  = useState(false);
   const [delId,   setDelId]   = useState(null);
   const [msg,     setMsg]     = useState(null);
@@ -62,7 +73,7 @@ function WordManager({ dbWords, onRefresh }) {
 
   const reset = () => {
     setEditId(null); setWord(''); setCorrect(''); setWrong1(''); setWrong2('');
-    setRule(''); setTopic(''); setGrade(0); setMsg(null);
+    setRule(''); setTopic(''); setGrade(0); setImgUrl(''); setImgPrev(''); setMsg(null);
   };
 
   const startEdit = item => {
@@ -75,8 +86,17 @@ function WordManager({ dbWords, onRefresh }) {
     setRule(item.rule_text || '');
     setTopic(item.topic || '');
     setGrade(item.grade_level || 0);
+    setImgUrl(item.image_url || '');
+    setImgPrev(item.image_url || '');
     setMsg(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleImgFile = async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const b = await fileToBase64(f);
+    setImgUrl(b); setImgPrev(b);
   };
 
   const handleSave = async () => {
@@ -97,6 +117,7 @@ function WordManager({ dbWords, onRefresh }) {
         rule_text: rule.trim(),
         topic: topic || null,
         grade_level: grade || null,
+        image_url: imgUrl || null,
       };
       const url    = editId ? `/api/games/word-smash?id=${editId}` : '/api/games/word-smash';
       const method = editId ? 'PUT' : 'POST';
@@ -180,6 +201,28 @@ function WordManager({ dbWords, onRefresh }) {
             style={{ ...S.input, resize: 'vertical', minHeight: 64 }} dir="rtl" />
         </div>
 
+        {/* Image upload */}
+        <div style={{ marginBottom: 10 }}>
+          <label style={S.label}>صورة الكلمة (اختياري)</label>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <label style={{
+              flex: 1, display: 'flex', alignItems: 'center', gap: 8,
+              border: '1.5px dashed #86efac', borderRadius: 8, padding: '8px 12px',
+              background: '#f0fdf4', cursor: 'pointer', fontFamily: 'Cairo, sans-serif',
+              fontSize: '.85rem', color: '#15803d', fontWeight: 600,
+            }}>
+              📷 {imgPrev ? 'تغيير الصورة' : 'رفع صورة'}
+              <input type="file" accept="image/*" onChange={handleImgFile} style={{ display: 'none' }} />
+            </label>
+            {imgPrev && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <img src={imgPrev} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1.5px solid #d1fae5' }} />
+                <button onClick={() => { setImgUrl(''); setImgPrev(''); }} style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: '.78rem', color: '#dc2626', fontFamily: 'Cairo, sans-serif' }}>🗑️</button>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Topic & Grade */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
           <div>
@@ -225,7 +268,10 @@ function WordManager({ dbWords, onRefresh }) {
           <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontFamily: 'Cairo, sans-serif' }}>لا توجد كلمات بعد</div>
         ) : dbWords.map(item => (
           <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid #f1f5f9', background: editId === item.id ? '#f0fdf4' : 'transparent', direction: 'rtl' }}>
-            <button onClick={() => speak(item.word_text)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', flexShrink: 0, padding: '2px 4px' }}>🔊</button>
+            {item.image_url
+              ? <img src={item.image_url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 7, border: '1.5px solid #d1fae5', flexShrink: 0 }} />
+              : <button onClick={() => speak(item.word_text)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', flexShrink: 0, padding: '2px 4px' }}>🔊</button>
+            }
             <div style={{ flex: 1, fontFamily: 'Cairo, sans-serif', textAlign: 'right' }}>
               <div style={{ fontWeight: 700, fontSize: '1rem' }}>{item.word_text}</div>
               <div style={{ fontSize: '.75rem', color: '#64748b' }}>
