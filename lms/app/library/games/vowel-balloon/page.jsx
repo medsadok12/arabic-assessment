@@ -5,7 +5,7 @@ import Navbar from '../../../../components/Navbar';
 
 /* ─── balloon colors by position ─── */
 const BALLOON_COLORS = [
-  { color:'#F59E0B', light:'#FFFBEB', dark:'#B45309' },
+  { color:'#F59E0B', light:'#FFFBEB', dark:'#92400E' },
   { color:'#3B82F6', light:'#EFF6FF', dark:'#1D4ED8' },
   { color:'#10B981', light:'#ECFDF5', dark:'#065F46' },
 ];
@@ -90,7 +90,7 @@ function Balloon({ label, colorIdx, floatVariant, state, onClick }) {
     shake: 'vbShake .5s ease both',
   };
   const len = label.length;
-  const fs  = len > 9 ? '.56rem' : len > 7 ? '.63rem' : len > 5 ? '.72rem' : '.86rem';
+  const fs  = len > 9 ? '.66rem' : len > 7 ? '.75rem' : len > 5 ? '.86rem' : '1rem';
 
   return (
     <div onClick={onClick} style={{
@@ -98,31 +98,47 @@ function Balloon({ label, colorIdx, floatVariant, state, onClick }) {
       cursor:'pointer', userSelect:'none', WebkitUserSelect:'none',
       animation: animMap[state] || animMap.idle, willChange:'transform',
     }}>
-      {/* body */}
+      {/* balloon body */}
       <div style={{
-        width:108, height:128,
-        background:`radial-gradient(circle at 34% 30%, ${c.light} 0%, ${c.color} 55%, ${c.dark} 100%)`,
-        borderRadius:'50% 50% 50% 50% / 60% 60% 40% 40%',
+        width:104, height:120,
+        background:`radial-gradient(circle at 34% 28%, ${c.light} 0%, ${c.color} 52%, ${c.dark} 100%)`,
+        borderRadius:'50% 50% 50% 50% / 60% 60% 42% 42%',
         display:'flex', alignItems:'center', justifyContent:'center',
         padding:'10px 8px',
-        boxShadow:`0 8px 28px ${c.color}55, inset 0 -6px 18px rgba(0,0,0,.18)`,
+        boxShadow:`0 8px 28px ${c.color}66, inset 0 -6px 18px rgba(0,0,0,.2)`,
         position:'relative',
       }}>
-        <div style={{ position:'absolute', top:16, left:28, width:22, height:14, background:'rgba(255,255,255,.38)', borderRadius:'50%', transform:'rotate(-20deg)' }} />
+        <div style={{ position:'absolute', top:14, left:24, width:24, height:15, background:'rgba(255,255,255,.45)', borderRadius:'50%', transform:'rotate(-22deg)' }} />
+        <div style={{ position:'absolute', top:30, left:30, width:10, height:7, background:'rgba(255,255,255,.22)', borderRadius:'50%' }} />
         <span style={{
-          fontSize: fs, lineHeight:1.35, color:'#fff', position:'relative', zIndex:1,
-          textShadow:'0 2px 8px rgba(0,0,0,.35)',
+          fontSize:fs, lineHeight:1.3, color:'#fff', position:'relative', zIndex:1,
+          textShadow:'0 2px 8px rgba(0,0,0,.5), 0 0 16px rgba(0,0,0,.15)',
           fontFamily:"'Cairo','Tajawal',sans-serif", fontWeight:900, textAlign:'center',
         }}>
           {label}
         </span>
       </div>
       {/* knot */}
-      <div style={{ width:12, height:10, background:c.dark, borderRadius:'0 0 50% 50% / 0 0 8px 8px' }} />
-      {/* string */}
-      <svg width="2" height="55" style={{ display:'block' }}>
-        <line x1="1" y1="0" x2="1" y2="55" stroke={c.dark} strokeWidth="2" strokeDasharray="4 3" />
+      <div style={{ width:13, height:10, background:c.dark, borderRadius:'0 0 50% 50% / 0 0 8px 8px' }} />
+      {/* rigging lines (knot → gondola) */}
+      <svg width="42" height="22" style={{ display:'block', marginTop:-1 }}>
+        <line x1="21" y1="1" x2="5"  y2="21" stroke={c.dark} strokeWidth="1.2" opacity="0.65" />
+        <line x1="21" y1="1" x2="37" y2="21" stroke={c.dark} strokeWidth="1.2" opacity="0.65" />
+        <line x1="21" y1="1" x2="21" y2="21" stroke={c.dark} strokeWidth="1.4" strokeDasharray="4 3" />
       </svg>
+      {/* gondola basket */}
+      <div style={{
+        width:42, height:20,
+        borderRadius:'4px 4px 9px 9px',
+        background:`linear-gradient(180deg,${c.color}bb 0%,${c.dark} 100%)`,
+        border:`2px solid ${c.dark}`,
+        boxShadow:`0 4px 10px rgba(0,0,0,.3), inset 0 2px 4px rgba(255,255,255,.12)`,
+        position:'relative', overflow:'hidden',
+      }}>
+        <div style={{ position:'absolute', top:'42%', left:3, right:3, height:1.5, background:'rgba(0,0,0,.28)', borderRadius:1 }} />
+        <div style={{ position:'absolute', top:3, bottom:3, left:'33%', width:1.5, background:'rgba(0,0,0,.22)' }} />
+        <div style={{ position:'absolute', top:3, bottom:3, right:'33%', width:1.5, background:'rgba(0,0,0,.22)' }} />
+      </div>
     </div>
   );
 }
@@ -520,6 +536,8 @@ export default function VowelBalloonPage() {
         .vb-tab.on  { background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; box-shadow:0 4px 14px rgba(59,130,246,.4); }
         .vb-tab.off { background:#f1f5f9; color:#64748b; }
         .vb-tab.off:hover { background:#e2e8f0; }
+        .vb-listen-btn:hover  { transform:scale(1.12) !important; box-shadow:0 6px 22px rgba(245,158,11,.72),inset 0 -3px 6px rgba(0,0,0,.15) !important; }
+        .vb-listen-btn:active { transform:scale(0.92) !important; }
       `}</style>
 
       <main style={{ minHeight:'100vh', background:'linear-gradient(160deg,#e0f2fe 0%,#f0fdf4 50%,#fef9c3 100%)', fontFamily:"'Cairo','Tajawal',sans-serif", padding:'16px 0 48px' }}>
@@ -536,32 +554,32 @@ export default function VowelBalloonPage() {
           {tab === 'admin' ? <WordManager user={user} /> : (
 
             /* ── game card ── */
-            <div style={{ background:'rgba(255,255,255,.72)', backdropFilter:'blur(12px)', borderRadius:28, padding:'28px 20px 32px', boxShadow:'0 8px 40px rgba(0,0,0,.1)', position:'relative' }}>
+            <div style={{ background:'linear-gradient(160deg,#fffdf9 0%,#fffcf2 100%)', borderRadius:32, padding:'16px 20px 20px', border:'3px solid #fde68a', borderBottom:'6px solid #f59e0b', boxShadow:'0 8px 40px rgba(245,158,11,.15),0 2px 12px rgba(0,0,0,.08)', position:'relative' }}>
 
-              <div style={{ textAlign:'center', marginBottom:8 }}>
-                <h1 style={{ fontSize:'1.5rem', fontWeight:900, color:'#1e3a5f', margin:0 }}>🎈 منطاد الحركات</h1>
-                <p style={{ color:'#64748b', fontSize:'.85rem', margin:'4px 0 0' }}>اختر المنطاد الذي يصف الصوت الصحيح!</p>
+              <div style={{ textAlign:'center', marginBottom:5 }}>
+                <h1 style={{ fontSize:'1.3rem', fontWeight:900, color:'#78350f', margin:0 }}>🎈 منطاد الحركات</h1>
+                <p style={{ color:'#a16207', fontSize:'.8rem', margin:'2px 0 0', fontWeight:600 }}>اختر المنطاد الذي يصف الصوت الصحيح!</p>
                 {dataSource === 'demo' && (
                   <span style={{ fontSize:'.72rem', background:'#fef3c7', color:'#92400e', borderRadius:20, padding:'2px 10px', display:'inline-block', marginTop:4 }}>وضع تجريبي</span>
                 )}
               </div>
 
               {/* score + counter */}
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:7 }}>
                 <span style={{ background:'linear-gradient(135deg,#f59e0b,#d97706)', color:'#fff', borderRadius:20, padding:'4px 14px', fontSize:'.88rem', fontWeight:800, boxShadow:'0 3px 10px rgba(245,158,11,.4)' }}>⭐ {score}</span>
-                <span style={{ color:'#64748b', fontSize:'.85rem', fontWeight:700 }}>{Math.min(cur+1,total)} / {total}</span>
+                <span style={{ color:'#a16207', fontSize:'.85rem', fontWeight:700 }}>{Math.min(cur+1,total)} / {total}</span>
               </div>
 
               {/* progress bar */}
-              <div style={{ background:'#e2e8f0', borderRadius:99, height:8, marginBottom:24, overflow:'hidden' }}>
-                <div style={{ background:'linear-gradient(90deg,#10b981,#3b82f6)', height:'100%', borderRadius:99, width:`${total ? Math.min(cur/total,1)*100 : 0}%`, transition:'width .4s ease' }} />
+              <div style={{ background:'#fde68a', borderRadius:99, height:7, marginBottom:12, overflow:'hidden' }}>
+                <div style={{ background:'linear-gradient(90deg,#f59e0b,#10b981)', height:'100%', borderRadius:99, width:`${total ? Math.min(cur/total,1)*100 : 0}%`, transition:'width .4s ease' }} />
               </div>
 
               {done ? (
                 /* done screen */
                 <div style={{ textAlign:'center', padding:'32px 0', animation:'vbPop .5s ease both' }}>
                   <div style={{ fontSize:'5rem', marginBottom:12 }}>🎉</div>
-                  <h2 style={{ fontSize:'1.6rem', fontWeight:900, color:'#1e3a5f', margin:'0 0 8px' }}>أحسنت! انتهت اللعبة</h2>
+                  <h2 style={{ fontSize:'1.6rem', fontWeight:900, color:'#78350f', margin:'0 0 8px' }}>أحسنت! انتهت اللعبة</h2>
                   <p style={{ color:'#64748b', fontSize:'1rem', marginBottom:20 }}>نقاطك: <strong style={{ color:'#f59e0b', fontSize:'1.3rem' }}>{score}</strong> من {total}</p>
                   <button onClick={restart} style={{ border:'none', borderRadius:50, padding:'12px 36px', background:'linear-gradient(135deg,#10b981,#059669)', color:'#fff', fontSize:'1rem', fontWeight:800, cursor:'pointer', boxShadow:'0 4px 18px rgba(16,185,129,.45)', fontFamily:"'Cairo','Tajawal',sans-serif" }}>
                     العب مجدداً ←
@@ -574,28 +592,34 @@ export default function VowelBalloonPage() {
               ) : (
                 <>
                   {/* target sound — rendered exactly as typed, no modifications */}
-                  <div style={{ textAlign:'center', marginBottom:32, position:'relative' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:14, marginBottom:14, position:'relative' }}>
                     {showConf && <ConfettiBurst key={confKey} />}
                     <div style={{
-                      display:'inline-block', fontSize:'7rem', lineHeight:1,
-                      color:'#1e3a5f', fontWeight:900, fontFamily:"'Cairo','Tajawal',sans-serif",
-                      textShadow:'0 6px 24px rgba(30,58,95,.2)',
+                      fontSize:'5rem', lineHeight:1,
+                      color:'#78350f', fontWeight:900, fontFamily:"'Cairo','Tajawal',sans-serif",
+                      textShadow:'0 3px 14px rgba(120,53,15,.22)',
                       animation: letterAnim==='bounce' ? 'vbLetterBounce .6s ease both'
                                : letterAnim==='shake'  ? 'vbLetterShake .5s ease both' : 'none',
+                      display:'inline-block',
                     }}>
                       {q.target_text}
                     </div>
-                    <br />
-                    <button onClick={() => {
+                    <button className="vb-listen-btn" onClick={() => {
                       if (q.audio_url) { const a=new Audio(q.audio_url); a.play().catch(() => speak(q.target_text)); }
                       else speak(q.target_text);
-                    }} style={{ marginTop:8, border:'none', borderRadius:50, padding:'8px 20px', background:'linear-gradient(135deg,#3b82f6,#2563eb)', color:'#fff', fontSize:'.85rem', fontWeight:700, cursor:'pointer', boxShadow:'0 3px 12px rgba(59,130,246,.4)', fontFamily:"'Cairo','Tajawal',sans-serif" }}>
-                      🔊 استمع
+                    }} style={{
+                      width:52, height:52, borderRadius:'50%', border:'none', flexShrink:0,
+                      background:'linear-gradient(135deg,#fbbf24,#f59e0b)',
+                      boxShadow:'0 4px 16px rgba(245,158,11,.5),inset 0 -3px 6px rgba(0,0,0,.12)',
+                      cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:'1.45rem', transition:'transform .15s,box-shadow .15s',
+                    }}>
+                      🔊
                     </button>
                   </div>
 
                   {/* balloons */}
-                  <div style={{ display:'flex', justifyContent:'center', gap:18, flexWrap:'wrap', marginBottom:24, minHeight:200, alignItems:'flex-end' }}>
+                  <div style={{ display:'flex', justifyContent:'center', gap:14, flexWrap:'wrap', marginBottom:14, minHeight:178, alignItems:'flex-end' }}>
                     {q._options.map((opt, idx) => (
                       <div key={idx} className="vb-balloon-wrap" style={{
                         opacity: chosen !== null && chosen !== idx ? .55 : 1,
@@ -615,7 +639,7 @@ export default function VowelBalloonPage() {
                   {/* feedback bar */}
                   {(chosen !== null || wrongFeedback) && (
                     <div style={{
-                      textAlign:'center', padding:'14px 18px', borderRadius:16, marginBottom:12,
+                      textAlign:'center', padding:'14px 18px', borderRadius:14, marginBottom:8,
                       background: isRight ? '#ecfdf5' : '#fef2f2',
                       border:`2px solid ${isRight?'#a7f3d0':'#fecaca'}`,
                       animation:'vbSlideUp .45s ease both',
