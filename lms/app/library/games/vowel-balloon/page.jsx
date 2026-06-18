@@ -456,9 +456,9 @@ export default function VowelBalloonPage() {
   useEffect(() => {
     if (!queue.length || done) return;
     const q = queue[cur]; if (!q) return;
+    if (!q.audio_url) return;                    // only play custom uploaded audio
     const t = setTimeout(() => {
-      if (q.audio_url) { const a = new Audio(q.audio_url); a.play().catch(() => speak(q.target_text)); }
-      else speak(q.target_text);
+      new Audio(q.audio_url).play().catch(() => {});
     }, 300);
     return () => clearTimeout(t);
   }, [cur, queue, done]);
@@ -474,7 +474,7 @@ export default function VowelBalloonPage() {
       setLetterAnim('bounce');
       setScore(sc => sc + 1);
       setConfKey(k => k + 1); setShowConf(true);
-      speak(q.target_text);
+      if (q.audio_url) new Audio(q.audio_url).play().catch(() => {});
       setTimeout(() => {
         setShowConf(false); setLetterAnim('idle');
         setBalloonStates(['idle','idle','idle']);
@@ -486,7 +486,6 @@ export default function VowelBalloonPage() {
       setBalloonStates(s => s.map((st, i) => i === idx ? 'shake' : st));
       setLetterAnim('shake');
       setShowRule(true); setWrongFeedback(true);
-      speak(q.target_text);
       setTimeout(() => {
         setBalloonStates(s => s.map((st, i) => i === idx ? 'idle' : st));
         setLetterAnim('idle');
@@ -592,30 +591,17 @@ export default function VowelBalloonPage() {
               ) : (
                 <>
                   {/* target sound — rendered exactly as typed, no modifications */}
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:14, marginBottom:14, position:'relative' }}>
+                  <div style={{ textAlign:'center', marginBottom:30, position:'relative' }}>
                     {showConf && <ConfettiBurst key={confKey} />}
                     <div style={{
-                      fontSize:'5rem', lineHeight:1,
+                      display:'inline-block', fontSize:'5rem', lineHeight:1,
                       color:'#78350f', fontWeight:900, fontFamily:"'Cairo','Tajawal',sans-serif",
                       textShadow:'0 3px 14px rgba(120,53,15,.22)',
                       animation: letterAnim==='bounce' ? 'vbLetterBounce .6s ease both'
                                : letterAnim==='shake'  ? 'vbLetterShake .5s ease both' : 'none',
-                      display:'inline-block',
                     }}>
                       {q.target_text}
                     </div>
-                    <button className="vb-listen-btn" onClick={() => {
-                      if (q.audio_url) { const a=new Audio(q.audio_url); a.play().catch(() => speak(q.target_text)); }
-                      else speak(q.target_text);
-                    }} style={{
-                      width:52, height:52, borderRadius:'50%', border:'none', flexShrink:0,
-                      background:'linear-gradient(135deg,#fbbf24,#f59e0b)',
-                      boxShadow:'0 4px 16px rgba(245,158,11,.5),inset 0 -3px 6px rgba(0,0,0,.12)',
-                      cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-                      fontSize:'1.45rem', transition:'transform .15s,box-shadow .15s',
-                    }}>
-                      🔊
-                    </button>
                   </div>
 
                   {/* balloons */}
