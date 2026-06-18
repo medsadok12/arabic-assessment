@@ -736,7 +736,7 @@ export default function WordImageMatchPage() {
     <>
       <style>{`
         * { box-sizing: border-box; }
-        body { background: #f0edff; }
+        body { background: linear-gradient(160deg,#bae6fd 0%,#fef9c3 52%,#bbf7d0 100%); min-height:100vh; }
 
         @keyframes wimPop {
           0%  { transform:scale(.82) translateY(8px); opacity:0; }
@@ -762,6 +762,26 @@ export default function WordImageMatchPage() {
         @keyframes wsDot     { 0%,80%,100%{opacity:.2;transform:scale(.65)} 40%{opacity:1;transform:scale(1.2)} }
         @keyframes wimIconBob{ 0%,100%{transform:translateY(0) rotate(-5deg)} 50%{transform:translateY(-18px) rotate(5deg)} }
 
+        /* ── Loading animations ── */
+        @keyframes wimSun {
+          0%   { transform:rotate(0deg)   scale(1);    filter:drop-shadow(0 6px 18px rgba(251,191,36,.5)); }
+          25%  { transform:rotate(90deg)  scale(1.18); filter:drop-shadow(0 8px 24px rgba(251,191,36,.75)); }
+          50%  { transform:rotate(180deg) scale(1);    filter:drop-shadow(0 6px 18px rgba(251,191,36,.5)); }
+          75%  { transform:rotate(270deg) scale(1.18); filter:drop-shadow(0 8px 24px rgba(251,191,36,.75)); }
+          100% { transform:rotate(360deg) scale(1);    filter:drop-shadow(0 6px 18px rgba(251,191,36,.5)); }
+        }
+        @keyframes wimDecA { 0%,100%{transform:rotate(-12deg) scale(1);opacity:.65} 50%{transform:rotate(14deg) scale(1.32);opacity:1} }
+        @keyframes wimDecB { 0%,100%{transform:translateY(0) rotate(0);opacity:.55} 50%{transform:translateY(-9px) rotate(22deg);opacity:1} }
+        @keyframes wimBounce {
+          0%,55%,100%{ transform:translateY(0)    scale(1); }
+          28%         { transform:translateY(-20px) scale(1.32); }
+        }
+        /* ── Card pulse glow ── */
+        @keyframes wimCardGlow {
+          0%,100%{ box-shadow:0 20px 56px rgba(251,191,36,.22),0 6px 18px rgba(0,0,0,.07); }
+          50%    { box-shadow:0 24px 72px rgba(251,191,36,.38),0 8px 24px rgba(0,0,0,.09); }
+        }
+
         .wim-word-card { transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .15s; }
         .wim-word-card:not(.wim-done):hover  { transform: scale(1.05) translateY(-3px) !important; box-shadow: 0 14px 32px rgba(92,79,196,.28) !important; }
         .wim-word-card:not(.wim-done):active { transform: scale(.96) translateY(3px) !important; }
@@ -775,9 +795,18 @@ export default function WordImageMatchPage() {
         .wim-topic-card:active { transform: scale(.94) translateY(4px) !important; }
         .wim-topic-card:hover .wim-topic-icon { animation: wimIconCardBob .5s ease-in-out; }
         @keyframes wimIconCardBob { 0%,100%{transform:scale(1) rotate(0deg)} 40%{transform:scale(1.35) rotate(-18deg)} 70%{transform:scale(1.15) rotate(10deg)} }
-        .wim-nav-pill { background:rgba(255,255,255,.75); color:#6d28d9; border:1.5px solid #ddd6fe; border-radius:99px; padding:6px 14px; font-family:'Cairo',sans-serif; font-weight:700; font-size:.8rem; text-decoration:none; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:background .15s, box-shadow .15s; white-space:nowrap; }
-        .wim-nav-pill:hover { background:#ede9fe; box-shadow:0 2px 8px rgba(109,40,217,.15); }
-        .wim-nav-pill.active { background:#ede9fe; }
+
+        .wim-nav-pill {
+          background:rgba(255,255,255,.82); color:#92400e;
+          border:1.5px solid rgba(251,191,36,.55); border-radius:99px;
+          padding:6px 14px; font-family:'Cairo',sans-serif; font-weight:700;
+          font-size:.8rem; text-decoration:none; cursor:pointer;
+          display:inline-flex; align-items:center; gap:5px;
+          transition:background .15s, box-shadow .15s; white-space:nowrap;
+          box-shadow:0 2px 6px rgba(0,0,0,.07);
+        }
+        .wim-nav-pill:hover { background:#fef3c7; box-shadow:0 3px 10px rgba(251,191,36,.35); }
+        .wim-nav-pill.active { background:#fef3c7; border-color:#f59e0b; }
 
         @media (max-width: 520px) {
           .wim-cols .wim-word-card, .wim-cols .wim-img-card { height: 74px !important; font-size: 1rem !important; }
@@ -801,16 +830,70 @@ export default function WordImageMatchPage() {
         {isTeacher && showCfg && <SettingsPanel cfg={cfg} setCfg={setCfg} />}
         {isTeacher && showMgr && <PairManager allPairs={allPairs} onRefresh={() => { loadAllPairs(); loadGamePairs(); }} />}
 
-        {/* game card */}
-        <div style={{ background:'#fff', borderRadius:28, padding:'22px 20px', boxShadow:'0 8px 40px rgba(92,79,196,.15), 0 2px 8px rgba(0,0,0,.06)', border:'2px solid #ede9fe' }}>
+        {/* game card — warm cream, amber border, floating shadow, corner sparkles */}
+        <div style={{
+          background: 'linear-gradient(160deg,#fffdf9 0%,#fffcf2 100%)',
+          borderRadius: 36,
+          padding: '28px 20px',
+          border: '4px solid #fde68a',
+          borderBottom: '7px solid #f59e0b',
+          position: 'relative',
+          overflow: 'hidden',
+          animation: 'wimCardGlow 4s ease-in-out infinite',
+        }}>
+          {/* ── corner decorations ── */}
+          <span style={{ position:'absolute', top:10, right:12, fontSize:'1.9rem', lineHeight:1, display:'block', animation:'wimDecA 3.4s ease-in-out infinite', pointerEvents:'none' }}>⭐</span>
+          <span style={{ position:'absolute', top:12, left:12, fontSize:'1.3rem', lineHeight:1, display:'block', animation:'wimDecB 2.9s ease-in-out infinite .7s', pointerEvents:'none' }}>✨</span>
+          <span style={{ position:'absolute', bottom:10, right:12, fontSize:'1.3rem', lineHeight:1, display:'block', animation:'wimDecB 3.7s ease-in-out infinite 1.2s', pointerEvents:'none' }}>🌟</span>
+          <span style={{ position:'absolute', bottom:10, left:12, fontSize:'1.7rem', lineHeight:1, display:'block', animation:'wimDecA 4.1s ease-in-out infinite .3s', pointerEvents:'none' }}>⭐</span>
+
           {loading ? (
-            <div style={{ textAlign:'center', padding:'36px 20px', fontFamily:"'Cairo',sans-serif" }}>
-              <div style={{ fontSize:'4.4rem', lineHeight:1, marginBottom:14, display:'inline-block', animation:'wimIconBob 1.6s ease-in-out infinite' }}>🖼️</div>
-              <h2 style={{ fontSize:'1.3rem', fontWeight:900, color:'#3730a3', margin:'0 0 6px' }}>صِل الكلمة بصورتها</h2>
-              <p style={{ color:'#7c3aed', fontWeight:700, margin:'0 0 18px', fontSize:'.9rem' }}>انتظر، جارٍ تجهيز المواضيع... 🎈</p>
-              <div style={{ display:'flex', gap:10, justifyContent:'center' }}>
-                {[0,180,360].map(d => (
-                  <div key={d} style={{ width:13, height:13, borderRadius:'50%', background:'#7c3aed', animation:`wsDot 1.3s ${d}ms ease-in-out infinite` }} />
+            <div style={{ textAlign:'center', padding:'44px 20px 36px', fontFamily:"'Cairo',sans-serif" }}>
+
+              {/* spinning sun */}
+              <div style={{
+                fontSize: '5.2rem', lineHeight:1, marginBottom:20,
+                display: 'inline-block',
+                animation: 'wimSun 2.8s ease-in-out infinite',
+              }}>☀️</div>
+
+              <h2 style={{
+                fontSize: '1.55rem', fontWeight: 900,
+                color: '#92400e',
+                margin: '0 0 12px',
+                textShadow: '0 2px 0 rgba(255,255,255,.65)',
+              }}>صِل الكلمة بصورتها!</h2>
+
+              {/* warm amber pill */}
+              <div style={{
+                display: 'inline-block',
+                background: 'linear-gradient(135deg,#fef3c7,#fde68a)',
+                border: '2px solid #f59e0b',
+                borderBottom: '4px solid #d97706',
+                borderRadius: 99,
+                padding: '9px 26px',
+                marginBottom: 28,
+                color: '#78350f',
+                fontWeight: 800,
+                fontSize: '1rem',
+                boxShadow: '0 4px 14px rgba(245,158,11,.35)',
+              }}>
+                جارٍ تجهيز المواضيع... 🎈
+              </div>
+
+              {/* colorful bouncing dots */}
+              <div style={{ display:'flex', gap:13, justifyContent:'center' }}>
+                {[
+                  { bg:'linear-gradient(135deg,#fbbf24,#d97706)', shadow:'rgba(251,191,36,.55)', delay:0   },
+                  { bg:'linear-gradient(135deg,#fb923c,#ea580c)', shadow:'rgba(251,146,60,.55)',  delay:160 },
+                  { bg:'linear-gradient(135deg,#34d399,#059669)', shadow:'rgba(52,211,153,.55)',  delay:320 },
+                ].map((dot,i) => (
+                  <div key={i} style={{
+                    width:16, height:16, borderRadius:'50%',
+                    background: dot.bg,
+                    boxShadow: `0 4px 10px ${dot.shadow}`,
+                    animation: `wimBounce 1.15s ${dot.delay}ms ease-in-out infinite`,
+                  }}/>
                 ))}
               </div>
             </div>
