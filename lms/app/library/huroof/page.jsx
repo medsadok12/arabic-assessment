@@ -238,6 +238,9 @@ export default function HuroofPage() {
               from { opacity:0; transform:translateY(-8px); }
               to   { opacity:1; transform:translateY(0); }
             }
+            /* 28 ÷ 7 = 4 equal rows on desktop, 28 ÷ 4 = 7 equal rows on mobile */
+            .huroof-grid { grid-template-columns: repeat(7, 1fr); }
+            @media (max-width: 560px) { .huroof-grid { grid-template-columns: repeat(4, 1fr); } }
           `}</style>
 
           {/* Breadcrumb */}
@@ -294,13 +297,8 @@ export default function HuroofPage() {
             </div>
           )}
 
-          {/* Letters grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(115px, 1fr))',
-            gap: 12,
-            alignItems: 'start',
-          }}>
+          {/* Letters grid — 7 per row → 4 equal rows of 7 */}
+          <div className="huroof-grid" style={{ display: 'grid', gap: 12, alignItems: 'start' }}>
             {LETTERS.map((data, i) => (
               <LetterCard
                 key={data.l}
