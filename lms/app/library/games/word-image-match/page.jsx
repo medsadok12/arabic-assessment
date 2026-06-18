@@ -129,7 +129,11 @@ function PairManager({ allPairs, onRefresh }) {
       <div style={{ padding:14, borderBottom:'1px solid #f1f5f9' }}>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
           <div><label style={S.label}>الكلمة</label><input value={word} onChange={e=>setWord(e.target.value)} placeholder="مثال: أسد" style={S.input} dir="rtl" /></div>
-          <div><label style={S.label}>الموضوع</label><select value={topic} onChange={e=>setTopic(e.target.value)} style={S.input}><option value="">— بدون —</option>{TOPICS.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+          <div>
+            <label style={S.label}>الموضوع</label>
+            <input list="wim-topics-list" value={topic} onChange={e=>setTopic(e.target.value)} placeholder="اكتب أو اختر..." style={S.input} dir="rtl" />
+            <datalist id="wim-topics-list">{TOPICS.map(t=><option key={t} value={t}/>)}</datalist>
+          </div>
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
           <div><label style={S.label}>الصف</label><select value={grade} onChange={e=>setGrade(Number(e.target.value))} style={S.input}><option value={0}>— الكل —</option>{[1,2,3,4,5,6,7,8,9].map(g=><option key={g} value={g}>الصف {g}</option>)}</select></div>

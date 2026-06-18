@@ -252,11 +252,17 @@ function WordManager({ dbWords, onRefresh }) {
           🏷️ تصنيف الكلمة (اختياري):
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-          <select value={topic} onChange={e => setTopic(e.target.value)}
-            style={{ ...S.input, flex: 1, marginTop: 0 }} dir="rtl">
-            <option value=''>بدون موضوع</option>
-            {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <input
+            list="ws-scramble-topics"
+            value={topic}
+            onChange={e => setTopic(e.target.value)}
+            placeholder="اكتب أو اختر..."
+            style={{ ...S.input, flex: 1, marginTop: 0 }}
+            dir="rtl"
+          />
+          <datalist id="ws-scramble-topics">
+            {TOPICS.map(t => <option key={t} value={t} />)}
+          </datalist>
           <select value={grade} onChange={e => setGrade(Number(e.target.value))}
             style={{ ...S.input, flex: 1, marginTop: 0 }} dir="rtl">
             <option value={0}>كل الصفوف</option>

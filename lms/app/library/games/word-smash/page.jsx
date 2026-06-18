@@ -184,10 +184,17 @@ function WordManager({ dbWords, onRefresh }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
           <div>
             <label style={S.label}>الموضوع</label>
-            <select value={topic} onChange={e => setTopic(e.target.value)} style={S.input}>
-              <option value="">— بدون —</option>
-              {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <input
+              list="ws-topics-list"
+              value={topic}
+              onChange={e => setTopic(e.target.value)}
+              placeholder="اكتب أو اختر..."
+              style={S.input}
+              dir="rtl"
+            />
+            <datalist id="ws-topics-list">
+              {TOPICS.map(t => <option key={t} value={t} />)}
+            </datalist>
           </div>
           <div>
             <label style={S.label}>الصف</label>
