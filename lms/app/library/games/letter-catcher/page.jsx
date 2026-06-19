@@ -653,9 +653,13 @@ export default function LetterCatcherGame() {
     minLen: 2,
     maxLen: 12,
   });
+  const [totalPoints,   setTotalPoints]   = useState(0);
+  const [ptPopupKey,    setPtPopupKey]    = useState(0);
+  const [ptPopupActive, setPtPopupActive] = useState(false);
 
   /* ── detect teacher/admin role ── */
   useEffect(() => {
+    fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
     import('../../../../lib/supabase').then(({ createClient }) => {
       const supabase = createClient();
       supabase.auth.getUser().then(({ data: { user } }) => {
@@ -748,6 +752,10 @@ export default function LetterCatcherGame() {
     setChosen(opt); setCorrect(isRight);
     if (isRight) {
       setScore(s => s + 1);
+      setPtPopupKey(k => k + 1);
+      setPtPopupActive(true);
+      setTimeout(() => setPtPopupActive(false), 1200);
+      fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 5, reason: 'letter_catcher' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
       if (w.audio_url) { try { new Audio(w.audio_url).play(); } catch {} }
       else speak(w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word);
     }
@@ -1013,6 +1021,11 @@ export default function LetterCatcherGame() {
   return (
     <div style={S.page}>
       <style>{`
+        @keyframes ptFloatUp {
+          0%   { opacity: 1; transform: translateY(0) scale(1.25); }
+          70%  { opacity: 1; }
+          100% { opacity: 0; transform: translateY(-48px) scale(0.9); }
+        }
         @keyframes lcWordReveal {
           0%   { opacity:0; transform:scale(.15) rotate(-10deg); filter:blur(12px); }
           55%  { transform:scale(1.18) rotate(2deg);  filter:blur(0); }
@@ -1053,6 +1066,12 @@ export default function LetterCatcherGame() {
           style={{ flexShrink:0, background:'rgba(255,255,255,.18)', border:'none', borderRadius:10, padding:'5px 12px', color:'#fff', cursor:'pointer', fontSize:'.82rem', fontWeight:700, fontFamily:"'Tajawal', sans-serif" }}
         >← رجوع</button>
         <span style={S.scoreBadge}>✨ {score}</span>
+        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+          <span style={{ background: 'rgba(245,158,11,0.28)', borderRadius: 20, padding: '4px 12px', fontSize: '.88rem', fontWeight: 800, color: '#fff' }}>⭐ {totalPoints.toLocaleString()}</span>
+          {ptPopupActive && (
+            <span key={ptPopupKey} style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', color: '#fbbf24', fontWeight: 900, fontSize: '1.05rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards', textShadow: '0 1px 6px rgba(0,0,0,.45)' }}>+5 ⭐</span>
+          )}
+        </div>
         <div style={S.bar}>
           <div style={{ ...S.barFill, width: `${((cur + 1) / queue.length) * 100}%` }} />
         </div>

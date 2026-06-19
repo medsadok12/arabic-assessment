@@ -428,10 +428,17 @@ export default function VowelBalloonPage() {
   const [letterAnim,   setLetterAnim]   = useState('idle');
   const [tab,          setTab]          = useState('game');
   const [dataSource,   setDataSource]   = useState('');
+  const [totalPoints,   setTotalPoints]   = useState(0);
+  const [ptPopupKey,    setPtPopupKey]    = useState(0);
+  const [ptPopupActive, setPtPopupActive] = useState(false);
 
   /* auth */
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => { setUser(user); setAuthDone(true); });
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
   }, []);
 
   /* fetch + build queue */
@@ -473,6 +480,10 @@ export default function VowelBalloonPage() {
       setBalloonStates(s => s.map((st, i) => i === idx ? 'fly' : st));
       setLetterAnim('bounce');
       setScore(sc => sc + 1);
+      setPtPopupKey(k => k + 1);
+      setPtPopupActive(true);
+      setTimeout(() => setPtPopupActive(false), 1200);
+      fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 5, reason: 'vowel_balloon' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
       setConfKey(k => k + 1); setShowConf(true);
       if (q.audio_url) new Audio(q.audio_url).play().catch(() => {});
       setTimeout(() => {
@@ -510,6 +521,11 @@ export default function VowelBalloonPage() {
     <>
       {authDone && <Navbar user={user} />}
       <style>{`
+        @keyframes ptFloatUp {
+          0%   { opacity: 1; transform: translateY(0) scale(1.25); }
+          70%  { opacity: 1; }
+          100% { opacity: 0; transform: translateY(-48px) scale(0.9); }
+        }
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Tajawal:wght@400;700;900&display=swap');
         * { box-sizing: border-box; }
 
@@ -566,6 +582,12 @@ export default function VowelBalloonPage() {
               {/* score + counter */}
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:7 }}>
                 <span style={{ background:'linear-gradient(135deg,#f59e0b,#d97706)', color:'#fff', borderRadius:20, padding:'4px 14px', fontSize:'.88rem', fontWeight:800, boxShadow:'0 3px 10px rgba(245,158,11,.4)' }}>⭐ {score}</span>
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <span style={{ background: 'rgba(245,158,11,0.18)', border: '1px solid #fde68a', borderRadius: 20, padding: '4px 12px', fontSize: '.82rem', fontWeight: 800, color: '#92400e' }}>⭐ {totalPoints.toLocaleString()} نقطة</span>
+                  {ptPopupActive && (
+                    <span key={ptPopupKey} style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', color: '#d97706', fontWeight: 900, fontSize: '1.05rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards', textShadow: '0 1px 6px rgba(0,0,0,.2)' }}>+5 ⭐</span>
+                  )}
+                </div>
                 <span style={{ color:'#a16207', fontSize:'.85rem', fontWeight:700 }}>{Math.min(cur+1,total)} / {total}</span>
               </div>
 

@@ -374,9 +374,13 @@ export default function WordScrambleGame() {
     minLen: 2,
     maxLen: 12,
   });
+  const [totalPoints,   setTotalPoints]   = useState(0);
+  const [ptPopupKey,    setPtPopupKey]    = useState(0);
+  const [ptPopupActive, setPtPopupActive] = useState(false);
 
   // Detect teacher/admin role
   useEffect(() => {
+    fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
     import('../../../../lib/supabase').then(({ createClient }) => {
       const supabase = createClient();
       supabase.auth.getUser().then(({ data: { user } }) => {
@@ -460,6 +464,10 @@ export default function WordScrambleGame() {
       setResult(isRight ? 'correct' : 'wrong');
       if (isRight) {
         setScore(s => s + 1);
+        setPtPopupKey(k => k + 1);
+        setPtPopupActive(true);
+        setTimeout(() => setPtPopupActive(false), 1200);
+        fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 5, reason: 'word_scramble' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
         setTimeout(() => speak(w.word), 200);
         if (w.audio_url) { try { new Audio(w.audio_url).play().catch(() => {}); } catch {} }
       }
@@ -616,6 +624,11 @@ export default function WordScrambleGame() {
   return (
     <div style={S.page}>
       <style>{`
+        @keyframes ptFloatUp {
+          0%   { opacity: 1; transform: translateY(0) scale(1.25); }
+          70%  { opacity: 1; }
+          100% { opacity: 0; transform: translateY(-48px) scale(0.9); }
+        }
         @keyframes ws-stamp {
           0%   { transform: scale(2.5) rotate(8deg); opacity: 0; filter: blur(6px); }
           45%  { transform: scale(0.88) rotate(-3deg); opacity: 1; filter: blur(0); }
@@ -644,7 +657,12 @@ export default function WordScrambleGame() {
         <div style={S.bar}>
           <div style={{ ...S.barFill, width: `${((cur + 1) / queue.length) * 100}%` }} />
         </div>
-        <span style={S.barLabel}>{cur + 1} / {queue.length}</span>
+        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ background: 'rgba(245,158,11,0.28)', borderRadius: 20, padding: '4px 12px', fontSize: '.88rem', fontWeight: 800, color: '#fff' }}>⭐ {totalPoints.toLocaleString()}</span>
+          {ptPopupActive && (
+            <span key={ptPopupKey} style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', color: '#fbbf24', fontWeight: 900, fontSize: '1.05rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards', textShadow: '0 1px 6px rgba(0,0,0,.45)' }}>+5 ⭐</span>
+          )}
+        </div>
       </div>
 
       <div style={S.card}>

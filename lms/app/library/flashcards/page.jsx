@@ -267,6 +267,13 @@ export default function FlashcardsPage() {
   const [forgot,     setForgot]     = useState(0);
   const [cardsDone,  setCardsDone]  = useState(0);
   const [totalCards, setTotalCards] = useState(0);
+  const [totalPoints,   setTotalPoints]   = useState(0);
+  const [ptPopupKey,    setPtPopupKey]    = useState(0);
+  const [ptPopupActive, setPtPopupActive] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -298,6 +305,10 @@ export default function FlashcardsPage() {
     callReview(deck[0].id, true);
     setRemembered(r => r + 1);
     setCardsDone(n => n + 1);
+    setPtPopupKey(k => k + 1);
+    setPtPopupActive(true);
+    setTimeout(() => setPtPopupActive(false), 1200);
+    fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 3, reason: 'flashcard_remembered' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
     const next = deck.slice(1);
     if (!next.length) { setPhase('done'); return; }
     setDeck(next);
@@ -335,6 +346,11 @@ export default function FlashcardsPage() {
         @keyframes fcLeave  { from{opacity:1;transform:none} to{opacity:0;transform:translateY(-14px) scale(.96)} }
         @keyframes fcSpin   { to{transform:rotate(360deg)} }
         @keyframes fcPulse  { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+        @keyframes ptFloatUp {
+          0%   { opacity: 1; transform: translateY(0) scale(1.25); }
+          70%  { opacity: 1; }
+          100% { opacity: 0; transform: translateY(-48px) scale(0.9); }
+        }
       `}</style>
 
       <div style={{
@@ -380,10 +396,18 @@ export default function FlashcardsPage() {
         {/* Cards */}
         {phase === 'cards' && cur && (
           <div style={{ width:'100%', maxWidth:400, animation:'fcEnter .35s both' }}>
-            <h1 style={{
-              textAlign:'center', color:'white', fontSize:'1.2rem', fontWeight:900,
-              marginBottom:20, opacity:.85,
-            }}>📚 بطاقات الحفظ</h1>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+              <h1 style={{
+                textAlign:'center', color:'white', fontSize:'1.2rem', fontWeight:900,
+                margin:0, opacity:.85,
+              }}>📚 بطاقات الحفظ</h1>
+              <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                <span style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 20, padding: '5px 14px', fontSize: '.88rem', fontWeight: 800, color: '#fff' }}>⭐ {totalPoints.toLocaleString()}</span>
+                {ptPopupActive && (
+                  <span key={ptPopupKey} style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', color: '#fbbf24', fontWeight: 900, fontSize: '1.05rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards', textShadow: '0 1px 6px rgba(0,0,0,.5)' }}>+3 ⭐</span>
+                )}
+              </div>
+            </div>
 
             <FlipCard
               card={cur}

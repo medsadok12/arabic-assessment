@@ -318,6 +318,10 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
     setConnections(prev => [...prev.filter(c => c.wordId !== wordId), { wordId, imgId, correct: isCorrect }]);
     if (isCorrect) {
       setCorrect(prev => new Set([...prev, wordId]));
+      setPtPopupKey(k => k + 1);
+      setPtPopupActive(true);
+      setTimeout(() => setPtPopupActive(false), 1200);
+      fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 5, reason: 'word_image_match' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
       const pair = pairMap[wordId];
       if (pair) setTimeout(() => playAudio(pair.audio_url, pair.word_text), 150);
       setBursting(prev => new Set([...prev, wordId]));
@@ -539,6 +543,12 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
             <div style={{ height:'100%', background:'linear-gradient(90deg,#7c3aed,#10b981)', borderRadius:99, width:`${(correct.size/currentPairs.length)*100}%`, transition:'width .5s cubic-bezier(.34,1.56,.64,1)' }} />
           </div>
         </div>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ background: '#f3e8ff', border: '1.5px solid #d8b4fe', borderRadius: 20, padding: '4px 10px', fontSize: '.78rem', fontWeight: 800, color: '#7c3aed', whiteSpace: 'nowrap' }}>⭐ {totalPoints.toLocaleString()}</span>
+          {ptPopupActive && (
+            <span key={ptPopupKey} style={{ position: 'absolute', top: -26, left: '50%', transform: 'translateX(-50%)', color: '#7c3aed', fontWeight: 900, fontSize: '1rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards' }}>+5 ⭐</span>
+          )}
+        </div>
         <button onClick={() => setPhase('topics')} style={{ background:'#fef2f2', color:'#ef4444', border:'1.5px solid #fca5a5', borderRadius:10, padding:'5px 12px', cursor:'pointer', fontFamily:"'Cairo',sans-serif", fontSize:'.8rem', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>✕ إنهاء</button>
       </div>
 
@@ -704,6 +714,9 @@ export default function WordImageMatchPage() {
   const [showMgr,   setShowMgr]   = useState(false);
   const [showCfg,   setShowCfg]   = useState(false);
   const [cfg,       setCfg]       = useState({ topic:'', grade:0, pairsCount:6 });
+  const [totalPoints,   setTotalPoints]   = useState(0);
+  const [ptPopupKey,    setPtPopupKey]    = useState(0);
+  const [ptPopupActive, setPtPopupActive] = useState(false);
 
   useEffect(() => {
     import('../../../../lib/supabase').then(({ createClient }) => {
@@ -713,6 +726,10 @@ export default function WordImageMatchPage() {
         setIsTeacher(['super_admin','admin','teacher'].includes(role));
       }).catch(() => {});
     }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
   }, []);
 
   const loadAllPairs = useCallback(async () => {
@@ -739,6 +756,11 @@ export default function WordImageMatchPage() {
   return (
     <>
       <style>{`
+        @keyframes ptFloatUp {
+          0%   { opacity: 1; transform: translateY(0) scale(1.25); }
+          70%  { opacity: 1; }
+          100% { opacity: 0; transform: translateY(-48px) scale(0.9); }
+        }
         * { box-sizing: border-box; }
         body { background: linear-gradient(160deg,#bae6fd 0%,#fef9c3 52%,#bbf7d0 100%); min-height:100vh; }
 
