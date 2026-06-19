@@ -4,8 +4,8 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request) {
   const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/dashboard';
+  const code    = searchParams.get('code');
+  const forCtx  = searchParams.get('for'); // 'teacher' | 'student' | null
 
   if (code) {
     const cookieStore = cookies();
@@ -14,17 +14,40 @@ export async function GET(request) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       {
         cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(toSet) {
+          getAll()       { return cookieStore.getAll(); },
+          setAll(toSet)  {
             try { toSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); }
             catch {}
           },
         },
       }
     );
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+
+    const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (!error && user) {
+      const role          = user.user_metadata?.role;
+      const isStaffRole   = ['teacher', 'admin', 'super_admin', 'supervisor'].includes(role);
+      const isTeacherCtx  = forCtx === 'teacher';
+
+      // Block students from teacher portal and vice-versa
+      if (isTeacherCtx && !isStaffRole) {
+        await supabase.auth.signOut();
+        return NextResponse.redirect(`${origin}/auth/login?for=teacher&error=students_blocked`);
+      }
+      if (!isTeacherCtx && isStaffRole) {
+        await supabase.auth.signOut();
+        return NextResponse.redirect(`${origin}/auth/login?error=teachers_blocked`);
+      }
+
+      // Role-based redirect
+      const dest =
+        role === 'super_admin' || role === 'admin' ? '/bogga'
+        : role === 'teacher'                        ? '/teacher'
+        : role === 'supervisor'                     ? '/supervisor'
+        : '/dashboard';
+
+      return NextResponse.redirect(`${origin}${dest}`);
     }
   }
 
