@@ -19,90 +19,117 @@ function GoogleLogo() {
   );
 }
 
+/* ── Friendly error messages ── */
+function resolveError(code, fallback) {
+  const MAP = {
+    students_blocked:     'هذا الحساب طالب — استخدم بوابة الطالب.',
+    teachers_blocked:     'هذا حساب معلم/إداري — استخدم بوابة المعلم.',
+    confirmation_failed:  'فشل تسجيل الدخول، يرجى المحاولة مجدداً.',
+    network_error:        'تعذّر الاتصال بالخادم — تحقق من الإنترنت وأعد المحاولة.',
+    oauth_error:          'تعذّر فتح نافذة جوجل — تأكد من أن المتصفح لا يحجب النوافذ المنبثقة.',
+    invalid_credentials:  'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+    unexpected:           'حدث خطأ غير متوقع — يرجى المحاولة مجدداً.',
+  };
+  return MAP[code] ?? fallback ?? MAP.unexpected;
+}
+
 function LoginForm() {
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
   const [gLoading, setGLoading] = useState(false);
+
   const router       = useRouter();
   const searchParams = useSearchParams();
   const forTeacher   = searchParams.get('for') === 'teacher';
   const urlError     = searchParams.get('error');
   const { t } = useLanguage();
 
-  /* ── map URL error codes to Arabic messages ── */
-  const urlErrorMsg =
-    urlError === 'students_blocked'    ? t('login.studentBlocked')
-    : urlError === 'teachers_blocked'  ? t('login.teacherBlocked')
-    : urlError === 'confirmation_failed' ? 'فشل تسجيل الدخول، يرجى المحاولة مجدداً.'
-    : null;
+  const urlErrorMsg = urlError ? resolveError(urlError) : null;
 
   /* ── Email/password login ── */
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (authError) {
-      setError(t('login.wrongCredentials'));
+    try {
+      const supabase = createClient();
+      const { data: { user }, error: authError } =
+        await supabase.auth.signInWithPassword({ email, password });
+
+      if (authError) {
+        if (process.env.NODE_ENV === 'development') console.error('[login] auth error:', authError);
+        setError(resolveError('invalid_credentials'));
+        return;
+      }
+
+      const role          = user?.user_metadata?.role;
+      const isTeacherRole = ['teacher', 'admin', 'super_admin', 'supervisor'].includes(role);
+
+      if (forTeacher && !isTeacherRole) {
+        await supabase.auth.signOut();
+        setError(resolveError('students_blocked'));
+        return;
+      }
+
+      if (!forTeacher && isTeacherRole) {
+        await supabase.auth.signOut();
+        setError(resolveError('teachers_blocked'));
+        return;
+      }
+
+      router.push(
+        role === 'admin' || role === 'super_admin' ? '/bogga'
+        : role === 'teacher'                        ? '/teacher'
+        : role === 'supervisor'                     ? '/supervisor'
+        : '/dashboard'
+      );
+      router.refresh();
+
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.error('[login] unexpected error:', err);
+      const isNetwork = !navigator.onLine || err?.message?.includes('fetch');
+      setError(resolveError(isNetwork ? 'network_error' : 'unexpected'));
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const role          = user?.user_metadata?.role;
-    const isTeacherRole = ['teacher', 'admin', 'super_admin', 'supervisor'].includes(role);
-
-    if (forTeacher && !isTeacherRole) {
-      await supabase.auth.signOut();
-      setError(t('login.studentBlocked'));
-      setLoading(false);
-      return;
-    }
-
-    if (!forTeacher && isTeacherRole) {
-      await supabase.auth.signOut();
-      setError(t('login.teacherBlocked'));
-      setLoading(false);
-      return;
-    }
-
-    router.push(
-      role === 'admin' || role === 'super_admin' ? '/bogga'
-      : role === 'teacher'                        ? '/teacher'
-      : role === 'supervisor'                     ? '/supervisor'
-      : '/dashboard'
-    );
-    router.refresh();
   }
 
   /* ── Google OAuth login ── */
   async function handleGoogleLogin() {
     setGLoading(true);
     setError('');
-    const supabase = createClient();
 
-    const callbackUrl = `${window.location.origin}/auth/callback?for=${forTeacher ? 'teacher' : 'student'}`;
+    try {
+      const supabase = createClient();
+      const callbackUrl =
+        `${window.location.origin}/auth/callback?for=${forTeacher ? 'teacher' : 'student'}`;
 
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: callbackUrl,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: callbackUrl,
+          queryParams: { access_type: 'offline', prompt: 'consent' },
         },
-      },
-    });
+      });
 
-    if (oauthError) {
-      setError('تعذّر فتح نافذة جوجل. يرجى المحاولة مجدداً.');
+      if (oauthError) {
+        if (process.env.NODE_ENV === 'development') console.error('[login] google oauth error:', oauthError);
+        setError(resolveError('oauth_error'));
+        setGLoading(false);
+      }
+      // On success the browser navigates away — gLoading stays true intentionally
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.error('[login] google unexpected error:', err);
+      const isNetwork = !navigator.onLine || err?.message?.includes('fetch');
+      setError(resolveError(isNetwork ? 'network_error' : 'oauth_error'));
       setGLoading(false);
     }
-    // On success the browser navigates away — no need to reset gLoading
   }
+
+  const anyLoading = loading || gLoading;
 
   return (
     <div className="auth-page">
@@ -111,7 +138,9 @@ function LoginForm() {
           <span className="logo-icon">{forTeacher ? '👨‍🏫' : '📚'}</span>
           <h1>{t('siteName')}</h1>
         </div>
-        <h2 className="auth-title">{forTeacher ? t('login.teacherLogin') : t('login.studentLogin')}</h2>
+        <h2 className="auth-title">
+          {forTeacher ? t('login.teacherLogin') : t('login.studentLogin')}
+        </h2>
 
         {(error || urlErrorMsg) && (
           <div className="alert alert-error" style={{ marginBottom: 16 }}>
@@ -123,29 +152,20 @@ function LoginForm() {
         <button
           type="button"
           onClick={handleGoogleLogin}
-          disabled={gLoading || loading}
+          disabled={anyLoading}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            width: '100%',
-            padding: '11px 16px',
-            marginBottom: 18,
-            background: '#fff',
-            border: '1.5px solid #dadce0',
-            borderRadius: 10,
-            cursor: gLoading ? 'wait' : 'pointer',
-            fontSize: '1rem',
-            fontFamily: 'Cairo, Tajawal, sans-serif',
-            fontWeight: 600,
-            color: '#3c4043',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 10, width: '100%', padding: '11px 16px', marginBottom: 18,
+            background: '#fff', border: '1.5px solid #dadce0', borderRadius: 10,
+            cursor: gLoading ? 'wait' : anyLoading ? 'not-allowed' : 'pointer',
+            fontSize: '1rem', fontFamily: 'Cairo, Tajawal, sans-serif',
+            fontWeight: 600, color: '#3c4043',
             boxShadow: '0 1px 3px rgba(0,0,0,.08)',
             transition: 'box-shadow .15s, border-color .15s',
-            outline: 'none',
-            WebkitTapHighlightColor: 'transparent',
+            outline: 'none', WebkitTapHighlightColor: 'transparent',
+            opacity: anyLoading && !gLoading ? 0.6 : 1,
           }}
-          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.18)'; e.currentTarget.style.borderColor = '#c0c0c0'; }}
+          onMouseEnter={e => { if (!anyLoading) { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.18)'; e.currentTarget.style.borderColor = '#c0c0c0'; } }}
           onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.08)'; e.currentTarget.style.borderColor = '#dadce0'; }}
         >
           {gLoading
@@ -171,16 +191,18 @@ function LoginForm() {
             <label className="form-label">{t('login.email')}</label>
             <input className="form-input" type="email" value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="example@email.com" required dir="ltr" />
+              placeholder="example@email.com" required dir="ltr"
+              disabled={anyLoading} />
           </div>
           <div className="form-group">
             <label className="form-label">{t('login.password')}</label>
             <input className="form-input" type="password" value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••" required dir="ltr" />
+              placeholder="••••••••" required dir="ltr"
+              disabled={anyLoading} />
           </div>
           <button type="submit" className="btn btn-primary"
-            style={{ width: '100%', marginTop: 8 }} disabled={loading || gLoading}>
+            style={{ width: '100%', marginTop: 8 }} disabled={anyLoading}>
             {loading ? <span className="spinner" /> : t('login.signIn')}
           </button>
         </form>

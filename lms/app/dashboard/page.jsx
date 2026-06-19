@@ -4,9 +4,15 @@ import { createAdminClient } from '../../lib/supabase-admin';
 import DashboardContent from '../../components/DashboardContent';
 
 export default async function DashboardPage() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/auth/login');
+  let user;
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) redirect('/auth/login');
+    user = data.user;
+  } catch {
+    redirect('/auth/login');
+  }
 
   const { data: assessments } = await supabase
     .from('assessments')
