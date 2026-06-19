@@ -3,22 +3,27 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
+/* ─── Constants ─────────────────────────────────────────────────────────── */
+
 const STRIP_RE = /[ً-ْٰـ]/g;
 const ARABIC_RE = /^[ء-ي]+$/;
-const GAME_DURATION = 90;
 
-function strip(word) {
-  return word.replace(STRIP_RE, '');
-}
+const LEVEL_COLORS = {
+  1: { bg: '#f0fdf4', border: '#86efac', accent: '#16a34a' },
+  2: { bg: '#fefce8', border: '#fde047', accent: '#ca8a04' },
+  3: { bg: '#fff7ed', border: '#fdba74', accent: '#ea580c' },
+  4: { bg: '#fef2f2', border: '#fca5a5', accent: '#dc2626' },
+};
 
-function isArabic(word) {
-  return ARABIC_RE.test(word);
-}
+/* ─── Pure helpers ───────────────────────────────────────────────────────── */
 
-function letterCounts(word) {
-  const counts = {};
-  for (const ch of word) counts[ch] = (counts[ch] || 0) + 1;
-  return counts;
+function strip(w) { return w.replace(STRIP_RE, ''); }
+function isArabic(w) { return ARABIC_RE.test(w); }
+
+function letterCounts(w) {
+  const c = {};
+  for (const ch of w) c[ch] = (c[ch] || 0) + 1;
+  return c;
 }
 
 function canFormFrom(word, wheelCounts) {
@@ -31,9 +36,9 @@ function canFormFrom(word, wheelCounts) {
 
 function calcScore(word, allLetters) {
   const len = word.length;
-  let base = len >= 7 ? 12 : len === 6 ? 8 : len === 5 ? 4 : len === 4 ? 2 : 1;
-  const usesAll = [...new Set(word)].every(ch => allLetters.includes(ch)) &&
-    allLetters.every(ch => word.includes(ch));
+  const base = len >= 7 ? 12 : len === 6 ? 8 : len === 5 ? 4 : len === 4 ? 2 : 1;
+  const uniqueWheel = [...new Set(allLetters)];
+  const usesAll = uniqueWheel.every(ch => word.includes(ch));
   return usesAll ? base * 2 : base;
 }
 
@@ -41,7 +46,8 @@ function speak(text) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'ar-SA'; u.rate = 0.82;
+  u.lang = 'ar-SA';
+  u.rate = 0.82;
   function go() {
     const voices = window.speechSynthesis.getVoices();
     const ar = voices.find(v => v.lang.startsWith('ar'));
@@ -49,8 +55,13 @@ function speak(text) {
     window.speechSynthesis.speak(u);
   }
   if (window.speechSynthesis.getVoices().length > 0) go();
-  else { window.speechSynthesis.addEventListener('voiceschanged', go, { once: true }); setTimeout(go, 500); }
+  else {
+    window.speechSynthesis.addEventListener('voiceschanged', go, { once: true });
+    setTimeout(go, 500);
+  }
 }
+
+/* ─── WheelSVG ──────────────────────────────────────────────────────────── */
 
 function WheelSVG({ letters, center, selectedLetters, onLetterClick }) {
   const cx = 160, cy = 160, outerR = 105, circleR = 28, centerR = 46;
@@ -88,14 +99,13 @@ function WheelSVG({ letters, center, selectedLetters, onLetterClick }) {
         const angle = i * (2 * Math.PI / n) - Math.PI / 2;
         const ox = cx + outerR * Math.cos(angle);
         const oy = cy + outerR * Math.sin(angle);
-        const isSelected = selectedLetters.includes(letter) &&
-          selectedLetters.lastIndexOf(letter) >= 0;
         const countInSelected = selectedLetters.filter(l => l === letter).length;
         const countInWheel = letters.filter(l => l === letter).length;
         const isUsedUp = countInSelected >= countInWheel;
 
         return (
-          <g key={`outer-${i}`} onClick={() => !isUsedUp && onLetterClick(letter, 'outer', i)}
+          <g key={`outer-${i}`}
+            onClick={() => !isUsedUp && onLetterClick(letter)}
             style={{ cursor: isUsedUp ? 'not-allowed' : 'pointer' }}>
             <circle cx={ox} cy={oy} r={circleR + 4} fill="transparent" />
             <circle cx={ox} cy={oy} r={circleR}
@@ -116,7 +126,7 @@ function WheelSVG({ letters, center, selectedLetters, onLetterClick }) {
         );
       })}
 
-      <g onClick={() => onLetterClick(center, 'center', -1)} style={{ cursor: 'pointer' }}>
+      <g onClick={() => onLetterClick(center)} style={{ cursor: 'pointer' }}>
         <circle cx={cx} cy={cy} r={centerR + 6} fill="transparent" />
         <circle cx={cx} cy={cy} r={centerR}
           fill="url(#ww-center)"
@@ -143,18 +153,24 @@ function WheelSVG({ letters, center, selectedLetters, onLetterClick }) {
   );
 }
 
+/* ─── Main component ─────────────────────────────────────────────────────── */
+
 export default function WordWheelGame() {
-  const [phase, setPhase] = useState('loading');
+  const [phase, setPhase] = useState('lobby');
+  const [levelsData, setLevelsData] = useState([]);
+  const [currentLevel, setCurrentLevel] = useState(1);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [totalWheels, setTotalWheels] = useState(5);
+
   const [letters, setLetters] = useState([]);
   const [center, setCenter] = useState('');
-  const [validWords, setValidWords] = useState([]);
-  const [validCount, setValidCount] = useState(0);
+  const [gameTime, setGameTime] = useState(120);
 
   const [selected, setSelected] = useState([]);
   const [inputText, setInputText] = useState('');
   const [foundWords, setFoundWords] = useState([]);
   const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
+  const [timeLeft, setTimeLeft] = useState(120);
   const [feedback, setFeedback] = useState(null);
   const [shaking, setShaking] = useState(false);
   const [flashing, setFlashing] = useState(false);
@@ -162,38 +178,47 @@ export default function WordWheelGame() {
 
   const timerRef = useRef(null);
   const feedbackRef = useRef(null);
-  const inputRef = useRef(null);
 
-  const fetchWheel = useCallback(async () => {
+  /* ── Load levels metadata on mount ───────────────────────────────────── */
+  useEffect(() => {
+    fetch('/api/word-wheel?level=1&index=0')
+      .then(r => r.json())
+      .then(json => { if (json.levels?.length) setLevelsData(json.levels); })
+      .catch(() => {});
+  }, []);
+
+  /* ── Fetch a wheel ───────────────────────────────────────────────────── */
+  const fetchWheel = useCallback(async (level, index) => {
     setPhase('loading');
     try {
-      const res = await fetch('/api/word-wheel');
+      const res = await fetch(`/api/word-wheel?level=${level}&index=${index}`);
       const json = await res.json();
+      if (json.levels?.length) setLevelsData(json.levels);
       setLetters(json.letters || []);
       setCenter(json.center || '');
-      setValidWords(json.valid_words || []);
-      setValidCount(json.valid_count || 0);
+      setGameTime(json.time || 90);
+      setTotalWheels(json.total || 5);
       setPhase('start');
     } catch {
-      setPhase('error');
+      setPhase('lobby');
     }
   }, []);
 
-  useEffect(() => { fetchWheel(); }, [fetchWheel]);
-
+  /* ── Start playing ───────────────────────────────────────────────────── */
   const startGame = useCallback(() => {
     setSelected([]);
     setInputText('');
     setFoundWords([]);
     setScore(0);
-    setTimeLeft(GAME_DURATION);
+    setTimeLeft(gameTime);
     setFeedback(null);
     setShaking(false);
     setFlashing(false);
     setFlyWord(null);
     setPhase('playing');
-  }, []);
+  }, [gameTime]);
 
+  /* ── Timer ───────────────────────────────────────────────────────────── */
   useEffect(() => {
     if (phase !== 'playing') return;
     timerRef.current = setInterval(() => {
@@ -210,31 +235,35 @@ export default function WordWheelGame() {
   }, [phase]);
 
   const allLetters = [...letters, center];
+  const wheelCounts = letterCounts(allLetters.join(''));
 
-  const handleLetterClick = useCallback((letter, type) => {
+  /* ── Letter click ────────────────────────────────────────────────────── */
+  const handleLetterClick = useCallback((letter) => {
     if (phase !== 'playing') return;
     setSelected(prev => [...prev, letter]);
     setInputText(prev => prev + letter);
   }, [phase]);
 
+  /* ── Backspace / Clear ───────────────────────────────────────────────── */
   const handleBackspace = useCallback(() => {
-    if (selected.length === 0) return;
     setSelected(prev => prev.slice(0, -1));
     setInputText(prev => prev.slice(0, -1));
-  }, [selected]);
+  }, []);
 
   const handleClear = useCallback(() => {
     setSelected([]);
     setInputText('');
   }, []);
 
+  /* ── Feedback helper ─────────────────────────────────────────────────── */
   const showFeedback = useCallback((msg, type) => {
     clearTimeout(feedbackRef.current);
     setFeedback({ msg, type });
     feedbackRef.current = setTimeout(() => setFeedback(null), 1800);
   }, []);
 
-  const handleSubmit = useCallback(async () => {
+  /* ── Submit word ─────────────────────────────────────────────────────── */
+  const handleSubmit = useCallback(() => {
     if (phase !== 'playing') return;
     const word = strip(inputText.trim());
 
@@ -244,37 +273,30 @@ export default function WordWheelGame() {
       showFeedback('الكلمة قصيرة جداً — 3 حروف على الأقل', 'error');
       return;
     }
-
     if (!isArabic(word)) {
       setShaking(true);
       setTimeout(() => setShaking(false), 500);
       showFeedback('حروف غير صالحة', 'error');
       return;
     }
-
     if (!word.includes(center)) {
       setShaking(true);
       setTimeout(() => setShaking(false), 500);
-      showFeedback(`يجب أن تحتوي الكلمة على الحرف الأوسط "${center}"`, 'error');
+      showFeedback(`الحرف "${center}" إلزامي في كل كلمة`, 'error');
       return;
     }
-
-    const wheelCounts = letterCounts(allLetters.join(''));
     if (!canFormFrom(word, wheelCounts)) {
       setShaking(true);
       setTimeout(() => setShaking(false), 500);
       showFeedback('الكلمة تحتوي على حروف خارج العجلة', 'error');
       return;
     }
-
     if (foundWords.includes(word)) {
       setShaking(true);
       setTimeout(() => setShaking(false), 500);
       showFeedback('وجدت هذه الكلمة من قبل!', 'warn');
       return;
     }
-
-    const inLexicon = validWords.includes(word);
 
     const pts = calcScore(word, allLetters);
     setScore(s => s + pts);
@@ -283,11 +305,12 @@ export default function WordWheelGame() {
     setFlashing(true);
     setTimeout(() => { setFlashing(false); setFlyWord(null); }, 900);
     speak(word);
-    showFeedback(inLexicon ? `+${pts} نقطة — 🌟 من قاموسك!` : `+${pts} نقطة — ممتاز!`, 'success');
+    showFeedback(`+${pts} نقطة — ممتاز! ✨`, 'success');
     setSelected([]);
     setInputText('');
-  }, [phase, inputText, center, allLetters, foundWords, validWords, showFeedback]);
+  }, [phase, inputText, center, wheelCounts, foundWords, allLetters, showFeedback]);
 
+  /* ── Keyboard shortcuts ──────────────────────────────────────────────── */
   useEffect(() => {
     const handleKey = (e) => {
       if (phase !== 'playing') return;
@@ -299,27 +322,131 @@ export default function WordWheelGame() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [phase, handleSubmit, handleBackspace, handleClear]);
 
-  const timerPct = (timeLeft / GAME_DURATION) * 100;
+  /* ── Game-over navigation ────────────────────────────────────────────── */
+  function handleNextWheel() {
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < totalWheels) {
+      setCurrentIndex(nextIndex);
+      fetchWheel(currentLevel, nextIndex);
+    } else if (currentLevel < 4) {
+      const nextLevel = currentLevel + 1;
+      setCurrentLevel(nextLevel);
+      setCurrentIndex(0);
+      fetchWheel(nextLevel, 0);
+    } else {
+      setPhase('lobby');
+    }
+  }
+
+  function handleRetryWheel() {
+    fetchWheel(currentLevel, currentIndex);
+  }
+
+  /* ── Derived values ──────────────────────────────────────────────────── */
+  const timerPct = (timeLeft / gameTime) * 100;
   const timerColor = timeLeft > 30 ? '#10B981' : timeLeft > 10 ? '#F59E0B' : '#EF4444';
 
   const bestWord = foundWords.length > 0
-    ? foundWords.reduce((best, w) => calcScore(w, allLetters) >= calcScore(best, allLetters) ? w : best, foundWords[0])
+    ? foundWords.reduce((best, w) =>
+        calcScore(w, allLetters) >= calcScore(best, allLetters) ? w : best,
+        foundWords[0])
     : null;
 
+  const currentLevelInfo = levelsData.find(l => l.id === currentLevel) || null;
+
+  const levelLabel = currentLevelInfo
+    ? `${currentLevelInfo.icon} ${currentLevelInfo.label} — ${currentIndex + 1}/${totalWheels}`
+    : `العجلة ${currentIndex + 1}/${totalWheels}`;
+
+  const isLastWheel = currentIndex + 1 >= totalWheels;
+  const isLastLevel = currentLevel >= 4;
+
+  /* ════════════════════════════════════════════════════════════════════════
+     PHASE: LOBBY
+  ════════════════════════════════════════════════════════════════════════ */
+  if (phase === 'lobby') {
+    const defaultLevels = [
+      { id: 1, label: 'مبتدئ', icon: '🟢', desc: 'حروف شائعة — 120 ثانية' },
+      { id: 2, label: 'متوسط', icon: '🟡', desc: 'حروف أصعب — 90 ثانية' },
+      { id: 3, label: 'متقدم', icon: '🟠', desc: 'حروف نادرة — 75 ثانية' },
+      { id: 4, label: 'أسطوري', icon: '🔴', desc: 'التحدي الأقصى — 60 ثانية' },
+    ];
+    const displayLevels = levelsData.length ? levelsData : defaultLevels;
+
+    return (
+      <div style={S.page}>
+        <style>{CSS_KEYFRAMES}</style>
+
+        <div style={S.lobbyWrap}>
+          {/* Header */}
+          <div style={S.lobbyHeader}>
+            <Link href="/library" style={S.topBackLink}>← المكتبة</Link>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '3.5rem', animation: 'ww-wheelSpin 10s linear infinite', display: 'inline-block' }}>🎡</div>
+              <h1 style={S.mainTitle}>عجلة الكلمات</h1>
+              <p style={{ color: 'rgba(255,255,255,0.75)', margin: 0, fontSize: '.93rem' }}>
+                اختر مرحلتك وابدأ التحدي!
+              </p>
+            </div>
+          </div>
+
+          {/* Level grid */}
+          <div style={S.lobbyGrid}>
+            {displayLevels.map(lvl => {
+              const colors = LEVEL_COLORS[lvl.id] || LEVEL_COLORS[1];
+              return (
+                <button
+                  key={lvl.id}
+                  onClick={() => {
+                    setCurrentLevel(lvl.id);
+                    setCurrentIndex(0);
+                    fetchWheel(lvl.id, 0);
+                  }}
+                  style={{
+                    ...S.levelCard,
+                    background: colors.bg,
+                    borderColor: colors.border,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'scale(1.04)';
+                    e.currentTarget.style.boxShadow = `0 8px 24px ${colors.border}80`;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}>
+                  <div style={{ fontSize: '2.4rem' }}>{lvl.icon}</div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 900, color: colors.accent }}>{lvl.label}</div>
+                  <div style={{ fontSize: '.8rem', color: '#6B7280', lineHeight: 1.5 }}>{lvl.desc}</div>
+                  <div style={{ fontSize: '.75rem', color: colors.accent, fontWeight: 700, background: `${colors.border}60`, borderRadius: 20, padding: '2px 10px' }}>
+                    5 عجلات
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     PHASE: LOADING
+  ════════════════════════════════════════════════════════════════════════ */
   if (phase === 'loading') {
     return (
       <div style={S.page}>
-        <style>{`
-          @keyframes ww-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-          @keyframes ww-pulse { 0%,100%{opacity:.4;transform:scale(.8)} 50%{opacity:1;transform:scale(1.1)} }
-        `}</style>
+        <style>{CSS_KEYFRAMES}</style>
         <div style={S.centerCard}>
           <div style={{ fontSize: '4rem', animation: 'ww-spin 2.5s linear infinite', display: 'inline-block' }}>🎡</div>
           <h2 style={S.mainTitle}>عجلة الكلمات</h2>
           <p style={{ color: '#D97706', fontWeight: 700, margin: 0 }}>جارٍ تجهيز العجلة…</p>
           <div style={{ display: 'flex', gap: 10 }}>
             {[0, 200, 400].map(d => (
-              <div key={d} style={{ width: 12, height: 12, borderRadius: '50%', background: '#F59E0B', animation: `ww-pulse 1.2s ${d}ms ease-in-out infinite` }} />
+              <div key={d} style={{
+                width: 12, height: 12, borderRadius: '50%', background: '#F59E0B',
+                animation: `ww-pulse 1.2s ${d}ms ease-in-out infinite`,
+              }} />
             ))}
           </div>
         </div>
@@ -327,35 +454,40 @@ export default function WordWheelGame() {
     );
   }
 
-  if (phase === 'error') {
-    return (
-      <div style={S.page}>
-        <div style={S.centerCard}>
-          <div style={{ fontSize: '3rem' }}>⚠️</div>
-          <h2 style={S.mainTitle}>تعذّر التحميل</h2>
-          <button style={S.btnGold} onClick={fetchWheel}>حاول مجدداً</button>
-          <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
-        </div>
-      </div>
-    );
-  }
-
+  /* ════════════════════════════════════════════════════════════════════════
+     PHASE: START
+  ════════════════════════════════════════════════════════════════════════ */
   if (phase === 'start') {
+    const colors = LEVEL_COLORS[currentLevel] || LEVEL_COLORS[1];
     return (
       <div style={S.page}>
-        <style>{`
-          @keyframes ww-floatin { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-          @keyframes ww-wheelSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        `}</style>
-        <div style={{ ...S.centerCard, animation: 'ww-floatin 0.5s ease-out' }}>
-          <div style={{ fontSize: '4.5rem', animation: 'ww-wheelSpin 8s linear infinite', display: 'inline-block' }}>🎡</div>
-          <h1 style={S.mainTitle}>عجلة الكلمات</h1>
-          <p style={{ color: '#6B7280', lineHeight: 1.9, fontSize: '.95rem', margin: 0, textAlign: 'center' }}>
-            كوّن كلمات من حروف العجلة<br />
-            الحرف الأوسط <strong style={{ color: '#D97706' }}>إلزامي</strong> في كل كلمة<br />
-            الكلمة الأطول = نقاط أكثر!
-          </p>
+        <style>{CSS_KEYFRAMES}</style>
+        <div style={{ ...S.centerCard, animation: 'ww-floatin 0.5s ease-out', padding: '28px 22px', gap: 18 }}>
 
+          {/* Level badge + wheel badge */}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <span style={{ background: colors.bg, border: `1.5px solid ${colors.border}`, color: colors.accent, borderRadius: 20, padding: '4px 14px', fontSize: '.85rem', fontWeight: 800 }}>
+              {currentLevelInfo ? `${currentLevelInfo.icon} ${currentLevelInfo.label}` : `المرحلة ${currentLevel}`}
+            </span>
+            <span style={{ background: '#FFFBEB', border: '1.5px solid #FDE68A', color: '#92400E', borderRadius: 20, padding: '4px 14px', fontSize: '.85rem', fontWeight: 700 }}>
+              العجلة {currentIndex + 1}/{totalWheels}
+            </span>
+            <span style={{ background: '#EFF6FF', border: '1.5px solid #BAE6FD', color: '#0369A1', borderRadius: 20, padding: '4px 14px', fontSize: '.85rem', fontWeight: 700 }}>
+              ⏱ {gameTime} ثانية
+            </span>
+          </div>
+
+          {/* Wheel preview */}
+          <div style={{ width: '100%', maxWidth: 260 }}>
+            <WheelSVG
+              letters={letters}
+              center={center}
+              selectedLetters={[]}
+              onLetterClick={() => {}}
+            />
+          </div>
+
+          {/* Rules */}
           <div style={S.rulesGrid}>
             {[
               ['3 حروف', '1 نقطة'],
@@ -366,41 +498,43 @@ export default function WordWheelGame() {
               ['كل الحروف', '×2 مضاعف'],
             ].map(([label, pts]) => (
               <div key={label} style={S.ruleBox}>
-                <span style={{ fontWeight: 800, color: '#92400E' }}>{label}</span>
-                <span style={{ color: '#D97706', fontWeight: 700, fontSize: '.85rem' }}>{pts}</span>
+                <span style={{ fontWeight: 800, color: '#92400E', fontSize: '.82rem' }}>{label}</span>
+                <span style={{ color: '#D97706', fontWeight: 700, fontSize: '.8rem' }}>{pts}</span>
               </div>
             ))}
           </div>
 
-          <div style={{ color: '#6B7280', fontSize: '.88rem', display: 'flex', gap: 16, alignItems: 'center' }}>
-            <span>⏱ 90 ثانية</span>
-            <span>•</span>
-            <span>📖 {validCount} كلمة ممكنة</span>
-          </div>
+          <p style={{ color: '#6B7280', fontSize: '.88rem', margin: 0, textAlign: 'center', lineHeight: 1.8 }}>
+            الحرف الأوسط <strong style={{ color: '#D97706' }}>إلزامي</strong> في كل كلمة — الكلمة الأطول = نقاط أكثر!
+          </p>
 
-          <button style={S.btnGold} onClick={startGame}>🎡 ابدأ اللعبة</button>
-          <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
+          <button style={S.btnGold} onClick={startGame}>ابدأ اللعب ←</button>
+          <button style={S.btnOutline} onClick={() => setPhase('lobby')}>تغيير المرحلة</button>
         </div>
       </div>
     );
   }
 
+  /* ════════════════════════════════════════════════════════════════════════
+     PHASE: FINISHED
+  ════════════════════════════════════════════════════════════════════════ */
   if (phase === 'finished') {
-    const pct = validCount > 0 ? Math.round((foundWords.length / validCount) * 100) : 0;
     const stars = score >= 20 ? 3 : score >= 10 ? 2 : score > 0 ? 1 : 0;
+    const nextBtnLabel = isLastWheel
+      ? isLastLevel ? '🏅 العودة للقائمة' : 'المرحلة التالية 🎯'
+      : 'العجلة التالية ←';
 
     return (
       <div style={S.page}>
-        <style>{`
-          @keyframes ww-pop { 0%{transform:scale(0);opacity:0} 70%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }
-        `}</style>
-        <div style={{ ...S.centerCard, gap: 18 }}>
+        <style>{CSS_KEYFRAMES}</style>
+        <div style={{ ...S.centerCard, gap: 16 }}>
           <div style={{ fontSize: '3.5rem', animation: 'ww-pop 0.6s cubic-bezier(0.175,0.885,0.32,1.275) forwards' }}>
             {stars === 3 ? '🏆' : stars === 2 ? '🥈' : stars === 1 ? '🥉' : '🎡'}
           </div>
-          <h2 style={S.mainTitle}>انتهى الوقت!</h2>
+          <h2 style={{ ...S.mainTitle, fontSize: '1.6rem' }}>انتهى الوقت!</h2>
 
-          <div style={{ display: 'flex', gap: 20, justifyContent: 'center' }}>
+          {/* Stats row */}
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', alignItems: 'stretch' }}>
             <div style={S.statBox}>
               <span style={{ ...S.statNum, color: '#D97706' }}>{score}</span>
               <span style={S.statLbl}>نقطة</span>
@@ -412,88 +546,102 @@ export default function WordWheelGame() {
             </div>
             <div style={S.statDiv} />
             <div style={S.statBox}>
-              <span style={{ ...S.statNum, color: '#6366F1' }}>{pct}%</span>
-              <span style={S.statLbl}>من الكلمات</span>
+              <span style={{ ...S.statNum, color: '#6366F1' }}>
+                {letters.length > 0
+                  ? Math.min(100, Math.round((foundWords.length / Math.max(1, Math.ceil(letters.length * 1.5))) * 100))
+                  : 0}%
+              </span>
+              <span style={S.statLbl}>استغلال</span>
             </div>
           </div>
 
+          {/* Best word */}
           {bestWord && (
-            <div style={{ background: '#FFFBEB', border: '2px solid #FDE68A', borderRadius: 14, padding: '12px 20px', textAlign: 'center' }}>
-              <div style={{ fontSize: '.78rem', color: '#92400E', fontWeight: 700, marginBottom: 4 }}>أفضل كلمة وجدتها</div>
+            <div style={{ background: '#FFFBEB', border: '2px solid #FDE68A', borderRadius: 14, padding: '10px 18px', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}>
+              <div style={{ fontSize: '.76rem', color: '#92400E', fontWeight: 700, marginBottom: 4 }}>أفضل كلمة وجدتها</div>
               <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#D97706' }}>{bestWord}</div>
+              <div style={{ fontSize: '.78rem', color: '#B45309' }}>+{calcScore(bestWord, allLetters)} نقطة</div>
             </div>
           )}
 
+          {/* Found words list */}
           {foundWords.length > 0 && (
-            <div style={{ width: '100%', background: '#F9FAFB', borderRadius: 14, padding: '12px 16px', maxHeight: 160, overflowY: 'auto' }}>
-              <div style={{ fontSize: '.78rem', color: '#6B7280', fontWeight: 700, marginBottom: 8, textAlign: 'right' }}>الكلمات التي وجدتها:</div>
+            <div style={{ width: '100%', background: '#F9FAFB', borderRadius: 14, padding: '10px 14px', maxHeight: 140, overflowY: 'auto', boxSizing: 'border-box' }}>
+              <div style={{ fontSize: '.76rem', color: '#6B7280', fontWeight: 700, marginBottom: 6, textAlign: 'right' }}>الكلمات التي وجدتها:</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, direction: 'rtl' }}>
                 {foundWords.map(w => (
-                  <span key={w} style={{ background: '#FEF3C7', color: '#92400E', borderRadius: 20, padding: '3px 12px', fontSize: '.88rem', fontWeight: 700 }}>{w}</span>
+                  <span key={w} style={{ background: '#FEF3C7', color: '#92400E', borderRadius: 20, padding: '3px 10px', fontSize: '.86rem', fontWeight: 700 }}>{w}</span>
                 ))}
               </div>
             </div>
           )}
 
-          <button style={S.btnGold} onClick={fetchWheel}>🎡 عجلة جديدة</button>
-          <button style={S.btnOutline} onClick={startGame}>🔄 العب مجدداً</button>
-          <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
+          {/* Action buttons */}
+          <button style={S.btnGold} onClick={handleNextWheel}>{nextBtnLabel}</button>
+          <button style={S.btnOutline} onClick={handleRetryWheel}>أعد هذه العجلة 🔄</button>
+          <button
+            style={{ ...S.btnOutline, borderColor: '#9CA3AF', color: '#6B7280' }}
+            onClick={() => setPhase('lobby')}>
+            تغيير المرحلة
+          </button>
+          <Link href="/library" style={S.backLink}>← المكتبة</Link>
         </div>
       </div>
     );
   }
 
+  /* ════════════════════════════════════════════════════════════════════════
+     PHASE: PLAYING
+  ════════════════════════════════════════════════════════════════════════ */
   return (
     <div style={S.page}>
-      <style>{`
-        @keyframes ww-shake {
-          0%,100%{transform:translateX(0)}
-          20%{transform:translateX(-8px)}
-          40%{transform:translateX(8px)}
-          60%{transform:translateX(-5px)}
-          80%{transform:translateX(5px)}
-        }
-        @keyframes ww-flash {
-          0%{background:rgba(16,185,129,0.35)}
-          100%{background:transparent}
-        }
-        @keyframes ww-fly {
-          0%{opacity:1;transform:translateY(0) scale(1)}
-          100%{opacity:0;transform:translateY(-60px) scale(1.4)}
-        }
-        @keyframes ww-fadeIn {
-          from{opacity:0;transform:translateY(6px)}
-          to{opacity:1;transform:translateY(0)}
-        }
-        @keyframes ww-timerpulse {
-          0%,100%{opacity:1}
-          50%{opacity:0.6}
-        }
-      `}</style>
+      <style>{CSS_KEYFRAMES}</style>
 
+      {/* Top bar */}
       <div style={S.topBar}>
-        <Link href="/library" style={{ color: 'rgba(255,255,255,0.75)', fontSize: '.85rem', textDecoration: 'none' }}>← المكتبة</Link>
-        <div style={S.scorePill}>✨ {score} نقطة</div>
-        <div style={{ fontSize: '.88rem', fontWeight: 700,
+        <Link href="/library" style={{ color: 'rgba(255,255,255,0.75)', fontSize: '.85rem', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+          ← المكتبة
+        </Link>
+        <div style={{ fontSize: '.82rem', fontWeight: 800, color: 'rgba(255,255,255,0.9)', textAlign: 'center', flex: 1, padding: '0 8px' }}>
+          {levelLabel}
+        </div>
+        <div style={S.scorePill}>✨ {score}</div>
+        <div style={{
+          fontSize: '.9rem', fontWeight: 800, minWidth: 44, textAlign: 'center',
           color: timeLeft <= 10 ? '#FCA5A5' : 'rgba(255,255,255,0.85)',
-          animation: timeLeft <= 10 ? 'ww-timerpulse 0.7s ease-in-out infinite' : 'none' }}>
-          ⏱ {timeLeft}ث
+          animation: timeLeft <= 10 ? 'ww-timerpulse 0.7s ease-in-out infinite' : 'none',
+        }}>
+          {timeLeft}ث
         </div>
       </div>
 
-      <div style={{ width: '100%', maxWidth: 680, padding: '0 12px', boxSizing: 'border-box', marginBottom: 4 }}>
+      {/* Timer bar */}
+      <div style={{ width: '100%', maxWidth: 680, padding: '0 12px', boxSizing: 'border-box' }}>
         <div style={{ height: 6, background: 'rgba(255,255,255,0.2)', borderRadius: 4, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${timerPct}%`, background: timerColor, borderRadius: 4, transition: 'width 1s linear, background 0.5s' }} />
+          <div style={{
+            height: '100%', width: `${timerPct}%`,
+            background: timerColor, borderRadius: 4,
+            transition: 'width 1s linear, background 0.5s',
+          }} />
         </div>
       </div>
 
+      {/* Game layout */}
       <div style={S.gameLayout}>
+
+        {/* Wheel column */}
         <div style={S.wheelCol}>
-          <div style={{ position: 'relative' }}>
+          {/* SVG wheel with fly word overlay */}
+          <div style={{ position: 'relative', width: '100%' }}>
             {flyWord && (
-              <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%,-50%)',
-                fontSize: '1.6rem', fontWeight: 900, color: '#059669', zIndex: 10, pointerEvents: 'none',
-                animation: 'ww-fly 0.85s ease-out forwards', whiteSpace: 'nowrap' }}>
+              <div style={{
+                position: 'absolute', top: '40%', left: '50%',
+                transform: 'translate(-50%,-50%)',
+                fontSize: '1.6rem', fontWeight: 900, color: '#059669',
+                zIndex: 10, pointerEvents: 'none',
+                animation: 'ww-fly 0.85s ease-out forwards',
+                whiteSpace: 'nowrap',
+              }}>
                 {flyWord}
               </div>
             )}
@@ -505,16 +653,20 @@ export default function WordWheelGame() {
             />
           </div>
 
+          {/* Input display */}
           <div style={{
             ...S.inputDisplay,
-            background: flashing ? 'rgba(16,185,129,0.15)' : '#FFF',
             animation: flashing ? 'ww-flash 0.8s ease-out' : shaking ? 'ww-shake 0.4s ease-in-out' : 'none',
           }}>
-            <span style={{ flex: 1, fontSize: '1.8rem', fontWeight: 900, color: inputText ? '#92400E' : '#D1D5DB', letterSpacing: 4, textAlign: 'center' }}>
+            <span style={{
+              flex: 1, fontSize: '1.8rem', fontWeight: 900, letterSpacing: 4, textAlign: 'center',
+              color: inputText ? '#92400E' : '#D1D5DB',
+            }}>
               {inputText || '…'}
             </span>
           </div>
 
+          {/* Feedback */}
           {feedback && (
             <div style={{
               ...S.feedbackBubble,
@@ -526,6 +678,7 @@ export default function WordWheelGame() {
             </div>
           )}
 
+          {/* Letter tiles */}
           <div style={S.tileRow}>
             {letters.map((letter, i) => {
               const usedCount = selected.filter(l => l === letter).length;
@@ -533,7 +686,7 @@ export default function WordWheelGame() {
               const isUsedUp = usedCount >= totalCount;
               return (
                 <button key={`tile-${i}`}
-                  onClick={() => !isUsedUp && handleLetterClick(letter, 'outer', i)}
+                  onClick={() => !isUsedUp && handleLetterClick(letter)}
                   disabled={isUsedUp}
                   style={{
                     ...S.tile,
@@ -547,12 +700,18 @@ export default function WordWheelGame() {
               );
             })}
             <button
-              onClick={() => handleLetterClick(center, 'center', -1)}
-              style={{ ...S.tile, background: 'linear-gradient(135deg,#FEF3C7,#F59E0B)', color: '#78350F', border: '2.5px solid #D97706', fontWeight: 900, fontSize: '1.3rem' }}>
+              onClick={() => handleLetterClick(center)}
+              style={{
+                ...S.tile,
+                background: 'linear-gradient(135deg,#FEF3C7,#F59E0B)',
+                color: '#78350F', border: '2.5px solid #D97706',
+                fontWeight: 900, fontSize: '1.3rem',
+              }}>
               {center}
             </button>
           </div>
 
+          {/* Controls */}
           <div style={S.controlRow}>
             <button onClick={handleBackspace} style={S.ctrlBtn}>⌫ حذف</button>
             <button onClick={handleSubmit} style={{ ...S.ctrlBtn, ...S.submitBtn }}>تأكيد ✓</button>
@@ -560,32 +719,88 @@ export default function WordWheelGame() {
           </div>
         </div>
 
+        {/* Found words column */}
         <div style={S.foundCol}>
           <div style={S.foundHeader}>
-            <span style={{ fontWeight: 800, color: '#92400E' }}>الكلمات المكتشفة</span>
-            <span style={{ background: '#FEF3C7', color: '#D97706', borderRadius: 20, padding: '2px 10px', fontSize: '.82rem', fontWeight: 700 }}>
+            <span style={{ fontWeight: 800, color: '#92400E', fontSize: '.9rem' }}>الكلمات المكتشفة</span>
+            <span style={{ background: '#FEF3C7', color: '#D97706', borderRadius: 20, padding: '2px 10px', fontSize: '.8rem', fontWeight: 700 }}>
               {foundWords.length}
             </span>
           </div>
           <div style={S.foundList}>
             {foundWords.length === 0 ? (
-              <div style={{ textAlign: 'center', color: '#D1D5DB', padding: '24px 0', fontSize: '.88rem' }}>
+              <div style={{ textAlign: 'center', color: '#D1D5DB', padding: '24px 0', fontSize: '.86rem' }}>
                 ابدأ بكتابة كلمة!
               </div>
             ) : (
               foundWords.map((w, i) => (
-                <div key={w} style={{ ...S.foundItem, animation: i === 0 ? 'ww-fadeIn 0.3s ease-out' : 'none' }}>
-                  <span style={{ flex: 1, fontWeight: 700, color: '#1F2937', fontSize: '1rem' }}>{w}</span>
-                  <span style={{ color: '#F59E0B', fontWeight: 800, fontSize: '.85rem' }}>+{calcScore(w, allLetters)}</span>
+                <div key={w} style={{
+                  ...S.foundItem,
+                  animation: i === 0 ? 'ww-fadeIn 0.3s ease-out' : 'none',
+                }}>
+                  <span style={{ flex: 1, fontWeight: 700, color: '#1F2937', fontSize: '.95rem' }}>{w}</span>
+                  <span style={{ color: '#F59E0B', fontWeight: 800, fontSize: '.82rem' }}>+{calcScore(w, allLetters)}</span>
                 </div>
               ))
             )}
           </div>
         </div>
+
       </div>
     </div>
   );
 }
+
+/* ─── CSS Keyframes ──────────────────────────────────────────────────────── */
+
+const CSS_KEYFRAMES = `
+  @keyframes ww-shake {
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-8px)}
+    40%{transform:translateX(8px)}
+    60%{transform:translateX(-5px)}
+    80%{transform:translateX(5px)}
+  }
+  @keyframes ww-flash {
+    0%{background:rgba(16,185,129,0.3)}
+    100%{background:#fff}
+  }
+  @keyframes ww-fly {
+    0%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    100%{opacity:0;transform:translate(-50%,-110%) scale(1.4)}
+  }
+  @keyframes ww-fadeIn {
+    from{opacity:0;transform:translateY(6px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+  @keyframes ww-timerpulse {
+    0%,100%{opacity:1}
+    50%{opacity:0.55}
+  }
+  @keyframes ww-spin {
+    from{transform:rotate(0deg)}
+    to{transform:rotate(360deg)}
+  }
+  @keyframes ww-pop {
+    0%{transform:scale(0);opacity:0}
+    70%{transform:scale(1.15)}
+    100%{transform:scale(1);opacity:1}
+  }
+  @keyframes ww-floatin {
+    from{opacity:0;transform:translateY(20px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+  @keyframes ww-wheelSpin {
+    from{transform:rotate(0deg)}
+    to{transform:rotate(360deg)}
+  }
+  @keyframes ww-pulse {
+    0%,100%{opacity:.4;transform:scale(.8)}
+    50%{opacity:1;transform:scale(1.1)}
+  }
+`;
+
+/* ─── Styles ─────────────────────────────────────────────────────────────── */
 
 const S = {
   page: {
@@ -597,15 +812,59 @@ const S = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    padding: '12px 12px 32px',
+    padding: '12px 12px 40px',
     fontFamily: "'Cairo','Tajawal',sans-serif",
     direction: 'rtl',
     gap: 10,
   },
+
+  /* ── Lobby ── */
+  lobbyWrap: {
+    width: '100%',
+    maxWidth: 520,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 20,
+  },
+  lobbyHeader: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 4,
+    position: 'relative',
+  },
+  topBackLink: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: '.85rem',
+    textDecoration: 'none',
+    alignSelf: 'flex-start',
+  },
+  lobbyGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2,1fr)',
+    gap: 14,
+    width: '100%',
+  },
+  levelCard: {
+    borderRadius: 18,
+    padding: '20px 14px',
+    textAlign: 'center',
+    cursor: 'pointer',
+    border: '2px solid',
+    transition: 'transform .15s, box-shadow .15s',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 8,
+    fontFamily: "'Cairo','Tajawal',sans-serif",
+    direction: 'rtl',
+  },
+
+  /* ── Center card (loading / start / finished) ── */
   centerCard: {
     background: '#fff',
     borderRadius: 24,
-    padding: '32px 24px',
+    padding: '32px 22px',
     textAlign: 'center',
     maxWidth: 520,
     width: '100%',
@@ -616,12 +875,14 @@ const S = {
     alignItems: 'center',
     gap: 20,
   },
+
   mainTitle: {
     fontSize: '2rem',
     fontWeight: 900,
     color: '#1a1a2e',
     margin: 0,
   },
+
   rulesGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3,1fr)',
@@ -637,15 +898,16 @@ const S = {
     flexDirection: 'column',
     alignItems: 'center',
     gap: 2,
-    fontSize: '.82rem',
   },
+
+  /* ── Buttons ── */
   btnGold: {
     background: 'linear-gradient(135deg,#F59E0B,#D97706)',
     color: '#fff',
     border: 'none',
     borderRadius: 14,
     padding: '14px 0',
-    fontSize: '1.1rem',
+    fontSize: '1.05rem',
     fontWeight: 700,
     cursor: 'pointer',
     fontFamily: "'Cairo','Tajawal',sans-serif",
@@ -658,7 +920,7 @@ const S = {
     border: '2px solid #D97706',
     borderRadius: 12,
     padding: '10px 0',
-    fontSize: '.95rem',
+    fontSize: '.93rem',
     fontWeight: 700,
     cursor: 'pointer',
     fontFamily: "'Cairo','Tajawal',sans-serif",
@@ -666,9 +928,11 @@ const S = {
   },
   backLink: {
     color: '#9CA3AF',
-    fontSize: '0.87rem',
+    fontSize: '.87rem',
     textDecoration: 'none',
   },
+
+  /* ── Stats ── */
   statBox: {
     display: 'flex',
     flexDirection: 'column',
@@ -680,15 +944,18 @@ const S = {
     fontWeight: 900,
   },
   statLbl: {
-    fontSize: '0.8rem',
+    fontSize: '.78rem',
     color: '#9CA3AF',
     fontWeight: 500,
   },
   statDiv: {
     width: 1,
-    height: 40,
     background: '#E5E7EB',
+    alignSelf: 'stretch',
+    margin: '4px 0',
   },
+
+  /* ── Playing: top bar ── */
   topBar: {
     width: '100%',
     maxWidth: 680,
@@ -697,39 +964,45 @@ const S = {
     justifyContent: 'space-between',
     padding: '0 4px',
     boxSizing: 'border-box',
+    gap: 6,
   },
   scorePill: {
     background: 'rgba(255,255,255,0.2)',
     color: '#fff',
     borderRadius: 20,
-    padding: '5px 16px',
+    padding: '4px 12px',
     fontWeight: 800,
-    fontSize: '1rem',
+    fontSize: '.9rem',
+    whiteSpace: 'nowrap',
   },
+
+  /* ── Game layout ── */
   gameLayout: {
     display: 'flex',
-    gap: 16,
+    gap: 14,
     width: '100%',
     maxWidth: 680,
     alignItems: 'flex-start',
     boxSizing: 'border-box',
     flexWrap: 'wrap',
   },
+
+  /* ── Wheel column ── */
   wheelCol: {
     flex: '1 1 300px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     background: '#fff',
     borderRadius: 20,
-    padding: '16px 14px',
+    padding: '14px 12px',
     boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
     boxSizing: 'border-box',
   },
   inputDisplay: {
     width: '100%',
-    minHeight: 60,
+    minHeight: 58,
     background: '#FFF',
     border: '2.5px solid #FDE68A',
     borderRadius: 14,
@@ -742,8 +1015,8 @@ const S = {
   feedbackBubble: {
     width: '100%',
     borderRadius: 10,
-    padding: '8px 14px',
-    fontSize: '.88rem',
+    padding: '7px 12px',
+    fontSize: '.86rem',
     fontWeight: 700,
     textAlign: 'center',
     boxSizing: 'border-box',
@@ -751,21 +1024,22 @@ const S = {
   tileRow: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 7,
     justifyContent: 'center',
   },
   tile: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    fontSize: '1.15rem',
+    width: 44,
+    height: 44,
+    borderRadius: 11,
+    fontSize: '1.1rem',
     fontWeight: 800,
     fontFamily: "'Cairo','Tajawal',sans-serif",
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     transition: 'all 0.12s',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.09)',
+    padding: 0,
   },
   controlRow: {
     display: 'flex',
@@ -774,12 +1048,12 @@ const S = {
   },
   ctrlBtn: {
     flex: 1,
-    padding: '10px 4px',
+    padding: '9px 4px',
     border: '1.5px solid #E5E7EB',
     borderRadius: 10,
     background: '#F9FAFB',
     color: '#374151',
-    fontSize: '.88rem',
+    fontSize: '.86rem',
     fontWeight: 700,
     cursor: 'pointer',
     fontFamily: "'Cairo','Tajawal',sans-serif",
@@ -790,39 +1064,40 @@ const S = {
     color: '#fff',
     border: 'none',
   },
+
+  /* ── Found words column ── */
   foundCol: {
-    flex: '0 1 200px',
-    minWidth: 170,
+    flex: '0 1 190px',
+    minWidth: 160,
     background: '#fff',
     borderRadius: 20,
-    padding: '14px 12px',
+    padding: '12px 10px',
     boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
     boxSizing: 'border-box',
     display: 'flex',
     flexDirection: 'column',
-    gap: 10,
+    gap: 8,
     maxHeight: 520,
   },
   foundHeader: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    fontSize: '.9rem',
   },
   foundList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 6,
+    gap: 5,
     overflowY: 'auto',
     flex: 1,
   },
   foundItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     background: '#FFFBEB',
     border: '1.5px solid #FDE68A',
-    borderRadius: 10,
-    padding: '7px 10px',
+    borderRadius: 9,
+    padding: '6px 8px',
   },
 };
