@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { createClient } from '../../../../lib/supabase';
 
 /* ─── Constants ─────────────────────────────────────────────────────────── */
 
@@ -176,19 +177,46 @@ export default function WordWheelGame() {
   const [flashing, setFlashing] = useState(false);
   const [flyWord, setFlyWord] = useState(null);
 
+  const [customConfigs, setCustomConfigs] = useState([]);
+  const [customConfig, setCustomConfig] = useState(null);
+  const [wordImagePopup, setWordImagePopup] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+
   const timerRef = useRef(null);
   const feedbackRef = useRef(null);
 
-  /* ── Load levels metadata on mount ───────────────────────────────────── */
+  /* ── Load levels metadata, custom configs, and user role on mount ─────── */
   useEffect(() => {
     fetch('/api/word-wheel?level=1&index=0')
       .then(r => r.json())
       .then(json => { if (json.levels?.length) setLevelsData(json.levels); })
       .catch(() => {});
+
+    fetch('/api/word-wheel/configs')
+      .then(r => r.json())
+      .then(json => setCustomConfigs(json.configs || []))
+      .catch(() => {});
+
+    const supabase = createClient();
+    supabase.auth.getUser()
+      .then(({ data }) => setUserRole(data?.user?.user_metadata?.role || null))
+      .catch(() => {});
+  }, []);
+
+  /* ── Play a custom config ────────────────────────────────────────────── */
+  const playCustomConfig = useCallback((config) => {
+    setCustomConfig(config);
+    setLetters(config.outer_letters || []);
+    setCenter(config.center_letter || '');
+    setGameTime(config.time_seconds || 90);
+    setCurrentIndex(0);
+    setTotalWheels(1);
+    setPhase('start');
   }, []);
 
   /* ── Fetch a wheel ───────────────────────────────────────────────────── */
   const fetchWheel = useCallback(async (level, index) => {
+    setCustomConfig(null);
     setPhase('loading');
     try {
       const res = await fetch(`/api/word-wheel?level=${level}&index=${index}`);
@@ -291,6 +319,15 @@ export default function WordWheelGame() {
       showFeedback('الكلمة تحتوي على حروف خارج العجلة', 'error');
       return;
     }
+    if (customConfig && (customConfig.valid_words || []).length > 0) {
+      const entry = (customConfig.valid_words || []).find(vw => vw.word === word);
+      if (!entry) {
+        setShaking(true);
+        setTimeout(() => setShaking(false), 500);
+        showFeedback('الكلمة غير موجودة في قائمة هذه العجلة', 'error');
+        return;
+      }
+    }
     if (foundWords.includes(word)) {
       setShaking(true);
       setTimeout(() => setShaking(false), 500);
@@ -308,7 +345,15 @@ export default function WordWheelGame() {
     showFeedback(`+${pts} نقطة — ممتاز! ✨`, 'success');
     setSelected([]);
     setInputText('');
-  }, [phase, inputText, center, wheelCounts, foundWords, allLetters, showFeedback]);
+
+    if (customConfig) {
+      const entry = (customConfig.valid_words || []).find(vw => vw.word === word);
+      if (entry?.image) {
+        setWordImagePopup({ word, image: entry.image });
+        setTimeout(() => setWordImagePopup(null), 2500);
+      }
+    }
+  }, [phase, inputText, center, wheelCounts, foundWords, allLetters, showFeedback, customConfig]);
 
   /* ── Keyboard shortcuts ──────────────────────────────────────────────── */
   useEffect(() => {
@@ -324,6 +369,11 @@ export default function WordWheelGame() {
 
   /* ── Game-over navigation ────────────────────────────────────────────── */
   function handleNextWheel() {
+    if (customConfig) {
+      setCustomConfig(null);
+      setPhase('lobby');
+      return;
+    }
     const nextIndex = currentIndex + 1;
     if (nextIndex < totalWheels) {
       setCurrentIndex(nextIndex);
@@ -339,6 +389,10 @@ export default function WordWheelGame() {
   }
 
   function handleRetryWheel() {
+    if (customConfig) {
+      playCustomConfig(customConfig);
+      return;
+    }
     fetchWheel(currentLevel, currentIndex);
   }
 
@@ -354,7 +408,9 @@ export default function WordWheelGame() {
 
   const currentLevelInfo = levelsData.find(l => l.id === currentLevel) || null;
 
-  const levelLabel = currentLevelInfo
+  const levelLabel = customConfig
+    ? `🎡 ${customConfig.name}`
+    : currentLevelInfo
     ? `${currentLevelInfo.icon} ${currentLevelInfo.label} — ${currentIndex + 1}/${totalWheels}`
     : `العجلة ${currentIndex + 1}/${totalWheels}`;
 
@@ -425,6 +481,75 @@ export default function WordWheelGame() {
               );
             })}
           </div>
+
+          {/* Custom Wheels Section */}
+          {customConfigs.length > 0 && (
+            <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 18, padding: '16px 14px' }}>
+              <div style={{ fontSize: '.8rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
+                عجلات مخصصة
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {customConfigs.map(cfg => (
+                  <button
+                    key={cfg.id}
+                    onClick={() => playCustomConfig(cfg)}
+                    style={{
+                      background: '#fff',
+                      border: 'none',
+                      borderRadius: 14,
+                      padding: '12px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      cursor: 'pointer',
+                      textAlign: 'right',
+                      fontFamily: "'Cairo','Tajawal',sans-serif",
+                      direction: 'rtl',
+                      transition: 'transform .12s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg,#F59E0B,#D97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+                      {cfg.center_letter}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, color: '#1F2937', fontSize: '1rem' }}>{cfg.name}</div>
+                      <div style={{ fontSize: '.76rem', color: '#6B7280', marginTop: 2 }}>
+                        {(cfg.outer_letters || []).length} حرفاً خارجياً • {(cfg.valid_words || []).length} كلمة • {cfg.time_seconds}ث
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '1.2rem', color: '#D97706' }}>←</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Settings link for teachers */}
+          {['teacher', 'admin', 'super_admin'].includes(userRole) && (
+            <Link
+              href="/library/games/word-wheel/settings"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                background: 'rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.9)',
+                borderRadius: 14,
+                padding: '12px 20px',
+                textDecoration: 'none',
+                fontFamily: "'Cairo','Tajawal',sans-serif",
+                fontWeight: 700,
+                fontSize: '.9rem',
+                border: '1.5px solid rgba(255,255,255,0.25)',
+                transition: 'background .15s',
+              }}
+            >
+              ⚙️ إدارة العجلات المخصصة
+            </Link>
+          )}
         </div>
       </div>
     );
@@ -466,12 +591,20 @@ export default function WordWheelGame() {
 
           {/* Level badge + wheel badge */}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <span style={{ background: colors.bg, border: `1.5px solid ${colors.border}`, color: colors.accent, borderRadius: 20, padding: '4px 14px', fontSize: '.85rem', fontWeight: 800 }}>
-              {currentLevelInfo ? `${currentLevelInfo.icon} ${currentLevelInfo.label}` : `المرحلة ${currentLevel}`}
-            </span>
-            <span style={{ background: '#FFFBEB', border: '1.5px solid #FDE68A', color: '#92400E', borderRadius: 20, padding: '4px 14px', fontSize: '.85rem', fontWeight: 700 }}>
-              العجلة {currentIndex + 1}/{totalWheels}
-            </span>
+            {customConfig ? (
+              <span style={{ background: '#FFFBEB', border: '1.5px solid #FDE68A', color: '#92400E', borderRadius: 20, padding: '4px 14px', fontSize: '.85rem', fontWeight: 800 }}>
+                🎡 {customConfig.name}
+              </span>
+            ) : (
+              <>
+                <span style={{ background: colors.bg, border: `1.5px solid ${colors.border}`, color: colors.accent, borderRadius: 20, padding: '4px 14px', fontSize: '.85rem', fontWeight: 800 }}>
+                  {currentLevelInfo ? `${currentLevelInfo.icon} ${currentLevelInfo.label}` : `المرحلة ${currentLevel}`}
+                </span>
+                <span style={{ background: '#FFFBEB', border: '1.5px solid #FDE68A', color: '#92400E', borderRadius: 20, padding: '4px 14px', fontSize: '.85rem', fontWeight: 700 }}>
+                  العجلة {currentIndex + 1}/{totalWheels}
+                </span>
+              </>
+            )}
             <span style={{ background: '#EFF6FF', border: '1.5px solid #BAE6FD', color: '#0369A1', borderRadius: 20, padding: '4px 14px', fontSize: '.85rem', fontWeight: 700 }}>
               ⏱ {gameTime} ثانية
             </span>
@@ -520,7 +653,9 @@ export default function WordWheelGame() {
   ════════════════════════════════════════════════════════════════════════ */
   if (phase === 'finished') {
     const stars = score >= 20 ? 3 : score >= 10 ? 2 : score > 0 ? 1 : 0;
-    const nextBtnLabel = isLastWheel
+    const nextBtnLabel = customConfig
+      ? '← العودة للقائمة'
+      : isLastWheel
       ? isLastLevel ? '🏅 العودة للقائمة' : 'المرحلة التالية 🎯'
       : 'العجلة التالية ←';
 
@@ -596,6 +731,37 @@ export default function WordWheelGame() {
   return (
     <div style={S.page}>
       <style>{CSS_KEYFRAMES}</style>
+
+      {/* Word image popup for custom wheels */}
+      {wordImagePopup && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: 20,
+            padding: '20px 24px',
+            boxShadow: '0 16px 48px rgba(0,0,0,0.4)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 12,
+            animation: 'ww-floatin 0.3s ease-out, ww-pop 0.4s ease-out',
+            maxWidth: 240,
+          }}>
+            <img
+              src={wordImagePopup.image}
+              alt={wordImagePopup.word}
+              style={{ width: 150, height: 150, objectFit: 'cover', borderRadius: 14, border: '3px solid #F59E0B' }}
+            />
+            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#D97706', fontFamily: "'Cairo','Tajawal',sans-serif" }}>
+              {wordImagePopup.word}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Top bar */}
       <div style={S.topBar}>
