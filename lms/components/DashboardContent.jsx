@@ -45,6 +45,7 @@ export default function DashboardContent({
   attendancePct, attendedCount, attendanceTotal,
   homework = [], sessionNotes = [],
   streakCount = 0, loggedToday = false, last7Days = [],
+  masteredCount = 0, studiedCount = 0,
 }) {
   const { t, lang } = useLanguage();
   const locale = 'en-GB';
@@ -365,6 +366,47 @@ export default function DashboardContent({
           .streak-card{gap:10px;} .streak-num{font-size:2.2rem;} .streak-dots{gap:4px;}
           .streak-dot{width:24px;height:24px;font-size:.6rem;}
         }
+
+        /* ── Progress card ── */
+        .prog-card {
+          background: linear-gradient(160deg,#f0f9ff 0%,#eef5fe 100%);
+          border: 1.5px solid #bae6fd;
+          border-radius: 20px; padding: 18px 20px; margin-bottom: 24px;
+        }
+        .prog-header {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 14px;
+        }
+        .prog-title {
+          font-size: .95rem; font-weight: 900; color: #0c4a6e;
+          display: flex; align-items: center; gap: 7px;
+        }
+        .prog-badge {
+          font-size: .7rem; font-weight: 700; color: #0284c7;
+          background: #e0f2fe; border-radius: 20px; padding: 3px 10px;
+        }
+        .prog-metrics {
+          display: grid; grid-template-columns: repeat(3,1fr); gap: 10px;
+        }
+        .prog-metric {
+          background: #fff; border-radius: 14px; padding: 14px 10px;
+          text-align: center; border: 1px solid #e0f2fe;
+          display: flex; flex-direction: column; align-items: center;
+        }
+        .prog-icon  { font-size: 1.5rem; line-height: 1; margin-bottom: 6px; }
+        .prog-val   { font-size: 1.65rem; font-weight: 900; line-height: 1; }
+        .prog-lbl   { font-size: .7rem; color: #64748b; font-weight: 700; margin-top: 4px; }
+        .prog-sub   { font-size: .65rem; color: #94a3b8; margin-top: 2px; }
+        .prog-bar   { width: 100%; height: 4px; background: #f1f5f9; border-radius: 99;
+                      overflow: hidden; margin-top: 8px; }
+        .prog-fill  { height: 100%; border-radius: 99; transition: width 1.2s ease; }
+        @media(max-width:420px){
+          .prog-metrics { grid-template-columns: 1fr; }
+          .prog-metric  { flex-direction: row; text-align: right; gap: 12px; padding: 12px 14px; }
+          .prog-icon    { margin-bottom: 0; font-size: 1.3rem; flex-shrink: 0; }
+          .prog-val     { font-size: 1.3rem; }
+          .prog-bar     { margin-top: 4px; }
+        }
       `}</style>
 
       <Navbar user={user} />
@@ -451,6 +493,94 @@ export default function DashboardContent({
               </div>
             );
           })()}
+
+          {/* ── Personal Progress Card ── */}
+          <div className="prog-card">
+            <div className="prog-header">
+              <div className="prog-title">📈 تقدمك الشخصي</div>
+              <span className="prog-badge">محدّث الآن</span>
+            </div>
+            <div className="prog-metrics">
+
+              {/* Mastered Words */}
+              <div className="prog-metric">
+                <div className="prog-icon">🧠</div>
+                <div className="prog-val" style={{ color: masteredCount > 0 ? '#0369a1' : '#94a3b8' }}>
+                  {masteredCount}
+                </div>
+                <div className="prog-lbl">كلمة محفوظة</div>
+                {studiedCount > 0 && (
+                  <div className="prog-sub">من أصل {studiedCount} قيد التعلم</div>
+                )}
+                {studiedCount > 0 && (
+                  <div className="prog-bar">
+                    <div className="prog-fill" style={{
+                      width: `${Math.round((masteredCount / studiedCount) * 100)}%`,
+                      background: 'linear-gradient(90deg,#0369a1,#0ea5e9)',
+                    }} />
+                  </div>
+                )}
+                {studiedCount === 0 && (
+                  <div className="prog-sub">ابدأ بالبطاقات! ✨</div>
+                )}
+              </div>
+
+              {/* Attendance */}
+              <div className="prog-metric">
+                <div className="prog-icon">🏫</div>
+                <div className="prog-val" style={{
+                  color: attendancePct == null ? '#94a3b8'
+                       : attendancePct >= 80    ? '#059669'
+                       : attendancePct >= 60    ? '#d97706'
+                       :                          '#dc2626',
+                }}>
+                  {attendancePct != null ? `${attendancePct}%` : '—'}
+                </div>
+                <div className="prog-lbl">نسبة الحضور</div>
+                {attendancePct != null && (
+                  <div className="prog-sub">{attendedCount} من {attendanceTotal} حصة</div>
+                )}
+                {attendancePct != null && (
+                  <div className="prog-bar">
+                    <div className="prog-fill" style={{
+                      width: `${attendancePct}%`,
+                      background: attendancePct >= 80 ? 'linear-gradient(90deg,#059669,#10b981)'
+                                : attendancePct >= 60 ? 'linear-gradient(90deg,#d97706,#f59e0b)'
+                                :                       'linear-gradient(90deg,#dc2626,#f87171)',
+                    }} />
+                  </div>
+                )}
+                {attendancePct == null && (
+                  <div className="prog-sub">لا حصص مسجّلة بعد</div>
+                )}
+              </div>
+
+              {/* Last Assessment */}
+              <div className="prog-metric">
+                <div className="prog-icon">📊</div>
+                <div className="prog-val" style={{ color: assessments?.[0] ? '#6366f1' : '#94a3b8' }}>
+                  {assessments?.[0] ? `م ${assessments[0].level}` : '—'}
+                </div>
+                <div className="prog-lbl">آخر تقييم</div>
+                {assessments?.[0] ? (
+                  <div className="prog-sub">
+                    {new Date(assessments[0].completed_at).toLocaleDateString('ar', { day:'numeric', month:'short' })}
+                  </div>
+                ) : (
+                  <div className="prog-sub">لا تقييمات بعد</div>
+                )}
+                {assessments?.[0]?.score != null && (
+                  <div className="prog-bar">
+                    <div className="prog-fill" style={{
+                      width: `${Math.min(Math.round((assessments[0].score / (assessments[0].level * 10 || 60)) * 100), 100)}%`,
+                      background: 'linear-gradient(90deg,#6366f1,#a855f7)',
+                    }} />
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
 
           {/* ── Next session ── */}
           {nextSession && (() => {

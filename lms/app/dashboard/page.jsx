@@ -74,6 +74,15 @@ export default async function DashboardPage() {
 
   const upcomingSessions = merged;
 
+  // Flashcard mastery
+  const { data: fcProgress } = await admin
+    .from('flashcard_progress')
+    .select('level')
+    .eq('user_id', user.id)
+    .then(r => r.error ? { data: [] } : r);
+  const masteredCount = (fcProgress ?? []).filter(p => p.level >= 5).length;
+  const studiedCount  = (fcProgress ?? []).length;
+
   // Attendance stats
   const { data: pastRaw } = await admin
     .from('sessions')
@@ -164,6 +173,8 @@ export default async function DashboardPage() {
       streakCount={streakCount}
       loggedToday={loggedToday}
       last7Days={last7Days}
+      masteredCount={masteredCount}
+      studiedCount={studiedCount}
     />
   );
 }
