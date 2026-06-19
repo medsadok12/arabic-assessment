@@ -491,8 +491,11 @@ export default function WordSmashGame() {
   const [completedTopics, setCompletedTopics] = useState(new Set());
   const [currentTopic,    setCurrentTopic]    = useState('');
   const [wormTotals,      setWormTotals]      = useState({ right: 0, total: 0 });
+  const [totalPoints,     setTotalPoints]     = useState(0);
+  const [ptPopupKey,      setPtPopupKey]      = useState(0);
+  const [ptPopupActive,   setPtPopupActive]   = useState(false);
 
-  /* role detection */
+  /* role detection + initial points */
   useEffect(() => {
     import('../../../../lib/supabase').then(({ createClient }) => {
       const sb = createClient();
@@ -501,6 +504,7 @@ export default function WordSmashGame() {
         setIsTeacher(['super_admin', 'admin', 'teacher'].includes(role));
       }).catch(() => {});
     }).catch(() => {});
+    fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
   }, []);
 
   /* load all words (teacher only, for manager) */
@@ -583,6 +587,15 @@ export default function WordSmashGame() {
       setConfettiKey(k => k + 1);
       setShowConfetti(true);
       setTimeout(() => { setWordAnim('idle'); setShowConfetti(false); }, 900);
+      // Award 5 points and show floating popup
+      setPtPopupKey(k => k + 1);
+      setPtPopupActive(true);
+      setTimeout(() => setPtPopupActive(false), 1200);
+      fetch('/api/points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 5, reason: 'word_smash' }),
+      }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
     }
   }, [chosen, cur, queue]);
 
@@ -676,6 +689,12 @@ export default function WordSmashGame() {
           0%,100% { transform: scale(1) rotate(0deg); }
           40%     { transform: scale(1.2) rotate(-15deg); }
           60%     { transform: scale(1.1) rotate(10deg); }
+        }
+        /* ── points float-up popup ── */
+        @keyframes ptFloatUp {
+          0%   { opacity: 1; transform: translateY(0) scale(1.25); }
+          70%  { opacity: 1; }
+          100% { opacity: 0; transform: translateY(-48px) scale(0.9); }
         }
         /* ── card ring on correct ── */
         @keyframes correctRing {
@@ -931,13 +950,30 @@ export default function WordSmashGame() {
             <>
               {/* top bar */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 540, marginBottom: 16, color: '#fff' }}>
+                {/* game score */}
                 <span style={{ fontSize: '1rem', fontWeight: 700, flexShrink: 0, background: 'rgba(255,255,255,.2)', borderRadius: 20, padding: '4px 14px' }}>
                   ✨ {score}
                 </span>
+                {/* progress bar */}
                 <div style={{ flex: 1, height: 8, background: 'rgba(255,255,255,.25)', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ height: '100%', background: '#fbbf24', borderRadius: 4, width: `${((cur + 1) / queue.length) * 100}%`, transition: 'width .4s' }} />
                 </div>
-                <span style={{ fontSize: '.88rem', opacity: .85, flexShrink: 0 }}>{cur + 1} / {queue.length}</span>
+                {/* total accumulated points with popup */}
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(251,191,36,.28)', borderRadius: 20, padding: '4px 12px', fontSize: '.9rem', fontWeight: 800 }}>
+                    ⭐ {totalPoints.toLocaleString()}
+                  </span>
+                  {ptPopupActive && (
+                    <span key={ptPopupKey} style={{
+                      position: 'absolute', top: -28, left: '50%',
+                      transform: 'translateX(-50%)',
+                      color: '#fbbf24', fontWeight: 900, fontSize: '1.05rem',
+                      pointerEvents: 'none', whiteSpace: 'nowrap',
+                      animation: 'ptFloatUp 1.1s ease forwards',
+                      textShadow: '0 1px 6px rgba(0,0,0,.45)',
+                    }}>+5 ⭐</span>
+                  )}
+                </div>
               </div>
 
               {/* main card */}

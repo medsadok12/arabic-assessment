@@ -11,7 +11,7 @@ export async function awardPoints(userId, amount, reason) {
     .maybeSingle();
   if (existing) return { ok: true, skipped: true };
 
-  await admin.from('points_log').insert({ user_id: userId, amount, reason });
+  await admin.from('points_log').insert({ user_id: userId, delta: amount, reason });
 
   const { data: row } = await admin
     .from('user_points')
