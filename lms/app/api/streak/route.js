@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient }      from '../../../lib/supabase-server';
+import { awardPoints }       from '../../../lib/points';
 
 function calcStreak(dates) {
   if (!dates.length) return 0;
@@ -81,6 +82,10 @@ export async function POST() {
 
     const dates  = (data || []).map(r => r.log_date);
     const streak = calcStreak(dates);
+
+    const today = new Date().toISOString().slice(0, 10);
+    awardPoints(user.id, 10, `daily_login:${today}`).catch(() => {});
+
     return NextResponse.json({ ok: true, streak });
   } catch (e) {
     return NextResponse.json({ ok: false });

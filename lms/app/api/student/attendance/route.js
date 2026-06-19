@@ -2,6 +2,7 @@ import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { notifyUser }        from '../../../../lib/notify';
+import { awardPoints }       from '../../../../lib/points';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,6 +89,9 @@ export async function POST(req) {
     session_date:  session.session_date,
   });
   if (logErr) console.error('[attendance_logs] insert failed:', logErr.message);
+
+  // منح 20 نقطة لأول حضور (مرة واحدة لكل حصة)
+  awardPoints(user.id, 20, `session_attend:${session_id}`).catch(() => {});
 
   // إشعار فوري للمعلم (best-effort)
   const teacherId   = session.teacher_id;

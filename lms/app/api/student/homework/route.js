@@ -1,6 +1,7 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { awardPoints }       from '../../../../lib/points';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,5 +44,10 @@ export async function PATCH(req) {
     .ilike('student_email', user.email);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (status === 'done') {
+    awardPoints(user.id, 15, `homework_done:${id}`).catch(() => {});
+  }
+
   return NextResponse.json({ ok: true });
 }

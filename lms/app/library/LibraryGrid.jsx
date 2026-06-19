@@ -95,6 +95,14 @@ const RESOURCES = [
     btnBg: 'linear-gradient(135deg,#F59E0B,#D97706)',
   },
   {
+    key: 'puzzle',
+    icon: '🧩', title: 'الأحجية السحرية',
+    desc: 'اجمع نقاطاً من الألعاب واكتشف الصورة المخفية قطعةً قطعة!',
+    tag: 'تعزيزي', link: '/library/puzzle', ready: true,
+    accent: '#A855F7', bg: '#FAF5FF', border: '#E9D5FF', iconBg: '#F3E8FF',
+    btnBg: 'linear-gradient(135deg,#A855F7,#9333EA)',
+  },
+  {
     key: 'challenge',
     icon: '⚡', title: 'وضع التحدي',
     desc: 'تحدّى صديقك في الوقت الحقيقي — من يجيب أولاً يفوز!',
