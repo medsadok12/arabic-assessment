@@ -262,6 +262,19 @@ export default function WordWheelGame() {
     return () => clearInterval(timerRef.current);
   }, [phase]);
 
+  const pointsSentRef = useRef(false);
+  useEffect(() => {
+    if (phase === 'playing') pointsSentRef.current = false;
+    if (phase === 'finished' && !pointsSentRef.current && score > 0) {
+      pointsSentRef.current = true;
+      fetch('/api/points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: score, reason: 'word_wheel' }),
+      }).catch(() => {});
+    }
+  }, [phase, score]);
+
   const allLetters = [...letters, center];
   const wheelCounts = letterCounts(allLetters.join(''));
 

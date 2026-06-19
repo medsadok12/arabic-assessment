@@ -5,6 +5,7 @@ import Navbar from './Navbar';
 import ParentPanel from './ParentPanel';
 import FaheemWidget from './FaheemWidget';
 import LifeSceneSimulator from './LifeSceneSimulator';
+import PuzzleWidget from './PuzzleWidget';
 import { useLanguage } from '../contexts/LanguageContext';
 import { createClient } from '../lib/supabase';
 
@@ -817,6 +818,14 @@ export default function DashboardContent({
               ))}
             </div>
           </div>
+
+          {/* ── Puzzle Widget ── */}
+          {isStudent && (
+            <div className="db-sec">
+              <div className="db-sec-h">🧩 الأحجية السحرية</div>
+              <PuzzleWidget />
+            </div>
+          )}
 
           {/* ── Faheem widget ── */}
           {isStudent && <FaheemWidget studentName={displayName} studentGender={studentGender} />}
