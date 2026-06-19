@@ -148,13 +148,13 @@ export default async function DashboardPage() {
     return streak;
   }
 
-  const AR_DAYS = ['ح','ن','ث','ر','خ','ج','س'];
   const streakCount  = calcStreak(logDates);
   const loggedToday  = dateSet.has(todayStr);
+  // i=0 → today, i=6 → 6 days ago  (RTL flex renders i=0 on the RIGHT = today on right)
   const last7Days    = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+    const d = new Date(); d.setDate(d.getDate() - i);
     const ds = d.toISOString().slice(0, 10);
-    return { date: ds, active: dateSet.has(ds), day: AR_DAYS[d.getDay()] };
+    return { date: ds, active: dateSet.has(ds), day: d.getDate() };
   });
 
   return (
