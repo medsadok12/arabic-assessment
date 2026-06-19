@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 
 /* ────────────────────────── helpers ────────────────────────── */
@@ -353,6 +353,24 @@ function SettingsPanel({ onClose, dbWords, onRefresh }) {
   );
 }
 
+/* ─── Topic emojis & colors ─── */
+const WS_TOPIC_EMOJIS = {
+  'الحيوانات':'🐘','المدرسة':'🏫','الأسرة':'👨‍👩‍👧','الطبيعة':'🌿',
+  'الفواكه':'🍎','الألوان':'🎨','المهن':'👷','الأدوات':'🔧',
+  'الطعام':'🍜','الملابس':'👕','المنزل':'🏠','المواصلات':'🚗',
+  'الرياضة':'⚽','الخضروات':'🥦','الأجهزة':'💻','الجسم':'💪',
+  'الطقس':'🌤','الأعداد':'🔢','الأشكال':'🔷',
+};
+const WS_TOPIC_COLORS = [
+  { grad:'linear-gradient(135deg,#F59E0B,#D97706)', glow:'rgba(245,158,11,.35)' },
+  { grad:'linear-gradient(135deg,#10B981,#059669)', glow:'rgba(16,185,129,.35)'  },
+  { grad:'linear-gradient(135deg,#3B82F6,#2563EB)', glow:'rgba(59,130,246,.35)'  },
+  { grad:'linear-gradient(135deg,#EC4899,#DB2777)', glow:'rgba(236,72,153,.35)'  },
+  { grad:'linear-gradient(135deg,#F97316,#EA580C)', glow:'rgba(249,115,22,.35)'  },
+  { grad:'linear-gradient(135deg,#14B8A6,#0D9488)', glow:'rgba(20,184,166,.35)'  },
+  { grad:'linear-gradient(135deg,#A855F7,#9333EA)', glow:'rgba(168,85,247,.35)'  },
+];
+
 /* ═══════════════════════ MAIN COMPONENT ════════════════════════ */
 export default function WordScrambleGame() {
   const [phase,     setPhase]     = useState('start');
@@ -377,6 +395,19 @@ export default function WordScrambleGame() {
   const [totalPoints,   setTotalPoints]   = useState(0);
   const [ptPopupKey,    setPtPopupKey]    = useState(0);
   const [ptPopupActive, setPtPopupActive] = useState(false);
+  const [currentTopic,    setCurrentTopic]    = useState(null);
+  const [completedTopics, setCompletedTopics] = useState(new Set());
+  const [topicTotals,     setTopicTotals]     = useState({ right: 0, total: 0 });
+
+  const uniqueTopics = useMemo(() => {
+    const seen = new Set(); const out = [];
+    for (const w of gameWords) {
+      if (w.topic && !seen.has(w.topic)) { seen.add(w.topic); out.push(w.topic); }
+    }
+    return out;
+  }, [gameWords]);
+
+  const useTopicFlow = !isTeacher && uniqueTopics.length >= 2;
 
   // Detect teacher/admin role
   useEffect(() => {
@@ -430,19 +461,33 @@ export default function WordScrambleGame() {
     });
   }, []);
 
-  // Start game
+  // Start game (all words, no topic filter)
   const startGame = useCallback(() => {
     if (gameWords.length === 0) return;
-    const count = gameWords.length;
-    const q = buildQueue(gameWords, count);
+    const q = buildQueue(gameWords, gameWords.length);
+    setCurrentTopic(null);
     setQueue(q);
-    setCur(0);
-    setScore(0);
+    setCur(0); setScore(0);
     setAnswer(q[0].chunks.map(() => null));
     setAvailable([...q[0].scrambled]);
     setResult(null);
     setPhase('playing');
-  }, [gameWords, buildQueue, cfg, isTeacher]);
+  }, [gameWords, buildQueue]);
+
+  // Start game for a specific topic (or null = all)
+  const startGameForTopic = useCallback((topic) => {
+    const words = topic ? gameWords.filter(w => w.topic === topic) : gameWords;
+    if (!words.length) return;
+    const count = Math.min(words.length, 12);
+    const q = buildQueue(words, count);
+    setCurrentTopic(topic);
+    setQueue(q);
+    setCur(0); setScore(0);
+    setAnswer(q[0].chunks.map(() => null));
+    setAvailable([...q[0].scrambled]);
+    setResult(null);
+    setPhase('playing');
+  }, [gameWords, buildQueue]);
 
   // Click letter in bottom → place in next empty answer slot
   const placeInAnswer = useCallback((availIdx) => {
@@ -499,18 +544,31 @@ export default function WordScrambleGame() {
   // Advance to next word
   const nextWord = useCallback(() => {
     const n = cur + 1;
-    if (n >= queue.length) { setPhase('finished'); return; }
+    if (n >= queue.length) {
+      if (currentTopic) {
+        setCompletedTopics(prev => new Set([...prev, currentTopic]));
+        setTopicTotals(prev => ({ right: prev.right + score, total: prev.total + queue.length }));
+        setCurrentTopic(null);
+        setPhase('topics');
+      } else {
+        setPhase('finished');
+      }
+      return;
+    }
     setCur(n);
     setAnswer(queue[n].chunks.map(() => null));
     setAvailable([...queue[n].scrambled]);
     setResult(null);
-  }, [cur, queue]);
+  }, [cur, queue, currentTopic, score]);
 
   const restart = useCallback(() => {
-    setPhase('start');
+    const goTopics = !isTeacher && uniqueTopics.length >= 2;
+    setPhase(goTopics ? 'topics' : 'start');
     setQueue([]); setCur(0); setScore(0);
     setAnswer([]); setAvailable([]); setResult(null);
-  }, []);
+    setCurrentTopic(null);
+    if (goTopics) { setCompletedTopics(new Set()); setTopicTotals({ right: 0, total: 0 }); }
+  }, [isTeacher, uniqueTopics.length]);
 
   /* ══════ RENDER: LOADING ══════ */
   if (phase === 'start' && loadingWords) {
@@ -585,12 +643,150 @@ export default function WordScrambleGame() {
               <div style={{ ...S.statsRow, animation: 'ws-fadein 0.4s ease-out' }}>
                 <div style={S.statBox}><span style={S.statNum}>{gameWords.length}</span><span style={S.statLbl}>كلمة</span></div>
               </div>
-              <button style={{ ...S.btnGold, animation: 'ws-fadein 0.5s ease-out 0.1s both' }} onClick={startGame}>🚀 ابدأ اللعبة</button>
+              <button style={{ ...S.btnGold, animation: 'ws-fadein 0.5s ease-out 0.1s both' }} onClick={useTopicFlow ? () => setPhase('topics') : startGame}>🚀 ابدأ اللعبة</button>
             </div>
           )}
 
           <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
         </div>
+      </div>
+    );
+  }
+
+  /* ══════ RENDER: TOPICS ══════ */
+  if (phase === 'topics') {
+    const allDone = uniqueTopics.length > 0 && completedTopics.size >= uniqueTopics.length;
+    return (
+      <div style={S.page}>
+        <style>{`
+          @keyframes ws-slide-r {
+            from { opacity:0; transform: translateX(28px); }
+            to   { opacity:1; transform: translateX(0); }
+          }
+          @keyframes ws-pop-in {
+            0%  { opacity:0; transform: scale(0.88); }
+            60% { transform: scale(1.03); }
+            100%{ opacity:1; transform: scale(1); }
+          }
+        `}</style>
+
+        {allDone ? (
+          /* ─ All topics completed ─ */
+          <div style={{ ...S.centerCard, gap: 14, animation: 'ws-pop-in .4s ease' }}>
+            <div style={{ fontSize: '3.5rem' }}>🎉</div>
+            <h2 style={S.mainTitle}>أتقنتَ جميع الفصول!</h2>
+            <div style={{ fontSize: '2.8rem', fontWeight: 800, color: '#F59E0B' }}>
+              {topicTotals.right} / {topicTotals.total}
+            </div>
+            <p style={S.sub}>
+              {topicTotals.total > 0 ? Math.round((topicTotals.right / topicTotals.total) * 100) : 0}٪ إجابات صحيحة
+            </p>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {Array.from({ length: uniqueTopics.length }).map((_, i) => (
+                <span key={i} style={{ fontSize: '1.5rem' }}>⭐</span>
+              ))}
+            </div>
+            <button style={S.btnGold} onClick={restart}>🔄 العب من جديد</button>
+            <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
+          </div>
+        ) : (
+          /* ─ Topic selector ─ */
+          <div style={{ width: '100%', maxWidth: 480, padding: '16px 16px 36px', overflowY: 'auto', maxHeight: '100vh' }}>
+
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: 22, direction: 'rtl' }}>
+              <div style={{ fontSize: '3rem', lineHeight: 1, marginBottom: 6 }}>🦉</div>
+              <h1 style={{ color: '#fff', fontSize: '1.55rem', fontWeight: 900, margin: 0 }}>اختر فصلاً</h1>
+              <p style={{ color: 'rgba(255,255,255,.65)', fontSize: '.85rem', margin: '6px 0 0' }}>
+                كل فصل مجموعة كلمات متشابهة
+              </p>
+              {completedTopics.size > 0 && (
+                <div style={{ display: 'inline-block', marginTop: 8, background: 'rgba(16,185,129,.25)', border: '1px solid rgba(16,185,129,.5)', borderRadius: 20, padding: '3px 14px', color: '#6ee7b7', fontSize: '.8rem', fontWeight: 700 }}>
+                  {completedTopics.size} / {uniqueTopics.length} مكتمل ✓
+                </div>
+              )}
+            </div>
+
+            {/* Topic cards — vertical list */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, direction: 'rtl' }}>
+              {uniqueTopics.map((topic, i) => {
+                const count = gameWords.filter(w => w.topic === topic).length;
+                const done  = completedTopics.has(topic);
+                const { grad, glow } = WS_TOPIC_COLORS[i % WS_TOPIC_COLORS.length];
+                const emoji = WS_TOPIC_EMOJIS[topic] || '📝';
+                return (
+                  <button
+                    key={topic}
+                    onClick={() => !done && startGameForTopic(topic)}
+                    style={{
+                      display: 'flex', alignItems: 'center',
+                      background: done ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.93)',
+                      border: 'none', borderRadius: 16, padding: 0,
+                      cursor: done ? 'default' : 'pointer',
+                      overflow: 'hidden', textAlign: 'right',
+                      boxShadow: done ? 'none' : `0 5px 20px ${glow}`,
+                      animation: `ws-slide-r .35s ${i * 0.06}s ease both`,
+                      transition: 'transform .18s, box-shadow .18s',
+                      fontFamily: "'Cairo','Tajawal',sans-serif",
+                    }}
+                    onMouseEnter={e => { if (!done) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 10px 28px ${glow}`; } }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = done ? 'none' : `0 5px 20px ${glow}`; }}
+                  >
+                    {/* Colored emoji strip */}
+                    <div style={{
+                      background: done ? 'rgba(255,255,255,.18)' : grad,
+                      width: 68, height: 68, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: done ? '1.5rem' : '1.9rem', flexShrink: 0,
+                    }}>
+                      {done ? '✅' : emoji}
+                    </div>
+                    {/* Text */}
+                    <div style={{ flex: 1, padding: '0 14px' }}>
+                      <div style={{ fontWeight: 800, fontSize: '.97rem', color: done ? 'rgba(255,255,255,.55)' : '#1e1b4b' }}>
+                        {topic}
+                      </div>
+                      <div style={{ fontSize: '.75rem', color: done ? 'rgba(255,255,255,.38)' : '#6b7280', marginTop: 2 }}>
+                        {count} كلمة
+                      </div>
+                    </div>
+                    {/* Arrow */}
+                    {!done && <div style={{ paddingLeft: 14, color: '#c4b5fd', fontSize: '1.1rem' }}>←</div>}
+                  </button>
+                );
+              })}
+
+              {/* Challenge All */}
+              <button
+                onClick={() => startGameForTopic(null)}
+                style={{
+                  display: 'flex', alignItems: 'center',
+                  background: 'rgba(255,255,255,.08)', border: '2px solid rgba(255,255,255,.25)',
+                  borderRadius: 16, padding: 0, cursor: 'pointer', overflow: 'hidden',
+                  animation: `ws-slide-r .35s ${uniqueTopics.length * 0.06 + 0.05}s ease both`,
+                  backdropFilter: 'blur(8px)', fontFamily: "'Cairo','Tajawal',sans-serif",
+                  transition: 'background .18s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,.16)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,.08)'; }}
+              >
+                <div style={{ width: 68, height: 68, background: 'rgba(255,255,255,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.9rem', flexShrink: 0 }}>
+                  🌟
+                </div>
+                <div style={{ flex: 1, padding: '0 14px', textAlign: 'right' }}>
+                  <div style={{ fontWeight: 900, fontSize: '.97rem', color: '#fff' }}>تحدّي الكل</div>
+                  <div style={{ fontSize: '.75rem', color: 'rgba(255,255,255,.55)', marginTop: 2 }}>
+                    {gameWords.length} كلمة من جميع الفصول
+                  </div>
+                </div>
+                <div style={{ paddingLeft: 14, color: 'rgba(255,255,255,.5)', fontSize: '1.1rem' }}>←</div>
+              </button>
+            </div>
+
+            <div style={{ textAlign: 'center', marginTop: 20 }}>
+              <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
