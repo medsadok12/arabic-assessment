@@ -150,12 +150,17 @@ export default async function DashboardPage() {
 
   const streakCount  = calcStreak(logDates);
   const loggedToday  = dateSet.has(todayStr);
-  // i=0 → 6 days ago (oldest), i=6 → today
-  // RTL flex renders i=0 on the RIGHT → oldest on right, today on left (Arabic order)
-  const last7Days    = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+  // Forward-looking: index 0 = today (RIGHT in RTL), index 1-6 = next days (going LEFT)
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() + i);
     const ds = d.toISOString().slice(0, 10);
-    return { date: ds, active: dateSet.has(ds), day: d.getDate() };
+    return {
+      date:     ds,
+      active:   i === 0 && dateSet.has(ds),
+      day:      d.getDate(),
+      isToday:  i === 0,
+      isFuture: i > 0,
+    };
   });
 
   return (

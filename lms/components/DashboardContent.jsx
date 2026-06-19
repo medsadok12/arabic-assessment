@@ -335,36 +335,35 @@ export default function DashboardContent({
           background: linear-gradient(135deg,#fff7ed,#fef3c7);
           border: 2px solid #fcd34d; border-radius: 20px;
           padding: 18px 20px; margin-bottom: 24px;
-          display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
         }
-        .streak-flame { display:flex; align-items:baseline; gap:6px; flex-shrink:0; }
-        .streak-fire  { font-size:2.4rem; line-height:1; animation:streakFlicker 1.4s ease-in-out infinite; }
-        .streak-num   { font-size:2.8rem; font-weight:900; color:#b45309; line-height:1; }
-        .streak-right { flex:1; min-width:140px; }
-        .streak-label { font-size:.82rem; font-weight:700; color:#92400e; margin-bottom:10px; }
-        .streak-dots  { display:flex; gap:7px; align-items:center; margin-bottom:6px; }
-        .streak-dot-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; }
-        .streak-dot  {
-          width:28px; height:28px; border-radius:50%;
-          display:flex; align-items:center; justif-content:center;
-          font-size:.7rem; font-weight:900;
+        .streak-header { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+        .streak-fire   { font-size:2rem; line-height:1; animation:streakFlicker 1.4s ease-in-out infinite; display:inline-block; }
+        .streak-num    { font-size:2.6rem; font-weight:900; color:#b45309; line-height:1; }
+        .streak-unit   { font-size:.95rem; font-weight:800; color:#92400e; }
+        .streak-badge  { display:inline-block; background:#fef3c7; border:1.5px solid #fcd34d;
+                         border-radius:20px; padding:3px 10px; font-size:.72rem; font-weight:800;
+                         color:#92400e; }
+        .streak-msg    { font-size:.78rem; color:#78350f; font-weight:700; margin-bottom:14px; }
+        .streak-dots   { display:flex; gap:6px; align-items:flex-end; }
+        .streak-dot-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; flex:1; }
+        .streak-dot {
+          width:100%; aspect-ratio:1; max-width:36px; border-radius:50%;
+          display:flex; align-items:center; justify-content:center;
+          font-size:.78rem; font-weight:900;
         }
-        .streak-dot.on  { background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff;
-                          box-shadow:0 3px 8px rgba(245,158,11,.4); }
-        .streak-dot.off { background:#f1f5f9; color:#94a3b8; border:1.5px dashed #cbd5e1; }
-        .streak-dot.today.on  { box-shadow:0 0 0 3px #fcd34d, 0 3px 8px rgba(245,158,11,.4); }
-        .streak-dot.today.off { border-color:#f59e0b; border-style:solid; color:#d97706; }
+        .streak-dot.on     { background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff;
+                             box-shadow:0 3px 8px rgba(245,158,11,.4); }
+        .streak-dot.off    { background:#f1f5f9; color:#94a3b8; border:1.5px dashed #cbd5e1; }
+        .streak-dot.future { background:#f8fafc; border:1.5px dashed #e2e8f0; }
+        .streak-dot.today.on  { box-shadow:0 0 0 3px #fcd34d, 0 4px 12px rgba(245,158,11,.5); }
+        .streak-dot.today.off { background:#fef9c3; border:2px solid #f59e0b; color:#d97706; }
         .streak-dayname { font-size:.65rem; color:#94a3b8; font-weight:700; }
-        .streak-msg { font-size:.78rem; color:#78350f; font-weight:700; }
-        .streak-badge { display:inline-block; background:#fef3c7; border:1.5px solid #fcd34d;
-                        border-radius:20px; padding:3px 10px; font-size:.72rem; font-weight:800;
-                        color:#92400e; margin-right:8px; }
         @keyframes streakFlicker {
           0%,100%{transform:scale(1) rotate(-3deg)} 50%{transform:scale(1.12) rotate(3deg)}
         }
         @media(max-width:500px){
-          .streak-card{gap:10px;} .streak-num{font-size:2.2rem;} .streak-dots{gap:4px;}
-          .streak-dot{width:24px;height:24px;font-size:.6rem;}
+          .streak-num{font-size:2rem;} .streak-dots{gap:4px;}
+          .streak-dot{font-size:.65rem;}
         }
 
         /* ── Progress card ── */
@@ -466,30 +465,40 @@ export default function DashboardContent({
             : `${streakCount} يوماً! أنت أسطوري 🏆`;
             return (
               <div className="streak-card">
-                <div className="streak-flame">
+
+                {/* العداد مدمج مع النص: 🔥 2 يوم متتاليًا */}
+                <div className="streak-header">
                   <span className="streak-fire">{streakCount > 0 ? '🔥' : '💤'}</span>
                   <span className="streak-num">{streakCount}</span>
+                  <span className="streak-unit">
+                    {streakCount === 0 ? 'لا توجد سلسلة بعد'
+                    : streakCount === 1 ? 'يوم متتالٍ'
+                    : 'يوم متتاليًا'}
+                  </span>
+                  {loggedToday && <span className="streak-badge">✅ لعبت اليوم</span>}
                 </div>
-                <div className="streak-right">
-                  <div className="streak-label">
-                    {streakCount === 1 ? 'يوم متتالٍ' : streakCount === 0 ? 'لا توجد سلسلة بعد' : 'يوم متتاليًا'}
-                    {loggedToday && <span className="streak-badge">✅ لعبت اليوم</span>}
-                  </div>
-                  <div className="streak-dots">
-                    {last7Days.map((d, i) => {
-                      const isToday = i === 6;
-                      return (
-                        <div key={d.date} className="streak-dot-wrap">
-                          <div className={`streak-dot ${d.active ? 'on' : 'off'} ${isToday ? 'today' : ''}`}>
-                            {d.active ? '★' : '·'}
-                          </div>
-                          <span className="streak-dayname">{d.day}</span>
+
+                <div className="streak-msg">{msg}</div>
+
+                {/* خط الأيام: اليوم (اليمين) ← الأيام القادمة (اليسار) */}
+                <div className="streak-dots">
+                  {last7Days.map((d) => {
+                    const cls = [
+                      'streak-dot',
+                      d.isFuture ? 'future' : d.active ? 'on' : 'off',
+                      d.isToday  ? 'today'  : '',
+                    ].filter(Boolean).join(' ');
+                    return (
+                      <div key={d.date} className="streak-dot-wrap">
+                        <div className={cls}>
+                          {d.active ? '★' : d.isToday ? '○' : ''}
                         </div>
-                      );
-                    })}
-                  </div>
-                  <div className="streak-msg">{msg}</div>
+                        <span className="streak-dayname">{d.day}</span>
+                      </div>
+                    );
+                  })}
                 </div>
+
               </div>
             );
           })()}
