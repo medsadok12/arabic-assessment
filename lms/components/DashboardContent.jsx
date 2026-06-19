@@ -477,7 +477,7 @@ export default function DashboardContent({
                   </div>
                   <div className="streak-dots">
                     {last7Days.map((d, i) => {
-                      const isToday = i === 0;
+                      const isToday = i === 6;
                       return (
                         <div key={d.date} className="streak-dot-wrap">
                           <div className={`streak-dot ${d.active ? 'on' : 'off'} ${isToday ? 'today' : ''}`}>
