@@ -505,23 +505,32 @@ export default function DashboardContent({
               {/* Mastered Words */}
               <div className="prog-metric">
                 <div className="prog-icon">🧠</div>
-                <div className="prog-val" style={{ color: masteredCount > 0 ? '#0369a1' : '#94a3b8' }}>
-                  {masteredCount}
+                <div className="prog-val" style={{ color: masteredCount > 0 ? '#0369a1' : studiedCount > 0 ? '#0891b2' : '#94a3b8' }}>
+                  {studiedCount > 0 ? (masteredCount > 0 ? masteredCount : studiedCount) : '—'}
                 </div>
-                <div className="prog-lbl">كلمة محفوظة</div>
-                {studiedCount > 0 && (
-                  <div className="prog-sub">من أصل {studiedCount} قيد التعلم</div>
+                <div className="prog-lbl">
+                  {masteredCount > 0 ? 'كلمة محفوظة ✨'
+                   : studiedCount > 0 ? 'كلمة قيد التعلم'
+                   : 'لم تبدأ بعد'}
+                </div>
+                {masteredCount > 0 && studiedCount > masteredCount && (
+                  <div className="prog-sub">{studiedCount - masteredCount} قيد التعلم</div>
+                )}
+                {masteredCount === 0 && studiedCount > 0 && (
+                  <div className="prog-sub">احفظها {5} مرات لتُتقنها</div>
+                )}
+                {studiedCount === 0 && (
+                  <div className="prog-sub">ابدأ بالبطاقات! ✨</div>
                 )}
                 {studiedCount > 0 && (
                   <div className="prog-bar">
                     <div className="prog-fill" style={{
-                      width: `${Math.round((masteredCount / studiedCount) * 100)}%`,
+                      width: masteredCount > 0
+                        ? `${Math.round((masteredCount / studiedCount) * 100)}%`
+                        : '20%',
                       background: 'linear-gradient(90deg,#0369a1,#0ea5e9)',
                     }} />
                   </div>
-                )}
-                {studiedCount === 0 && (
-                  <div className="prog-sub">ابدأ بالبطاقات! ✨</div>
                 )}
               </div>
 
