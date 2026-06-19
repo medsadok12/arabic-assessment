@@ -496,48 +496,84 @@ export default function WordWheelGame() {
           </div>
 
           {/* Custom Wheels Section */}
-          {customConfigs.length > 0 && (
-            <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 18, padding: '16px 14px' }}>
-              <div style={{ fontSize: '.8rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
-                عجلات مخصصة
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {customConfigs.map(cfg => (
-                  <button
-                    key={cfg.id}
-                    onClick={() => playCustomConfig(cfg)}
-                    style={{
-                      background: '#fff',
-                      border: 'none',
-                      borderRadius: 14,
-                      padding: '12px 16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      cursor: 'pointer',
-                      textAlign: 'right',
-                      fontFamily: "'Cairo','Tajawal',sans-serif",
-                      direction: 'rtl',
-                      transition: 'transform .12s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
-                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                  >
-                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg,#F59E0B,#D97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 900, color: '#fff', flexShrink: 0 }}>
-                      {cfg.center_letter}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, color: '#1F2937', fontSize: '1rem' }}>{cfg.name}</div>
-                      <div style={{ fontSize: '.76rem', color: '#6B7280', marginTop: 2 }}>
-                        {(cfg.outer_letters || []).length} حرفاً خارجياً • {(cfg.valid_words || []).length} كلمة • {cfg.time_seconds}ث
+          {customConfigs.length > 0 && (() => {
+            const isTeacher = ['teacher', 'admin', 'super_admin'].includes(userRole);
+            // Students only see configs with actual words
+            const studentConfigs = customConfigs.filter(c => (c.valid_words || []).length > 0);
+
+            if (!isTeacher && studentConfigs.length === 0) return null;
+
+            return isTeacher ? (
+              /* ── Teacher view: full technical list ── */
+              <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 18, padding: '16px 14px' }}>
+                <div style={{ fontSize: '.8rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
+                  عجلات مخصصة
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {customConfigs.map(cfg => (
+                    <button
+                      key={cfg.id}
+                      onClick={() => playCustomConfig(cfg)}
+                      style={{
+                        background: '#fff', border: 'none', borderRadius: 14, padding: '12px 16px',
+                        display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
+                        textAlign: 'right', fontFamily: "'Cairo','Tajawal',sans-serif",
+                        direction: 'rtl', transition: 'transform .12s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                      onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg,#F59E0B,#D97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+                        {cfg.center_letter}
                       </div>
-                    </div>
-                    <div style={{ fontSize: '1.2rem', color: '#D97706' }}>←</div>
-                  </button>
-                ))}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, color: '#1F2937', fontSize: '1rem' }}>{cfg.name}</div>
+                        <div style={{ fontSize: '.76rem', color: '#6B7280', marginTop: 2 }}>
+                          {(cfg.outer_letters || []).length} حرفاً خارجياً • {(cfg.valid_words || []).length} كلمة • {cfg.time_seconds}ث
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '1.2rem', color: '#D97706' }}>←</div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            ) : (
+              /* ── Student view: clean visual cards (same style as level cards) ── */
+              <div>
+                <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.65)', fontSize: '.8rem', fontWeight: 700, marginBottom: 10, letterSpacing: .5 }}>
+                  ⭐ تحديات المعلم
+                </div>
+                <div style={S.lobbyGrid}>
+                  {studentConfigs.map((cfg, i) => {
+                    const palettes = [
+                      { bg: '#f0fdf4', border: '#86efac', accent: '#16a34a' },
+                      { bg: '#fefce8', border: '#fde047', accent: '#ca8a04' },
+                      { bg: '#fff7ed', border: '#fdba74', accent: '#ea580c' },
+                      { bg: '#fdf2ff', border: '#e9d5ff', accent: '#9333ea' },
+                      { bg: '#eff6ff', border: '#bfdbfe', accent: '#2563eb' },
+                      { bg: '#fef2f2', border: '#fca5a5', accent: '#dc2626' },
+                    ];
+                    const col = palettes[i % palettes.length];
+                    return (
+                      <button
+                        key={cfg.id}
+                        onClick={() => playCustomConfig(cfg)}
+                        style={{ ...S.levelCard, background: col.bg, borderColor: col.border }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = `0 8px 24px ${col.border}80`; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
+                      >
+                        <div style={{ fontSize: '2rem', fontWeight: 900, color: col.accent, background: `${col.border}60`, borderRadius: '50%', width: 52, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {cfg.center_letter}
+                        </div>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 900, color: col.accent }}>{cfg.name}</div>
+                        <div style={{ fontSize: '.75rem', color: '#6B7280', lineHeight: 1.5 }}>{(cfg.valid_words || []).length} كلمة</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Settings link for teachers */}
           {['teacher', 'admin', 'super_admin'].includes(userRole) && (
