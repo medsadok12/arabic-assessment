@@ -2,34 +2,37 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 
 export async function middleware(request) {
-  // Start with a base response
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(toSet) {
+            // Propagate refreshed session cookies to both request and response
+            toSet.forEach(({ name, value }) => request.cookies.set(name, value));
+            supabaseResponse = NextResponse.next({ request });
+            toSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            );
+          },
         },
-        setAll(toSet) {
-          // Write cookies back to both request and response so server
-          // components and the browser both see the refreshed session
-          toSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({ request });
-          toSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
+      }
+    );
 
-  // IMPORTANT: do NOT add any code between createServerClient and getUser().
-  // getUser() refreshes the session token if it has expired (silent refresh).
-  // Without this, users are silently logged out after ~1 hour.
-  await supabase.auth.getUser();
+    // Refresh the session token if expired — do NOT add code between
+    // createServerClient and getUser(), Supabase SSR requires this ordering.
+    await supabase.auth.getUser();
+  } catch {
+    // If session refresh fails (network issue, edge runtime quirk, etc.),
+    // continue without refreshing — the page/layout will handle auth redirects.
+    supabaseResponse = NextResponse.next({ request });
+  }
 
   return supabaseResponse;
 }
