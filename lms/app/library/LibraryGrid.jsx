@@ -87,6 +87,14 @@ const RESOURCES = [
     btnBg: 'linear-gradient(135deg,#84CC16,#65A30D)',
   },
   {
+    key: 'word-wheel',
+    icon: '🎡', title: 'عجلة الكلمات',
+    desc: 'كوّن كلمات من حروف العجلة — الحرف الأوسط إلزامي!',
+    tag: 'تعزيزي', link: '/library/games/word-wheel', ready: true,
+    accent: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', iconBg: '#FEF3C7',
+    btnBg: 'linear-gradient(135deg,#F59E0B,#D97706)',
+  },
+  {
     key: 'challenge',
     icon: '⚡', title: 'وضع التحدي',
     desc: 'تحدّى صديقك في الوقت الحقيقي — من يجيب أولاً يفوز!',
