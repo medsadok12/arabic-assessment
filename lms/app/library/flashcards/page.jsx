@@ -198,9 +198,9 @@ function FlipCard({ card, onRemembered, onForgot, cardNum, total }) {
           </div>
         </div>
 
-        </div>{/* /flip container */}
-      </div>{/* /animation wrapper */}
-    </div>{/* /perspective */}
+        </div>
+      </div>
+    </div>
   );
 }
 
