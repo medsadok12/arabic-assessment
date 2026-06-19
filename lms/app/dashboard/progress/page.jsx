@@ -6,9 +6,15 @@ import Navbar from '../../../components/Navbar';
 import ProgressCharts from '../../../components/ProgressCharts';
 
 export default async function ProgressPage() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/auth/login');
+  let user, supabase;
+  try {
+    supabase = createClient();
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) redirect('/auth/login');
+    user = data.user;
+  } catch {
+    redirect('/auth/login');
+  }
 
   const admin = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);

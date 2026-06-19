@@ -5,9 +5,15 @@ import Navbar       from '../../components/Navbar';
 import LibraryGrid  from './LibraryGrid';
 
 export default async function LibraryPage() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/auth/login');
+  let user;
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) redirect('/auth/login');
+    user = data.user;
+  } catch {
+    redirect('/auth/login');
+  }
 
   const role      = user?.user_metadata?.role ?? '';
   const isTeacher = ['super_admin', 'admin', 'teacher'].includes(role);
