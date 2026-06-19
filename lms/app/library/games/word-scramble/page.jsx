@@ -407,7 +407,7 @@ export default function WordScrambleGame() {
     return out;
   }, [gameWords]);
 
-  const useTopicFlow = !isTeacher && uniqueTopics.length >= 2;
+  const useTopicFlow = uniqueTopics.length >= 2;
 
   // Detect teacher/admin role
   useEffect(() => {
@@ -562,7 +562,7 @@ export default function WordScrambleGame() {
   }, [cur, queue, currentTopic, score]);
 
   const restart = useCallback(() => {
-    const goTopics = !isTeacher && uniqueTopics.length >= 2;
+    const goTopics = uniqueTopics.length >= 2;
     setPhase(goTopics ? 'topics' : 'start');
     setQueue([]); setCur(0); setScore(0);
     setAnswer([]); setAvailable([]); setResult(null);
