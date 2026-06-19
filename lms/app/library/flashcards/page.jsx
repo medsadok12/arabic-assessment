@@ -39,13 +39,26 @@ function FlipCard({ card, onRemembered, onForgot, cardNum, total }) {
 
   return (
     <div style={{ perspective:1200, width:'100%', maxWidth:380, margin:'0 auto' }}>
+
+      {/*
+        CRITICAL: animation wrapper is SEPARATE from the flip div.
+        When animation has fill-mode:both it holds "transform:none" after finishing,
+        which would override the flip's "transform:rotateY(180deg)" if on the same element.
+        Keeping them on different elements prevents the CSS property conflict.
+      */}
       <div style={{
-        transformStyle:'preserve-3d',
-        transition:'transform .5s cubic-bezier(.4,0,.2,1)',
-        transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-        position:'relative', height:340,
-        animation: leaving ? 'fcLeave .35s ease forwards' : 'fcEnter .4s cubic-bezier(0,.9,.57,1) both',
+        animation: leaving
+          ? 'fcLeave .35s ease forwards'
+          : 'fcEnter .4s cubic-bezier(0,.9,.57,1) both',
       }}>
+
+        {/* Flip container — only rotateY, no animation here */}
+        <div style={{
+          transformStyle:'preserve-3d',
+          transition:'transform .5s cubic-bezier(.4,0,.2,1)',
+          transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          position:'relative', height:340,
+        }}>
 
         {/* ── FRONT ── */}
         <div onClick={() => !flipped && setFlipped(true)} style={{
@@ -184,8 +197,10 @@ function FlipCard({ card, onRemembered, onForgot, cardNum, total }) {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+
+        </div>{/* /flip container */}
+      </div>{/* /animation wrapper */}
+    </div>{/* /perspective */}
   );
 }
 
