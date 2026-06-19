@@ -274,14 +274,7 @@ export default function WordWheelGame() {
       return;
     }
 
-    const isValid = validWords.includes(word);
-
-    if (!isValid) {
-      setShaking(true);
-      setTimeout(() => setShaking(false), 500);
-      showFeedback('كلمة غير معروفة في القاموس', 'error');
-      return;
-    }
+    const inLexicon = validWords.includes(word);
 
     const pts = calcScore(word, allLetters);
     setScore(s => s + pts);
@@ -290,7 +283,7 @@ export default function WordWheelGame() {
     setFlashing(true);
     setTimeout(() => { setFlashing(false); setFlyWord(null); }, 900);
     speak(word);
-    showFeedback(`+${pts} نقطة — ممتاز!`, 'success');
+    showFeedback(inLexicon ? `+${pts} نقطة — 🌟 من قاموسك!` : `+${pts} نقطة — ممتاز!`, 'success');
     setSelected([]);
     setInputText('');
   }, [phase, inputText, center, allLetters, foundWords, validWords, showFeedback]);
