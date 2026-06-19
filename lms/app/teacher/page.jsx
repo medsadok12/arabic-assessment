@@ -868,49 +868,177 @@ export default function TeacherPage() {
             )}
 
             {/* ── STUDENTS & RESULTS ── */}
-            {activeTab === 'students' && (
-              students.length === 0 ? (
+            {activeTab === 'students' && (() => {
+              if (students.length === 0) return (
                 <div className="card" style={{ textAlign:'center', padding:'40px 24px' }}>
                   <div style={{ fontSize:'2.5rem', marginBottom:10 }}>👥</div>
                   <p style={{ color:'var(--muted)' }}>لم تجدول أي حصص بعد</p>
                 </div>
-              ) : (
-                <div className="card" style={{ padding:0, overflow:'hidden' }}>
-                  <table className="stu-table">
-                    <thead>
-                      <tr>
-                        <th>الطالب</th><th>البريد</th>
-                        <th style={{ textAlign:'center' }}>الحصص</th>
-                        <th style={{ textAlign:'center' }}>آخر مستوى</th>
-                        <th style={{ textAlign:'center' }}>آخر نتيجة</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {students.map((st, i) => {
-                        const latest = st.assessments?.[0];
-                        return (
-                          <tr key={i} style={{ cursor:'pointer' }} onClick={() => setProfileStudent(st)}>
-                            <td style={{ fontWeight:700, color:'var(--primary)', textDecoration:'underline dotted' }}>{st.name}</td>
-                            <td style={{ direction:'ltr', textAlign:'right', color:'var(--muted)', fontSize:'.82rem' }}>
-                              {st.email ? <a href={`mailto:${st.email}`} style={{ color:'var(--accent)' }}>{st.email}</a> : '—'}
-                            </td>
-                            <td style={{ textAlign:'center' }}><span className="badge badge-blue">{st.sessions}</span></td>
-                            <td style={{ textAlign:'center' }}>
-                              {latest ? <span className="badge badge-blue">المستوى {latest.level}</span> : <span style={{ color:'var(--muted)' }}>—</span>}
-                            </td>
-                            <td style={{ textAlign:'center' }}>
-                              {latest != null
-                                ? <span className={`badge ${(latest.score ?? 0) >= 70 ? 'badge-green' : 'badge-orange'}`}>{latest.score ?? 0}%</span>
-                                : <span style={{ color:'var(--muted)' }}>—</span>}
-                            </td>
+              );
+
+              const today = new Date().toISOString().slice(0, 10);
+              const sevenDaysAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0, 10);
+
+              // Compute activity score per student
+              const scored = students.map(st => {
+                const attPct = st.attendanceTotal > 0
+                  ? Math.round((st.attendedCount / st.attendanceTotal) * 100)
+                  : null;
+                const daysSince = st.lastActivity
+                  ? Math.floor((Date.now() - new Date(st.lastActivity).getTime()) / 86400000)
+                  : null;
+                const recencyScore = daysSince === null ? 0
+                  : daysSince === 0 ? 100
+                  : daysSince <= 3 ? 80
+                  : daysSince <= 7 ? 60
+                  : daysSince <= 14 ? 30
+                  : 10;
+                const activityScore = (attPct ?? 50) * 0.6 + recencyScore * 0.4;
+                const needsAttention = (attPct !== null && attPct < 60)
+                  || (st.lastActivity && st.lastActivity < sevenDaysAgo)
+                  || (!st.lastActivity && st.sessions > 0);
+                return { ...st, attPct, daysSince, activityScore, needsAttention };
+              }).sort((a, b) => b.activityScore - a.activityScore);
+
+              const activeCount   = scored.filter(s => s.lastActivity && s.lastActivity >= sevenDaysAgo).length;
+              const attentionList = scored.filter(s => s.needsAttention);
+
+              const rankIcon = i => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+
+              return (
+                <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+                  {/* Summary chips */}
+                  <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                    <div style={{ background:'#f0f9ff', border:'1.5px solid #bae6fd', borderRadius:12, padding:'10px 18px', display:'flex', flexDirection:'column', alignItems:'center', minWidth:90 }}>
+                      <span style={{ fontSize:'1.5rem', fontWeight:900, color:'#0369a1' }}>{students.length}</span>
+                      <span style={{ fontSize:'.72rem', color:'#64748b', fontWeight:700 }}>إجمالي الطلاب</span>
+                    </div>
+                    <div style={{ background:'#f0fdf4', border:'1.5px solid #6ee7b7', borderRadius:12, padding:'10px 18px', display:'flex', flexDirection:'column', alignItems:'center', minWidth:90 }}>
+                      <span style={{ fontSize:'1.5rem', fontWeight:900, color:'#047857' }}>{activeCount}</span>
+                      <span style={{ fontSize:'.72rem', color:'#64748b', fontWeight:700 }}>نشط (7 أيام)</span>
+                    </div>
+                    <div style={{ background:'#fff7ed', border:'1.5px solid #fcd34d', borderRadius:12, padding:'10px 18px', display:'flex', flexDirection:'column', alignItems:'center', minWidth:90 }}>
+                      <span style={{ fontSize:'1.5rem', fontWeight:900, color:'#b45309' }}>{attentionList.length}</span>
+                      <span style={{ fontSize:'.72rem', color:'#64748b', fontWeight:700 }}>يحتاج متابعة</span>
+                    </div>
+                  </div>
+
+                  {/* Ranked table */}
+                  <div className="card" style={{ padding:0, overflow:'hidden' }}>
+                    <div style={{ padding:'12px 16px', background:'#f8fafc', borderBottom:'1px solid #e2e8f0', fontWeight:800, fontSize:'.88rem', color:'#334155' }}>
+                      🏆 ترتيب الطلاب حسب النشاط
+                    </div>
+                    <div style={{ overflowX:'auto' }}>
+                      <table className="stu-table" style={{ minWidth:640 }}>
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign:'center', width:40 }}>#</th>
+                            <th>الطالب</th>
+                            <th style={{ textAlign:'center' }}>الحضور</th>
+                            <th style={{ textAlign:'center' }}>آخر نشاط</th>
+                            <th style={{ textAlign:'center' }}>كلمات محفوظة</th>
+                            <th style={{ textAlign:'center' }}>آخر تقييم</th>
+                            <th style={{ textAlign:'center' }}>الحالة</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {scored.map((st, i) => {
+                            const latest = st.assessments?.[0];
+                            const attColor = st.attPct === null ? '#94a3b8'
+                              : st.attPct >= 80 ? '#047857'
+                              : st.attPct >= 60 ? '#b45309'
+                              : '#b91c1c';
+                            const actLabel = st.daysSince === null ? '—'
+                              : st.daysSince === 0 ? 'اليوم'
+                              : st.daysSince === 1 ? 'أمس'
+                              : `منذ ${st.daysSince} يوم`;
+                            const statusBadge = st.needsAttention
+                              ? <span style={{ background:'#fff7ed', color:'#b45309', border:'1.5px solid #fcd34d', borderRadius:99, padding:'2px 8px', fontSize:'.68rem', fontWeight:800 }}>⚠️ متابعة</span>
+                              : st.lastActivity && st.lastActivity >= sevenDaysAgo
+                                ? <span style={{ background:'#f0fdf4', color:'#047857', border:'1.5px solid #6ee7b7', borderRadius:99, padding:'2px 8px', fontSize:'.68rem', fontWeight:800 }}>✅ نشط</span>
+                                : <span style={{ background:'#f1f5f9', color:'#64748b', border:'1.5px solid #cbd5e1', borderRadius:99, padding:'2px 8px', fontSize:'.68rem', fontWeight:800 }}>💤 غير نشط</span>;
+                            return (
+                              <tr key={i} style={{ cursor:'pointer' }} onClick={() => setProfileStudent(st)}>
+                                <td style={{ textAlign:'center', fontSize: i < 3 ? '1.2rem' : '.85rem', fontWeight:800, color:'#334155' }}>
+                                  {rankIcon(i)}
+                                </td>
+                                <td>
+                                  <div style={{ fontWeight:700, color:'var(--primary)' }}>{st.name}</div>
+                                  {st.email && <div style={{ fontSize:'.75rem', color:'var(--muted)', direction:'ltr', textAlign:'right' }}>{st.email}</div>}
+                                </td>
+                                <td style={{ textAlign:'center' }}>
+                                  {st.attendanceTotal > 0 ? (
+                                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                                      <span style={{ fontWeight:800, fontSize:'.9rem', color: attColor }}>{st.attPct}%</span>
+                                      <div style={{ width:60, height:5, background:'#f1f5f9', borderRadius:99, overflow:'hidden' }}>
+                                        <div style={{ width:`${st.attPct}%`, height:'100%', background: attColor, borderRadius:99, transition:'width .8s ease' }} />
+                                      </div>
+                                      <span style={{ fontSize:'.65rem', color:'#94a3b8' }}>{st.attendedCount}/{st.attendanceTotal}</span>
+                                    </div>
+                                  ) : <span style={{ color:'#94a3b8' }}>—</span>}
+                                </td>
+                                <td style={{ textAlign:'center', fontSize:'.82rem', color: st.daysSince !== null && st.daysSince <= 3 ? '#047857' : st.daysSince !== null && st.daysSince <= 7 ? '#b45309' : '#94a3b8', fontWeight:700 }}>
+                                  {actLabel}
+                                </td>
+                                <td style={{ textAlign:'center' }}>
+                                  {st.masteredWords > 0
+                                    ? <span style={{ background:'#ede9fe', color:'#7c3aed', borderRadius:99, padding:'2px 10px', fontWeight:800, fontSize:'.82rem' }}>🧠 {st.masteredWords}</span>
+                                    : <span style={{ color:'#94a3b8' }}>—</span>}
+                                </td>
+                                <td style={{ textAlign:'center' }}>
+                                  {latest
+                                    ? <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
+                                        <span className="badge badge-blue" style={{ fontSize:'.7rem' }}>م{latest.level}</span>
+                                        <span className={`badge ${(latest.score ?? 0) >= 70 ? 'badge-green' : 'badge-orange'}`} style={{ fontSize:'.7rem' }}>{latest.score ?? 0}%</span>
+                                      </div>
+                                    : <span style={{ color:'#94a3b8' }}>—</span>}
+                                </td>
+                                <td style={{ textAlign:'center' }}>{statusBadge}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Needs attention section */}
+                  {attentionList.length > 0 && (
+                    <div style={{ background:'#fff7ed', border:'2px solid #fcd34d', borderRadius:16, padding:'14px 18px' }}>
+                      <div style={{ fontWeight:900, fontSize:'.9rem', color:'#92400e', marginBottom:12 }}>
+                        ⚠️ يحتاجون متابعة ({attentionList.length})
+                      </div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                        {attentionList.map((st, i) => {
+                          const reason = st.attPct !== null && st.attPct < 60
+                            ? `نسبة الحضور منخفضة (${st.attPct}%)`
+                            : st.daysSince !== null && st.daysSince > 7
+                              ? `لم يسجّل دخول منذ ${st.daysSince} يوم`
+                              : 'لم يستخدم التطبيق بعد';
+                          return (
+                            <div key={i} style={{ display:'flex', alignItems:'center', gap:10, justifyContent:'space-between', flexWrap:'wrap' }}>
+                              <div>
+                                <span style={{ fontWeight:700, color:'#78350f' }}>{st.name}</span>
+                                <span style={{ fontSize:'.78rem', color:'#b45309', marginRight:8 }}>{reason}</span>
+                              </div>
+                              {st.email && (
+                                <a
+                                  href={`mailto:${st.email}?subject=متابعتك في أكاديمية عارم`}
+                                  onClick={e => e.stopPropagation()}
+                                  style={{ background:'#fff', border:'1.5px solid #fcd34d', borderRadius:8, padding:'4px 12px', fontSize:'.78rem', fontWeight:800, color:'#b45309', textDecoration:'none', whiteSpace:'nowrap' }}
+                                >
+                                  📧 تواصل
+                                </a>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )
-            )}
+              );
+            })()}
 
             {/* ── PAST SESSIONS ── */}
             {activeTab === 'past' && (
