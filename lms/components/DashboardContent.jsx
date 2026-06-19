@@ -344,20 +344,19 @@ export default function DashboardContent({
                          border-radius:20px; padding:3px 10px; font-size:.72rem; font-weight:800;
                          color:#92400e; }
         .streak-msg    { font-size:.78rem; color:#78350f; font-weight:700; margin-bottom:14px; }
-        .streak-dots   { display:flex; gap:6px; align-items:flex-end; }
-        .streak-dot-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; flex:1; }
+        .streak-dots   { display:flex; gap:6px; align-items:center; }
+        .streak-dot-wrap { display:flex; flex-direction:column; align-items:center; flex:1; }
         .streak-dot {
-          width:100%; aspect-ratio:1; max-width:36px; border-radius:50%;
+          width:100%; aspect-ratio:1; max-width:38px; border-radius:50%;
           display:flex; align-items:center; justify-content:center;
           font-size:.78rem; font-weight:900;
         }
         .streak-dot.on     { background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff;
-                             box-shadow:0 3px 8px rgba(245,158,11,.4); }
-        .streak-dot.off    { background:#f1f5f9; color:#94a3b8; border:1.5px dashed #cbd5e1; }
-        .streak-dot.future { background:#f8fafc; border:1.5px dashed #e2e8f0; }
+                             box-shadow:0 3px 8px rgba(245,158,11,.4); font-size:1rem; }
+        .streak-dot.off    { background:#f1f5f9; color:#94a3b8; border:1.5px dashed #cbd5e1; font-size:.72rem; font-weight:700; }
+        .streak-dot.future { background:#f8fafc; border:1.5px dashed #e2e8f0; color:#d1d5db; font-size:.72rem; font-weight:700; }
         .streak-dot.today.on  { box-shadow:0 0 0 3px #fcd34d, 0 4px 12px rgba(245,158,11,.5); }
-        .streak-dot.today.off { background:#fef9c3; border:2px solid #f59e0b; color:#d97706; }
-        .streak-dayname { font-size:.65rem; color:#94a3b8; font-weight:700; }
+        .streak-dot.today.off { background:#fef9c3; border:2px solid #f59e0b; color:#d97706; font-size:.72rem; font-weight:800; }
         @keyframes streakFlicker {
           0%,100%{transform:scale(1) rotate(-3deg)} 50%{transform:scale(1.12) rotate(3deg)}
         }
@@ -473,7 +472,9 @@ export default function DashboardContent({
                   <span className="streak-unit">
                     {streakCount === 0 ? 'لا توجد سلسلة بعد'
                     : streakCount === 1 ? 'يوم متتالٍ'
-                    : 'يوم متتاليًا'}
+                    : streakCount === 2 ? 'يومان متتاليان'
+                    : streakCount <= 10 ? 'أيام متتالية'
+                    : 'يوماً متتالياً'}
                   </span>
                   {loggedToday && <span className="streak-badge">✅ لعبت اليوم</span>}
                 </div>
@@ -491,9 +492,8 @@ export default function DashboardContent({
                     return (
                       <div key={d.date} className="streak-dot-wrap">
                         <div className={cls}>
-                          {d.active ? '★' : d.isToday ? '○' : ''}
+                          {d.active ? '★' : d.day}
                         </div>
-                        <span className="streak-dayname">{d.day}</span>
                       </div>
                     );
                   })}
