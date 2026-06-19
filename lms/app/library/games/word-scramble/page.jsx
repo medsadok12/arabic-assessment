@@ -144,8 +144,17 @@ function WordManager({ dbWords, onRefresh }) {
     if (!word.trim()) { setMsg({ ok: false, text: 'اكتب الكلمة أولاً' }); return; }
     setSaving(true); setMsg(null);
     try {
+      // Upload image to Supabase Storage (not base64) to stay within Vercel limits
       let image_url = (imgPrev && !imgFile) ? imgPrev : null;
-      if (imgFile) image_url = await fileToBase64(imgFile);
+      if (imgFile) {
+        setMsg({ ok: true, text: '⏳ جارٍ رفع الصورة...' });
+        const fd = new FormData();
+        fd.append('file', imgFile);
+        const upRes  = await fetch('/api/games/word-scramble/upload', { method: 'POST', body: fd });
+        const upJson = await upRes.json();
+        if (!upRes.ok) throw new Error(upJson.error || 'فشل رفع الصورة');
+        image_url = upJson.url;
+      }
 
       const body = {
         word: word.trim(), topic: topic || null,
