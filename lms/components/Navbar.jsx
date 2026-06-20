@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import TeamChat        from './TeamChat';
+import PointsBadge     from './PointsBadge';
 
 /* ── Global style for navbar pulse ── */
 if (typeof document !== 'undefined' && !document.getElementById('nav-pulse-style')) {
@@ -271,6 +272,9 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
           <div className="navbar-social-desktop" style={{ borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: 20 }}>
             <SocialIcons />
           </div>
+
+          {/* شارة النقاط — للطلاب فقط */}
+          {user && role === 'student' && <PointsBadge />}
 
           {/* عداد تنازلي للحصة القادمة */}
           {sessionCountdown && (
