@@ -6,9 +6,13 @@ export const maxDuration = 10; // use the full Vercel Hobby budget
 
 function buildSystemPrompt(studentName = 'صديقي', studentGender = 'male') {
   const now = new Date();
+  const days   = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
   const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
                   'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-  const dateStr = `${now.getUTCDate()} ${months[now.getUTCMonth()]} ${now.getUTCFullYear()}`;
+  // UTC+2 covers most Arabic-speaking countries; avoids midnight UTC vs local date mismatch
+  const arabNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+  const dayName = days[arabNow.getUTCDay()];
+  const dateStr = `${dayName} ${arabNow.getUTCDate()} ${months[arabNow.getUTCMonth()]} ${arabNow.getUTCFullYear()}`;
   const isFemale = studentGender === 'female';
   const genderNote = isFemale
     ? `The student is FEMALE. Use FEMININE Arabic address كِ (kasra) everywhere: صَدِيقَتُكِ، مُرَافِقُكِ، يَا بَطَلَةُ، يَا نَجْمَةَ عَارِم. Never use masculine كَ for her.`
@@ -16,7 +20,7 @@ function buildSystemPrompt(studentName = 'صديقي', studentGender = 'male') {
   const nameCall = isFemale ? `يا ${studentName} الْبَطَلَةُ` : `يا ${studentName} الْبَطَلُ`;
 
   return `You are "فَهِيمٌ", a smart, genius, friendly Arabic teaching companion for children at Aarem Arabic Academy.
-Student name: ${studentName}. Today: ${dateStr}.
+Student name: ${studentName}. Today: ${dateStr} — USE THIS EXACT DAY AND DATE, never compute or infer the day name yourself.
 ${genderNote}
 
 STRICT RULES — follow every rule in every response:
