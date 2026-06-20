@@ -76,7 +76,8 @@ export default function ChallengePage() {
   const [options,  setOptions] = useState([]);
   const [picked,   setPicked]  = useState(null); // option index
   const [roundState, setRoundState] = useState(null); // 'won_me'|'won_other'|'wrong'|null
-  const [copied, setCopied] = useState(false);
+  const [copied,    setCopied]    = useState(false);
+  const [earnedPts, setEarnedPts] = useState(0);
 
   const playerIdRef  = useRef('');
   const roomRef      = useRef(null);
@@ -106,6 +107,24 @@ export default function ChallengePage() {
     setPicked(null);
     setRoundState(null);
   }, [room?.cur_q_index, room?.status, room?.id]);
+
+  /* Award points when game finishes */
+  useEffect(() => {
+    if (phase !== 'finished' || !room || earnedPts > 0 || !user) return;
+    const myIsP1 = room.player1_id === playerIdRef.current;
+    const p1 = room.player1_score || 0;
+    const p2 = room.player2_score || 0;
+    const tied  = p1 === p2;
+    const myWon = myIsP1 ? p1 > p2 : p2 > p1;
+    const amount = myWon ? 15 : tied ? 10 : 5;
+    const tag    = myWon ? 'win' : tied ? 'draw' : 'loss';
+    setEarnedPts(amount);
+    fetch('/api/points', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, reason: `challenge_${tag}_${room.id}` }),
+    }).catch(() => {});
+  }, [phase, room, earnedPts, user]);
 
   /* Realtime subscription */
   useEffect(() => {
@@ -232,6 +251,7 @@ export default function ChallengePage() {
   function resetGame() {
     setPhase('lobby'); setRoom(null); setOptions([]);
     setPicked(null); setRoundState(null); setErr(''); setJoinCode('');
+    setEarnedPts(0);
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
   }
 
@@ -549,7 +569,18 @@ export default function ChallengePage() {
                   <h2 style={{ margin:'0 0 6px', fontSize:'1.6rem', fontWeight:900, color:'#312e81' }}>
                     {tied ? 'تعادل!' : myWon ? 'فزت! 🎉' : `فاز ${theirName || 'المنافس'}!`}
                   </h2>
-                  <p style={{ margin:'0 0 24px', color:'#6b7280', fontSize:'.9rem' }}>النتيجة النهائية</p>
+                  <p style={{ margin:'0 0 16px', color:'#6b7280', fontSize:'.9rem' }}>النتيجة النهائية</p>
+
+                  {earnedPts > 0 && (
+                    <div style={{
+                      background:'#FEF3C7', border:'1.5px solid #FDE68A',
+                      borderRadius:12, padding:'8px 18px',
+                      fontSize:'.9rem', fontWeight:800, color:'#D97706',
+                      marginBottom:16, animation:'chPop .4s both',
+                    }}>
+                      ⭐ ربحت {earnedPts} نقطة!
+                    </div>
+                  )}
 
                   <div style={{ display:'flex', gap:20, justifyContent:'center', alignItems:'center', marginBottom:30 }}>
                     <div>

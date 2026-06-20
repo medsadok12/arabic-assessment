@@ -85,13 +85,15 @@ export async function POST(req) {
     while (unlocked.includes(nextPiece) && nextPiece < total) nextPiece++;
 
     const newUnlocked = [...unlocked, nextPiece];
-    const newPoints = currentPoints - PIECE_COST;
     const isCompleted = newUnlocked.length >= total;
     const now = new Date().toISOString();
+    const COMPLETION_BONUS = 30;
+    const finalPoints = currentPoints - PIECE_COST + (isCompleted ? COMPLETION_BONUS : 0);
 
     await Promise.all([
-      admin.from('user_points').upsert({ user_id: user.id, total: newPoints, updated_at: now }, { onConflict: 'user_id' }),
+      admin.from('user_points').upsert({ user_id: user.id, total: finalPoints, updated_at: now }, { onConflict: 'user_id' }),
       admin.from('points_log').insert({ user_id: user.id, delta: -PIECE_COST, reason: 'puzzle_unlock' }),
+      ...(isCompleted ? [admin.from('points_log').insert({ user_id: user.id, delta: COMPLETION_BONUS, reason: `puzzle_complete_${prog.id}` })] : []),
       admin.from('puzzle_progress').update({
         unlocked: newUnlocked,
         ...(isCompleted ? { completed_at: now, badge_given: true } : {}),
@@ -102,8 +104,9 @@ export async function POST(req) {
       success: true,
       unlockedPiece: nextPiece,
       unlocked: newUnlocked,
-      newPoints,
+      newPoints: finalPoints,
       isCompleted,
+      completionBonus: isCompleted ? COMPLETION_BONUS : 0,
       badge: isCompleted ? { name: prog.puzzles.badge_name, icon: prog.puzzles.badge_icon } : null,
     });
   } catch (e) {

@@ -91,6 +91,7 @@ export default function PuzzleWidget() {
   const [lastPiece, setLastPiece] = useState(null);
   const [msg, setMsg]             = useState(null);
   const [badge, setBadge]         = useState(null);
+  const [completionBonus, setCompletionBonus] = useState(0);
   const msgRef = useRef(null);
   const allCompleted = useRef(false);
 
@@ -149,6 +150,7 @@ export default function PuzzleWidget() {
 
         if (j.isCompleted) {
           setBadge(j.badge);
+          setCompletionBonus(j.completionBonus ?? 0);
           setTimeout(() => {
             setFinale(true);
             speak(`مبروك يا بطل! أكملت الأحجية وحصلت على وسام ${j.badge?.name ?? 'البطولة'}! أنت رائع!`);
@@ -209,6 +211,11 @@ export default function PuzzleWidget() {
             <p style={S.hint}>أكملت الأحجية وحصلت على وسام</p>
             {badge?.name && (
               <div style={S.badgePill}>{badge.icon} {badge.name}</div>
+            )}
+            {completionBonus > 0 && (
+              <div style={{ background:'#FEF3C7', border:'1.5px solid #FDE68A', borderRadius:12, padding:'8px 20px', fontWeight:800, fontSize:'.95rem', color:'#D97706', marginTop:4 }}>
+                ⭐ مكافأة الإكمال: +{completionBonus} نقطة!
+              </div>
             )}
             <button onClick={handleNextPuzzle} style={{ ...S.btnGold, marginTop: 20, width: 'auto', padding: '13px 32px', fontSize: '1rem' }}>
               الأحجية التالية ←

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Navbar from '../../../components/Navbar';
 import { createClient } from '../../../lib/supabase';
@@ -216,14 +216,35 @@ export default function HuroofPage() {
   const [user,   setUser]   = useState(null);
   const [active, setActive] = useState(null);
   const [seen,   setSeen]   = useState(new Set());
+  const pointsGivenRef     = useRef(new Set());
+  const completionBonusRef = useRef(false);
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user: u } }) => setUser(u));
   }, []);
 
   function toggle(i) {
+    const isNew = !seen.has(i);
     setActive(p => (p === i ? null : i));
     setSeen(s => new Set([...s, i]));
+
+    if (isNew && user && !pointsGivenRef.current.has(i)) {
+      pointsGivenRef.current.add(i);
+      fetch('/api/points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 2, reason: `huroof_letter_${i}` }),
+      }).catch(() => {});
+
+      if (seen.size + 1 === LETTERS.length && !completionBonusRef.current) {
+        completionBonusRef.current = true;
+        fetch('/api/points', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: 10, reason: 'huroof_all_complete' }),
+        }).catch(() => {});
+      }
+    }
   }
 
   const progress = Math.round((seen.size / LETTERS.length) * 100);
