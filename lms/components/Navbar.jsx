@@ -223,9 +223,9 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
   const ROLE_LABELS = lang === 'ar' ? ROLE_LABELS_AR : ROLE_LABELS_EN;
 
   const navLinks = [
-    { href: destPath,   label: t('nav.home') },
-    { href: '/library', label: t('nav.library') },
-    ...(role === 'admin' || role === 'super_admin' ? [{ href: '/bogga', label: t('nav.admin') }] : []),
+    { href: destPath,   label: t('nav.home'),    icon: '🏠' },
+    { href: '/library', label: t('nav.library'),  icon: '📚' },
+    ...(role === 'admin' || role === 'super_admin' ? [{ href: '/bogga', label: t('nav.admin'), icon: '⚙️' }] : []),
   ];
 
   return (
@@ -251,6 +251,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
             {navLinks.map(l => (
               <li key={l.href}>
                 <Link href={l.href} className={pathname.startsWith(l.href) ? 'active' : ''}>
+                  {l.icon && <span style={{ fontSize: '1rem', lineHeight: 1 }}>{l.icon}</span>}
                   {l.label}
                 </Link>
               </li>
