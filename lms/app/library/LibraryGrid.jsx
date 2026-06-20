@@ -203,40 +203,40 @@ export default function LibraryGrid({ initialMeta, isTeacher }) {
       <style>{`
         .lib-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-          gap: 20px;
+          grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+          gap: 14px;
         }
         @media (max-width: 600px) {
-          .lib-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+          .lib-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
         }
         @media (max-width: 380px) {
           .lib-grid { grid-template-columns: 1fr; }
         }
         .lib-new-card {
-          border-radius: 18px; padding: 22px 18px 18px;
+          border-radius: 16px; padding: 16px 14px 14px;
           display: flex; flex-direction: column; align-items: center;
-          text-align: center; gap: 10px; border: 2px solid;
+          text-align: center; gap: 7px; border: 2px solid;
           transition: transform .2s, box-shadow .2s;
           text-decoration: none; position: relative; overflow: hidden;
         }
-        .lib-new-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.13); }
+        .lib-new-card:hover { transform: translateY(-4px); box-shadow: 0 10px 28px rgba(0,0,0,.13); }
         .lib-new-card.ready:hover .lib-start-btn { transform: scale(1.06); }
         .lib-icon-wrap {
-          width: 72px; height: 72px; border-radius: 50%;
+          width: 58px; height: 58px; border-radius: 50%;
           display: flex; align-items: center; justify-content: center;
-          font-size: 2.6rem; flex-shrink: 0; margin-bottom: 2px;
+          font-size: 2.1rem; flex-shrink: 0; margin-bottom: 1px;
           overflow: hidden;
         }
         @media (max-width: 600px) {
-          .lib-icon-wrap { width: 58px; height: 58px; font-size: 2rem; }
-          .lib-new-card  { padding: 16px 12px 14px; }
+          .lib-icon-wrap { width: 48px; height: 48px; font-size: 1.7rem; }
+          .lib-new-card  { padding: 13px 10px 11px; }
         }
-        .lib-card-title-new { font-size: 1.05rem; font-weight: 800; color: #1e293b; line-height: 1.3; margin: 0; }
-        @media (max-width: 600px) { .lib-card-title-new { font-size: .92rem; } }
-        .lib-card-desc-new { font-size: .82rem; color: #64748b; line-height: 1.5; margin: 0; flex: 1; }
+        .lib-card-title-new { font-size: .92rem; font-weight: 800; color: #1e293b; line-height: 1.3; margin: 0; }
+        @media (max-width: 600px) { .lib-card-title-new { font-size: .84rem; } }
+        .lib-card-desc-new { font-size: .75rem; color: #64748b; line-height: 1.5; margin: 0; flex: 1; }
         .lib-start-btn {
           display: inline-block; border: none; border-radius: 50px;
-          padding: 8px 22px; color: #fff; font-size: .88rem; font-weight: 700;
+          padding: 6px 16px; color: #fff; font-size: .8rem; font-weight: 700;
           cursor: pointer; font-family: 'Cairo','Tajawal',sans-serif;
           transition: transform .18s, box-shadow .18s;
           box-shadow: 0 3px 10px rgba(0,0,0,.18); text-decoration: none;
@@ -244,18 +244,18 @@ export default function LibraryGrid({ initialMeta, isTeacher }) {
         .lib-start-btn:hover { transform: scale(1.07); box-shadow: 0 6px 18px rgba(0,0,0,.22); }
         .lib-coming-badge {
           display: inline-block; background: #f1f5f9; color: #94a3b8;
-          border-radius: 50px; padding: 6px 18px; font-size: .82rem; font-weight: 700;
+          border-radius: 50px; padding: 5px 14px; font-size: .75rem; font-weight: 700;
           border: 1.5px dashed #cbd5e1;
         }
         .lib-tag-new {
-          display: inline-block; border-radius: 20px; padding: 3px 11px;
-          font-size: .72rem; font-weight: 700;
-          position: absolute; top: 12px; right: 12px;
+          display: inline-block; border-radius: 20px; padding: 2px 9px;
+          font-size: .68rem; font-weight: 700;
+          position: absolute; top: 10px; right: 10px;
         }
         .lib-edit-btn {
           position: absolute; top: 10px; left: 10px;
           background: rgba(255,255,255,.92); border: none; border-radius: 8px;
-          width: 30px; height: 30px; cursor: pointer; font-size: .85rem;
+          width: 28px; height: 28px; cursor: pointer; font-size: .82rem;
           display: flex; align-items: center; justify-content: center;
           box-shadow: 0 2px 8px rgba(0,0,0,.15); opacity: 0;
           transition: opacity .18s;
