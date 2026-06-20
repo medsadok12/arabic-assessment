@@ -7,6 +7,7 @@ import FaheemWidget from './FaheemWidget';
 import LifeSceneSimulator from './LifeSceneSimulator';
 import { useLanguage } from '../contexts/LanguageContext';
 import { createClient } from '../lib/supabase';
+import AvatarShop from './AvatarShop';
 
 function HwToggle({ id, status }) {
   const [st, setSt] = useState(status);
@@ -412,14 +413,23 @@ export default function DashboardContent({
         <div className="db-wrap">
 
           {/* ── Header ── */}
-          <div className="db-hello">أهلاً، {displayName} 👋</div>
-          <div className="db-sub">
-            {pendingHw > 0
-              ? `لديك ${pendingHw} واجب${pendingHw === 1 ? '' : 'ات'} معلّقة`
-              : nextSession
-                ? 'كل شيء على ما يرام — حصتك القادمة في الأسفل'
-                : 'مرحباً بك في أكاديمية عارم'}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+            flexWrap:'wrap', gap:12, marginBottom:8 }}>
+            <div>
+              <div className="db-hello">أهلاً، {displayName} 👋</div>
+              <div className="db-sub" style={{ marginBottom:0 }}>
+                {pendingHw > 0
+                  ? `لديك ${pendingHw} واجب${pendingHw === 1 ? '' : 'ات'} معلّقة`
+                  : nextSession
+                    ? 'كل شيء على ما يرام — حصتك القادمة في الأسفل'
+                    : 'مرحباً بك في أكاديمية عارم'}
+              </div>
+            </div>
+            {isStudent && (
+              <AvatarShop user={user} displayName={displayName} />
+            )}
           </div>
+          <div style={{ marginBottom:28 }} />
 
           {/* ── Stats ── */}
           <div className="db-stats">
