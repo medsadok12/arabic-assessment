@@ -273,9 +273,6 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
             <SocialIcons />
           </div>
 
-          {/* شارة النقاط — للطلاب فقط */}
-          {user && role === 'student' && <PointsBadge />}
-
           {/* عداد تنازلي للحصة القادمة */}
           {sessionCountdown && (
             <div style={{
@@ -362,6 +359,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
     </nav>
     <TeamChat user={user} />
     {user && <BottomNav navLinks={navLinks} pathname={pathname} onLogout={handleLogout} />}
+    {user && role === 'student' && <PointsBadge />}
     </>
   );
 }

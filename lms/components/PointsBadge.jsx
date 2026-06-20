@@ -1,17 +1,16 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-/* ─── Levels ─── */
 const LEVELS = [
-  { min: 0,    max: 99,   color: '#CD8B3A', glow: '#CD8B3A', icon: '🌱', name: 'مبتدئ',   next: 'مستكشف'  },
-  { min: 100,  max: 299,  color: '#94A3B8', glow: '#94A3B8', icon: '⚡', name: 'مستكشف',  next: 'بطل'     },
-  { min: 300,  max: 699,  color: '#F59E0B', glow: '#F59E0B', icon: '⭐', name: 'بطل',      next: 'محترف'   },
-  { min: 700,  max: 1499, color: '#A78BFA', glow: '#A78BFA', icon: '💎', name: 'محترف',   next: 'أسطورة'  },
-  { min: 1500, max: Infinity, color: '#22D3EE', glow: '#22D3EE', icon: '🚀', name: 'أسطورة', next: null },
+  { min: 0,    max: 99,   color: '#D97706', icon: '🌱', name: 'مبتدئ',   next: 100  },
+  { min: 100,  max: 299,  color: '#94A3B8', icon: '⚡', name: 'مستكشف',  next: 300  },
+  { min: 300,  max: 699,  color: '#F59E0B', icon: '⭐', name: 'بطل',      next: 700  },
+  { min: 700,  max: 1499, color: '#A78BFA', icon: '💎', name: 'محترف',   next: 1500 },
+  { min: 1500, max: Infinity, color: '#22D3EE', icon: '🚀', name: 'أسطورة', next: null },
 ];
 
-const R    = 15;            // SVG ring radius
-const CIRC = 2 * Math.PI * R; // ≈ 94.2
+const R    = 22;
+const CIRC = 2 * Math.PI * R; // 138.2
 
 function getLvl(pts) {
   for (let i = LEVELS.length - 1; i >= 0; i--) {
@@ -20,42 +19,33 @@ function getLvl(pts) {
   return { ...LEVELS[0], idx: 0 };
 }
 
-function getProgress(pts, lvl) {
-  if (lvl.max === Infinity) return Math.min(100, ((pts - lvl.min) / 500) * 100);
-  return ((pts - lvl.min) / (lvl.max - lvl.min + 1)) * 100;
-}
-
-/* ─── Keyframes injected once ─── */
-const ANIM_ID = 'pts-badge-anim';
+const ANIM_ID = 'pts-float-anim';
 if (typeof document !== 'undefined' && !document.getElementById(ANIM_ID)) {
   const s = document.createElement('style');
   s.id = ANIM_ID;
   s.textContent = `
-    @keyframes ptsBounce  { 0%{transform:translate(-50%,-50%) scale(1)} 40%{transform:translate(-50%,-50%) scale(1.5)} 70%{transform:translate(-50%,-50%) scale(.88)} 100%{transform:translate(-50%,-50%) scale(1)} }
-    @keyframes ptsPop     { 0%{transform:translate(-50%,-50%) scale(0);opacity:0} 60%{transform:translate(-50%,-50%) scale(1.2);opacity:1} 100%{transform:translate(-50%,-50%) scale(1);opacity:1} }
-    @keyframes ptsFadeIn  { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes ptsGlow    { 0%,100%{box-shadow:0 0 0 0 transparent} 50%{box-shadow:0 0 18px 4px var(--pts-glow)} }
-    @keyframes ptsFloat   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
-    @keyframes ptsCount   { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes ptsLvlUp   { 0%{transform:scale(1)} 30%{transform:scale(1.35)} 55%{transform:scale(.9)} 75%{transform:scale(1.12)} 100%{transform:scale(1)} }
-    @keyframes ptsSpin    { to{transform:rotate(360deg)} }
-    @keyframes ptsRipple  { 0%{transform:translate(-50%,-50%) scale(.5);opacity:.9} 100%{transform:translate(-50%,-50%) scale(2.2);opacity:0} }
+    @keyframes pfBounce { 0%{transform:translate(-50%,-50%)scale(1)} 40%{transform:translate(-50%,-50%)scale(1.6)} 70%{transform:translate(-50%,-50%)scale(.85)} 100%{transform:translate(-50%,-50%)scale(1)} }
+    @keyframes pfRipple { 0%{transform:scale(.6);opacity:.8} 100%{transform:scale(2.4);opacity:0} }
+    @keyframes pfFadeIn { from{opacity:0;transform:translateX(8px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes pfFloat  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+    @keyframes pfPulse  { 0%,100%{box-shadow:0 0 0 0 transparent} 50%{box-shadow:0 0 0 6px var(--pf-glow)} }
+    @keyframes pfSpin   { to{transform:rotate(360deg)} }
+    @keyframes pfNum    { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
   `;
   document.head.appendChild(s);
 }
 
 export default function PointsBadge() {
-  const [pts,    setPts]    = useState(0);
-  const [shown,  setShown]  = useState(0);   // displayed (animated) value
-  const [burst,  setBurst]  = useState(false);
-  const [lvlUp,  setLvlUp]  = useState(false);
-  const [open,   setOpen]   = useState(false);
+  const [pts,   setPts]   = useState(0);
+  const [shown, setShown] = useState(0);
+  const [burst, setBurst] = useState(false);
+  const [lvlUp, setLvlUp] = useState(false);
+  const [open,  setOpen]  = useState(false);
   const prevRef  = useRef(0);
   const prevLvl  = useRef(0);
   const rafRef   = useRef(null);
-  const popRef   = useRef(null);
+  const wrapRef  = useRef(null);
 
-  /* ─── fetch & animate ─── */
   const load = useCallback(async () => {
     try {
       const r = await fetch('/api/points');
@@ -63,27 +53,21 @@ export default function PointsBadge() {
       const newPts = j.points ?? 0;
       if (newPts === prevRef.current) return;
 
-      const gained = newPts > prevRef.current;
-      if (gained) {
+      if (newPts > prevRef.current) {
         setBurst(true);
         setTimeout(() => setBurst(false), 900);
-        const newLvlIdx = getLvl(newPts).idx;
-        if (newLvlIdx > prevLvl.current) {
-          setLvlUp(true);
-          setTimeout(() => setLvlUp(false), 1400);
-        }
-        prevLvl.current = newLvlIdx;
+        const ni = getLvl(newPts).idx;
+        if (ni > prevLvl.current) { setLvlUp(true); setTimeout(() => setLvlUp(false), 1200); }
+        prevLvl.current = ni;
       }
 
-      /* animate counter */
-      const from = prevRef.current;
-      const to   = newPts;
-      const dur  = Math.min(1400, Math.abs(to - from) * 40);
+      const from = prevRef.current, to = newPts;
+      const dur  = Math.min(1400, Math.abs(to - from) * 35);
       const t0   = performance.now();
       cancelAnimationFrame(rafRef.current);
       function tick(now) {
-        const p = Math.min((now - t0) / dur, 1);
-        const ease = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+        const p    = Math.min((now - t0) / dur, 1);
+        const ease = p < .5 ? 2*p*p : 1 - Math.pow(-2*p+2, 2)/2;
         setShown(Math.round(from + (to - from) * ease));
         if (p < 1) rafRef.current = requestAnimationFrame(tick);
       }
@@ -99,216 +83,210 @@ export default function PointsBadge() {
     return () => { clearInterval(id); cancelAnimationFrame(rafRef.current); };
   }, [load]);
 
-  /* close popup on outside click */
   useEffect(() => {
     if (!open) return;
-    function handler(e) {
-      if (popRef.current && !popRef.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    const fn = e => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
   }, [open]);
 
   const lvl      = getLvl(pts);
-  const progress = getProgress(pts, lvl);
-  const dashFill = (progress / 100) * CIRC;
+  const range    = lvl.max === Infinity ? 500 : lvl.max - lvl.min + 1;
+  const progress = Math.min(100, ((pts - lvl.min) / range) * 100);
+  const fill     = (progress / 100) * CIRC;
 
   return (
-    <div ref={popRef} style={{ position: 'relative', '--pts-glow': lvl.glow + '60' }}>
-
-      {/* ── Trigger Button ── */}
+    <div
+      ref={wrapRef}
+      style={{
+        position: 'fixed',
+        right: 18,
+        top: 78,
+        zIndex: 500,
+        fontFamily: "'Cairo','Tajawal',sans-serif",
+        direction: 'rtl',
+        '--pf-glow': lvl.color + '55',
+      }}
+    >
+      {/* ── Main floating badge ── */}
       <button
         onClick={() => setOpen(o => !o)}
         style={{
-          display: 'flex', alignItems: 'center', gap: 7,
-          background: burst
-            ? `linear-gradient(135deg,${lvl.color}25,${lvl.color}10)`
-            : 'rgba(255,255,255,0.10)',
-          border: `1.5px solid ${burst ? lvl.color + 'AA' : 'rgba(255,255,255,0.25)'}`,
-          borderRadius: 50,
-          padding: '3px 12px 3px 3px',
-          cursor: 'pointer',
-          color: '#fff',
-          fontFamily: "'Cairo','Tajawal',sans-serif",
-          transition: 'background .35s, border-color .35s, box-shadow .35s',
-          boxShadow: burst ? `0 0 18px ${lvl.color}60, 0 0 6px ${lvl.color}30` : 'none',
-          animation: lvlUp ? 'ptsLvlUp .8s ease' : 'none',
-          flexShrink: 0,
-          outline: 'none',
+          display:        'flex',
+          flexDirection:  'column',
+          alignItems:     'center',
+          gap:            6,
+          background:     'rgba(15,23,42,0.88)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          border:         `2px solid ${burst ? lvl.color : lvl.color + '55'}`,
+          borderRadius:   22,
+          padding:        '12px 14px 10px',
+          cursor:         'pointer',
+          minWidth:       72,
+          color:          '#fff',
+          boxShadow:      burst
+            ? `0 0 28px ${lvl.color}70, 0 8px 32px rgba(0,0,0,.5)`
+            : `0 8px 32px rgba(0,0,0,.45), 0 0 12px ${lvl.color}20`,
+          transition:     'border-color .4s, box-shadow .4s',
+          animation:      lvlUp ? 'pfBounce .7s ease' : 'none',
+          outline:        'none',
           WebkitTapHighlightColor: 'transparent',
         }}
-        onMouseEnter={e => {
-          e.currentTarget.style.background = `${lvl.color}22`;
-          e.currentTarget.style.borderColor = lvl.color + '88';
-        }}
-        onMouseLeave={e => {
-          if (!burst) {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.10)';
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
-          }
-        }}
       >
-        {/* ── SVG ring + icon ── */}
-        <div style={{ position: 'relative', width: 34, height: 34, flexShrink: 0 }}>
+        {/* SVG Ring */}
+        <div style={{ position: 'relative', width: 54, height: 54, flexShrink: 0 }}>
 
-          {/* ripple on burst */}
           {burst && (
             <div style={{
-              position: 'absolute', top: '50%', left: '50%',
-              width: 34, height: 34, borderRadius: '50%',
-              border: `2px solid ${lvl.color}`,
-              animation: 'ptsRipple .7s ease-out forwards',
+              position: 'absolute', inset: 0, borderRadius: '50%',
+              border: `2.5px solid ${lvl.color}`,
+              animation: 'pfRipple .7s ease-out forwards',
               pointerEvents: 'none',
             }} />
           )}
 
-          <svg width="34" height="34" viewBox="0 0 38 38"
-            style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}>
-            {/* track */}
-            <circle cx="19" cy="19" r={R} fill="none"
-              stroke="rgba(255,255,255,0.15)" strokeWidth="3" />
-            {/* fill */}
-            <circle cx="19" cy="19" r={R} fill="none"
+          <svg
+            width="54" height="54" viewBox="0 0 54 54"
+            style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}
+          >
+            <circle cx="27" cy="27" r={R} fill="none"
+              stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
+            <circle cx="27" cy="27" r={R} fill="none"
               stroke={lvl.color}
-              strokeWidth="3"
+              strokeWidth="4"
               strokeLinecap="round"
-              strokeDasharray={`${dashFill} ${CIRC}`}
+              strokeDasharray={`${fill} ${CIRC}`}
               style={{
-                transition: 'stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1), stroke .5s ease',
-                filter: `drop-shadow(0 0 3px ${lvl.color}99)`,
+                transition: 'stroke-dasharray 1.3s cubic-bezier(.4,0,.2,1), stroke .5s',
+                filter: `drop-shadow(0 0 5px ${lvl.color}bb)`,
               }}
             />
           </svg>
 
-          {/* icon in center */}
           <span style={{
             position: 'absolute', top: '50%', left: '50%',
-            fontSize: '1rem', lineHeight: 1,
+            fontSize: '1.5rem', lineHeight: 1,
             transform: 'translate(-50%,-50%)',
-            animation: burst ? 'ptsBounce .6s ease' : lvlUp ? 'ptsPop .7s ease' : 'none',
-          }}>{lvl.icon}</span>
+            animation: burst ? 'pfBounce .6s ease' : 'pfFloat 3s ease-in-out infinite',
+          }}>
+            {lvl.icon}
+          </span>
         </div>
 
-        {/* ── Points counter ── */}
+        {/* Points number */}
         <span style={{
           fontWeight: 900,
-          fontSize: '.85rem',
+          fontSize:   '1.1rem',
+          color:      lvl.color,
           fontVariantNumeric: 'tabular-nums',
-          letterSpacing: '.3px',
-          color: burst ? lvl.color : '#fff',
-          transition: 'color .3s',
-          animation: burst ? 'ptsCount .3s ease' : 'none',
-          minWidth: 28,
-          textAlign: 'center',
+          lineHeight: 1,
+          animation:  burst ? 'pfNum .3s ease' : 'none',
         }}>
           {shown.toLocaleString('ar-EG')}
         </span>
+
+        {/* Level name */}
+        <span style={{
+          fontSize:   '.65rem',
+          color:      '#94a3b8',
+          fontWeight: 700,
+          lineHeight: 1,
+          letterSpacing: '.3px',
+        }}>
+          {lvl.name}
+        </span>
       </button>
 
-      {/* ── Popup card ── */}
+      {/* ── Expanded popup (opens to the LEFT) ── */}
       {open && (
         <div style={{
-          position: 'absolute',
-          top: 'calc(100% + 10px)',
-          left: '50%',
-          transform: 'translateX(-50%)',
+          position:   'absolute',
+          right:      'calc(100% + 14px)',
+          top:        0,
           background: 'linear-gradient(160deg,#0f172a,#1e293b)',
-          border: `1.5px solid ${lvl.color}40`,
-          borderRadius: 20,
-          padding: '18px 20px',
-          minWidth: 230,
-          boxShadow: `0 12px 40px rgba(0,0,0,.55), 0 0 0 1px ${lvl.color}20, 0 0 24px ${lvl.color}20`,
-          zIndex: 9999,
-          color: '#fff',
-          fontFamily: "'Cairo','Tajawal',sans-serif",
-          direction: 'rtl',
-          animation: 'ptsFadeIn .22s ease',
+          border:     `1.5px solid ${lvl.color}45`,
+          borderRadius: 22,
+          padding:    '18px 20px',
+          width:      240,
+          boxShadow:  `0 16px 48px rgba(0,0,0,.6), 0 0 28px ${lvl.color}20`,
+          animation:  'pfFadeIn .22s ease',
+          color:      '#fff',
         }}>
-          {/* triangle pointer */}
-          <div style={{
-            position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)',
-            width: 14, height: 7,
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              width: 10, height: 10, background: '#1e293b',
-              border: `1px solid ${lvl.color}40`,
-              transform: 'rotate(45deg)', margin: '3px auto 0',
-            }} />
-          </div>
-
           {/* Level header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <div style={{
-              width: 52, height: 52, borderRadius: '50%',
-              background: `radial-gradient(circle,${lvl.color}30,${lvl.color}08)`,
-              border: `2px solid ${lvl.color}60`,
+              width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
+              background: `radial-gradient(circle,${lvl.color}28,transparent 70%)`,
+              border: `2px solid ${lvl.color}70`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1.7rem',
-              boxShadow: `0 0 18px ${lvl.color}40`,
-              flexShrink: 0,
-              animation: 'ptsFloat 2.5s ease-in-out infinite',
+              fontSize: '1.8rem',
+              boxShadow: `0 0 20px ${lvl.color}40`,
+              animation: 'pfFloat 2.5s ease-in-out infinite',
             }}>
               {lvl.icon}
             </div>
             <div>
-              <div style={{ fontWeight: 900, fontSize: '1.05rem', color: lvl.color }}>{lvl.name}</div>
-              <div style={{ fontSize: '.75rem', color: '#94a3b8', marginTop: 1 }}>
-                {pts.toLocaleString('ar-EG')} نقطة مجموع
+              <div style={{ fontWeight: 900, fontSize: '1.1rem', color: lvl.color }}>{lvl.name}</div>
+              <div style={{ fontSize: '.75rem', color: '#94a3b8', marginTop: 2 }}>
+                {pts.toLocaleString('ar-EG')} نقطة
               </div>
             </div>
           </div>
 
-          {/* Progress bar */}
-          <div style={{ marginBottom: 10 }}>
+          {/* Progress */}
+          <div style={{ marginBottom: lvl.next ? 8 : 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.7rem', color: '#64748b', marginBottom: 5 }}>
               <span style={{ color: '#94a3b8' }}>
-                {lvl.next ? `نحو "${lvl.next}"` : '🏆 أعلى مستوى!'}
+                {lvl.next ? `نحو "${LEVELS[lvl.idx + 1]?.name}"` : '🏆 أعلى مستوى!'}
               </span>
               <span style={{ fontWeight: 700, color: lvl.color }}>{Math.round(progress)}%</span>
             </div>
-            <div style={{ height: 7, background: 'rgba(255,255,255,.07)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{ height: 8, background: 'rgba(255,255,255,.07)', borderRadius: 99, overflow: 'hidden' }}>
               <div style={{
                 height: '100%',
                 width: `${progress}%`,
                 background: `linear-gradient(90deg,${lvl.color}70,${lvl.color})`,
                 borderRadius: 99,
-                boxShadow: `0 0 8px ${lvl.color}80`,
-                transition: 'width 1s cubic-bezier(.4,0,.2,1)',
+                boxShadow: `0 0 8px ${lvl.color}90`,
+                transition: 'width 1.2s cubic-bezier(.4,0,.2,1)',
               }} />
             </div>
           </div>
 
-          {lvl.max !== Infinity && (
-            <div style={{ fontSize: '.7rem', color: '#475569', textAlign: 'center', marginBottom: 12 }}>
-              {(lvl.max + 1 - pts).toLocaleString('ar-EG')} نقطة للمستوى التالي
+          {lvl.next && (
+            <div style={{ fontSize: '.7rem', color: '#475569', textAlign: 'center', marginBottom: 16 }}>
+              {(lvl.next - pts).toLocaleString('ar-EG')} نقطة للمستوى التالي
             </div>
           )}
 
-          {/* All levels mini-map */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.07)' }}>
+          {/* Levels mini-map */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.07)',
+          }}>
             {LEVELS.map((l, i) => {
               const reached = pts >= l.min;
               const current = i === lvl.idx;
               return (
                 <div key={i} title={l.name} style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                  flex: 1,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 1,
                 }}>
                   <div style={{
-                    width: 28, height: 28, borderRadius: '50%',
-                    background: reached ? `${l.color}25` : 'rgba(255,255,255,.05)',
-                    border: `1.5px solid ${reached ? l.color + (current ? 'ff' : '80') : 'rgba(255,255,255,.1)'}`,
+                    width: 32, height: 32, borderRadius: '50%',
+                    background: reached ? `${l.color}20` : 'rgba(255,255,255,.04)',
+                    border: `1.5px solid ${reached ? l.color + (current ? 'ff' : '70') : 'rgba(255,255,255,.1)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '.9rem',
-                    boxShadow: current ? `0 0 10px ${l.color}70` : 'none',
+                    fontSize: '1rem',
+                    boxShadow: current ? `0 0 12px ${l.color}80` : 'none',
+                    opacity: reached ? 1 : .3,
+                    animation: current ? 'pfFloat 2s ease-in-out infinite' : 'none',
                     transition: 'all .3s',
-                    opacity: reached ? 1 : .35,
-                    animation: current ? 'ptsFloat 2s ease-in-out infinite' : 'none',
                   }}>{l.icon}</div>
-                  <span style={{ fontSize: '.55rem', color: reached ? l.color : '#475569', fontWeight: current ? 800 : 500 }}>
-                    {l.name}
-                  </span>
+                  <span style={{
+                    fontSize: '.56rem', fontWeight: current ? 800 : 500,
+                    color: current ? l.color : reached ? '#64748b' : '#334155',
+                  }}>{l.name}</span>
                 </div>
               );
             })}
