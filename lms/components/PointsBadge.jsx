@@ -183,7 +183,7 @@ export default function PointsBadge() {
           lineHeight: 1,
           animation:  burst ? 'pfNum .3s ease' : 'none',
         }}>
-          {shown.toLocaleString('ar-EG')}
+          {shown.toLocaleString()}
         </span>
 
         {/* Level name */}
@@ -229,7 +229,7 @@ export default function PointsBadge() {
             <div>
               <div style={{ fontWeight: 900, fontSize: '1.1rem', color: lvl.color }}>{lvl.name}</div>
               <div style={{ fontSize: '.75rem', color: '#94a3b8', marginTop: 2 }}>
-                {pts.toLocaleString('ar-EG')} نقطة
+                {pts.toLocaleString()} نقطة
               </div>
             </div>
           </div>
@@ -256,7 +256,7 @@ export default function PointsBadge() {
 
           {lvl.next && (
             <div style={{ fontSize: '.7rem', color: '#475569', textAlign: 'center', marginBottom: 16 }}>
-              {(lvl.next - pts).toLocaleString('ar-EG')} نقطة للمستوى التالي
+              {(lvl.next - pts).toLocaleString()} نقطة للمستوى التالي
             </div>
           )}
 
