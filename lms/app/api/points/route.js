@@ -8,12 +8,17 @@ export async function GET() {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ points: 0 });
+    if (!user) return NextResponse.json({ points: 0, earned: 0 });
     const admin = createAdminClient();
-    const { data } = await admin.from('user_points').select('total').eq('user_id', user.id).single();
-    return NextResponse.json({ points: data?.total ?? 0 });
+    const [{ data: balRow }, { data: logRows }] = await Promise.all([
+      admin.from('user_points').select('total').eq('user_id', user.id).maybeSingle(),
+      admin.from('points_log').select('delta').eq('user_id', user.id).gt('delta', 0),
+    ]);
+    const points = balRow?.total ?? 0;
+    const earned = (logRows ?? []).reduce((s, r) => s + (r.delta || 0), 0);
+    return NextResponse.json({ points, earned });
   } catch {
-    return NextResponse.json({ points: 0 });
+    return NextResponse.json({ points: 0, earned: 0 });
   }
 }
 
