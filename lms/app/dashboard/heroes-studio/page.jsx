@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { dicebearUrl } from '../../../components/AvatarShop';
 
 /* ═══════════════════════ CSS ANIMATIONS ══════════════════════════════════ */
 if (typeof document !== 'undefined' && !document.getElementById('hs-anim')) {
@@ -415,7 +416,7 @@ function renderBg(id, sz) {
 /* ═══════════════════════ HERO PREVIEW ═══════════════════════════════════ */
 function HeroPreview({ config = {}, size = 200 }) {
   const { base_seed = 'default', equipped = {} } = config;
-  const dicebearUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(base_seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+  const url = dicebearUrl(base_seed);
 
   return (
     <div style={{ position:'relative', width:size, height:size, overflow:'visible' }}>
@@ -425,7 +426,7 @@ function HeroPreview({ config = {}, size = 200 }) {
         overflow:'hidden', zIndex:1,
         boxShadow:'0 12px 50px rgba(0,0,0,.55), 0 0 0 3px rgba(255,255,255,.15)',
       }}>
-        <img src={dicebearUrl} alt="" style={{ position:'absolute', width:size*1.5, height:size*1.5, top:-size*0.07, left:-size*0.25 }}/>
+        <img src={url} alt="" style={{ position:'absolute', width:size*1.35, height:size*1.35, top:-size*0.05, left:-size*0.18 }}/>
       </div>
       {equipped.scarf     && OV[equipped.scarf]?.(size)}
       {equipped.halo      && OV[equipped.halo]?.(size)}
@@ -753,9 +754,9 @@ export default function HeroesStudio() {
               >
                 <div style={{ width:52, height:52, borderRadius:'50%', overflow:'hidden', border:`2px solid ${isActive ? 'rgba(255,255,255,.5)' : '#e2e8f0'}`, background:'#dbeafe', position:'relative' }}>
                   <img
-                    src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(char.seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc`}
+                    src={dicebearUrl(char.seed)}
                     alt={char.name}
-                    style={{ position:'absolute', width:78, height:78, top:-5, left:-13 }}
+                    style={{ position:'absolute', width:70, height:70, top:-3, left:-9 }}
                   />
                 </div>
                 <div style={{ fontSize:'.65rem', fontWeight:800, color: isActive ? '#fff' : '#374151', whiteSpace:'nowrap' }}>

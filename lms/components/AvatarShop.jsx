@@ -2,6 +2,18 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
+/* ── DiceBear URL params — happy expressions + hair, no bald/sleepy ─────── */
+const DB_EXTRA =
+  '&eyes[]=variant01&eyes[]=variant04&eyes[]=variant06&eyes[]=variant09&eyes[]=variant10&eyes[]=variant11&eyes[]=variant14' +
+  '&mouth[]=variant02&mouth[]=variant03&mouth[]=variant04&mouth[]=variant05' +
+  '&hair[]=long01&hair[]=long02&hair[]=long04&hair[]=long05&hair[]=long06&hair[]=long07&hair[]=long08&hair[]=long09&hair[]=long10&hair[]=long11&hair[]=long12&hair[]=long13&hair[]=long14&hair[]=long15&hair[]=long16&hair[]=short01&hair[]=short02&hair[]=short03&hair[]=short05&hair[]=short07&hair[]=short09&hair[]=short10' +
+  '&hairColor[]=0e0e0e&hairColor[]=3b1f0a&hairColor[]=6d4c41&hairColor[]=cc3f0c&hairColor[]=f5a623&hairColor[]=e91e8c&hairColor[]=9c27b0&hairColor[]=2196f3';
+
+/* helper — builds consistent URL for all avatar previews */
+export function dicebearUrl(seed) {
+  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf${DB_EXTRA}`;
+}
+
 /* ── Inject animations once ─────────────────────────────────────────────── */
 if (typeof document !== 'undefined' && !document.getElementById('av-shop-anim')) {
   const s = document.createElement('style');
@@ -320,7 +332,7 @@ export function AvatarWithAccessory({ name, avatarURL, equipped = {}, equippedId
       : {};
 
   const avatarSeed  = seed || name || 'student';
-  const dicebearUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(avatarSeed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+  const url = dicebearUrl(avatarSeed);
 
   return (
     <div style={{ position:'relative', width:size, height:size, flexShrink:0, overflow:'visible' }}>
@@ -337,9 +349,9 @@ export function AvatarWithAccessory({ name, avatarURL, equipped = {}, equippedId
           <img src={avatarURL} alt="" style={{ width:size, height:size, objectFit:'cover', display:'block' }}/>
         ) : (
           <img
-            src={dicebearUrl}
+            src={url}
             alt=""
-            style={{ position:'absolute', width:size*1.5, height:size*1.5, top:-size*0.07, left:-size*0.25 }}
+            style={{ position:'absolute', width:size*1.35, height:size*1.35, top:-size*0.05, left:-size*0.18 }}
           />
         )}
       </div>
