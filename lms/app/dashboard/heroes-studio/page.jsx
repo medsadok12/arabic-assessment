@@ -95,7 +95,7 @@ const OV = {
 
   /* ──── HALOS ──── */
   star_halo: (sz) => (
-    <svg key="sh" style={{ position:'absolute', top:-sz*.30, left:-sz*.12, width:sz*1.24, height:sz*.50, pointerEvents:'none', overflow:'visible', zIndex:5 }} viewBox="0 0 124 50">
+    <svg key="sh" style={{ position:'absolute', top:-sz*.02, left:sz*.13, width:sz*.74, height:sz*.30, pointerEvents:'none', overflow:'visible', zIndex:5 }} viewBox="0 0 124 50">
       <defs><filter id="sh-g2"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
       <polygon points="62,4 66.5,17 80,17 69.5,25 73,38 62,30 51,38 54.5,25 44,17 57.5,17" fill="#FFD700" filter="url(#sh-g2)"/>
       <polygon points="23,13 25.5,21 34,21 27.5,25.5 30,33 23,29 16,33 18.5,25.5 12,21 20.5,21" fill="#FBBF24" opacity=".9"/>
@@ -105,7 +105,7 @@ const OV = {
   ),
 
   rainbow_halo: (sz) => (
-    <svg key="rh" style={{ position:'absolute', top:-sz*.36, left:-sz*.14, width:sz*1.28, height:sz*.38, pointerEvents:'none', overflow:'visible', zIndex:5 }} viewBox="0 0 128 38">
+    <svg key="rh" style={{ position:'absolute', top:-sz*.04, left:sz*.10, width:sz*.80, height:sz*.24, pointerEvents:'none', overflow:'visible', zIndex:5 }} viewBox="0 0 128 38">
       <defs><filter id="rh-glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
       <path d="M10,36 Q64,-10 118,36" fill="none" stroke="#EF4444" strokeWidth="5" strokeLinecap="round" filter="url(#rh-glow)"/>
       <path d="M16,36 Q64,-2 112,36"  fill="none" stroke="#F97316" strokeWidth="5" strokeLinecap="round" filter="url(#rh-glow)"/>
@@ -117,7 +117,7 @@ const OV = {
   ),
 
   fire_crown: (sz) => (
-    <svg key="fc" style={{ position:'absolute', top:-sz*.32, left:-sz*.10, width:sz*1.20, height:sz*.42, pointerEvents:'none', overflow:'visible', zIndex:5 }} viewBox="0 0 120 42">
+    <svg key="fc" style={{ position:'absolute', top:-sz*.02, left:sz*.11, width:sz*.78, height:sz*.27, pointerEvents:'none', overflow:'visible', zIndex:5 }} viewBox="0 0 120 42">
       <defs>
         <radialGradient id="fc-g" cx="50%" cy="100%" r="80%">
           <stop offset="0%"  stopColor="#FEF08A"/>
@@ -133,7 +133,7 @@ const OV = {
 
   /* ──── HATS ──── */
   graduation_cap: (sz) => (
-    <svg key="grad" style={{ position:'absolute', top:-sz*.16, left:-sz*.11, width:sz*1.22, height:sz*.60, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 122 60">
+    <svg key="grad" style={{ position:'absolute', top:sz*.07, left:sz*.18, width:sz*.64, height:sz*.32, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 122 60">
       <defs><filter id="grc-sh2"><feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#000" floodOpacity=".22"/></filter></defs>
       <rect x="28" y="8" width="66" height="22" rx="3" fill="#1e1b4b" filter="url(#grc-sh2)"/>
       <rect x="16" y="27" width="90" height="11" rx="5.5" fill="#312e81"/>
@@ -147,7 +147,7 @@ const OV = {
   ),
 
   golden_crown: (sz) => (
-    <svg key="gc" style={{ position:'absolute', top:-sz*.16, left:-sz*.06, width:sz*1.12, height:sz*.54, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 112 54">
+    <svg key="gc" style={{ position:'absolute', top:sz*.09, left:sz*.22, width:sz*.56, height:sz*.27, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 112 54">
       <defs>
         <linearGradient id="cr-g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#FEF08A"/><stop offset="100%" stopColor="#EAB308"/></linearGradient>
         <filter id="cr-sh2"><feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#78350f" floodOpacity=".3"/></filter>
@@ -164,7 +164,7 @@ const OV = {
   ),
 
   wizard_hat: (sz) => (
-    <svg key="wiz" style={{ position:'absolute', top:-sz*.45, left:-sz*.13, width:sz*1.26, height:sz*.84, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 126 84">
+    <svg key="wiz" style={{ position:'absolute', top:-sz*.06, left:sz*.17, width:sz*.66, height:sz*.44, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 126 84">
       <defs>
         <linearGradient id="wh-g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b0764"/><stop offset="100%" stopColor="#7c3aed"/></linearGradient>
         <filter id="wh-sh2"><feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#1e1b4b" floodOpacity=".4"/></filter>
@@ -180,7 +180,7 @@ const OV = {
   ),
 
   ninja_headband: (sz) => (
-    <svg key="nb" style={{ position:'absolute', top:sz*.22, left:-sz*.06, width:sz*1.12, height:sz*.32, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 112 32">
+    <svg key="nb" style={{ position:'absolute', top:sz*.24, left:sz*.09, width:sz*.82, height:sz*.23, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 112 32">
       <defs><filter id="nb-sh"><feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#7f1d1d" floodOpacity=".4"/></filter></defs>
       <rect x="2" y="6" width="108" height="20" rx="10" fill="#DC2626" filter="url(#nb-sh)"/>
       <rect x="2" y="6" width="108" height="20" rx="10" fill="none" stroke="#991B1B" strokeWidth="1.5"/>
@@ -192,7 +192,7 @@ const OV = {
   ),
 
   pirate_hat: (sz) => (
-    <svg key="ph" style={{ position:'absolute', top:-sz*.24, left:-sz*.08, width:sz*1.16, height:sz*.52, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 116 52">
+    <svg key="ph" style={{ position:'absolute', top:sz*.06, left:sz*.19, width:sz*.62, height:sz*.28, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 116 52">
       <defs><filter id="ph-sh"><feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#000" floodOpacity=".35"/></filter></defs>
       <path d="M8 48 Q8 30 58 26 Q108 30 108 48 Z" fill="#1F2937" filter="url(#ph-sh)"/>
       <path d="M12 40 L18 14 Q20 4 58 6 Q96 4 98 14 L104 40 Z" fill="#111827" filter="url(#ph-sh)"/>
@@ -210,7 +210,7 @@ const OV = {
 
   /* ──── GLASSES ──── */
   smart_glasses: (sz) => (
-    <svg key="sg" style={{ position:'absolute', top:sz*.33, left:-sz*.07, width:sz*1.14, height:sz*.42, pointerEvents:'none', overflow:'visible', zIndex:7 }} viewBox="0 0 114 42">
+    <svg key="sg" style={{ position:'absolute', top:sz*.22, left:sz*.12, width:sz*.76, height:sz*.28, pointerEvents:'none', overflow:'visible', zIndex:7 }} viewBox="0 0 114 42">
       <defs>
         <linearGradient id="sg-g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#a5b4fc"/><stop offset="100%" stopColor="#4f46e5"/></linearGradient>
         <filter id="sg-gw2"><feGaussianBlur stdDeviation="1.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
@@ -227,7 +227,7 @@ const OV = {
   ),
 
   round_glasses: (sz) => (
-    <svg key="rg" style={{ position:'absolute', top:sz*.30, left:-sz*.08, width:sz*1.16, height:sz*.45, pointerEvents:'none', overflow:'visible', zIndex:7 }} viewBox="0 0 116 45">
+    <svg key="rg" style={{ position:'absolute', top:sz*.21, left:sz*.12, width:sz*.76, height:sz*.29, pointerEvents:'none', overflow:'visible', zIndex:7 }} viewBox="0 0 116 45">
       <defs><linearGradient id="rg-gl" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fef9c3"/><stop offset="100%" stopColor="#fde68a" stopOpacity=".4"/></linearGradient></defs>
       <circle cx="30" cy="22" r="20" fill="url(#rg-gl)" stroke="#B45309" strokeWidth="2.8"/>
       <circle cx="86" cy="22" r="20" fill="url(#rg-gl)" stroke="#B45309" strokeWidth="2.8"/>
@@ -240,7 +240,7 @@ const OV = {
   ),
 
   heart_glasses: (sz) => (
-    <svg key="hg" style={{ position:'absolute', top:sz*.28, left:-sz*.09, width:sz*1.18, height:sz*.46, pointerEvents:'none', overflow:'visible', zIndex:7 }} viewBox="0 0 118 46">
+    <svg key="hg" style={{ position:'absolute', top:sz*.20, left:sz*.12, width:sz*.76, height:sz*.30, pointerEvents:'none', overflow:'visible', zIndex:7 }} viewBox="0 0 118 46">
       <defs>
         <linearGradient id="hg-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fbcfe8"/><stop offset="100%" stopColor="#f9a8d4" stopOpacity=".6"/></linearGradient>
         <filter id="hg-glow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
@@ -257,7 +257,7 @@ const OV = {
 
   /* ──── SCARVES ──── */
   hero_scarf: (sz) => (
-    <svg key="sc" style={{ position:'absolute', top:sz*.68, left:-sz*.14, width:sz*1.28, height:sz*.55, pointerEvents:'none', overflow:'visible', zIndex:4 }} viewBox="0 0 128 55">
+    <svg key="sc" style={{ position:'absolute', top:sz*.46, left:sz*.04, width:sz*.92, height:sz*.39, pointerEvents:'none', overflow:'visible', zIndex:4 }} viewBox="0 0 128 55">
       <defs><linearGradient id="sc-g2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#EF4444"/><stop offset="100%" stopColor="#F97316"/></linearGradient></defs>
       <path d="M20 9 Q64 0 108 9 Q112 28 64 32 Q16 28 20 9 Z" fill="url(#sc-g2)"/>
       <path d="M24 14 Q64 6 104 14" fill="none" stroke="white" strokeWidth="1.5" opacity=".2"/>
@@ -270,7 +270,7 @@ const OV = {
   ),
 
   bow_tie: (sz) => (
-    <svg key="bt" style={{ position:'absolute', top:sz*.70, left:sz*.06, width:sz*.88, height:sz*.36, pointerEvents:'none', overflow:'visible', zIndex:4 }} viewBox="0 0 88 36">
+    <svg key="bt" style={{ position:'absolute', top:sz*.48, left:sz*.17, width:sz*.66, height:sz*.27, pointerEvents:'none', overflow:'visible', zIndex:4 }} viewBox="0 0 88 36">
       <defs>
         <radialGradient id="bt-gl" cx="50%" cy="50%" r="70%"><stop offset="0%" stopColor="#F9A8D4"/><stop offset="100%" stopColor="#DB2777"/></radialGradient>
         <filter id="bt-sh"><feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#831843" floodOpacity=".3"/></filter>
@@ -286,7 +286,7 @@ const OV = {
   ),
 
   medal: (sz) => (
-    <svg key="med" style={{ position:'absolute', top:sz*.58, left:sz*.28, width:sz*.44, height:sz*.58, pointerEvents:'none', overflow:'visible', zIndex:4 }} viewBox="0 0 44 58">
+    <svg key="med" style={{ position:'absolute', top:sz*.44, left:sz*.38, width:sz*.32, height:sz*.42, pointerEvents:'none', overflow:'visible', zIndex:4 }} viewBox="0 0 44 58">
       <defs>
         <linearGradient id="med-r" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#EF4444"/><stop offset="50%" stopColor="#1D4ED8"/><stop offset="100%" stopColor="#EF4444"/></linearGradient>
         <linearGradient id="med-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#FEF08A"/><stop offset="100%" stopColor="#CA8A04"/></linearGradient>
@@ -302,7 +302,7 @@ const OV = {
 
   /* ──── COMPANIONS (positioned to the RIGHT of avatar) ──── */
   mini_star_pet: (sz) => (
-    <svg key="msp" style={{ position:'absolute', top:sz*.25, left:sz*.82, width:sz*.50, height:sz*.50, pointerEvents:'none', overflow:'visible', zIndex:8, animation:'hsFloat 2.2s ease-in-out infinite' }} viewBox="0 0 50 50">
+    <svg key="msp" style={{ position:'absolute', top:sz*.62, left:sz*.82, width:sz*.38, height:sz*.38, pointerEvents:'none', overflow:'visible', zIndex:8, animation:'hsFloat 2.2s ease-in-out infinite' }} viewBox="0 0 50 50">
       <defs><filter id="sp-glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
       <polygon points="25,4 29,17 43,17 32,25 36,38 25,30 14,38 18,25 7,17 21,17" fill="#FCD34D" filter="url(#sp-glow)"/>
       <circle cx="20" cy="22" r="2.5" fill="#1F2937"/>
@@ -316,7 +316,7 @@ const OV = {
   ),
 
   baby_cat: (sz) => (
-    <svg key="bc" style={{ position:'absolute', top:sz*.30, left:sz*.80, width:sz*.55, height:sz*.55, pointerEvents:'none', overflow:'visible', zIndex:8, animation:'hsFloat 2.8s ease-in-out infinite' }} viewBox="0 0 55 55">
+    <svg key="bc" style={{ position:'absolute', top:sz*.60, left:sz*.78, width:sz*.42, height:sz*.42, pointerEvents:'none', overflow:'visible', zIndex:8, animation:'hsFloat 2.8s ease-in-out infinite' }} viewBox="0 0 55 55">
       <defs><filter id="cat-sh"><feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity=".2"/></filter></defs>
       <path d="M8 18 L4 4 L18 12 Z" fill="#FB923C" filter="url(#cat-sh)"/>
       <path d="M47 18 L51 4 L37 12 Z" fill="#FB923C" filter="url(#cat-sh)"/>
@@ -339,7 +339,7 @@ const OV = {
   ),
 
   baby_dragon: (sz) => (
-    <svg key="bd" style={{ position:'absolute', top:sz*.15, left:sz*.75, width:sz*.65, height:sz*.65, pointerEvents:'none', overflow:'visible', zIndex:8, animation:'hsFloat 3.2s ease-in-out infinite' }} viewBox="0 0 65 65">
+    <svg key="bd" style={{ position:'absolute', top:sz*.55, left:sz*.74, width:sz*.48, height:sz*.48, pointerEvents:'none', overflow:'visible', zIndex:8, animation:'hsFloat 3.2s ease-in-out infinite' }} viewBox="0 0 65 65">
       <defs>
         <linearGradient id="dr-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4ADE80"/><stop offset="100%" stopColor="#15803D"/></linearGradient>
         <filter id="dr-sh"><feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity=".2"/></filter>
@@ -369,7 +369,7 @@ function renderBg(id, sz) {
   const r = sz * 0.65;
   const cx = sz / 2, cy = sz / 2;
   if (id === 'space_bg') return (
-    <svg key="sbg" style={{ position:'absolute', top:-sz*.15, left:-sz*.15, width:sz*1.3, height:sz*1.3, zIndex:0, borderRadius:'50%', overflow:'hidden' }} viewBox="0 0 130 130">
+    <svg key="sbg" style={{ position:'absolute', top:0, left:0, width:sz, height:sz, zIndex:0, borderRadius:14, overflow:'hidden' }} viewBox="0 0 130 130">
       <defs><radialGradient id="sp-bg" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#1E1B4B"/><stop offset="100%" stopColor="#0F0A1A"/></radialGradient></defs>
       <circle cx="65" cy="65" r="65" fill="url(#sp-bg)"/>
       {[[15,20],[40,8],[80,15],[110,30],[20,60],[100,55],[55,100],[30,90],[90,80],[120,70],[65,40],[45,45]].map(([x,y],i)=>(
@@ -382,7 +382,7 @@ function renderBg(id, sz) {
     </svg>
   );
   if (id === 'forest_bg') return (
-    <svg key="fbg" style={{ position:'absolute', top:-sz*.15, left:-sz*.15, width:sz*1.3, height:sz*1.3, zIndex:0, borderRadius:'50%', overflow:'hidden' }} viewBox="0 0 130 130">
+    <svg key="fbg" style={{ position:'absolute', top:0, left:0, width:sz, height:sz, zIndex:0, borderRadius:14, overflow:'hidden' }} viewBox="0 0 130 130">
       <defs><radialGradient id="fo-bg" cx="50%" cy="30%" r="70%"><stop offset="0%" stopColor="#6EE7B7"/><stop offset="60%" stopColor="#059669"/><stop offset="100%" stopColor="#064E3B"/></radialGradient></defs>
       <circle cx="65" cy="65" r="65" fill="url(#fo-bg)"/>
       <polygon points="65,15 85,55 45,55" fill="#065F46" opacity=".7"/>
@@ -395,7 +395,7 @@ function renderBg(id, sz) {
     </svg>
   );
   if (id === 'sunset_bg') return (
-    <svg key="ssbg" style={{ position:'absolute', top:-sz*.15, left:-sz*.15, width:sz*1.3, height:sz*1.3, zIndex:0, borderRadius:'50%', overflow:'hidden' }} viewBox="0 0 130 130">
+    <svg key="ssbg" style={{ position:'absolute', top:0, left:0, width:sz, height:sz, zIndex:0, borderRadius:14, overflow:'hidden' }} viewBox="0 0 130 130">
       <defs>
         <radialGradient id="ss-bg" cx="50%" cy="70%" r="80%"><stop offset="0%" stopColor="#FED7AA"/><stop offset="50%" stopColor="#FB923C"/><stop offset="100%" stopColor="#C2410C"/></radialGradient>
         <radialGradient id="ss-sun" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#FEF08A"/><stop offset="100%" stopColor="#F59E0B"/></radialGradient>
@@ -420,14 +420,19 @@ function HeroPreview({ config = {}, size = 200 }) {
 
   return (
     <div style={{ position:'relative', width:size, height:size, overflow:'visible' }}>
+      {/* Background fills the full square */}
       {equipped.background && renderBg(equipped.background, size)}
-      <div style={{
-        position:'absolute', width:size, height:size, borderRadius:'50%',
-        overflow:'hidden', zIndex:1,
-        boxShadow:'0 12px 50px rgba(0,0,0,.55), 0 0 0 3px rgba(255,255,255,.15)',
-      }}>
-        <img src={url} alt="" style={{ position:'absolute', width:size*1.35, height:size*1.35, top:-size*0.05, left:-size*0.18 }}/>
-      </div>
+
+      {/* Full-body character — NO circle clip, NO overflow:hidden */}
+      <img
+        src={url} alt=""
+        style={{
+          position:'absolute', width:size, height:size, top:0, left:0, zIndex:1,
+          filter:'drop-shadow(0 10px 28px rgba(0,0,0,.5))',
+        }}
+      />
+
+      {/* Accessories layered over full body */}
       {equipped.scarf     && OV[equipped.scarf]?.(size)}
       {equipped.halo      && OV[equipped.halo]?.(size)}
       {equipped.hat       && OV[equipped.hat]?.(size)}
@@ -471,12 +476,18 @@ function ItemCard({ item, isOwned, isEquipped, balance, onBuy, onEquip, onUnequi
         </div>
       )}
 
-      {/* accessory preview on neutral circle */}
-      <div style={{ position:'relative', width:previewSz, height:previewSz, overflow:'visible', flexShrink:0 }}>
-        <div style={{ width:previewSz, height:previewSz, borderRadius:'50%', background:'linear-gradient(135deg,#dbeafe,#c7d2fe)', border:'2px solid #a5b4fc' }}/>
-        {OV[item.id]?.(previewSz)}
-        {item.cat === 'background' && renderBg(item.id, previewSz * 0.9)}
-        {item.cat === 'companion'  && OV[item.id]?.(previewSz * 1.4)}
+      {/* accessory preview — clean emoji tile, no circle */}
+      <div style={{
+        width: previewSz, height: previewSz, flexShrink: 0,
+        background: `linear-gradient(135deg, ${item.bg}, #fff)`,
+        borderRadius: 12,
+        border: `1.5px solid ${item.accent}44`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: Math.round(previewSz * 0.52),
+        boxShadow: isEquipped ? `0 0 0 2px ${item.accent}` : 'none',
+        transition: 'box-shadow .2s',
+      }}>
+        {item.emoji}
       </div>
 
       <div style={{ fontWeight:800, fontSize:'.78rem', color:'#1e293b', textAlign:'center', lineHeight:1.3 }}>
