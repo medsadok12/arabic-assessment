@@ -383,14 +383,13 @@ function loadMvScript() {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   AvatarShop — dashboard card linking to /dashboard/heroes-studio
-   If the student has saved a 3D hero (avatar_url ends with .glb) →
-     show a mini auto-rotating model-viewer preview.
-   Otherwise → fall back to DiceBear 2D avatar.
+   AvatarShop — small trigger card in the dashboard header
+   When a 3D hero is saved: shows the preview image (emoji SVG) — no extra
+   model-viewer here because DashboardHero3D already renders the full 3D hero.
+   Otherwise: falls back to DiceBear 2D avatar.
 ══════════════════════════════════════════════════════════════════════════ */
 export default function AvatarShop({ user, displayName }) {
-  const [cfg,     setCfg]     = useState(null);
-  const [mvReady, setMvReady] = useState(false);
+  const [cfg, setCfg] = useState(null);
 
   const userId    = user?.id ?? null;
   const userAvURL = user?.user_metadata?.avatar_url ?? null;
@@ -398,19 +397,15 @@ export default function AvatarShop({ user, displayName }) {
   useEffect(() => {
     fetch('/api/hero-config')
       .then(r => r.json())
-      .then(d => {
-        setCfg(d);
-        if (d.avatar_url?.endsWith('.glb')) loadMvScript();
-      })
+      .then(d => setCfg(d))
       .catch(() => {});
   }, []);
 
-  const avatarUrl  = cfg?.avatar_url  ?? null;
   const previewUrl = cfg?.preview_url ?? null;
   const equipped   = cfg?.equipped    ?? {};
   const baseSeed   = cfg?.base_seed   ?? null;
   const seed       = baseSeed || userId;
-  const is3D       = avatarUrl?.endsWith?.('.glb');
+  const is3D       = cfg?.avatar_url?.endsWith?.('.glb');
 
   return (
     <Link
@@ -424,8 +419,8 @@ export default function AvatarShop({ user, displayName }) {
         boxShadow:'0 6px 28px rgba(99,102,241,.5)',
         transition:'transform .2s, box-shadow .2s',
         animation:'avFloat 3s ease-in-out infinite',
-        minWidth: is3D ? 120 : 110, textDecoration:'none',
-        overflow:'hidden',
+        minWidth:110, textDecoration:'none',
+        overflow:'visible',
       }}
       onMouseEnter={e => {
         e.currentTarget.style.transform = 'translateY(-3px) scale(1.04)';
@@ -439,28 +434,13 @@ export default function AvatarShop({ user, displayName }) {
       }}
     >
       {/* ── Avatar display ── */}
-      {is3D ? (
-        /* 3D model-viewer mini preview */
-        <div style={{ width: 90, height: 90, borderRadius: 12, overflow: 'hidden', position: 'relative', background: 'rgba(0,0,0,.2)' }}>
-          {!mvReady && previewUrl && (
-            <img
-              src={previewUrl}
-              alt=""
-              style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', zIndex:1 }}
-            />
-          )}
-          <model-viewer
-            src={avatarUrl}
-            poster={previewUrl ?? undefined}
-            auto-rotate=""
-            auto-rotate-delay="0"
-            environment-image="neutral"
-            exposure="1.1"
-            tone-mapping="commerce"
-            onLoad={() => setMvReady(true)}
-            style={{ width:'100%', height:'100%', background:'transparent', '--progress-bar-height':'2px', '--progress-bar-color':'#8b5cf6' }}
-          />
-        </div>
+      {is3D && previewUrl ? (
+        /* Preview image (emoji SVG) — lightweight, no duplicate model-viewer */
+        <img
+          src={previewUrl}
+          alt=""
+          style={{ width:72, height:72, borderRadius:'50%', objectFit:'cover', display:'block' }}
+        />
       ) : (
         /* 2D DiceBear fallback */
         <div style={{ overflow:'visible', position:'relative' }}>

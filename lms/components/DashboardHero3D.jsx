@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
 /* ── Inject model-viewer once ─────────────────────────────────────────── */
@@ -51,9 +51,9 @@ const GREETINGS = [
   - Returns the full companion banner when a GLB is saved
 */
 export default function DashboardHero3D({ displayName, pendingHw, nextSession, isStudent }) {
-  const [cfg,     setCfg]     = useState(null);   // null = loading
-  const [mvReady, setMvReady] = useState(false);
+  const [cfg,      setCfg]      = useState(null);   // null = loading
   const [isMobile, setIsMobile] = useState(false);
+  const mvRef = useRef(null);
 
   useEffect(() => { setIsMobile(window.innerWidth < 640); }, []);
 
@@ -192,40 +192,28 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
         </Link>
       </div>
 
-      {/* ── Right: 3D model ────────────────────────────────────────── */}
+      {/* ── Right: 3D model ─────────────────────────────────────── */}
       <div style={{
         width: isMobile ? 130 : 200,
         flexShrink: 0,
         position: 'relative',
         overflow: 'hidden',
       }}>
-        {/* Poster shown immediately while GLB loads */}
-        {!mvReady && cfg.preview_url && (
-          <div style={{
-            position: 'absolute', inset: 0, zIndex: 2,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: `radial-gradient(circle, ${color}14, transparent 70%)`,
-          }}>
-            <img
-              src={cfg.preview_url}
-              alt={meta.name}
-              style={{
-                width: isMobile ? 80 : 110, height: isMobile ? 80 : 110,
-                borderRadius: '50%', objectFit: 'cover',
-                animation: 'h3dFloat 2.8s ease-in-out infinite',
-              }}
-            />
-          </div>
-        )}
-
+        {/*
+          Use model-viewer's built-in `poster` attribute for loading state —
+          it shows the image automatically and hides it once the GLB is ready.
+          DO NOT use onLoad JSX prop — custom elements use DOM events,
+          not React synthetic events; attach via ref + addEventListener instead.
+        */}
         <model-viewer
+          ref={mvRef}
           src={avatarUrl}
+          poster={cfg.preview_url ?? undefined}
           auto-rotate=""
           auto-rotate-delay="300"
           environment-image="neutral"
           exposure="1.1"
           tone-mapping="commerce"
-          onLoad={() => setMvReady(true)}
           style={{
             width: '100%',
             height: '100%',
