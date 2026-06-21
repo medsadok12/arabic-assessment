@@ -413,8 +413,8 @@ export default function DashboardContent({
         <div className="db-wrap">
 
           {/* ── Header ── */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
-            flexWrap:'wrap', gap:12, marginBottom:8 }}>
+          <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between',
+            flexWrap:'wrap', gap:12, marginBottom:8, overflow:'visible' }}>
             <div>
               <div className="db-hello">أهلاً، {displayName} 👋</div>
               <div className="db-sub" style={{ marginBottom:0 }}>

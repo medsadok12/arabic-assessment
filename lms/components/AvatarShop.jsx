@@ -425,6 +425,14 @@ export default function AvatarShop({ user, displayName }) {
 
   useEffect(() => { if (open) load(); }, [open, load]);
 
+  // Load equipped item on mount so trigger button shows it immediately
+  useEffect(() => {
+    fetch('/api/avatar')
+      .then(r => r.json())
+      .then(av => setEquipped(av.equipped ?? null))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const fn = e => { if (overlayRef.current && !overlayRef.current.contains(e.target)) setOpen(false); };
@@ -486,45 +494,63 @@ export default function AvatarShop({ user, displayName }) {
     } catch {}
   }
 
-  /* ── Trigger (compact card shown in dashboard) ── */
+  /* ── Trigger (avatar card shown in dashboard) ── */
+  const equippedItem = ITEMS.find(i => i.id === equipped);
+  const hatPad = equipped === 'wizard_hat' ? 32
+    : equipped === 'star_halo' ? 24
+    : (equipped === 'graduation_cap' || equipped === 'golden_crown') ? 20
+    : 6;
+
   return (
     <>
       <button
         onClick={() => setOpen(true)}
         style={{
-          display:'flex', alignItems:'center', gap:12,
-          background:'linear-gradient(135deg,#6366f1 0%,#8b5cf6 60%,#a78bfa 100%)',
-          color:'#fff', border:'none', borderRadius:20,
-          padding:'11px 20px 11px 14px', cursor:'pointer',
+          display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+          background:'linear-gradient(160deg,#4f46e5 0%,#7c3aed 55%,#9333ea 100%)',
+          color:'#fff', border:'2px solid rgba(255,255,255,.22)', borderRadius:22,
+          padding:`${hatPad}px 20px 12px`, cursor:'pointer',
           fontFamily:"'Cairo','Tajawal',sans-serif",
-          fontWeight:800, fontSize:'.88rem',
-          boxShadow:'0 4px 22px rgba(99,102,241,.45)',
+          boxShadow:'0 6px 28px rgba(99,102,241,.5)',
           transition:'transform .2s, box-shadow .2s',
           animation:'avFloat 3s ease-in-out infinite',
+          minWidth:110,
+          overflow:'visible',
         }}
         onMouseEnter={e => {
-          e.currentTarget.style.transform='scale(1.05)';
-          e.currentTarget.style.boxShadow='0 6px 30px rgba(99,102,241,.62)';
+          e.currentTarget.style.transform='translateY(-3px) scale(1.04)';
+          e.currentTarget.style.boxShadow='0 10px 36px rgba(99,102,241,.7)';
           e.currentTarget.style.animation='none';
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.transform='scale(1)';
-          e.currentTarget.style.boxShadow='0 4px 22px rgba(99,102,241,.45)';
+          e.currentTarget.style.transform='none';
+          e.currentTarget.style.boxShadow='0 6px 28px rgba(99,102,241,.5)';
           e.currentTarget.style.animation='avFloat 3s ease-in-out infinite';
         }}
       >
-        <div style={{ position:'relative', flexShrink:0 }}>
+        {/* Avatar */}
+        <div style={{ overflow:'visible', position:'relative' }}>
           <AvatarWithAccessory
             name={displayName} avatarURL={avatarURL}
-            equippedId={equipped} size={40}
+            equippedId={equipped} size={72}
           />
         </div>
-        <div style={{ lineHeight:1.3, textAlign:'right' }}>
-          <div style={{ fontSize:'1rem' }}>🛍️ متجر الأفاتار</div>
-          <div style={{ fontSize:'.7rem', opacity:.8 }}>
-            {equipped ? ITEMS.find(i=>i.id===equipped)?.emoji + ' ' + ITEMS.find(i=>i.id===equipped)?.name : 'زيّن شخصيتك'}
-          </div>
+        {/* Label */}
+        <div style={{ fontSize:'.72rem', fontWeight:800, opacity:.9, marginTop:2, whiteSpace:'nowrap' }}>
+          🛍️ متجر الأفاتار
         </div>
+        {/* Equipped item name */}
+        {equippedItem ? (
+          <div style={{
+            fontSize:'.62rem', fontWeight:700,
+            background:'rgba(255,255,255,.2)', borderRadius:30,
+            padding:'2px 8px', whiteSpace:'nowrap',
+          }}>
+            {equippedItem.emoji} {equippedItem.name}
+          </div>
+        ) : (
+          <div style={{ fontSize:'.6rem', opacity:.65 }}>اضغط لزيّن شخصيتك</div>
+        )}
       </button>
 
       {/* ── Modal ── */}
