@@ -20,6 +20,14 @@ const SUBDOMAIN = process.env.NEXT_PUBLIC_RPM_SUBDOMAIN || 'demo';
 
 export default function HeroAvatarCreator({ existingAvatarId, onExported, onClose }) {
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  /* Detect load failure after 8 seconds (DNS error fires onLoad but page is blank) */
+  useEffect(() => {
+    const t = setTimeout(() => { if (!loaded) setFailed(true); }, 8000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const iframeUrl = [
     `https://${SUBDOMAIN}.readyplayer.me/avatar`,
@@ -85,8 +93,8 @@ export default function HeroAvatarCreator({ existingAvatarId, onExported, onClos
         {/* ── Content ── */}
         <div style={{ flex: 1, position: 'relative' }}>
 
-          {/* Loading overlay — sits on top until iframe fires onLoad */}
-          {!loaded && (
+          {/* Loading overlay */}
+          {!loaded && !failed && (
             <div style={{
               position: 'absolute', inset: 0,
               display: 'flex', flexDirection: 'column',
@@ -104,6 +112,54 @@ export default function HeroAvatarCreator({ existingAvatarId, onExported, onClos
               <p style={{ color: '#475569', fontFamily: 'Cairo,sans-serif', marginTop: 6, fontSize: 12 }}>
                 يتطلب اتصال إنترنت جيد
               </p>
+            </div>
+          )}
+
+          {/* Setup instructions — shown if subdomain not configured */}
+          {failed && (
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              background: '#0f172a', zIndex: 1, padding: '24px',
+              fontFamily: 'Cairo,sans-serif', direction: 'rtl',
+            }}>
+              <span style={{ fontSize: 48, marginBottom: 16 }}>⚙️</span>
+              <h3 style={{ color: '#C4B5FD', margin: '0 0 8px', fontSize: 18 }}>
+                إعداد مصمّم الشخصيات مطلوب
+              </h3>
+              <p style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', lineHeight: 1.8, maxWidth: 420, margin: '0 0 24px' }}>
+                يتطلب مصمّم الشخصيات ثلاثي الأبعاد حساباً مجانياً في Ready Player Me.
+                الخطوات بسيطة وتستغرق 5 دقائق فقط:
+              </p>
+              {[
+                ['1', 'سجّل مجاناً في readyplayer.me', 'https://readyplayer.me/signup'],
+                ['2', 'أنشئ Application واحصل على Subdomain خاص', null],
+                ['3', 'أضف في Vercel: NEXT_PUBLIC_RPM_SUBDOMAIN=yoursubdomain', null],
+              ].map(([n, t, link]) => (
+                <div key={n} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 10,
+                  marginBottom: 10, width: '100%', maxWidth: 420,
+                }}>
+                  <span style={{
+                    minWidth: 26, height: 26, borderRadius: '50%',
+                    background: '#3b0764', color: '#a78bfa',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 13, fontWeight: 700, flexShrink: 0,
+                  }}>{n}</span>
+                  <p style={{ margin: 0, color: '#CBD5E1', fontSize: 13, lineHeight: 1.6 }}>
+                    {link ? <a href={link} target="_blank" rel="noreferrer" style={{ color: '#818CF8', textDecoration: 'none' }}>{t} ↗</a> : t}
+                  </p>
+                </div>
+              ))}
+              <button onClick={onClose} style={{
+                marginTop: 20, padding: '10px 28px',
+                background: 'rgba(124,58,237,.2)', border: '1.5px solid rgba(124,58,237,.5)',
+                color: '#C4B5FD', borderRadius: 10, cursor: 'pointer',
+                fontFamily: 'Cairo,sans-serif', fontSize: 14,
+              }}>
+                إغلاق
+              </button>
             </div>
           )}
 
