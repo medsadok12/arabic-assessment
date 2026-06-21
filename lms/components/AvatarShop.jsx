@@ -285,7 +285,23 @@ export function AvatarWithAccessory({ name, avatarURL, equippedId, size = 90 }) 
   );
 }
 
-/* ── ItemCard ────────────────────────────────────────────────────────────── */
+/* ── ItemPreview — neutral silhouette, no initials ───────────────────────── */
+function ItemPreview({ item, size = 70 }) {
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      {/* Neutral face circle — gradient only, no text */}
+      <div style={{
+        width: size, height: size, borderRadius: '50%',
+        background: 'linear-gradient(135deg, #dbeafe 0%, #c7d2fe 100%)',
+        border: '2.5px solid #a5b4fc',
+        boxShadow: 'inset 0 2px 8px rgba(99,102,241,.12)',
+      }}/>
+      {overlay[item.id]?.(size)}
+    </div>
+  );
+}
+
+
 function ItemCard({ item, isOwned, isEquipped, balance, onBuy, onEquip, onUnequip, buying }) {
   const [hov, setHov] = useState(false);
   const canAfford = balance >= item.price;
@@ -339,7 +355,7 @@ function ItemCard({ item, isOwned, isEquipped, balance, onBuy, onEquip, onUnequi
         paddingBottom: pad.bottom,
         overflow:'visible',
       }}>
-        <AvatarWithAccessory name="ط" equippedId={item.id} size={70}/>
+        <ItemPreview item={item} size={70}/>
       </div>
 
       {/* Name */}
