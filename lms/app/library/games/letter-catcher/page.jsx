@@ -973,8 +973,8 @@ export default function LetterCatcherGame() {
                       {allRes && (
                         <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5, flexWrap:'wrap' }}>
                           <span style={{ fontSize:'.8rem', color:'#86efac', fontWeight:700 }}>{'⭐'.repeat(allStars)}{'☆'.repeat(3 - allStars)}</span>
-                          <span style={{ fontSize:'.72rem', background:'rgba(74,222,128,.25)', color:'#86efac', borderRadius:30, padding:'1px 8px', fontWeight:700 }}>✓ {allRes.correct}</span>
-                          <span style={{ fontSize:'.72rem', background:'rgba(252,165,165,.25)', color:'#fca5a5', borderRadius:30, padding:'1px 8px', fontWeight:700 }}>✗ {allRes.wrong}</span>
+                          <span style={{ fontSize:'.76rem', background:'#16a34a', color:'#fff', borderRadius:30, padding:'2px 10px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.25)' }}>✓ {allRes.correct}</span>
+                          <span style={{ fontSize:'.76rem', background:'#dc2626', color:'#fff', borderRadius:30, padding:'2px 10px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.25)' }}>✗ {allRes.wrong}</span>
                         </div>
                       )}
                     </div>
@@ -1025,8 +1025,8 @@ export default function LetterCatcherGame() {
                             {'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}
                           </span>
                           <div style={{ display:'flex', gap:5 }}>
-                            <span style={{ fontSize:'.62rem', background:'rgba(74,222,128,.3)', color:'#d1fae5', borderRadius:20, padding:'1px 7px', fontWeight:700 }}>✓{res.correct}</span>
-                            <span style={{ fontSize:'.62rem', background:'rgba(252,165,165,.3)', color:'#fee2e2', borderRadius:20, padding:'1px 7px', fontWeight:700 }}>✗{res.wrong}</span>
+                            <span style={{ fontSize:'.7rem', background:'#16a34a', color:'#fff', borderRadius:20, padding:'2px 9px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.3)' }}>✓ {res.correct}</span>
+                            <span style={{ fontSize:'.7rem', background:'#dc2626', color:'#fff', borderRadius:20, padding:'2px 9px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.3)' }}>✗ {res.wrong}</span>
                           </div>
                         </>
                       ) : (
