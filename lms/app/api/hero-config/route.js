@@ -18,7 +18,10 @@ export async function GET() {
     ]);
 
     return NextResponse.json({
-      base_seed:  cfg?.base_seed  ?? user.id,
+      base_seed:   cfg?.base_seed   ?? user.id,
+      avatar_url:  cfg?.avatar_url  ?? null,
+      preview_url: cfg?.preview_url ?? null,
+      avatar_id:   cfg?.avatar_id   ?? null,
       equipped: {
         hat:        cfg?.equipped_hat        ?? null,
         glasses:    cfg?.equipped_glasses    ?? null,
@@ -46,6 +49,9 @@ export async function PATCH(req) {
     const up    = { updated_at: new Date().toISOString() };
 
     if ('base_seed'   in body) up.base_seed           = body.base_seed;
+    if ('avatar_url'  in body) up.avatar_url          = body.avatar_url;
+    if ('preview_url' in body) up.preview_url         = body.preview_url;
+    if ('avatar_id'   in body) up.avatar_id           = body.avatar_id;
     if ('hat'         in body) up.equipped_hat        = body.hat;
     if ('glasses'     in body) up.equipped_glasses    = body.glasses;
     if ('scarf'       in body) up.equipped_scarf      = body.scarf;
