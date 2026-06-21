@@ -2558,6 +2558,27 @@ export default function BoggarAdminPage() {
 
                           {/* Actions */}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 7, flexShrink: 0 }}>
+                            {/* View student dashboard — students only */}
+                            {u.role === 'student' && (
+                              <a
+                                href={`/bogga/student-view/${u.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 5,
+                                  background: 'linear-gradient(135deg,#eff6ff,#eef2ff)',
+                                  color: '#1d4ed8',
+                                  border: '1.5px solid #bfdbfe', borderRadius: 9,
+                                  padding: '6px 12px', fontWeight: 700, fontSize: '.8rem',
+                                  textDecoration: 'none', whiteSpace: 'nowrap',
+                                  transition: 'background .18s',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background='#dbeafe'}
+                                onMouseLeave={e => e.currentTarget.style.background='linear-gradient(135deg,#eff6ff,#eef2ff)'}
+                              >
+                                👁️ {lang === 'ar' ? 'عرض لوحته' : 'View Dashboard'}
+                              </a>
+                            )}
                             <button
                               onClick={() => handleResetPassword(u.id)}
                               disabled={resettingPwdId === u.id}
