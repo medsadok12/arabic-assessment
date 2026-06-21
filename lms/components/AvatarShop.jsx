@@ -15,15 +15,9 @@ export function dicebearUrl(seed) {
   return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf${DB_ADV}`;
 }
 
-/* open-peeps — FULL BODY (head + torso + legs + feet), transparent background
- * Only confirmed-valid open-peeps v7 options used here. */
+/* lorelei — stable portrait style (head + hair + shoulders), transparent bg */
 export function dicebearUrlFull(seed) {
-  return (
-    `https://api.dicebear.com/7.x/open-peeps/svg?seed=${encodeURIComponent(seed)}` +
-    `&face[]=smile&face[]=smileLOL&face[]=grin&face[]=heroe&face[]=lovingGaze&face[]=surprised&face[]=solemn` +
-    `&body[]=shirt&body[]=tShirt&body[]=hoodie&body[]=dress&body[]=jacket&body[]=blazer` +
-    `&skinColor[]=apricot&skinColor[]=brown&skinColor[]=tanned&skinColor[]=light`
-  );
+  return `https://api.dicebear.com/7.x/lorelei/svg?seed=${encodeURIComponent(seed)}`;
 }
 
 /* ── Inject animations once ─────────────────────────────────────────────── */
