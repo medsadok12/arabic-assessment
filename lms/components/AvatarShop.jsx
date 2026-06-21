@@ -371,38 +371,46 @@ export function AvatarWithAccessory({ name, avatarURL, equipped = {}, equippedId
   );
 }
 
+/* ── model-viewer script loader (shared with heroes-studio) ─────────────── */
+function loadMvScript() {
+  if (typeof document === 'undefined') return;
+  if (document.querySelector('script[data-mv]')) return;
+  const s = document.createElement('script');
+  s.type = 'module';
+  s.src = 'https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js';
+  s.dataset.mv = '1';
+  document.head.appendChild(s);
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
-   AvatarShop — trigger card in the student dashboard
-   Clicking navigates to /dashboard/heroes-studio
+   AvatarShop — dashboard card linking to /dashboard/heroes-studio
+   If the student has saved a 3D hero (avatar_url ends with .glb) →
+     show a mini auto-rotating model-viewer preview.
+   Otherwise → fall back to DiceBear 2D avatar.
 ══════════════════════════════════════════════════════════════════════════ */
 export default function AvatarShop({ user, displayName }) {
-  const [equipped, setEquipped] = useState({});
-  const [baseSeed, setBaseSeed] = useState(null);
-  const avatarURL = user?.user_metadata?.avatar_url ?? null;
+  const [cfg,     setCfg]     = useState(null);
+  const [mvReady, setMvReady] = useState(false);
+
   const userId    = user?.id ?? null;
+  const userAvURL = user?.user_metadata?.avatar_url ?? null;
 
   useEffect(() => {
     fetch('/api/hero-config')
       .then(r => r.json())
       .then(d => {
-        setEquipped(d.equipped ?? {});
-        setBaseSeed(d.base_seed ?? null);
+        setCfg(d);
+        if (d.avatar_url?.endsWith('.glb')) loadMvScript();
       })
       .catch(() => {});
   }, []);
 
+  const avatarUrl  = cfg?.avatar_url  ?? null;
+  const previewUrl = cfg?.preview_url ?? null;
+  const equipped   = cfg?.equipped    ?? {};
+  const baseSeed   = cfg?.base_seed   ?? null;
   const seed       = baseSeed || userId;
-  const hasEquipped = Object.values(equipped).some(Boolean);
-
-  /* Extra top padding so hat accessories don't get clipped */
-  const topPad =
-    equipped.hat   === 'wizard_hat'      ? 34 :
-    equipped.halo  === 'rainbow_halo'    ? 28 :
-    equipped.halo  === 'fire_crown'      ? 26 :
-    equipped.halo  === 'star_halo'       ? 24 :
-    equipped.hat   === 'graduation_cap'  ? 16 :
-    equipped.hat   === 'golden_crown'    ? 16 :
-    6;
+  const is3D       = avatarUrl?.endsWith?.('.glb');
 
   return (
     <Link
@@ -411,13 +419,13 @@ export default function AvatarShop({ user, displayName }) {
         display:'flex', flexDirection:'column', alignItems:'center', gap:4,
         background:'linear-gradient(160deg,#4f46e5 0%,#7c3aed 55%,#9333ea 100%)',
         color:'#fff', border:'2px solid rgba(255,255,255,.22)', borderRadius:22,
-        padding:`${topPad}px 20px 12px`, cursor:'pointer',
+        padding:'8px 16px 12px', cursor:'pointer',
         fontFamily:"'Cairo','Tajawal',sans-serif",
         boxShadow:'0 6px 28px rgba(99,102,241,.5)',
         transition:'transform .2s, box-shadow .2s',
         animation:'avFloat 3s ease-in-out infinite',
-        minWidth:110, textDecoration:'none',
-        overflow:'visible',
+        minWidth: is3D ? 120 : 110, textDecoration:'none',
+        overflow:'hidden',
       }}
       onMouseEnter={e => {
         e.currentTarget.style.transform = 'translateY(-3px) scale(1.04)';
@@ -430,22 +438,49 @@ export default function AvatarShop({ user, displayName }) {
         e.currentTarget.style.animation = 'avFloat 3s ease-in-out infinite';
       }}
     >
-      <div style={{ overflow:'visible', position:'relative' }}>
-        <AvatarWithAccessory
-          name={displayName} avatarURL={avatarURL}
-          equipped={equipped} size={72} seed={seed}
-        />
-      </div>
-      <div style={{ fontSize:'.72rem', fontWeight:800, opacity:.9, marginTop:2, whiteSpace:'nowrap' }}>
+      {/* ── Avatar display ── */}
+      {is3D ? (
+        /* 3D model-viewer mini preview */
+        <div style={{ width: 90, height: 90, borderRadius: 12, overflow: 'hidden', position: 'relative', background: 'rgba(0,0,0,.2)' }}>
+          {!mvReady && previewUrl && (
+            <img
+              src={previewUrl}
+              alt=""
+              style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', zIndex:1 }}
+            />
+          )}
+          <model-viewer
+            src={avatarUrl}
+            poster={previewUrl ?? undefined}
+            auto-rotate=""
+            auto-rotate-delay="0"
+            environment-image="neutral"
+            exposure="1.1"
+            tone-mapping="commerce"
+            onLoad={() => setMvReady(true)}
+            style={{ width:'100%', height:'100%', background:'transparent', '--progress-bar-height':'2px', '--progress-bar-color':'#8b5cf6' }}
+          />
+        </div>
+      ) : (
+        /* 2D DiceBear fallback */
+        <div style={{ overflow:'visible', position:'relative' }}>
+          <AvatarWithAccessory
+            name={displayName} avatarURL={userAvURL}
+            equipped={equipped} size={72} seed={seed}
+          />
+        </div>
+      )}
+
+      <div style={{ fontSize:'.72rem', fontWeight:800, opacity:.9, marginTop:4, whiteSpace:'nowrap' }}>
         🎨 استوديو الأبطال
       </div>
-      {hasEquipped ? (
+      {is3D ? (
         <div style={{
           fontSize:'.62rem', fontWeight:700,
           background:'rgba(255,255,255,.2)', borderRadius:30,
           padding:'2px 8px', whiteSpace:'nowrap',
         }}>
-          ✨ مزيّن
+          ✨ بطل 3D
         </div>
       ) : (
         <div style={{ fontSize:'.6rem', opacity:.65 }}>اضغط لزيّن شخصيتك</div>
