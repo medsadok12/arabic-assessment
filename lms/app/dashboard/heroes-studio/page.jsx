@@ -637,7 +637,7 @@ export default function HeroesStudio() {
   const charName   = CHARACTERS.find(c => c.seed === config.base_seed)?.name ?? 'بطلي';
 
   /* ─── PREVIEW PANEL ─── */
-  const previewSize = mobile ? 160 : 220;
+  const previewSize = mobile ? 240 : 340;
 
   const panelLeft = (
     <div style={{
@@ -646,7 +646,7 @@ export default function HeroesStudio() {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: mobile ? '28px 20px' : '40px 30px',
       position: 'relative', overflow: 'hidden',
-      minHeight: mobile ? 320 : 'auto',
+      minHeight: mobile ? 480 : 'auto',
     }}>
       {/* Animated background particles */}
       {[...Array(12)].map((_,i) => (
@@ -773,11 +773,11 @@ export default function HeroesStudio() {
                   animation: isActive ? 'hsBounce .4s ease' : 'none',
                 }}
               >
-                <div style={{ width:52, height:64, borderRadius:10, overflow:'hidden', border:`2px solid ${isActive ? 'rgba(255,255,255,.5)' : '#e2e8f0'}`, background: isActive ? 'rgba(0,0,0,.15)' : '#f1f5f9', position:'relative' }}>
+                <div style={{ width:60, height:80, borderRadius:10, overflow:'hidden', border:`2px solid ${isActive ? 'rgba(255,255,255,.5)' : '#e2e8f0'}`, background: isActive ? 'rgba(0,0,0,.15)' : '#f1f5f9', position:'relative' }}>
                   <img
                     src={dicebearUrlFull(char.seed)}
                     alt={char.name}
-                    style={{ width:52, height:64, objectFit:'contain' }}
+                    style={{ width:60, height:80, objectFit:'contain' }}
                   />
                 </div>
                 <div style={{ fontSize:'.65rem', fontWeight:800, color: isActive ? '#fff' : '#374151', whiteSpace:'nowrap' }}>

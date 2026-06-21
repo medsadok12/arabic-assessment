@@ -15,14 +15,13 @@ export function dicebearUrl(seed) {
   return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf${DB_ADV}`;
 }
 
-/* open-peeps — FULL BODY (head + torso + legs + feet), transparent background */
+/* open-peeps — FULL BODY (head + torso + legs + feet), transparent background
+ * Only confirmed-valid open-peeps v7 options used here. */
 export function dicebearUrlFull(seed) {
   return (
     `https://api.dicebear.com/7.x/open-peeps/svg?seed=${encodeURIComponent(seed)}` +
-    `&face[]=smile&face[]=smileLOL&face[]=cheeky&face[]=eatingHappy&face[]=heroe&face[]=lovingGaze&face[]=driven` +
-    `&body[]=shirt&body[]=tShirt&body[]=hoodie&body[]=dress&body[]=dressShirt&body[]=jacket` +
-    `&clothingColor[]=ff6b6b&clothingColor[]=4ecdc4&clothingColor[]=ffe66d&clothingColor[]=a8e6cf` +
-    `&clothingColor[]=dda0dd&clothingColor[]=87ceeb&clothingColor[]=f97316&clothingColor[]=22c55e` +
+    `&face[]=smile&face[]=smileLOL&face[]=grin&face[]=heroe&face[]=lovingGaze&face[]=surprised&face[]=solemn` +
+    `&body[]=shirt&body[]=tShirt&body[]=hoodie&body[]=dress&body[]=jacket&body[]=blazer` +
     `&skinColor[]=apricot&skinColor[]=brown&skinColor[]=tanned&skinColor[]=light`
   );
 }
