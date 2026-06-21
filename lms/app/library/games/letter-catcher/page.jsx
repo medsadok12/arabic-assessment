@@ -656,8 +656,10 @@ export default function LetterCatcherGame() {
   const [totalPoints,   setTotalPoints]   = useState(0);
   const [ptPopupKey,    setPtPopupKey]    = useState(0);
   const [ptPopupActive, setPtPopupActive] = useState(false);
+  const [catResults,    setCatResults]    = useState({});  // category → {correct,wrong,total}
+  const [currentUser,   setCurrentUser]   = useState(null);
 
-  /* ── detect teacher/admin role ── */
+  /* ── detect teacher/admin role + load user + load past results ── */
   useEffect(() => {
     fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
     import('../../../../lib/supabase').then(({ createClient }) => {
@@ -665,6 +667,17 @@ export default function LetterCatcherGame() {
       supabase.auth.getUser().then(({ data: { user } }) => {
         const role = user?.user_metadata?.role ?? '';
         setIsTeacher(['super_admin', 'admin', 'teacher'].includes(role));
+        if (user) {
+          setCurrentUser(user);
+          fetch('/api/game-results?game=letter_catcher')
+            .then(r => r.json())
+            .then(j => {
+              const map = {};
+              (j.results ?? []).forEach(r => { map[r.category] = r; });
+              setCatResults(map);
+            })
+            .catch(() => {});
+        }
       }).catch(() => {});
     }).catch(() => {});
   }, []);
@@ -715,6 +728,39 @@ export default function LetterCatcherGame() {
   useEffect(() => { loadWords(); }, [loadWords]);
   useEffect(() => { loadGameWords(); }, [loadGameWords]);
   useEffect(() => { loadCatMeta(); }, [loadCatMeta]);
+
+  /* ── save result when game finishes ── */
+  const savedResultRef = useRef(false);
+  useEffect(() => {
+    if (phase !== 'finished' || !currentUser || savedResultRef.current) return;
+    savedResultRef.current = true;
+    const wrong    = queue.length - score;
+    const catKey   = selectedCategory ?? '__all__';
+    fetch('/api/game-results', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        game_id:  'letter_catcher',
+        category: catKey,
+        correct:  score,
+        wrong,
+        total:    queue.length,
+      }),
+    })
+      .then(() => fetch('/api/game-results?game=letter_catcher'))
+      .then(r  => r.json())
+      .then(j  => {
+        const map = {};
+        (j.results ?? []).forEach(r => { map[r.category] = r; });
+        setCatResults(map);
+      })
+      .catch(() => {});
+  }, [phase, currentUser, score, queue.length, selectedCategory]);
+
+  /* reset save guard when a new game starts */
+  useEffect(() => {
+    if (phase === 'playing') savedResultRef.current = false;
+  }, [phase]);
 
   /* ── build round queue ── */
   const buildQueue = useCallback((words, count, optCount) => {
@@ -904,24 +950,38 @@ export default function LetterCatcherGame() {
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
 
               {/* play-all card */}
-              <div
-                className="lc-cat"
-                style={{
-                  background:'rgba(255,255,255,.18)', backdropFilter:'blur(10px)',
-                  border:'2px solid rgba(255,255,255,.3)', borderRadius:18,
-                  padding:'16px 20px', display:'flex', alignItems:'center', gap:14,
-                  boxShadow:'0 6px 22px rgba(0,0,0,.2)',
-                  animation:'lcCatIn .4s cubic-bezier(.34,1.56,.64,1) both',
-                }}
-                onClick={() => startGame(null)}
-              >
-                <span style={{ fontSize:'2.2rem', lineHeight:1, flexShrink:0 }}>🌟</span>
-                <div style={{ flex:1, textAlign:'right' }}>
-                  <div style={{ fontSize:'1.08rem', fontWeight:800, color:'#fff', textShadow:'0 1px 6px rgba(0,0,0,.25)' }}>العب الكل</div>
-                  <div style={{ fontSize:'.75rem', color:'rgba(255,255,255,.75)', marginTop:2 }}>{gameWords.length} كلمة من كل المجموعات</div>
-                </div>
-                <span style={{ fontSize:'1.4rem', color:'rgba(255,255,255,.65)', flexShrink:0 }}>←</span>
-              </div>
+              {(() => {
+                const allRes = catResults['__all__'];
+                const allPct = allRes ? Math.round((allRes.correct / allRes.total) * 100) : null;
+                const allStars = allPct === null ? 0 : allPct >= 80 ? 3 : allPct >= 50 ? 2 : 1;
+                return (
+                  <div
+                    className="lc-cat"
+                    style={{
+                      background:'rgba(255,255,255,.18)', backdropFilter:'blur(10px)',
+                      border:'2px solid rgba(255,255,255,.3)', borderRadius:18,
+                      padding:'16px 20px', display:'flex', alignItems:'center', gap:14,
+                      boxShadow:'0 6px 22px rgba(0,0,0,.2)',
+                      animation:'lcCatIn .4s cubic-bezier(.34,1.56,.64,1) both',
+                    }}
+                    onClick={() => startGame(null)}
+                  >
+                    <span style={{ fontSize:'2.2rem', lineHeight:1, flexShrink:0 }}>🌟</span>
+                    <div style={{ flex:1, textAlign:'right' }}>
+                      <div style={{ fontSize:'1.08rem', fontWeight:800, color:'#fff', textShadow:'0 1px 6px rgba(0,0,0,.25)' }}>العب الكل</div>
+                      <div style={{ fontSize:'.75rem', color:'rgba(255,255,255,.75)', marginTop:2 }}>{gameWords.length} كلمة من كل المجموعات</div>
+                      {allRes && (
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5, flexWrap:'wrap' }}>
+                          <span style={{ fontSize:'.8rem', color:'#86efac', fontWeight:700 }}>{'⭐'.repeat(allStars)}{'☆'.repeat(3 - allStars)}</span>
+                          <span style={{ fontSize:'.72rem', background:'rgba(74,222,128,.25)', color:'#86efac', borderRadius:30, padding:'1px 8px', fontWeight:700 }}>✓ {allRes.correct}</span>
+                          <span style={{ fontSize:'.72rem', background:'rgba(252,165,165,.25)', color:'#fca5a5', borderRadius:30, padding:'1px 8px', fontWeight:700 }}>✗ {allRes.wrong}</span>
+                        </div>
+                      )}
+                    </div>
+                    <span style={{ fontSize:'1.4rem', color:'rgba(255,255,255,.65)', flexShrink:0 }}>←</span>
+                  </div>
+                );
+              })()}
 
               {/* category circles */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:14 }}>
@@ -930,6 +990,9 @@ export default function LetterCatcherGame() {
                   const custom  = catMeta[cat];
                   const bgGrad  = custom?.gradient || cs.grad;
                   const count   = gameWords.filter(w => w.category === cat).length;
+                  const res     = catResults[cat];
+                  const pct     = res ? Math.round((res.correct / res.total) * 100) : null;
+                  const stars   = pct === null ? 0 : pct >= 80 ? 3 : pct >= 50 ? 2 : 1;
                   return (
                     <div
                       key={cat}
@@ -937,27 +1000,40 @@ export default function LetterCatcherGame() {
                       style={{
                         background: bgGrad,
                         borderRadius: 22,
-                        padding: '22px 8px 18px',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                        padding: '18px 8px 14px',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
                         boxShadow: '0 8px 28px rgba(0,0,0,.26)',
                         animation: `lcCatIn .45s ${(idx + 1) * 0.07}s cubic-bezier(.34,1.56,.64,1) both`,
+                        position: 'relative',
                       }}
                       onClick={() => startGame(cat)}
                     >
                       {custom?.image_url
-                        ? <img src={custom.image_url} style={{ width:64, height:64, borderRadius:14, objectFit:'cover', boxShadow:'0 2px 8px rgba(0,0,0,.22)' }} />
-                        : <span style={{ fontSize:'2.8rem', lineHeight:1 }}>{custom?.emoji || cs.emoji}</span>
+                        ? <img src={custom.image_url} style={{ width:56, height:56, borderRadius:14, objectFit:'cover', boxShadow:'0 2px 8px rgba(0,0,0,.22)' }} />
+                        : <span style={{ fontSize:'2.4rem', lineHeight:1 }}>{custom?.emoji || cs.emoji}</span>
                       }
                       <span style={{
-                        fontSize:'.82rem', fontWeight:800, color:'#fff',
+                        fontSize:'.78rem', fontWeight:800, color:'#fff',
                         textShadow:'0 1px 4px rgba(0,0,0,.3)', lineHeight:1.3,
                         textAlign:'center', padding:'0 4px',
                       }}>
                         {cat}
                       </span>
-                      <span style={{ fontSize:'.68rem', color:'rgba(255,255,255,.82)', fontWeight:600 }}>
-                        {count} كلمة
-                      </span>
+                      {res ? (
+                        <>
+                          <span style={{ fontSize:'.72rem', letterSpacing:1, color:'rgba(255,255,255,.95)' }}>
+                            {'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}
+                          </span>
+                          <div style={{ display:'flex', gap:5 }}>
+                            <span style={{ fontSize:'.62rem', background:'rgba(74,222,128,.3)', color:'#d1fae5', borderRadius:20, padding:'1px 7px', fontWeight:700 }}>✓{res.correct}</span>
+                            <span style={{ fontSize:'.62rem', background:'rgba(252,165,165,.3)', color:'#fee2e2', borderRadius:20, padding:'1px 7px', fontWeight:700 }}>✗{res.wrong}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <span style={{ fontSize:'.65rem', color:'rgba(255,255,255,.7)', fontWeight:600 }}>
+                          {count} كلمة
+                        </span>
+                      )}
                     </div>
                   );
                 })}
