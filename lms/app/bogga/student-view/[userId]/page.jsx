@@ -226,19 +226,15 @@ export default async function StudentViewPage({ params }) {
           display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap',
           background: 'linear-gradient(135deg,#f0f6ff,#fff)',
         }}>
-          {avatarURL ? (
-            <img src={avatarURL} alt={displayName} style={{
-              width: 72, height: 72, borderRadius: '50%', objectFit: 'cover',
-              border: '3px solid #bfdbfe', flexShrink: 0,
-            }}/>
-          ) : (
-            <div style={{
-              width: 72, height: 72, borderRadius: '50%', flexShrink: 0,
-              background: 'linear-gradient(135deg,#185FA5,#1e88e5)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1.6rem', fontWeight: 900, color: '#fff',
-            }}>{initials}</div>
-          )}
+          <div style={{ position:'relative', width:72, height:72, borderRadius:'50%', flexShrink:0, overflow:'hidden', border:'3px solid #bfdbfe', background:'#dbeafe' }}>
+            <img
+              src={avatarURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(userId)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`}
+              alt={displayName}
+              style={avatarURL ? { width:72, height:72, objectFit:'cover', display:'block' } : {
+                position:'absolute', width:108, height:108, top:-5, left:-18,
+              }}
+            />
+          </div>
           <div style={{ flex: 1, minWidth: 180 }}>
             <div style={{ fontWeight: 900, fontSize: '1.25rem', color: '#1e293b', marginBottom: 4 }}>
               {displayName}

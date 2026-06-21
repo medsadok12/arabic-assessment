@@ -25,7 +25,7 @@ if (typeof document !== 'undefined' && !document.getElementById('av-shop-anim'))
 const overlay = {
 
   star_halo: (sz) => (
-    <svg key="sh" style={{ position:'absolute', top:-sz*.42, left:-sz*.12,
+    <svg key="sh" style={{ position:'absolute', top:-sz*.30, left:-sz*.12,
         width:sz*1.24, height:sz*.50, pointerEvents:'none', overflow:'visible' }}
       viewBox="0 0 124 50">
       <defs>
@@ -51,7 +51,7 @@ const overlay = {
   ),
 
   golden_crown: (sz) => (
-    <svg key="gc" style={{ position:'absolute', top:-sz*.31, left:-sz*.06,
+    <svg key="gc" style={{ position:'absolute', top:-sz*.16, left:-sz*.06,
         width:sz*1.12, height:sz*.54, pointerEvents:'none', overflow:'visible' }}
       viewBox="0 0 112 54">
       <defs>
@@ -84,7 +84,7 @@ const overlay = {
   ),
 
   graduation_cap: (sz) => (
-    <svg key="grad" style={{ position:'absolute', top:-sz*.31, left:-sz*.11,
+    <svg key="grad" style={{ position:'absolute', top:-sz*.16, left:-sz*.11,
         width:sz*1.22, height:sz*.60, pointerEvents:'none', overflow:'visible' }}
       viewBox="0 0 122 60">
       <defs>
@@ -117,7 +117,7 @@ const overlay = {
   ),
 
   wizard_hat: (sz) => (
-    <svg key="wiz" style={{ position:'absolute', top:-sz*.60, left:-sz*.13,
+    <svg key="wiz" style={{ position:'absolute', top:-sz*.45, left:-sz*.13,
         width:sz*1.26, height:sz*.84, pointerEvents:'none', overflow:'visible' }}
       viewBox="0 0 126 84">
       <defs>
@@ -151,7 +151,7 @@ const overlay = {
   ),
 
   smart_glasses: (sz) => (
-    <svg key="sg" style={{ position:'absolute', top:sz*.30, left:-sz*.07,
+    <svg key="sg" style={{ position:'absolute', top:sz*.33, left:-sz*.07,
         width:sz*1.14, height:sz*.42, pointerEvents:'none', overflow:'visible' }}
       viewBox="0 0 114 42">
       <defs>
@@ -182,7 +182,7 @@ const overlay = {
   ),
 
   hero_scarf: (sz) => (
-    <svg key="sc" style={{ position:'absolute', top:sz*.77, left:-sz*.14,
+    <svg key="sc" style={{ position:'absolute', top:sz*.68, left:-sz*.14,
         width:sz*1.28, height:sz*.55, pointerEvents:'none', overflow:'visible' }}
       viewBox="0 0 128 55">
       <defs>
@@ -257,29 +257,39 @@ const ITEM_PAD = {
 };
 
 /* ── AvatarWithAccessory ─────────────────────────────────────────────────── */
-export function AvatarWithAccessory({ name, avatarURL, equippedId, size = 90 }) {
-  const initials = (name ?? '?')
-    .split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
-  const item = ITEMS.find(i => i.id === equippedId);
+export function AvatarWithAccessory({ name, avatarURL, equippedId, size = 90, seed }) {
+  const item      = ITEMS.find(i => i.id === equippedId);
+  const avatarSeed = seed || name || 'student';
+  const dicebearUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(avatarSeed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
 
   return (
-    <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
-      {avatarURL ? (
-        <img src={avatarURL} alt="" style={{
-          width:size, height:size, borderRadius:'50%', objectFit:'cover',
-        }}/>
-      ) : (
-        <div style={{
-          width:size, height:size, borderRadius:'50%',
-          background:'linear-gradient(135deg,#185FA5,#1e88e5)',
-          display:'flex', alignItems:'center', justifyContent:'center',
-          fontSize:Math.round(size*.35), fontWeight:800, color:'#fff',
-          boxShadow:'0 4px 16px rgba(24,95,165,.35)',
-          userSelect:'none',
-        }}>
-          {initials}
-        </div>
-      )}
+    <div style={{ position:'relative', width:size, height:size, flexShrink:0, overflow:'visible' }}>
+      {/* Circle-clipped avatar */}
+      <div style={{
+        position:'relative', width:size, height:size,
+        borderRadius:'50%', overflow:'hidden',
+        background:'linear-gradient(135deg,#dbeafe,#ede9fe)',
+        boxShadow:`0 3px 14px rgba(24,95,165,.28)`,
+      }}>
+        {avatarURL ? (
+          <img src={avatarURL} alt="" style={{
+            width:size, height:size, objectFit:'cover', display:'block',
+          }}/>
+        ) : (
+          <img
+            src={dicebearUrl}
+            alt=""
+            style={{
+              position:'absolute',
+              width: size * 1.5,
+              height: size * 1.5,
+              top: -size * 0.07,
+              left: -size * 0.25,
+            }}
+          />
+        )}
+      </div>
+      {/* Accessories rendered OUTSIDE the clip div so they extend beyond the circle */}
       {item && overlay[item.id]?.(size)}
     </div>
   );
@@ -409,6 +419,7 @@ export default function AvatarShop({ user, displayName }) {
   const [toast,   setToast]   = useState(null);
   const overlayRef = useRef(null);
   const avatarURL  = user?.user_metadata?.avatar_url ?? null;
+  const userId     = user?.id ?? null;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -532,7 +543,7 @@ export default function AvatarShop({ user, displayName }) {
         <div style={{ overflow:'visible', position:'relative' }}>
           <AvatarWithAccessory
             name={displayName} avatarURL={avatarURL}
-            equippedId={equipped} size={72}
+            equippedId={equipped} size={72} seed={userId}
           />
         </div>
         {/* Label */}
@@ -641,7 +652,7 @@ export default function AvatarShop({ user, displayName }) {
                   : 8 }}>
                   <AvatarWithAccessory
                     name={displayName} avatarURL={avatarURL}
-                    equippedId={equipped} size={110}
+                    equippedId={equipped} size={110} seed={userId}
                   />
                 </div>
                 <div style={{ fontSize:'.78rem', color:'#64748b', marginTop:4,
