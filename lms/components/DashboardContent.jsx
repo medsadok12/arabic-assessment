@@ -8,6 +8,7 @@ import LifeSceneSimulator from './LifeSceneSimulator';
 import { useLanguage } from '../contexts/LanguageContext';
 import { createClient } from '../lib/supabase';
 import AvatarShop from './AvatarShop';
+import DashboardHero3D from './DashboardHero3D';
 
 function HwToggle({ id, status }) {
   const [st, setSt] = useState(status);
@@ -429,7 +430,12 @@ export default function DashboardContent({
               <AvatarShop user={user} displayName={displayName} />
             )}
           </div>
-          <div style={{ marginBottom:28 }} />
+          <DashboardHero3D
+            displayName={displayName}
+            pendingHw={pendingHw}
+            nextSession={nextSession}
+            isStudent={isStudent}
+          />
 
           {/* ── Stats ── */}
           <div className="db-stats">
