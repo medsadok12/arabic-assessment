@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { dicebearUrl, dicebearUrlFull } from '../../../components/AvatarShop';
 
 /* ═══════════════════════ CSS ANIMATIONS ══════════════════════════════════ */
 if (typeof document !== 'undefined' && !document.getElementById('hs-anim')) {
@@ -17,7 +16,6 @@ if (typeof document !== 'undefined' && !document.getElementById('hs-anim')) {
     @keyframes hsParticle{ 0%{opacity:0;transform:translateY(0) scale(0)} 20%{opacity:1} 100%{opacity:0;transform:translateY(-60px) scale(1.5)} }
     @keyframes hsEquip   { 0%,100%{box-shadow:0 0 0 0 transparent} 40%{box-shadow:0 0 0 8px rgba(139,92,246,.45)} }
     @keyframes hsRainbow { 0%{filter:hue-rotate(0deg)} 100%{filter:hue-rotate(360deg)} }
-    @keyframes hsFlicker { 0%,100%{opacity:1} 50%{opacity:.7} }
   `;
   document.head.appendChild(s);
 }
@@ -50,6 +48,188 @@ const CHARACTERS = [
   { id:'c8', seed:'Dina-star',     name:'نجمة العلم',  color:'#06B6D4', bg:'linear-gradient(135deg,#0e7490,#06b6d4)' },
 ];
 
+/* ═══════════════════════ INLINE CHARACTER SVGs ════════════════════════════
+   viewBox "0 0 340 340" — body centered at x=170
+   Head: cx=170 cy=70 r=48 | Eyes: y≈65 | Collar: y≈112 | Feet: y≈316
+══════════════════════════════════════════════════════════════════════════ */
+const CHAR_CONFIGS = {
+  c1: {
+    skin:'#F5CBA7', skins:'#E8A87C', hair:'#2C1510',
+    body:'#1E40AF', pants:'#1E3A8A', shoes:'#0F172A',
+    hairPath: h => <path d="M122 36 Q170 14 218 36 Q224 72 218 78 Q208 44 170 40 Q132 44 122 78Z" fill={h}/>,
+    extra: () => (<>
+      <ellipse cx="122" cy="140" rx="20" ry="15" fill="#2563EB"/>
+      <ellipse cx="218" cy="140" rx="20" ry="15" fill="#2563EB"/>
+      <rect x="136" y="144" width="68" height="64" rx="5" fill="#2563EB"/>
+      <line x1="170" y1="144" x2="170" y2="208" stroke="#93C5FD" strokeWidth="3"/>
+      <rect x="132" y="178" width="76" height="12" rx="6" fill="#D97706"/>
+      <ellipse cx="170" cy="184" rx="10" ry="10" fill="#FBBF24"/>
+    </>),
+  },
+  c2: {
+    skin:'#FDE8C8', skins:'#E8C9A0', hair:'#DB2777',
+    body:'#F9A8D4', pants:'#FBCFE8', shoes:'#DB2777',
+    hairPath: h => (<>
+      <path d="M120 32 Q170 12 220 32 Q238 124 220 202 Q208 240 200 248 Q184 164 170 148 Q156 164 140 248 Q132 240 120 202 Q102 124 120 32Z" fill={h}/>
+      <path d="M122 28 Q170 10 218 28 Q222 60 218 66 Q206 38 170 34 Q134 38 122 66Z" fill="#EC4899"/>
+    </>),
+    extra: () => (<>
+      <path d="M96 218 Q82 272 76 318 L264 318 Q258 272 244 218Z" fill="#F9A8D4"/>
+      <path d="M108 218 Q98 266 94 310 L246 310 Q242 266 232 218Z" fill="#FBCFE8"/>
+      <path d="M150 36 L156 20 L162 30 L168 14 L174 30 L180 20 L186 36" fill="#FDE68A" stroke="#D97706" strokeWidth="1.5"/>
+      <rect x="148" y="32" width="44" height="8" rx="4" fill="#FDE68A"/>
+    </>),
+  },
+  c3: {
+    skin:'#D4956A', skins:'#B87B50', hair:'#7C3D12',
+    body:'#D97706', pants:'#92400E', shoes:'#78350F',
+    hairPath: h => (<>
+      <path d="M124 30 Q170 10 216 30 Q222 64 216 70 Q204 38 170 34 Q136 38 124 70Z" fill={h}/>
+      <path d="M122 56 Q116 84 118 98" stroke={h} strokeWidth="10" fill="none" strokeLinecap="round"/>
+      <path d="M218 56 Q224 84 222 98" stroke={h} strokeWidth="10" fill="none" strokeLinecap="round"/>
+    </>),
+    extra: () => (<>
+      <rect x="136" y="148" width="68" height="58" rx="5" fill="#B45309"/>
+      <rect x="126" y="154" width="14" height="44" rx="5" fill="#D97706"/>
+      <rect x="200" y="154" width="14" height="44" rx="5" fill="#D97706"/>
+      <rect x="130" y="188" width="80" height="12" rx="6" fill="#92400E"/>
+      <rect x="161" y="184" width="18" height="20" rx="4" fill="#D97706"/>
+    </>),
+  },
+  c4: {
+    skin:'#FDDCB5', skins:'#E8C9A0', hair:'#1F2937',
+    body:'#16A34A', pants:'#14532D', shoes:'#15803D',
+    hairPath: h => <path d="M120 44 Q170 18 220 40 Q226 74 220 80 Q206 52 170 48 Q134 52 122 80 Q116 74 120 44Z" fill={h}/>,
+    extra: () => (<>
+      <path d="M126 134 Q128 128 170 126 Q212 128 214 134 Q220 176 216 222 Q192 218 170 220 Q148 218 124 222 Q120 176 126 134Z" fill="#DCFCE7"/>
+      <path d="M154 130 L154 220" stroke="#16A34A" strokeWidth="24" fill="none"/>
+      <path d="M186 130 L186 220" stroke="#16A34A" strokeWidth="24" fill="none"/>
+      <rect x="149" y="156" width="22" height="18" rx="4" fill="#BBF7D0"/>
+      <rect x="158" y="128" width="4" height="8" rx="2" fill="#DCFCE7"/>
+    </>),
+  },
+  c5: {
+    skin:'#F5CBA7', skins:'#E8A87C', hair:'#D1D5DB',
+    body:'#7C3AED', pants:'#6D28D9', shoes:'#5B21B6',
+    hairPath: h => (<>
+      <path d="M124 44 Q170 18 216 44 Q222 76 216 82 Q204 54 170 50 Q136 54 124 82Z" fill={h}/>
+      <path d="M122 74 Q110 106 106 146" stroke={h} strokeWidth="14" fill="none" strokeLinecap="round"/>
+      <path d="M218 74 Q230 106 234 146" stroke={h} strokeWidth="14" fill="none" strokeLinecap="round"/>
+    </>),
+    extra: () => (<>
+      <path d="M108 218 Q98 270 92 330 L248 330 Q242 270 232 218Z" fill="#7C3AED"/>
+      <path d="M120 218 Q114 264 112 320 Q140 312 170 314 Q200 312 228 320 Q226 264 220 218Z" fill="#6D28D9"/>
+      {[144,162,180,198].map((x,i) => <circle key={i} cx={x} cy={148+i*14} r="5" fill="#FDE68A" opacity=".9"/>)}
+    </>),
+  },
+  c6: {
+    skin:'#FDDCB5', skins:'#E8C9A0', hair:'#F97316',
+    body:'#EF4444', pants:'#DC2626', shoes:'#991B1B',
+    hairPath: h => (<>
+      {[128,140,152,164,176,188,200,212].map((x,i) => (
+        <path key={i} d={`M${x} ${28+i%3*6} Q${x+3} 52 ${x} 70`} stroke={h} strokeWidth="10" fill="none" strokeLinecap="round"/>
+      ))}
+    </>),
+    extra: () => (<>
+      {['#3B82F6','#10B981','#FBBF24','#EC4899','#8B5CF6'].map((c,i) => (
+        <circle key={i} cx={138+i*18} cy={162+(i%2)*12} r="8" fill={c} opacity=".85"/>
+      ))}
+      <ellipse cx="88" cy="196" rx="20" ry="15" fill="#FEF9C3"/>
+      {['#EF4444','#3B82F6','#10B981'].map((c,i) => <circle key={i} cx={82+i*10} cy={196} r="5" fill={c}/>)}
+      <line x1="90" y1="183" x2="76" y2="156" stroke="#92400E" strokeWidth="6" strokeLinecap="round"/>
+    </>),
+  },
+  c7: {
+    skin:'#D4956A', skins:'#B87B50', hair:'#111827',
+    body:'#111827', pants:'#1F2937', shoes:'#0F172A',
+    hairPath: h => (<>
+      <path d="M120 34 Q170 12 220 34 Q226 74 220 80 Q206 48 170 44 Q134 48 120 80Z" fill={h}/>
+      <rect x="126" y="78" width="88" height="48" rx="8" fill="#111827"/>
+      <path d="M128 84 Q170 78 212 84" stroke="#374151" strokeWidth="2" fill="none"/>
+      <ellipse cx="134" cy="84" rx="14" ry="9" fill="#111827"/>
+      <ellipse cx="206" cy="84" rx="14" ry="9" fill="#111827"/>
+    </>),
+    extra: () => (<>
+      <rect x="118" y="52" width="104" height="22" rx="11" fill="#DC2626"/>
+      <path d="M220 58 Q236 63 240 76" stroke="#DC2626" strokeWidth="10" fill="none" strokeLinecap="round"/>
+    </>),
+  },
+  c8: {
+    skin:'#FDDCB5', skins:'#E8C9A0', hair:'#1E293B',
+    body:'#F8FAFC', pants:'#0EA5E9', shoes:'#0284C7',
+    hairPath: h => (<>
+      <path d="M122 42 Q170 16 218 42 Q224 76 218 82 Q204 50 170 46 Q136 50 122 82Z" fill={h}/>
+      <path d="M152 26 Q150 54 150 72" stroke="#06B6D4" strokeWidth="7" fill="none" strokeLinecap="round" opacity=".9"/>
+      <path d="M180 24 Q180 52 180 72" stroke="#22D3EE" strokeWidth="7" fill="none" strokeLinecap="round" opacity=".9"/>
+    </>),
+    extra: () => (<>
+      <path d="M106 134 Q118 128 170 126 Q222 128 234 134 Q242 178 238 224 Q202 220 170 222 Q138 220 102 224 Q98 178 106 134Z" fill="#F8FAFC"/>
+      <line x1="170" y1="134" x2="170" y2="224" stroke="#E2E8F0" strokeWidth="2"/>
+      {[148,162,176,190].map((x,i) => <circle key={i} cx={x} cy={182+i*10} r="3" fill="#0EA5E9"/>)}
+      {[[136,154],[202,148],[128,188],[212,174]].map(([x,y],i) => (
+        <polygon key={i}
+          points={`${x},${y-7} ${x+2},${y-2} ${x+7},${y} ${x+2},${y+2} ${x},${y+7} ${x-2},${y+2} ${x-7},${y} ${x-2},${y-2}`}
+          fill="#F59E0B" opacity=".8"/>
+      ))}
+    </>),
+  },
+};
+
+/* Renders a full-body cartoon character as inline SVG (no external requests) */
+function CharacterSVG({ charId, width, height }) {
+  const C = CHAR_CONFIGS[charId] || CHAR_CONFIGS.c1;
+  const { skin, skins, hair, body, pants, shoes, hairPath, extra } = C;
+  return (
+    <svg viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg"
+      width={width} height={height} style={{ display:'block', overflow:'visible' }}>
+      {/* Shoes */}
+      <ellipse cx="148" cy="316" rx="30" ry="13" fill={shoes}/>
+      <ellipse cx="192" cy="316" rx="30" ry="13" fill={shoes}/>
+      {/* Legs */}
+      <rect x="134" y="216" width="30" height="102" rx="15" fill={pants}/>
+      <rect x="176" y="216" width="30" height="102" rx="15" fill={pants}/>
+      {/* Body torso */}
+      <path d="M112 220 Q106 164 122 132 Q170 122 218 132 Q234 164 228 220Z" fill={body}/>
+      {/* Left arm */}
+      <path d="M120 142 Q88 182 92 216" stroke={body} strokeWidth="30" fill="none" strokeLinecap="round"/>
+      <circle cx="92" cy="218" r="15" fill={skin}/>
+      {/* Right arm */}
+      <path d="M220 142 Q252 182 248 216" stroke={body} strokeWidth="30" fill="none" strokeLinecap="round"/>
+      <circle cx="248" cy="218" r="15" fill={skin}/>
+      {/* Neck */}
+      <rect x="158" y="112" width="24" height="24" rx="8" fill={skin}/>
+      {/* Ears */}
+      <ellipse cx="120" cy="70" rx="10" ry="14" fill={skins}/>
+      <ellipse cx="220" cy="70" rx="10" ry="14" fill={skins}/>
+      {/* Head */}
+      <circle cx="170" cy="70" r="48" fill={skin}/>
+      {/* Hair */}
+      {hairPath(hair)}
+      {/* Eye whites */}
+      <circle cx="153" cy="65" r="9" fill="white"/>
+      <circle cx="187" cy="65" r="9" fill="white"/>
+      {/* Pupils */}
+      <circle cx="155" cy="67" r="5" fill="#1F2937"/>
+      <circle cx="189" cy="67" r="5" fill="#1F2937"/>
+      {/* Eye highlights */}
+      <circle cx="157" cy="65" r="2" fill="white"/>
+      <circle cx="191" cy="65" r="2" fill="white"/>
+      {/* Eyebrows */}
+      <path d="M146 54 Q153 50 160 54" stroke={hair} strokeWidth="3.5" fill="none" strokeLinecap="round"/>
+      <path d="M180 54 Q187 50 194 54" stroke={hair} strokeWidth="3.5" fill="none" strokeLinecap="round"/>
+      {/* Nose */}
+      <path d="M167 72 Q164 78 170 80 Q176 78 173 72" stroke={skins} strokeWidth="2" fill="none" strokeLinecap="round"/>
+      {/* Smile */}
+      <path d="M157 90 Q170 102 183 90" stroke="#1F2937" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+      {/* Blush */}
+      <ellipse cx="134" cy="82" rx="13" ry="7" fill="#FCA5A5" opacity=".35"/>
+      <ellipse cx="206" cy="82" rx="13" ry="7" fill="#FCA5A5" opacity=".35"/>
+      {/* Character-specific extras */}
+      {extra && extra()}
+    </svg>
+  );
+}
+
 /* ═══════════════════════ CATEGORIES ══════════════════════════════════════ */
 const CATS = [
   { id:'halo',       label:'هالات',     emoji:'✨', color:'#F59E0B' },
@@ -62,47 +242,39 @@ const CATS = [
 
 /* ═══════════════════════ ITEM CATALOG ═══════════════════════════════════ */
 const ITEMS = [
-  /* ── HALOS ── */
   { id:'star_halo',    cat:'halo',    name:'هالة النجوم',    emoji:'⭐', price:30,  accent:'#F59E0B', bg:'#FEF3C7' },
   { id:'rainbow_halo', cat:'halo',    name:'قوس المجد',      emoji:'🌈', price:55,  accent:'#8B5CF6', bg:'#EDE9FE' },
   { id:'fire_crown',   cat:'halo',    name:'تاج النار',      emoji:'🔥', price:65,  accent:'#EF4444', bg:'#FEE2E2' },
-  /* ── HATS ── */
   { id:'graduation_cap',cat:'hat',    name:'قبعة التخرج',    emoji:'🎓', price:50,  accent:'#2563EB', bg:'#EFF6FF' },
   { id:'golden_crown', cat:'hat',     name:'تاج الذهب',      emoji:'👑', price:80,  accent:'#CA8A04', bg:'#FEF9C3' },
   { id:'wizard_hat',   cat:'hat',     name:'قبعة الساحر',    emoji:'🧙', price:100, accent:'#7C3AED', bg:'#F5F3FF' },
   { id:'ninja_headband',cat:'hat',    name:'عصابة النينجا',  emoji:'🥷', price:60,  accent:'#DC2626', bg:'#FEF2F2' },
   { id:'pirate_hat',   cat:'hat',     name:'قبعة القرصان',   emoji:'🏴‍☠️', price:75,  accent:'#1F2937', bg:'#F9FAFB' },
-  /* ── GLASSES ── */
   { id:'smart_glasses',cat:'glasses', name:'نظارة ذكية',     emoji:'🕶️', price:40,  accent:'#4F46E5', bg:'#EEF2FF' },
   { id:'round_glasses',cat:'glasses', name:'نظارة دائرية',   emoji:'🤓', price:35,  accent:'#92400E', bg:'#FFFBEB' },
   { id:'heart_glasses',cat:'glasses', name:'نظارة قلوب',     emoji:'💕', price:45,  accent:'#BE185D', bg:'#FDF2F8' },
-  /* ── SCARVES ── */
   { id:'hero_scarf',   cat:'scarf',   name:'وشاح البطل',     emoji:'🧣', price:60,  accent:'#DC2626', bg:'#FEF2F2' },
   { id:'bow_tie',      cat:'scarf',   name:'فراشة أناقة',    emoji:'🎀', price:50,  accent:'#DB2777', bg:'#FDF2F8' },
   { id:'medal',        cat:'scarf',   name:'ميدالية الشرف',  emoji:'🏅', price:75,  accent:'#B45309', bg:'#FFFBEB' },
-  /* ── COMPANIONS ── */
   { id:'mini_star_pet',cat:'companion',name:'نجمة الحظ',     emoji:'⭐', price:80,  accent:'#D97706', bg:'#FEF3C7' },
   { id:'baby_cat',     cat:'companion',name:'قطتي الصغيرة',  emoji:'🐱', price:90,  accent:'#EA580C', bg:'#FFF7ED' },
   { id:'baby_dragon',  cat:'companion',name:'التنين الصديق', emoji:'🐲', price:150, accent:'#16A34A', bg:'#F0FDF4' },
-  /* ── BACKGROUNDS ── */
   { id:'space_bg',     cat:'background',name:'خلفية الفضاء', emoji:'🚀', price:100, accent:'#1D4ED8', bg:'#EFF6FF' },
   { id:'forest_bg',    cat:'background',name:'خلفية الغابة', emoji:'🌲', price:80,  accent:'#15803D', bg:'#F0FDF4' },
   { id:'sunset_bg',    cat:'background',name:'خلفية الغروب', emoji:'🌅', price:70,  accent:'#C2410C', bg:'#FFF7ED' },
 ];
 
-/* ═══════════════════════ SVG OVERLAYS ═══════════════════════════════════ */
-/*
- * lorelei proportions (sz × sz container, objectFit:contain):
- *   hair top      ≈ sz*0.02   forehead top     ≈ sz*0.12
- *   eye level     ≈ sz*0.30   nose             ≈ sz*0.42
- *   mouth         ≈ sz*0.51   chin             ≈ sz*0.62
- *   neck/collar   ≈ sz*0.66   shoulders (L/R)  ≈ sz*0.14–sz*0.86
- */
+/* ═══════════════════════ SVG OVERLAYS ═══════════════════════════════════
+   Positions calibrated for 340×340 viewBox character in sz×sz container.
+   Character anatomy (as fraction of sz):
+     Head top ≈ 0.065 | Eyes ≈ 0.191 | Collar ≈ 0.329 | Feet ≈ 0.929
+     Head center X = 0.50 | Head horizontal span ≈ 0.32–0.68
+══════════════════════════════════════════════════════════════════════════ */
 const OV = {
 
-  /* ──── HALOS (above hair, hair top ≈ 2%) ──── */
+  /* ──── HALOS (above head top ≈ 6.5%) ──── */
   star_halo: (sz) => (
-    <svg key="sh" style={{ position:'absolute', top:-sz*.07, left:sz*.12, width:sz*.76, height:sz*.22, pointerEvents:'none', overflow:'visible', zIndex:5 }} viewBox="0 0 124 50">
+    <svg key="sh" style={{ position:'absolute', top:-sz*.05, left:sz*.20, width:sz*.60, height:sz*.18, pointerEvents:'none', overflow:'visible', zIndex:5 }} viewBox="0 0 124 50">
       <defs><filter id="sh-g2"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
       <polygon points="62,4 66.5,17 80,17 69.5,25 73,38 62,30 51,38 54.5,25 44,17 57.5,17" fill="#FFD700" filter="url(#sh-g2)"/>
       <polygon points="23,13 25.5,21 34,21 27.5,25.5 30,33 23,29 16,33 18.5,25.5 12,21 20.5,21" fill="#FBBF24" opacity=".9"/>
@@ -112,7 +284,7 @@ const OV = {
   ),
 
   rainbow_halo: (sz) => (
-    <svg key="rh" style={{ position:'absolute', top:-sz*.09, left:sz*.10, width:sz*.80, height:sz*.18, pointerEvents:'none', overflow:'visible', zIndex:5 }} viewBox="0 0 128 38">
+    <svg key="rh" style={{ position:'absolute', top:-sz*.07, left:sz*.16, width:sz*.68, height:sz*.14, pointerEvents:'none', overflow:'visible', zIndex:5 }} viewBox="0 0 128 38">
       <defs><filter id="rh-glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
       <path d="M10,36 Q64,-10 118,36" fill="none" stroke="#EF4444" strokeWidth="5" strokeLinecap="round" filter="url(#rh-glow)"/>
       <path d="M16,36 Q64,-2 112,36"  fill="none" stroke="#F97316" strokeWidth="5" strokeLinecap="round" filter="url(#rh-glow)"/>
@@ -124,7 +296,7 @@ const OV = {
   ),
 
   fire_crown: (sz) => (
-    <svg key="fc" style={{ position:'absolute', top:-sz*.07, left:sz*.13, width:sz*.74, height:sz*.22, pointerEvents:'none', overflow:'visible', zIndex:5 }} viewBox="0 0 120 42">
+    <svg key="fc" style={{ position:'absolute', top:-sz*.05, left:sz*.18, width:sz*.64, height:sz*.18, pointerEvents:'none', overflow:'visible', zIndex:5 }} viewBox="0 0 120 42">
       <defs>
         <radialGradient id="fc-g" cx="50%" cy="100%" r="80%">
           <stop offset="0%"  stopColor="#FEF08A"/>
@@ -138,9 +310,9 @@ const OV = {
     </svg>
   ),
 
-  /* ──── HATS (on head, forehead top ≈ 12%) ──── */
+  /* ──── HATS (on head crown ≈ 8–10%) ──── */
   graduation_cap: (sz) => (
-    <svg key="grad" style={{ position:'absolute', top:sz*.07, left:sz*.22, width:sz*.56, height:sz*.26, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 122 60">
+    <svg key="grad" style={{ position:'absolute', top:sz*.05, left:sz*.26, width:sz*.48, height:sz*.22, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 122 60">
       <defs><filter id="grc-sh2"><feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#000" floodOpacity=".22"/></filter></defs>
       <rect x="28" y="8" width="66" height="22" rx="3" fill="#1e1b4b" filter="url(#grc-sh2)"/>
       <rect x="16" y="27" width="90" height="11" rx="5.5" fill="#312e81"/>
@@ -154,7 +326,7 @@ const OV = {
   ),
 
   golden_crown: (sz) => (
-    <svg key="gc" style={{ position:'absolute', top:sz*.09, left:sz*.26, width:sz*.48, height:sz*.24, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 112 54">
+    <svg key="gc" style={{ position:'absolute', top:sz*.07, left:sz*.29, width:sz*.42, height:sz*.18, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 112 54">
       <defs>
         <linearGradient id="cr-g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#FEF08A"/><stop offset="100%" stopColor="#EAB308"/></linearGradient>
         <filter id="cr-sh2"><feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#78350f" floodOpacity=".3"/></filter>
@@ -162,22 +334,19 @@ const OV = {
       <path d="M14 52 L14 22 L32 34 L56 4 L80 34 L98 22 L98 52 Z" fill="url(#cr-g2)" filter="url(#cr-sh2)"/>
       <path d="M14 52 L14 22 L32 34 L56 4 L80 34 L98 22 L98 52 Z" fill="none" stroke="#B45309" strokeWidth="1.5"/>
       <rect x="12" y="46" width="88" height="10" rx="5" fill="#EAB308"/>
-      <rect x="12" y="46" width="88" height="10" rx="5" fill="none" stroke="#B45309" strokeWidth="1"/>
       <ellipse cx="56" cy="30" rx="8" ry="7" fill="#EF4444"/>
       <ellipse cx="27" cy="43" rx="6" ry="5" fill="#3B82F6"/>
       <ellipse cx="85" cy="43" rx="6" ry="5" fill="#22C55E"/>
-      <ellipse cx="53.5" cy="27" rx="2.5" ry="2" fill="white" opacity=".5"/>
     </svg>
   ),
 
   wizard_hat: (sz) => (
-    <svg key="wiz" style={{ position:'absolute', top:-sz*.05, left:sz*.21, width:sz*.58, height:sz*.38, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 126 84">
+    <svg key="wiz" style={{ position:'absolute', top:-sz*.02, left:sz*.24, width:sz*.52, height:sz*.32, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 126 84">
       <defs>
         <linearGradient id="wh-g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b0764"/><stop offset="100%" stopColor="#7c3aed"/></linearGradient>
         <filter id="wh-sh2"><feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#1e1b4b" floodOpacity=".4"/></filter>
       </defs>
       <polygon points="63,3 24,70 102,70" fill="url(#wh-g2)" filter="url(#wh-sh2)"/>
-      <polygon points="63,3 24,70 102,70" fill="none" stroke="#2e1065" strokeWidth="2"/>
       <ellipse cx="63" cy="70" rx="50" ry="13" fill="#5b21b6"/>
       <polygon points="52,26 54,33 61,33 55.5,37 57.5,44 52,40 46.5,44 48.5,37 43,33 50,33" fill="#FCD34D" opacity=".95"/>
       <circle cx="78" cy="46" r="5" fill="#FCD34D" opacity=".85"/>
@@ -187,7 +356,7 @@ const OV = {
   ),
 
   ninja_headband: (sz) => (
-    <svg key="nb" style={{ position:'absolute', top:sz*.20, left:sz*.08, width:sz*.84, height:sz*.18, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 112 32">
+    <svg key="nb" style={{ position:'absolute', top:sz*.14, left:sz*.20, width:sz*.60, height:sz*.14, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 112 32">
       <defs><filter id="nb-sh"><feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#7f1d1d" floodOpacity=".4"/></filter></defs>
       <rect x="2" y="6" width="108" height="20" rx="10" fill="#DC2626" filter="url(#nb-sh)"/>
       <rect x="2" y="6" width="108" height="20" rx="10" fill="none" stroke="#991B1B" strokeWidth="1.5"/>
@@ -199,25 +368,21 @@ const OV = {
   ),
 
   pirate_hat: (sz) => (
-    <svg key="ph" style={{ position:'absolute', top:sz*.07, left:sz*.22, width:sz*.56, height:sz*.24, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 116 52">
+    <svg key="ph" style={{ position:'absolute', top:sz*.05, left:sz*.27, width:sz*.46, height:sz*.18, pointerEvents:'none', overflow:'visible', zIndex:6 }} viewBox="0 0 116 52">
       <defs><filter id="ph-sh"><feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#000" floodOpacity=".35"/></filter></defs>
       <path d="M8 48 Q8 30 58 26 Q108 30 108 48 Z" fill="#1F2937" filter="url(#ph-sh)"/>
       <path d="M12 40 L18 14 Q20 4 58 6 Q96 4 98 14 L104 40 Z" fill="#111827" filter="url(#ph-sh)"/>
-      <path d="M12 40 L18 14 Q20 4 58 6 Q96 4 98 14 L104 40 Z" fill="none" stroke="#374151" strokeWidth="1.5"/>
       <rect x="14" y="36" width="88" height="8" rx="4" fill="#DC2626"/>
-      <rect x="14" y="36" width="88" height="8" rx="4" fill="none" stroke="#991B1B" strokeWidth="1"/>
       <circle cx="58" cy="23" r="9" fill="white" opacity=".9"/>
       <line x1="52" y1="17" x2="64" y2="29" stroke="#1F2937" strokeWidth="2.5" strokeLinecap="round"/>
       <line x1="64" y1="17" x2="52" y2="29" stroke="#1F2937" strokeWidth="2.5" strokeLinecap="round"/>
       <circle cx="58" cy="23" r="4" fill="#1F2937"/>
-      <ellipse cx="30" cy="44" rx="5" ry="2.5" fill="#EF4444" opacity=".4"/>
-      <ellipse cx="86" cy="44" rx="5" ry="2.5" fill="#EF4444" opacity=".4"/>
     </svg>
   ),
 
-  /* ──── GLASSES (eye level ≈ sz*0.30) ──── */
+  /* ──── GLASSES (eye level ≈ 19%, top ≈ 17%) ──── */
   smart_glasses: (sz) => (
-    <svg key="sg" style={{ position:'absolute', top:sz*.28, left:sz*.09, width:sz*.82, height:sz*.22, pointerEvents:'none', overflow:'visible', zIndex:7 }} viewBox="0 0 114 42">
+    <svg key="sg" style={{ position:'absolute', top:sz*.17, left:sz*.16, width:sz*.68, height:sz*.18, pointerEvents:'none', overflow:'visible', zIndex:7 }} viewBox="0 0 114 42">
       <defs>
         <linearGradient id="sg-g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#a5b4fc"/><stop offset="100%" stopColor="#4f46e5"/></linearGradient>
         <filter id="sg-gw2"><feGaussianBlur stdDeviation="1.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
@@ -227,19 +392,18 @@ const OV = {
       <rect x="66" y="5" width="44" height="28" rx="10" fill="url(#sg-g2)" opacity=".58" filter="url(#sg-gw2)"/>
       <rect x="66" y="5" width="44" height="28" rx="10" fill="none" stroke="#3730a3" strokeWidth="2.5"/>
       <path d="M48 19 Q57 13 66 19" fill="none" stroke="#3730a3" strokeWidth="2.5" strokeLinecap="round"/>
-      <line x1="4"   y1="19" x2="0"   y2="24" stroke="#3730a3" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1="4" y1="19" x2="0" y2="24" stroke="#3730a3" strokeWidth="2.5" strokeLinecap="round"/>
       <line x1="110" y1="19" x2="114" y2="24" stroke="#3730a3" strokeWidth="2.5" strokeLinecap="round"/>
-      <line x1="10" y1="10" x2="18" y2="19" stroke="white" strokeWidth="2" opacity=".4" strokeLinecap="round"/>
     </svg>
   ),
 
   round_glasses: (sz) => (
-    <svg key="rg" style={{ position:'absolute', top:sz*.27, left:sz*.09, width:sz*.82, height:sz*.23, pointerEvents:'none', overflow:'visible', zIndex:7 }} viewBox="0 0 116 45">
+    <svg key="rg" style={{ position:'absolute', top:sz*.17, left:sz*.16, width:sz*.68, height:sz*.18, pointerEvents:'none', overflow:'visible', zIndex:7 }} viewBox="0 0 116 45">
       <defs><linearGradient id="rg-gl" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fef9c3"/><stop offset="100%" stopColor="#fde68a" stopOpacity=".4"/></linearGradient></defs>
       <circle cx="30" cy="22" r="20" fill="url(#rg-gl)" stroke="#B45309" strokeWidth="2.8"/>
       <circle cx="86" cy="22" r="20" fill="url(#rg-gl)" stroke="#B45309" strokeWidth="2.8"/>
       <line x1="50" y1="22" x2="66" y2="22" stroke="#B45309" strokeWidth="2.5" strokeLinecap="round"/>
-      <line x1="0"   y1="22" x2="10"  y2="26" stroke="#B45309" strokeWidth="2.2" strokeLinecap="round"/>
+      <line x1="0"  y1="22" x2="10" y2="26" stroke="#B45309" strokeWidth="2.2" strokeLinecap="round"/>
       <line x1="116" y1="22" x2="106" y2="26" stroke="#B45309" strokeWidth="2.2" strokeLinecap="round"/>
       <circle cx="22" cy="15" r="4" fill="white" opacity=".35"/>
       <circle cx="78" cy="15" r="4" fill="white" opacity=".35"/>
@@ -247,7 +411,7 @@ const OV = {
   ),
 
   heart_glasses: (sz) => (
-    <svg key="hg" style={{ position:'absolute', top:sz*.27, left:sz*.09, width:sz*.82, height:sz*.24, pointerEvents:'none', overflow:'visible', zIndex:7 }} viewBox="0 0 118 46">
+    <svg key="hg" style={{ position:'absolute', top:sz*.17, left:sz*.16, width:sz*.68, height:sz*.18, pointerEvents:'none', overflow:'visible', zIndex:7 }} viewBox="0 0 118 46">
       <defs>
         <linearGradient id="hg-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fbcfe8"/><stop offset="100%" stopColor="#f9a8d4" stopOpacity=".6"/></linearGradient>
         <filter id="hg-glow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
@@ -257,14 +421,12 @@ const OV = {
       <path d="M56 20 Q59 14 62 20" fill="none" stroke="#DB2777" strokeWidth="2" strokeLinecap="round"/>
       <line x1="0"   y1="20" x2="4"   y2="24" stroke="#DB2777" strokeWidth="2" strokeLinecap="round"/>
       <line x1="118" y1="20" x2="114" y2="24" stroke="#DB2777" strokeWidth="2" strokeLinecap="round"/>
-      <circle cx="16" cy="12" r="4" fill="white" opacity=".4"/>
-      <circle cx="74" cy="12" r="4" fill="white" opacity=".4"/>
     </svg>
   ),
 
-  /* ──── SCARVES (neck/collar ≈ sz*0.64) ──── */
+  /* ──── SCARVES (collar ≈ 33%, top ≈ 31%) ──── */
   hero_scarf: (sz) => (
-    <svg key="sc" style={{ position:'absolute', top:sz*.62, left:sz*.05, width:sz*.90, height:sz*.36, pointerEvents:'none', overflow:'visible', zIndex:4 }} viewBox="0 0 128 55">
+    <svg key="sc" style={{ position:'absolute', top:sz*.31, left:sz*.08, width:sz*.84, height:sz*.28, pointerEvents:'none', overflow:'visible', zIndex:4 }} viewBox="0 0 128 55">
       <defs><linearGradient id="sc-g2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#EF4444"/><stop offset="100%" stopColor="#F97316"/></linearGradient></defs>
       <path d="M20 9 Q64 0 108 9 Q112 28 64 32 Q16 28 20 9 Z" fill="url(#sc-g2)"/>
       <path d="M24 14 Q64 6 104 14" fill="none" stroke="white" strokeWidth="1.5" opacity=".2"/>
@@ -277,7 +439,7 @@ const OV = {
   ),
 
   bow_tie: (sz) => (
-    <svg key="bt" style={{ position:'absolute', top:sz*.65, left:sz*.20, width:sz*.60, height:sz*.22, pointerEvents:'none', overflow:'visible', zIndex:4 }} viewBox="0 0 88 36">
+    <svg key="bt" style={{ position:'absolute', top:sz*.33, left:sz*.28, width:sz*.44, height:sz*.16, pointerEvents:'none', overflow:'visible', zIndex:4 }} viewBox="0 0 88 36">
       <defs>
         <radialGradient id="bt-gl" cx="50%" cy="50%" r="70%"><stop offset="0%" stopColor="#F9A8D4"/><stop offset="100%" stopColor="#DB2777"/></radialGradient>
         <filter id="bt-sh"><feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#831843" floodOpacity=".3"/></filter>
@@ -287,13 +449,11 @@ const OV = {
       <circle cx="44" cy="18" r="7" fill="#DB2777"/>
       <circle cx="44" cy="18" r="5" fill="#EC4899"/>
       <circle cx="42" cy="15" r="2.5" fill="#FDE7F3" opacity=".6"/>
-      <circle cx="20" cy="8" r="3" fill="white" opacity=".25"/>
-      <circle cx="70" cy="8" r="3" fill="white" opacity=".25"/>
     </svg>
   ),
 
   medal: (sz) => (
-    <svg key="med" style={{ position:'absolute', top:sz*.60, left:sz*.40, width:sz*.28, height:sz*.38, pointerEvents:'none', overflow:'visible', zIndex:4 }} viewBox="0 0 44 58">
+    <svg key="med" style={{ position:'absolute', top:sz*.30, left:sz*.43, width:sz*.20, height:sz*.30, pointerEvents:'none', overflow:'visible', zIndex:4 }} viewBox="0 0 44 58">
       <defs>
         <linearGradient id="med-r" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#EF4444"/><stop offset="50%" stopColor="#1D4ED8"/><stop offset="100%" stopColor="#EF4444"/></linearGradient>
         <linearGradient id="med-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#FEF08A"/><stop offset="100%" stopColor="#CA8A04"/></linearGradient>
@@ -303,13 +463,12 @@ const OV = {
       <circle cx="22" cy="38" r="18" fill="url(#med-g)" filter="url(#med-sh)"/>
       <circle cx="22" cy="38" r="16" fill="none" stroke="#B45309" strokeWidth="2"/>
       <polygon points="22,24 24.5,31 32,31 26,35.5 28.5,43 22,38.5 15.5,43 18,35.5 12,31 19.5,31" fill="#B45309" opacity=".8"/>
-      <circle cx="18" cy="32" r="3" fill="white" opacity=".35"/>
     </svg>
   ),
 
-  /* ──── COMPANIONS (right of character, lower half) ──── */
+  /* ──── COMPANIONS (foot level ≈ 93%, positioned lower-right) ──── */
   mini_star_pet: (sz) => (
-    <svg key="msp" style={{ position:'absolute', top:sz*.54, left:sz*.78, width:sz*.36, height:sz*.36, pointerEvents:'none', overflow:'visible', zIndex:8, animation:'hsFloat 2.2s ease-in-out infinite' }} viewBox="0 0 50 50">
+    <svg key="msp" style={{ position:'absolute', top:sz*.72, left:sz*.76, width:sz*.34, height:sz*.34, pointerEvents:'none', overflow:'visible', zIndex:8, animation:'hsFloat 2.2s ease-in-out infinite' }} viewBox="0 0 50 50">
       <defs><filter id="sp-glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
       <polygon points="25,4 29,17 43,17 32,25 36,38 25,30 14,38 18,25 7,17 21,17" fill="#FCD34D" filter="url(#sp-glow)"/>
       <circle cx="20" cy="22" r="2.5" fill="#1F2937"/>
@@ -317,19 +476,15 @@ const OV = {
       <circle cx="21" cy="20.5" r="1" fill="white"/>
       <circle cx="31" cy="20.5" r="1" fill="white"/>
       <path d="M20 28 Q25 32 30 28" fill="none" stroke="#1F2937" strokeWidth="1.8" strokeLinecap="round"/>
-      <circle cx="36" cy="12" r="3" fill="#FDE68A" opacity=".7"/>
-      <circle cx="14" cy="38" r="2" fill="#FDE68A" opacity=".5"/>
     </svg>
   ),
 
   baby_cat: (sz) => (
-    <svg key="bc" style={{ position:'absolute', top:sz*.52, left:sz*.74, width:sz*.40, height:sz*.40, pointerEvents:'none', overflow:'visible', zIndex:8, animation:'hsFloat 2.8s ease-in-out infinite' }} viewBox="0 0 55 55">
+    <svg key="bc" style={{ position:'absolute', top:sz*.70, left:sz*.73, width:sz*.38, height:sz*.38, pointerEvents:'none', overflow:'visible', zIndex:8, animation:'hsFloat 2.8s ease-in-out infinite' }} viewBox="0 0 55 55">
       <defs><filter id="cat-sh"><feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity=".2"/></filter></defs>
       <path d="M8 18 L4 4 L18 12 Z" fill="#FB923C" filter="url(#cat-sh)"/>
       <path d="M47 18 L51 4 L37 12 Z" fill="#FB923C" filter="url(#cat-sh)"/>
       <circle cx="27" cy="32" r="22" fill="#FED7AA" filter="url(#cat-sh)"/>
-      <path d="M8 18 L4 4 L18 12 Z" fill="none" stroke="#EA580C" strokeWidth="1"/>
-      <path d="M47 18 L51 4 L37 12 Z" fill="none" stroke="#EA580C" strokeWidth="1"/>
       <path d="M12 22 L9 8 L20 14 Z" fill="#FDBA74"/>
       <path d="M43 22 L46 8 L35 14 Z" fill="#FDBA74"/>
       <circle cx="20" cy="30" r="5" fill="#1F2937"/>
@@ -337,16 +492,13 @@ const OV = {
       <circle cx="21.5" cy="28.5" r="2" fill="white"/>
       <circle cx="35.5" cy="28.5" r="2" fill="white"/>
       <ellipse cx="27" cy="37" rx="5" ry="3.5" fill="#F9A8D4"/>
-      <path d="M27 40 L27 44" stroke="#EA580C" strokeWidth="1.5" strokeLinecap="round"/>
       <path d="M14 37 Q10 35 8 38" fill="none" stroke="#EA580C" strokeWidth="1.5" strokeLinecap="round"/>
-      <path d="M16 40 Q12 39 10 42" fill="none" stroke="#EA580C" strokeWidth="1.5" strokeLinecap="round"/>
       <path d="M40 37 Q44 35 46 38" fill="none" stroke="#EA580C" strokeWidth="1.5" strokeLinecap="round"/>
-      <path d="M38 40 Q42 39 44 42" fill="none" stroke="#EA580C" strokeWidth="1.5" strokeLinecap="round"/>
     </svg>
   ),
 
   baby_dragon: (sz) => (
-    <svg key="bd" style={{ position:'absolute', top:sz*.48, left:sz*.70, width:sz*.44, height:sz*.44, pointerEvents:'none', overflow:'visible', zIndex:8, animation:'hsFloat 3.2s ease-in-out infinite' }} viewBox="0 0 65 65">
+    <svg key="bd" style={{ position:'absolute', top:sz*.66, left:sz*.70, width:sz*.42, height:sz*.42, pointerEvents:'none', overflow:'visible', zIndex:8, animation:'hsFloat 3.2s ease-in-out infinite' }} viewBox="0 0 65 65">
       <defs>
         <linearGradient id="dr-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4ADE80"/><stop offset="100%" stopColor="#15803D"/></linearGradient>
         <filter id="dr-sh"><feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity=".2"/></filter>
@@ -360,45 +512,34 @@ const OV = {
       <circle cx="40" cy="28" r="6" fill="#1F2937"/>
       <circle cx="25.5" cy="26.5" r="2.5" fill="white"/>
       <circle cx="41.5" cy="26.5" r="2.5" fill="white"/>
-      <ellipse cx="32" cy="36" rx="6" ry="4" fill="#86EFAC"/>
       <path d="M26 42 Q32 48 38 42" fill="none" stroke="#15803D" strokeWidth="2" strokeLinecap="round"/>
-      <circle cx="28" cy="34" r="3" fill="#4ADE80" opacity=".5"/>
-      <circle cx="36" cy="34" r="3" fill="#4ADE80" opacity=".5"/>
       <path d="M32 52 L28 62 M32 52 L36 62" stroke="#15803D" strokeWidth="3" strokeLinecap="round"/>
-      <path d="M36 62 Q38 65 40 62" fill="#4ADE80"/>
-      <path d="M28 62 Q26 65 24 62" fill="#4ADE80"/>
     </svg>
   ),
 };
 
 /* ═══════════════════════ BACKGROUND RENDERERS ═══════════════════════════ */
 function renderBg(id, sz) {
-  const r = sz * 0.65;
-  const cx = sz / 2, cy = sz / 2;
   if (id === 'space_bg') return (
     <svg key="sbg" style={{ position:'absolute', top:0, left:0, width:sz, height:sz, zIndex:0, borderRadius:14, overflow:'hidden' }} viewBox="0 0 130 130">
       <defs><radialGradient id="sp-bg" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#1E1B4B"/><stop offset="100%" stopColor="#0F0A1A"/></radialGradient></defs>
-      <circle cx="65" cy="65" r="65" fill="url(#sp-bg)"/>
+      <rect width="130" height="130" fill="url(#sp-bg)"/>
       {[[15,20],[40,8],[80,15],[110,30],[20,60],[100,55],[55,100],[30,90],[90,80],[120,70],[65,40],[45,45]].map(([x,y],i)=>(
         <circle key={i} cx={x} cy={y} r={i%3===0?2:1.2} fill="white" opacity={.4+i*.05}/>
       ))}
       <circle cx="95" cy="25" r="8" fill="none" stroke="#4338CA" strokeWidth="2" opacity=".5"/>
       <circle cx="95" cy="25" r="5" fill="#312E81" opacity=".7"/>
-      <circle cx="30" cy="80" r="5" fill="#7C3AED" opacity=".4"/>
-      <circle cx="30" cy="80" r="3" fill="#A78BFA" opacity=".5"/>
     </svg>
   );
   if (id === 'forest_bg') return (
     <svg key="fbg" style={{ position:'absolute', top:0, left:0, width:sz, height:sz, zIndex:0, borderRadius:14, overflow:'hidden' }} viewBox="0 0 130 130">
       <defs><radialGradient id="fo-bg" cx="50%" cy="30%" r="70%"><stop offset="0%" stopColor="#6EE7B7"/><stop offset="60%" stopColor="#059669"/><stop offset="100%" stopColor="#064E3B"/></radialGradient></defs>
-      <circle cx="65" cy="65" r="65" fill="url(#fo-bg)"/>
+      <rect width="130" height="130" fill="url(#fo-bg)"/>
       <polygon points="65,15 85,55 45,55" fill="#065F46" opacity=".7"/>
       <polygon points="65,25 80,55 50,55" fill="#34D399" opacity=".5"/>
       <polygon points="30,40 48,75 12,75" fill="#065F46" opacity=".6"/>
       <polygon points="100,40 118,75 82,75" fill="#065F46" opacity=".6"/>
       <rect x="60" y="55" width="10" height="20" rx="3" fill="#78350F" opacity=".7"/>
-      <circle cx="35" cy="90" r="8" fill="#34D399" opacity=".4"/>
-      <circle cx="95" cy="85" r="6" fill="#34D399" opacity=".4"/>
     </svg>
   );
   if (id === 'sunset_bg') return (
@@ -407,41 +548,32 @@ function renderBg(id, sz) {
         <radialGradient id="ss-bg" cx="50%" cy="70%" r="80%"><stop offset="0%" stopColor="#FED7AA"/><stop offset="50%" stopColor="#FB923C"/><stop offset="100%" stopColor="#C2410C"/></radialGradient>
         <radialGradient id="ss-sun" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#FEF08A"/><stop offset="100%" stopColor="#F59E0B"/></radialGradient>
       </defs>
-      <circle cx="65" cy="65" r="65" fill="url(#ss-bg)"/>
+      <rect width="130" height="130" fill="url(#ss-bg)"/>
       <circle cx="65" cy="48" r="20" fill="url(#ss-sun)" opacity=".9"/>
       {[0,30,60,90,120,150,180,210,240,270,300,330].map((a,i)=>(
         <line key={i} x1={65+20*Math.cos(a*Math.PI/180)} y1={48+20*Math.sin(a*Math.PI/180)} x2={65+28*Math.cos(a*Math.PI/180)} y2={48+28*Math.sin(a*Math.PI/180)} stroke="#FEF08A" strokeWidth="2" opacity=".6" strokeLinecap="round"/>
       ))}
       <path d="M0,95 Q20,85 40,90 Q60,95 80,85 Q100,75 130,85 L130,130 L0,130 Z" fill="#7C2D12" opacity=".5"/>
-      <ellipse cx="25" cy="78" rx="16" ry="7" fill="white" opacity=".3"/>
-      <ellipse cx="100" cy="68" rx="12" ry="5" fill="white" opacity=".25"/>
     </svg>
   );
   return null;
 }
 
 /* ═══════════════════════ HERO PREVIEW ═══════════════════════════════════ */
-function HeroPreview({ config = {}, size = 200 }) {
-  const { base_seed = 'default', equipped = {} } = config;
-  /* NO backgroundColor → transparent SVG, character floats on dark panel */
-  const url = dicebearUrlFull(base_seed);
+function HeroPreview({ config = {}, size = 280 }) {
+  const { base_seed = 'Ahmad-brave', equipped = {} } = config;
+  const charId = CHARACTERS.find(c => c.seed === base_seed)?.id || 'c1';
 
   return (
     <div style={{ position:'relative', width:size, height:size, overflow:'visible' }}>
-      {/* Background fills the full square */}
       {equipped.background && renderBg(equipped.background, size)}
 
-      {/* Portrait avatar — transparent background, no clip, floats on dark panel */}
-      <img
-        src={url} alt=""
-        style={{
-          position:'absolute', width:size, height:size, top:0, left:0, zIndex:1,
-          objectFit:'contain',
-          filter:'drop-shadow(0 8px 28px rgba(0,0,0,.7)) drop-shadow(0 0 20px rgba(139,92,246,.4))',
-        }}
-      />
+      {/* Full-body inline SVG — no external requests, no clipping */}
+      <div style={{ position:'absolute', top:0, left:0, width:size, height:size, zIndex:1 }}>
+        <CharacterSVG charId={charId} width={size} height={size} />
+      </div>
 
-      {/* Accessories layered over full body */}
+      {/* Accessories layered over character */}
       {equipped.scarf     && OV[equipped.scarf]?.(size)}
       {equipped.halo      && OV[equipped.halo]?.(size)}
       {equipped.hat       && OV[equipped.hat]?.(size)}
@@ -457,7 +589,6 @@ function ItemCard({ item, isOwned, isEquipped, balance, onBuy, onEquip, onUnequi
   const canAfford = balance >= item.price;
   const isBuying  = buying === item.id;
   const previewSz = 56;
-  const equippedId = isEquipped ? item.id : null;
 
   return (
     <div
@@ -485,7 +616,6 @@ function ItemCard({ item, isOwned, isEquipped, balance, onBuy, onEquip, onUnequi
         </div>
       )}
 
-      {/* accessory preview — clean emoji tile, no circle */}
       <div style={{
         width: previewSz, height: previewSz, flexShrink: 0,
         background: `linear-gradient(135deg, ${item.bg}, #fff)`,
@@ -534,7 +664,7 @@ function ItemCard({ item, isOwned, isEquipped, balance, onBuy, onEquip, onUnequi
 
 /* ═══════════════════════ MAIN PAGE ════════════════════════════════════ */
 export default function HeroesStudio() {
-  const [config,   setConfig]   = useState({ base_seed: null, equipped: {} });
+  const [config,   setConfig]   = useState({ base_seed: 'Ahmad-brave', equipped: {} });
   const [owned,    setOwned]    = useState([]);
   const [balance,  setBalance]  = useState(0);
   const [activeCat,setActiveCat]= useState('hat');
@@ -555,9 +685,9 @@ export default function HeroesStudio() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r  = await fetch('/api/hero-config');
-      const d  = await r.json();
-      setConfig({ base_seed: d.base_seed ?? 'default', equipped: d.equipped ?? {} });
+      const r = await fetch('/api/hero-config');
+      const d = await r.json();
+      setConfig({ base_seed: d.base_seed ?? 'Ahmad-brave', equipped: d.equipped ?? {} });
       setOwned(d.owned ?? []);
       setBalance(d.points ?? 0);
     } catch {}
@@ -573,10 +703,11 @@ export default function HeroesStudio() {
   }
 
   async function patchConfig(patch) {
-    setConfig(prev => {
-      const next = { ...prev, equipped: { ...prev.equipped, ...patch.equipped }, base_seed: patch.base_seed ?? prev.base_seed };
-      return next;
-    });
+    setConfig(prev => ({
+      ...prev,
+      equipped: { ...prev.equipped, ...patch.equipped },
+      base_seed: patch.base_seed ?? prev.base_seed,
+    }));
     try {
       await fetch('/api/hero-config', {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -613,15 +744,13 @@ export default function HeroesStudio() {
   }
 
   async function handleEquip(item) {
-    const catKey = item.cat;
-    await patchConfig({ equipped: { [catKey]: item.id } });
+    await patchConfig({ equipped: { [item.cat]: item.id } });
     playChime([659, 784], 0.3);
     flash(`✨ ارتديت ${item.emoji} ${item.name}!`, 'ok');
   }
 
   async function handleUnequip(item) {
-    const catKey = item.cat;
-    await patchConfig({ equipped: { [catKey]: null } });
+    await patchConfig({ equipped: { [item.cat]: null } });
     flash('تم النزع ✓', 'info');
   }
 
@@ -632,12 +761,11 @@ export default function HeroesStudio() {
     setTimeout(() => setSaved(false), 2500);
   }
 
-  const catItems   = ITEMS.filter(i => i.cat === activeCat);
-  const charName   = CHARACTERS.find(c => c.seed === config.base_seed)?.name ?? 'بطلي';
+  const catItems = ITEMS.filter(i => i.cat === activeCat);
+  const charName = CHARACTERS.find(c => c.seed === config.base_seed)?.name ?? 'بطلي';
+  const previewSize = mobile ? 240 : 320;
 
-  /* ─── PREVIEW PANEL ─── */
-  const previewSize = mobile ? 240 : 340;
-
+  /* ─── LEFT PANEL: character preview ─── */
   const panelLeft = (
     <div style={{
       flex: mobile ? 'none' : '0 0 42%',
@@ -645,27 +773,25 @@ export default function HeroesStudio() {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: mobile ? '28px 20px' : '40px 30px',
       position: 'relative', overflow: 'hidden',
-      minHeight: mobile ? 480 : 'auto',
+      minHeight: mobile ? 520 : 'auto',
     }}>
-      {/* Animated background particles */}
+      {/* Animated particles */}
       {[...Array(12)].map((_,i) => (
         <div key={i} style={{
-          position:'absolute',
+          position:'absolute', borderRadius:'50%',
           width: 3+i%3*2, height: 3+i%3*2,
-          borderRadius:'50%',
           background: ['#F59E0B','#8B5CF6','#3B82F6','#10B981','#EC4899'][i%5],
           top: `${8+i*7}%`, left: `${5+i*8}%`,
-          opacity: .35 + i*.04,
+          opacity: .35+i*.04,
           animation: `hsPulse ${1.8+i*.3}s ease-in-out infinite`,
           animationDelay: `${i*.22}s`,
         }}/>
       ))}
-
-      {/* Spotlight glow */}
+      {/* Spotlight */}
       <div style={{
-        position:'absolute', width: previewSize*2.2, height: previewSize*2.2,
-        borderRadius:'50%',
-        background: 'radial-gradient(circle, rgba(139,92,246,.18) 0%, transparent 70%)',
+        position:'absolute', borderRadius:'50%',
+        width: previewSize*2.4, height: previewSize*2.4,
+        background: 'radial-gradient(circle,rgba(139,92,246,.18) 0%,transparent 70%)',
         top:'50%', left:'50%', transform:'translate(-50%,-50%)',
         pointerEvents:'none',
       }}/>
@@ -673,20 +799,19 @@ export default function HeroesStudio() {
       {/* Hero preview */}
       <div style={{ animation:'hsFloat 3s ease-in-out infinite', position:'relative', zIndex:2 }}>
         {loading
-          ? <div style={{ width:previewSize, height:previewSize, borderRadius:'50%', background:'rgba(255,255,255,.08)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <div style={{ fontSize:'2rem', animation:'hsSpin 1.2s linear infinite' }}>⭐</div>
+          ? <div style={{ width:previewSize, height:previewSize, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <div style={{ fontSize:'3rem', animation:'hsSpin 1.2s linear infinite' }}>⭐</div>
             </div>
-          : <HeroPreview config={config} size={previewSize} />
+          : <HeroPreview config={config} size={previewSize}/>
         }
       </div>
 
-      {/* Character name badge */}
+      {/* Name badge */}
       <div style={{
-        marginTop: 24, position:'relative', zIndex:2,
+        marginTop:24, position:'relative', zIndex:2,
         background:'rgba(255,255,255,.1)', backdropFilter:'blur(12px)',
         border:'1.5px solid rgba(255,255,255,.2)', borderRadius:50,
-        padding:'8px 22px', color:'#fff', fontWeight:800, fontSize:'1rem',
-        textAlign:'center',
+        padding:'8px 22px', color:'#fff', fontWeight:800, fontSize:'1rem', textAlign:'center',
       }}>
         {charName} ✨
         <div style={{ fontSize:'.72rem', color:'rgba(255,255,255,.65)', fontWeight:600, marginTop:2 }}>
@@ -695,23 +820,20 @@ export default function HeroesStudio() {
       </div>
 
       {/* Save button */}
-      <button
-        onClick={handleSave}
-        style={{
-          marginTop:18, padding:'12px 36px', borderRadius:50,
-          border:'none', cursor:'pointer',
-          fontFamily:"'Cairo','Tajawal',sans-serif",
-          fontWeight:900, fontSize:'1rem', color:'#fff',
-          background: saved
-            ? 'linear-gradient(135deg,#10B981,#059669)'
-            : 'linear-gradient(90deg,#F59E0B 0%,#8B5CF6 50%,#3B82F6 100%)',
-          backgroundSize: '200% auto',
-          animation: saved ? 'hsBounce .5s ease' : 'hsShine 3s linear infinite',
-          boxShadow: saved ? '0 6px 20px rgba(16,185,129,.5)' : '0 6px 28px rgba(139,92,246,.55)',
-          transition:'all .3s', zIndex:2, position:'relative',
-          transform: saved ? 'scale(1.06)' : 'none',
-        }}
-      >
+      <button onClick={handleSave} style={{
+        marginTop:18, padding:'12px 36px', borderRadius:50,
+        border:'none', cursor:'pointer',
+        fontFamily:"'Cairo','Tajawal',sans-serif",
+        fontWeight:900, fontSize:'1rem', color:'#fff',
+        background: saved
+          ? 'linear-gradient(135deg,#10B981,#059669)'
+          : 'linear-gradient(90deg,#F59E0B 0%,#8B5CF6 50%,#3B82F6 100%)',
+        backgroundSize:'200% auto',
+        animation: saved ? 'hsBounce .5s ease' : 'hsShine 3s linear infinite',
+        boxShadow: saved ? '0 6px 20px rgba(16,185,129,.5)' : '0 6px 28px rgba(139,92,246,.55)',
+        transition:'all .3s', zIndex:2, position:'relative',
+        transform: saved ? 'scale(1.06)' : 'none',
+      }}>
         {saved ? '✅ تم الحفظ!' : '💾 احفظ مظهرك'}
       </button>
 
@@ -721,7 +843,7 @@ export default function HeroesStudio() {
     </div>
   );
 
-  /* ─── CONTROLS PANEL ─── */
+  /* ─── RIGHT PANEL: controls ─── */
   const panelRight = (
     <div style={{
       flex:1, overflowY:'auto',
@@ -733,7 +855,7 @@ export default function HeroesStudio() {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
         <div>
-          <div style={{ fontSize: mobile ? '1.3rem' : '1.6rem', fontWeight:900, color:'#1e293b', lineHeight:1.2 }}>
+          <div style={{ fontSize: mobile?'1.3rem':'1.6rem', fontWeight:900, color:'#1e293b', lineHeight:1.2 }}>
             🎭 استوديو الأبطال
           </div>
           <div style={{ fontSize:'.8rem', color:'#64748b', fontWeight:600 }}>صمّم شخصيتك الكرتونية</div>
@@ -765,21 +887,23 @@ export default function HeroesStudio() {
                   flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', gap:5,
                   background: isActive ? char.bg : 'rgba(255,255,255,.8)',
                   border: `2px solid ${isActive ? char.color : '#e2e8f0'}`,
-                  borderRadius:16, padding:'8px 12px', cursor:'pointer',
+                  borderRadius:16, padding:'8px 10px', cursor:'pointer',
                   transition:'all .2s', fontFamily:"'Cairo','Tajawal',sans-serif",
                   transform: isActive ? 'scale(1.08)' : 'none',
                   boxShadow: isActive ? `0 6px 20px ${char.color}40` : '0 2px 6px rgba(0,0,0,.06)',
                   animation: isActive ? 'hsBounce .4s ease' : 'none',
                 }}
               >
-                <div style={{ width:60, height:80, borderRadius:10, overflow:'hidden', border:`2px solid ${isActive ? 'rgba(255,255,255,.5)' : '#e2e8f0'}`, background: isActive ? 'rgba(0,0,0,.15)' : '#f1f5f9', position:'relative' }}>
-                  <img
-                    src={dicebearUrlFull(char.seed)}
-                    alt={char.name}
-                    style={{ width:60, height:80, objectFit:'contain' }}
-                  />
+                {/* Inline SVG thumbnail — always visible, no broken image */}
+                <div style={{
+                  width:56, height:56, borderRadius:10,
+                  border:`2px solid ${isActive ? 'rgba(255,255,255,.5)' : '#e2e8f0'}`,
+                  background: isActive ? 'rgba(0,0,0,.12)' : '#f8fafc',
+                  overflow:'hidden', flexShrink:0,
+                }}>
+                  <CharacterSVG charId={char.id} width={56} height={56}/>
                 </div>
-                <div style={{ fontSize:'.65rem', fontWeight:800, color: isActive ? '#fff' : '#374151', whiteSpace:'nowrap' }}>
+                <div style={{ fontSize:'.62rem', fontWeight:800, color: isActive?'#fff':'#374151', whiteSpace:'nowrap' }}>
                   {char.name}
                 </div>
               </button>
@@ -789,64 +913,55 @@ export default function HeroesStudio() {
       </div>
 
       {/* Category Tabs */}
-      <div>
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-          {CATS.map(cat => {
-            const isActive = activeCat === cat.id;
-            const equippedInCat = config.equipped?.[cat.id];
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCat(cat.id)}
-                style={{
-                  display:'flex', alignItems:'center', gap:4,
-                  padding:'7px 14px', borderRadius:50, border:'none',
-                  background: isActive ? cat.color : 'rgba(255,255,255,.8)',
-                  color: isActive ? '#fff' : '#475569',
-                  fontWeight:800, fontSize:'.78rem',
-                  fontFamily:"'Cairo','Tajawal',sans-serif", cursor:'pointer',
-                  transition:'all .2s',
-                  boxShadow: isActive ? `0 4px 14px ${cat.color}45` : '0 1px 4px rgba(0,0,0,.06)',
-                  transform: isActive ? 'scale(1.05)' : 'none',
-                  position:'relative',
-                }}
-              >
-                <span>{cat.emoji}</span>
-                <span>{cat.label}</span>
-                {equippedInCat && (
-                  <span style={{ position:'absolute', top:-3, right:-3, width:9, height:9, borderRadius:'50%', background:'#10B981', border:'1.5px solid white' }}/>
-                )}
-              </button>
-            );
-          })}
-        </div>
+      <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+        {CATS.map(cat => {
+          const isActive = activeCat === cat.id;
+          const equippedInCat = config.equipped?.[cat.id];
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCat(cat.id)}
+              style={{
+                display:'flex', alignItems:'center', gap:4,
+                padding:'7px 14px', borderRadius:50, border:'none',
+                background: isActive ? cat.color : 'rgba(255,255,255,.8)',
+                color: isActive ? '#fff' : '#475569',
+                fontWeight:800, fontSize:'.78rem',
+                fontFamily:"'Cairo','Tajawal',sans-serif", cursor:'pointer',
+                transition:'all .2s', position:'relative',
+                boxShadow: isActive ? `0 4px 14px ${cat.color}45` : '0 1px 4px rgba(0,0,0,.06)',
+                transform: isActive ? 'scale(1.05)' : 'none',
+              }}
+            >
+              <span>{cat.emoji}</span>
+              <span>{cat.label}</span>
+              {equippedInCat && (
+                <span style={{ position:'absolute', top:-3, right:-3, width:9, height:9, borderRadius:'50%', background:'#10B981', border:'1.5px solid white' }}/>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Item Grid */}
-      <div>
-        <div style={{
-          display:'grid',
-          gridTemplateColumns:'repeat(3, 1fr)',
-          gap:10,
-        }}>
-          {catItems.map(item => {
-            const isOwned    = owned.includes(item.id);
-            const isEquipped = config.equipped?.[item.cat] === item.id;
-            return (
-              <ItemCard
-                key={item.id}
-                item={item}
-                isOwned={isOwned}
-                isEquipped={isEquipped}
-                balance={balance}
-                onBuy={()   => handleBuy(item)}
-                onEquip={()  => handleEquip(item)}
-                onUnequip={() => handleUnequip(item)}
-                buying={buying}
-              />
-            );
-          })}
-        </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10 }}>
+        {catItems.map(item => {
+          const isOwned    = owned.includes(item.id);
+          const isEquipped = config.equipped?.[item.cat] === item.id;
+          return (
+            <ItemCard
+              key={item.id}
+              item={item}
+              isOwned={isOwned}
+              isEquipped={isEquipped}
+              balance={balance}
+              onBuy={()      => handleBuy(item)}
+              onEquip={()    => handleEquip(item)}
+              onUnequip={()  => handleUnequip(item)}
+              buying={buying}
+            />
+          );
+        })}
       </div>
 
       {/* Tip */}
@@ -869,7 +984,6 @@ export default function HeroesStudio() {
       fontFamily:"'Cairo','Tajawal',sans-serif",
       direction:'rtl', overflow: mobile ? 'auto' : 'hidden',
     }}>
-      {/* Toast */}
       {toast && (
         <div style={{
           position:'fixed', top:20, left:'50%', transform:'translateX(-50%)',
@@ -880,7 +994,6 @@ export default function HeroesStudio() {
           animation:'hsFadeUp .28s ease',
         }}>{toast.msg}</div>
       )}
-
       {panelLeft}
       {panelRight}
     </div>
