@@ -222,10 +222,14 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
 
   const ROLE_LABELS = lang === 'ar' ? ROLE_LABELS_AR : ROLE_LABELS_EN;
 
+  const isAdmin = role === 'admin' || role === 'super_admin';
   const navLinks = [
-    { href: destPath,   label: t('nav.home'),    icon: '🏠' },
-    { href: '/library', label: t('nav.library'),  icon: '📚' },
-    ...(role === 'admin' || role === 'super_admin' ? [{ href: '/bogga', label: t('nav.admin'), icon: '⚙️' }] : []),
+    {
+      href:  destPath,
+      label: isAdmin ? t('nav.admin') : t('nav.home'),
+      icon:  isAdmin ? '⚙️' : '🏠',
+    },
+    { href: '/library', label: t('nav.library'), icon: '📚' },
   ];
 
   return (
