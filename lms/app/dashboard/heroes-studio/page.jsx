@@ -19,7 +19,7 @@ if (typeof document !== 'undefined' && !document.getElementById('hs-anim')) {
   document.head.appendChild(s);
 }
 
-/* ── Load Google model-viewer v3.5 CDN script (ES module, runs once) ───── */
+/* ── Load Google model-viewer v3.5 CDN (ES module, injected once) ────── */
 function useModelViewerScript() {
   useEffect(() => {
     if (document.querySelector('script[data-mv]')) return;
@@ -35,57 +35,71 @@ function useModelViewerScript() {
    DATA
 ══════════════════════════════════════════════════════════════════════════ */
 
+/*
+  overlay: calibrated head-anchor for each model at its default camera angle.
+  hatTop   → distance from top of viewport to crown of head (% string)
+  haloTop  → slightly above hatTop (halo floats over)
+  hatEm    → base em size of hat emoji (scales with zoom via fieldOfView)
+
+  Note: model-viewer orbits camera around the model, so head stays
+  horizontally centred (left:50%) regardless of azimuth rotation.
+  Vertical position is fixed at default elevation; tilting the camera
+  will shift it slightly — acceptable trade-off without Three.js bone access.
+*/
 const HEROES = [
-  {
-    id: 'c1', name: 'البطل الفضائي', emoji: '🧑‍🚀', color: '#3B82F6',
-    glb: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-  },
   {
     id: 'c2', name: 'الروبوت الذكي', emoji: '🤖', color: '#8B5CF6',
     glb: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
+    overlay: { hatTop: '7%', haloTop: '0%', hatEm: 3.6 },
   },
-  /* Add more characters here — just drop a .glb URL and fill the fields */
+  {
+    id: 'c1', name: 'البطل الفضائي', emoji: '🧑‍🚀', color: '#3B82F6',
+    glb: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    overlay: { hatTop: '3%', haloTop: '-4%', hatEm: 4.0 },
+  },
 ];
 
+/*
+  price: 0 → free (always usable)
+  price > 0 → must be in cfg.owned OR purchased now with stars
+*/
 const ACCS = {
   hat: [
-    { id: 'wizard',     name: 'الساحر',    emoji: '🧙'  },
-    { id: 'crown',      name: 'التاج',      emoji: '👑'  },
-    { id: 'graduation', name: 'التخرج',     emoji: '🎓'  },
-    { id: 'pirate',     name: 'القرصان',    emoji: '🏴‍☠️' },
-    { id: 'cowboy',     name: 'الكاوبوي',   emoji: '🤠'  },
-    { id: 'party',      name: 'الحفلة',     emoji: '🎉'  },
+    { id: 'wizard',     name: 'الساحر',  emoji: '🧙',  price: 0  },
+    { id: 'party',      name: 'الحفلة',  emoji: '🎉',  price: 5  },
+    { id: 'graduation', name: 'التخرج',  emoji: '🎓',  price: 10 },
+    { id: 'crown',      name: 'التاج',   emoji: '👑',  price: 15 },
+    { id: 'pirate',     name: 'القرصان', emoji: '🏴‍☠️', price: 20 },
+    { id: 'cowboy',     name: 'الكاوبوي', emoji: '🤠', price: 25 },
   ],
   halo: [
-    { id: 'stars',   name: 'النجوم',  emoji: '⭐' },
-    { id: 'fire',    name: 'النار',   emoji: '🔥' },
-    { id: 'angel',   name: 'الملاك',  emoji: '😇' },
-    { id: 'rainbow', name: 'قوس قزح', emoji: '🌈' },
+    { id: 'stars',   name: 'النجوم',  emoji: '⭐', price: 0  },
+    { id: 'fire',    name: 'النار',   emoji: '🔥', price: 10 },
+    { id: 'angel',   name: 'الملاك',  emoji: '😇', price: 15 },
+    { id: 'rainbow', name: 'قوس قزح', emoji: '🌈', price: 20 },
   ],
   companion: [
-    { id: 'cat',    name: 'القطة',   emoji: '🐱' },
-    { id: 'dragon', name: 'التنين',  emoji: '🐲' },
-    { id: 'star',   name: 'النجمة',  emoji: '⭐' },
-    { id: 'robot',  name: 'الروبوت', emoji: '🤖' },
+    { id: 'cat',    name: 'القطة',   emoji: '🐱', price: 0  },
+    { id: 'star',   name: 'النجمة',  emoji: '⭐', price: 5  },
+    { id: 'robot',  name: 'الروبوت', emoji: '🤖', price: 20 },
+    { id: 'dragon', name: 'التنين',  emoji: '🐲', price: 30 },
   ],
 };
 
 const PALETTE = [
-  '#3B82F6', '#EF4444', '#22C55E', '#EAB308', '#8B5CF6',
+  '#8B5CF6', '#3B82F6', '#EF4444', '#22C55E', '#EAB308',
   '#EC4899', '#F97316', '#06B6D4', '#F1F5F9', '#64748B',
 ];
 
-/* ── hex → [0..1] RGBA for model-viewer material API ───────────────────── */
 function hexToFactor(hex) {
   const n = parseInt(hex.replace('#', ''), 16);
   return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255, 1.0];
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   SUB-COMPONENT — accessory grid section (defined outside page to avoid
-   remounting on every render)
+   AccSection — defined OUTSIDE page to prevent remounting
 ══════════════════════════════════════════════════════════════════════════ */
-function AccSection({ cat, label, items, equipped, onToggle }) {
+function AccSection({ cat, label, items, equipped, owned, coins, onToggle, onBuy, buying }) {
   return (
     <div style={{ marginBottom: 14 }}>
       <p style={{ margin: '0 0 7px', color: '#94A3B8', fontSize: 12, fontWeight: 700 }}>
@@ -93,22 +107,63 @@ function AccSection({ cat, label, items, equipped, onToggle }) {
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
         {items.map(item => {
-          const on = equipped[cat] === item.id;
+          const isEquipped = equipped[cat] === item.id;
+          const isOwned    = item.price === 0 || owned.includes(item.id);
+          const canAfford  = coins >= item.price;
+          const isBuying   = buying === item.id;
+
+          if (!isOwned) {
+            return (
+              <button
+                key={item.id}
+                onClick={() => canAfford && !isBuying && onBuy(cat, item)}
+                title={canAfford ? `اشترِ بـ ${item.price} نقطة` : `تحتاج ${item.price} نقطة`}
+                style={{
+                  padding: '8px 4px',
+                  background: canAfford ? 'rgba(234,179,8,.1)' : 'rgba(15,23,42,.4)',
+                  border: `1.5px solid ${canAfford ? 'rgba(234,179,8,.35)' : 'rgba(71,85,105,.2)'}`,
+                  borderRadius: 10,
+                  cursor: canAfford && !isBuying ? 'pointer' : 'not-allowed',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                  opacity: canAfford ? 1 : 0.5,
+                  transition: 'all .15s',
+                }}>
+                <span style={{ fontSize: 20, filter: canAfford ? 'none' : 'grayscale(1)', lineHeight: 1 }}>
+                  {isBuying ? '⏳' : item.emoji}
+                </span>
+                <span style={{ color: '#475569', fontSize: 9, fontFamily: 'Cairo,sans-serif' }}>{item.name}</span>
+                <span style={{
+                  color: canAfford ? '#FCD34D' : '#475569',
+                  fontSize: 9, display: 'flex', alignItems: 'center', gap: 2,
+                }}>
+                  {canAfford ? '' : '🔒 '} ⭐ {item.price}
+                </span>
+              </button>
+            );
+          }
+
           return (
-            <button key={item.id} onClick={() => onToggle(cat, item.id)} style={{
-              padding: '8px 4px',
-              background: on ? 'rgba(139,92,246,.28)' : 'rgba(15,23,42,.55)',
-              border: `1.5px solid ${on ? '#8B5CF6' : 'rgba(139,92,246,.15)'}`,
-              borderRadius: 10, cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-              transition: 'all .15s',
-              transform: on ? 'scale(1.06)' : 'scale(1)',
-            }}>
+            <button
+              key={item.id}
+              onClick={() => onToggle(cat, item.id)}
+              style={{
+                padding: '8px 4px',
+                background: isEquipped ? 'rgba(139,92,246,.28)' : 'rgba(15,23,42,.55)',
+                border: `1.5px solid ${isEquipped ? '#8B5CF6' : 'rgba(139,92,246,.15)'}`,
+                borderRadius: 10, cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                transition: 'all .15s',
+                transform: isEquipped ? 'scale(1.06)' : 'scale(1)',
+              }}>
               <span style={{ fontSize: 22, lineHeight: 1 }}>{item.emoji}</span>
-              <span style={{ color: on ? '#C4B5FD' : '#475569', fontSize: 9, fontFamily: 'Cairo,sans-serif' }}>
+              <span style={{ color: isEquipped ? '#C4B5FD' : '#475569', fontSize: 9, fontFamily: 'Cairo,sans-serif' }}>
                 {item.name}
               </span>
-              {on && <span style={{ color: '#A78BFA', fontSize: 8 }}>✓ مرتدٍ</span>}
+              {isEquipped
+                ? <span style={{ color: '#A78BFA', fontSize: 8 }}>✓ مرتدٍ</span>
+                : item.price === 0
+                  ? <span style={{ color: '#22C55E', fontSize: 8 }}>مجاني</span>
+                  : null}
             </button>
           );
         })}
@@ -126,22 +181,26 @@ export default function HeroesStudio() {
   const mvRef = useRef(null);
 
   const [cfg,      setCfg]      = useState(null);
-  const [hero,     setHero]     = useState(HEROES[0]);
+  const [hero,     setHero]     = useState(HEROES[0]);   // Robot is default
   const [tint,     setTint]     = useState(HEROES[0].color);
   const [equipped, setEquipped] = useState({ hat: null, halo: null, companion: null });
+  const [owned,    setOwned]    = useState([]);
   const [ready,    setReady]    = useState(false);
   const [tab,      setTab]      = useState('chars');
   const [saving,   setSaving]   = useState(false);
+  const [buying,   setBuying]   = useState(null);        // item.id being purchased
   const [toast,    setToast]    = useState(null);
   const [isMobile, setIsMobile] = useState(false);
+  /* hatScale: driven by fieldOfView so hat grows/shrinks with camera zoom */
+  const [hatScale, setHatScale] = useState(1);
 
-  /* Detect mobile once on client */
   useEffect(() => { setIsMobile(window.innerWidth < 700); }, []);
 
-  /* Fetch config */
+  /* Fetch config & restore state */
   useEffect(() => {
     fetch('/api/hero-config').then(r => r.json()).then(d => {
       setCfg(d);
+      setOwned(d.owned ?? []);
       if (d.equipped) {
         setEquipped({
           hat:       d.equipped.hat       ?? null,
@@ -149,33 +208,46 @@ export default function HeroesStudio() {
           companion: d.equipped.companion ?? null,
         });
       }
+      if (d.avatar_id) {
+        const saved = HEROES.find(h => d.avatar_id.startsWith(h.id));
+        if (saved) { setHero(saved); setTint(saved.color); }
+      }
     }).catch(() => setCfg({ points: 0 }));
   }, []);
 
-  /* Re-attach load listener when GLB changes */
+  /* Re-attach load listener + reset scale when GLB changes */
   useEffect(() => {
     const mv = mvRef.current;
     if (!mv) return;
     setReady(false);
+    setHatScale(1);
     const onLoad = () => setReady(true);
     mv.addEventListener('load', onLoad);
     return () => mv.removeEventListener('load', onLoad);
   }, [hero.glb]);
 
-  /* ── Colour swap via model-viewer materials JS API ─────────────────── */
+  /* fieldOfView → hatScale: smaller FOV = zoomed in = bigger hat overlay */
+  useEffect(() => {
+    const mv = mvRef.current;
+    if (!mv) return;
+    const handleCam = () => {
+      const fov = mv.fieldOfView ?? 45;
+      /* Default FOV ≈ 45°. Scale linearly so zoom-in doubles hat size. */
+      setHatScale(Math.min(Math.max(45 / fov, 0.65), 2.0));
+    };
+    mv.addEventListener('camera-change', handleCam);
+    return () => mv.removeEventListener('camera-change', handleCam);
+  }, [ready]);
+
+  /* Colour tint via model-viewer materials API */
   useEffect(() => {
     if (!ready) return;
     const mv = mvRef.current;
     if (!mv?.model?.materials?.length) return;
-    /* Apply tint to primary material (index 0 = main suit/body).
-       For multi-material models, iterate all or target by material.name. */
     mv.model.materials[0].pbrMetallicRoughness.setBaseColorFactor(hexToFactor(tint));
   }, [ready, tint]);
 
-  /* ── GLB variant switching (KHR_materials_variants extension) ───────
-     If the loaded GLB was authored with variants (e.g. "hat-crown"),
-     this switches to that variant automatically. Falls back silently
-     for models without variants — CSS emoji overlay takes over. */
+  /* GLB variant switching (KHR_materials_variants) if GLB supports it */
   useEffect(() => {
     if (!ready) return;
     const mv = mvRef.current;
@@ -185,19 +257,43 @@ export default function HeroesStudio() {
     if (variants.includes(target)) mv.variantName = target;
   }, [ready, equipped.hat]);
 
-  /* Toggle accessory (equip if different, unequip if same) */
   const toggleAcc = useCallback((cat, id) => {
     setEquipped(prev => ({ ...prev, [cat]: prev[cat] === id ? null : id }));
   }, []);
 
-  /* Switch character */
   function selectHero(h) {
     setHero(h);
     setTint(h.color);
     setReady(false);
+    setHatScale(1);
   }
 
-  /* Save */
+  /* Purchase item with stars */
+  async function handleBuy(cat, item) {
+    if (buying) return;
+    setBuying(item.id);
+    try {
+      const res = await fetch('/api/hero-config/shop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_id: item.id, price: item.price }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? 'فشل');
+      }
+      setOwned(prev => [...prev, item.id]);
+      setCfg(p => ({ ...p, points: (p?.points ?? 0) - item.price }));
+      setEquipped(prev => ({ ...prev, [cat]: item.id }));
+      setToast({ msg: `🎉 اشتريت ${item.name} وتم تجهيزه!`, ok: true });
+    } catch (e) {
+      setToast({ msg: `❌ ${e.message}`, ok: false });
+    } finally {
+      setBuying(null);
+      setTimeout(() => setToast(null), 3000);
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -207,7 +303,6 @@ export default function HeroesStudio() {
         <text y="70" x="50" text-anchor="middle" font-size="50">${hero.emoji}</text>
       </svg>`;
       const previewUrl = `data:image/svg+xml;base64,${btoa(previewSvg)}`;
-
       const res = await fetch('/api/hero-config', {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -233,11 +328,15 @@ export default function HeroesStudio() {
 
   const coins  = cfg?.points ?? 0;
   const isLoad = cfg === null;
-
-  /* Helpers for accessory emoji lookup */
   const getEmoji = (cat, id) => ACCS[cat]?.find(a => a.id === id)?.emoji ?? '';
 
-  /* ── Render ─────────────────────────────────────────────────────────── */
+  /* Per-character overlay anchors */
+  const ov = hero.overlay;
+  /* Computed hat font-size in px, scaled by zoom */
+  const hatPx = Math.round(ov.hatEm * 16 * hatScale);
+  const hatFs = `${Math.min(Math.max(hatPx, 28), 96)}px`;
+
+  /* ── Render ────────────────────────────────────────────────────────── */
   return (
     <div style={{
       minHeight: '100vh',
@@ -248,7 +347,7 @@ export default function HeroesStudio() {
       padding: 'clamp(10px,2vw,20px) 10px 36px',
     }}>
 
-      {/* ── Stars ── */}
+      {/* ── Starfield ── */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
         {Array.from({ length: 28 }, (_, i) => (
           <div key={i} style={{
@@ -292,15 +391,14 @@ export default function HeroesStudio() {
           </p>
         </div>
 
-        {/* ── MAIN GRID ── */}
+        {/* ═══════════ MAIN GRID ═══════════ */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: isMobile ? '1fr' : '1fr 290px',
-          gap: 14,
-          alignItems: 'start',
+          gap: 14, alignItems: 'start',
         }}>
 
-          {/* ═════════════════ 3-D VIEWER ═════════════════ */}
+          {/* ═════ 3-D VIEWER ═════ */}
           <div style={{
             position: 'relative', borderRadius: 22, overflow: 'hidden',
             background: 'linear-gradient(160deg,rgba(18,12,55,.85),rgba(4,2,18,.9))',
@@ -310,7 +408,7 @@ export default function HeroesStudio() {
             minHeight: isMobile ? 300 : 520,
           }}>
 
-            {/* Spinner while GLB loads */}
+            {/* Loading spinner */}
             {!ready && (
               <div style={{
                 position: 'absolute', inset: 0, zIndex: 3,
@@ -325,16 +423,10 @@ export default function HeroesStudio() {
             )}
 
             {/*
-              model-viewer attributes:
-              ┌──────────────────────────────────────────────────────────┐
-              │ camera-controls   → drag / pinch to orbit & zoom        │
-              │ auto-rotate       → gentle idle spin                    │
-              │ shadow-intensity  → realistic ground contact shadow     │
-              │ environment-image → stable neutral studio lighting      │
-              │ exposure          → consistent brightness across models │
-              │ tone-mapping      → commerce = rich, stable colours     │
-              │ animation-name    → plays "Idle" anim if GLB has it     │
-              └──────────────────────────────────────────────────────────┘
+              Lighting attributes kept constant across model swaps:
+              environment-image="neutral"  → studio-grade neutral IBL
+              exposure="1"                 → consistent brightness
+              tone-mapping="commerce"      → rich, stable colours
             */}
             <model-viewer
               ref={mvRef}
@@ -355,20 +447,18 @@ export default function HeroesStudio() {
               }}
             />
 
-            {/* ── Accessory OVERLAYS ───────────────────────────────────
-                Halo   → floats above head (top ~−3%)
-                Hat    → sits on head crown (top ~2%)
-                Pet    → bottom-right corner
-                Note: overlays are 2D emoji. They appear instantly and
-                complement the 3D scene. For fully-attached 3D accessories,
-                the GLB must include them as variant materials or extra meshes.
-            ────────────────────────────────────────────────────────── */}
+            {/* ── Accessory OVERLAYS ─────────────────────────────────────────
+                Positions are calibrated per-character in HEROES[].overlay.
+                hatScale follows camera fieldOfView → hat grows/shrinks with zoom.
+                Bone-based tracking is not available via model-viewer's public API;
+                left:50% keeps the hat centred as the camera orbits.
+            ──────────────────────────────────────────────────────────────── */}
 
             {equipped.halo && (
               <div style={{
-                position: 'absolute', top: '-3%', left: '50%',
+                position: 'absolute', top: ov.haloTop, left: '50%',
                 animation: 'hsHaloFloat 2.5s ease-in-out infinite',
-                fontSize: 'clamp(42px,13%,68px)', lineHeight: 1,
+                fontSize: hatFs, lineHeight: 1,
                 zIndex: 5, pointerEvents: 'none', userSelect: 'none',
               }}>
                 {getEmoji('halo', equipped.halo)}
@@ -377,9 +467,9 @@ export default function HeroesStudio() {
 
             {equipped.hat && (
               <div style={{
-                position: 'absolute', top: '2%', left: '50%',
+                position: 'absolute', top: ov.hatTop, left: '50%',
                 transform: 'translateX(-50%)',
-                fontSize: 'clamp(40px,12%,64px)', lineHeight: 1,
+                fontSize: hatFs, lineHeight: 1,
                 zIndex: 5, pointerEvents: 'none', userSelect: 'none',
               }}>
                 {getEmoji('hat', equipped.hat)}
@@ -390,7 +480,7 @@ export default function HeroesStudio() {
               <div style={{
                 position: 'absolute', bottom: '8%', right: '4%',
                 animation: 'hsPetBounce 2.2s ease-in-out infinite',
-                fontSize: 'clamp(40px,12%,60px)', lineHeight: 1,
+                fontSize: `clamp(38px,${Math.round(3.6 * 16 * hatScale)}px,80px)`, lineHeight: 1,
                 zIndex: 5, pointerEvents: 'none', userSelect: 'none',
                 filter: 'drop-shadow(0 4px 8px rgba(0,0,0,.5))',
               }}>
@@ -404,11 +494,11 @@ export default function HeroesStudio() {
               background: 'rgba(0,0,0,.42)', borderRadius: 20, padding: '3px 12px',
               fontSize: 10, color: '#475569', pointerEvents: 'none', whiteSpace: 'nowrap',
             }}>
-              🖱️ اسحب لتدوير البطل • اسحب للتكبير
+              🖱️ اسحب لتدوير البطل • اضغط لتقريبه
             </div>
           </div>
 
-          {/* ═════════════════ SHOP PANEL ═════════════════ */}
+          {/* ═════ SHOP PANEL ═════ */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
             {/* Tab strip */}
@@ -416,7 +506,7 @@ export default function HeroesStudio() {
               {[
                 { key: 'chars',  label: '🦸 شخصيات' },
                 { key: 'acc',    label: '🎩 أكسسوار' },
-                { key: 'colors', label: '🎨 ألوان' },
+                { key: 'colors', label: '🎨 ألوان'   },
               ].map(t => (
                 <button key={t.key} onClick={() => setTab(t.key)} style={{
                   flex: 1, padding: '8px 2px',
@@ -438,7 +528,7 @@ export default function HeroesStudio() {
               background: 'rgba(22,18,60,.5)',
               borderRadius: 16, border: '1px solid rgba(139,92,246,.14)',
               padding: '13px',
-              maxHeight: isMobile ? 'none' : 400,
+              maxHeight: isMobile ? 'none' : 430,
               overflowY: 'auto',
             }}>
 
@@ -450,7 +540,7 @@ export default function HeroesStudio() {
                     <button key={h.id} onClick={() => selectHero(h)} style={{
                       padding: '10px 12px',
                       background: hero.id === h.id
-                        ? `linear-gradient(135deg,${h.color}20,${h.color}0d)`
+                        ? `linear-gradient(135deg,${h.color}22,${h.color}0d)`
                         : 'rgba(15,23,42,.5)',
                       border: `2px solid ${hero.id === h.id ? h.color : 'rgba(139,92,246,.15)'}`,
                       borderRadius: 12, cursor: 'pointer',
@@ -475,9 +565,12 @@ export default function HeroesStudio() {
               {/* ─ ACCESSORIES ─ */}
               {tab === 'acc' && (
                 <>
-                  <AccSection cat="hat"       label="🎩 قبعات"    items={ACCS.hat}       equipped={equipped} onToggle={toggleAcc} />
-                  <AccSection cat="halo"      label="✨ هالات"    items={ACCS.halo}      equipped={equipped} onToggle={toggleAcc} />
-                  <AccSection cat="companion" label="🐾 مرافقون"  items={ACCS.companion}  equipped={equipped} onToggle={toggleAcc} />
+                  <p style={{ margin: '0 0 10px', color: '#475569', fontSize: 11 }}>
+                    ⭐ رصيدك: <strong style={{ color: '#FCD34D' }}>{coins}</strong> نقطة
+                  </p>
+                  <AccSection cat="hat"       label="🎩 قبعات"    items={ACCS.hat}       equipped={equipped} owned={owned} coins={coins} onToggle={toggleAcc} onBuy={handleBuy} buying={buying} />
+                  <AccSection cat="halo"      label="✨ هالات"    items={ACCS.halo}      equipped={equipped} owned={owned} coins={coins} onToggle={toggleAcc} onBuy={handleBuy} buying={buying} />
+                  <AccSection cat="companion" label="🐾 مرافقون"  items={ACCS.companion}  equipped={equipped} owned={owned} coins={coins} onToggle={toggleAcc} onBuy={handleBuy} buying={buying} />
                 </>
               )}
 
@@ -513,10 +606,10 @@ export default function HeroesStudio() {
                 border: '1px solid rgba(139,92,246,.2)',
                 padding: '8px 12px', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center',
               }}>
-                <span style={{ color: '#64748B', fontSize: 11, fontFamily: 'Cairo,sans-serif' }}>مرتدٍ:</span>
-                {equipped.hat      && <span style={{ fontSize: 18 }}>{getEmoji('hat',       equipped.hat)}</span>}
-                {equipped.halo     && <span style={{ fontSize: 18 }}>{getEmoji('halo',      equipped.halo)}</span>}
-                {equipped.companion && <span style={{ fontSize: 18 }}>{getEmoji('companion', equipped.companion)}</span>}
+                <span style={{ color: '#64748B', fontSize: 11, fontFamily: 'Cairo,sans-serif' }}>مرتدٍ الآن:</span>
+                {equipped.hat       && <span style={{ fontSize: 18 }} title="قبعة">     {getEmoji('hat',       equipped.hat)}</span>}
+                {equipped.halo      && <span style={{ fontSize: 18 }} title="هالة">     {getEmoji('halo',      equipped.halo)}</span>}
+                {equipped.companion && <span style={{ fontSize: 18 }} title="مرافق">    {getEmoji('companion', equipped.companion)}</span>}
               </div>
             )}
 
