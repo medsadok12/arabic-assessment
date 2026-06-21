@@ -133,7 +133,7 @@ export default function HeroAvatarCreator({ existingAvatarId, onExported, onClos
                 الخطوات بسيطة وتستغرق 5 دقائق فقط:
               </p>
               {[
-                ['1', 'سجّل مجاناً في readyplayer.me', 'https://readyplayer.me/signup'],
+                ['1', 'سجّل مجاناً في readyplayer.me', 'https://readyplayer.me'],
                 ['2', 'أنشئ Application واحصل على Subdomain خاص', null],
                 ['3', 'أضف في Vercel: NEXT_PUBLIC_RPM_SUBDOMAIN=yoursubdomain', null],
               ].map(([n, t, link]) => (
