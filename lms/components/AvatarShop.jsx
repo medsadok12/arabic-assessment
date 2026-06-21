@@ -2,21 +2,29 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-/* ── DiceBear URL params — happy expressions + hair, no bald/sleepy ─────── */
-const DB_EXTRA =
+/* ── DiceBear URL params ─────────────────────────────────────────────────── */
+/* Circle avatar (adventurer) — happy face + hair, for dashboard button */
+const DB_ADV =
   '&eyes[]=variant01&eyes[]=variant04&eyes[]=variant06&eyes[]=variant09&eyes[]=variant10&eyes[]=variant11&eyes[]=variant14' +
   '&mouth[]=variant02&mouth[]=variant03&mouth[]=variant04&mouth[]=variant05' +
   '&hair[]=long01&hair[]=long02&hair[]=long04&hair[]=long05&hair[]=long06&hair[]=long07&hair[]=long08&hair[]=long09&hair[]=long10&hair[]=long11&hair[]=long12&hair[]=long13&hair[]=long14&hair[]=long15&hair[]=long16&hair[]=short01&hair[]=short02&hair[]=short03&hair[]=short05&hair[]=short07&hair[]=short09&hair[]=short10' +
   '&hairColor[]=0e0e0e&hairColor[]=3b1f0a&hairColor[]=6d4c41&hairColor[]=cc3f0c&hairColor[]=f5a623&hairColor[]=e91e8c&hairColor[]=9c27b0&hairColor[]=2196f3';
 
-/* helper — WITH background color (for circle avatars in dashboard) */
+/* adventurer WITH background — for small circle avatar in dashboard */
 export function dicebearUrl(seed) {
-  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf${DB_EXTRA}`;
+  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf${DB_ADV}`;
 }
 
-/* helper — NO background (for full-body standalone display in heroes-studio) */
+/* open-peeps — FULL BODY (head + torso + legs + feet), transparent background */
 export function dicebearUrlFull(seed) {
-  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}${DB_EXTRA}`;
+  return (
+    `https://api.dicebear.com/7.x/open-peeps/svg?seed=${encodeURIComponent(seed)}` +
+    `&face[]=smile&face[]=smileLOL&face[]=cheeky&face[]=eatingHappy&face[]=heroe&face[]=lovingGaze&face[]=driven` +
+    `&body[]=shirt&body[]=tShirt&body[]=hoodie&body[]=dress&body[]=dressShirt&body[]=jacket` +
+    `&clothingColor[]=ff6b6b&clothingColor[]=4ecdc4&clothingColor[]=ffe66d&clothingColor[]=a8e6cf` +
+    `&clothingColor[]=dda0dd&clothingColor[]=87ceeb&clothingColor[]=f97316&clothingColor[]=22c55e` +
+    `&skinColor[]=apricot&skinColor[]=brown&skinColor[]=tanned&skinColor[]=light`
+  );
 }
 
 /* ── Inject animations once ─────────────────────────────────────────────── */
