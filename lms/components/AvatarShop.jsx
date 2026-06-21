@@ -9,9 +9,14 @@ const DB_EXTRA =
   '&hair[]=long01&hair[]=long02&hair[]=long04&hair[]=long05&hair[]=long06&hair[]=long07&hair[]=long08&hair[]=long09&hair[]=long10&hair[]=long11&hair[]=long12&hair[]=long13&hair[]=long14&hair[]=long15&hair[]=long16&hair[]=short01&hair[]=short02&hair[]=short03&hair[]=short05&hair[]=short07&hair[]=short09&hair[]=short10' +
   '&hairColor[]=0e0e0e&hairColor[]=3b1f0a&hairColor[]=6d4c41&hairColor[]=cc3f0c&hairColor[]=f5a623&hairColor[]=e91e8c&hairColor[]=9c27b0&hairColor[]=2196f3';
 
-/* helper — builds consistent URL for all avatar previews */
+/* helper — WITH background color (for circle avatars in dashboard) */
 export function dicebearUrl(seed) {
   return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf${DB_EXTRA}`;
+}
+
+/* helper — NO background (for full-body standalone display in heroes-studio) */
+export function dicebearUrlFull(seed) {
+  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}${DB_EXTRA}`;
 }
 
 /* ── Inject animations once ─────────────────────────────────────────────── */

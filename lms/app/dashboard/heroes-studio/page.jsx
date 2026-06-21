@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { dicebearUrl } from '../../../components/AvatarShop';
+import { dicebearUrl, dicebearUrlFull } from '../../../components/AvatarShop';
 
 /* ═══════════════════════ CSS ANIMATIONS ══════════════════════════════════ */
 if (typeof document !== 'undefined' && !document.getElementById('hs-anim')) {
@@ -416,19 +416,21 @@ function renderBg(id, sz) {
 /* ═══════════════════════ HERO PREVIEW ═══════════════════════════════════ */
 function HeroPreview({ config = {}, size = 200 }) {
   const { base_seed = 'default', equipped = {} } = config;
-  const url = dicebearUrl(base_seed);
+  /* NO backgroundColor → transparent SVG, character floats on dark panel */
+  const url = dicebearUrlFull(base_seed);
 
   return (
     <div style={{ position:'relative', width:size, height:size, overflow:'visible' }}>
       {/* Background fills the full square */}
       {equipped.background && renderBg(equipped.background, size)}
 
-      {/* Full-body character — NO circle clip, NO overflow:hidden */}
+      {/* Full-body character — transparent background, no clip, floats on dark panel */}
       <img
         src={url} alt=""
         style={{
           position:'absolute', width:size, height:size, top:0, left:0, zIndex:1,
-          filter:'drop-shadow(0 10px 28px rgba(0,0,0,.5))',
+          objectFit:'contain',
+          filter:'drop-shadow(0 12px 32px rgba(0,0,0,.6)) drop-shadow(0 0 16px rgba(139,92,246,.3))',
         }}
       />
 
@@ -763,11 +765,11 @@ export default function HeroesStudio() {
                   animation: isActive ? 'hsBounce .4s ease' : 'none',
                 }}
               >
-                <div style={{ width:52, height:52, borderRadius:'50%', overflow:'hidden', border:`2px solid ${isActive ? 'rgba(255,255,255,.5)' : '#e2e8f0'}`, background:'#dbeafe', position:'relative' }}>
+                <div style={{ width:52, height:64, borderRadius:10, overflow:'hidden', border:`2px solid ${isActive ? 'rgba(255,255,255,.5)' : '#e2e8f0'}`, background: isActive ? 'rgba(0,0,0,.15)' : '#f1f5f9', position:'relative' }}>
                   <img
-                    src={dicebearUrl(char.seed)}
+                    src={dicebearUrlFull(char.seed)}
                     alt={char.name}
-                    style={{ position:'absolute', width:70, height:70, top:-3, left:-9 }}
+                    style={{ width:52, height:64, objectFit:'contain' }}
                   />
                 </div>
                 <div style={{ fontSize:'.65rem', fontWeight:800, color: isActive ? '#fff' : '#374151', whiteSpace:'nowrap' }}>
