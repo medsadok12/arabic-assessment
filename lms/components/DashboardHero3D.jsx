@@ -68,6 +68,23 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
       .catch(() => setCfg({}));
   }, [isStudent]);
 
+  /* Apply saved tint colour after GLB loads */
+  useEffect(() => {
+    const mv = mvRef.current;
+    if (!mv || !cfg?.avatar_tint) return;
+    function applyTint() {
+      const mat = mv.model?.materials?.[0];
+      if (!mat) return;
+      const hex = cfg.avatar_tint.replace('#', '');
+      const r = parseInt(hex.slice(0, 2), 16) / 255;
+      const g = parseInt(hex.slice(2, 4), 16) / 255;
+      const b = parseInt(hex.slice(4, 6), 16) / 255;
+      mat.pbrMetallicRoughness.setBaseColorFactor([r, g, b, 1.0]);
+    }
+    mv.addEventListener('load', applyTint);
+    return () => mv.removeEventListener('load', applyTint);
+  }, [cfg?.avatar_tint, cfg?.avatar_url]);
+
   /* Loading → show spacer so layout doesn't jump */
   if (cfg === null) return <div style={{ marginBottom: 28 }} />;
 

@@ -239,6 +239,7 @@ export default function HeroesStudio() {
           avatar_url:  hero.glb,
           preview_url: previewUrl,
           avatar_id:   hero.id,
+          tint:        tint,
           hat:         null,
           halo:        null,
           companion:   null,
