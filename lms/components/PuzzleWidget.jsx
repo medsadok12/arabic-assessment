@@ -9,6 +9,9 @@ const PIECE_COLORS = [
   ['#10B981','#059669'], ['#3B82F6','#2563EB'], ['#8B5CF6','#7C3AED'],
   ['#EF4444','#DC2626'], ['#14B8A6','#0D9488'], ['#F97316','#EA580C'],
   ['#84CC16','#65A30D'], ['#06B6D4','#0891B2'], ['#A855F7','#9333EA'],
+  ['#0EA5E9','#0284C7'], ['#F43F5E','#E11D48'], ['#22D3EE','#06B6D4'],
+  ['#FB923C','#F97316'], ['#4ADE80','#22C55E'], ['#C084FC','#A855F7'],
+  ['#FCD34D','#F59E0B'], ['#34D399','#10B981'], ['#818CF8','#6366F1'],
 ];
 
 const PUZZLE_BG = [
@@ -57,7 +60,7 @@ function Confetti({ active }) {
           100% { background-position:  200% 0; }
         }
         @keyframes pw-unlock {
-          0%   { opacity: 0.88; transform: scale(1); }
+          0%   { opacity: 1; transform: scale(1); }
           40%  { opacity: 0.3; transform: scale(1.08); }
           100% { opacity: 0; transform: scale(0.85); }
         }
@@ -274,7 +277,7 @@ export default function PuzzleWidget() {
           display: 'grid',
           gridTemplateColumns: `repeat(${puzzle.cols}, 1fr)`,
           gridTemplateRows: `repeat(${puzzle.rows}, 1fr)`,
-          gap: 3, padding: 3, zIndex: 2,
+          gap: 2, padding: 2, zIndex: 2,
         }}>
           {Array.from({ length: total }, (_, i) => {
             const isUnlocked  = unlocked.includes(i);
@@ -283,9 +286,9 @@ export default function PuzzleWidget() {
 
             return (
               <div key={i} style={{
-                borderRadius: 8,
+                borderRadius: 6,
                 background: isUnlocked ? 'transparent' : `linear-gradient(135deg,${c1},${c2})`,
-                opacity: isUnlocked ? 0 : 0.88,
+                opacity: isUnlocked ? 0 : 1,
                 transition: 'opacity 0.7s ease, transform 0.5s ease',
                 transform: isUnlocked ? 'scale(0.7)' : 'scale(1)',
                 animation: justUnlocked ? 'pw-unlock 0.7s ease forwards' : 'none',
@@ -300,7 +303,7 @@ export default function PuzzleWidget() {
                       backgroundSize: '200% 100%',
                       animation: `pw-shimmer 2.8s ${i * 0.15}s ease-in-out infinite`,
                     }} />
-                    <span style={{ fontSize: '1.1rem', opacity: 0.65, zIndex: 1 }}>⭐</span>
+                    <span style={{ fontSize: puzzle.cols >= 5 ? '.75rem' : '1rem', opacity: 0.65, zIndex: 1 }}>⭐</span>
                   </>
                 )}
               </div>
