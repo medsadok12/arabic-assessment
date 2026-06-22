@@ -416,7 +416,10 @@ export default function DashboardContent({
           {/* ── Header ── */}
           <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between',
             flexWrap:'wrap', gap:12, marginBottom:8, overflow:'visible' }}>
-            <div>
+            {isStudent && (
+              <AvatarShop user={user} displayName={displayName} />
+            )}
+            <div style={{ textAlign:'right' }}>
               <div className="db-hello">أهلاً، {displayName} 👋</div>
               <div className="db-sub" style={{ marginBottom:0 }}>
                 {pendingHw > 0
@@ -426,9 +429,6 @@ export default function DashboardContent({
                     : 'مرحباً بك في أكاديمية عارم'}
               </div>
             </div>
-            {isStudent && (
-              <AvatarShop user={user} displayName={displayName} />
-            )}
           </div>
           <DashboardHero3D
             displayName={displayName}
