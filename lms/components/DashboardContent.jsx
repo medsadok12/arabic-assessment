@@ -414,22 +414,28 @@ export default function DashboardContent({
         <div className="db-wrap">
 
           {/* ── Header ── */}
-          <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between',
-            flexWrap:'wrap', gap:12, marginBottom:8, overflow:'visible' }}>
-            {isStudent && (
-              <AvatarShop user={user} displayName={displayName} />
-            )}
-            <div style={{ textAlign:'right' }}>
-              <div className="db-hello">أهلاً، {displayName} 👋</div>
-              <div className="db-sub" style={{ marginBottom:0 }}>
-                {pendingHw > 0
-                  ? `لديك ${pendingHw} واجب${pendingHw === 1 ? '' : 'ات'} معلّقة`
-                  : nextSession
-                    ? 'كل شيء على ما يرام — حصتك القادمة في الأسفل'
-                    : 'مرحباً بك في أكاديمية عارم'}
-              </div>
+          <div style={{ marginBottom:8 }}>
+            <div className="db-hello">أهلاً، {displayName} 👋</div>
+            <div className="db-sub" style={{ marginBottom:0 }}>
+              {pendingHw > 0
+                ? `لديك ${pendingHw} واجب${pendingHw === 1 ? '' : 'ات'} معلّقة`
+                : nextSession
+                  ? 'كل شيء على ما يرام — حصتك القادمة في الأسفل'
+                  : 'مرحباً بك في أكاديمية عارم'}
             </div>
           </div>
+
+          {/* ── AvatarShop — fixed on right edge, below points counter ── */}
+          {isStudent && (
+            <div style={{
+              position: 'fixed',
+              right: 12,
+              top: 242,
+              zIndex: 48,
+            }}>
+              <AvatarShop user={user} displayName={displayName} />
+            </div>
+          )}
           <DashboardHero3D
             displayName={displayName}
             pendingHw={pendingHw}
