@@ -39,6 +39,11 @@
         <h1 class="home-title">آيات</h1>
         <p class="home-sub">اختر ما تريد تعلّمه</p>
 
+        <div class="role-switch">
+          <button data-role="student" class="active">🧒 الطالب</button>
+          <button data-role="admin">🛠️ الإدارة</button>
+        </div>
+
         <div class="level-card" id="level-card"><!-- المستوى والنقاط تُبنى بـ JS --></div>
         <div class="streak-chip" id="streak-chip"></div>
 
@@ -67,6 +72,17 @@
         <h2 class="screen-title">🧩 الأحجية السحرية</h2>
         <p class="screen-hint">العب أي لعبة واجمع النقاط ⭐ لتكشف الصورة المخفية قطعةً قطعة!</p>
         <div class="magic-card" id="magic-card"><!-- يُبنى بـ JS --></div>
+      </section>
+
+      <!-- ====== لوحة الإدارة ====== -->
+      <section class="screen" id="screen-admin" hidden>
+        <div class="role-switch">
+          <button data-role="student">🧒 الطالب</button>
+          <button data-role="admin" class="active">🛠️ الإدارة</button>
+        </div>
+        <h2 class="screen-title">🛠️ لوحة الإدارة</h2>
+        <p class="screen-hint">تحكّم في الأنشطة والإعدادات، وتابع تقدّم الطالب.</p>
+        <div id="admin-body"><!-- يُبنى بـ JS --></div>
       </section>
 
       <!-- ====== قائمة العملية (الأوضاع) ====== -->
