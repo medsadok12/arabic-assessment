@@ -140,16 +140,17 @@ export default function WordWheelGame() {
   const [flyWord,        setFlyWord]        = useState(null);
   const [customConfigs,  setCustomConfigs]  = useState([]);
   const [customConfig,   setCustomConfig]   = useState(null);
+  const [wheelValidWords,setWheelValidWords]= useState([]);
   const [wordImagePopup, setWordImagePopup] = useState(null);
   const [userRole,       setUserRole]       = useState(null);
   // ── Progress tracking ──
   const [progress,   setProgress]   = useState({});
   const [gameStars,  setGameStars]  = useState(0);
-  const [allDoneNew, setAllDoneNew] = useState(false); // first time hitting allDone
+  const [allDoneNew, setAllDoneNew] = useState(false);
 
   const timerRef   = useRef(null);
   const feedbackRef= useRef(null);
-  const progSaved  = useRef(false); // prevent double-save per game
+  const progSaved  = useRef(false);
 
   /* ── Load progress from localStorage ──────────────────────────────────── */
   useEffect(() => { setProgress(loadProgress()); }, []);
@@ -194,6 +195,7 @@ export default function WordWheelGame() {
     setCenter(config.center_letter||'');
     setGameTime(config.time_seconds||90);
     setCurrentIndex(0); setTotalWheels(1);
+    setWheelValidWords([]);
     setPhase('start');
   }, []);
 
@@ -206,6 +208,7 @@ export default function WordWheelGame() {
       if(j.levels?.length) setLevelsData(j.levels);
       setLetters(j.letters||[]); setCenter(j.center||'');
       setGameTime(j.time||90); setTotalWheels(j.total||5);
+      setWheelValidWords(j.valid_words||[]);
       setPhase('start');
     } catch { setPhase('lobby'); }
   }, []);
@@ -265,6 +268,12 @@ export default function WordWheelGame() {
     if(!isArabic(word)){ setShaking(true); setTimeout(()=>setShaking(false),500); showFeedback('حروف غير صالحة','error'); return; }
     if(!word.includes(center)){ setShaking(true); setTimeout(()=>setShaking(false),500); showFeedback(`الحرف "${center}" إلزامي في كل كلمة`,'error'); return; }
     if(!canFormFrom(word,wheelCounts)){ setShaking(true); setTimeout(()=>setShaking(false),500); showFeedback('الكلمة تحتوي على حروف خارج العجلة','error'); return; }
+    // Validate against the curated word list for standard wheels
+    if(!customConfig && wheelValidWords.length>0 && !wheelValidWords.includes(word)){
+      setShaking(true); setTimeout(()=>setShaking(false),500);
+      showFeedback('الكلمة غير مدرجة في القائمة — جرّب غيرها 💡','error');
+      return;
+    }
     if(customConfig&&(customConfig.valid_words||[]).length>0){
       const entry=(customConfig.valid_words||[]).find(vw=>vw.word===word);
       if(!entry){ setShaking(true); setTimeout(()=>setShaking(false),500); showFeedback('الكلمة غير موجودة في قائمة هذه العجلة','error'); return; }
@@ -281,7 +290,7 @@ export default function WordWheelGame() {
       const entry=(customConfig.valid_words||[]).find(vw=>vw.word===word);
       if(entry?.image){ setWordImagePopup({word,image:entry.image}); setTimeout(()=>setWordImagePopup(null),2500); }
     }
-  },[phase,inputText,center,wheelCounts,foundWords,allLetters,showFeedback,customConfig]);
+  },[phase,inputText,center,wheelCounts,foundWords,allLetters,showFeedback,customConfig,wheelValidWords]);
 
   /* ── Keyboard ──────────────────────────────────────────────────────────── */
   useEffect(()=>{
@@ -304,7 +313,6 @@ export default function WordWheelGame() {
     } else if(currentLevel<4){
       const nl=currentLevel+1; setCurrentLevel(nl); setCurrentIndex(0); fetchWheel(nl,0);
     } else {
-      // Finished all 4 levels!
       const prog=loadProgress();
       const done=getTotalDone(prog);
       setAllDoneNew(done>=20);
@@ -342,7 +350,6 @@ export default function WordWheelGame() {
       <div style={S.page}>
         <style>{CSS_KEYFRAMES}</style>
         <div style={{...S.centerCard, gap:20, padding:'40px 24px'}}>
-          {/* Confetti overlay */}
           <div style={{position:'fixed',inset:0,pointerEvents:'none',zIndex:0,overflow:'hidden'}}>
             {Array.from({length:40},(_,i)=>(
               <div key={i} style={{
@@ -355,22 +362,17 @@ export default function WordWheelGame() {
               }}/>
             ))}
           </div>
-
           <div style={{position:'relative',zIndex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:20,width:'100%'}}>
             <div style={{fontSize:'5rem',animation:'ww-pop 0.7s cubic-bezier(0.175,0.885,0.32,1.275) forwards'}}>🏆</div>
             <div>
               <h2 style={{...S.mainTitle,color:'#D97706',fontSize:'1.8rem',margin:0,textAlign:'center'}}>أحسنت يا بطل! 🎉</h2>
               <p style={{color:'#6B7280',textAlign:'center',margin:'6px 0 0',fontSize:'.92rem'}}>أتممت جميع مراحل عجلة الكلمات!</p>
             </div>
-
-            {/* Star totals */}
             <div style={{background:'#FFFBEB',border:'2px solid #FDE68A',borderRadius:18,padding:'16px 24px',textAlign:'center',width:'100%',boxSizing:'border-box'}}>
               <div style={{fontSize:'2rem',marginBottom:6}}>{'⭐'.repeat(Math.min(5,Math.round(totalStars/12)))}</div>
               <div style={{fontSize:'1.6rem',fontWeight:900,color:'#D97706'}}>{totalStars} / {maxStars}</div>
               <div style={{color:'#92400E',fontSize:'.8rem',fontWeight:700,marginTop:2}}>إجمالي النجوم عبر كل العجلات</div>
             </div>
-
-            {/* Per-level recap */}
             <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10,width:'100%'}}>
               {[1,2,3,4].map(lvl=>{
                 const {done,total,maxTotal}=getLevelSummary(lvl,progress);
@@ -386,7 +388,6 @@ export default function WordWheelGame() {
                 );
               })}
             </div>
-
             <button style={S.btnGold} onClick={()=>{
               localStorage.removeItem(PROG_KEY);
               setProgress({});
@@ -411,13 +412,10 @@ export default function WordWheelGame() {
     ];
     const displayLevels=levelsData.length?levelsData:defaultLevels;
     const pct=Math.round((totalDone/20)*100);
-
     return (
       <div style={S.page}>
         <style>{CSS_KEYFRAMES}</style>
         <div style={S.lobbyWrap}>
-
-          {/* Header */}
           <div style={S.lobbyHeader}>
             <Link href="/library" style={S.topBackLink}>← المكتبة</Link>
             <div style={{textAlign:'center'}}>
@@ -426,8 +424,6 @@ export default function WordWheelGame() {
               <p style={{color:'rgba(255,255,255,0.75)',margin:0,fontSize:'.93rem'}}>اختر مرحلتك وابدأ التحدي!</p>
             </div>
           </div>
-
-          {/* Overall progress bar */}
           <div style={{background:'rgba(255,255,255,0.12)',borderRadius:16,padding:'14px 16px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
               <span style={{color:'rgba(255,255,255,0.85)',fontWeight:800,fontSize:'.88rem'}}>🏆 تقدمك الكلي</span>
@@ -440,8 +436,6 @@ export default function WordWheelGame() {
               {totalDone===0?'ابدأ رحلتك!':totalDone===20?'🌟 أتممت جميع العجلات!':pct+'% أنجزت'}
             </div>
           </div>
-
-          {/* Level grid */}
           <div style={S.lobbyGrid}>
             {displayLevels.map(lvl=>{
               const colors=LEVEL_COLORS[lvl.id]||LEVEL_COLORS[1];
@@ -459,7 +453,6 @@ export default function WordWheelGame() {
                   <div style={{fontSize:'2.4rem'}}>{lvl.icon}</div>
                   <div style={{fontSize:'1.1rem',fontWeight:900,color:colors.accent}}>{lvl.label}</div>
                   <div style={{fontSize:'.78rem',color:'#6B7280',lineHeight:1.5}}>{lvl.desc}</div>
-                  {/* Stars earned */}
                   <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,width:'100%'}}>
                     <div style={{fontSize:16}}>{'⭐'.repeat(Math.round(total/5))}{'☆'.repeat(3-Math.round(total/5))}</div>
                     <div style={{height:4,background:'#E5E7EB',borderRadius:4,width:'80%',overflow:'hidden'}}>
@@ -471,8 +464,6 @@ export default function WordWheelGame() {
               );
             })}
           </div>
-
-          {/* Custom Wheels */}
           {customConfigs.length>0&&(()=>{
             const isTeacher=['teacher','admin','super_admin'].includes(userRole);
             const studentConfigs=customConfigs.filter(c=>(c.valid_words||[]).length>0);
@@ -518,7 +509,6 @@ export default function WordWheelGame() {
               </div>
             );
           })()}
-
           {['teacher','admin','super_admin'].includes(userRole)&&(
             <Link href="/library/games/word-wheel/settings" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'rgba(255,255,255,0.15)',color:'rgba(255,255,255,0.9)',borderRadius:14,padding:'12px 20px',textDecoration:'none',fontFamily:"'Cairo','Tajawal',sans-serif",fontWeight:700,fontSize:'.9rem',border:'1.5px solid rgba(255,255,255,0.25)'}}>
               ⚙️ إدارة العجلات المخصصة
@@ -565,7 +555,6 @@ export default function WordWheelGame() {
             </>)}
             <span style={{background:'#EFF6FF',border:'1.5px solid #BAE6FD',color:'#0369A1',borderRadius:20,padding:'4px 14px',fontSize:'.85rem',fontWeight:700}}>⏱ {gameTime} ثانية</span>
           </div>
-          {/* Previous stars for this wheel */}
           {prevStars>0&&!customConfig&&(
             <div style={{background:'#FFFBEB',border:'1.5px solid #FDE68A',borderRadius:12,padding:'6px 16px',display:'flex',alignItems:'center',gap:8}}>
               <span style={{fontSize:'.8rem',color:'#92400E',fontWeight:700}}>أفضل نتيجة سابقة:</span>
@@ -601,7 +590,6 @@ export default function WordWheelGame() {
     return (
       <div style={S.page}><style>{CSS_KEYFRAMES}</style>
         <div style={{...S.centerCard,gap:16}}>
-          {/* Stars earned */}
           <div style={{textAlign:'center'}}>
             <div style={{fontSize:'3rem',animation:'ww-pop 0.6s cubic-bezier(0.175,0.885,0.32,1.275) forwards'}}>
               {gameStars===3?'🏆':gameStars===2?'🥈':gameStars===1?'🥉':'🎡'}
@@ -609,15 +597,14 @@ export default function WordWheelGame() {
             <div style={{fontSize:28,margin:'6px 0 2px'}}>{'⭐'.repeat(gameStars)}{'☆'.repeat(3-gameStars)}</div>
             <div style={{color:'#6B7280',fontSize:'.85rem',fontWeight:600}}>{starMsg}</div>
           </div>
-          {/* Stats */}
           <div style={{display:'flex',gap:16,justifyContent:'center',alignItems:'stretch'}}>
             <div style={S.statBox}><span style={{...S.statNum,color:'#D97706'}}>{score}</span><span style={S.statLbl}>نقطة</span></div>
             <div style={S.statDiv}/>
             <div style={S.statBox}><span style={{...S.statNum,color:'#059669'}}>{foundWords.length}</span><span style={S.statLbl}>كلمة</span></div>
             <div style={S.statDiv}/>
             <div style={S.statBox}>
-              <span style={{...S.statNum,color:'#6366F1'}}>{letters.length>0?Math.min(100,Math.round((foundWords.length/Math.max(1,Math.ceil(letters.length*1.5)))*100)):0}%</span>
-              <span style={S.statLbl}>استغلال</span>
+              <span style={{...S.statNum,color:'#6366F1'}}>{wheelValidWords.length>0?Math.round((foundWords.length/wheelValidWords.length)*100):letters.length>0?Math.min(100,Math.round((foundWords.length/Math.max(1,Math.ceil(letters.length*1.5)))*100)):0}%</span>
+              <span style={S.statLbl}>اكتشفت</span>
             </div>
           </div>
           {bestWord&&(
@@ -635,7 +622,6 @@ export default function WordWheelGame() {
               </div>
             </div>
           )}
-          {/* Level progress for current level */}
           {!customConfig&&(
             <div style={{background:LEVEL_COLORS[currentLevel].bg,border:`1.5px solid ${LEVEL_COLORS[currentLevel].border}`,borderRadius:12,padding:'8px 14px',width:'100%',boxSizing:'border-box'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -710,7 +696,7 @@ export default function WordWheelGame() {
         <div style={S.foundCol}>
           <div style={S.foundHeader}>
             <span style={{fontWeight:800,color:'#92400E',fontSize:'.9rem'}}>الكلمات المكتشفة</span>
-            <span style={{background:'#FEF3C7',color:'#D97706',borderRadius:20,padding:'2px 10px',fontSize:'.8rem',fontWeight:700}}>{foundWords.length}</span>
+            <span style={{background:'#FEF3C7',color:'#D97706',borderRadius:20,padding:'2px 10px',fontSize:'.8rem',fontWeight:700}}>{foundWords.length}{wheelValidWords.length>0?`/${wheelValidWords.length}`:''}</span>
           </div>
           <div style={S.foundList}>
             {foundWords.length===0?(<div style={{textAlign:'center',color:'#D1D5DB',padding:'24px 0',fontSize:'.86rem'}}>ابدأ بكتابة كلمة!</div>)
