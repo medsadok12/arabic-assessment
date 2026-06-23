@@ -368,6 +368,18 @@ body {
 .ppp-btn { flex: 1; border: 2px solid #e2e8f0; background: #fff; border-radius: 12px; padding: 10px; font-weight: 800; font-size: 1.05rem; cursor: pointer; color: var(--ink); }
 .ppp-btn.sel { border-color: var(--accent); background: #fff7ed; color: var(--accent); }
 .admin-h { color: #fff; text-align: center; margin: 6px 0 10px; }
+.admin-input { width: 100%; border: 2px solid #e2e8f0; border-radius: 12px; padding: 11px 14px; font-family: inherit; font-size: 1rem; margin-bottom: 10px; box-sizing: border-box; color: var(--ink); background: #fff; }
+.admin-input:focus { outline: none; border-color: var(--accent); }
+.admin-note { color: var(--muted); font-size: .88rem; margin: 0 0 10px; line-height: 1.6; }
+.admin-err { color: var(--bad); font-weight: 700; font-size: .85rem; min-height: 1em; margin-bottom: 8px; }
+.admin-btn-row { display: flex; gap: 10px; }
+.ghost-btn.dark { background: #eef2ff; color: var(--bg1); flex: 1; }
+.pic-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.pic-row .pic-emoji { width: 60px; flex: none; text-align: center; font-size: 1.3rem; margin-bottom: 0; padding: 9px 4px; }
+.pic-row .pic-name { flex: 1; margin-bottom: 0; padding: 9px 12px; }
+.pic-del, .pic-add-btn { flex: none; width: 44px; height: 44px; border: none; border-radius: 12px; cursor: pointer; font-size: 1.1rem; }
+.pic-del { background: var(--bad-soft); }
+.pic-add-btn { background: var(--good); color: #fff; }
 
 @media (max-width: 360px) {
   .problem { font-size: 2.2rem; }
