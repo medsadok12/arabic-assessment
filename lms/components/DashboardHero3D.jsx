@@ -26,14 +26,17 @@ if (typeof document !== 'undefined' && !document.getElementById('hero3d-anim')) 
   document.head.appendChild(s);
 }
 
-/* ── Per-hero static data (mirrors heroes-studio HEROES array) ────────── */
+/* ── Per-hero static data ────────── */
 const HERO_META = {
-  robot:     { name:'الروبوت الذكي',   emoji:'🤖', color:'#8B5CF6' },
-  astronaut: { name:'رائد الفضاء',     emoji:'🧑‍🚀', color:'#3B82F6' },
-  fox:       { name:'الثعلب الذكي',    emoji:'🦊', color:'#F97316' },
-  explorer:  { name:'المستكشف',         emoji:'🧭', color:'#22C55E' },
-  cyborg:    { name:'الآلة المُدرَّعة', emoji:'🦾', color:'#EF4444' },
-  knight:    { name:'الفارس',           emoji:'⚔️', color:'#EAB308' },
+  robot:     { name:'الروبوت الذكي',    emoji:'🤖',  color:'#8B5CF6' },
+  astronaut: { name:'رائد الفضاء',      emoji:'🧑‍🚀', color:'#3B82F6' },
+  fox:       { name:'الثعلب الذكي',     emoji:'🦊',  color:'#F97316' },
+  duck:      { name:'البطة الذهبية',    emoji:'🦆',  color:'#CA8A04' },
+  parrot:    { name:'الببغاء الملون',   emoji:'🦜',  color:'#16A34A' },
+  flamingo:  { name:'النحامة الوردية',  emoji:'🦩',  color:'#EC4899' },
+  explorer:  { name:'المستكشف',          emoji:'🧭',  color:'#22C55E' },
+  cyborg:    { name:'الآلة المُدرَّعة', emoji:'🦾',  color:'#EF4444' },
+  knight:    { name:'الفارس',            emoji:'⚔️', color:'#EAB308' },
 };
 
 const GREETINGS = [
@@ -43,15 +46,8 @@ const GREETINGS = [
   'رفيقك الأمين في كل خطوة.',
 ];
 
-/*
-  DashboardHero3D
-  ───────────────
-  - Returns null (no-op) when user has no 3D hero saved
-  - Returns a spacer (marginBottom:28) while loading to avoid layout jump
-  - Returns the full companion banner when a GLB is saved
-*/
 export default function DashboardHero3D({ displayName, pendingHw, nextSession, isStudent }) {
-  const [cfg,      setCfg]      = useState(null);   // null = loading
+  const [cfg,      setCfg]      = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const mvRef = useRef(null);
 
@@ -85,13 +81,11 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
     return () => mv.removeEventListener('load', applyTint);
   }, [cfg?.avatar_tint, cfg?.avatar_url]);
 
-  /* Loading → show spacer so layout doesn't jump */
   if (cfg === null) return <div style={{ marginBottom: 28 }} />;
 
   const avatarUrl = cfg.avatar_url;
   const is3D      = Boolean(avatarUrl?.endsWith?.('.glb'));
 
-  /* No 3D hero saved → just the spacer */
   if (!is3D) return <div style={{ marginBottom: 28 }} />;
 
   const heroId  = cfg.avatar_id ?? 'robot';
@@ -105,7 +99,6 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
       ? 'حصتك القادمة في الأسفل 📅'
       : 'يوم رائع! استمر في التعلم 🌟';
 
-  /* ── Companion banner ─────────────────────────────────────────────── */
   return (
     <div style={{
       display: 'flex',
@@ -121,14 +114,12 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
       animation: 'h3dSlide .45s ease-out',
     }}>
 
-      {/* Ambient glow behind the hero */}
       <div style={{
         position: 'absolute', left: 0, top: 0, bottom: 0, right: 0,
         background: `radial-gradient(ellipse at right 30%, ${color}18 0%, transparent 65%)`,
         pointerEvents: 'none',
       }} />
 
-      {/* Floating particles */}
       {[...Array(5)].map((_, i) => (
         <div key={i} style={{
           position: 'absolute',
@@ -145,7 +136,7 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
         }} />
       ))}
 
-      {/* ── Left: info ─────────────────────────────────────────────── */}
+      {/* Left: info */}
       <div style={{
         flex: 1, padding: isMobile ? '18px 16px' : '22px 28px',
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
@@ -153,7 +144,6 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
         fontFamily: "'Cairo','Tajawal',sans-serif",
       }}>
 
-        {/* Companion tag */}
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 6, width: 'fit-content',
           background: `${color}18`, border: `1px solid ${color}35`,
@@ -168,7 +158,6 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
           </span>
         </div>
 
-        {/* Greeting */}
         <p style={{
           margin: 0,
           fontSize: isMobile ? '.8rem' : '.9rem',
@@ -177,7 +166,6 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
           {greeting}
         </p>
 
-        {/* Status message */}
         <p style={{
           margin: 0,
           fontSize: isMobile ? '.75rem' : '.82rem',
@@ -187,7 +175,6 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
           {statusMsg}
         </p>
 
-        {/* Link to studio */}
         <Link href="/dashboard/heroes-studio" style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           background: color, color: 'white',
@@ -209,19 +196,13 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
         </Link>
       </div>
 
-      {/* ── Right: 3D model ─────────────────────────────────────── */}
+      {/* Right: 3D model */}
       <div style={{
         width: isMobile ? 130 : 200,
         flexShrink: 0,
         position: 'relative',
         overflow: 'hidden',
       }}>
-        {/*
-          Use model-viewer's built-in `poster` attribute for loading state —
-          it shows the image automatically and hides it once the GLB is ready.
-          DO NOT use onLoad JSX prop — custom elements use DOM events,
-          not React synthetic events; attach via ref + addEventListener instead.
-        */}
         <model-viewer
           ref={mvRef}
           src={avatarUrl}
