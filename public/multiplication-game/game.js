@@ -57,7 +57,7 @@
   /* ---------- التخزين ---------- */
   function freshActivity() { return { stars: 0, best: 0, plays: 0, bestLevel: 1, seen: 0, correct: 0 }; }
   function freshProgress() {
-    var p = { ops: {}, patterns: freshActivity(), puzzles: freshActivity(), xp: 0, streak: { count: 0, last: '' }, magic: { revealed: {}, selected: 0 }, admin: { visible: {}, ppp: 20 }, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
+    var p = { ops: {}, patterns: freshActivity(), puzzles: freshActivity(), xp: 0, streak: { count: 0, last: '' }, magic: { revealed: {}, selected: 0 }, admin: { visible: {}, ppp: 20, email: 'gandouzimohamed9@gmail.com', studentName: '', cfg: {}, pictures: null }, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
     OP_LIST.forEach(function (o) { p.ops[o] = { facts: {}, worlds: {} }; p.stats.bestTime[o] = 0; });
     return p;
   }
@@ -76,7 +76,7 @@
         base.xp = p.xp || 0;
         if (p.streak) base.streak = Object.assign(base.streak, p.streak);
         if (p.magic) base.magic = { revealed: p.magic.revealed || {}, selected: p.magic.selected || 0 };
-        if (p.admin) base.admin = { visible: p.admin.visible || {}, ppp: p.admin.ppp || 20 };
+        if (p.admin) base.admin = { visible: p.admin.visible || {}, ppp: p.admin.ppp || 20, email: p.admin.email || base.admin.email, studentName: p.admin.studentName || '', cfg: p.admin.cfg || {}, pictures: (p.admin.pictures && p.admin.pictures.length) ? p.admin.pictures : null };
         if (p.stats) { base.stats.sessions = p.stats.sessions || 0; OP_LIST.forEach(function (o) { base.stats.bestTime[o] = (p.stats.bestTime && p.stats.bestTime[o]) || 0; }); }
         if (p.settings) base.settings = Object.assign(base.settings, p.settings);
       } else {
@@ -127,12 +127,14 @@
   }
 
   function renderMagic() {
-    var sel = progress.magic.selected || 0, pic = PICTURES[sel];
+    var P = pics();
+    var sel = Math.min(progress.magic.selected || 0, P.length - 1); progress.magic.selected = sel;
+    var pic = P[sel];
     var rev = picRevealed(sel), revCount = rev.length, pct = Math.round(revCount / PIECES_PER_PIC * 100);
     var avail = magicAvailable();
 
     var gal = '';
-    PICTURES.forEach(function (p, idx) {
+    P.forEach(function (p, idx) {
       var c = (progress.magic.revealed[idx] || []).length;
       gal += '<button class="gal-item' + (idx === sel ? ' sel' : '') + (c === PIECES_PER_PIC ? ' done' : '') + '" data-pic="' + idx + '"><span class="gi-emo">' + p.emoji + '</span><span class="gi-n">' + c + '/30</span></button>';
     });
@@ -302,11 +304,11 @@
   function baseSession(mode) { return { op: state.op, mode: mode, idx: 0, correct: 0, wrong: 0, streak: 0, best: 0, typed: '', current: null, qStart: 0, lastKey: null, locked: false }; }
   var session = null;
   function startAdventure(n) { session = baseSession('adventure'); session.world = n; session.queue = shuffle(worldFacts(n)); session.total = ADVENTURE_LEN; enterGame(); }
-  function startSmart() { session = baseSession('smart'); session.total = SMART_LEN; enterGame(); }
+  function startSmart() { session = baseSession('smart'); session.total = cfg('roundLen', 10); enterGame(); }
   function startTime() { session = baseSession('time'); session.endAt = Date.now() + TIME_SECONDS * 1000; enterGame(); }
   function startActivity(mode, color, total) { state.op = null; setTheme(color); session = { op: null, mode: mode, total: total, idx: 0, correct: 0, wrong: 0, streak: 0, best: 0, typed: '', current: null, qStart: 0, level: 1, up: 0, locked: false }; enterGame(); }
-  function startPatterns() { startActivity('pattern', 'pattern', PATTERN_LEN); }
-  function startPuzzles() { startActivity('puzzle', 'puzzle', PUZZLE_LEN); }
+  function startPatterns() { startActivity('pattern', 'pattern', cfg('roundLen', PATTERN_LEN)); }
+  function startPuzzles() { startActivity('puzzle', 'puzzle', cfg('roundLen', PUZZLE_LEN)); }
 
   function enterGame() {
     show('game'); buildPad();
@@ -492,6 +494,7 @@
 
   /* ---------- الرئيسية ---------- */
   function renderHome() {
+    var sub = $('home-sub'); if (sub) sub.textContent = studentName() ? ('أهلاً ' + studentName() + '! 👋 اختر ما تريد تعلّمه') : 'اختر ما تريد تعلّمه';
     var lvl = playerLevel(), prog = levelProgress();
     $('level-card').innerHTML =
       '<div class="lc-top"><span class="lc-lvl">⭐ المستوى ' + lvl + '</span><span class="lc-title">' + levelTitle(lvl) + '</span></div>' +
@@ -508,7 +511,8 @@
     });
     var ps = $('patterns-stars'); if (ps) ps.textContent = '⭐ ' + (progress.patterns.stars || 0) + '/3';
     var pz = $('puzzles-stars'); if (pz) pz.textContent = '⭐ ' + (progress.puzzles.stars || 0) + '/3';
-    var avail = magicAvailable(), selPic = PICTURES[progress.magic.selected || 0], selCount = picRevealed(progress.magic.selected || 0).length;
+    var P0 = pics(), selIdx = Math.min(progress.magic.selected || 0, P0.length - 1);
+    var avail = magicAvailable(), selPic = P0[selIdx], selCount = picRevealed(selIdx).length;
     var mb = $('magic-banner'); if (mb) { mb.innerHTML = '<span class="mb-ic">🧩</span><span class="mb-tx"><b>الأحجية السحرية</b><small>' + (avail > 0 ? ('🎁 ' + avail + ' قطعة جاهزة للكشف!') : (selCount + '/30 · ' + selPic.name)) + '</small></span><span class="mb-go">←</span>'; mb.style.display = adminVisible('magic') ? '' : 'none'; }
     var tp = $('tile-patterns'); if (tp) tp.style.display = adminVisible('pattern') ? '' : 'none';
     var tu = $('tile-puzzles'); if (tu) tu.style.display = adminVisible('puzzle') ? '' : 'none';
@@ -558,23 +562,71 @@
   /* ---------- الإعدادات ---------- */
   function renderSettings() { $('set-sound').setAttribute('aria-pressed', progress.settings.sound ? 'true' : 'false'); updateSoundIcon(); }
 
-  /* ---------- لوحة الإدارة ---------- */
+  /* ---------- لوحة الإدارة + الدخول بالبريد ---------- */
+  var ADMIN_KEY = 'ayat_admin_session';
+  var BG_PALETTE = PICTURES.map(function (p) { return p.bg; });
+  function adminEmail() { return (progress.admin && progress.admin.email) || 'gandouzimohamed9@gmail.com'; }
+  function isAdminAuthed() { try { return (localStorage.getItem(ADMIN_KEY) || '').trim().toLowerCase() === adminEmail().trim().toLowerCase(); } catch (e) { return false; } }
+  function adminLogin(email) { if (email && email.trim().toLowerCase() === adminEmail().trim().toLowerCase()) { try { localStorage.setItem(ADMIN_KEY, email.trim()); } catch (e) {} return true; } return false; }
+  function adminLogout() { try { localStorage.removeItem(ADMIN_KEY); } catch (e) {} }
+  function cfg(k, def) { return (progress.admin.cfg && progress.admin.cfg[k] != null) ? progress.admin.cfg[k] : def; }
+  function studentName() { return (progress.admin && progress.admin.studentName) || ''; }
+  function pics() { return (progress.admin.pictures && progress.admin.pictures.length) ? progress.admin.pictures : PICTURES; }
+  function ensurePics() { if (!progress.admin.pictures || !progress.admin.pictures.length) progress.admin.pictures = PICTURES.map(function (p) { return { emoji: p.emoji, name: p.name, bg: p.bg }; }); return progress.admin.pictures; }
+  function esc(s) { return ('' + s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
   function showAdmin() { state.op = null; setTheme(null); renderAdmin(); show('admin'); }
-  function renderAdmin() {
+  function renderAdmin() { if (!isAdminAuthed()) renderAdminLogin(); else renderAdminPanel(); }
+
+  function renderAdminLogin() {
+    $('admin-body').innerHTML =
+      '<div class="admin-sec"><h3>🔒 دخول الإدارة</h3>' +
+      '<p class="admin-note">هذه اللوحة للمشرف. أدخل بريد الإدارة للمتابعة (يُحفظ فلا يُطلب ثانيةً على هذا الجهاز).</p>' +
+      '<input id="admin-email-input" class="admin-input" type="email" inputmode="email" placeholder="البريد الإلكتروني" />' +
+      '<div id="admin-login-err" class="admin-err"></div>' +
+      '<button id="admin-login-btn" class="btn btn-primary" style="width:100%">دخول ←</button></div>';
+    $('admin-login-btn').addEventListener('click', function () {
+      if (adminLogin($('admin-email-input').value)) renderAdmin();
+      else $('admin-login-err').textContent = '❌ البريد غير مطابق لبريد الإدارة';
+    });
+    $('admin-email-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('admin-login-btn').click(); });
+  }
+
+  function renderAdminPanel() {
     var v = progress.admin.visible;
     var acts = [['mul', '✖️ الضرب'], ['div', '➗ القسمة'], ['add', '➕ الجمع'], ['sub', '➖ الطرح'], ['pattern', '🔢 أكمل النمط'], ['puzzle', '❓ العدد الغامض'], ['magic', '🧩 الأحجية السحرية']];
     var toggles = acts.map(function (a) { var on = v[a[0]] !== false; return '<div class="setting-row"><span>' + a[1] + '</span><button class="switch" data-vis="' + a[0] + '" aria-pressed="' + (on ? 'true' : 'false') + '"><span class="knob"></span></button></div>'; }).join('');
-    var ppp = pppValue();
-    var pppBtns = [10, 20, 30].map(function (n) { return '<button class="ppp-btn' + (n === ppp ? ' sel' : '') + '" data-ppp="' + n + '">' + n + '</button>'; }).join('');
+    var ppp = pppValue(), pppBtns = [10, 20, 30].map(function (n) { return '<button class="ppp-btn' + (n === ppp ? ' sel' : '') + '" data-ppp="' + n + '">' + n + '</button>'; }).join('');
+    var rl = cfg('roundLen', 10), rlBtns = [6, 10, 15].map(function (n) { return '<button class="ppp-btn' + (n === rl ? ' sel' : '') + '" data-round="' + n + '">' + n + '</button>'; }).join('');
+    var P = ensurePics();
+    var picRows = P.map(function (p, i) { return '<div class="pic-row"><input class="pic-emoji admin-input" data-i="' + i + '" maxlength="4" value="' + esc(p.emoji) + '"><input class="pic-name admin-input" data-i="' + i + '" value="' + esc(p.name) + '"><button class="pic-del" data-i="' + i + '" title="حذف">🗑️</button></div>'; }).join('');
+    var addRow = '<div class="pic-row"><input id="new-emoji" class="admin-input" maxlength="4" placeholder="🦊"><input id="new-name" class="admin-input" placeholder="اسم الصورة الجديدة"><button id="pic-add" class="pic-add-btn" title="إضافة">➕</button></div>';
     var stats1 = '<div class="mastery-stats">' + mstat(playerLevel(), 'المستوى') + mstat((progress.xp || 0), 'النقاط') + mstat('🔥' + (progress.streak ? progress.streak.count : 0), 'السلسلة') + mstat(magicUsed(), 'قطع الأحجية') + '</div>';
     var stats2 = '<div class="mastery-stats">' + OP_LIST.map(function (op) { return mstat(masteredCount(op) + '/100', OPS[op].name); }).join('') + '</div>';
+
     $('admin-body').innerHTML =
+      '<div class="admin-sec"><h3>👤 حساب الإدارة</h3><div class="setting-row"><span>' + esc(adminEmail()) + '</span></div><div class="admin-btn-row"><button class="ghost-btn dark" id="admin-change-email">✏️ تغيير البريد</button><button class="ghost-btn dark" id="admin-logout">🚪 خروج</button></div></div>' +
+      '<div class="admin-sec"><h3>🧒 اسم الطالب</h3><input id="admin-student-name" class="admin-input" placeholder="اكتب اسم الطالب (اختياري)" value="' + esc(studentName()) + '"></div>' +
       '<div class="admin-sec"><h3>👁️ الأنشطة الظاهرة للطالب</h3>' + toggles + '</div>' +
-      '<div class="admin-sec"><h3>🧩 نقاط كشف قطعة الأحجية</h3><div class="ppp-row">' + pppBtns + '</div></div>' +
+      '<div class="admin-sec"><h3>🧩 نقاط كشف قطعة الأحجية</h3><div class="ppp-row">' + pppBtns + '</div><h3 style="margin:14px 0 10px">📝 عدد أسئلة الجلسة</h3><div class="ppp-row">' + rlBtns + '</div></div>' +
+      '<div class="admin-sec"><h3>🖼️ صور الأحجية (أضِف / عدّل / احذف)</h3>' + picRows + addRow + '</div>' +
       '<h3 class="admin-h">📊 تقدّم الطالب</h3>' + stats1 + stats2 +
       '<button class="danger-btn" id="admin-reset">🗑️ مسح كل التقدّم والبدء من جديد</button>';
+
     $('admin-body').querySelectorAll('[data-vis]').forEach(function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-vis'); v[k] = (v[k] !== false) ? false : true; save(); renderAdmin(); }); });
     $('admin-body').querySelectorAll('[data-ppp]').forEach(function (b) { b.addEventListener('click', function () { progress.admin.ppp = +b.getAttribute('data-ppp'); save(); renderAdmin(); }); });
+    $('admin-body').querySelectorAll('[data-round]').forEach(function (b) { b.addEventListener('click', function () { if (!progress.admin.cfg) progress.admin.cfg = {}; progress.admin.cfg.roundLen = +b.getAttribute('data-round'); save(); renderAdmin(); }); });
+    $('admin-student-name').addEventListener('change', function () { progress.admin.studentName = this.value.trim(); save(); });
+    $('admin-change-email').addEventListener('click', function () { var e = prompt('بريد الإدارة الجديد:', adminEmail()); if (e && e.trim()) { progress.admin.email = e.trim(); try { localStorage.setItem(ADMIN_KEY, e.trim()); } catch (x) {} save(); renderAdmin(); } });
+    $('admin-logout').addEventListener('click', function () { adminLogout(); showHome(); });
+    $('admin-body').querySelectorAll('.pic-emoji').forEach(function (inp) { inp.addEventListener('change', function () { P[+inp.getAttribute('data-i')].emoji = inp.value.trim() || '⭐'; save(); }); });
+    $('admin-body').querySelectorAll('.pic-name').forEach(function (inp) { inp.addEventListener('change', function () { P[+inp.getAttribute('data-i')].name = inp.value.trim() || 'صورة'; save(); }); });
+    $('admin-body').querySelectorAll('.pic-del').forEach(function (b) { b.addEventListener('click', function () { if (P.length <= 1) { alert('يجب إبقاء صورة واحدة على الأقل.'); return; } P.splice(+b.getAttribute('data-i'), 1); if ((progress.magic.selected || 0) >= P.length) progress.magic.selected = 0; save(); renderAdmin(); }); });
+    $('pic-add').addEventListener('click', function () {
+      var em = $('new-emoji').value.trim(); if (!em) { $('new-emoji').focus(); return; }
+      P.push({ emoji: em, name: $('new-name').value.trim() || ('صورة ' + (P.length + 1)), bg: BG_PALETTE[P.length % BG_PALETTE.length] });
+      save(); renderAdmin();
+    });
     $('admin-reset').addEventListener('click', function () { if (confirm('مسح كل تقدّم الطالب والبدء من جديد؟')) { progress = freshProgress(); save(); updateSoundIcon(); showHome(); } });
   }
   function updateSoundIcon() { $('btn-sound').textContent = progress.settings.sound ? '🔊' : '🔇'; }
