@@ -713,11 +713,11 @@
 
   /* ---------- جدول الضرب ---------- */
   var TABLE_LEVELS = [
-    { id: 1, label: '×1 و×2',      blanks: [1, 2] },
-    { id: 2, label: '×3 و×4 و×5', blanks: [3, 4, 5] },
-    { id: 3, label: '×6 و×7 و×8', blanks: [6, 7, 8] },
-    { id: 4, label: '×9 و×10',     blanks: [9, 10] },
-    { id: 5, label: '🔥 الكل',     blanks: [1,2,3,4,5,6,7,8,9,10] }
+    { id: 1, label: 'سهل — ٢٠ خانة',   count: 20 },
+    { id: 2, label: 'متوسط — ٣٥ خانة', count: 35 },
+    { id: 3, label: 'صعب — ٥٥ خانة',   count: 55 },
+    { id: 4, label: 'أصعب — ٧٥ خانة',  count: 75 },
+    { id: 5, label: '🔥 الكل — ١٠٠',   count: 100 }
   ];
 
   function tblLvlUnlocked(id) { return id === 1 || !!(progress.tableProgress && progress.tableProgress[id - 1]); }
@@ -744,18 +744,24 @@
     }
     btnHtml += '</div><div class="tlvl-label">' + lvl.label + '</div>';
 
-    /* بناء جدول 10×10 */
+    /* اختيار خلايا فارغة عشوائية */
+    var allCells = [];
+    for (var ri = 0; ri < 100; ri++) allCells.push(ri);
+    allCells = shuffle(allCells);
+    var blankCount = Math.min(lvl.count, 100);
     var blanksSet = {};
-    for (var bi2 = 0; bi2 < lvl.blanks.length; bi2++) blanksSet[lvl.blanks[bi2]] = true;
+    for (var bi2 = 0; bi2 < blankCount; bi2++) blanksSet[allCells[bi2]] = true;
 
+    /* بناء جدول 10×10 */
     var tblHtml = '<div class="table-scroll"><table class="mult-table" dir="ltr"><thead><tr><th class="th-corner">×</th>';
     for (var c = 1; c <= 10; c++) tblHtml += '<th class="th-col">' + c + '</th>';
     tblHtml += '</tr></thead><tbody>';
     for (var r = 1; r <= 10; r++) {
       tblHtml += '<tr class="tr-' + r + '"><th class="th-row">' + r + '</th>';
       for (var c2 = 1; c2 <= 10; c2++) {
+        var cellIdx = (r - 1) * 10 + (c2 - 1);
         var ans = r * c2;
-        if (blanksSet[c2]) {
+        if (blanksSet[cellIdx]) {
           tblHtml += '<td><input class="cell-input" type="number" inputmode="numeric" min="1" max="100" placeholder="?" data-r="' + r + '" data-c="' + c2 + '" data-ans="' + ans + '" /></td>';
         } else {
           tblHtml += '<td class="cell-given">' + ans + '</td>';
