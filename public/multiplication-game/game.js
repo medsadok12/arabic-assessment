@@ -29,7 +29,7 @@
            fact: function (n, k) { return { a: n + k, b: n, answer: k, text: (n + k) + ' − ' + n }; } }
   };
   var OP_LIST = ['mul', 'div', 'add', 'sub'];
-  var THEME = { pattern: '#db2777', puzzle: '#4f46e5', magic: '#d97706' };
+  var THEME = { pattern: '#db2777', puzzle: '#4f46e5', magic: '#d97706', table: '#0891b2' };
 
   /* الأحجية السحرية: صورة مخفية تُكشَف بالنقاط (كل 20 نقطة = قطعة، 30 قطعة = صورة) */
   var POINTS_PER_PIECE = 20, PIECES_PER_PIC = 30, STARTER_PIECES = 8;
@@ -57,7 +57,7 @@
   /* ---------- التخزين ---------- */
   function freshActivity() { return { stars: 0, best: 0, plays: 0, bestLevel: 1, seen: 0, correct: 0 }; }
   function freshProgress() {
-    var p = { ops: {}, patterns: freshActivity(), puzzles: freshActivity(), xp: 0, streak: { count: 0, last: '' }, magic: { revealed: {}, selected: 0 }, admin: { visible: {}, ppp: 20, email: 'gandouzimohamed9@gmail.com', password: '1234567', studentName: '', cfg: {}, pictures: null }, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
+    var p = { ops: {}, patterns: freshActivity(), puzzles: freshActivity(), xp: 0, streak: { count: 0, last: '' }, magic: { revealed: {}, selected: 0 }, tableProgress: {}, admin: { visible: {}, ppp: 20, email: 'gandouzimohamed9@gmail.com', password: '1234567', studentName: '', cfg: {}, pictures: null }, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
     OP_LIST.forEach(function (o) { p.ops[o] = { facts: {}, worlds: {} }; p.stats.bestTime[o] = 0; });
     return p;
   }
@@ -76,6 +76,7 @@
         base.xp = p.xp || 0;
         if (p.streak) base.streak = Object.assign(base.streak, p.streak);
         if (p.magic) base.magic = { revealed: p.magic.revealed || {}, selected: p.magic.selected || 0 };
+        if (p.tableProgress) base.tableProgress = p.tableProgress;
         if (p.admin) base.admin = { visible: p.admin.visible || {}, ppp: p.admin.ppp || 20, email: p.admin.email || base.admin.email, password: p.admin.password || '1234567', studentName: p.admin.studentName || '', cfg: p.admin.cfg || {}, pictures: (p.admin.pictures && p.admin.pictures.length) ? p.admin.pictures : null };
         if (p.stats) { base.stats.sessions = p.stats.sessions || 0; OP_LIST.forEach(function (o) { base.stats.bestTime[o] = (p.stats.bestTime && p.stats.bestTime[o]) || 0; }); }
         if (p.settings) base.settings = Object.assign(base.settings, p.settings);
@@ -284,7 +285,7 @@
   function setMascot(emoji, anim) { var m = $('mascot'); m.textContent = emoji; m.classList.remove('bounce', 'shake'); void m.offsetWidth; if (anim) m.classList.add(anim); }
 
   /* ---------- التنقّل ---------- */
-  var SCREENS = ['home', 'ops', 'worlds', 'game', 'summary', 'mastery', 'magic', 'admin', 'settings'];
+  var SCREENS = ['home', 'ops', 'worlds', 'game', 'summary', 'mastery', 'magic', 'admin', 'settings', 'table'];
   var state = { op: null, screen: 'home' };
   function show(name) {
     clearTimers(); state.screen = name;
@@ -520,6 +521,8 @@
     var mb = $('magic-banner'); if (mb) { mb.innerHTML = '<span class="mb-ic">🧩</span><span class="mb-tx"><b>الأحجية السحرية</b><small>' + (avail > 0 ? ('🎁 ' + avail + ' قطعة جاهزة للكشف!') : (selCount + '/30 · ' + selPic.name)) + '</small></span><span class="mb-go">←</span>'; mb.style.display = adminVisible('magic') ? '' : 'none'; }
     var tp = $('tile-patterns'); if (tp) tp.style.display = adminVisible('pattern') ? '' : 'none';
     var tu = $('tile-puzzles'); if (tu) tu.style.display = adminVisible('puzzle') ? '' : 'none';
+    var tbl = $('tile-table'); if (tbl) tbl.style.display = '';
+    var ts = $('table-stars'); if (ts) { var tpc = Object.keys(progress.tableProgress || {}).length; ts.textContent = tpc > 0 ? ('✓ ' + tpc + '/5 مراحل') : '5 مراحل'; }
     var sc = $('streak-chip'); if (sc) sc.textContent = (progress.streak && progress.streak.count > 0) ? ('🔥 سلسلة ' + progress.streak.count + ' ' + (progress.streak.count === 1 ? 'يوم' : 'أيام')) : '';
   }
 
@@ -683,6 +686,94 @@
   }
   function updateSoundIcon() { $('btn-sound').textContent = progress.settings.sound ? '🔊' : '🔇'; }
 
+  /* ---------- جدول الضرب ---------- */
+  var TABLE_LEVELS = [
+    { id: 1, label: '×1 و ×2',      blanks: [1, 2] },
+    { id: 2, label: '×3 و ×4 و ×5', blanks: [3, 4, 5] },
+    { id: 3, label: '×6 و ×7 و ×8', blanks: [6, 7, 8] },
+    { id: 4, label: '×9 و ×10',     blanks: [9, 10] },
+    { id: 5, label: 'الكل 🔥',       blanks: [1,2,3,4,5,6,7,8,9,10] }
+  ];
+
+  function startTableGame() { state.op = null; setTheme('table'); renderTableScreen(1); show('table'); }
+
+  function renderTableScreen(levelId) {
+    var tp = progress.tableProgress || {};
+    var lvlBtns = TABLE_LEVELS.map(function(l) {
+      var done = !!tp[l.id];
+      return '<button class="tlvl-btn' + (l.id === levelId ? ' sel' : '') + (done ? ' done' : '') + '" data-lvl="' + l.id + '">' + (done ? '✓ ' : '') + l.label + '</button>';
+    }).join('');
+
+    var blanks = TABLE_LEVELS[levelId - 1].blanks;
+    var thead = '<tr><th class="th-corner">×</th>';
+    for (var c = 1; c <= 10; c++) thead += '<th class="th-col">' + c + '</th>';
+    thead += '</tr>';
+
+    var tbody = '';
+    for (var r = 1; r <= 10; r++) {
+      tbody += '<tr class="tr-' + r + '"><th class="th-row">' + r + '</th>';
+      for (var ci = 1; ci <= 10; ci++) {
+        var val = r * ci;
+        if (blanks.indexOf(ci) !== -1) {
+          tbody += '<td><input class="cell-input" type="number" inputmode="numeric" data-r="' + r + '" data-c="' + ci + '" data-ans="' + val + '" min="1" max="100" /></td>';
+        } else {
+          tbody += '<td class="cell-given">' + val + '</td>';
+        }
+      }
+      tbody += '</tr>';
+    }
+
+    var completedCount = Object.keys(tp).length;
+    $('table-card').innerHTML =
+      '<div class="table-levels">' + lvlBtns + '</div>' +
+      '<div class="table-scroll"><table class="mult-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table></div>' +
+      '<div class="table-foot"><button class="btn btn-primary" id="table-check" style="flex:1">✅ تحقّق</button><button class="btn btn-soft" id="table-clear" style="flex:none;padding:14px 16px">🗑️</button></div>' +
+      '<div class="table-result" id="table-result">' + (completedCount > 0 ? '✓ أتممت ' + completedCount + ' من 5 مراحل' : '') + '</div>';
+
+    $('table-card').querySelectorAll('[data-lvl]').forEach(function(b) {
+      b.addEventListener('click', function() { renderTableScreen(+b.getAttribute('data-lvl')); });
+    });
+    $('table-check').addEventListener('click', function() { checkTable(levelId); });
+    $('table-clear').addEventListener('click', function() {
+      $('table-card').querySelectorAll('.cell-input').forEach(function(inp) { inp.value = ''; inp.className = 'cell-input'; });
+      $('table-result').textContent = '';
+    });
+  }
+
+  function checkTable(levelId) {
+    var inputs = $('table-card').querySelectorAll('.cell-input');
+    var correct = 0, total = inputs.length, empty = 0;
+    inputs.forEach(function(inp) {
+      if (!inp.value.trim()) { empty++; inp.className = 'cell-input'; return; }
+      var val = parseInt(inp.value, 10), ans = parseInt(inp.getAttribute('data-ans'), 10);
+      if (val === ans) { inp.className = 'cell-input correct'; correct++; }
+      else { inp.className = 'cell-input wrong'; }
+    });
+    var filled = total - empty;
+    var res = $('table-result');
+    if (filled === 0) { res.textContent = '✏️ ابدأ بملء الخانات أولاً!'; res.style.color = 'var(--muted)'; return; }
+    if (correct === total) {
+      res.innerHTML = '🎉 ممتاز! أجبت على الكل صحيحاً!';
+      res.style.color = 'var(--good)';
+      sfx.win(); confetti(60);
+      if (!progress.tableProgress) progress.tableProgress = {};
+      if (!progress.tableProgress[levelId]) {
+        progress.tableProgress[levelId] = true;
+        awardPoints(levelId * 15);
+        save();
+        toast('🎉 أتقنت المرحلة ' + levelId + ' وكسبت ' + (levelId * 15) + ' نقطة!');
+      }
+      var nextLvl = levelId + 1;
+      if (nextLvl <= TABLE_LEVELS.length) {
+        setTimeout(function() { renderTableScreen(nextLvl); }, 2000);
+      }
+    } else {
+      var pct = filled > 0 ? Math.round(correct / filled * 100) : 0;
+      res.innerHTML = '✅ ' + correct + '/' + filled + ' صحيح (' + pct + '%) — صحّح الأحمر وحاوِل ثانيةً';
+      res.style.color = pct >= 70 ? 'var(--learn)' : 'var(--bad)';
+    }
+  }
+
   /* ---------- التوجيه ---------- */
   function route(act) {
     if (act.indexOf('world:') === 0) { startAdventure(parseInt(act.split(':')[1], 10)); return; }
@@ -695,6 +786,7 @@
       case 'puzzle': case 'puzzles': startPuzzles(); break;
       case 'mastery': renderMastery(); show('mastery'); break;
       case 'magic': state.op = null; setTheme('magic'); renderMagic(); show('magic'); break;
+      case 'table': startTableGame(); break;
       case 'home': showHome(); break;
       case 'settings': renderSettings(); show('settings'); break;
     }

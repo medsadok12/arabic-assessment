@@ -304,6 +304,7 @@ body {
 .activity-tile .act-stars { font-size: .74rem; opacity: .92; font-weight: 800; }
 .activity-tile.pat { background: linear-gradient(150deg, #ec4899, #db2777); }
 .activity-tile.puz { background: linear-gradient(150deg, #818cf8, #4f46e5); }
+.activity-tile.tbl { grid-column: 1 / -1; background: linear-gradient(150deg, #0891b2, #0e7490); flex-direction: row; justify-content: flex-start; gap: 12px; padding: 12px 20px; }
 
 /* ===== عرض المتتالية والأحاجي ===== */
 .problem.pattern { font-size: 2rem; }
@@ -384,6 +385,48 @@ body {
 .pic-up.has-img { border-style: solid; border-color: #c7d2fe; }
 .pic-clear { position: absolute; top: -7px; inset-inline-start: -7px; width: 20px; height: 20px; background: var(--bad); color: #fff; border-radius: 50%; font-size: .7rem; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
 .gi-img { width: 30px; height: 30px; border-radius: 8px; background-size: cover; background-position: center; }
+
+/* ===== جدول الضرب ===== */
+#screen-table { align-items: center; }
+.table-wrap { background: #fff; border-radius: 20px; box-shadow: var(--shadow); padding: 14px; width: 100%; }
+.table-levels { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; }
+.tlvl-btn { border: 2px solid #e2e8f0; background: #fff; border-radius: 10px; padding: 6px 10px; font-weight: 800; font-size: .78rem; cursor: pointer; color: var(--ink); transition: all .15s; white-space: nowrap; }
+.tlvl-btn.sel { border-color: #0891b2; background: #ecfeff; color: #0891b2; }
+.tlvl-btn.done { border-color: var(--good); background: var(--good-soft); color: var(--good); }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.mult-table { border-collapse: collapse; font-size: .72rem; direction: ltr; }
+.mult-table td, .mult-table th { width: 30px; height: 30px; text-align: center; padding: 1px; border: 1px solid rgba(0,0,0,.06); }
+.th-corner { background: #1e1b4b; color: #fff; font-weight: 900; }
+.th-col { background: #6d28d9; color: #fff; font-weight: 900; font-size: .7rem; }
+.th-row { background: #2563eb; color: #fff; font-weight: 900; }
+.cell-given { font-weight: 700; color: #94a3b8; font-size: .7rem; }
+.tr-1 .cell-given { background: #fef9c3; }
+.tr-2 .cell-given { background: #dcfce7; }
+.tr-3 .cell-given { background: #dbeafe; }
+.tr-4 .cell-given { background: #fce7f3; }
+.tr-5 .cell-given { background: #fff7ed; }
+.tr-6 .cell-given { background: #f3e8ff; }
+.tr-7 .cell-given { background: #ecfeff; }
+.tr-8 .cell-given { background: #fef3c7; }
+.tr-9 .cell-given { background: #f0fdf4; }
+.tr-10 .cell-given { background: #ede9fe; }
+.tr-1 td { background: rgba(254,249,195,.25); }
+.tr-2 td { background: rgba(220,252,231,.25); }
+.tr-3 td { background: rgba(219,234,254,.25); }
+.tr-4 td { background: rgba(252,231,243,.25); }
+.tr-5 td { background: rgba(255,247,237,.25); }
+.tr-6 td { background: rgba(243,232,255,.25); }
+.tr-7 td { background: rgba(236,254,255,.25); }
+.tr-8 td { background: rgba(254,243,199,.25); }
+.tr-9 td { background: rgba(240,253,244,.25); }
+.tr-10 td { background: rgba(237,233,254,.25); }
+.cell-input { width: 26px; height: 26px; border: 1.5px solid #c7d2fe; border-radius: 4px; text-align: center; font-size: .72rem; font-weight: 800; font-family: inherit; color: var(--ink); background: #eef2ff; padding: 0; -moz-appearance: textfield; }
+.cell-input::-webkit-inner-spin-button, .cell-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.cell-input:focus { outline: none; border-color: #6d28d9; background: #ede9fe; }
+.cell-input.correct { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+.cell-input.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.table-foot { margin-top: 12px; display: flex; gap: 8px; }
+.table-result { text-align: center; margin-top: 10px; font-weight: 800; font-size: .95rem; min-height: 1.4em; }
 
 @media (max-width: 360px) {
   .problem { font-size: 2.2rem; }
