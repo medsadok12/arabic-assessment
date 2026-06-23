@@ -29,12 +29,35 @@
            fact: function (n, k) { return { a: n + k, b: n, answer: k, text: (n + k) + ' − ' + n }; } }
   };
   var OP_LIST = ['mul', 'div', 'add', 'sub'];
-  var THEME = { pattern: '#db2777', puzzle: '#4f46e5' };
+  var THEME = { pattern: '#db2777', puzzle: '#4f46e5', magic: '#d97706' };
+
+  /* الأحجية السحرية: صورة مخفية تُكشَف بالنقاط (كل 20 نقطة = قطعة، 30 قطعة = صورة) */
+  var POINTS_PER_PIECE = 20, PIECES_PER_PIC = 30;
+  var PICTURES = [
+    { emoji: '🦁', name: 'الأسد الشجاع',  bg: 'linear-gradient(135deg,#fbbf24,#d97706)' },
+    { emoji: '🐘', name: 'الفيل اللطيف',  bg: 'linear-gradient(135deg,#93c5fd,#2563eb)' },
+    { emoji: '🦒', name: 'الزرافة المرحة', bg: 'linear-gradient(135deg,#fde047,#f59e0b)' },
+    { emoji: '🚀', name: 'الصاروخ المنطلق', bg: 'linear-gradient(135deg,#a5b4fc,#4338ca)' },
+    { emoji: '🐳', name: 'الحوت الأزرق',  bg: 'linear-gradient(135deg,#67e8f9,#0891b2)' },
+    { emoji: '🦄', name: 'وحيد القرن',    bg: 'linear-gradient(135deg,#f9a8d4,#db2777)' },
+    { emoji: '🌈', name: 'قوس قزح',       bg: 'linear-gradient(135deg,#6ee7b7,#10b981)' },
+    { emoji: '🏰', name: 'القلعة العجيبة', bg: 'linear-gradient(135deg,#c4b5fd,#7c3aed)' },
+    { emoji: '🐢', name: 'السلحفاة',      bg: 'linear-gradient(135deg,#86efac,#16a34a)' },
+    { emoji: '🦋', name: 'الفراشة',       bg: 'linear-gradient(135deg,#d8b4fe,#9333ea)' }
+  ];
+  var COVER_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4'];
+  // ترتيب كشف القطع (خلط ثابت ليبدو متناثراً وجميلاً)
+  var RANK = (function () {
+    var seed = 1337; function rnd() { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return ((seed >>> 0) % 100000) / 100000; }
+    var order = []; for (var i = 0; i < PIECES_PER_PIC; i++) order.push(i);
+    for (var a = order.length - 1; a > 0; a--) { var j = Math.floor(rnd() * (a + 1)), t = order[a]; order[a] = order[j]; order[j] = t; }
+    var rank = []; for (var k = 0; k < order.length; k++) rank[order[k]] = k; return rank;
+  })();
 
   /* ---------- التخزين ---------- */
   function freshActivity() { return { stars: 0, best: 0, plays: 0, bestLevel: 1, seen: 0, correct: 0 }; }
   function freshProgress() {
-    var p = { ops: {}, patterns: freshActivity(), puzzles: freshActivity(), xp: 0, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
+    var p = { ops: {}, patterns: freshActivity(), puzzles: freshActivity(), xp: 0, streak: { count: 0, last: '' }, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
     OP_LIST.forEach(function (o) { p.ops[o] = { facts: {}, worlds: {} }; p.stats.bestTime[o] = 0; });
     return p;
   }
@@ -51,6 +74,7 @@
         if (p.patterns) base.patterns = Object.assign(base.patterns, p.patterns);
         if (p.puzzles) base.puzzles = Object.assign(base.puzzles, p.puzzles);
         base.xp = p.xp || 0;
+        if (p.streak) base.streak = Object.assign(base.streak, p.streak);
         if (p.stats) { base.stats.sessions = p.stats.sessions || 0; OP_LIST.forEach(function (o) { base.stats.bestTime[o] = (p.stats.bestTime && p.stats.bestTime[o]) || 0; }); }
         if (p.settings) base.settings = Object.assign(base.settings, p.settings);
       } else {
@@ -73,6 +97,47 @@
   function playerLevel() { return 1 + Math.floor((progress.xp || 0) / XP_PER_LEVEL); }
   function levelProgress() { return (progress.xp || 0) % XP_PER_LEVEL; }
   function levelTitle(l) { return l >= 12 ? 'أسطورة 🌟' : l >= 9 ? 'عبقري 🧠' : l >= 7 ? 'خبير 🎓' : l >= 5 ? 'بطل 🦸' : l >= 3 ? 'ماهر ✨' : 'مبتدئ 🌱'; }
+
+  /* ---------- السلسلة اليومية ---------- */
+  function todayStr() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  function updateStreak() {
+    var s = progress.streak || { count: 0, last: '' }, today = todayStr();
+    if (s.last === today) { progress.streak = s; return { newDay: false, count: s.count }; }
+    var y = new Date(); y.setDate(y.getDate() - 1);
+    var yStr = y.getFullYear() + '-' + (y.getMonth() + 1) + '-' + y.getDate();
+    s.count = (s.last === yStr) ? (s.count || 0) + 1 : 1;
+    s.last = today; progress.streak = s; save();
+    return { newDay: true, count: s.count };
+  }
+
+  /* ---------- الأحجية السحرية ---------- */
+  function magicState() {
+    var xp = progress.xp || 0, totalPieces = Math.floor(xp / POINTS_PER_PIECE);
+    var picIndex = Math.floor(totalPieces / PIECES_PER_PIC), revealed = totalPieces - picIndex * PIECES_PER_PIC;
+    return { xp: xp, revealed: revealed, completed: picIndex, pic: PICTURES[picIndex % PICTURES.length] };
+  }
+  function renderMagic() {
+    var st = magicState(), pct = Math.round(st.revealed / PIECES_PER_PIC * 100);
+    var nextPts = POINTS_PER_PIECE - ((progress.xp || 0) % POINTS_PER_PIECE);
+    var cells = '';
+    for (var i = 0; i < PIECES_PER_PIC; i++) {
+      var rev = RANK[i] < st.revealed;
+      cells += '<span class="cover' + (rev ? ' revealed' : '') + '"' + (rev ? '' : ' style="background:' + COVER_COLORS[i % COVER_COLORS.length] + '"') + '>' + (rev ? '' : '⭐') + '</span>';
+    }
+    $('magic-card').innerHTML =
+      '<div class="magic-head"><div class="mh-name">' + st.pic.emoji + ' ' + st.pic.name + '</div><div class="mh-pts">' + (progress.xp || 0) + ' نقطة ⭐</div></div>' +
+      '<div class="magic-prog"><span>اكتمال الصورة</span><span>' + st.revealed + '/' + PIECES_PER_PIC + ' قطعة — ' + pct + '%</span></div>' +
+      '<div class="mp-bar"><i style="width:' + pct + '%"></i></div>' +
+      '<div class="magic-pic" style="background:' + st.pic.bg + '"><div class="magic-emoji">' + st.pic.emoji + '</div><div class="magic-grid">' + cells + '</div></div>' +
+      '<div class="magic-foot">' + (st.completed > 0 ? ('🏆 صور مكتملة: ' + st.completed + ' · ') : '') + 'اربح ' + nextPts + ' نقطة لكشف القطعة التالية — العب أي لعبة!</div>';
+  }
+
+  /* ---------- تنبيه منزلق (toast) ---------- */
+  function toast(html) {
+    var t = document.createElement('div'); t.className = 'toast'; t.innerHTML = html; document.body.appendChild(t);
+    requestAnimationFrame(function () { t.classList.add('show'); });
+    setTimeout(function () { t.classList.remove('show'); setTimeout(function () { t.remove(); }, 400); }, 3600);
+  }
 
   /* ---------- الحقائق + التكرار المتباعد (Leitner) ---------- */
   function key(n, k) { return n + '_' + k; }
@@ -182,7 +247,7 @@
   function setMascot(emoji, anim) { var m = $('mascot'); m.textContent = emoji; m.classList.remove('bounce', 'shake'); void m.offsetWidth; if (anim) m.classList.add(anim); }
 
   /* ---------- التنقّل ---------- */
-  var SCREENS = ['home', 'ops', 'worlds', 'game', 'summary', 'mastery', 'settings'];
+  var SCREENS = ['home', 'ops', 'worlds', 'game', 'summary', 'mastery', 'magic', 'settings'];
   var state = { op: null, screen: 'home' };
   function show(name) {
     clearTimers(); state.screen = name;
@@ -412,6 +477,9 @@
     });
     var ps = $('patterns-stars'); if (ps) ps.textContent = '⭐ ' + (progress.patterns.stars || 0) + '/3';
     var pz = $('puzzles-stars'); if (pz) pz.textContent = '⭐ ' + (progress.puzzles.stars || 0) + '/3';
+    var st = magicState();
+    var mb = $('magic-banner'); if (mb) mb.innerHTML = '<span class="mb-ic">🧩</span><span class="mb-tx"><b>الأحجية السحرية</b><small>' + st.revealed + '/' + PIECES_PER_PIC + ' قطعة · ' + st.pic.name + '</small></span><span class="mb-go">←</span>';
+    var sc = $('streak-chip'); if (sc) sc.textContent = (progress.streak && progress.streak.count > 0) ? ('🔥 سلسلة ' + progress.streak.count + ' ' + (progress.streak.count === 1 ? 'يوم' : 'أيام')) : '';
   }
 
   /* ---------- قائمة العملية ---------- */
@@ -469,6 +537,7 @@
       case 'pattern': case 'patterns': startPatterns(); break;
       case 'puzzle': case 'puzzles': startPuzzles(); break;
       case 'mastery': renderMastery(); show('mastery'); break;
+      case 'magic': state.op = null; setTheme('magic'); renderMagic(); show('magic'); break;
       case 'home': showHome(); break;
       case 'settings': renderSettings(); show('settings'); break;
     }
@@ -498,6 +567,10 @@
     document.addEventListener('keydown', function (e) { if ($('screen-game').hidden) return; if (e.key >= '0' && e.key <= '9') typeDigit(e.key); else if (e.key === 'Backspace') { e.preventDefault(); backspace(); } else if (e.key === 'Enter') submit(); });
   }
 
-  function boot() { bind(); updateSoundIcon(); showHome(); }
+  function boot() {
+    bind(); updateSoundIcon();
+    var ds = updateStreak(); showHome();
+    if (ds.newDay) toast(ds.count === 1 ? '🔥 <b>أهلاً! بدأتَ سلسلتك اليوم</b><br>العب كل يوم لتطول سلسلتك ⭐' : '🔥 <b>يومك ' + ds.count + ' متتالياً!</b><br>أحسنت على المواظبة ⭐');
+  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
