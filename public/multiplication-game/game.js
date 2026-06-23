@@ -547,7 +547,7 @@
     var tp = $('tile-patterns'); if (tp) tp.style.display = adminVisible('pattern') ? '' : 'none';
     var tu = $('tile-puzzles'); if (tu) tu.style.display = adminVisible('puzzle') ? '' : 'none';
     var tbl = $('tile-table'); if (tbl) tbl.style.display = '';
-    var ts = $('table-stars'); if (ts) { var tp2 = progress.tableProgress || {}; var tpc = Object.keys(tp2).filter(function(k) { return tp2[k] >= 1; }).length; ts.textContent = tpc > 0 ? ('✓ ' + tpc + '/5 مرحلة') : '5 مراحل'; }
+    var ts = $('table-stars'); if (ts) { var tp2 = progress.tableProgress || {}; var tpc = Object.keys(tp2).filter(function(k) { return tp2[k] >= 1; }).length; ts.textContent = tpc > 0 ? ('✓ ' + tpc + '/10 مراحل') : '10 مراحل'; }
     var sc = $('streak-chip'); if (sc) sc.textContent = (progress.streak && progress.streak.count > 0) ? ('🔥 سلسلة ' + progress.streak.count + ' ' + (progress.streak.count === 1 ? 'يوم' : 'أيام')) : '';
   }
 
@@ -713,11 +713,16 @@
 
   /* ---------- جدول الضرب ---------- */
   var TABLE_LEVELS = [
-    { id: 1, label: 'سهل — ٢٠ خانة',   count: 20 },
-    { id: 2, label: 'متوسط — ٣٥ خانة', count: 35 },
-    { id: 3, label: 'صعب — ٥٥ خانة',   count: 55 },
-    { id: 4, label: 'أصعب — ٧٥ خانة',  count: 75 },
-    { id: 5, label: '🔥 الكل — ١٠٠',   count: 100 }
+    { id:  1, label: 'م١ — ١٠ خانات',  count: 10  },
+    { id:  2, label: 'م٢ — ٢٠ خانة',   count: 20  },
+    { id:  3, label: 'م٣ — ٣٠ خانة',   count: 30  },
+    { id:  4, label: 'م٤ — ٤٠ خانة',   count: 40  },
+    { id:  5, label: 'م٥ — ٥٠ خانة',   count: 50  },
+    { id:  6, label: 'م٦ — ٦٠ خانة',   count: 60  },
+    { id:  7, label: 'م٧ — ٧٠ خانة',   count: 70  },
+    { id:  8, label: 'م٨ — ٨٠ خانة',   count: 80  },
+    { id:  9, label: 'م٩ — ٩٠ خانة',   count: 90  },
+    { id: 10, label: '🔥 م١٠ — الكل',   count: 100 }
   ];
 
   function tblLvlUnlocked(id) { return id === 1 || !!(progress.tableProgress && progress.tableProgress[id - 1]); }
