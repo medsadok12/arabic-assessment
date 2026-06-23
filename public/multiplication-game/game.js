@@ -92,7 +92,7 @@
     } catch (e) {}
     return base;
   }
-  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(progress)); } catch (e) {} }
+  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(progress)); return true; } catch (e) { return false; } }
 
   /* ---------- النقاط والمستوى (موحّد لكل النشاطات) ---------- */
   function awardPoints(pts) { var b = playerLevel(); progress.xp = (progress.xp || 0) + pts; save(); return playerLevel() > b; }
@@ -136,7 +136,8 @@
     var gal = '';
     P.forEach(function (p, idx) {
       var c = (progress.magic.revealed[idx] || []).length;
-      gal += '<button class="gal-item' + (idx === sel ? ' sel' : '') + (c === PIECES_PER_PIC ? ' done' : '') + '" data-pic="' + idx + '"><span class="gi-emo">' + p.emoji + '</span><span class="gi-n">' + c + '/30</span></button>';
+      var thumb = p.img ? '<span class="gi-emo gi-img" style="background-image:url(\'' + p.img + '\')"></span>' : '<span class="gi-emo">' + p.emoji + '</span>';
+      gal += '<button class="gal-item' + (idx === sel ? ' sel' : '') + (c === PIECES_PER_PIC ? ' done' : '') + '" data-pic="' + idx + '">' + thumb + '<span class="gi-n">' + c + '/30</span></button>';
     });
     var cells = '';
     for (var i = 0; i < PIECES_PER_PIC; i++) {
@@ -148,7 +149,7 @@
       '<div class="gallery">' + gal + '</div>' +
       '<div class="magic-head"><div class="mh-name">' + pic.emoji + ' ' + pic.name + (revCount === PIECES_PER_PIC ? ' 🏆' : '') + '</div><div class="mh-pts">' + revCount + '/30 — ' + pct + '%</div></div>' +
       '<div class="mp-bar"><i style="width:' + pct + '%"></i></div>' +
-      '<div class="magic-pic" style="background:' + pic.bg + '"><div class="magic-emoji">' + pic.emoji + '</div><div class="magic-grid">' + cells + '</div></div>' +
+      '<div class="magic-pic" style="' + (pic.img ? "background-image:url('" + pic.img + "');background-size:cover;background-position:center" : 'background:' + pic.bg) + '">' + (pic.img ? '' : '<div class="magic-emoji">' + pic.emoji + '</div>') + '<div class="magic-grid">' + cells + '</div></div>' +
       '<div class="magic-foot">' + (revCount === PIECES_PER_PIC ? '🎉 اكتملت الصورة! اختر صورة أخرى من الأعلى.' : (avail > 0 ? 'اضغط المربّعات لكشف الصورة ⬆️' : 'اجمع نقاطاً أكثر باللعب لتكشف المزيد!')) + '</div>';
 
     $('magic-card').querySelectorAll('[data-pic]').forEach(function (b) { b.addEventListener('click', function () { progress.magic.selected = +b.getAttribute('data-pic'); save(); renderMagic(); }); });
@@ -575,6 +576,42 @@
   function ensurePics() { if (!progress.admin.pictures || !progress.admin.pictures.length) progress.admin.pictures = PICTURES.map(function (p) { return { emoji: p.emoji, name: p.name, bg: p.bg }; }); return progress.admin.pictures; }
   function esc(s) { return ('' + s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+  // ضغط الصورة المرفوعة (≤ 420px، JPEG) لتصغير الحجم قبل الحفظ محلياً
+  function loadImageFile(file, cb) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var max = 420, w = img.width, h = img.height, scale = Math.min(1, max / Math.max(w, h));
+        var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+        var cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+        try { cv.getContext('2d').drawImage(img, 0, 0, cw, ch); cb(cv.toDataURL('image/jpeg', 0.72)); }
+        catch (e) { cb(reader.result); }
+      };
+      img.onerror = function () { cb(reader.result); };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  var fileInput = null, pendingPic = -1;
+  function pickImage(idx) {
+    if (!fileInput) {
+      fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.style.display = 'none';
+      document.body.appendChild(fileInput);
+      fileInput.addEventListener('change', function () {
+        var f = fileInput.files && fileInput.files[0]; fileInput.value = '';
+        if (!f || pendingPic < 0) return;
+        var P = ensurePics(), i = pendingPic;
+        loadImageFile(f, function (url) {
+          var prev = P[i].img; P[i].img = url;
+          if (!save()) { P[i].img = prev; alert('تعذّر حفظ الصورة (الحجم كبير). جرّب صورة أصغر.'); }
+          renderAdmin();
+        });
+      });
+    }
+    pendingPic = idx; fileInput.click();
+  }
+
   function showAdmin() { state.op = null; setTheme(null); renderAdmin(); show('admin'); }
   function renderAdmin() { if (!isAdminAuthed()) renderAdminLogin(); else renderAdminPanel(); }
 
@@ -599,7 +636,13 @@
     var ppp = pppValue(), pppBtns = [10, 20, 30].map(function (n) { return '<button class="ppp-btn' + (n === ppp ? ' sel' : '') + '" data-ppp="' + n + '">' + n + '</button>'; }).join('');
     var rl = cfg('roundLen', 10), rlBtns = [6, 10, 15].map(function (n) { return '<button class="ppp-btn' + (n === rl ? ' sel' : '') + '" data-round="' + n + '">' + n + '</button>'; }).join('');
     var P = ensurePics();
-    var picRows = P.map(function (p, i) { return '<div class="pic-row"><input class="pic-emoji admin-input" data-i="' + i + '" maxlength="4" value="' + esc(p.emoji) + '"><input class="pic-name admin-input" data-i="' + i + '" value="' + esc(p.name) + '"><button class="pic-del" data-i="' + i + '" title="حذف">🗑️</button></div>'; }).join('');
+    var picRows = P.map(function (p, i) {
+      var up = p.img
+        ? '<button class="pic-up has-img" data-up="' + i + '" style="background-image:url(\'' + p.img + '\')" title="تغيير الصورة"><span class="pic-clear" data-clr="' + i + '">✕</span></button>'
+        : '<button class="pic-up" data-up="' + i + '" title="رفع صورة">📷</button>';
+      var emo = p.img ? '' : '<input class="pic-emoji admin-input" data-i="' + i + '" maxlength="4" value="' + esc(p.emoji) + '">';
+      return '<div class="pic-row">' + emo + up + '<input class="pic-name admin-input" data-i="' + i + '" value="' + esc(p.name) + '"><button class="pic-del" data-i="' + i + '" title="حذف">🗑️</button></div>';
+    }).join('');
     var addRow = '<div class="pic-row"><input id="new-emoji" class="admin-input" maxlength="4" placeholder="🦊"><input id="new-name" class="admin-input" placeholder="اسم الصورة الجديدة"><button id="pic-add" class="pic-add-btn" title="إضافة">➕</button></div>';
     var stats1 = '<div class="mastery-stats">' + mstat(playerLevel(), 'المستوى') + mstat((progress.xp || 0), 'النقاط') + mstat('🔥' + (progress.streak ? progress.streak.count : 0), 'السلسلة') + mstat(magicUsed(), 'قطع الأحجية') + '</div>';
     var stats2 = '<div class="mastery-stats">' + OP_LIST.map(function (op) { return mstat(masteredCount(op) + '/100', OPS[op].name); }).join('') + '</div>';
@@ -622,6 +665,7 @@
     $('admin-body').querySelectorAll('.pic-emoji').forEach(function (inp) { inp.addEventListener('change', function () { P[+inp.getAttribute('data-i')].emoji = inp.value.trim() || '⭐'; save(); }); });
     $('admin-body').querySelectorAll('.pic-name').forEach(function (inp) { inp.addEventListener('change', function () { P[+inp.getAttribute('data-i')].name = inp.value.trim() || 'صورة'; save(); }); });
     $('admin-body').querySelectorAll('.pic-del').forEach(function (b) { b.addEventListener('click', function () { if (P.length <= 1) { alert('يجب إبقاء صورة واحدة على الأقل.'); return; } P.splice(+b.getAttribute('data-i'), 1); if ((progress.magic.selected || 0) >= P.length) progress.magic.selected = 0; save(); renderAdmin(); }); });
+    $('admin-body').querySelectorAll('.pic-up').forEach(function (b) { b.addEventListener('click', function (e) { if (e.target.classList && e.target.classList.contains('pic-clear')) { e.stopPropagation(); P[+e.target.getAttribute('data-clr')].img = null; save(); renderAdmin(); return; } pickImage(+b.getAttribute('data-up')); }); });
     $('pic-add').addEventListener('click', function () {
       var em = $('new-emoji').value.trim(); if (!em) { $('new-emoji').focus(); return; }
       P.push({ emoji: em, name: $('new-name').value.trim() || ('صورة ' + (P.length + 1)), bg: BG_PALETTE[P.length % BG_PALETTE.length] });

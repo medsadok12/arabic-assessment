@@ -380,6 +380,10 @@ body {
 .pic-del, .pic-add-btn { flex: none; width: 44px; height: 44px; border: none; border-radius: 12px; cursor: pointer; font-size: 1.1rem; }
 .pic-del { background: var(--bad-soft); }
 .pic-add-btn { background: var(--good); color: #fff; }
+.pic-up { flex: none; width: 48px; height: 48px; border: 2px dashed #c7d2fe; border-radius: 12px; background: #eef2ff; cursor: pointer; font-size: 1.2rem; background-size: cover; background-position: center; position: relative; }
+.pic-up.has-img { border-style: solid; border-color: #c7d2fe; }
+.pic-clear { position: absolute; top: -7px; inset-inline-start: -7px; width: 20px; height: 20px; background: var(--bad); color: #fff; border-radius: 50%; font-size: .7rem; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.gi-img { width: 30px; height: 30px; border-radius: 8px; background-size: cover; background-position: center; }
 
 @media (max-width: 360px) {
   .problem { font-size: 2.2rem; }
