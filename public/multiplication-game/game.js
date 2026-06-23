@@ -136,7 +136,8 @@
     var gal = '';
     P.forEach(function (p, idx) {
       var c = (progress.magic.revealed[idx] || []).length;
-      var thumb = p.img ? '<span class="gi-emo gi-img" style="background-image:url(\'' + p.img + '\')"></span>' : '<span class="gi-emo">' + p.emoji + '</span>';
+      var done = c === PIECES_PER_PIC;
+      var thumb = done ? (p.img ? '<span class="gi-emo gi-img" style="background-image:url(\'' + p.img + '\')"></span>' : '<span class="gi-emo">' + p.emoji + '</span>') : '<span class="gi-emo">🔒</span>';
       gal += '<button class="gal-item' + (idx === sel ? ' sel' : '') + (c === PIECES_PER_PIC ? ' done' : '') + '" data-pic="' + idx + '">' + thumb + '<span class="gi-n">' + c + '/30</span></button>';
     });
     var cells = '';
