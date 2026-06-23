@@ -32,7 +32,7 @@
   var THEME = { pattern: '#db2777', puzzle: '#4f46e5', magic: '#d97706' };
 
   /* الأحجية السحرية: صورة مخفية تُكشَف بالنقاط (كل 20 نقطة = قطعة، 30 قطعة = صورة) */
-  var POINTS_PER_PIECE = 20, PIECES_PER_PIC = 30;
+  var POINTS_PER_PIECE = 20, PIECES_PER_PIC = 30, STARTER_PIECES = 8;
   var PICTURES = [
     { emoji: '🦁', name: 'الأسد الشجاع',  bg: 'linear-gradient(135deg,#fbbf24,#d97706)' },
     { emoji: '🐘', name: 'الفيل اللطيف',  bg: 'linear-gradient(135deg,#93c5fd,#2563eb)' },
@@ -115,7 +115,7 @@
   /* ---------- الأحجية السحرية (تفاعلية + معرض صور) ---------- */
   function pppValue() { return (progress.admin && progress.admin.ppp) || POINTS_PER_PIECE; }
   function adminVisible(k) { return !progress.admin || progress.admin.visible[k] !== false; }
-  function magicEarned() { return Math.floor((progress.xp || 0) / pppValue()); }
+  function magicEarned() { return STARTER_PIECES + Math.floor((progress.xp || 0) / pppValue()); }
   function magicUsed() { var u = 0, r = progress.magic.revealed || {}; for (var k in r) u += r[k].length; return u; }
   function magicAvailable() { return Math.max(0, magicEarned() - magicUsed()); }
   function picRevealed(p) { return progress.magic.revealed[p] || []; }
@@ -150,10 +150,12 @@
       '<div class="magic-head"><div class="mh-name">' + pic.emoji + ' ' + pic.name + (revCount === PIECES_PER_PIC ? ' 🏆' : '') + '</div><div class="mh-pts">' + revCount + '/30 — ' + pct + '%</div></div>' +
       '<div class="mp-bar"><i style="width:' + pct + '%"></i></div>' +
       '<div class="magic-pic" style="' + (pic.img ? "background-image:url('" + pic.img + "');background-size:cover;background-position:center" : 'background:' + pic.bg) + '">' + (pic.img ? '' : '<div class="magic-emoji">' + pic.emoji + '</div>') + '<div class="magic-grid">' + cells + '</div></div>' +
-      '<div class="magic-foot">' + (revCount === PIECES_PER_PIC ? '🎉 اكتملت الصورة! اختر صورة أخرى من الأعلى.' : (avail > 0 ? 'اضغط المربّعات لكشف الصورة ⬆️' : 'اجمع نقاطاً أكثر باللعب لتكشف المزيد!')) + '</div>';
+      '<div class="magic-foot">' + (revCount === PIECES_PER_PIC ? '🎉 اكتملت الصورة! اختر صورة أخرى من الأعلى.' : (avail > 0 ? 'اضغط المربّعات لكشف الصورة ⬆️' : 'اجمع نقاطاً أكثر باللعب لتكشف المزيد!')) + '</div>' +
+      ((avail <= 0 && revCount < PIECES_PER_PIC) ? '<button class="btn btn-primary" id="magic-play" style="width:100%;margin-top:6px">🎮 العب لتكسب قطعاً</button>' : '');
 
     $('magic-card').querySelectorAll('[data-pic]').forEach(function (b) { b.addEventListener('click', function () { progress.magic.selected = +b.getAttribute('data-pic'); save(); renderMagic(); }); });
     $('magic-card').querySelectorAll('[data-tile]').forEach(function (b) { b.addEventListener('click', function () { onRevealTile(+b.getAttribute('data-tile')); }); });
+    if ($('magic-play')) $('magic-play').addEventListener('click', showHome);
   }
   function onRevealTile(i) {
     var sel = progress.magic.selected || 0;
