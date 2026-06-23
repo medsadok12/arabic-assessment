@@ -39,13 +39,20 @@
         <h1 class="home-title">آيات</h1>
         <p class="home-sub">اختر ما تريد تعلّمه</p>
 
+        <div class="level-card" id="level-card"><!-- المستوى والنقاط تُبنى بـ JS --></div>
+
         <div class="op-grid" id="op-grid"><!-- 4 خانات تُبنى بـ JS --></div>
 
-        <button class="activity-tile" id="tile-patterns" data-action="patterns">
-          <span class="act-ic">🔢</span>
-          <span class="act-tx"><b>أكمل النمط</b><small>درّب تفكيرك: اكتشف القاعدة وأكمِل</small></span>
-          <span class="act-stars" id="patterns-stars"></span>
-        </button>
+        <div class="activity-grid">
+          <button class="activity-tile pat" id="tile-patterns" data-action="patterns">
+            <span class="act-ic">🔢</span><b>أكمل النمط</b>
+            <span class="act-stars" id="patterns-stars"></span>
+          </button>
+          <button class="activity-tile puz" id="tile-puzzles" data-action="puzzles">
+            <span class="act-ic">🧩</span><b>الأحاجي</b>
+            <span class="act-stars" id="puzzles-stars"></span>
+          </button>
+        </div>
 
         <div class="home-foot">
           <button class="ghost-btn" data-action="settings">⚙️ الإعدادات</button>
@@ -147,6 +154,8 @@
             <li>🧠 <b>تدريب ذكي:</b> النظام يتذكّر أخطاءك ويعيدها حتى تُتقنها.</li>
             <li>⚡ <b>تحدّي الزمن:</b> أجب أكبر عدد في ٦٠ ثانية.</li>
             <li>🔢 <b>أكمل النمط:</b> اكتشف القاعدة وأكمِل المتتالية — يقوّي التفكير.</li>
+            <li>🧩 <b>الأحاجي:</b> ألغاز عددية («⬜ + ٤ = ١١» و«أنا عددٌ…») — تنمّي الاستدلال.</li>
+            <li>⭐ <b>النقاط والمستوى:</b> كل إجابة صحيحة تكسبك نقاطاً، وكل ١٠٠ نقطة = مستوى جديد.</li>
             <li>✅ <b>لا تنتقل</b> للسؤال التالي إلا بعد حلّه؛ أخطأتَ؟ حاوِل مرة أخرى.</li>
             <li>💡 إن لم تعرف الإجابة، اضغط «ساعدني أفهم» لترى المسألة بالصور (أو القاعدة).</li>
           </ul>

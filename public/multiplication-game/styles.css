@@ -284,22 +284,35 @@ body {
 .dot.d-x { background: #fca5a5; opacity: .45; }
 .hint-row.hint-wrap { flex-wrap: wrap; justify-content: center; max-width: 320px; }
 
-/* ===== نشاط أكمل النمط ===== */
-.activity-tile { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 360px; margin: 2px 0 6px; border: none; border-radius: 20px; padding: 14px 16px; cursor: pointer; color: #fff; text-align: start; background: linear-gradient(150deg, #ec4899, #db2777); box-shadow: var(--shadow); transition: transform .15s; }
-.activity-tile:active { transform: scale(.97); }
-.activity-tile:hover { transform: translateY(-2px); }
-.act-ic { font-size: 2rem; width: 52px; height: 52px; flex: none; display: grid; place-items: center; background: rgba(255,255,255,.2); border-radius: 14px; }
-.act-tx { display: flex; flex-direction: column; flex: 1; }
-.act-tx b { font-size: 1.15rem; }
-.act-tx small { font-size: .8rem; opacity: .92; margin-top: 2px; }
-.act-stars { font-size: .85rem; font-weight: 800; white-space: nowrap; }
+/* ===== بطاقة المستوى والنقاط ===== */
+#screen-home { justify-content: flex-start; padding-top: 4px; }
+.level-card { width: 100%; max-width: 360px; background: rgba(255,255,255,.14); border-radius: 18px; padding: 12px 16px; margin: 2px 0 10px; color: #fff; }
+.lc-top { display: flex; justify-content: space-between; align-items: center; font-weight: 800; margin-bottom: 8px; }
+.lc-lvl { font-size: 1.05rem; }
+.lc-title { font-size: .85rem; background: rgba(255,255,255,.22); padding: 3px 11px; border-radius: 999px; }
+.lc-bar { height: 12px; background: rgba(255,255,255,.2); border-radius: 999px; overflow: hidden; }
+.lc-bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #fbbf24, #f59e0b); border-radius: 999px; transition: width .4s; }
+.lc-xp { font-size: .76rem; opacity: .9; margin-top: 6px; text-align: center; }
 
-/* عرض المتتالية */
+/* ===== تيلات النشاطات (النمط + الأحاجي) ===== */
+.activity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 360px; margin: 2px 0 8px; }
+.activity-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; border: none; border-radius: 18px; padding: 14px 10px; cursor: pointer; color: #fff; box-shadow: var(--shadow); transition: transform .15s; }
+.activity-tile:active { transform: scale(.96); }
+.activity-tile:hover { transform: translateY(-2px); }
+.activity-tile .act-ic { font-size: 1.9rem; }
+.activity-tile b { font-size: 1.05rem; }
+.activity-tile .act-stars { font-size: .74rem; opacity: .92; font-weight: 800; }
+.activity-tile.pat { background: linear-gradient(150deg, #ec4899, #db2777); }
+.activity-tile.puz { background: linear-gradient(150deg, #818cf8, #4f46e5); }
+
+/* ===== عرض المتتالية والأحاجي ===== */
 .problem.pattern { font-size: 2rem; }
+.problem.puzzle { font-size: 1.55rem; }
+.problem.puzzle .prompt { font-weight: 800; line-height: 1.7; display: inline-block; }
 .seq { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
 .seq-n { font-weight: 900; }
 .seq-arrow { font-style: normal; color: #cbd5e1; font-weight: 700; }
-.problem.pattern .ans.blank { min-width: 1.5em; padding: 0 .18em; border: 3px dashed currentColor; border-radius: 10px; }
+.problem.pattern .ans.blank, .problem.puzzle .ans.blank { min-width: 1.5em; padding: 0 .18em; border: 3px dashed currentColor; border-radius: 10px; }
 
 @media (max-width: 360px) {
   .problem { font-size: 2.2rem; }

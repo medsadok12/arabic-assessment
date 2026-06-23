@@ -1,15 +1,17 @@
 /* ============================================================
-   آيات — تطبيق الحساب: أربع عمليات (ضرب، قسمة، جمع، طرح)
-   + نشاط «أكمل النمط» لتنمية التفكير الرياضي.
+   آيات — تطبيق الحساب
+   عمليات (ضرب، قسمة، جمع، طرح) + أكمل النمط + الأحاجي
+   نظام نقاط ومستوى موحّد يغذّيه كل النشاطات.
    تطبيق مستقل بلا تبعيات، يعمل أوفلاين. أرقام لاتينية، المدى 1..10.
    ============================================================ */
 
 (function () {
   'use strict';
 
-  /* ---------- إعداد العمليات ---------- */
+  /* ---------- ثوابت ---------- */
   var MIN = 1, MAX = 10;
-  var ADVENTURE_LEN = 10, SMART_LEN = 15, TIME_SECONDS = 60, PATTERN_LEN = 12;
+  var ADVENTURE_LEN = 10, SMART_LEN = 15, TIME_SECONDS = 60, PATTERN_LEN = 12, PUZZLE_LEN = 10;
+  var XP_PER_LEVEL = 100;
   var STORE_KEY = 'batal_alhisab_v1';
 
   var OPS = {
@@ -27,11 +29,12 @@
            fact: function (n, k) { return { a: n + k, b: n, answer: k, text: (n + k) + ' − ' + n }; } }
   };
   var OP_LIST = ['mul', 'div', 'add', 'sub'];
-  var PATTERN_COLOR = '#db2777';
+  var THEME = { pattern: '#db2777', puzzle: '#4f46e5' };
 
   /* ---------- التخزين ---------- */
+  function freshActivity() { return { stars: 0, best: 0, plays: 0, bestLevel: 1, seen: 0, correct: 0 }; }
   function freshProgress() {
-    var p = { ops: {}, patterns: { stars: 0, best: 0, plays: 0, bestLevel: 1, seen: 0, correct: 0 }, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
+    var p = { ops: {}, patterns: freshActivity(), puzzles: freshActivity(), xp: 0, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
     OP_LIST.forEach(function (o) { p.ops[o] = { facts: {}, worlds: {} }; p.stats.bestTime[o] = 0; });
     return p;
   }
@@ -46,6 +49,8 @@
         var p = JSON.parse(raw);
         if (p.ops) OP_LIST.forEach(function (o) { base.ops[o] = { facts: (p.ops[o] && p.ops[o].facts) || {}, worlds: (p.ops[o] && p.ops[o].worlds) || {} }; });
         if (p.patterns) base.patterns = Object.assign(base.patterns, p.patterns);
+        if (p.puzzles) base.puzzles = Object.assign(base.puzzles, p.puzzles);
+        base.xp = p.xp || 0;
         if (p.stats) { base.stats.sessions = p.stats.sessions || 0; OP_LIST.forEach(function (o) { base.stats.bestTime[o] = (p.stats.bestTime && p.stats.bestTime[o]) || 0; }); }
         if (p.settings) base.settings = Object.assign(base.settings, p.settings);
       } else {
@@ -63,19 +68,22 @@
   }
   function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(progress)); } catch (e) {} }
 
-  /* ---------- نموذج الحقائق + التكرار المتباعد (Leitner) ---------- */
+  /* ---------- النقاط والمستوى (موحّد لكل النشاطات) ---------- */
+  function awardPoints(pts) { var b = playerLevel(); progress.xp = (progress.xp || 0) + pts; save(); return playerLevel() > b; }
+  function playerLevel() { return 1 + Math.floor((progress.xp || 0) / XP_PER_LEVEL); }
+  function levelProgress() { return (progress.xp || 0) % XP_PER_LEVEL; }
+  function levelTitle(l) { return l >= 12 ? 'أسطورة 🌟' : l >= 9 ? 'عبقري 🧠' : l >= 7 ? 'خبير 🎓' : l >= 5 ? 'بطل 🦸' : l >= 3 ? 'ماهر ✨' : 'مبتدئ 🌱'; }
+
+  /* ---------- الحقائق + التكرار المتباعد (Leitner) ---------- */
   function key(n, k) { return n + '_' + k; }
-  function getFact(op, n, k) {
-    return progress.ops[op].facts[key(n, k)] || { box: 0, seen: 0, correct: 0, wrong: 0, lastSeen: 0, bestMs: 0 };
-  }
+  function getFact(op, n, k) { return progress.ops[op].facts[key(n, k)] || { box: 0, seen: 0, correct: 0, wrong: 0, lastSeen: 0, bestMs: 0 }; }
   function updateFact(op, n, k, correct, ms) {
     var f = getFact(op, n, k);
     f.seen++;
     if (correct) { f.correct++; f.box = Math.min(5, f.box + 1); if (ms) f.bestMs = f.bestMs ? Math.min(f.bestMs, ms) : ms; }
     else { f.wrong++; f.box = Math.max(0, f.box - 2); }
     f.lastSeen = Date.now();
-    progress.ops[op].facts[key(n, k)] = f;
-    save();
+    progress.ops[op].facts[key(n, k)] = f; save();
   }
 
   function worldFacts(n) { var a = []; for (var k = MIN; k <= MAX; k++) a.push({ n: n, k: k }); return a; }
@@ -86,20 +94,15 @@
 
   function pickSmartFact(op, pool, avoid) {
     var weights = [], total = 0;
-    pool.forEach(function (f) {
-      var w = (6 - getFact(op, f.n, f.k).box); w = w * w + 1;
-      if (pool.length > 1 && key(f.n, f.k) === avoid) w = 0;
-      weights.push(w); total += w;
-    });
+    pool.forEach(function (f) { var w = (6 - getFact(op, f.n, f.k).box); w = w * w + 1; if (pool.length > 1 && key(f.n, f.k) === avoid) w = 0; weights.push(w); total += w; });
     var r = Math.random() * total;
     for (var i = 0; i < pool.length; i++) { r -= weights[i]; if (r <= 0) return pool[i]; }
     return pool[pool.length - 1];
   }
-
   function masteredCount(op) { var c = 0, f = progress.ops[op].facts; for (var x in f) if (f[x].box >= 4) c++; return c; }
   function totalStars(op) { var s = 0, w = progress.ops[op].worlds; for (var x in w) s += (w[x].stars || 0); return s; }
 
-  /* ---------- توليد الأنماط (أكمل النمط) ---------- */
+  /* ---------- توليد الأنماط ---------- */
   function rand(m) { return Math.floor(Math.random() * m); }
   function genPattern(level) {
     var rules;
@@ -118,21 +121,51 @@
     return { seq: seq, blankIdx: blankIdx, answer: seq[blankIdx], ruleText: rt };
   }
 
+  /* ---------- توليد الأحاجي ---------- */
+  function genPuzzle(level) {
+    var types;
+    if (level <= 1)      types = ['miss+', 'miss-'];
+    else if (level === 2) types = ['miss+', 'miss-', 'missx'];
+    else if (level === 3) types = ['missx', 'missd', 'miss-'];
+    else if (level === 4) types = ['riddle+', 'riddle-', 'ridmul'];
+    else                  types = ['ridmul', 'riddiv', 'missd', 'missx'];
+    var ty = types[rand(types.length)], a, b, x, M, display, hint, ltr = true, answer;
+    if (ty === 'miss+') {
+      x = 1 + rand(9); a = 1 + rand(9); b = x + a; answer = x;
+      display = rand(2) ? ('{ANS} + ' + a + ' = ' + b) : (a + ' + {ANS} = ' + b); hint = 'اطرح: ' + b + ' − ' + a;
+    } else if (ty === 'miss-') {
+      if (rand(2)) { a = 1 + rand(9); b = 1 + rand(9); answer = a + b; display = '{ANS} − ' + a + ' = ' + b; hint = 'اجمع: ' + a + ' + ' + b; }
+      else { M = 3 + rand(7); b = rand(M); answer = M - b; display = M + ' − {ANS} = ' + b; hint = 'اطرح: ' + M + ' − ' + b; }
+    } else if (ty === 'missx') {
+      x = 2 + rand(8); a = 2 + rand(8); b = x * a; answer = x;
+      display = rand(2) ? ('{ANS} × ' + a + ' = ' + b) : (a + ' × {ANS} = ' + b); hint = 'اقسم: ' + b + ' ÷ ' + a;
+    } else if (ty === 'missd') {
+      if (rand(2)) { a = 2 + rand(8); b = 2 + rand(5); answer = a * b; display = '{ANS} ÷ ' + a + ' = ' + b; hint = 'اضرب: ' + a + ' × ' + b; }
+      else { b = 2 + rand(5); x = 2 + rand(8); a = b * x; answer = x; display = a + ' ÷ {ANS} = ' + b; hint = 'اقسم: ' + a + ' ÷ ' + b; }
+    } else if (ty === 'riddle+') {
+      a = 2 + rand(8); x = 2 + rand(9); b = x + a; answer = x; ltr = false;
+      display = 'أنا عددٌ، إذا أضفتَ إليّ ' + a + ' أصير ' + b + '. مَن أنا؟<br>إجابتي: {ANS}'; hint = 'اطرح: ' + b + ' − ' + a;
+    } else if (ty === 'riddle-') {
+      x = 3 + rand(8); a = 1 + rand(x - 1); b = x - a; answer = x; ltr = false;
+      display = 'أنا عددٌ، إذا طرحتَ منّي ' + a + ' أبقى ' + b + '. مَن أنا؟<br>إجابتي: {ANS}'; hint = 'اجمع: ' + a + ' + ' + b;
+    } else if (ty === 'ridmul') {
+      a = 2 + rand(5); x = 2 + rand(8); b = x * a; answer = x; ltr = false;
+      display = 'أنا عددٌ، إذا ضربتَني في ' + a + ' أصير ' + b + '. مَن أنا؟<br>إجابتي: {ANS}'; hint = 'اقسم: ' + b + ' ÷ ' + a;
+    } else {
+      a = 2 + rand(5); x = 2 + rand(8); b = x * a; answer = x; ltr = false;
+      display = 'أنا عددٌ، إذا قسمتَ ' + b + ' عليّ أصير ' + a + '. مَن أنا؟<br>إجابتي: {ANS}'; hint = 'اقسم: ' + b + ' ÷ ' + a;
+    }
+    return { display: display, answer: answer, hint: '💡 ' + hint, ltr: ltr };
+  }
+
   /* ---------- الأصوات (Web Audio، بلا ملفات) ---------- */
   var actx = null;
-  function ac() {
-    if (!progress.settings.sound) return null;
-    try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
-    if (actx.state === 'suspended') actx.resume();
-    return actx;
-  }
+  function ac() { if (!progress.settings.sound) return null; try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } if (actx.state === 'suspended') actx.resume(); return actx; }
   function tone(freq, start, dur, type, vol) {
     var c = ac(); if (!c) return;
     var o = c.createOscillator(), g = c.createGain(), t = c.currentTime + start;
     o.type = type || 'sine'; o.frequency.value = freq;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol || 0.18, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.18, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + 0.02);
   }
   var sfx = {
@@ -152,22 +185,15 @@
   var SCREENS = ['home', 'ops', 'worlds', 'game', 'summary', 'mastery', 'settings'];
   var state = { op: null, screen: 'home' };
   function show(name) {
-    clearTimers();
-    state.screen = name;
+    clearTimers(); state.screen = name;
     SCREENS.forEach(function (s) { $('screen-' + s).hidden = (s !== name); });
     $('btn-home').style.visibility = (name === 'home') ? 'hidden' : 'visible';
   }
   function showHome() { state.op = null; setTheme(null); renderHome(); show('home'); }
   function showOps(op) { state.op = op; setTheme(op); renderOps(); show('ops'); }
-  function goBack() {
-    var s = state.screen;
-    if (s === 'ops' || s === 'settings') return showHome();
-    if (state.op) return showOps(state.op);
-    return showHome();
-  }
+  function goBack() { var s = state.screen; if (s === 'ops' || s === 'settings') return showHome(); if (state.op) return showOps(state.op); return showHome(); }
   function setTheme(op) {
-    var app = $('app');
-    var color = !op ? null : (op === 'pattern' ? PATTERN_COLOR : OPS[op].color);
+    var app = $('app'), color = !op ? null : (THEME[op] || OPS[op].color);
     if (color) { app.style.setProperty('--bg1', color); app.setAttribute('data-op', op); }
     else { app.style.removeProperty('--bg1'); app.removeAttribute('data-op'); }
   }
@@ -182,70 +208,54 @@
   function startAdventure(n) { session = baseSession('adventure'); session.world = n; session.queue = shuffle(worldFacts(n)); session.total = ADVENTURE_LEN; enterGame(); }
   function startSmart() { session = baseSession('smart'); session.total = SMART_LEN; enterGame(); }
   function startTime() { session = baseSession('time'); session.endAt = Date.now() + TIME_SECONDS * 1000; enterGame(); }
-  function startPatterns() {
-    state.op = null; setTheme('pattern');
-    session = { op: null, mode: 'pattern', total: PATTERN_LEN, idx: 0, correct: 0, wrong: 0, streak: 0, best: 0, typed: '', current: null, qStart: 0, level: 1, up: 0, locked: false };
-    enterGame();
-  }
+  function startActivity(mode, color, total) { state.op = null; setTheme(color); session = { op: null, mode: mode, total: total, idx: 0, correct: 0, wrong: 0, streak: 0, best: 0, typed: '', current: null, qStart: 0, level: 1, up: 0, locked: false }; enterGame(); }
+  function startPatterns() { startActivity('pattern', 'pattern', PATTERN_LEN); }
+  function startPuzzles() { startActivity('puzzle', 'puzzle', PUZZLE_LEN); }
 
   function enterGame() {
-    show('game');
-    buildPad();
-    $('hint-area').hidden = true;
-    $('streak').hidden = true;
+    show('game'); buildPad();
+    $('hint-area').hidden = true; $('streak').hidden = true;
     $('timer').hidden = (session.mode !== 'time');
     if (session.mode === 'time') startTimeTimer();
-    setMascot('🦉');
-    nextQuestion();
+    setMascot('🦉'); nextQuestion();
   }
   function startTimeTimer() {
     var tEl = $('timer-n'), wrap = $('timer');
-    function tick() {
-      var left = Math.max(0, Math.ceil((session.endAt - Date.now()) / 1000));
-      tEl.textContent = left; wrap.classList.toggle('low', left <= 10);
-      if (left <= 0) { clearTimers(); finishSession(); }
-    }
+    function tick() { var left = Math.max(0, Math.ceil((session.endAt - Date.now()) / 1000)); tEl.textContent = left; wrap.classList.toggle('low', left <= 10); if (left <= 0) { clearTimers(); finishSession(); } }
     tick(); timerId = setInterval(tick, 200);
   }
 
   /* ---------- طرح سؤال ---------- */
   function nextQuestion() {
     session.typed = ''; session.erred = false; session.tries = 0; $('hint-area').hidden = true; $('hint-area').innerHTML = '';
-    if (session.mode === 'pattern') {
-      if (session.idx >= session.total) return finishSession();
-      session.current = genPattern(session.level);
-      session.qStart = Date.now(); renderProblem(); updateProgressBar(); return;
-    }
+    if (session.mode === 'pattern') { if (session.idx >= session.total) return finishSession(); session.current = genPattern(session.level); session.qStart = Date.now(); renderProblem(); updateProgressBar(); return; }
+    if (session.mode === 'puzzle') { if (session.idx >= session.total) return finishSession(); session.current = genPuzzle(session.level); session.qStart = Date.now(); renderProblem(); updateProgressBar(); return; }
     var op = session.op, pick;
-    if (session.mode === 'adventure') {
-      if (session.idx >= session.queue.length) return finishSession();
-      pick = session.queue[session.idx];
-    } else if (session.mode === 'smart') {
-      if (session.idx >= session.total) return finishSession();
-      pick = pickSmartFact(op, unlockedPool(op), session.lastKey);
-    } else {
-      if (Date.now() >= session.endAt) return finishSession();
-      pick = pickSmartFact(op, unlockedPool(op), session.lastKey);
-    }
+    if (session.mode === 'adventure') { if (session.idx >= session.queue.length) return finishSession(); pick = session.queue[session.idx]; }
+    else if (session.mode === 'smart') { if (session.idx >= session.total) return finishSession(); pick = pickSmartFact(op, unlockedPool(op), session.lastKey); }
+    else { if (Date.now() >= session.endAt) return finishSession(); pick = pickSmartFact(op, unlockedPool(op), session.lastKey); }
     var f = OPS[op].fact(pick.n, pick.k);
     session.current = { n: pick.n, k: pick.k, a: f.a, b: f.b, answer: f.answer, text: f.text };
-    session.qStart = Date.now();
-    renderProblem(); updateProgressBar();
+    session.qStart = Date.now(); renderProblem(); updateProgressBar();
   }
   function renderProblem(stateCls) {
     if (session.mode === 'pattern') return renderPattern(stateCls);
+    if (session.mode === 'puzzle') return renderPuzzle(stateCls);
     var c = session.current, shown = session.typed === '' ? '?' : session.typed;
     var p = $('problem'); p.className = 'problem' + (stateCls ? ' ' + stateCls : '');
     p.innerHTML = c.text + ' = <b class="ans">' + shown + '</b>';
   }
   function renderPattern(stateCls) {
     var c = session.current, p = $('problem');
-    var parts = c.seq.map(function (v, i) {
-      if (i === c.blankIdx) { var shown = session.typed === '' ? '؟' : session.typed; return '<b class="ans blank">' + shown + '</b>'; }
-      return '<span class="seq-n">' + v + '</span>';
-    });
+    var parts = c.seq.map(function (v, i) { if (i === c.blankIdx) { var shown = session.typed === '' ? '؟' : session.typed; return '<b class="ans blank">' + shown + '</b>'; } return '<span class="seq-n">' + v + '</span>'; });
     p.className = 'problem pattern' + (stateCls ? ' ' + stateCls : '');
     p.innerHTML = '<span class="seq" dir="ltr">' + parts.join('<i class="seq-arrow">→</i>') + '</span>';
+  }
+  function renderPuzzle(stateCls) {
+    var c = session.current, shown = session.typed === '' ? '؟' : session.typed;
+    var box = '<b class="ans blank">' + shown + '</b>';
+    var p = $('problem'); p.className = 'problem puzzle' + (stateCls ? ' ' + stateCls : '');
+    p.innerHTML = '<span class="prompt"' + (c.ltr ? ' dir="ltr"' : '') + '>' + c.display.replace('{ANS}', box) + '</span>';
   }
   function updateProgressBar() {
     var pct;
@@ -268,6 +278,8 @@
   function typeDigit(d) { if (session.locked || session.typed.length >= 3) return; session.typed = (session.typed + d).replace(/^0+(?=\d)/, ''); sfx.tap(); renderProblem(); }
   function backspace() { if (session.locked) return; session.typed = session.typed.slice(0, -1); renderProblem(); }
 
+  function pointsBase() { return session.mode === 'puzzle' ? 15 : session.mode === 'pattern' ? 12 : 10; }
+
   function submit() {
     if (session.locked || session.typed === '') return;
     var c = session.current, ok = parseInt(session.typed, 10) === c.answer;
@@ -275,45 +287,35 @@
     var fb = $('feedback');
 
     if (ok) {
-      // حُلّ السؤال — يُسجَّل مرّة واحدة فقط إن لم يُخطئ فيه سابقاً
-      if (!session.erred) {
-        session.correct++; session.streak++; session.best = Math.max(session.best, session.streak);
-        recordOutcome(c, true);
-      }
+      var pts, leveled;
+      if (!session.erred) { session.correct++; session.streak++; session.best = Math.max(session.best, session.streak); recordOutcome(c, true); pts = pointsBase() + (session.streak >= 3 ? 5 : 0); }
+      else { pts = 3; }
+      leveled = awardPoints(pts);
       renderProblem('right'); fb.className = 'feedback good';
-      fb.textContent = session.erred ? 'أحسنت! حللتها ✅' : praise(session.streak);
+      fb.textContent = (session.erred ? 'أحسنت! حللتها ✅' : praise(session.streak)) + '  +' + pts;
       sfx.correct(); if (!session.erred && session.streak >= 3) { sfx.streak(); confetti(14); }
       setMascot('🥳', 'bounce'); if (!session.erred) showStreak();
+      if (leveled) { fb.textContent = '🎉 المستوى ' + playerLevel() + '! (' + levelTitle(playerLevel()) + ')'; sfx.win(); confetti(70); setMascot('🤩', 'bounce'); }
       if (session.mode !== 'time') session.idx++;
-      advanceId = setTimeout(function () {
-        session.locked = false; $('feedback').textContent = ' '; $('feedback').className = 'feedback'; nextQuestion();
-      }, 750);
+      advanceId = setTimeout(function () { session.locked = false; $('feedback').textContent = ' '; $('feedback').className = 'feedback'; nextQuestion(); }, leveled ? 1200 : 750);
     } else {
-      // خطأ — لا ينتقل ولا نكشف الإجابة؛ يبقى على نفس السؤال حتى يحلّه
       session.tries = (session.tries || 0) + 1;
       if (!session.erred) { session.erred = true; session.wrong++; session.streak = 0; recordOutcome(c, false); }
       renderProblem('wrong'); fb.className = 'feedback bad';
       fb.textContent = session.tries >= 2 ? 'حاول مجدداً — اضغط «ساعدني أفهم» 💡' : 'غير صحيح، حاول مرة أخرى 🤔';
       sfx.wrong(); setMascot('🤔', 'shake'); $('streak').hidden = true;
-      advanceId = setTimeout(function () {
-        session.locked = false; session.typed = ''; renderProblem();
-      }, 900);
+      advanceId = setTimeout(function () { session.locked = false; session.typed = ''; renderProblem(); }, 900);
     }
   }
-  // يسجّل النتيجة (التكرار المتباعد / إحصاءات النمط) مرّة واحدة لكل سؤال
   function recordOutcome(c, correct) {
-    if (session.mode === 'pattern') {
-      progress.patterns.seen++; if (correct) progress.patterns.correct++; save();
+    if (session.mode === 'pattern' || session.mode === 'puzzle') {
+      var act = session.mode === 'pattern' ? progress.patterns : progress.puzzles;
+      act.seen++; if (correct) act.correct++; save();
       if (correct) { session.up = (session.up || 0) + 1; if (session.up >= 2) { session.level = Math.min(5, session.level + 1); session.up = 0; } }
       else { session.level = Math.max(1, session.level - 1); session.up = 0; }
-    } else {
-      session.lastKey = key(c.n, c.k);
-      updateFact(session.op, c.n, c.k, correct, Date.now() - session.qStart);
-    }
+    } else { session.lastKey = key(c.n, c.k); updateFact(session.op, c.n, c.k, correct, Date.now() - session.qStart); }
   }
-  function showStreak() {
-    if (session.streak >= 2) { var s = $('streak'); s.hidden = false; $('streak-n').textContent = session.streak; s.classList.remove('pump'); void s.offsetWidth; s.classList.add('pump'); }
-  }
+  function showStreak() { if (session.streak >= 2) { var s = $('streak'); s.hidden = false; $('streak-n').textContent = session.streak; s.classList.remove('pump'); void s.offsetWidth; s.classList.add('pump'); } }
   var PRAISE = ['أحسنت! ✅', 'رائع! 🌟', 'ممتاز! 👏', 'بطل! 💪', 'مذهل! 🚀', 'عبقري! 🧠'];
   function praise(st) { if (st >= 5) return 'لا يُوقَف! ' + st + ' متتالية! 🔥'; return PRAISE[Math.min(PRAISE.length - 1, st - 1)] || 'أحسنت! ✅'; }
 
@@ -324,13 +326,13 @@
     var h = $('hint-area');
     if (!h.hidden) { h.hidden = true; h.innerHTML = ''; return; }
     if (session.mode === 'pattern') { h.innerHTML = '<div class="hint-caption">💡 ' + session.current.ruleText + '</div>'; h.hidden = false; return; }
+    if (session.mode === 'puzzle') { h.innerHTML = '<div class="hint-caption">' + session.current.hint + '</div>'; h.hidden = false; return; }
     var c = session.current, op = session.op, body = '', cap = '';
     if (op === 'mul') { body = rowsOf(c.a, c.b); cap = c.a + ' صفوف × ' + c.b + ' — عُدّ كل النقاط'; }
     else if (op === 'div') { body = rowsOf(c.b, c.answer); cap = 'وزّع ' + c.a + ' على ' + c.b + ' صفوف — كم في كل صف؟'; }
     else if (op === 'add') { body = '<div class="hint-row hint-wrap">' + dots(c.a, 'd-a') + dots(c.b, 'd-b') + '</div>'; cap = 'عُدّ الكل: ' + c.a + ' + ' + c.b; }
     else { body = '<div class="hint-row hint-wrap">' + dots(c.answer, 'd-a') + dots(c.b, 'd-x') + '</div>'; cap = 'اشطب ' + c.b + ' واعُدّ الباقي'; }
-    h.innerHTML = '<div class="hint-rows">' + body + '</div><div class="hint-caption">' + cap + '</div>';
-    h.hidden = false;
+    h.innerHTML = '<div class="hint-rows">' + body + '</div><div class="hint-caption">' + cap + '</div>'; h.hidden = false;
   }
 
   /* ---------- إنهاء الجلسة + الملخّص ---------- */
@@ -338,13 +340,12 @@
     clearTimers();
     progress.stats.sessions = (progress.stats.sessions || 0) + 1;
     var op = session.op, total = session.correct + session.wrong, acc = total ? session.correct / total : 0;
-    if (session.mode === 'pattern') {
-      var pstars = total === 0 ? 0 : acc >= 0.9 ? 3 : acc >= 0.7 ? 2 : 1;
-      var pp = progress.patterns;
-      pp.plays = (pp.plays || 0) + 1; pp.stars = Math.max(pp.stars || 0, pstars); pp.best = Math.max(pp.best || 0, session.best); pp.bestLevel = Math.max(pp.bestLevel || 1, session.level);
-      save();
-      renderSummaryPattern(pstars, acc);
-      if (pstars >= 1) { sfx.win(); confetti(60); }
+    if (session.mode === 'pattern' || session.mode === 'puzzle') {
+      var act = session.mode === 'pattern' ? progress.patterns : progress.puzzles;
+      var qstars = total === 0 ? 0 : acc >= 0.9 ? 3 : acc >= 0.7 ? 2 : 1;
+      act.plays = (act.plays || 0) + 1; act.stars = Math.max(act.stars || 0, qstars); act.best = Math.max(act.best || 0, session.best); act.bestLevel = Math.max(act.bestLevel || 1, session.level); save();
+      renderSummaryActivity(session.mode === 'pattern' ? '🔢 أكمل النمط' : '🧩 الأحاجي', session.mode, qstars, acc);
+      if (qstars >= 1) { sfx.win(); confetti(60); }
       return;
     }
     if (session.mode === 'adventure') {
@@ -356,8 +357,7 @@
       renderSummaryAdventure(stars, acc, newUnlock);
       if (stars >= 1) { sfx.win(); confetti(60); }
     } else if (session.mode === 'smart') {
-      save();
-      renderSummarySimple('🧠', 'انتهى التدريب الذكي', acc, session.correct, total, session.best, 'smart');
+      save(); renderSummarySimple('🧠', 'انتهى التدريب الذكي', acc, session.correct, total, session.best, 'smart');
       if (acc >= 0.7) { sfx.win(); confetti(40); }
     } else {
       var best = progress.stats.bestTime[op] || 0, rec = session.correct > best;
@@ -372,9 +372,8 @@
     $('summary-content').querySelectorAll('[data-act]').forEach(function (b) { b.addEventListener('click', function () { route(b.getAttribute('data-act')); }); });
   }
   function starsHtml(n) { var s = ''; for (var i = 0; i < 3; i++) s += '<span class="star-pop" style="animation-delay:' + (i * 0.18) + 's">' + (i < n ? '⭐' : '☆') + '</span>'; return s; }
-  function summaryStats(correct, total, pct) {
-    return '<div class="summary-stats"><div class="s"><b>' + correct + '/' + total + '</b><small>صحيحة</small></div><div class="s"><b>' + pct + '%</b><small>الدقّة</small></div></div>';
-  }
+  function summaryStats(correct, total, pct) { return '<div class="summary-stats"><div class="s"><b>' + correct + '/' + total + '</b><small>صحيحة</small></div><div class="s"><b>' + pct + '%</b><small>الدقّة</small></div></div>'; }
+  function levelLine() { return '<p class="summary-msg" style="margin-top:6px">🏅 المستوى ' + playerLevel() + ' · ' + (progress.xp || 0) + ' نقطة</p>'; }
   function nextWorldOf(op, n) { var i = OPS[op].order.indexOf(n); return (i >= 0 && i < OPS[op].order.length - 1) ? OPS[op].order[i + 1] : null; }
 
   function renderSummaryAdventure(stars, acc, newUnlock) {
@@ -383,68 +382,43 @@
     if (newUnlock) msg += '<br>🔓 فتحتَ خانة جديدة!';
     var nn = nextWorldOf(op, session.world);
     var nextBtn = (nn && isWorldUnlocked(op, nn)) ? '<button class="btn btn-primary" data-act="world:' + nn + '">التالي ←</button>' : '';
-    summaryShell(
-      '<div class="big-emoji">' + (stars === 3 ? '🏆' : stars === 2 ? '🎉' : '👍') + '</div>' +
-      '<h2>' + OPS[op].sym + ' ' + session.world + '</h2>' +
-      '<div class="stars">' + starsHtml(stars) + '</div>' +
-      summaryStats(session.correct, session.correct + session.wrong, Math.round(acc * 100)) +
-      '<p class="summary-msg">' + msg + '</p>' +
-      '<div class="summary-actions">' + nextBtn +
-      '<button class="btn btn-soft" data-act="world:' + session.world + '">إعادة</button>' +
-      '<button class="btn btn-soft" data-act="worlds">🗺️ كل الخانات</button></div>'
-    );
+    summaryShell('<div class="big-emoji">' + (stars === 3 ? '🏆' : stars === 2 ? '🎉' : '👍') + '</div><h2>' + OPS[op].sym + ' ' + session.world + '</h2><div class="stars">' + starsHtml(stars) + '</div>' + summaryStats(session.correct, session.correct + session.wrong, Math.round(acc * 100)) + '<p class="summary-msg">' + msg + '</p>' + levelLine() + '<div class="summary-actions">' + nextBtn + '<button class="btn btn-soft" data-act="world:' + session.world + '">إعادة</button><button class="btn btn-soft" data-act="worlds">🗺️ كل الخانات</button></div>');
   }
   function renderSummarySimple(emoji, title, acc, correct, total, bestStreak, again) {
-    summaryShell(
-      '<div class="big-emoji">' + emoji + '</div><h2>' + title + '</h2>' +
-      summaryStats(correct, total, Math.round(acc * 100)) +
-      '<p class="summary-msg">أطول سلسلة: 🔥 ' + bestStreak + '<br>' + (acc >= 0.9 ? 'إتقان مبهر!' : acc >= 0.7 ? 'تتحسّن بسرعة!' : 'استمر، التدريب يصنع البطل!') + '</p>' +
-      '<div class="summary-actions"><button class="btn btn-primary" data-act="' + again + '">مرة أخرى</button><button class="btn btn-soft" data-act="ops">رجوع</button></div>'
-    );
+    summaryShell('<div class="big-emoji">' + emoji + '</div><h2>' + title + '</h2>' + summaryStats(correct, total, Math.round(acc * 100)) + '<p class="summary-msg">أطول سلسلة: 🔥 ' + bestStreak + '</p>' + levelLine() + '<div class="summary-actions"><button class="btn btn-primary" data-act="' + again + '">مرة أخرى</button><button class="btn btn-soft" data-act="ops">رجوع</button></div>');
   }
   function renderSummaryTime(score, best, rec) {
-    summaryShell(
-      '<div class="big-emoji">' + (rec ? '🥇' : '⚡') + '</div><h2>' + (rec ? 'رقم قياسي جديد!' : 'انتهى الوقت!') + '</h2>' +
-      '<div class="summary-stats"><div class="s"><b>' + score + '</b><small>صحيحة</small></div><div class="s"><b>' + best + '</b><small>أفضل رقم</small></div></div>' +
-      '<p class="summary-msg">' + (rec ? 'تجاوزتَ رقمك السابق! 🎊' : 'هل تتحدّى نفسك مجدداً؟') + '</p>' +
-      '<div class="summary-actions"><button class="btn btn-primary" data-act="time">تحدٍّ جديد ⚡</button><button class="btn btn-soft" data-act="ops">رجوع</button></div>'
-    );
+    summaryShell('<div class="big-emoji">' + (rec ? '🥇' : '⚡') + '</div><h2>' + (rec ? 'رقم قياسي جديد!' : 'انتهى الوقت!') + '</h2><div class="summary-stats"><div class="s"><b>' + score + '</b><small>صحيحة</small></div><div class="s"><b>' + best + '</b><small>أفضل رقم</small></div></div>' + levelLine() + '<div class="summary-actions"><button class="btn btn-primary" data-act="time">تحدٍّ جديد ⚡</button><button class="btn btn-soft" data-act="ops">رجوع</button></div>');
   }
-  function renderSummaryPattern(stars, acc) {
-    summaryShell(
-      '<div class="big-emoji">' + (stars === 3 ? '🏆' : stars === 2 ? '🎉' : '👍') + '</div><h2>🔢 أكمل النمط</h2>' +
-      '<div class="stars">' + starsHtml(stars) + '</div>' +
-      summaryStats(session.correct, session.correct + session.wrong, Math.round(acc * 100)) +
-      '<p class="summary-msg">أطول سلسلة: 🔥 ' + session.best + '<br>وصلتَ إلى المستوى ' + session.level + ' 🚀</p>' +
-      '<div class="summary-actions"><button class="btn btn-primary" data-act="patterns">مرة أخرى</button><button class="btn btn-soft" data-act="home">🏠 الرئيسية</button></div>'
-    );
+  function renderSummaryActivity(title, mode, stars, acc) {
+    summaryShell('<div class="big-emoji">' + (stars === 3 ? '🏆' : stars === 2 ? '🎉' : '👍') + '</div><h2>' + title + '</h2><div class="stars">' + starsHtml(stars) + '</div>' + summaryStats(session.correct, session.correct + session.wrong, Math.round(acc * 100)) + '<p class="summary-msg">أطول سلسلة: 🔥 ' + session.best + ' · المستوى ' + session.level + '</p>' + levelLine() + '<div class="summary-actions"><button class="btn btn-primary" data-act="' + mode + '">مرة أخرى</button><button class="btn btn-soft" data-act="home">🏠 الرئيسية</button></div>');
   }
 
-  /* ---------- الرئيسية: أربع خانات + نشاط النمط ---------- */
+  /* ---------- الرئيسية ---------- */
   function renderHome() {
+    var lvl = playerLevel(), prog = levelProgress();
+    $('level-card').innerHTML =
+      '<div class="lc-top"><span class="lc-lvl">⭐ المستوى ' + lvl + '</span><span class="lc-title">' + levelTitle(lvl) + '</span></div>' +
+      '<div class="lc-bar"><i style="width:' + prog + '%"></i></div>' +
+      '<div class="lc-xp">' + (progress.xp || 0) + ' نقطة · ' + (XP_PER_LEVEL - prog) + ' للمستوى التالي</div>';
     var grid = $('op-grid'); grid.innerHTML = '';
     OP_LIST.forEach(function (op) {
-      var d = OPS[op], stars = totalStars(op);
+      var d = OPS[op];
       var card = document.createElement('button');
       card.className = 'op-card op-' + op;
-      card.innerHTML = '<span class="op-sym">' + d.sym + '</span><span class="op-name">' + d.name + '</span>' +
-                       '<span class="op-stars">⭐ ' + stars + '/30</span>';
+      card.innerHTML = '<span class="op-sym">' + d.sym + '</span><span class="op-name">' + d.name + '</span><span class="op-stars">⭐ ' + totalStars(op) + '/30</span>';
       card.addEventListener('click', function () { showOps(op); });
       grid.appendChild(card);
     });
     var ps = $('patterns-stars'); if (ps) ps.textContent = '⭐ ' + (progress.patterns.stars || 0) + '/3';
+    var pz = $('puzzles-stars'); if (pz) pz.textContent = '⭐ ' + (progress.puzzles.stars || 0) + '/3';
   }
 
   /* ---------- قائمة العملية ---------- */
   function renderOps() {
     var op = state.op, d = OPS[op];
-    $('op-hero').className = 'op-hero op-' + op;
-    $('op-hero-ic').textContent = d.sym;
-    $('op-hero-name').textContent = d.name;
-    $('ops-chips').innerHTML =
-      '<span class="chip">⭐ ' + totalStars(op) + '/30</span>' +
-      '<span class="chip">🧠 ' + masteredCount(op) + '/100</span>' +
-      (progress.stats.bestTime[op] ? '<span class="chip">⚡ ' + progress.stats.bestTime[op] + '</span>' : '');
+    $('op-hero').className = 'op-hero op-' + op; $('op-hero-ic').textContent = d.sym; $('op-hero-name').textContent = d.name;
+    $('ops-chips').innerHTML = '<span class="chip">⭐ ' + totalStars(op) + '/30</span><span class="chip">🧠 ' + masteredCount(op) + '/100</span>' + (progress.stats.bestTime[op] ? '<span class="chip">⚡ ' + progress.stats.bestTime[op] + '</span>' : '');
   }
 
   /* ---------- خانات المغامرة ---------- */
@@ -454,11 +428,8 @@
       var unlocked = isWorldUnlocked(op, n), w = progress.ops[op].worlds[n] || { stars: 0 };
       var card = document.createElement('button');
       card.className = 'world-card op-' + op + (unlocked ? '' : ' locked') + (w.stars >= 1 ? ' done' : '');
-      if (unlocked) {
-        var st = ''; for (var i = 0; i < 3; i++) st += (i < w.stars ? '⭐' : '·');
-        card.innerHTML = '<span class="wnum">' + OPS[op].sym + n + '</span><span class="wlabel">خانة ' + n + '</span><span class="wstars">' + st + '</span>';
-        card.addEventListener('click', function () { startAdventure(n); });
-      } else { card.innerHTML = '<span class="wlock">🔒</span><span class="wnum">' + OPS[op].sym + n + '</span>'; card.disabled = true; }
+      if (unlocked) { var st = ''; for (var i = 0; i < 3; i++) st += (i < w.stars ? '⭐' : '·'); card.innerHTML = '<span class="wnum">' + OPS[op].sym + n + '</span><span class="wlabel">خانة ' + n + '</span><span class="wstars">' + st + '</span>'; card.addEventListener('click', function () { startAdventure(n); }); }
+      else { card.innerHTML = '<span class="wlock">🔒</span><span class="wnum">' + OPS[op].sym + n + '</span>'; card.disabled = true; }
       grid.appendChild(card);
     });
   }
@@ -473,16 +444,11 @@
       for (var kk = MIN; kk <= MAX; kk++) {
         var f = getFact(op, n, kk), fc = OPS[op].fact(n, kk);
         var cls = f.seen === 0 ? 'mc-new' : f.box >= 4 ? 'mc-master' : f.box >= 2 ? 'mc-learn' : 'mc-weak';
-        var c = cell('mc ' + cls, fc.answer);
-        c.title = fc.text + ' = ' + fc.answer + '  (صحيح ' + f.correct + ' / ' + f.seen + ')';
-        grid.appendChild(c);
+        var c = cell('mc ' + cls, fc.answer); c.title = fc.text + ' = ' + fc.answer + '  (صحيح ' + f.correct + ' / ' + f.seen + ')'; grid.appendChild(c);
       }
     }
-    var seen = 0, corr = 0, ff = progress.ops[op].facts;
-    for (var x in ff) { seen += ff[x].seen; corr += ff[x].correct; }
-    $('mastery-stats').innerHTML =
-      mstat(masteredCount(op) + '/100', 'مُتقَنة') + mstat((seen ? Math.round(corr / seen * 100) : 0) + '%', 'الدقّة') +
-      mstat(totalStars(op) + '/30', 'النجوم') + mstat((progress.stats.bestTime[op] || 0), 'أفضل تحدٍّ');
+    var seen = 0, corr = 0, ff = progress.ops[op].facts; for (var x in ff) { seen += ff[x].seen; corr += ff[x].correct; }
+    $('mastery-stats').innerHTML = mstat(masteredCount(op) + '/100', 'مُتقَنة') + mstat((seen ? Math.round(corr / seen * 100) : 0) + '%', 'الدقّة') + mstat(totalStars(op) + '/30', 'النجوم') + mstat((progress.stats.bestTime[op] || 0), 'أفضل تحدٍّ');
     $('mastery-title').textContent = '📊 إتقان ' + OPS[op].name;
   }
   function cell(cls, txt) { var d = document.createElement('div'); d.className = cls; d.textContent = txt; return d; }
@@ -500,7 +466,8 @@
       case 'worlds': renderWorlds(); show('worlds'); break;
       case 'smart': startSmart(); break;
       case 'time': startTime(); break;
-      case 'patterns': startPatterns(); break;
+      case 'pattern': case 'patterns': startPatterns(); break;
+      case 'puzzle': case 'puzzles': startPuzzles(); break;
       case 'mastery': renderMastery(); show('mastery'); break;
       case 'home': showHome(); break;
       case 'settings': renderSettings(); show('settings'); break;
@@ -514,8 +481,7 @@
     for (var i = 0; i < n; i++) {
       var p = document.createElement('div'); p.className = 'confetti-piece';
       p.style.left = Math.random() * 100 + 'vw'; p.style.background = COLORS[Math.floor(Math.random() * COLORS.length)];
-      p.style.animationDuration = (1 + Math.random() * 1.2) + 's'; p.style.animationDelay = (Math.random() * 0.2) + 's';
-      p.style.transform = 'rotate(' + (Math.random() * 360) + 'deg)';
+      p.style.animationDuration = (1 + Math.random() * 1.2) + 's'; p.style.animationDelay = (Math.random() * 0.2) + 's'; p.style.transform = 'rotate(' + (Math.random() * 360) + 'deg)';
       layer.appendChild(p); (function (el) { setTimeout(function () { el.remove(); }, 2600); })(p);
     }
   }
@@ -529,12 +495,7 @@
     $('btn-sound').addEventListener('click', toggleSound);
     $('set-sound').addEventListener('click', toggleSound);
     $('set-reset').addEventListener('click', function () { if (confirm('هل تريد مسح كل التقدّم والبدء من جديد؟')) { progress = freshProgress(); save(); updateSoundIcon(); showHome(); } });
-    document.addEventListener('keydown', function (e) {
-      if ($('screen-game').hidden) return;
-      if (e.key >= '0' && e.key <= '9') typeDigit(e.key);
-      else if (e.key === 'Backspace') { e.preventDefault(); backspace(); }
-      else if (e.key === 'Enter') submit();
-    });
+    document.addEventListener('keydown', function (e) { if ($('screen-game').hidden) return; if (e.key >= '0' && e.key <= '9') typeDigit(e.key); else if (e.key === 'Backspace') { e.preventDefault(); backspace(); } else if (e.key === 'Enter') submit(); });
   }
 
   function boot() { bind(); updateSoundIcon(); showHome(); }
