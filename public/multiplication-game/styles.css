@@ -388,45 +388,37 @@ body {
 
 /* ===== جدول الضرب ===== */
 #screen-table { align-items: center; }
-.table-wrap { background: #fff; border-radius: 20px; box-shadow: var(--shadow); padding: 14px; width: 100%; }
-.table-levels { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; }
-.tlvl-btn { border: 2px solid #e2e8f0; background: #fff; border-radius: 10px; padding: 6px 10px; font-weight: 800; font-size: .78rem; cursor: pointer; color: var(--ink); transition: all .15s; white-space: nowrap; }
-.tlvl-btn.sel { border-color: #0891b2; background: #ecfeff; color: #0891b2; }
-.tlvl-btn.done { border-color: var(--good); background: var(--good-soft); color: var(--good); }
-.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.mult-table { border-collapse: collapse; font-size: .72rem; direction: ltr; }
-.mult-table td, .mult-table th { width: 30px; height: 30px; text-align: center; padding: 1px; border: 1px solid rgba(0,0,0,.06); }
-.th-corner { background: #1e1b4b; color: #fff; font-weight: 900; }
-.th-col { background: #6d28d9; color: #fff; font-weight: 900; font-size: .7rem; }
-.th-row { background: #2563eb; color: #fff; font-weight: 900; }
-.cell-given { font-weight: 700; color: #94a3b8; font-size: .7rem; }
-.tr-1 .cell-given { background: #fef9c3; }
-.tr-2 .cell-given { background: #dcfce7; }
-.tr-3 .cell-given { background: #dbeafe; }
-.tr-4 .cell-given { background: #fce7f3; }
-.tr-5 .cell-given { background: #fff7ed; }
-.tr-6 .cell-given { background: #f3e8ff; }
-.tr-7 .cell-given { background: #ecfeff; }
-.tr-8 .cell-given { background: #fef3c7; }
-.tr-9 .cell-given { background: #f0fdf4; }
-.tr-10 .cell-given { background: #ede9fe; }
-.tr-1 td { background: rgba(254,249,195,.25); }
-.tr-2 td { background: rgba(220,252,231,.25); }
-.tr-3 td { background: rgba(219,234,254,.25); }
-.tr-4 td { background: rgba(252,231,243,.25); }
-.tr-5 td { background: rgba(255,247,237,.25); }
-.tr-6 td { background: rgba(243,232,255,.25); }
-.tr-7 td { background: rgba(236,254,255,.25); }
-.tr-8 td { background: rgba(254,243,199,.25); }
-.tr-9 td { background: rgba(240,253,244,.25); }
-.tr-10 td { background: rgba(237,233,254,.25); }
-.cell-input { width: 26px; height: 26px; border: 1.5px solid #c7d2fe; border-radius: 4px; text-align: center; font-size: .72rem; font-weight: 800; font-family: inherit; color: var(--ink); background: #eef2ff; padding: 0; -moz-appearance: textfield; }
-.cell-input::-webkit-inner-spin-button, .cell-input::-webkit-outer-spin-button { -webkit-appearance: none; }
-.cell-input:focus { outline: none; border-color: #6d28d9; background: #ede9fe; }
-.cell-input.correct { background: var(--good-soft); border-color: var(--good); color: var(--good); }
-.cell-input.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
-.table-foot { margin-top: 12px; display: flex; gap: 8px; }
-.table-result { text-align: center; margin-top: 10px; font-weight: 800; font-size: .95rem; min-height: 1.4em; }
+.table-wrap { background: #fff; border-radius: 20px; box-shadow: var(--shadow); padding: 16px; width: 100%; }
+.tbl-progress-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.tbl-progress-bar span { color: #0891b2; font-weight: 800; font-size: .88rem; white-space: nowrap; }
+.tbl-pbar { flex: 1; height: 10px; background: #e0f2fe; border-radius: 999px; overflow: hidden; }
+.tbl-pbar i { display: block; height: 100%; background: linear-gradient(90deg, #0891b2, #06b6d4); border-radius: 999px; transition: width .5s; }
+.tbl-levels-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.tbl-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border: 2px solid transparent; border-radius: 16px; background: #f8fafc; box-shadow: 0 3px 10px rgba(0,0,0,.1); cursor: pointer; padding: 10px 4px; aspect-ratio: 1/1; transition: transform .15s, box-shadow .15s; font-family: inherit; }
+.tbl-card:hover:not([disabled]) { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.16); }
+.tbl-card:active:not([disabled]) { transform: scale(.92); }
+.tbl-card.done { border-color: var(--good); background: #f0fdf4; }
+.tbl-card.done-gold { border-color: var(--accent); background: #fffbeb; }
+.tbl-card[disabled] { background: rgba(241,245,249,.6); box-shadow: none; cursor: not-allowed; }
+.tbl-lock { font-size: 1.1rem; }
+.tbl-card-n { font-size: 1.4rem; font-weight: 900; color: var(--ink); }
+.tbl-card[disabled] .tbl-card-n { color: #cbd5e1; }
+.tbl-card-stars { font-size: .65rem; letter-spacing: 1px; min-height: .8em; }
+
+.tbl-back { background: none; border: none; color: #0891b2; font-weight: 800; font-size: .92rem; cursor: pointer; padding: 0 0 14px; display: flex; align-items: center; gap: 4px; }
+.tbl-practice-title { font-size: 1.5rem; font-weight: 900; color: var(--ink); text-align: center; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 2px solid #f1f5f9; }
+.tbl-rows { display: flex; flex-direction: column; gap: 7px; }
+.tbl-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-radius: 14px; border: 2px solid transparent; transition: border-color .2s; }
+.tbl-row.row-correct { border-color: var(--good); }
+.tbl-row.row-wrong { border-color: var(--bad); }
+.tbl-eq { font-size: 1.3rem; font-weight: 800; color: var(--ink); direction: ltr; }
+.tbl-input { width: 80px; height: 48px; border: 2.5px solid #c7d2fe; border-radius: 12px; text-align: center; font-size: 1.4rem; font-weight: 900; font-family: inherit; color: var(--ink); background: #eef2ff; padding: 0; -moz-appearance: textfield; transition: border-color .2s, background .2s; }
+.tbl-input::-webkit-inner-spin-button, .tbl-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.tbl-input:focus { outline: none; border-color: #6d28d9; background: #ede9fe; }
+.tbl-input.correct { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+.tbl-input.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.tbl-foot { display: flex; gap: 8px; margin-top: 16px; }
+.table-result { text-align: center; margin-top: 10px; font-weight: 800; font-size: .95rem; min-height: 1.4em; line-height: 1.5; }
 
 @media (max-width: 360px) {
   .problem { font-size: 2.2rem; }

@@ -522,7 +522,7 @@
     var tp = $('tile-patterns'); if (tp) tp.style.display = adminVisible('pattern') ? '' : 'none';
     var tu = $('tile-puzzles'); if (tu) tu.style.display = adminVisible('puzzle') ? '' : 'none';
     var tbl = $('tile-table'); if (tbl) tbl.style.display = '';
-    var ts = $('table-stars'); if (ts) { var tpc = Object.keys(progress.tableProgress || {}).length; ts.textContent = tpc > 0 ? ('✓ ' + tpc + '/5 مراحل') : '5 مراحل'; }
+    var ts = $('table-stars'); if (ts) { var tp2 = progress.tableProgress || {}; var tpc = Object.keys(tp2).filter(function(k) { return tp2[k] >= 1; }).length; ts.textContent = tpc > 0 ? ('✓ ' + tpc + '/10 جدول') : '10 جداول'; }
     var sc = $('streak-chip'); if (sc) sc.textContent = (progress.streak && progress.streak.count > 0) ? ('🔥 سلسلة ' + progress.streak.count + ' ' + (progress.streak.count === 1 ? 'يوم' : 'أيام')) : '';
   }
 
@@ -687,90 +687,111 @@
   function updateSoundIcon() { $('btn-sound').textContent = progress.settings.sound ? '🔊' : '🔇'; }
 
   /* ---------- جدول الضرب ---------- */
-  var TABLE_LEVELS = [
-    { id: 1, label: '×1 و ×2',      blanks: [1, 2] },
-    { id: 2, label: '×3 و ×4 و ×5', blanks: [3, 4, 5] },
-    { id: 3, label: '×6 و ×7 و ×8', blanks: [6, 7, 8] },
-    { id: 4, label: '×9 و ×10',     blanks: [9, 10] },
-    { id: 5, label: 'الكل 🔥',       blanks: [1,2,3,4,5,6,7,8,9,10] }
-  ];
+  var TBL_ROW_BG = ['#fef9c3','#dcfce7','#dbeafe','#fce7f3','#fff7ed','#f3e8ff','#ecfeff','#fef3c7','#f0fdf4','#ede9fe'];
 
-  function startTableGame() { state.op = null; setTheme('table'); renderTableScreen(1); show('table'); }
+  function tblStars(n) { return (progress.tableProgress && progress.tableProgress[n]) || 0; }
+  function tblUnlocked(n) { return n === 1 || tblStars(n - 1) >= 1; }
 
-  function renderTableScreen(levelId) {
+  function startTableGame() { state.op = null; setTheme('table'); renderTableLevels(); show('table'); }
+
+  function renderTableLevels() {
     var tp = progress.tableProgress || {};
-    var lvlBtns = TABLE_LEVELS.map(function(l) {
-      var done = !!tp[l.id];
-      return '<button class="tlvl-btn' + (l.id === levelId ? ' sel' : '') + (done ? ' done' : '') + '" data-lvl="' + l.id + '">' + (done ? '✓ ' : '') + l.label + '</button>';
-    }).join('');
-
-    var blanks = TABLE_LEVELS[levelId - 1].blanks;
-    var thead = '<tr><th class="th-corner">×</th>';
-    for (var c = 1; c <= 10; c++) thead += '<th class="th-col">' + c + '</th>';
-    thead += '</tr>';
-
-    var tbody = '';
-    for (var r = 1; r <= 10; r++) {
-      tbody += '<tr class="tr-' + r + '"><th class="th-row">' + r + '</th>';
-      for (var ci = 1; ci <= 10; ci++) {
-        var val = r * ci;
-        if (blanks.indexOf(ci) !== -1) {
-          tbody += '<td><input class="cell-input" type="number" inputmode="numeric" data-r="' + r + '" data-c="' + ci + '" data-ans="' + val + '" min="1" max="100" /></td>';
-        } else {
-          tbody += '<td class="cell-given">' + val + '</td>';
-        }
+    var done = Object.keys(tp).filter(function(k) { return tp[k] >= 1; }).length;
+    var cards = '';
+    for (var n = 1; n <= 10; n++) {
+      var stars = tblStars(n), unlocked = tblUnlocked(n);
+      var starStr = '';
+      for (var s = 1; s <= 3; s++) starStr += (s <= stars ? '⭐' : '·');
+      if (unlocked) {
+        var cls = stars >= 3 ? 'done-gold' : stars >= 1 ? 'done' : '';
+        cards += '<button class="tbl-card ' + cls + '" data-n="' + n + '">' +
+          '<span class="tbl-card-n">×' + n + '</span>' +
+          '<span class="tbl-card-stars">' + (stars > 0 ? starStr : '') + '</span>' +
+          '</button>';
+      } else {
+        cards += '<button class="tbl-card" disabled>' +
+          '<span class="tbl-lock">🔒</span>' +
+          '<span class="tbl-card-n">×' + n + '</span>' +
+          '</button>';
       }
-      tbody += '</tr>';
     }
-
-    var completedCount = Object.keys(tp).length;
     $('table-card').innerHTML =
-      '<div class="table-levels">' + lvlBtns + '</div>' +
-      '<div class="table-scroll"><table class="mult-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table></div>' +
-      '<div class="table-foot"><button class="btn btn-primary" id="table-check" style="flex:1">✅ تحقّق</button><button class="btn btn-soft" id="table-clear" style="flex:none;padding:14px 16px">🗑️</button></div>' +
-      '<div class="table-result" id="table-result">' + (completedCount > 0 ? '✓ أتممت ' + completedCount + ' من 5 مراحل' : '') + '</div>';
-
-    $('table-card').querySelectorAll('[data-lvl]').forEach(function(b) {
-      b.addEventListener('click', function() { renderTableScreen(+b.getAttribute('data-lvl')); });
-    });
-    $('table-check').addEventListener('click', function() { checkTable(levelId); });
-    $('table-clear').addEventListener('click', function() {
-      $('table-card').querySelectorAll('.cell-input').forEach(function(inp) { inp.value = ''; inp.className = 'cell-input'; });
-      $('table-result').textContent = '';
+      '<div class="tbl-progress-bar"><div class="tbl-pbar"><i style="width:' + (done * 10) + '%"></i></div><span>' + done + '/10</span></div>' +
+      '<div class="tbl-levels-grid">' + cards + '</div>';
+    $('table-card').querySelectorAll('[data-n]').forEach(function(b) {
+      b.addEventListener('click', function() { renderTablePractice(+b.getAttribute('data-n')); });
     });
   }
 
-  function checkTable(levelId) {
-    var inputs = $('table-card').querySelectorAll('.cell-input');
+  function renderTablePractice(n) {
+    var stars = tblStars(n);
+    var starStr = '';
+    for (var s = 1; s <= 3; s++) starStr += (s <= stars ? '⭐' : '·');
+    var rows = '';
+    for (var k = 1; k <= 10; k++) {
+      rows += '<div class="tbl-row" style="background:' + TBL_ROW_BG[k - 1] + '" data-k="' + k + '">' +
+        '<span class="tbl-eq">' + n + ' &times; ' + k + ' =</span>' +
+        '<input class="tbl-input" type="number" inputmode="numeric" data-ans="' + (n * k) + '" min="1" max="100" placeholder="?" />' +
+        '</div>';
+    }
+    $('table-card').innerHTML =
+      '<button class="tbl-back" id="tbl-back">← الجداول</button>' +
+      '<div class="tbl-practice-title">جدول الضرب في ' + n + (stars > 0 ? ' ' + starStr : '') + '</div>' +
+      '<div class="tbl-rows">' + rows + '</div>' +
+      '<div class="tbl-foot"><button class="btn btn-primary" id="table-check" style="flex:1">✅ تحقّق من الإجابات</button><button class="btn btn-soft" id="table-clear" style="padding:14px 16px">🗑️</button></div>' +
+      '<div class="table-result" id="table-result">' + (stars > 0 ? '⭐ يمكنك إعادة المحاولة للحصول على نجوم أكثر!' : '') + '</div>';
+
+    $('tbl-back').addEventListener('click', renderTableLevels);
+    var inputs = $('table-card').querySelectorAll('.tbl-input');
+    inputs.forEach(function(inp, i) {
+      inp.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); if (i + 1 < inputs.length) inputs[i + 1].focus(); else $('table-check').click(); }
+      });
+    });
+    $('table-check').addEventListener('click', function() { checkTablePractice(n); });
+    $('table-clear').addEventListener('click', function() {
+      inputs.forEach(function(inp) { inp.value = ''; inp.className = 'tbl-input'; });
+      $('table-card').querySelectorAll('.tbl-row').forEach(function(r) { r.className = 'tbl-row'; r.style.background = TBL_ROW_BG[+r.getAttribute('data-k') - 1]; });
+      $('table-result').textContent = '';
+    });
+    setTimeout(function() { if (inputs[0]) inputs[0].focus(); }, 120);
+  }
+
+  function checkTablePractice(n) {
+    var inputs = $('table-card').querySelectorAll('.tbl-input');
     var correct = 0, total = inputs.length, empty = 0;
-    inputs.forEach(function(inp) {
-      if (!inp.value.trim()) { empty++; inp.className = 'cell-input'; return; }
+    inputs.forEach(function(inp, i) {
+      var row = inp.closest('.tbl-row');
+      if (!inp.value.trim()) { empty++; inp.className = 'tbl-input'; if (row) { row.className = 'tbl-row'; row.style.background = TBL_ROW_BG[i]; } return; }
       var val = parseInt(inp.value, 10), ans = parseInt(inp.getAttribute('data-ans'), 10);
-      if (val === ans) { inp.className = 'cell-input correct'; correct++; }
-      else { inp.className = 'cell-input wrong'; }
+      if (val === ans) { inp.className = 'tbl-input correct'; correct++; if (row) { row.className = 'tbl-row row-correct'; row.style.background = '#f0fdf4'; } }
+      else { inp.className = 'tbl-input wrong'; if (row) { row.className = 'tbl-row row-wrong'; row.style.background = '#fef2f2'; } }
     });
     var filled = total - empty;
     var res = $('table-result');
     if (filled === 0) { res.textContent = '✏️ ابدأ بملء الخانات أولاً!'; res.style.color = 'var(--muted)'; return; }
+    var newStars = correct === total ? 3 : correct >= 8 ? 2 : correct >= 6 ? 1 : 0;
     if (correct === total) {
-      res.innerHTML = '🎉 ممتاز! أجبت على الكل صحيحاً!';
+      res.innerHTML = '🎉 ممتاز! أتقنت جدول الضرب في ' + n + ' بالكامل! 🌟';
       res.style.color = 'var(--good)';
-      sfx.win(); confetti(60);
+      sfx.win(); confetti(70);
       if (!progress.tableProgress) progress.tableProgress = {};
-      if (!progress.tableProgress[levelId]) {
-        progress.tableProgress[levelId] = true;
-        awardPoints(levelId * 15);
-        save();
-        toast('🎉 أتقنت المرحلة ' + levelId + ' وكسبت ' + (levelId * 15) + ' نقطة!');
-      }
-      var nextLvl = levelId + 1;
-      if (nextLvl <= TABLE_LEVELS.length) {
-        setTimeout(function() { renderTableScreen(nextLvl); }, 2000);
-      }
+      var oldStars = tblStars(n);
+      if (newStars > oldStars) { progress.tableProgress[n] = newStars; awardPoints(n * 10); save(); }
+      var next = n + 1;
+      if (next <= 10) {
+        toast('🔓 تم فتح جدول الضرب في ' + next + '!');
+        setTimeout(function() { renderTablePractice(next); }, 2200);
+      } else { setTimeout(function() { confetti(150); toast('🏆 أتقنت كل الجداول! أنت بطل الحساب!'); }, 400); }
+    } else if (newStars > 0) {
+      res.innerHTML = '✅ ' + correct + '/' + total + ' صحيح — جيد جداً! صحّح الخانات الحمراء للحصول على نجوم أكثر ⭐';
+      res.style.color = 'var(--learn)';
+      if (!progress.tableProgress) progress.tableProgress = {};
+      var old2 = tblStars(n);
+      if (newStars > old2) { progress.tableProgress[n] = newStars; awardPoints(n * 4); save(); }
     } else {
-      var pct = filled > 0 ? Math.round(correct / filled * 100) : 0;
-      res.innerHTML = '✅ ' + correct + '/' + filled + ' صحيح (' + pct + '%) — صحّح الأحمر وحاوِل ثانيةً';
-      res.style.color = pct >= 70 ? 'var(--learn)' : 'var(--bad)';
+      res.innerHTML = '❌ ' + correct + '/' + filled + ' صحيح — لا تستسلم! صحّح وحاوِل مجدداً 💪';
+      res.style.color = 'var(--bad)';
     }
   }
 
