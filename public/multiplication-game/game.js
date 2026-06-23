@@ -57,7 +57,7 @@
   /* ---------- التخزين ---------- */
   function freshActivity() { return { stars: 0, best: 0, plays: 0, bestLevel: 1, seen: 0, correct: 0 }; }
   function freshProgress() {
-    var p = { ops: {}, patterns: freshActivity(), puzzles: freshActivity(), xp: 0, streak: { count: 0, last: '' }, magic: { revealed: {}, selected: 0 }, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
+    var p = { ops: {}, patterns: freshActivity(), puzzles: freshActivity(), xp: 0, streak: { count: 0, last: '' }, magic: { revealed: {}, selected: 0 }, admin: { visible: {}, ppp: 20 }, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
     OP_LIST.forEach(function (o) { p.ops[o] = { facts: {}, worlds: {} }; p.stats.bestTime[o] = 0; });
     return p;
   }
@@ -76,6 +76,7 @@
         base.xp = p.xp || 0;
         if (p.streak) base.streak = Object.assign(base.streak, p.streak);
         if (p.magic) base.magic = { revealed: p.magic.revealed || {}, selected: p.magic.selected || 0 };
+        if (p.admin) base.admin = { visible: p.admin.visible || {}, ppp: p.admin.ppp || 20 };
         if (p.stats) { base.stats.sessions = p.stats.sessions || 0; OP_LIST.forEach(function (o) { base.stats.bestTime[o] = (p.stats.bestTime && p.stats.bestTime[o]) || 0; }); }
         if (p.settings) base.settings = Object.assign(base.settings, p.settings);
       } else {
@@ -112,7 +113,9 @@
   }
 
   /* ---------- الأحجية السحرية (تفاعلية + معرض صور) ---------- */
-  function magicEarned() { return Math.floor((progress.xp || 0) / POINTS_PER_PIECE); }
+  function pppValue() { return (progress.admin && progress.admin.ppp) || POINTS_PER_PIECE; }
+  function adminVisible(k) { return !progress.admin || progress.admin.visible[k] !== false; }
+  function magicEarned() { return Math.floor((progress.xp || 0) / pppValue()); }
   function magicUsed() { var u = 0, r = progress.magic.revealed || {}; for (var k in r) u += r[k].length; return u; }
   function magicAvailable() { return Math.max(0, magicEarned() - magicUsed()); }
   function picRevealed(p) { return progress.magic.revealed[p] || []; }
@@ -275,7 +278,7 @@
   function setMascot(emoji, anim) { var m = $('mascot'); m.textContent = emoji; m.classList.remove('bounce', 'shake'); void m.offsetWidth; if (anim) m.classList.add(anim); }
 
   /* ---------- التنقّل ---------- */
-  var SCREENS = ['home', 'ops', 'worlds', 'game', 'summary', 'mastery', 'magic', 'settings'];
+  var SCREENS = ['home', 'ops', 'worlds', 'game', 'summary', 'mastery', 'magic', 'admin', 'settings'];
   var state = { op: null, screen: 'home' };
   function show(name) {
     clearTimers(); state.screen = name;
@@ -284,7 +287,7 @@
   }
   function showHome() { state.op = null; setTheme(null); renderHome(); show('home'); }
   function showOps(op) { state.op = op; setTheme(op); renderOps(); show('ops'); }
-  function goBack() { var s = state.screen; if (s === 'ops' || s === 'settings') return showHome(); if (state.op) return showOps(state.op); return showHome(); }
+  function goBack() { var s = state.screen; if (s === 'ops' || s === 'settings' || s === 'admin') return showHome(); if (state.op) return showOps(state.op); return showHome(); }
   function setTheme(op) {
     var app = $('app'), color = !op ? null : (THEME[op] || OPS[op].color);
     if (color) { app.style.setProperty('--bg1', color); app.setAttribute('data-op', op); }
@@ -495,7 +498,7 @@
       '<div class="lc-bar"><i style="width:' + prog + '%"></i></div>' +
       '<div class="lc-xp">' + (progress.xp || 0) + ' نقطة · ' + (XP_PER_LEVEL - prog) + ' للمستوى التالي</div>';
     var grid = $('op-grid'); grid.innerHTML = '';
-    OP_LIST.forEach(function (op) {
+    OP_LIST.filter(function (op) { return adminVisible(op); }).forEach(function (op) {
       var d = OPS[op];
       var card = document.createElement('button');
       card.className = 'op-card op-' + op;
@@ -506,7 +509,9 @@
     var ps = $('patterns-stars'); if (ps) ps.textContent = '⭐ ' + (progress.patterns.stars || 0) + '/3';
     var pz = $('puzzles-stars'); if (pz) pz.textContent = '⭐ ' + (progress.puzzles.stars || 0) + '/3';
     var avail = magicAvailable(), selPic = PICTURES[progress.magic.selected || 0], selCount = picRevealed(progress.magic.selected || 0).length;
-    var mb = $('magic-banner'); if (mb) mb.innerHTML = '<span class="mb-ic">🧩</span><span class="mb-tx"><b>الأحجية السحرية</b><small>' + (avail > 0 ? ('🎁 ' + avail + ' قطعة جاهزة للكشف!') : (selCount + '/30 · ' + selPic.name)) + '</small></span><span class="mb-go">←</span>';
+    var mb = $('magic-banner'); if (mb) { mb.innerHTML = '<span class="mb-ic">🧩</span><span class="mb-tx"><b>الأحجية السحرية</b><small>' + (avail > 0 ? ('🎁 ' + avail + ' قطعة جاهزة للكشف!') : (selCount + '/30 · ' + selPic.name)) + '</small></span><span class="mb-go">←</span>'; mb.style.display = adminVisible('magic') ? '' : 'none'; }
+    var tp = $('tile-patterns'); if (tp) tp.style.display = adminVisible('pattern') ? '' : 'none';
+    var tu = $('tile-puzzles'); if (tu) tu.style.display = adminVisible('puzzle') ? '' : 'none';
     var sc = $('streak-chip'); if (sc) sc.textContent = (progress.streak && progress.streak.count > 0) ? ('🔥 سلسلة ' + progress.streak.count + ' ' + (progress.streak.count === 1 ? 'يوم' : 'أيام')) : '';
   }
 
@@ -552,6 +557,26 @@
 
   /* ---------- الإعدادات ---------- */
   function renderSettings() { $('set-sound').setAttribute('aria-pressed', progress.settings.sound ? 'true' : 'false'); updateSoundIcon(); }
+
+  /* ---------- لوحة الإدارة ---------- */
+  function showAdmin() { state.op = null; setTheme(null); renderAdmin(); show('admin'); }
+  function renderAdmin() {
+    var v = progress.admin.visible;
+    var acts = [['mul', '✖️ الضرب'], ['div', '➗ القسمة'], ['add', '➕ الجمع'], ['sub', '➖ الطرح'], ['pattern', '🔢 أكمل النمط'], ['puzzle', '❓ العدد الغامض'], ['magic', '🧩 الأحجية السحرية']];
+    var toggles = acts.map(function (a) { var on = v[a[0]] !== false; return '<div class="setting-row"><span>' + a[1] + '</span><button class="switch" data-vis="' + a[0] + '" aria-pressed="' + (on ? 'true' : 'false') + '"><span class="knob"></span></button></div>'; }).join('');
+    var ppp = pppValue();
+    var pppBtns = [10, 20, 30].map(function (n) { return '<button class="ppp-btn' + (n === ppp ? ' sel' : '') + '" data-ppp="' + n + '">' + n + '</button>'; }).join('');
+    var stats1 = '<div class="mastery-stats">' + mstat(playerLevel(), 'المستوى') + mstat((progress.xp || 0), 'النقاط') + mstat('🔥' + (progress.streak ? progress.streak.count : 0), 'السلسلة') + mstat(magicUsed(), 'قطع الأحجية') + '</div>';
+    var stats2 = '<div class="mastery-stats">' + OP_LIST.map(function (op) { return mstat(masteredCount(op) + '/100', OPS[op].name); }).join('') + '</div>';
+    $('admin-body').innerHTML =
+      '<div class="admin-sec"><h3>👁️ الأنشطة الظاهرة للطالب</h3>' + toggles + '</div>' +
+      '<div class="admin-sec"><h3>🧩 نقاط كشف قطعة الأحجية</h3><div class="ppp-row">' + pppBtns + '</div></div>' +
+      '<h3 class="admin-h">📊 تقدّم الطالب</h3>' + stats1 + stats2 +
+      '<button class="danger-btn" id="admin-reset">🗑️ مسح كل التقدّم والبدء من جديد</button>';
+    $('admin-body').querySelectorAll('[data-vis]').forEach(function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-vis'); v[k] = (v[k] !== false) ? false : true; save(); renderAdmin(); }); });
+    $('admin-body').querySelectorAll('[data-ppp]').forEach(function (b) { b.addEventListener('click', function () { progress.admin.ppp = +b.getAttribute('data-ppp'); save(); renderAdmin(); }); });
+    $('admin-reset').addEventListener('click', function () { if (confirm('مسح كل تقدّم الطالب والبدء من جديد؟')) { progress = freshProgress(); save(); updateSoundIcon(); showHome(); } });
+  }
   function updateSoundIcon() { $('btn-sound').textContent = progress.settings.sound ? '🔊' : '🔇'; }
 
   /* ---------- التوجيه ---------- */
@@ -586,6 +611,7 @@
   /* ---------- ربط الأحداث ---------- */
   function bind() {
     document.querySelectorAll('[data-action]').forEach(function (el) { el.addEventListener('click', function () { route(el.getAttribute('data-action')); }); });
+    document.querySelectorAll('[data-role]').forEach(function (el) { el.addEventListener('click', function () { el.getAttribute('data-role') === 'admin' ? showAdmin() : showHome(); }); });
     $('btn-home').addEventListener('click', goBack);
     $('hint-toggle').addEventListener('click', toggleHint);
     function toggleSound() { progress.settings.sound = !progress.settings.sound; save(); updateSoundIcon(); var sw = $('set-sound'); if (sw) sw.setAttribute('aria-pressed', progress.settings.sound ? 'true' : 'false'); if (progress.settings.sound) sfx.tap(); }
