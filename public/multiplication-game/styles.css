@@ -59,6 +59,13 @@ body {
 }
 .icon-btn:hover { background: rgba(255, 255, 255, .3); }
 .icon-btn:active { transform: scale(.9); }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.xp-chip { display: flex; align-items: center; gap: 4px; background: linear-gradient(135deg,#f59e0b,#fbbf24); color: #1e1b4b; font-weight: 900; font-size: .95rem; padding: 6px 12px; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.2); min-width: 64px; justify-content: center; transition: transform .15s; }
+.xp-chip.pop { animation: xp-pop .4s cubic-bezier(.36,2,.4,.9) both; }
+.xp-star { font-size: 1rem; }
+@keyframes xp-pop { 0%{transform:scale(1)} 40%{transform:scale(1.45)} 70%{transform:scale(.9)} 100%{transform:scale(1)} }
+.xp-float { position: fixed; font-weight: 900; font-size: 1.1rem; color: #f59e0b; pointer-events: none; z-index: 9999; text-shadow: 0 1px 4px rgba(0,0,0,.3); animation: xp-rise .9s ease-out forwards; }
+@keyframes xp-rise { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-70px) scale(1.3)} }
 
 /* ===== المسرح والشاشات ===== */
 .stage { flex: 1; padding: 8px 16px 28px; display: flex; }

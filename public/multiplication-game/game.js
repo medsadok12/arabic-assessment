@@ -96,7 +96,7 @@
   function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(progress)); return true; } catch (e) { return false; } }
 
   /* ---------- النقاط والمستوى (موحّد لكل النشاطات) ---------- */
-  function awardPoints(pts) { var b = playerLevel(); progress.xp = (progress.xp || 0) + pts; save(); return playerLevel() > b; }
+  function awardPoints(pts) { var b = playerLevel(); progress.xp = (progress.xp || 0) + pts; save(); animateXP(pts); var leveled = playerLevel() > b; if (leveled) sfx.levelUp(); return leveled; }
   function playerLevel() { return 1 + Math.floor((progress.xp || 0) / XP_PER_LEVEL); }
   function levelProgress() { return (progress.xp || 0) % XP_PER_LEVEL; }
   function levelTitle(l) { return l >= 12 ? 'أسطورة 🌟' : l >= 9 ? 'عبقري 🧠' : l >= 7 ? 'خبير 🎓' : l >= 5 ? 'بطل 🦸' : l >= 3 ? 'ماهر ✨' : 'مبتدئ 🌱'; }
@@ -162,7 +162,7 @@
   function onRevealTile(i) {
     var sel = progress.magic.selected || 0;
     if (revealTile(sel, i)) {
-      sfx.tap(); confetti(8);
+      sfx.magic(); confetti(8);
       if (picRevealed(sel).length === PIECES_PER_PIC) { sfx.win(); confetti(70); }
       renderMagic();
     } else if (magicAvailable() <= 0) {
@@ -272,12 +272,36 @@
     o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + 0.02);
   }
   var sfx = {
-    tap: function () { tone(420, 0, 0.06, 'square', 0.05); },
-    correct: function () { tone(660, 0, 0.12, 'sine', 0.16); tone(990, 0.1, 0.16, 'sine', 0.16); },
-    wrong: function () { tone(200, 0, 0.22, 'sine', 0.14); },
-    streak: function () { tone(880, 0, 0.08, 'triangle', 0.14); tone(1320, 0.08, 0.12, 'triangle', 0.14); },
-    win: function () { [523, 659, 784, 1046].forEach(function (f, i) { tone(f, i * 0.12, 0.18, 'triangle', 0.16); }); }
+    tap:      function () { tone(420, 0, 0.06, 'square', 0.05); },
+    digit:    function () { tone(520, 0, 0.05, 'sine', 0.07); },
+    correct:  function () { tone(660, 0, 0.12, 'sine', 0.16); tone(990, 0.1, 0.16, 'sine', 0.16); },
+    wrong:    function () { tone(160, 0, 0.15, 'sawtooth', 0.12); tone(120, 0.1, 0.2, 'sine', 0.1); },
+    streak:   function () { tone(880, 0, 0.08, 'triangle', 0.14); tone(1320, 0.08, 0.12, 'triangle', 0.14); },
+    win:      function () { [523, 659, 784, 1046].forEach(function (f, i) { tone(f, i * 0.12, 0.18, 'triangle', 0.16); }); },
+    levelUp:  function () { [523, 659, 784, 1046, 1318].forEach(function (f, i) { tone(f, i * 0.1, 0.22, 'triangle', 0.18); }); },
+    unlock:   function () { [440, 554, 659, 880].forEach(function (f, i) { tone(f, i * 0.08, 0.14, 'sine', 0.14); }); },
+    navigate: function () { tone(600, 0, 0.07, 'sine', 0.06); tone(800, 0.06, 0.08, 'sine', 0.05); },
+    hint:     function () { tone(880, 0, 0.1, 'sine', 0.08); tone(1100, 0.08, 0.14, 'sine', 0.07); },
+    magic:    function () { [1200, 1500, 1800, 2100].forEach(function (f, i) { tone(f, i * 0.06, 0.1, 'sine', 0.09); }); },
+    check:    function () { tone(500, 0, 0.06, 'square', 0.06); tone(700, 0.05, 0.08, 'square', 0.05); }
   };
+
+  /* ---------- شريحة النقاط ---------- */
+  function updateXPChip() { var el = document.getElementById('xp-val'); if (el) el.textContent = (progress.xp || 0); }
+  function animateXP(pts, originEl) {
+    var chip = document.getElementById('xp-chip');
+    if (chip) { chip.classList.remove('pop'); void chip.offsetWidth; chip.classList.add('pop'); setTimeout(function () { chip.classList.remove('pop'); }, 450); }
+    updateXPChip();
+    /* عدد طائر */
+    var rect = chip ? chip.getBoundingClientRect() : { left: window.innerWidth - 80, top: 20, width: 64, height: 32 };
+    var el = document.createElement('div');
+    el.className = 'xp-float';
+    el.textContent = '+' + pts + ' ⭐';
+    el.style.left = (rect.left + rect.width / 2 - 24) + 'px';
+    el.style.top = (rect.bottom + 8) + 'px';
+    document.body.appendChild(el);
+    setTimeout(function () { el.parentNode && el.parentNode.removeChild(el); }, 950);
+  }
 
   /* ---------- أدوات ---------- */
   var $ = function (id) { return document.getElementById(id); };
@@ -292,8 +316,8 @@
     SCREENS.forEach(function (s) { $('screen-' + s).hidden = (s !== name); });
     $('btn-home').style.visibility = (name === 'home') ? 'hidden' : 'visible';
   }
-  function showHome() { state.op = null; setTheme(null); renderHome(); show('home'); }
-  function showOps(op) { state.op = op; setTheme(op); renderOps(); show('ops'); }
+  function showHome() { state.op = null; setTheme(null); renderHome(); show('home'); updateXPChip(); sfx.navigate(); }
+  function showOps(op) { state.op = op; setTheme(op); renderOps(); show('ops'); sfx.navigate(); }
   function goBack() { var s = state.screen; if (s === 'ops' || s === 'settings' || s === 'admin') return showHome(); if (state.op) return showOps(state.op); return showHome(); }
   function setTheme(op) {
     var app = $('app'), color = !op ? null : (THEME[op] || OPS[op].color);
@@ -378,7 +402,7 @@
       pad.appendChild(b);
     });
   }
-  function typeDigit(d) { if (session.locked || session.typed.length >= 3) return; session.typed = (session.typed + d).replace(/^0+(?=\d)/, ''); sfx.tap(); renderProblem(); }
+  function typeDigit(d) { if (session.locked || session.typed.length >= 3) return; session.typed = (session.typed + d).replace(/^0+(?=\d)/, ''); sfx.digit(); renderProblem(); }
   function backspace() { if (session.locked) return; session.typed = session.typed.slice(0, -1); renderProblem(); }
 
   function pointsBase() { return session.mode === 'puzzle' ? 15 : session.mode === 'pattern' ? 12 : 10; }
@@ -426,6 +450,7 @@
   function dots(count, cls) { var s = ''; for (var i = 0; i < count; i++) s += '<span class="dot ' + (cls || '') + '"></span>'; return s; }
   function rowsOf(rows, cols, cls) { var h = ''; for (var r = 0; r < rows; r++) h += '<div class="hint-row">' + dots(cols, cls) + '</div>'; return h; }
   function toggleHint() {
+    sfx.hint();
     var h = $('hint-area');
     if (!h.hidden) { h.hidden = true; h.innerHTML = ''; return; }
     if (session.mode === 'pattern') { h.innerHTML = '<div class="hint-caption">💡 ' + session.current.ruleText + '</div>'; h.hidden = false; return; }
@@ -768,6 +793,7 @@
   }
 
   function checkTable(levelId) {
+    sfx.check();
     var inputs = $('table-card').querySelectorAll('.cell-input');
     var correct = 0, total = inputs.length, empty = 0;
     inputs.forEach(function(inp) {
@@ -788,6 +814,7 @@
       if (!progress.tableProgress[levelId]) { progress.tableProgress[levelId] = 1; awardPoints(levelId * 15); save(); }
       var nextId = levelId + 1;
       if (nextId <= TABLE_LEVELS.length) {
+        sfx.unlock();
         toast('🔓 تم فتح المرحلة ' + nextId + '!');
         setTimeout(function() { renderTableScreen(nextId); }, 2200);
       } else { setTimeout(function() { confetti(150); toast('🏆 أتقنت كل مراحل جدول الضرب! أنت بطل الحساب!'); }, 400); }
