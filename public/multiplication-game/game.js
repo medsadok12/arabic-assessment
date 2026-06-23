@@ -57,7 +57,7 @@
   /* ---------- التخزين ---------- */
   function freshActivity() { return { stars: 0, best: 0, plays: 0, bestLevel: 1, seen: 0, correct: 0 }; }
   function freshProgress() {
-    var p = { ops: {}, patterns: freshActivity(), puzzles: freshActivity(), xp: 0, streak: { count: 0, last: '' }, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
+    var p = { ops: {}, patterns: freshActivity(), puzzles: freshActivity(), xp: 0, streak: { count: 0, last: '' }, magic: { revealed: {}, selected: 0 }, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
     OP_LIST.forEach(function (o) { p.ops[o] = { facts: {}, worlds: {} }; p.stats.bestTime[o] = 0; });
     return p;
   }
@@ -75,6 +75,7 @@
         if (p.puzzles) base.puzzles = Object.assign(base.puzzles, p.puzzles);
         base.xp = p.xp || 0;
         if (p.streak) base.streak = Object.assign(base.streak, p.streak);
+        if (p.magic) base.magic = { revealed: p.magic.revealed || {}, selected: p.magic.selected || 0 };
         if (p.stats) { base.stats.sessions = p.stats.sessions || 0; OP_LIST.forEach(function (o) { base.stats.bestTime[o] = (p.stats.bestTime && p.stats.bestTime[o]) || 0; }); }
         if (p.settings) base.settings = Object.assign(base.settings, p.settings);
       } else {
@@ -110,26 +111,53 @@
     return { newDay: true, count: s.count };
   }
 
-  /* ---------- الأحجية السحرية ---------- */
-  function magicState() {
-    var xp = progress.xp || 0, totalPieces = Math.floor(xp / POINTS_PER_PIECE);
-    var picIndex = Math.floor(totalPieces / PIECES_PER_PIC), revealed = totalPieces - picIndex * PIECES_PER_PIC;
-    return { xp: xp, revealed: revealed, completed: picIndex, pic: PICTURES[picIndex % PICTURES.length] };
+  /* ---------- الأحجية السحرية (تفاعلية + معرض صور) ---------- */
+  function magicEarned() { return Math.floor((progress.xp || 0) / POINTS_PER_PIECE); }
+  function magicUsed() { var u = 0, r = progress.magic.revealed || {}; for (var k in r) u += r[k].length; return u; }
+  function magicAvailable() { return Math.max(0, magicEarned() - magicUsed()); }
+  function picRevealed(p) { return progress.magic.revealed[p] || []; }
+  function revealTile(p, i) {
+    if (magicAvailable() <= 0) return false;
+    var arr = progress.magic.revealed[p] || (progress.magic.revealed[p] = []);
+    if (arr.indexOf(i) !== -1) return false;
+    arr.push(i); save(); return true;
   }
+
   function renderMagic() {
-    var st = magicState(), pct = Math.round(st.revealed / PIECES_PER_PIC * 100);
-    var nextPts = POINTS_PER_PIECE - ((progress.xp || 0) % POINTS_PER_PIECE);
+    var sel = progress.magic.selected || 0, pic = PICTURES[sel];
+    var rev = picRevealed(sel), revCount = rev.length, pct = Math.round(revCount / PIECES_PER_PIC * 100);
+    var avail = magicAvailable();
+
+    var gal = '';
+    PICTURES.forEach(function (p, idx) {
+      var c = (progress.magic.revealed[idx] || []).length;
+      gal += '<button class="gal-item' + (idx === sel ? ' sel' : '') + (c === PIECES_PER_PIC ? ' done' : '') + '" data-pic="' + idx + '"><span class="gi-emo">' + p.emoji + '</span><span class="gi-n">' + c + '/30</span></button>';
+    });
     var cells = '';
     for (var i = 0; i < PIECES_PER_PIC; i++) {
-      var rev = RANK[i] < st.revealed;
-      cells += '<span class="cover' + (rev ? ' revealed' : '') + '"' + (rev ? '' : ' style="background:' + COVER_COLORS[i % COVER_COLORS.length] + '"') + '>' + (rev ? '' : '⭐') + '</span>';
+      var r = rev.indexOf(i) !== -1;
+      cells += '<button class="cover' + (r ? ' revealed' : '') + '" data-tile="' + i + '"' + (r ? '' : ' style="background:' + COVER_COLORS[i % COVER_COLORS.length] + '"') + '>' + (r ? '' : '⭐') + '</button>';
     }
     $('magic-card').innerHTML =
-      '<div class="magic-head"><div class="mh-name">' + st.pic.emoji + ' ' + st.pic.name + '</div><div class="mh-pts">' + (progress.xp || 0) + ' نقطة ⭐</div></div>' +
-      '<div class="magic-prog"><span>اكتمال الصورة</span><span>' + st.revealed + '/' + PIECES_PER_PIC + ' قطعة — ' + pct + '%</span></div>' +
+      '<div class="magic-avail">⭐ لديك <b>' + avail + '</b> قطعة جاهزة — اضغط مربّعاً لكشفه!</div>' +
+      '<div class="gallery">' + gal + '</div>' +
+      '<div class="magic-head"><div class="mh-name">' + pic.emoji + ' ' + pic.name + (revCount === PIECES_PER_PIC ? ' 🏆' : '') + '</div><div class="mh-pts">' + revCount + '/30 — ' + pct + '%</div></div>' +
       '<div class="mp-bar"><i style="width:' + pct + '%"></i></div>' +
-      '<div class="magic-pic" style="background:' + st.pic.bg + '"><div class="magic-emoji">' + st.pic.emoji + '</div><div class="magic-grid">' + cells + '</div></div>' +
-      '<div class="magic-foot">' + (st.completed > 0 ? ('🏆 صور مكتملة: ' + st.completed + ' · ') : '') + 'اربح ' + nextPts + ' نقطة لكشف القطعة التالية — العب أي لعبة!</div>';
+      '<div class="magic-pic" style="background:' + pic.bg + '"><div class="magic-emoji">' + pic.emoji + '</div><div class="magic-grid">' + cells + '</div></div>' +
+      '<div class="magic-foot">' + (revCount === PIECES_PER_PIC ? '🎉 اكتملت الصورة! اختر صورة أخرى من الأعلى.' : (avail > 0 ? 'اضغط المربّعات لكشف الصورة ⬆️' : 'اجمع نقاطاً أكثر باللعب لتكشف المزيد!')) + '</div>';
+
+    $('magic-card').querySelectorAll('[data-pic]').forEach(function (b) { b.addEventListener('click', function () { progress.magic.selected = +b.getAttribute('data-pic'); save(); renderMagic(); }); });
+    $('magic-card').querySelectorAll('[data-tile]').forEach(function (b) { b.addEventListener('click', function () { onRevealTile(+b.getAttribute('data-tile')); }); });
+  }
+  function onRevealTile(i) {
+    var sel = progress.magic.selected || 0;
+    if (revealTile(sel, i)) {
+      sfx.tap(); confetti(8);
+      if (picRevealed(sel).length === PIECES_PER_PIC) { sfx.win(); confetti(70); }
+      renderMagic();
+    } else if (magicAvailable() <= 0) {
+      toast('🎮 اجمع نقاطاً أكثر باللعب لتكشف قطعة جديدة!');
+    }
   }
 
   /* ---------- تنبيه منزلق (toast) ---------- */
@@ -477,8 +505,8 @@
     });
     var ps = $('patterns-stars'); if (ps) ps.textContent = '⭐ ' + (progress.patterns.stars || 0) + '/3';
     var pz = $('puzzles-stars'); if (pz) pz.textContent = '⭐ ' + (progress.puzzles.stars || 0) + '/3';
-    var st = magicState();
-    var mb = $('magic-banner'); if (mb) mb.innerHTML = '<span class="mb-ic">🧩</span><span class="mb-tx"><b>الأحجية السحرية</b><small>' + st.revealed + '/' + PIECES_PER_PIC + ' قطعة · ' + st.pic.name + '</small></span><span class="mb-go">←</span>';
+    var avail = magicAvailable(), selPic = PICTURES[progress.magic.selected || 0], selCount = picRevealed(progress.magic.selected || 0).length;
+    var mb = $('magic-banner'); if (mb) mb.innerHTML = '<span class="mb-ic">🧩</span><span class="mb-tx"><b>الأحجية السحرية</b><small>' + (avail > 0 ? ('🎁 ' + avail + ' قطعة جاهزة للكشف!') : (selCount + '/30 · ' + selPic.name)) + '</small></span><span class="mb-go">←</span>';
     var sc = $('streak-chip'); if (sc) sc.textContent = (progress.streak && progress.streak.count > 0) ? ('🔥 سلسلة ' + progress.streak.count + ' ' + (progress.streak.count === 1 ? 'يوم' : 'أيام')) : '';
   }
 
