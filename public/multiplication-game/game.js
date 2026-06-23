@@ -57,7 +57,7 @@
   /* ---------- التخزين ---------- */
   function freshActivity() { return { stars: 0, best: 0, plays: 0, bestLevel: 1, seen: 0, correct: 0 }; }
   function freshProgress() {
-    var p = { ops: {}, patterns: freshActivity(), puzzles: freshActivity(), xp: 0, streak: { count: 0, last: '' }, magic: { revealed: {}, selected: 0 }, admin: { visible: {}, ppp: 20, email: 'gandouzimohamed9@gmail.com', studentName: '', cfg: {}, pictures: null }, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
+    var p = { ops: {}, patterns: freshActivity(), puzzles: freshActivity(), xp: 0, streak: { count: 0, last: '' }, magic: { revealed: {}, selected: 0 }, admin: { visible: {}, ppp: 20, email: 'gandouzimohamed9@gmail.com', password: '1234567', studentName: '', cfg: {}, pictures: null }, stats: { bestTime: {}, sessions: 0 }, settings: { sound: true } };
     OP_LIST.forEach(function (o) { p.ops[o] = { facts: {}, worlds: {} }; p.stats.bestTime[o] = 0; });
     return p;
   }
@@ -76,7 +76,7 @@
         base.xp = p.xp || 0;
         if (p.streak) base.streak = Object.assign(base.streak, p.streak);
         if (p.magic) base.magic = { revealed: p.magic.revealed || {}, selected: p.magic.selected || 0 };
-        if (p.admin) base.admin = { visible: p.admin.visible || {}, ppp: p.admin.ppp || 20, email: p.admin.email || base.admin.email, studentName: p.admin.studentName || '', cfg: p.admin.cfg || {}, pictures: (p.admin.pictures && p.admin.pictures.length) ? p.admin.pictures : null };
+        if (p.admin) base.admin = { visible: p.admin.visible || {}, ppp: p.admin.ppp || 20, email: p.admin.email || base.admin.email, password: p.admin.password || '1234567', studentName: p.admin.studentName || '', cfg: p.admin.cfg || {}, pictures: (p.admin.pictures && p.admin.pictures.length) ? p.admin.pictures : null };
         if (p.stats) { base.stats.sessions = p.stats.sessions || 0; OP_LIST.forEach(function (o) { base.stats.bestTime[o] = (p.stats.bestTime && p.stats.bestTime[o]) || 0; }); }
         if (p.settings) base.settings = Object.assign(base.settings, p.settings);
       } else {
@@ -568,7 +568,8 @@
   var BG_PALETTE = PICTURES.map(function (p) { return p.bg; });
   function adminEmail() { return (progress.admin && progress.admin.email) || 'gandouzimohamed9@gmail.com'; }
   function isAdminAuthed() { try { return (localStorage.getItem(ADMIN_KEY) || '').trim().toLowerCase() === adminEmail().trim().toLowerCase(); } catch (e) { return false; } }
-  function adminLogin(email) { if (email && email.trim().toLowerCase() === adminEmail().trim().toLowerCase()) { try { localStorage.setItem(ADMIN_KEY, email.trim()); } catch (e) {} return true; } return false; }
+  function adminPassword() { return (progress.admin && progress.admin.password) || '1234567'; }
+  function adminLogin(email, pwd) { if (email && email.trim().toLowerCase() === adminEmail().trim().toLowerCase() && ('' + pwd) === adminPassword()) { try { localStorage.setItem(ADMIN_KEY, email.trim()); } catch (e) {} return true; } return false; }
   function adminLogout() { try { localStorage.removeItem(ADMIN_KEY); } catch (e) {} }
   function cfg(k, def) { return (progress.admin.cfg && progress.admin.cfg[k] != null) ? progress.admin.cfg[k] : def; }
   function studentName() { return (progress.admin && progress.admin.studentName) || ''; }
@@ -618,15 +619,18 @@
   function renderAdminLogin() {
     $('admin-body').innerHTML =
       '<div class="admin-sec"><h3>🔒 دخول الإدارة</h3>' +
-      '<p class="admin-note">هذه اللوحة للمشرف. أدخل بريد الإدارة للمتابعة (يُحفظ فلا يُطلب ثانيةً على هذا الجهاز).</p>' +
+      '<p class="admin-note">هذه اللوحة للمشرف. أدخل البريد وكلمة السر للمتابعة (تُحفظ فلا تُطلب ثانيةً على هذا الجهاز).</p>' +
       '<input id="admin-email-input" class="admin-input" type="email" inputmode="email" placeholder="البريد الإلكتروني" />' +
+      '<input id="admin-pass-input" class="admin-input" type="password" placeholder="كلمة السر" />' +
       '<div id="admin-login-err" class="admin-err"></div>' +
       '<button id="admin-login-btn" class="btn btn-primary" style="width:100%">دخول ←</button></div>';
-    $('admin-login-btn').addEventListener('click', function () {
-      if (adminLogin($('admin-email-input').value)) renderAdmin();
-      else $('admin-login-err').textContent = '❌ البريد غير مطابق لبريد الإدارة';
-    });
-    $('admin-email-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('admin-login-btn').click(); });
+    function tryLogin() {
+      if (adminLogin($('admin-email-input').value, $('admin-pass-input').value)) renderAdmin();
+      else $('admin-login-err').textContent = '❌ البريد أو كلمة السر غير صحيحة';
+    }
+    $('admin-login-btn').addEventListener('click', tryLogin);
+    $('admin-email-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('admin-pass-input').focus(); });
+    $('admin-pass-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') tryLogin(); });
   }
 
   function renderAdminPanel() {
@@ -648,7 +652,7 @@
     var stats2 = '<div class="mastery-stats">' + OP_LIST.map(function (op) { return mstat(masteredCount(op) + '/100', OPS[op].name); }).join('') + '</div>';
 
     $('admin-body').innerHTML =
-      '<div class="admin-sec"><h3>👤 حساب الإدارة</h3><div class="setting-row"><span>' + esc(adminEmail()) + '</span></div><div class="admin-btn-row"><button class="ghost-btn dark" id="admin-change-email">✏️ تغيير البريد</button><button class="ghost-btn dark" id="admin-logout">🚪 خروج</button></div></div>' +
+      '<div class="admin-sec"><h3>👤 حساب الإدارة</h3><div class="setting-row"><span>' + esc(adminEmail()) + '</span></div><div class="admin-btn-row"><button class="ghost-btn dark" id="admin-change-email">✏️ البريد</button><button class="ghost-btn dark" id="admin-change-pass">🔑 كلمة السر</button><button class="ghost-btn dark" id="admin-logout">🚪 خروج</button></div></div>' +
       '<div class="admin-sec"><h3>🧒 اسم الطالب</h3><input id="admin-student-name" class="admin-input" placeholder="اكتب اسم الطالب (اختياري)" value="' + esc(studentName()) + '"></div>' +
       '<div class="admin-sec"><h3>👁️ الأنشطة الظاهرة للطالب</h3>' + toggles + '</div>' +
       '<div class="admin-sec"><h3>🧩 نقاط كشف قطعة الأحجية</h3><div class="ppp-row">' + pppBtns + '</div><h3 style="margin:14px 0 10px">📝 عدد أسئلة الجلسة</h3><div class="ppp-row">' + rlBtns + '</div></div>' +
@@ -661,6 +665,7 @@
     $('admin-body').querySelectorAll('[data-round]').forEach(function (b) { b.addEventListener('click', function () { if (!progress.admin.cfg) progress.admin.cfg = {}; progress.admin.cfg.roundLen = +b.getAttribute('data-round'); save(); renderAdmin(); }); });
     $('admin-student-name').addEventListener('change', function () { progress.admin.studentName = this.value.trim(); save(); });
     $('admin-change-email').addEventListener('click', function () { var e = prompt('بريد الإدارة الجديد:', adminEmail()); if (e && e.trim()) { progress.admin.email = e.trim(); try { localStorage.setItem(ADMIN_KEY, e.trim()); } catch (x) {} save(); renderAdmin(); } });
+    $('admin-change-pass').addEventListener('click', function () { var pw = prompt('كلمة سرّ الإدارة الجديدة:', adminPassword()); if (pw && ('' + pw).trim()) { progress.admin.password = ('' + pw).trim(); save(); alert('✅ تم تغيير كلمة السر.'); } });
     $('admin-logout').addEventListener('click', function () { adminLogout(); showHome(); });
     $('admin-body').querySelectorAll('.pic-emoji').forEach(function (inp) { inp.addEventListener('change', function () { P[+inp.getAttribute('data-i')].emoji = inp.value.trim() || '⭐'; save(); }); });
     $('admin-body').querySelectorAll('.pic-name').forEach(function (inp) { inp.addEventListener('change', function () { P[+inp.getAttribute('data-i')].name = inp.value.trim() || 'صورة'; save(); }); });
