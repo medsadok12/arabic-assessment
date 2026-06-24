@@ -1425,14 +1425,18 @@ export default function BoggarAdminPage() {
               </div>
 
               {/* ── آخر التقييمات ── */}
-              {recentAssessments.length > 0 && (
-                <div className="card" style={{ marginTop: 20 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-                    <h3 style={{ fontWeight: 700, fontSize: '.95rem', margin: 0 }}>🏆 {lang === 'ar' ? 'آخر التقييمات' : 'Recent Assessments'}</h3>
-                    <button onClick={() => setTab('results')} style={{ fontSize: '.82rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: '4px 10px', borderRadius: 7, textDecoration: 'underline' }}>
-                      {lang === 'ar' ? '← عرض الكل' : 'View All →'}
-                    </button>
-                  </div>
+              <div className="card" style={{ marginTop: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+                  <h3 style={{ fontWeight: 700, fontSize: '.95rem', margin: 0 }}>🏆 {lang === 'ar' ? 'آخر التقييمات' : 'Recent Assessments'}</h3>
+                  <button onClick={() => setTab('results')} style={{ fontSize: '.82rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: '4px 10px', borderRadius: 7, textDecoration: 'underline' }}>
+                    {lang === 'ar' ? '← عرض الكل' : 'View All →'}
+                  </button>
+                </div>
+                {recentAssessments.length === 0 ? (
+                  <p style={{ color: 'var(--muted)', fontSize: '.88rem', textAlign: 'center', padding: '16px 0', margin: 0 }}>
+                    {lang === 'ar' ? 'لا توجد تقييمات بعد' : 'No assessments yet'}
+                  </p>
+                ) : (
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
                       <thead>
@@ -1455,8 +1459,8 @@ export default function BoggarAdminPage() {
                       </tbody>
                     </table>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
