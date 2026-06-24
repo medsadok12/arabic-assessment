@@ -64,18 +64,16 @@ export default function LandingPage() {
                 ))}
               </p>
               <div className="hero-btns">
-                <a href="https://arabic-assessment.vercel.app"
+                <Link href="/assessment"
                   className="btn btn-accent btn-lg"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   {t('landing.heroCta')}
-                </a>
+                </Link>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Photo — direct child of .hero so bottom:0 is relative to the section,
-            z-index:1 sits below the wave (z-index:3) which hides the cut base */}
         <div className="hero-image">
           <Image
             src="/teacher-student-hero.png"
@@ -88,7 +86,6 @@ export default function LandingPage() {
           />
         </div>
 
-        {/* Wave — z-index:3 paints over the photo's cut lower edge */}
         <svg className="hero-wave" xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 1440 80" preserveAspectRatio="none">
           <path d="M0,80 L0,44 C240,80 480,8 720,44 C960,80 1200,8 1440,44 L1440,80 Z" fill="#ffffff" />
@@ -172,10 +169,10 @@ export default function LandingPage() {
           </div>
           <p style={{ marginTop: 16, fontSize: '.88rem', color: 'rgba(255,255,255,.6)' }}>
             {t('landing.ctaApply')}{' '}
-            <Link href="/apply"
+            <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer"
               style={{ color: 'rgba(255,255,255,.9)', textDecoration: 'underline', fontWeight: 700 }}>
               {t('landing.ctaApplyLink')}
-            </Link>
+            </a>
           </p>
         </div>
       </section>
