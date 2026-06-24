@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 // Routes that require a logged-in user
 const PROTECTED = [
   '/dashboard', '/teacher', '/supervisor', '/bogga',
-  '/profile', '/assessment', '/library', '/admin',
+  '/profile', '/library', '/admin',
 ];
 
 // Auth pages where a logged-in user should be redirected away
@@ -57,7 +57,6 @@ export async function middleware(request) {
     }
 
   } catch {
-    // On error continue normally — page-level auth will handle it
     supabaseResponse = NextResponse.next({ request });
   }
 
