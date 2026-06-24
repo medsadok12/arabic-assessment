@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '../../../lib/supabase';
 
 function ResetForm() {
@@ -11,21 +11,32 @@ function ResetForm() {
   const [loading,  setLoading]  = useState(false);
   const [ready,    setReady]    = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const supabase = createClient();
+    const code = searchParams.get('code');
+    let subscription;
 
-    // After callback exchanges the recovery code, user has a session
-    // Check immediately, then also listen for state changes
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true);
-    });
+    (async () => {
+      // 1. If Supabase sent a PKCE code in the URL, exchange it now
+      if (code) {
+        const { error: exchErr } = await supabase.auth.exchangeCodeForSession(code);
+        if (!exchErr) { setReady(true); return; }
+      }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') setReady(true);
-    });
+      // 2. Maybe the callback route already exchanged the code — check session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) { setReady(true); return; }
 
-    return () => subscription.unsubscribe();
+      // 3. Listen for PASSWORD_RECOVERY event (implicit/token flow)
+      const { data } = supabase.auth.onAuthStateChange((event) => {
+        if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') setReady(true);
+      });
+      subscription = data.subscription;
+    })();
+
+    return () => subscription?.unsubscribe();
   }, []);
 
   async function handleSubmit(e) {
