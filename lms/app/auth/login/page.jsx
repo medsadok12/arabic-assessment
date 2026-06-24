@@ -25,8 +25,8 @@ function resolveError(code, fallback) {
     students_blocked:     'هذا الحساب طالب — استخدم بوابة الطالب.',
     teachers_blocked:     'هذا حساب معلم/إداري — استخدم بوابة المعلم.',
     confirmation_failed:  'فشل تسجيل الدخول، يرجى المحاولة مجدداً.',
-    network_error:        'تعذّر الاتصال بالخادم — تحقق من الإنترنت وأعد المحاولة.',
-    oauth_error:          'تعذّر فتح نافذة جوجل — تأكد من أن المتصفح لا يحجب النوافذ المنبثقة.',
+    network_error:        'تعذَّر الاتصال بالخادم — تحقق من الإنترنت وأعد المحاولة.',
+    oauth_error:          'تعذَّر فتح نافذة جوجل — تأكد من أن المتصفح لا يحجب النوافذ المنبثقة.',
     invalid_credentials:  'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
     unexpected:           'حدث خطأ غير متوقع — يرجى المحاولة مجدداً.',
   };
@@ -134,7 +134,7 @@ function LoginForm() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-logo">
-          <span className="logo-icon">{forTeacher ? '👨‍🏫' : '📚'}</span>
+          <span className="logo-icon">{forTeacher ? '\u{1F468}‍\u{1F3EB}' : '\u{1F4DA}'}</span>
           <h1>{t('siteName')}</h1>
         </div>
         <h2 className="auth-title">
@@ -216,6 +216,14 @@ function LoginForm() {
             ? <>{t('login.newTeacher')} <Link href="/auth/register/teacher">{t('login.createTeacher')}</Link></>
             : <>{t('login.noAccount')} <Link href="/auth/register">{t('login.createAccount')}</Link></>
           }
+        </p>
+
+        {/* ── Session fix link ── */}
+        <p style={{ textAlign: 'center', marginTop: 12, fontSize: '.78rem', color: '#aaa' }}>
+          هل تواجه مشكلة في الدخول؟{' '}
+          <Link href="/auth/fix" style={{ color: '#aaa', textDecoration: 'underline' }}>
+            اضغط هنا
+          </Link>
         </p>
       </div>
     </div>
