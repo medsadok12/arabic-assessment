@@ -15,7 +15,7 @@ export default function ForgotPasswordPage() {
     setError('');
     const supabase = createClient();
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
     });
     setLoading(false);
     if (err) {
@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
               ✅ تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني
             </div>
             <p style={{ textAlign: 'center', color: 'var(--muted)', marginBottom: 20, fontSize: '.93rem' }}>
-              تحقق من بريدك الإلكتروني واضغط على الرابط لإعادة تعيين كلمة المرور
+              تحقق من بريدك واضغط على الرابط لإعادة تعيين كلمة المرور
             </p>
             <Link href="/auth/login" className="btn btn-primary" style={{ display: 'block', textAlign: 'center' }}>
               العودة لتسجيل الدخول
@@ -51,33 +51,19 @@ export default function ForgotPasswordPage() {
             <p style={{ textAlign: 'center', color: 'var(--muted)', marginBottom: 20, fontSize: '.93rem' }}>
               أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور
             </p>
-
             {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
-
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label className="form-label">البريد الإلكتروني</label>
-                <input
-                  className="form-input"
-                  type="email"
-                  value={email}
+                <input className="form-input" type="email" value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="example@email.com"
-                  required
-                  dir="ltr"
-                  disabled={loading}
-                />
+                  placeholder="example@email.com" required dir="ltr" disabled={loading} />
               </div>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                style={{ width: '100%', marginTop: 8 }}
-                disabled={loading}
-              >
+              <button type="submit" className="btn btn-primary"
+                style={{ width: '100%', marginTop: 8 }} disabled={loading}>
                 {loading ? <span className="spinner" /> : 'إرسال رابط إعادة التعيين ←'}
               </button>
             </form>
-
             <p className="auth-footer">
               <Link href="/auth/login">العودة لتسجيل الدخول</Link>
             </p>
