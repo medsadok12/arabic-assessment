@@ -58,19 +58,12 @@ export default async function AdminPage() {
 
           {/* Quick Links */}
           <div className="dash-section-title">أدوات الإدارة</div>
-          <div className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: 32, marginTop: 16 }}>
-            <a href="/admin/lexicon" className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 20px', textDecoration: 'none', color: 'inherit', transition: 'box-shadow .2s' }}>
+          <div style={{ marginBottom: 32, marginTop: 16 }}>
+            <a href="/admin/lexicon" className="card" style={{ display: 'inline-flex', alignItems: 'center', gap: 14, padding: '18px 20px', textDecoration: 'none', color: 'inherit', maxWidth: 280 }}>
               <span style={{ fontSize: 32 }}>📚</span>
               <div>
                 <div style={{ fontWeight: 700, fontSize: '1rem' }}>بطاقات المفردات</div>
                 <div style={{ fontSize: '.83rem', color: 'var(--muted)', marginTop: 2 }}>إضافة وتعديل كلمات الحفظ</div>
-              </div>
-            </a>
-            <a href="/admin/word-wheel" className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 20px', textDecoration: 'none', color: 'inherit', transition: 'box-shadow .2s' }}>
-              <span style={{ fontSize: 32 }}>🎡</span>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: '1rem' }}>عجلة الكلمات</div>
-                <div style={{ fontSize: '.83rem', color: 'var(--muted)', marginTop: 2 }}>إدارة كلمات اللعبة</div>
               </div>
             </a>
           </div>
