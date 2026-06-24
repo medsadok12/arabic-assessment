@@ -186,14 +186,13 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
   useEffect(() => {
     const supabase = createClient();
 
-    // Initial load
     if (!initialUser) {
       supabase.auth.getUser().then(({ data: { user } }) => setUser(user ?? null));
     }
 
-    // Listen for metadata changes (avatar upload, name change, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) setUser(session.user);
+      // Handle both login and logout state changes
+      setUser(session?.user ?? null);
     });
 
     function onOutsideClick(e) {
@@ -207,12 +206,9 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
   }, [initialUser]);
 
   async function handleLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    setUser(null);
     setDropOpen(false);
-    router.push('/');
-    router.refresh();
+    // Redirect to server-side signout route which clears cookies properly
+    window.location.href = '/api/auth/signout';
   }
 
   const role      = user?.user_metadata?.role ?? 'student';
@@ -266,19 +262,16 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
         {/* ── الجانب الأيسر: رابط تعريفي + أيقونات التواصل + أزرار الدخول/الحساب ── */}
         <div className="navbar-user">
 
-          {/* رابط تعريفي — للزوار غير المسجلين فقط */}
           {!user && (
             <Link href="/#about" className="navbar-about-link">
               {t('nav.about')}
             </Link>
           )}
 
-          {/* أيقونات التواصل الاجتماعي — desktop فقط */}
           <div className="navbar-social-desktop" style={{ borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: 20 }}>
             <SocialIcons />
           </div>
 
-          {/* عداد تنازلي للحصة القادمة */}
           {sessionCountdown && (
             <div style={{
               background: 'linear-gradient(135deg,#dc2626,#b91c1c)',
@@ -293,10 +286,8 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
             </div>
           )}
 
-          {/* زر تبديل اللغة */}
           <LangToggle />
 
-          {/* زر لوحة الطالب — للزوار غير المسجلين فقط */}
           {!user && (
             <Link
               href="/auth/login?for=student"
