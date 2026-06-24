@@ -31,7 +31,7 @@ export default function RegisterPage() {
       password: form.password,
       options: {
         data: { full_name: form.name, role: 'student', grade: form.grade || null },
-        emailRedirectTo: 'https://www.aarem.net/auth/callback',
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 
@@ -43,14 +43,12 @@ export default function RegisterPage() {
       return;
     }
 
-    // حالة: البريد موجود مسبقاً (email confirmation مفعّل)
     if (signUpData?.user?.identities?.length === 0) {
       setError('هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول');
       setLoading(false);
       return;
     }
 
-    // حالة: البريد موجود مسبقاً بدور آخر (معلم / مدير) — email confirmation معطّل
     const existingRole = signUpData?.user?.user_metadata?.role;
     if (existingRole && existingRole !== 'student') {
       await supabase.auth.signOut();
@@ -59,16 +57,15 @@ export default function RegisterPage() {
       return;
     }
 
-    // ── الخطوة 2: التحقق من الكود (فقط بعد التأكد من الحساب جديد) ──
-    const res  = await fetch('/api/validate-code', {
+    // ── الخطوة 2: استهلاك الكود مع تسجيل بيانات الطالب ──
+    const res = await fetch('/api/validate-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: form.code, name: form.name }),
+      body: JSON.stringify({ code: form.code, name: form.name, email: form.email }),
     });
     const { valid } = await res.json();
 
     if (!valid) {
-      // الكود غير صالح — نحذف الجلسة (الحساب ينتظر التأكيد بدون كود)
       await supabase.auth.signOut();
       setError('كود الأكاديمية غير صحيح أو غير مفعّل — تواصل مع إدارة الأكاديمية');
       setLoading(false);
