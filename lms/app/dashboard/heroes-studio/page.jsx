@@ -29,12 +29,6 @@ function useModelViewerScript() {
   }, []);
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   CHARACTER POOL
-   ─ price:0 → free always
-   ─ comingSoon:true → disabled card, no glb needed
-   ─ anim → passed to model-viewer animation-name attribute
-══════════════════════════════════════════════════════════════════════════ */
 const HEROES = [
   {
     id: 'robot',
@@ -51,7 +45,7 @@ const HEROES = [
     name: 'رائد الفضاء',
     emoji: '🧑‍🚀',
     color: '#3B82F6',
-    price: 15,
+    price: 1000,
     desc: 'يجوب النجوم بشجاعة',
     glb:  'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
     anim: null,
@@ -61,7 +55,7 @@ const HEROES = [
     name: 'الثعلب الذكي',
     emoji: '🦊',
     color: '#F97316',
-    price: 20,
+    price: 1000,
     desc: 'ماكر وسريع كالريح',
     glb:  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Fox/glTF-Binary/Fox.glb',
     anim: 'Survey',
@@ -71,7 +65,7 @@ const HEROES = [
     name: 'البطة الذهبية',
     emoji: '🦆',
     color: '#CA8A04',
-    price: 15,
+    price: 1000,
     desc: 'طريفة ومحبوبة بالجميع',
     glb:  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Duck/glTF-Binary/Duck.glb',
     anim: null,
@@ -81,7 +75,7 @@ const HEROES = [
     name: 'الببغاء الملون',
     emoji: '🦜',
     color: '#16A34A',
-    price: 20,
+    price: 1000,
     desc: 'طائر ذكي بألوان مبهجة',
     glb:  'https://threejs.org/examples/models/gltf/Parrot.glb',
     anim: null,
@@ -91,7 +85,7 @@ const HEROES = [
     name: 'النحامة الوردية',
     emoji: '🦩',
     color: '#EC4899',
-    price: 25,
+    price: 1000,
     desc: 'أنيقة وجميلة كالحلم',
     glb:  'https://threejs.org/examples/models/gltf/Flamingo.glb',
     anim: null,
@@ -101,7 +95,7 @@ const HEROES = [
     name: 'المستكشف',
     emoji: '🧭',
     color: '#22C55E',
-    price: 25,
+    price: 1000,
     desc: 'يستكشف الآفاق بلا حدود',
     glb:  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMan/glTF-Binary/CesiumMan.glb',
     anim: 'Walk',
@@ -111,7 +105,7 @@ const HEROES = [
     name: 'الآلة المُدرَّعة',
     emoji: '🦾',
     color: '#EF4444',
-    price: 35,
+    price: 1000,
     desc: 'دروع مستقبلية وقوة هائلة',
     glb:  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/BrainStem/glTF-Binary/BrainStem.glb',
     anim: null,
@@ -121,7 +115,7 @@ const HEROES = [
     name: 'الفارس',
     emoji: '⚔️',
     color: '#EAB308',
-    price: 10,
+    price: 1000,
     desc: 'فارس الساحات والبطولات',
     glb:  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/RiggedFigure/glTF-Binary/RiggedFigure.glb',
     anim: null,
@@ -131,7 +125,7 @@ const HEROES = [
     name: 'النينجا',
     emoji: '🥷',
     color: '#1E293B',
-    price: 40,
+    price: 1000,
     desc: 'خفي كالظلام وسريع كالبرق',
     glb: null, comingSoon: true,
   },
@@ -140,7 +134,7 @@ const HEROES = [
     name: 'الساحر',
     emoji: '🧙',
     color: '#7C3AED',
-    price: 45,
+    price: 1000,
     desc: 'يتقن فن السحر والأسرار',
     glb: null, comingSoon: true,
   },
@@ -149,7 +143,7 @@ const HEROES = [
     name: 'العالم',
     emoji: '👨‍🔬',
     color: '#06B6D4',
-    price: 30,
+    price: 1000,
     desc: 'عقل نابغة وروح مغامرة',
     glb: null, comingSoon: true,
   },
@@ -165,9 +159,6 @@ function hexToFactor(hex) {
   return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255, 1.0];
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   MAIN PAGE
-══════════════════════════════════════════════════════════════════════════ */
 export default function HeroesStudio() {
   useModelViewerScript();
   const mvRef = useRef(null);
@@ -186,7 +177,6 @@ export default function HeroesStudio() {
 
   useEffect(() => { setIsMobile(window.innerWidth < 700); }, []);
 
-  /* Load config & restore last saved hero */
   useEffect(() => {
     fetch('/api/hero-config').then(r => r.json()).then(d => {
       setCfg(d);
@@ -198,7 +188,6 @@ export default function HeroesStudio() {
     }).catch(() => setCfg({ points: 0 }));
   }, []);
 
-  /* GLB load events */
   useEffect(() => {
     const mv = mvRef.current;
     if (!mv) return;
@@ -211,7 +200,6 @@ export default function HeroesStudio() {
     return () => { mv.removeEventListener('load', onLoad); mv.removeEventListener('error', onError); };
   }, [hero.glb]);
 
-  /* Material colour tint */
   useEffect(() => {
     if (!ready || loadError) return;
     const mv = mvRef.current;
@@ -236,7 +224,7 @@ export default function HeroesStudio() {
       const res = await fetch('/api/hero-config/shop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item_id: h.id, price: h.price }),
+        body: JSON.stringify({ item_id: h.id }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -289,7 +277,6 @@ export default function HeroesStudio() {
   const coins  = cfg?.points ?? 0;
   const isLoad = cfg === null;
 
-  /* ── Render ──────────────────────────────────────────────────────────── */
   return (
     <div style={{
       minHeight: '100vh',
@@ -314,7 +301,6 @@ export default function HeroesStudio() {
         ))}
       </div>
 
-      {/* Content */}
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 980, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
         {/* Top bar */}
@@ -351,7 +337,7 @@ export default function HeroesStudio() {
           gap: 14, alignItems: 'start',
         }}>
 
-          {/* ═════ 3D VIEWER ═════ */}
+          {/* 3D VIEWER */}
           <div style={{
             position: 'relative', borderRadius: 24, overflow: 'hidden',
             background: 'linear-gradient(160deg,rgba(18,12,55,.9),rgba(4,2,18,.95))',
@@ -361,8 +347,6 @@ export default function HeroesStudio() {
             minHeight: isMobile ? 300 : 520,
             transition: 'border-color .4s, box-shadow .5s',
           }}>
-
-            {/* Character badge */}
             <div style={{
               position: 'absolute', top: 12, right: 14, zIndex: 6,
               background: `${hero.color}22`, border: `1px solid ${hero.color}44`,
@@ -374,7 +358,6 @@ export default function HeroesStudio() {
               <span style={{ color: 'white', fontSize: 12, fontFamily: 'Cairo,sans-serif', fontWeight: 700 }}>{hero.name}</span>
             </div>
 
-            {/* Loading overlay */}
             {!ready && (
               <div style={{
                 position: 'absolute', inset: 0, zIndex: 3,
@@ -388,7 +371,6 @@ export default function HeroesStudio() {
               </div>
             )}
 
-            {/* GLB load error */}
             {ready && loadError && (
               <div style={{
                 position: 'absolute', inset: 0, zIndex: 4,
@@ -417,7 +399,6 @@ export default function HeroesStudio() {
               style={{ width: '100%', height: isMobile ? '300px' : '520px', background: 'transparent' }}
             />
 
-            {/* Orbit hint */}
             <div style={{
               position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
               background: 'rgba(0,0,0,.45)', borderRadius: 20, padding: '3px 14px',
@@ -427,7 +408,7 @@ export default function HeroesStudio() {
             </div>
           </div>
 
-          {/* ═════ SHOP PANEL ═════ */}
+          {/* SHOP PANEL */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
             {/* Tabs */}
@@ -449,7 +430,6 @@ export default function HeroesStudio() {
               ))}
             </div>
 
-            {/* Tab content */}
             <div style={{
               background: 'rgba(22,18,60,.55)',
               borderRadius: 18, border: '1px solid rgba(139,92,246,.14)',
@@ -458,7 +438,7 @@ export default function HeroesStudio() {
               overflowY: 'auto',
             }}>
 
-              {/* ─ CHARACTERS GRID ─ */}
+              {/* CHARACTERS GRID */}
               {tab === 'chars' && (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -497,7 +477,6 @@ export default function HeroesStudio() {
                             boxShadow: active ? `0 0 18px ${h.color}33` : 'none',
                           }}
                         >
-                          {/* Hero visual area */}
                           <div style={{
                             height: 86,
                             background: `radial-gradient(circle at 50% 65%, ${h.color}25, transparent 72%)`,
@@ -511,7 +490,6 @@ export default function HeroesStudio() {
                               {h.emoji}
                             </span>
 
-                            {/* "Coming soon" ribbon */}
                             {h.comingSoon && (
                               <div style={{
                                 position: 'absolute', top: 6, left: 6,
@@ -522,7 +500,6 @@ export default function HeroesStudio() {
                               </div>
                             )}
 
-                            {/* Owned checkmark */}
                             {owned_h && !h.comingSoon && (
                               <div style={{
                                 position: 'absolute', top: 6, right: 6,
@@ -534,7 +511,6 @@ export default function HeroesStudio() {
                             )}
                           </div>
 
-                          {/* Info */}
                           <div style={{ padding: '8px 10px 10px' }}>
                             <div style={{
                               color: active ? '#C4B5FD' : '#CBD5E1',
@@ -573,12 +549,11 @@ export default function HeroesStudio() {
                                   fontSize: 11, fontFamily: 'Cairo,sans-serif', fontWeight: 700,
                                   transition: 'all .15s',
                                 }}>
-                                {isBuying_ ? '⏳' : canBuy ? `⭐ ${h.price} نجمة` : `🔒 ${h.price} ⭐`}
+                                {isBuying_ ? '⏳' : canBuy ? `⭐ ${h.price.toLocaleString()} نجمة` : `🔒 ${h.price.toLocaleString()} ⭐`}
                               </button>
                             )}
                           </div>
 
-                          {/* Active glow border */}
                           {active && (
                             <div style={{
                               position: 'absolute', inset: -1, borderRadius: 15,
@@ -594,7 +569,7 @@ export default function HeroesStudio() {
                 </div>
               )}
 
-              {/* ─ COLOURS ─ */}
+              {/* COLOURS */}
               {tab === 'colors' && (
                 <>
                   <p style={{ margin: '0 0 12px', color: '#A78BFA', fontSize: 13, fontWeight: 700 }}>🎨 لون زي البطل</p>
@@ -664,7 +639,7 @@ export default function HeroesStudio() {
         </div>
       </div>
 
-      {/* Toast notification */}
+      {/* Toast */}
       {toast && (
         <div style={{
           position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)',
