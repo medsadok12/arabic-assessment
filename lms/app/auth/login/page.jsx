@@ -120,7 +120,6 @@ function LoginForm() {
         setError(resolveError('oauth_error'));
         setGLoading(false);
       }
-      // On success the browser navigates away — gLoading stays true intentionally
     } catch (err) {
       if (process.env.NODE_ENV === 'development') console.error('[login] google unexpected error:', err);
       const isNetwork = !navigator.onLine || err?.message?.includes('fetch');
@@ -195,7 +194,12 @@ function LoginForm() {
               disabled={anyLoading} />
           </div>
           <div className="form-group">
-            <label className="form-label">{t('login.password')}</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label className="form-label" style={{ margin: 0 }}>{t('login.password')}</label>
+              <Link href="/auth/forgot-password" style={{ fontSize: '.82rem', color: 'var(--accent)', textDecoration: 'none' }}>
+                نسيت كلمة المرور؟
+              </Link>
+            </div>
             <input className="form-input" type="password" value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••" required dir="ltr"
