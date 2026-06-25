@@ -338,127 +338,161 @@ function ConfettiBurst() {
   );
 }
 
-/* ─── Worm Topic Select ─── */
+/* ─── Topic gradient palettes ─── */
+const TOPIC_PALETTES = {
+  'الحيوانات': { from:'#f97316', to:'#fb923c', glow:'rgba(251,146,60,.55)', shine:'#fff7ed' },
+  'المدرسة':   { from:'#3b82f6', to:'#06b6d4', glow:'rgba(59,130,246,.55)',  shine:'#eff6ff' },
+  'الأسرة':    { from:'#ec4899', to:'#f43f5e', glow:'rgba(236,72,153,.55)',  shine:'#fdf2f8' },
+  'الطبيعة':   { from:'#10b981', to:'#059669', glow:'rgba(16,185,129,.55)',  shine:'#ecfdf5' },
+  'الفواكه':   { from:'#ef4444', to:'#f97316', glow:'rgba(239,68,68,.55)',   shine:'#fff1f2' },
+  'الألوان':   { from:'#8b5cf6', to:'#ec4899', glow:'rgba(139,92,246,.55)',  shine:'#f5f3ff' },
+  'المهن':     { from:'#f59e0b', to:'#eab308', glow:'rgba(245,158,11,.55)',  shine:'#fffbeb' },
+  'الأدوات':   { from:'#6366f1', to:'#8b5cf6', glow:'rgba(99,102,241,.55)', shine:'#eef2ff' },
+  'الجسم':     { from:'#14b8a6', to:'#06b6d4', glow:'rgba(20,184,166,.55)', shine:'#f0fdfa' },
+};
+function getTopicPalette(topic, idx) {
+  if (TOPIC_PALETTES[topic]) return TOPIC_PALETTES[topic];
+  const fallbacks = [
+    { from:'#7c3aed', to:'#6366f1', glow:'rgba(124,58,237,.55)', shine:'#f5f3ff' },
+    { from:'#0ea5e9', to:'#38bdf8', glow:'rgba(14,165,233,.55)', shine:'#f0f9ff' },
+    { from:'#d946ef', to:'#a855f7', glow:'rgba(217,70,239,.55)', shine:'#fdf4ff' },
+    { from:'#f43f5e', to:'#fb7185', glow:'rgba(244,63,94,.55)',  shine:'#fff1f2' },
+  ];
+  return fallbacks[idx % fallbacks.length];
+}
+
+/* ─── Magical Topic Select (replaces worm) ─── */
 function WormTopicSelect({ topics, completedTopics, onPickTopic }) {
-  const R     = 50;
-  const W     = 340;
-  const ROW_H = 145;
-  const PAD_Y = 72;
-
-  const positions = useMemo(() => {
-    const RTL_X = [280, 170, 60];
-    const LTR_X = [60, 170, 280];
-    const STEP  = 110;
-    return topics.map((_, i) => {
-      const row   = Math.floor(i / WORM_COLS);
-      const col   = i % WORM_COLS;
-      const count = Math.min(WORM_COLS, topics.length - row * WORM_COLS);
-      if (count === WORM_COLS) {
-        /* full row — follow snake direction */
-        const xArr = row % 2 === 0 ? RTL_X : LTR_X;
-        return { x: xArr[col], y: PAD_Y + row * ROW_H };
-      }
-      /* incomplete last row — center horizontally so the worm looks balanced */
-      const span = (count - 1) * STEP;
-      const x0   = W / 2 - span / 2;
-      return { x: x0 + col * STEP, y: PAD_Y + row * ROW_H };
-    });
-  }, [topics]);
-
-  const rows = Math.ceil(topics.length / WORM_COLS);
-  const H    = PAD_Y + (rows > 0 ? rows - 1 : 0) * ROW_H + R + 60;
-
-  const pathD = useMemo(() => {
-    if (positions.length < 2) return '';
-    let d = `M ${positions[0].x} ${positions[0].y}`;
-    for (let i = 1; i < positions.length; i++) {
-      const p = positions[i - 1];
-      const c = positions[i];
-      if (Math.floor((i - 1) / WORM_COLS) === Math.floor(i / WORM_COLS)) {
-        d += ` L ${c.x} ${c.y}`;
-      } else {
-        const mY = (p.y + c.y) / 2;
-        if (Math.abs(p.x - c.x) < 20) {
-          /* same-side snake U-turn: control points bow outward */
-          const off = p.x < W / 2 ? -38 : 38;
-          d += ` C ${p.x + off} ${mY - 18}, ${c.x + off} ${mY + 18}, ${c.x} ${c.y}`;
-        } else {
-          /* cross-side: incomplete centered row — smooth S-curve, no extreme side bow */
-          d += ` C ${p.x} ${mY + 22}, ${c.x} ${mY - 22}, ${c.x} ${c.y}`;
-        }
-      }
-    }
-    return d;
-  }, [positions]);
-
   return (
-    <div style={{ position: 'relative', width: W, height: H, margin: '0 auto', overflow: 'visible' }}>
-      {/* SVG worm body — layered strokes for 3D tube look */}
-      <svg width={W} height={H} style={{ position: 'absolute', top: 0, left: 0, zIndex: 0, overflow: 'visible' }}>
-        <path d={pathD} fill="none" stroke="rgba(21,128,61,0.16)" strokeWidth={R * 2.7} strokeLinecap="round" strokeLinejoin="round" />
-        <path d={pathD} fill="none" stroke="#14532d"               strokeWidth={R * 2.3} strokeLinecap="round" strokeLinejoin="round" />
-        <path d={pathD} fill="none" stroke="#15803d"               strokeWidth={R * 2.05} strokeLinecap="round" strokeLinejoin="round" />
-        <path d={pathD} fill="none" stroke="#16a34a"               strokeWidth={R * 1.65} strokeLinecap="round" strokeLinejoin="round" />
-        <path d={pathD} fill="none" stroke="#22c55e"               strokeWidth={R * 1.15} strokeLinecap="round" strokeLinejoin="round" />
-        <path d={pathD} fill="none" stroke="#86efac"               strokeWidth={R * 0.38} strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.55" />
-        <path d={pathD} fill="none" stroke="rgba(220,252,231,0.5)" strokeWidth={R * 0.14} strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+    <>
+      <style>{`
+        @keyframes wsFloat {
+          0%,100% { transform: translateY(0px) rotate(-1deg); }
+          50%      { transform: translateY(-10px) rotate(1deg); }
+        }
+        @keyframes wsCardIn {
+          0%  { opacity:0; transform: scale(.6) rotate(-6deg); }
+          65% { transform: scale(1.06) rotate(1deg); }
+          100%{ opacity:1; transform: scale(1) rotate(0deg); }
+        }
+        @keyframes wsStar {
+          0%,100% { opacity:.15; transform:scale(.8); }
+          50%     { opacity:.9;  transform:scale(1.3); }
+        }
+        @keyframes wsShine {
+          0%   { background-position: -200% center; }
+          100% { background-position:  200% center; }
+        }
+        .ws-topic-card {
+          transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .22s ease;
+          cursor: pointer;
+        }
+        .ws-topic-card:hover  { transform: translateY(-8px) scale(1.06) !important; }
+        .ws-topic-card:active { transform: scale(.96) !important; }
+        .ws-topic-card.ws-done { cursor: default; }
+        .ws-topic-card.ws-done:hover { transform: translateY(-4px) scale(1.02) !important; }
+      `}</style>
 
-      {/* Segment spheres */}
-      {topics.map((topic, i) => {
-        const pos    = positions[i];
-        const done   = completedTopics.has(topic);
-        const emoji  = TOPIC_EMOJIS[topic] || '📚';
-        const isHead = i === 0;
-        return (
-          <div
-            key={topic}
-            className={`worm-sphere${done ? ' done' : ''}${isHead ? ' head' : ''}`}
-            onClick={() => !done && onPickTopic(topic)}
-            style={{
-              position: 'absolute',
-              left: pos.x - R, top: pos.y - R,
-              width: R * 2, height: R * 2,
-              zIndex: 2,
-              borderRadius: '50%',
-              background: done
-                ? 'radial-gradient(circle at 32% 28%, #fef08a 0%, #ca8a04 45%, #78350f 100%)'
-                : isHead
-                  ? 'radial-gradient(circle at 32% 28%, #bbf7d0 0%, #16a34a 42%, #14532d 100%)'
-                  : 'radial-gradient(circle at 32% 28%, #d1fae5 0%, #059669 48%, #064e3b 100%)',
-              boxShadow: done
-                ? '0 4px 18px rgba(202,138,4,.6), inset 0 -5px 12px rgba(0,0,0,.4)'
-                : '0 8px 24px rgba(21,128,61,.65), inset 0 -6px 14px rgba(0,0,0,.4)',
-              border: done
-                ? '2.5px solid rgba(250,204,21,.8)'
-                : isHead
-                  ? '2.5px solid rgba(134,239,172,.85)'
-                  : '2.5px solid rgba(74,222,128,.5)',
-              cursor: done ? 'default' : 'pointer',
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: 2,
-              transition: 'transform .22s ease, box-shadow .22s ease',
-              userSelect: 'none',
-            }}
-          >
-            <span style={{ fontSize: isHead ? '1.9rem' : '1.5rem', lineHeight: 1, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,.45))' }}>
-              {done ? '✅' : emoji}
-            </span>
-            <span style={{
-              fontSize: '.58rem', fontWeight: 800,
-              color: done ? '#fef9c3' : '#ecfdf5',
-              textShadow: '0 1px 4px rgba(0,0,0,.75)',
-              textAlign: 'center', lineHeight: 1.3,
-              maxWidth: R * 1.72, wordBreak: 'break-word',
-              fontFamily: "'Cairo','Tajawal',sans-serif",
-              padding: '0 3px',
-            }}>
-              {topic}
-            </span>
-          </div>
-        );
-      })}
-    </div>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: topics.length <= 4 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+        gap: 14,
+        width: '100%',
+        maxWidth: 420,
+        margin: '0 auto',
+        padding: '4px 2px',
+      }}>
+        {topics.map((topic, i) => {
+          const done    = completedTopics.has(topic);
+          const emoji   = TOPIC_EMOJIS[topic] || '📚';
+          const pal     = getTopicPalette(topic, i);
+          const delay   = `${i * 0.07}s`;
+          return (
+            <div
+              key={topic}
+              className={`ws-topic-card${done ? ' ws-done' : ''}`}
+              onClick={() => !done && onPickTopic(topic)}
+              style={{
+                borderRadius: 22,
+                padding: '20px 10px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+                position: 'relative',
+                overflow: 'hidden',
+                animation: `wsCardIn .5s ${delay} cubic-bezier(.34,1.56,.64,1) both`,
+                background: done
+                  ? `linear-gradient(145deg, #fef9c3, #fde68a, #fbbf24)`
+                  : `linear-gradient(145deg, ${pal.from}, ${pal.to})`,
+                boxShadow: done
+                  ? `0 8px 28px rgba(251,191,36,.55), inset 0 1px 0 rgba(255,255,255,.35)`
+                  : `0 8px 28px ${pal.glow}, inset 0 1px 0 rgba(255,255,255,.25)`,
+                border: done
+                  ? '2px solid rgba(251,191,36,.7)'
+                  : '2px solid rgba(255,255,255,.22)',
+              }}
+            >
+              {/* shimmer overlay */}
+              {!done && (
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: 22, pointerEvents: 'none',
+                  background: `linear-gradient(120deg, transparent 30%, rgba(255,255,255,.22) 50%, transparent 70%)`,
+                  backgroundSize: '200% 100%',
+                  animation: `wsShine ${2.6 + i * 0.4}s linear ${delay} infinite`,
+                }} />
+              )}
+
+              {/* emoji with float animation */}
+              <div style={{
+                fontSize: '2.5rem', lineHeight: 1,
+                filter: 'drop-shadow(0 3px 8px rgba(0,0,0,.35))',
+                animation: done ? 'none' : `wsFloat ${2.4 + i * 0.3}s ease-in-out ${delay} infinite`,
+                display: 'inline-block',
+              }}>
+                {done ? '🏆' : emoji}
+              </div>
+
+              {/* topic name */}
+              <span style={{
+                fontSize: '.78rem', fontWeight: 900,
+                color: done ? '#78350f' : '#fff',
+                textShadow: done ? 'none' : '0 1px 6px rgba(0,0,0,.4)',
+                textAlign: 'center', lineHeight: 1.3,
+                fontFamily: "'Cairo','Tajawal',sans-serif",
+              }}>
+                {topic}
+              </span>
+
+              {/* done badge */}
+              {done && (
+                <span style={{
+                  fontSize: '.62rem', fontWeight: 800,
+                  background: '#92400e', color: '#fef3c7',
+                  borderRadius: 20, padding: '2px 8px',
+                }}>
+                  ✓ مكتمل
+                </span>
+              )}
+
+              {/* decorative stars (not-done) */}
+              {!done && [
+                { top: 8, right: 10, delay: 0 },
+                { top: 14, left: 12, delay: 0.7 },
+                { bottom: 10, right: 14, delay: 1.2 },
+              ].map((s, si) => (
+                <div key={si} style={{
+                  position: 'absolute', fontSize: '.55rem',
+                  top: s.top, bottom: s.bottom, right: s.right, left: s.left,
+                  animation: `wsStar ${1.8 + si * 0.5}s ease-in-out ${s.delay}s infinite`,
+                  pointerEvents: 'none',
+                }}>✦</div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -748,6 +782,10 @@ export default function WordSmashGame() {
           0%,100% { box-shadow: 0 8px 24px rgba(21,128,61,.65), inset 0 -6px 14px rgba(0,0,0,.4); }
           50%     { box-shadow: 0 12px 34px rgba(21,128,61,.9), inset 0 -6px 14px rgba(0,0,0,.4), 0 0 0 7px rgba(74,222,128,.18); }
         }
+        @keyframes wsFloat {
+          0%,100% { transform: translateY(0px) rotate(-1deg); }
+          50%      { transform: translateY(-10px) rotate(1deg); }
+        }
         .worm-sphere.head { animation: wormHeadBob 2.1s ease-in-out infinite; }
         .worm-sphere:not(.done):not(.head) { animation: wormSegPulse 2.9s ease-in-out infinite; }
         .worm-sphere:not(.done):not(.head):nth-child(2)  { animation-delay: .35s; }
@@ -862,60 +900,77 @@ export default function WordSmashGame() {
           </div>
         )}
 
-        {/* ── WORM TOPIC SELECTION ── */}
+        {/* ── TOPIC SELECTION ── */}
         {phase === 'worm' && (() => {
           const allDone = uniqueTopics.length > 0 && completedTopics.size >= uniqueTopics.length;
           return (
             <div style={{
-              background: '#fff', borderRadius: 24, padding: '28px 20px',
-              maxWidth: 420, width: '100%',
-              boxShadow: '0 24px 64px rgba(0,0,0,.3)',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+              background: 'linear-gradient(145deg,#1e1b4b 0%,#312e81 30%,#4c1d95 60%,#6b21a8 100%)',
+              borderRadius: 28, padding: '32px 20px 28px',
+              maxWidth: 460, width: '100%',
+              boxShadow: '0 32px 80px rgba(0,0,0,.55)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
               textAlign: 'center',
-              overflow: 'visible',
+              overflow: 'hidden',
+              position: 'relative',
             }}>
+              {/* background glow orbs */}
+              <div style={{ position:'absolute', top:-60, right:-60, width:220, height:220, borderRadius:'50%', background:'radial-gradient(circle,rgba(139,92,246,.35),transparent 70%)', pointerEvents:'none' }} />
+              <div style={{ position:'absolute', bottom:-40, left:-40, width:180, height:180, borderRadius:'50%', background:'radial-gradient(circle,rgba(236,72,153,.28),transparent 70%)', pointerEvents:'none' }} />
+              <div style={{ position:'absolute', top:'40%', left:'10%', width:120, height:120, borderRadius:'50%', background:'radial-gradient(circle,rgba(59,130,246,.22),transparent 70%)', pointerEvents:'none' }} />
               {allDone ? (
                 <>
-                  <div style={{ fontSize: '3.5rem' }}>🎉</div>
-                  <h2 style={{ fontSize: '1.7rem', fontWeight: 900, color: '#15803d', margin: 0 }}>
+                  <div style={{ fontSize:'4rem', filter:'drop-shadow(0 4px 16px rgba(251,191,36,.7))', animation:'wsFloat 2.5s ease-in-out infinite', display:'inline-block' }}>🏆</div>
+                  <h2 style={{ fontSize:'1.7rem', fontWeight:900, color:'#fde68a', margin:0, textShadow:'0 2px 16px rgba(251,191,36,.6)' }}>
                     أتقنت جميع المواضيع!
                   </h2>
-                  <div style={{ fontSize: '2.4rem', fontWeight: 800, color: '#065f46' }}>
+                  <div style={{ fontSize:'2.6rem', fontWeight:900, color:'#fbbf24', textShadow:'0 2px 12px rgba(251,191,36,.5)' }}>
                     {wormTotals.right} / {wormTotals.total}
                   </div>
-                  <div style={{ fontSize: '.9rem', color: '#6b7280' }}>
+                  <div style={{ fontSize:'.9rem', color:'rgba(255,255,255,.75)', fontWeight:700 }}>
                     {wormTotals.total > 0 ? Math.round((wormTotals.right / wormTotals.total) * 100) : 0}٪ إجابات صحيحة
                   </div>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                  <div style={{ display:'flex', gap:6 }}>
                     {Array.from({ length: uniqueTopics.length }).map((_, i) => (
-                      <span key={i} style={{ fontSize: '1.6rem' }}>⭐</span>
+                      <span key={i} style={{ fontSize:'1.6rem', filter:'drop-shadow(0 2px 6px rgba(251,191,36,.7))' }}>⭐</span>
                     ))}
                   </div>
                   <button onClick={restart} style={{
-                    background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', border: 'none',
-                    borderRadius: 14, padding: '13px 0', fontSize: '1rem', fontWeight: 800,
-                    cursor: 'pointer', width: '100%',
-                    boxShadow: '0 4px 16px rgba(16,185,129,.4)',
+                    background:'linear-gradient(135deg,#f59e0b,#f97316)', color:'#fff', border:'none',
+                    borderRadius:14, padding:'13px 0', fontSize:'1rem', fontWeight:800,
+                    cursor:'pointer', width:'100%', position:'relative', zIndex:1,
+                    boxShadow:'0 6px 24px rgba(245,158,11,.55)',
                   }}>
                     🔄 ابدأ من جديد
                   </button>
-                  <Link href="/library" style={{ color: '#9ca3af', fontSize: '.87rem', textDecoration: 'none' }}>
+                  <Link href="/library" style={{ color:'rgba(255,255,255,.5)', fontSize:'.87rem', textDecoration:'none' }}>
                     ← العودة للمكتبة
                   </Link>
                 </>
               ) : (
                 <>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                    <div style={{ fontSize: '2.4rem', lineHeight: 1 }}>🐛</div>
-                    <h2 style={{ fontSize: '1.45rem', fontWeight: 900, color: '#1a1a2e', margin: 0 }}>
+                  {/* header */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <div style={{
+                      fontSize: '3rem', lineHeight: 1,
+                      filter: 'drop-shadow(0 4px 12px rgba(0,0,0,.3))',
+                      animation: 'wsFloat 3s ease-in-out infinite',
+                      display: 'inline-block',
+                    }}>🐛</div>
+                    <h2 style={{
+                      fontSize: '1.6rem', fontWeight: 900, color: '#fff', margin: 0,
+                      textShadow: '0 2px 16px rgba(0,0,0,.4)',
+                    }}>
                       اختر موضوعاً وابدأ!
                     </h2>
                     {completedTopics.size > 0 && (
                       <div style={{
-                        fontSize: '.8rem', color: '#065f46', fontWeight: 700,
-                        background: '#d1fae5', borderRadius: 20, padding: '3px 14px',
+                        fontSize: '.8rem', color: '#fff', fontWeight: 700,
+                        background: 'rgba(255,255,255,.2)', backdropFilter: 'blur(6px)',
+                        borderRadius: 20, padding: '4px 16px',
+                        border: '1px solid rgba(255,255,255,.3)',
                       }}>
-                        {completedTopics.size} / {uniqueTopics.length} مكتملة ✓
+                        ⭐ {completedTopics.size} / {uniqueTopics.length} مكتملة
                       </div>
                     )}
                   </div>
@@ -929,8 +984,8 @@ export default function WordSmashGame() {
                   <button
                     onClick={() => setPhase('start')}
                     style={{
-                      color: '#9ca3af', background: 'none', border: 'none',
-                      cursor: 'pointer', fontSize: '.85rem', marginTop: -4,
+                      color: 'rgba(255,255,255,.65)', background: 'none', border: 'none',
+                      cursor: 'pointer', fontSize: '.85rem', marginTop: 4,
                       fontFamily: "'Cairo','Tajawal',sans-serif",
                     }}
                   >
