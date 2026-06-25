@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 
+// Cache GET responses at Vercel's CDN for 5 minutes, serve stale for 10 more
+export const revalidate = 300;
+
 const ARABIC_LETTERS = 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي';
 const DIACRITICS     = /[ً-ْٰ]/g;
 
@@ -51,11 +54,32 @@ export async function GET(request) {
       return true;
     });
 
-    return NextResponse.json({ words: valid, source: 'database' });
+    const words = valid.length > 0 ? valid : FALLBACK_WORDS;
+    return NextResponse.json(
+      { words, source: valid.length > 0 ? 'database' : 'fallback' },
+      { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' } }
+    );
   } catch {
-    return NextResponse.json({ words: [], source: 'error' });
+    return NextResponse.json(
+      { words: FALLBACK_WORDS, source: 'fallback' },
+      { headers: { 'Cache-Control': 'public, s-maxage=60' } }
+    );
   }
 }
+
+// Built-in fallback words so the game starts instantly even if DB is empty or slow
+const FALLBACK_WORDS = [
+  { id: 'f1', word: 'قِطَّة', missing_letter: 'ق', options: ['ق','ك','ع','ج','ح'], emoji: '🐱', topic: 'الحيوانات', grade_level: 1, category: null },
+  { id: 'f2', word: 'كَلْب', missing_letter: 'ك', options: ['ك','ق','ع','ت','ب'], emoji: '🐶', topic: 'الحيوانات', grade_level: 1, category: null },
+  { id: 'f3', word: 'بَيْت', missing_letter: 'ب', options: ['ب','ت','ن','م','ف'], emoji: '🏠', topic: 'الأسرة', grade_level: 1, category: null },
+  { id: 'f4', word: 'شَمْس', missing_letter: 'ش', options: ['ش','س','ص','ض','ط'], emoji: '☀️', topic: 'الطقس', grade_level: 1, category: null },
+  { id: 'f5', word: 'تُفَّاح', missing_letter: 'ت', options: ['ت','ث','ب','ن','م'], emoji: '🍎', topic: 'الفواكه', grade_level: 1, category: null },
+  { id: 'f6', word: 'مَدْرَسَة', missing_letter: 'م', options: ['م','ن','ه','ل','و'], emoji: '🏫', topic: 'المدرسة', grade_level: 2, category: null },
+  { id: 'f7', word: 'كِتَاب', missing_letter: 'ك', options: ['ك','ق','ع','ج','ح'], emoji: '📚', topic: 'المدرسة', grade_level: 2, category: null },
+  { id: 'f8', word: 'أَسَد', missing_letter: 'أ', options: ['أ','ع','ه','ح','خ'], emoji: '🦁', topic: 'الحيوانات', grade_level: 1, category: null },
+  { id: 'f9', word: 'زَهْرَة', missing_letter: 'ز', options: ['ز','ذ','ر','د','س'], emoji: '🌸', topic: 'الأشكال', grade_level: 2, category: null },
+  { id: 'f10', word: 'سَمَكَة', missing_letter: 'س', options: ['س','ش','ص','ز','ط'], emoji: '🐟', topic: 'الحيوانات', grade_level: 1, category: null },
+];
 
 // POST — add word (admin/teacher only)
 export async function POST(request) {
