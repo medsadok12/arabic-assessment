@@ -703,6 +703,10 @@ export default function TeacherPage() {
               <span>📓</span>
               <span>كراس الدروس</span>
             </a>
+            <a href="/teacher/stories" className="side-link">
+              <span>📚</span>
+              <span>إدارة القصص</span>
+            </a>
           </nav>
 
           {/* ── Content ── */}

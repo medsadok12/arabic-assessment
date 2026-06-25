@@ -120,19 +120,7 @@ const RESOURCES = [
   },
 ];
 
-/* ══════════════════════════════════════════════
-   بيانات القصص والحكايات
-══════════════════════════════════════════════ */
-const STORIES = [
-  { key:'s1', title:'الأرنب الشجاع',     icon:'🐰', level:'مستوى 1', length:'قصيرة',   ready:true,  accent:'#10b981', bg:'#ecfdf5', border:'#6ee7b7' },
-  { key:'s2', title:'النمر والقمر',       icon:'🐯', level:'مستوى 1', length:'قصيرة',   ready:true,  accent:'#f59e0b', bg:'#fffbeb', border:'#fde68a' },
-  { key:'s3', title:'مغامرة الفيل',       icon:'🐘', level:'مستوى 2', length:'متوسطة', ready:false, accent:'#6366f1', bg:'#eef2ff', border:'#c7d2fe' },
-  { key:'s4', title:'الأميرة والنهر',     icon:'👸', level:'مستوى 2', length:'متوسطة', ready:false, accent:'#ec4899', bg:'#fdf2f8', border:'#fbcfe8' },
-  { key:'s5', title:'رحلة النحلة',        icon:'🐝', level:'مستوى 1', length:'قصيرة',   ready:false, accent:'#eab308', bg:'#fefce8', border:'#fef08a' },
-  { key:'s6', title:'الثعلب الذكي',       icon:'🦊', level:'مستوى 3', length:'طويلة',  ready:false, accent:'#f97316', bg:'#fff7ed', border:'#fed7aa' },
-  { key:'s7', title:'طائر البحر',          icon:'🦅', level:'مستوى 2', length:'متوسطة', ready:false, accent:'#0284c7', bg:'#f0f9ff', border:'#bae6fd' },
-  { key:'s8', title:'الحصان والريح',      icon:'🐎', level:'مستوى 3', length:'طويلة',  ready:false, accent:'#7c3aed', bg:'#f5f3ff', border:'#ddd6fe' },
-];
+/* STORIES loaded dynamically from DB — see initialStories prop */
 
 const TAG_COLORS = {
   'مستوى 1': { bg: '#EFF6FF', color: '#1D4ED8' },
@@ -152,7 +140,8 @@ function fileToBase64(file) {
   });
 }
 
-export default function LibraryGrid({ initialMeta, isTeacher, initialProgress }) {
+export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, initialStories }) {
+  const stories = initialStories || [];
   const [cardMeta,      setCardMeta]      = useState(initialMeta || {});
   const [editing,       setEditing]       = useState(null);
   const [editIcon,      setEditIcon]      = useState('');
@@ -872,7 +861,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress })
               backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)',
             }}>
               <div style={{color:'#fff', fontSize:'.72rem', fontWeight:800, marginBottom:3}}>
-                ✨ 8 قصص قادمة
+                {stories.length > 0 ? `✨ ${stories.length} قصة متاحة` : '✨ قصص قادمة'}
               </div>
               <div style={{
                 display:'flex', justifyContent:'center', gap:6,
@@ -893,48 +882,63 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress })
                 <span>📖</span>
                 قصص وحكايات
               </div>
-              <span className="stories-soon-badge">🔜 قريباً</span>
+              {stories.length === 0
+                ? <span className="stories-soon-badge">🔜 قريباً</span>
+                : <span className="stories-soon-badge">{stories.length} قصة متاحة</span>
+              }
             </div>
 
-            <p className="stories-hint">
-              <span>←</span>
-              مرّر لاستكشاف المزيد من القصص
-            </p>
+            {stories.length > 0 && (
+              <p className="stories-hint">
+                <span>←</span>
+                مرّر لاستكشاف المزيد من القصص
+              </p>
+            )}
 
-            <div className="stories-scroll">
-              {STORIES.map((s, i) => (
-                <div
-                  key={s.key}
-                  className={`story-card ${s.ready ? 's-ready' : 's-locked'}`}
-                  style={{
-                    background:    s.bg,
-                    borderColor:   s.border,
-                    boxShadow:     s.ready ? `0 4px 18px ${s.accent}20` : 'none',
-                    animationDelay:`${i * 0.07}s`,
-                  }}
-                >
-                  {s.ready && (
-                    <span style={{
-                      position:'absolute', top:8, left:8,
-                      background:s.accent, color:'#fff',
-                      borderRadius:20, padding:'2px 7px',
-                      fontSize:'.56rem', fontWeight:900,
-                    }}>جديد ✨</span>
-                  )}
-                  <div className="story-icon">{s.icon}</div>
-                  <div className="story-level-badge" style={{color:s.accent}}>{s.level}</div>
-                  <p className="story-title">{s.title}</p>
-                  <div className="story-length">⏱ {s.length}</div>
-                  {s.ready ? (
-                    <span className="story-read-btn" style={{background:`linear-gradient(135deg,${s.accent},${s.accent}bb)`}}>
-                      اقرأ الآن ←
-                    </span>
-                  ) : (
-                    <span className="story-locked-btn">🔒 قريباً</span>
-                  )}
-                </div>
-              ))}
-            </div>
+            {stories.length === 0 ? (
+              <p style={{ color:'#6ee7b7', fontSize:'.82rem', fontWeight:700, textAlign:'center', padding:'18px 0' }}>
+                القصص قادمة قريباً — ترقّب المزيد! 🌟
+              </p>
+            ) : (
+              <div className="stories-scroll">
+                {stories.map((s, i) => {
+                  const accent = s.accent || '#10b981';
+                  const level  = `مستوى ${s.level || 1}`;
+                  const cardEl = (
+                    <>
+                      <span style={{
+                        position:'absolute', top:8, left:8,
+                        background: accent, color:'#fff',
+                        borderRadius:20, padding:'2px 7px',
+                        fontSize:'.56rem', fontWeight:900,
+                      }}>جديد ✨</span>
+                      <div className="story-icon">{s.icon || '📖'}</div>
+                      <div className="story-level-badge" style={{ color: accent }}>{level}</div>
+                      <p className="story-title">{s.title}</p>
+                      <div className="story-length">⏱ {s.length || 'قصيرة'}</div>
+                      <span className="story-read-btn" style={{ background: `linear-gradient(135deg,${accent},${accent}bb)` }}>
+                        اقرأ الآن ←
+                      </span>
+                    </>
+                  );
+                  return (
+                    <Link
+                      key={s.id}
+                      href={`/library/stories/${s.slug}`}
+                      className="story-card s-ready"
+                      style={{
+                        background:    s.bg || '#ecfdf5',
+                        borderColor:   s.border_color || '#6ee7b7',
+                        boxShadow:     `0 4px 18px ${accent}20`,
+                        animationDelay:`${i * 0.07}s`,
+                      }}
+                    >
+                      {cardEl}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
         </div>

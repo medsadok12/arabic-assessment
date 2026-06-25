@@ -27,6 +27,17 @@ export default async function LibraryPage() {
     (data || []).forEach(c => { initialMeta[c.card_key] = c; });
   } catch {}
 
+  // fetch published stories
+  let initialStories = [];
+  try {
+    const { data } = await admin
+      .from('stories')
+      .select('id, slug, title, icon, level, length, status, points, accent, bg, border_color')
+      .eq('status', 'published')
+      .order('created_at', { ascending: true });
+    initialStories = data || [];
+  } catch {}
+
   // fetch activity progress for students only
   let initialProgress = {};
   if (!isTeacher) {
@@ -82,6 +93,7 @@ export default async function LibraryPage() {
             initialMeta={initialMeta}
             isTeacher={isTeacher}
             initialProgress={initialProgress}
+            initialStories={initialStories}
           />
         </div>
       </main>
