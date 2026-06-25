@@ -17,24 +17,69 @@ const TOPIC_COLORS = {
 };
 
 const LEVEL_LABELS = ['جديدة','مبتدئ','أساسي','متوسط','متقدم','محفوظة ✨'];
+// Client-side SRS intervals (mirrors server)
+const SRS_INTERVALS = [1, 1, 3, 7, 14, 30];
 
 function getColor(topic) {
   return TOPIC_COLORS[topic] || TOPIC_COLORS.default;
 }
 
+/* ─── Stats Chip ─── */
+function StatChip({ label, val, color, bg }) {
+  return (
+    <div style={{
+      background: bg, border: `1.5px solid ${color}33`,
+      borderRadius: 20, padding: '4px 12px',
+      display: 'flex', alignItems: 'center', gap: 6,
+    }}>
+      <span style={{ fontSize: '.95rem', fontWeight: 900, color }}>{val}</span>
+      <span style={{ fontSize: '.7rem', color: '#64748b', fontWeight: 700 }}>{label}</span>
+    </div>
+  );
+}
+
 /* ─── Flip Card ─── */
-function FlipCard({ card, onRemembered, onForgot, cardNum, total }) {
+function FlipCard({ card, onEasy, onHard, onForgot, cardNum, total }) {
   const [flipped, setFlipped] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [feedback, setFeedback] = useState(null);
   const c = getColor(card.topic);
 
-  useEffect(() => { setFlipped(false); setLeaving(false); }, [card.id]);
+  useEffect(() => { setFlipped(false); setLeaving(false); setFeedback(null); }, [card.id]);
 
-  function answer(remembered) {
-    setLeaving(true);
+  function answer(difficulty, cb) {
+    const lvl = card.level ?? 0;
+    let emoji, msg, sub, color;
+
+    if (difficulty === 'easy') {
+      const newLvl = Math.min(lvl + 1, 5);
+      const days   = SRS_INTERVALS[newLvl];
+      emoji = '✅';
+      if (newLvl === 5) {
+        msg = 'محفوظة تماماً! ✨';
+        sub = 'أتقنتَ هذه الكلمة';
+      } else {
+        msg = 'ممتاز!';
+        sub = `📅 ستُراجَع بعد ${days} يوم`;
+      }
+      color = '#059669';
+    } else if (difficulty === 'hard') {
+      emoji = '⏰';
+      msg = 'صعبة بعض الشيء';
+      sub = '📅 ستُراجَع غداً';
+      color = '#d97706';
+    } else {
+      emoji = '💪';
+      msg = 'لا بأس! التكرار يُرسّخ';
+      sub = '🔄 ستُضاف للمراجعة';
+      color = '#dc2626';
+    }
+
+    setFeedback({ emoji, msg, sub, color });
     setTimeout(() => {
-      remembered ? onRemembered() : onForgot();
-    }, 350);
+      setLeaving(true);
+      setTimeout(cb, 350);
+    }, 700);
   }
 
   return (
@@ -42,11 +87,10 @@ function FlipCard({ card, onRemembered, onForgot, cardNum, total }) {
 
       {/*
         CRITICAL: animation wrapper is SEPARATE from the flip div.
-        When animation has fill-mode:both it holds "transform:none" after finishing,
-        which would override the flip's "transform:rotateY(180deg)" if on the same element.
-        Keeping them on different elements prevents the CSS property conflict.
+        position:relative is needed for the feedback overlay.
       */}
       <div style={{
+        position: 'relative',
         animation: leaving
           ? 'fcLeave .35s ease forwards'
           : 'fcEnter .4s cubic-bezier(0,.9,.57,1) both',
@@ -87,7 +131,7 @@ function FlipCard({ card, onRemembered, onForgot, cardNum, total }) {
           </div>
 
           {/* Topic + level */}
-          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', justifyContent:'center' }}>
             <span style={{
               background:c.badge, color:'#fff', borderRadius:20,
               padding:'4px 12px', fontSize:'.75rem', fontWeight:800,
@@ -130,14 +174,14 @@ function FlipCard({ card, onRemembered, onForgot, cardNum, total }) {
           transform:'rotateY(180deg)',
           position:'absolute', inset:0,
           background:'linear-gradient(160deg,#1e1b4b 0%,#312e81 100%)',
-          borderRadius:28, padding:'24px 22px',
+          borderRadius:28, padding:'20px 20px',
           display:'flex', flexDirection:'column',
           justifyContent:'space-between',
           boxShadow:'0 12px 40px rgba(99,102,241,.35)',
         }}>
           {/* Word echo */}
           <div style={{
-            fontSize:'2.8rem', fontWeight:900, color:'#e0e7ff',
+            fontSize:'2.5rem', fontWeight:900, color:'#e0e7ff',
             textAlign:'center', fontFamily:"'Cairo','Tajawal',sans-serif",
           }}>{card.word}</div>
 
@@ -147,24 +191,22 @@ function FlipCard({ card, onRemembered, onForgot, cardNum, total }) {
               <span style={{
                 display:'inline-block', background:'rgba(255,255,255,.15)',
                 color:'#c7d2fe', borderRadius:20, padding:'4px 14px',
-                fontSize:'.78rem', fontWeight:700, marginBottom:12,
+                fontSize:'.78rem', fontWeight:700, marginBottom:10,
               }}>{card.word_type}</span>
             )}
             {card.sentence ? (
               <div style={{
-                fontSize:'1.15rem', color:'#e0e7ff',
+                fontSize:'1.05rem', color:'#e0e7ff',
                 lineHeight:1.9, fontFamily:"'Cairo','Tajawal',sans-serif",
                 fontWeight:500, direction:'rtl',
                 background:'rgba(255,255,255,.08)', borderRadius:14,
-                padding:'12px 16px',
+                padding:'10px 14px',
               }}>
-                {card.sentence.replace(card.word,
-                  `<mark style="background:transparent;color:#fbbf24;font-weight:900">${card.word}</mark>`
-                ).split(/(<mark[^>]*>.*?<\/mark>)/g).map((part, i) =>
-                  part.startsWith('<mark') ? (
-                    <span key={i} style={{ color:'#fbbf24', fontWeight:900 }}>{card.word}</span>
-                  ) : part
-                )}
+                {card.sentence.split(card.word).map((part, i, arr) => (
+                  i < arr.length - 1
+                    ? [part, <span key={i} style={{ color:'#fbbf24', fontWeight:900 }}>{card.word}</span>]
+                    : part
+                ))}
               </div>
             ) : (
               <div style={{ color:'rgba(255,255,255,.4)', fontSize:'.9rem', fontStyle:'italic' }}>
@@ -173,74 +215,114 @@ function FlipCard({ card, onRemembered, onForgot, cardNum, total }) {
             )}
           </div>
 
-          {/* Answer buttons */}
-          <div style={{ display:'flex', gap:12 }}>
-            <button onClick={() => answer(false)} style={{
-              flex:1, padding:'14px', borderRadius:16, border:'none',
-              background:'rgba(239,68,68,.18)', color:'#fca5a5',
-              fontSize:'1rem', fontWeight:900, cursor:'pointer',
-              fontFamily:"'Cairo','Tajawal',sans-serif",
-              border:'2px solid rgba(239,68,68,.35)',
-              transition:'all .15s',
+          {/* 3 Answer buttons */}
+          <div style={{ display:'flex', gap:7 }}>
+            <button onClick={() => answer('forgot', onForgot)} style={{
+              flex:1, padding:'11px 6px', borderRadius:14, border:'2px solid rgba(239,68,68,.4)',
+              background:'rgba(239,68,68,.15)', color:'#fca5a5',
+              fontSize:'.82rem', fontWeight:900, cursor:'pointer',
+              fontFamily:"'Cairo','Tajawal',sans-serif", transition:'all .15s',
             }}>
-              ❌ لم أحفظ
+              ❌<br/>لم أحفظ
             </button>
-            <button onClick={() => answer(true)} style={{
-              flex:1, padding:'14px', borderRadius:16, border:'none',
-              background:'rgba(16,185,129,.2)', color:'#6ee7b7',
-              fontSize:'1rem', fontWeight:900, cursor:'pointer',
-              fontFamily:"'Cairo','Tajawal',sans-serif",
-              border:'2px solid rgba(16,185,129,.35)',
-              transition:'all .15s',
+            <button onClick={() => answer('hard', onHard)} style={{
+              flex:1, padding:'11px 6px', borderRadius:14, border:'2px solid rgba(251,191,36,.4)',
+              background:'rgba(251,191,36,.12)', color:'#fde68a',
+              fontSize:'.82rem', fontWeight:900, cursor:'pointer',
+              fontFamily:"'Cairo','Tajawal',sans-serif", transition:'all .15s',
             }}>
-              ✅ حفظتها
+              ⏰<br/>صعبة
+            </button>
+            <button onClick={() => answer('easy', onEasy)} style={{
+              flex:1, padding:'11px 6px', borderRadius:14, border:'2px solid rgba(16,185,129,.4)',
+              background:'rgba(16,185,129,.18)', color:'#6ee7b7',
+              fontSize:'.82rem', fontWeight:900, cursor:'pointer',
+              fontFamily:"'Cairo','Tajawal',sans-serif", transition:'all .15s',
+            }}>
+              ✅<br/>حفظتها
             </button>
           </div>
         </div>
 
-        </div>
-      </div>
+        </div>{/* end flip container */}
+
+        {/* ── Feedback overlay ── */}
+        {feedback && (
+          <div style={{
+            position:'absolute', inset:0, borderRadius:28,
+            display:'flex', alignItems:'center', justifyContent:'center',
+            background:'rgba(15,23,42,.82)', zIndex:20,
+            animation:'fcEnter .2s both',
+          }}>
+            <div style={{
+              background:'white', borderRadius:20, padding:'20px 32px',
+              textAlign:'center', boxShadow:'0 8px 32px rgba(0,0,0,.4)',
+              fontFamily:"'Cairo','Tajawal',sans-serif",
+            }}>
+              <div style={{ fontSize:'2rem', marginBottom:6 }}>{feedback.emoji}</div>
+              <div style={{ fontSize:'1.05rem', fontWeight:900, color:feedback.color }}>{feedback.msg}</div>
+              <div style={{ fontSize:'.82rem', color:'#64748b', marginTop:6 }}>{feedback.sub}</div>
+            </div>
+          </div>
+        )}
+
+      </div>{/* end animation wrapper */}
     </div>
   );
 }
 
 /* ─── Done Screen ─── */
-function DoneScreen({ remembered, forgot, onRestart }) {
-  const total = remembered + forgot;
-  const pct   = total > 0 ? Math.round((remembered / total) * 100) : 0;
+function DoneScreen({ easy, hard, forgot, stats }) {
+  const total = easy + hard + forgot;
+  const pct   = total > 0 ? Math.round((easy / total) * 100) : 0;
   const msg   = pct >= 80 ? 'ممتاز! أداء رائع 🏆' : pct >= 50 ? 'جيد! استمر في التدريب 💪' : 'لا بأس! التكرار يُرسّخ الحفظ 🔄';
   return (
     <div style={{
       background:'rgba(255,255,255,.97)', borderRadius:28,
-      padding:'40px 28px', textAlign:'center',
+      padding:'36px 24px', textAlign:'center',
       boxShadow:'0 20px 60px rgba(0,0,0,.18)', maxWidth:380, margin:'0 auto',
       animation:'fcEnter .4s cubic-bezier(0,.9,.57,1) both',
+      fontFamily:"'Cairo','Tajawal',sans-serif",
     }}>
-      <div style={{ fontSize:'3.5rem', marginBottom:12 }}>
+      <div style={{ fontSize:'3.5rem', marginBottom:10 }}>
         {pct >= 80 ? '🏆' : pct >= 50 ? '⭐' : '💡'}
       </div>
-      <h2 style={{ margin:'0 0 6px', fontSize:'1.5rem', fontWeight:900, color:'#1e293b' }}>
+      <h2 style={{ margin:'0 0 4px', fontSize:'1.5rem', fontWeight:900, color:'#1e293b' }}>
         انتهت الجلسة!
       </h2>
-      <p style={{ color:'#64748b', fontSize:'.9rem', margin:'0 0 24px' }}>{msg}</p>
+      <p style={{ color:'#64748b', fontSize:'.9rem', margin:'0 0 22px' }}>{msg}</p>
 
-      {/* Stats */}
-      <div style={{ display:'flex', gap:16, justifyContent:'center', marginBottom:28 }}>
-        <div style={{ textAlign:'center' }}>
-          <div style={{ fontSize:'2.4rem', fontWeight:900, color:'#059669' }}>{remembered}</div>
-          <div style={{ fontSize:'.78rem', color:'#6b7280', fontWeight:700 }}>حفظتها</div>
+      {/* Session stats */}
+      <div style={{ display:'flex', gap:0, justifyContent:'center', marginBottom:22, border:'1.5px solid #f1f5f9', borderRadius:18, overflow:'hidden' }}>
+        <div style={{ flex:1, padding:'14px 8px', borderLeft:'1.5px solid #f1f5f9' }}>
+          <div style={{ fontSize:'2rem', fontWeight:900, color:'#059669' }}>{easy}</div>
+          <div style={{ fontSize:'.72rem', color:'#6b7280', fontWeight:700 }}>حفظتها ✅</div>
         </div>
-        <div style={{ width:1, background:'#e5e7eb' }} />
-        <div style={{ textAlign:'center' }}>
-          <div style={{ fontSize:'2.4rem', fontWeight:900, color:'#dc2626' }}>{forgot}</div>
-          <div style={{ fontSize:'.78rem', color:'#6b7280', fontWeight:700 }}>ستُراجَع غداً</div>
+        <div style={{ flex:1, padding:'14px 8px', borderLeft:'1.5px solid #f1f5f9' }}>
+          <div style={{ fontSize:'2rem', fontWeight:900, color:'#d97706' }}>{hard}</div>
+          <div style={{ fontSize:'.72rem', color:'#6b7280', fontWeight:700 }}>صعبة ⏰</div>
         </div>
-        <div style={{ width:1, background:'#e5e7eb' }} />
-        <div style={{ textAlign:'center' }}>
-          <div style={{ fontSize:'2.4rem', fontWeight:900, color:'#6366f1' }}>{pct}%</div>
-          <div style={{ fontSize:'.78rem', color:'#6b7280', fontWeight:700 }}>النسبة</div>
+        <div style={{ flex:1, padding:'14px 8px' }}>
+          <div style={{ fontSize:'2rem', fontWeight:900, color:'#dc2626' }}>{forgot}</div>
+          <div style={{ fontSize:'.72rem', color:'#6b7280', fontWeight:700 }}>لم أحفظ ❌</div>
         </div>
       </div>
+
+      {/* Overall mastery */}
+      {stats && stats.mastered > 0 && (
+        <div style={{
+          background:'linear-gradient(135deg,#f0fdf4,#dcfce7)',
+          border:'1.5px solid #86efac', borderRadius:16,
+          padding:'12px 20px', marginBottom:20,
+          display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+        }}>
+          <span style={{ fontSize:'1.3rem' }}>✨</span>
+          <div style={{ textAlign:'right' }}>
+            <div style={{ fontSize:'1.05rem', fontWeight:900, color:'#15803d' }}>{stats.mastered} كلمة محفوظة</div>
+            <div style={{ fontSize:'.75rem', color:'#166534' }}>من أصل {stats.total} كلمة في مستواك</div>
+          </div>
+        </div>
+      )}
 
       <Link href="/library" style={{
         display:'block', padding:'13px', borderRadius:14,
@@ -258,18 +340,20 @@ function DoneScreen({ remembered, forgot, onRestart }) {
    MAIN PAGE
 ══════════════════════════════════════════ */
 export default function FlashcardsPage() {
-  const [user,       setUser]       = useState(null);
-  const [authDone,   setAuthDone]   = useState(false);
-  const [phase,      setPhase]      = useState('loading'); // loading|empty|cards|done
-  const [deck,       setDeck]       = useState([]);
-  const [retries,    setRetries]    = useState({});
-  const [remembered, setRemembered] = useState(0);
-  const [forgot,     setForgot]     = useState(0);
-  const [cardsDone,  setCardsDone]  = useState(0);
-  const [totalCards, setTotalCards] = useState(0);
-  const [totalPoints,   setTotalPoints]   = useState(0);
-  const [ptPopupKey,    setPtPopupKey]    = useState(0);
-  const [ptPopupActive, setPtPopupActive] = useState(false);
+  const [user,         setUser]         = useState(null);
+  const [authDone,     setAuthDone]     = useState(false);
+  const [phase,        setPhase]        = useState('loading'); // loading|empty|cards|done
+  const [deck,         setDeck]         = useState([]);
+  const [retries,      setRetries]      = useState({});
+  const [easyCount,    setEasyCount]    = useState(0);
+  const [hardCount,    setHardCount]    = useState(0);
+  const [forgotCount,  setForgotCount]  = useState(0);
+  const [cardsDone,    setCardsDone]    = useState(0);
+  const [totalCards,   setTotalCards]   = useState(0);
+  const [totalPoints,  setTotalPoints]  = useState(0);
+  const [ptPopupKey,   setPtPopupKey]   = useState(0);
+  const [ptPopupActive,setPtPopupActive]= useState(false);
+  const [stats,        setStats]        = useState(null);
 
   useEffect(() => {
     fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
@@ -288,45 +372,61 @@ export default function FlashcardsPage() {
         if (!d.cards?.length) { setPhase('empty'); return; }
         setDeck(d.cards);
         setTotalCards(d.cards.length);
+        if (d.stats) setStats(d.stats);
         setPhase('cards');
       })
       .catch(() => setPhase('empty'));
   }, []);
 
-  const callReview = useCallback((wordId, rem) => {
+  const callReview = useCallback((wordId, difficulty) => {
     fetch('/api/flashcards/review', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word_id: wordId, remembered: rem }),
+      body: JSON.stringify({ word_id: wordId, difficulty }),
     }).catch(() => {});
   }, []);
 
-  function handleRemembered() {
-    callReview(deck[0].id, true);
-    setRemembered(r => r + 1);
+  function handleEasy() {
+    const card = deck[0];
+    callReview(card.id, 'easy');
+    setEasyCount(n => n + 1);
     setCardsDone(n => n + 1);
     setPtPopupKey(k => k + 1);
     setPtPopupActive(true);
     setTimeout(() => setPtPopupActive(false), 1200);
-    fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 3, reason: 'flashcard_remembered' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
+    fetch('/api/points', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: 3, reason: `fc_${card.id}` }),
+    }).then(r => r.json()).then(j => { if (j.points != null) setTotalPoints(j.points); }).catch(() => {});
+    const next = deck.slice(1);
+    if (!next.length) { setPhase('done'); return; }
+    setDeck(next);
+  }
+
+  function handleHard() {
+    const card = deck[0];
+    callReview(card.id, 'hard');
+    setHardCount(n => n + 1);
+    setCardsDone(n => n + 1);
     const next = deck.slice(1);
     if (!next.length) { setPhase('done'); return; }
     setDeck(next);
   }
 
   function handleForgot() {
-    callReview(deck[0].id, false);
-    setForgot(f => f + 1);
-    const cur   = deck[0];
-    const count = (retries[cur.id] || 0) + 1;
-    setRetries(r => ({ ...r, [cur.id]: count }));
+    const card = deck[0];
+    callReview(card.id, 'forgot');
+    setForgotCount(f => f + 1);
+    const count = (retries[card.id] || 0) + 1;
+    setRetries(r => ({ ...r, [card.id]: count }));
 
     let next;
     if (count < 2) {
-      // Re-add to end
-      next = [...deck.slice(1), cur];
+      // Re-add to end of deck for another try
+      next = [...deck.slice(1), card];
     } else {
-      // Shown enough times, move on
+      // Shown twice, move on
       setCardsDone(n => n + 1);
       next = deck.slice(1);
     }
@@ -384,6 +484,11 @@ export default function FlashcardsPage() {
               أتقنتَ كل الكلمات المجدولة اليوم.<br />
               عُد غداً لمزيد من المراجعة.
             </p>
+            {stats && stats.mastered > 0 && (
+              <p style={{ color:'#059669', fontSize:'.9rem', fontWeight:700, marginBottom:16 }}>
+                ✨ {stats.mastered} كلمة محفوظة تماماً
+              </p>
+            )}
             <Link href="/library" style={{
               display:'block', padding:'12px', borderRadius:12,
               background:'linear-gradient(135deg,#6366f1,#4f46e5)',
@@ -396,22 +501,34 @@ export default function FlashcardsPage() {
         {/* Cards */}
         {phase === 'cards' && cur && (
           <div style={{ width:'100%', maxWidth:400, animation:'fcEnter .35s both' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+
+            {/* Header */}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
               <h1 style={{
                 textAlign:'center', color:'white', fontSize:'1.2rem', fontWeight:900,
                 margin:0, opacity:.85,
               }}>📚 بطاقات الحفظ</h1>
-              <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                <span style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 20, padding: '5px 14px', fontSize: '.88rem', fontWeight: 800, color: '#fff' }}>⭐ {totalPoints.toLocaleString()}</span>
+              <div style={{ position:'relative', display:'inline-flex', alignItems:'center' }}>
+                <span style={{ background:'rgba(255,255,255,0.18)', borderRadius:20, padding:'5px 14px', fontSize:'.88rem', fontWeight:800, color:'#fff' }}>⭐ {totalPoints.toLocaleString()}</span>
                 {ptPopupActive && (
-                  <span key={ptPopupKey} style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', color: '#fbbf24', fontWeight: 900, fontSize: '1.05rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards', textShadow: '0 1px 6px rgba(0,0,0,.5)' }}>+3 ⭐</span>
+                  <span key={ptPopupKey} style={{ position:'absolute', top:-28, left:'50%', transform:'translateX(-50%)', color:'#fbbf24', fontWeight:900, fontSize:'1.05rem', pointerEvents:'none', whiteSpace:'nowrap', animation:'ptFloatUp 1.1s ease forwards', textShadow:'0 1px 6px rgba(0,0,0,.5)' }}>+3 ⭐</span>
                 )}
               </div>
             </div>
 
+            {/* Stats bar */}
+            {stats && (
+              <div style={{ display:'flex', gap:6, marginBottom:14, justifyContent:'center', flexWrap:'wrap' }}>
+                <StatChip label="محفوظة ✨" val={stats.mastered}    color="#059669" bg="rgba(240,253,244,.18)" />
+                <StatChip label="قيد التعلم" val={stats.in_progress} color="#a78bfa" bg="rgba(245,243,255,.18)" />
+                <StatChip label="جلسة اليوم" val={`${cardsDone}/${totalCards}`} color="#38bdf8" bg="rgba(240,249,255,.18)" />
+              </div>
+            )}
+
             <FlipCard
               card={cur}
-              onRemembered={handleRemembered}
+              onEasy={handleEasy}
+              onHard={handleHard}
               onForgot={handleForgot}
               cardNum={cardsDone + 1}
               total={totalCards}
@@ -427,7 +544,13 @@ export default function FlashcardsPage() {
 
         {/* Done */}
         {phase === 'done' && (
-          <DoneScreen remembered={remembered} forgot={forgot} onRestart={() => window.location.reload()} />
+          <DoneScreen
+            easy={easyCount}
+            hard={hardCount}
+            forgot={forgotCount}
+            stats={stats}
+            onRestart={() => window.location.reload()}
+          />
         )}
 
       </div>

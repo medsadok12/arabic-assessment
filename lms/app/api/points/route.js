@@ -32,6 +32,16 @@ export async function POST(req) {
     if (!amount || amount <= 0 || amount > 10000) return NextResponse.json({ error: 'قيمة غير صالحة' }, { status: 400 });
 
     const admin = createAdminClient();
+
+    // Idempotency: if a specific reason was already awarded, skip
+    if (reason) {
+      const { data: dup } = await admin.from('points_log').select('id').eq('user_id', user.id).eq('reason', reason).maybeSingle();
+      if (dup) {
+        const { data: balRow } = await admin.from('user_points').select('total').eq('user_id', user.id).maybeSingle();
+        return NextResponse.json({ skipped: true, points: balRow?.total ?? 0 });
+      }
+    }
+
     const { data: current } = await admin.from('user_points').select('total').eq('user_id', user.id).single();
     const newTotal = (current?.total ?? 0) + Math.round(amount);
 

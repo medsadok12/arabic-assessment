@@ -52,10 +52,13 @@ export async function GET() {
     // ── 2. New words not yet in progress, filtered by student's grade ──────
     const { data: allProgress } = await admin
       .from('flashcard_progress')
-      .select('word_id')
+      .select('word_id, level')
       .eq('user_id', user.id);
 
-    const knownIds = (allProgress || []).map(p => p.word_id);
+    const knownIds   = (allProgress || []).map(p => p.word_id);
+    const mastered   = (allProgress || []).filter(p => p.level >= 5).length;
+    const inProgress = (allProgress || []).filter(p => p.level >= 1 && p.level < 5).length;
+    const stats      = { mastered, in_progress: inProgress, total: (allProgress || []).length };
 
     let newWordsQuery = admin
       .from('lexicon_words')
@@ -94,7 +97,7 @@ export async function GET() {
     const newCards = (newWords || []).map(w => ({ ...w, level: 0, is_new: true }));
 
     const cards = shuffle([...dueWords, ...newCards]);
-    return NextResponse.json({ cards, today, grade });
+    return NextResponse.json({ cards, today, grade, stats });
   } catch (e) {
     return NextResponse.json({ cards: [], error: e.message }, { status: 500 });
   }
