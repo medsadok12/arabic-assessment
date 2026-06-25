@@ -5,16 +5,16 @@ import Link from 'next/link';
 
 /* ────────────────────────── fallback words (instant start) ─── */
 const LC_FALLBACK = [
-  { id:'f1',  word:'قِطَّة',   missing_letter:'ق', options:['ق','ك','ع','ج','ح'], emoji:'🐱', topic:'الحيوانات', grade_level:1, category:null },
-  { id:'f2',  word:'كَلْب',   missing_letter:'ك', options:['ك','ق','ع','غ','ج'], emoji:'🐶', topic:'الحيوانات', grade_level:1, category:null },
-  { id:'f3',  word:'بَيْت',   missing_letter:'ب', options:['ب','ت','ن','ف','ث'], emoji:'🏠', topic:'المنزل',    grade_level:1, category:null },
-  { id:'f4',  word:'شَمْس',   missing_letter:'ش', options:['ش','س','ص','ض','ز'], emoji:'☀️', topic:'الطبيعة',   grade_level:1, category:null },
-  { id:'f5',  word:'نَجْم',   missing_letter:'ن', options:['ن','م','ب','ت','ي'], emoji:'⭐', topic:'الطبيعة',   grade_level:1, category:null },
-  { id:'f6',  word:'سَمَك',   missing_letter:'س', options:['س','ش','ص','ث','ز'], emoji:'🐟', topic:'الحيوانات', grade_level:1, category:null },
-  { id:'f7',  word:'تُفَّاح', missing_letter:'ت', options:['ت','ث','ن','ب','ف'], emoji:'🍎', topic:'الفواكه',   grade_level:1, category:null },
-  { id:'f8',  word:'مَاء',    missing_letter:'م', options:['م','ن','ب','ه','و'], emoji:'💧', topic:'الطبيعة',   grade_level:1, category:null },
-  { id:'f9',  word:'كِتَاب',  missing_letter:'ك', options:['ك','ق','ع','غ','خ'], emoji:'📚', topic:'المدرسة',   grade_level:1, category:null },
-  { id:'f10', word:'قَمَر',   missing_letter:'ق', options:['ق','ك','ع','غ','خ'], emoji:'🌙', topic:'الطبيعة',   grade_level:1, category:null },
+  { id:'f1',  word:'قِطَّة',   missing_letter:'ق', options:['ق','ك','ع','ج','ح'], emoji:'🐱', topic:'الحيوانات', grade_level:1, category:'الحيوانات' },
+  { id:'f2',  word:'كَلْب',   missing_letter:'ك', options:['ك','ق','ع','غ','ج'], emoji:'🐶', topic:'الحيوانات', grade_level:1, category:'الحيوانات' },
+  { id:'f3',  word:'بَيْت',   missing_letter:'ب', options:['ب','ت','ن','ف','ث'], emoji:'🏠', topic:'المنزل',    grade_level:1, category:'المنزل' },
+  { id:'f4',  word:'شَمْس',   missing_letter:'ش', options:['ش','س','ص','ض','ز'], emoji:'☀️', topic:'الطبيعة',   grade_level:1, category:'الطبيعة' },
+  { id:'f5',  word:'نَجْم',   missing_letter:'ن', options:['ن','م','ب','ت','ي'], emoji:'⭐', topic:'الطبيعة',   grade_level:1, category:'الطبيعة' },
+  { id:'f6',  word:'سَمَك',   missing_letter:'س', options:['س','ش','ص','ث','ز'], emoji:'🐟', topic:'الحيوانات', grade_level:1, category:'الحيوانات' },
+  { id:'f7',  word:'تُفَّاح', missing_letter:'ت', options:['ت','ث','ن','ب','ف'], emoji:'🍎', topic:'الفواكه',   grade_level:1, category:'الفواكه' },
+  { id:'f8',  word:'مَاء',    missing_letter:'م', options:['م','ن','ب','ه','و'], emoji:'💧', topic:'الطبيعة',   grade_level:1, category:'الطبيعة' },
+  { id:'f9',  word:'كِتَاب',  missing_letter:'ك', options:['ك','ق','ع','غ','خ'], emoji:'📚', topic:'المدرسة',   grade_level:1, category:'المدرسة' },
+  { id:'f10', word:'قَمَر',   missing_letter:'ق', options:['ق','ك','ع','غ','خ'], emoji:'🌙', topic:'الطبيعة',   grade_level:1, category:'الطبيعة' },
 ];
 
 const LC_CACHE_KEY = 'lc_words_cache_v1';
@@ -680,6 +680,7 @@ export default function LetterCatcherGame() {
   const [catMeta,    setCatMeta]    = useState({});
   const [isTeacher,        setIsTeacher]        = useState(false);
   const [loadProgress,     setLoadProgress]     = useState(0);
+  const [pendingCategory,  setPendingCategory]  = useState(undefined); // undefined=grid shown; string/'__all__'=modal open
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [cfg, setCfg] = useState({
     questionsPerRound: 10,
@@ -869,9 +870,26 @@ export default function LetterCatcherGame() {
   if (phase === 'start') {
     const categories = [...new Set(gameWords.map(w => w.category).filter(Boolean))];
 
+    /* modal data when a category was tapped */
+    const modalCatLabel = pendingCategory === '__all__' ? 'كل المجموعات' : pendingCategory;
+    const modalWords    = pendingCategory === '__all__' || pendingCategory === undefined
+      ? gameWords
+      : gameWords.filter(w => w.category === pendingCategory);
+    const modalCount    = Math.min(modalWords.length, isTeacher ? cfg.questionsPerRound : 20);
+    const modalCatObj   = pendingCategory !== '__all__' ? catMeta[pendingCategory] : null;
+    const modalCatStyle = pendingCategory !== '__all__' && pendingCategory !== undefined
+      ? getCatStyle(pendingCategory, categories.indexOf(pendingCategory))
+      : { emoji: '🌟', grad: 'linear-gradient(135deg,#f59e0b,#f97316)' };
+
+    const handleStartFromModal = () => {
+      const catArg = pendingCategory === '__all__' ? null : pendingCategory;
+      setPendingCategory(undefined);
+      startGame(catArg);
+    };
+
     return (
       <div style={{ ...S.page, justifyContent: 'flex-start', paddingTop: 36, paddingBottom: 44 }}>
-        {/* tiny non-blocking progress strip at top — disappears when API load finishes */}
+        {/* non-blocking progress strip */}
         {loadProgress > 0 && loadProgress < 100 && (
           <div style={{ position:'fixed', top:0, left:0, right:0, height:3, zIndex:9999, background:'#ede9fe' }}>
             <div style={{ height:'100%', width:`${loadProgress}%`, background:'#7c3aed', transition:'width .4s ease' }} />
@@ -882,6 +900,10 @@ export default function LetterCatcherGame() {
             0%  { opacity:0; transform:scale(.28) rotate(-10deg); }
             55% { transform:scale(1.14) rotate(2deg); }
             100%{ opacity:1; transform:scale(1) rotate(0deg); }
+          }
+          @keyframes lcModalIn {
+            0%  { opacity:0; transform:scale(.88) translateY(24px); }
+            100%{ opacity:1; transform:scale(1)   translateY(0); }
           }
           .lc-cat {
             cursor:pointer;
@@ -895,9 +917,72 @@ export default function LetterCatcherGame() {
           <SettingsPanel cfg={cfg} onChange={setCfg} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={loadWords} catMeta={catMeta} onCatMetaRefresh={loadCatMeta} />
         )}
 
+        {/* ── STEP 2 MODAL: settings + start button ── */}
+        {pendingCategory !== undefined && (
+          <div
+            style={{
+              position:'fixed', inset:0, zIndex:800,
+              background:'rgba(30,0,60,.55)', backdropFilter:'blur(4px)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              padding:20,
+            }}
+            onClick={(e) => { if (e.target === e.currentTarget) setPendingCategory(undefined); }}
+          >
+            <div style={{
+              background:'#fff', borderRadius:28, padding:'32px 28px', maxWidth:340, width:'100%',
+              textAlign:'center', boxShadow:'0 24px 64px rgba(0,0,0,.4)',
+              animation:'lcModalIn .28s cubic-bezier(.34,1.56,.64,1) both',
+            }}>
+              {/* category badge */}
+              <div style={{
+                display:'inline-flex', alignItems:'center', gap:8,
+                background: modalCatObj?.gradient || modalCatStyle.grad,
+                borderRadius:50, padding:'8px 20px', marginBottom:20,
+              }}>
+                <span style={{ fontSize:'1.6rem' }}>
+                  {modalCatObj?.image_url
+                    ? <img src={modalCatObj.image_url} style={{ width:32, height:32, borderRadius:8, objectFit:'cover' }} />
+                    : (modalCatObj?.emoji || modalCatStyle.emoji)
+                  }
+                </span>
+                <span style={{ fontSize:'1rem', fontWeight:800, color:'#fff', textShadow:'0 1px 4px rgba(0,0,0,.3)' }}>
+                  {modalCatLabel}
+                </span>
+              </div>
+
+              <h3 style={{ margin:'0 0 20px', fontSize:'1.1rem', fontWeight:800, color:'#1f2937' }}>
+                جاهز للصيد؟ 🎯
+              </h3>
+
+              {/* stats */}
+              <div style={{ ...S.statsRow, marginBottom:24 }}>
+                <div style={S.statBox}>
+                  <span style={S.statNum}>{modalCount}</span>
+                  <span style={S.statLbl}>سؤال</span>
+                </div>
+                <div style={S.statDiv} />
+                <div style={S.statBox}>
+                  <span style={S.statNum}>{cfg.optionsCount}</span>
+                  <span style={S.statLbl}>خيارات</span>
+                </div>
+              </div>
+
+              <button style={{ ...S.btnGold, width:'100%', marginBottom:10 }} onClick={handleStartFromModal}>
+                🚀 ابدأ اللعبة
+              </button>
+              <button
+                style={{ background:'none', border:'none', cursor:'pointer', color:'#7c3aed', fontWeight:700, fontSize:'.9rem', fontFamily:'inherit' }}
+                onClick={() => setPendingCategory(undefined)}
+              >
+                ← رجوع للمجموعات
+              </button>
+            </div>
+          </div>
+        )}
+
         <div style={{ width:'100%', maxWidth:580, boxSizing:'border-box', textAlign:'center', position:'relative' }}>
 
-          {/* settings button */}
+          {/* settings button (teachers only) */}
           {isTeacher && (
             <div style={{ textAlign:'left', marginBottom:8 }}>
               <button style={{ ...S.cfgBtn, position:'static' }} onClick={() => setShowCfg(true)}>⚙️ الإعدادات</button>
@@ -910,11 +995,9 @@ export default function LetterCatcherGame() {
             <h1 style={{ fontSize:'1.9rem', fontWeight:900, color:'#fff', margin:'8px 0 4px', textShadow:'0 2px 14px rgba(0,0,0,.35)' }}>
               صيّاد الحروف!
             </h1>
-            {gameWords.length > 0 && (
-              <p style={{ fontSize:'.9rem', color:'rgba(255,255,255,.8)', margin:0 }}>
-                اختر مجموعتك وابدأ الصيد 🎯
-              </p>
-            )}
+            <p style={{ fontSize:'.9rem', color:'rgba(255,255,255,.8)', margin:0 }}>
+              اختر مجموعتك وابدأ الصيد 🎯
+            </p>
           </div>
 
           {/* ── empty / lock ── */}
@@ -938,31 +1021,14 @@ export default function LetterCatcherGame() {
               )}
             </div>
 
-          ) : categories.length === 0 ? (
-            /* ── no categories yet — simple start ── */
-            <div style={{ ...S.centerCard, padding:'28px 20px' }}>
-              <div style={S.statsRow}>
-                <div style={S.statBox}>
-                  <span style={S.statNum}>{Math.min(gameWords.length, isTeacher ? cfg.questionsPerRound : 20)}</span>
-                  <span style={S.statLbl}>سؤال</span>
-                </div>
-                <div style={S.statDiv} />
-                <div style={S.statBox}>
-                  <span style={S.statNum}>{cfg.optionsCount}</span>
-                  <span style={S.statLbl}>خيارات</span>
-                </div>
-              </div>
-              <button style={S.btnGold} onClick={() => startGame(null)}>🚀 ابدأ اللعبة</button>
-            </div>
-
           ) : (
-            /* ── category grid ── */
+            /* ── STEP 1: always show category grid ── */
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
 
               {/* play-all card */}
               {(() => {
-                const allRes = catResults['__all__'];
-                const allPct = allRes ? Math.round((allRes.correct / allRes.total) * 100) : null;
+                const allRes   = catResults['__all__'];
+                const allPct   = allRes ? Math.round((allRes.correct / allRes.total) * 100) : null;
                 const allStars = allPct === null ? 0 : allPct >= 80 ? 3 : allPct >= 50 ? 2 : 1;
                 return (
                   <div
@@ -974,7 +1040,7 @@ export default function LetterCatcherGame() {
                       boxShadow:'0 6px 22px rgba(0,0,0,.2)',
                       animation:'lcCatIn .4s cubic-bezier(.34,1.56,.64,1) both',
                     }}
-                    onClick={() => startGame(null)}
+                    onClick={() => setPendingCategory('__all__')}
                   >
                     <span style={{ fontSize:'2.2rem', lineHeight:1, flexShrink:0 }}>🌟</span>
                     <div style={{ flex:1, textAlign:'right' }}>
@@ -993,61 +1059,63 @@ export default function LetterCatcherGame() {
                 );
               })()}
 
-              {/* category circles */}
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:14 }}>
-                {categories.map((cat, idx) => {
-                  const cs      = getCatStyle(cat, idx);
-                  const custom  = catMeta[cat];
-                  const bgGrad  = custom?.gradient || cs.grad;
-                  const count   = gameWords.filter(w => w.category === cat).length;
-                  const res     = catResults[cat];
-                  const pct     = res ? Math.round((res.correct / res.total) * 100) : null;
-                  const stars   = pct === null ? 0 : pct >= 80 ? 3 : pct >= 50 ? 2 : 1;
-                  return (
-                    <div
-                      key={cat}
-                      className="lc-cat"
-                      style={{
-                        background: bgGrad,
-                        borderRadius: 22,
-                        padding: '18px 8px 14px',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                        boxShadow: '0 8px 28px rgba(0,0,0,.26)',
-                        animation: `lcCatIn .45s ${(idx + 1) * 0.07}s cubic-bezier(.34,1.56,.64,1) both`,
-                        position: 'relative',
-                      }}
-                      onClick={() => startGame(cat)}
-                    >
-                      {custom?.image_url
-                        ? <img src={custom.image_url} style={{ width:56, height:56, borderRadius:14, objectFit:'cover', boxShadow:'0 2px 8px rgba(0,0,0,.22)' }} />
-                        : <span style={{ fontSize:'2.4rem', lineHeight:1 }}>{custom?.emoji || cs.emoji}</span>
-                      }
-                      <span style={{
-                        fontSize:'.78rem', fontWeight:800, color:'#fff',
-                        textShadow:'0 1px 4px rgba(0,0,0,.3)', lineHeight:1.3,
-                        textAlign:'center', padding:'0 4px',
-                      }}>
-                        {cat}
-                      </span>
-                      {res ? (
-                        <>
-                          <span style={{ fontSize:'.72rem', letterSpacing:1, color:'rgba(255,255,255,.95)' }}>
-                            {'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}
-                          </span>
-                          <div style={{ display:'flex', gap:5 }}>
-                            <span style={{ fontSize:'.7rem', background:'#16a34a', color:'#fff', borderRadius:20, padding:'2px 9px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.3)' }}>✓ {res.correct}</span>
-                            <span style={{ fontSize:'.7rem', background:'#dc2626', color:'#fff', borderRadius:20, padding:'2px 9px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.3)' }}>✗ {res.wrong}</span>
-                          </div>
-                        </>
-                      ) : (
-                        <span style={{ fontSize:'.65rem', color:'rgba(255,255,255,.7)', fontWeight:600 }}>
-                          {count} كلمة
+              {/* category grid — show topic as label when no explicit categories */}
+              {categories.length > 0 && (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:14 }}>
+                  {categories.map((cat, idx) => {
+                    const cs      = getCatStyle(cat, idx);
+                    const custom  = catMeta[cat];
+                    const bgGrad  = custom?.gradient || cs.grad;
+                    const count   = gameWords.filter(w => w.category === cat).length;
+                    const res     = catResults[cat];
+                    const pct     = res ? Math.round((res.correct / res.total) * 100) : null;
+                    const stars   = pct === null ? 0 : pct >= 80 ? 3 : pct >= 50 ? 2 : 1;
+                    return (
+                      <div
+                        key={cat}
+                        className="lc-cat"
+                        style={{
+                          background: bgGrad,
+                          borderRadius: 22,
+                          padding: '18px 8px 14px',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                          boxShadow: '0 8px 28px rgba(0,0,0,.26)',
+                          animation: `lcCatIn .45s ${(idx + 1) * 0.07}s cubic-bezier(.34,1.56,.64,1) both`,
+                          position: 'relative',
+                        }}
+                        onClick={() => setPendingCategory(cat)}
+                      >
+                        {custom?.image_url
+                          ? <img src={custom.image_url} style={{ width:56, height:56, borderRadius:14, objectFit:'cover', boxShadow:'0 2px 8px rgba(0,0,0,.22)' }} />
+                          : <span style={{ fontSize:'2.4rem', lineHeight:1 }}>{custom?.emoji || cs.emoji}</span>
+                        }
+                        <span style={{
+                          fontSize:'.78rem', fontWeight:800, color:'#fff',
+                          textShadow:'0 1px 4px rgba(0,0,0,.3)', lineHeight:1.3,
+                          textAlign:'center', padding:'0 4px',
+                        }}>
+                          {cat}
                         </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                        {res ? (
+                          <>
+                            <span style={{ fontSize:'.72rem', letterSpacing:1, color:'rgba(255,255,255,.95)' }}>
+                              {'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}
+                            </span>
+                            <div style={{ display:'flex', gap:5 }}>
+                              <span style={{ fontSize:'.7rem', background:'#16a34a', color:'#fff', borderRadius:20, padding:'2px 9px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.3)' }}>✓ {res.correct}</span>
+                              <span style={{ fontSize:'.7rem', background:'#dc2626', color:'#fff', borderRadius:20, padding:'2px 9px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.3)' }}>✗ {res.wrong}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <span style={{ fontSize:'.65rem', color:'rgba(255,255,255,.7)', fontWeight:600 }}>
+                            {count} كلمة
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -1077,7 +1145,7 @@ export default function LetterCatcherGame() {
           <button style={S.btnGold} onClick={restart}>🔄 العب مرة أخرى</button>
           <button
             style={{ ...S.btnGold, background:'linear-gradient(135deg,#5b4fc4,#7c3aed)', marginTop:-8 }}
-            onClick={() => { setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); }}
+            onClick={() => { setPhase('start'); setPendingCategory(undefined); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); }}
           >🏠 اختر مجموعة أخرى</button>
           <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
         </div>
