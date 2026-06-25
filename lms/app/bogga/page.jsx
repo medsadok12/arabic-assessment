@@ -13,6 +13,7 @@ import TeacherSpace                    from '../../components/TeacherSpace';
 import NotificationBell                from '../../components/NotificationBell';
 import FinancialsTab                   from '../../components/FinancialsTab';
 import LifeSceneSimulator              from '../../components/LifeSceneSimulator';
+import StoryManager                    from '../teacher/stories/StoryManager';
 import { useLanguage }                  from '../../contexts/LanguageContext';
 
 // ── Time slots 00:00 → 23:55, 5-min increments (288 slots) ─────────────────
@@ -1213,6 +1214,7 @@ export default function BoggarAdminPage() {
     { id: 'admins',      label: tr('admin.tabs.admins'),      show: isSuperAdmin },
     { id: 'users',       label: tr('admin.tabs.users'),       show: isSuperAdmin },
     { id: 'visitor_qa',  label: tr('admin.tabs.visitor_qa'), show: isSuperAdmin },
+    { id: 'stories',     label: 'القصص 📚',                  show: true },
     { id: 'puzzles',     label: 'الأحاجي 🧩',                show: isSuperAdmin },
     { id: 'setup',       label: tr('admin.tabs.setup'),       show: canSee('setup') },
   ].filter(tab => tab.show);
@@ -1917,6 +1919,13 @@ export default function BoggarAdminPage() {
               }}>
                 <LessonLogbookView lang={lang} />
               </div>
+            </div>
+          )}
+
+          {/* ══ Stories ════════════════════════════════════════════ */}
+          {activeTab === 'stories' && (
+            <div style={{ background:'#fff', borderRadius:20, border:'1.5px solid var(--border)', padding:'4px 8px', boxShadow:'0 2px 12px rgba(24,95,165,.05)' }}>
+              <StoryManager />
             </div>
           )}
 

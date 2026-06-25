@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 const ACCENTS = [
@@ -28,7 +28,18 @@ function StatusBadge({ status }) {
 }
 
 export default function StoryManager({ initialStories }) {
-  const [stories,   setStories]   = useState(initialStories);
+  const [stories,   setStories]   = useState(initialStories ?? null);
+
+  useEffect(() => {
+    if (initialStories !== undefined) return;
+    fetch('/api/stories').then(r => r.json()).then(j => setStories(j.stories || [])).catch(() => setStories([]));
+  }, []);
+
+  if (stories === null) return (
+    <div style={{ textAlign:'center', padding:'60px 0', color:'#94a3b8', fontFamily:'Cairo,Tajawal,sans-serif', fontWeight:700 }}>
+      ⏳ جارٍ تحميل القصص...
+    </div>
+  );
   const [view,      setView]      = useState('list');   // 'list' | 'create' | 'edit'
   const [form,      setForm]      = useState(EMPTY_FORM);
   const [editId,    setEditId]    = useState(null);
