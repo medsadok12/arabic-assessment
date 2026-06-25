@@ -131,64 +131,59 @@ const TAG_COLORS = {
 };
 
 /* ─────────────────────────────────────────────────────────
-   ثوابت تخطيط المسار
+   ثوابت تخطيط المسار — نقاط دائرية صغيرة على الطريق
 ───────────────────────────────────────────────────────── */
-// نسب أفقية (% من عرض الحاوية) لكل بطاقة — تتعرّج يساراً ويميناً
-const XPCTS = [50, 71, 29, 71, 29, 71, 29, 71, 29, 71, 29, 71, 29, 71, 50];
+// يمين (82%) → يسار (18%) → يمين → يسار ...
+const XPCTS = [82, 18, 82, 18, 82, 18, 82, 18, 82, 18, 82, 18, 82, 18, 82];
 const VW    = 720;   // عرض viewBox للـ SVG
-const VGAP  = 218;   // مسافة رأسية بين قمم البطاقات
-const TOP0  = 55;    // offset من أعلى حاوية المسار
-const CCY   = 92;    // مركز البطاقة (top + CCY = مركز الأيقونة)
+const VGAP  = 148;   // مسافة رأسية بين مراكز النقاط
+const TOP0  = 60;    // offset علوي
+const NR    = 42;    // نصف قطر النقطة (84px قطر)
 
-function cardPos(i) {
-  return { x: Math.round(XPCTS[i] * VW / 100), y: TOP0 + i * VGAP + CCY };
+function npos(i) {
+  return { x: Math.round(XPCTS[i] * VW / 100), y: TOP0 + i * VGAP };
 }
-const ALL_POS = RESOURCES.map((_, i) => cardPos(i));
-const TOTAL_H = TOP0 + (RESOURCES.length - 1) * VGAP + CCY + 140;
+const ALL_POS = RESOURCES.map((_, i) => npos(i));
+const TOTAL_H = TOP0 + (RESOURCES.length - 1) * VGAP + NR * 2 + 90;
 
-// مسار SVG: منحنيات كوبيكية ناعمة تمر بين البطاقات
 function makePath() {
   const p = ALL_POS;
-  let d = `M ${p[0].x} ${TOP0 - 20}`;
+  let d = `M ${p[0].x} ${p[0].y}`;
   for (let i = 0; i < p.length - 1; i++) {
-    const mY = Math.round((p[i].y + p[i + 1].y) / 2);
+    const mY = (p[i].y + p[i + 1].y) / 2;
     d += ` C ${p[i].x} ${mY},${p[i + 1].x} ${mY},${p[i + 1].x} ${p[i + 1].y}`;
   }
   return d;
 }
 const PATH_D = makePath();
 
-// ألوان مقاطع المسار
 const SEG_COLORS = [
   '#f472b6','#a78bfa','#34d399','#fbbf24',
   '#fb923c','#818cf8','#22d3ee','#f472b6',
 ];
 
 function makeSegments() {
-  const segs = [];
-  for (let i = 0; i < ALL_POS.length - 1; i++) {
-    const p1 = ALL_POS[i], p2 = ALL_POS[i + 1];
-    const mY = Math.round((p1.y + p2.y) / 2);
-    segs.push({
+  return ALL_POS.slice(0, -1).map((p1, i) => {
+    const p2 = ALL_POS[i + 1];
+    const mY = (p1.y + p2.y) / 2;
+    return {
       d: `M ${p1.x} ${p1.y} C ${p1.x} ${mY},${p2.x} ${mY},${p2.x} ${p2.y}`,
       color: SEG_COLORS[Math.floor(i / 2) % SEG_COLORS.length],
-    });
-  }
-  return segs;
+    };
+  });
 }
 const SEGMENTS = makeSegments();
 
-// نقاط وسيطة على المسار
 function makeDots() {
   const dots = [];
   for (let i = 0; i < ALL_POS.length - 1; i++) {
     const p1 = ALL_POS[i], p2 = ALL_POS[i + 1];
     const mY = (p1.y + p2.y) / 2;
-    for (const t of [0.3, 0.7]) {
+    for (const t of [0.33, 0.67]) {
       const mt = 1 - t;
       const bx = mt*mt*mt*p1.x + 3*mt*mt*t*p1.x + 3*mt*t*t*p2.x + t*t*t*p2.x;
       const by = mt*mt*mt*p1.y + 3*mt*mt*t*mY   + 3*mt*t*t*mY   + t*t*t*p2.y;
-      dots.push({ x: Math.round(bx), y: Math.round(by) });
+      dots.push({ x: Math.round(bx), y: Math.round(by), ci: i });
     }
   }
   return dots;
@@ -201,16 +196,16 @@ const DOTS = makeDots();
 const CANDIES = [
   { e:'🍭', top:'2%',  left:'4%',  s:5,   d:0    },
   { e:'⭐', top:'5%',  right:'6%', s:6.5, d:1    },
-  { e:'🍬', top:'10%', left:'16%', s:4,   d:.4   },
-  { e:'✨', top:'17%', right:'4%', s:5.5, d:2    },
-  { e:'🌟', top:'24%', left:'3%',  s:6,   d:1.5  },
-  { e:'🍭', top:'32%', right:'12%',s:5,   d:.8   },
-  { e:'🍦', top:'44%', left:'8%',  s:4.5, d:2.5  },
-  { e:'🎀', top:'54%', right:'5%', s:5,   d:1.2  },
-  { e:'🍬', top:'63%', left:'5%',  s:6,   d:.3   },
-  { e:'⭐', top:'72%', right:'10%',s:5,   d:1.8  },
-  { e:'🌈', top:'82%', left:'7%',  s:4,   d:.7   },
-  { e:'✨', top:'90%', right:'6%', s:5.5, d:2.2  },
+  { e:'🍬', top:'12%', left:'16%', s:4,   d:.4   },
+  { e:'✨', top:'19%', right:'4%', s:5.5, d:2    },
+  { e:'🌟', top:'27%', left:'3%',  s:6,   d:1.5  },
+  { e:'🍭', top:'36%', right:'12%',s:5,   d:.8   },
+  { e:'🍦', top:'46%', left:'8%',  s:4.5, d:2.5  },
+  { e:'🎀', top:'56%', right:'5%', s:5,   d:1.2  },
+  { e:'🍬', top:'65%', left:'5%',  s:6,   d:.3   },
+  { e:'⭐', top:'74%', right:'10%',s:5,   d:1.8  },
+  { e:'🌈', top:'83%', left:'7%',  s:4,   d:.7   },
+  { e:'✨', top:'91%', right:'6%', s:5.5, d:2.2  },
 ];
 
 /* ─────────────────────────────────────────────────────────
@@ -229,14 +224,15 @@ function fileToBase64(file) {
    المكوّن الرئيسي
 ══════════════════════════════════════════════════════════ */
 export default function LibraryGrid({ initialMeta, isTeacher }) {
-  const [cardMeta,  setCardMeta]  = useState(initialMeta || {});
-  const [editing,   setEditing]   = useState(null);
-  const [editIcon,  setEditIcon]  = useState('');
-  const [editImg,   setEditImg]   = useState(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDesc,  setEditDesc]  = useState('');
-  const [saving,    setSaving]    = useState(false);
-  const [msg,       setMsg]       = useState(null);
+  const [cardMeta,   setCardMeta]   = useState(initialMeta || {});
+  const [editing,    setEditing]    = useState(null);
+  const [editIcon,   setEditIcon]   = useState('');
+  const [editImg,    setEditImg]    = useState(null);
+  const [editTitle,  setEditTitle]  = useState('');
+  const [editDesc,   setEditDesc]   = useState('');
+  const [saving,     setSaving]     = useState(false);
+  const [msg,        setMsg]        = useState(null);
+  const [activeNode, setActiveNode] = useState(null);
   const fileRef = useRef();
 
   const openEdit = (r) => {
@@ -247,6 +243,7 @@ export default function LibraryGrid({ initialMeta, isTeacher }) {
     setEditTitle(meta.title || r.title);
     setEditDesc(meta.description || r.desc);
     setMsg(null);
+    setActiveNode(null);
   };
   const closeEdit = () => { setEditing(null); setMsg(null); };
 
@@ -257,7 +254,7 @@ export default function LibraryGrid({ initialMeta, isTeacher }) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          card_key: editing,
+          card_key:    editing,
           icon:        editImg ? null : (editIcon || null),
           image_url:   editImg || null,
           title:       editTitle || null,
@@ -288,6 +285,7 @@ export default function LibraryGrid({ initialMeta, isTeacher }) {
   };
 
   const editingResource = RESOURCES.find(r => r.key === editing);
+  const activeResource  = activeNode !== null ? RESOURCES[activeNode] : null;
 
   return (
     <>
@@ -298,148 +296,107 @@ export default function LibraryGrid({ initialMeta, isTeacher }) {
           33%      { transform:translateY(-13px) rotate(-5deg) scale(1.04); }
           66%      { transform:translateY(-6px)  rotate(4deg)  scale(.97); }
         }
-        @keyframes libCardIn {
-          from { opacity:0; transform:translateX(-50%) translateY(22px) scale(.88); }
-          to   { opacity:1; transform:translateX(-50%) translateY(0)    scale(1); }
+        @keyframes libNodeIn {
+          from { opacity:0; transform:translateX(-50%) scale(.5) translateY(14px); }
+          to   { opacity:1; transform:translateX(-50%) scale(1)  translateY(0); }
         }
         @keyframes libPingRing {
-          0%   { transform:scale(1); opacity:.7; }
-          100% { transform:scale(2.2); opacity:0; }
+          0%   { transform:scale(1); opacity:.75; }
+          100% { transform:scale(2.6); opacity:0; }
+        }
+        @keyframes libPopIn {
+          from { opacity:0; transform:scale(.84) translateY(10px); }
+          to   { opacity:1; transform:scale(1)   translateY(0); }
         }
 
-        /* حاوية الخلفية الكاملة */
         .lib-bg {
-          position: relative;
-          margin: -8px -16px -32px;
-          padding: 0 0 60px;
-          background: linear-gradient(180deg,
-            #0f0524 0%, #1a0540 10%, #220a50 22%,
-            #1a1060 38%, #0e1545 58%, #08112a 78%, #060e22 100%);
-          overflow: hidden;
-          min-height: 100vh;
-          direction: rtl;
-          font-family: 'Cairo','Tajawal',sans-serif;
+          position:relative; margin:-8px -16px -32px; padding:0 0 60px;
+          background:linear-gradient(180deg,
+            #0f0524 0%,#1a0540 10%,#220a50 22%,
+            #1a1060 38%,#0e1545 58%,#08112a 78%,#060e22 100%);
+          overflow:hidden; min-height:100vh;
+          direction:rtl; font-family:'Cairo','Tajawal',sans-serif;
         }
-
-        /* الهيدر */
         .lib-hero {
-          text-align: center;
-          padding: 40px 20px 24px;
-          position: relative; z-index: 2;
+          text-align:center; padding:40px 20px 20px;
+          position:relative; z-index:2;
         }
         .lib-hero h1 {
-          font-size: 2rem; font-weight: 900; color: #fff; margin: 0 0 6px;
-          text-shadow: 0 0 40px rgba(244,114,182,.65), 0 2px 8px rgba(0,0,0,.5);
+          font-size:2rem; font-weight:900; color:#fff; margin:0 0 6px;
+          text-shadow:0 0 40px rgba(244,114,182,.65),0 2px 8px rgba(0,0,0,.5);
         }
-        .lib-hero p { color: #c4b5fd; font-size: .95rem; font-weight: 600; margin: 0 0 16px; }
+        .lib-hero p { color:#c4b5fd; font-size:.95rem; font-weight:600; margin:0 0 14px; }
 
-        /* حاوية المسار */
         .lib-path-wrap {
-          position: relative;
-          max-width: 740px;
-          margin: 0 auto;
-          padding: 0 10px;
+          position:relative; max-width:740px; margin:0 auto; padding:0 10px;
         }
         .lib-path-svg {
-          position: absolute; top: 0; left: 0;
-          width: 100%; pointer-events: none;
+          position:absolute; top:0; left:0; width:100%; pointer-events:none;
         }
 
-        /* البطاقة الواحدة على المسار */
+        /* نقطة على المسار */
         .lib-node {
-          position: absolute;
-          width: 185px;
-          transform: translateX(-50%);
-          animation: libCardIn .45s cubic-bezier(.34,1.56,.64,1) both;
-          z-index: 3;
+          position:absolute;
+          transform:translateX(-50%);
+          animation:libNodeIn .42s cubic-bezier(.34,1.56,.64,1) both;
+          z-index:4;
+          width:${NR * 2}px;
         }
-        .lib-node-inner {
-          border-radius: 20px;
-          padding: 14px 12px 12px;
-          display: flex; flex-direction: column; align-items: center;
-          text-align: center; gap: 5px; border: 2px solid;
-          text-decoration: none; cursor: pointer;
-          position: relative; overflow: hidden;
-          background: rgba(255,255,255,.96);
-          backdrop-filter: blur(14px);
-          transition: transform .22s cubic-bezier(.34,1.56,.64,1),
-                      box-shadow .2s ease;
+        .lib-node-btn {
+          width:${NR * 2}px; height:${NR * 2}px; border-radius:50%;
+          display:flex; align-items:center; justify-content:center;
+          position:relative; overflow:hidden;
+          border:4px solid rgba(255,255,255,.22);
+          transition:transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
+          cursor:pointer; outline:none; padding:0;
         }
-        .lib-node-inner:hover {
-          transform: translateY(-7px) scale(1.04);
-        }
-        .lib-node-inner.coming {
-          opacity: .75; cursor: default;
-        }
-        .lib-node-inner.coming:hover { transform: none; }
+        .lib-node-btn:hover  { transform:scale(1.2) translateY(-5px); }
+        .lib-node-btn:active { transform:scale(.93); transition-duration:.08s; }
 
-        /* حلقة توهج للبطاقات الجاهزة */
-        .lib-glow-ring {
-          position: absolute; inset: -6px;
-          border-radius: 26px;
-          pointer-events: none; z-index: -1;
-          opacity: 0;
-          transition: opacity .3s;
+        .lib-node-num {
+          position:absolute; top:-5px; right:-5px; z-index:2;
+          background:rgba(255,255,255,.92); color:#1e293b;
+          border-radius:50%; width:20px; height:20px;
+          font-size:.56rem; font-weight:900; line-height:1;
+          display:flex; align-items:center; justify-content:center;
+          box-shadow:0 2px 6px rgba(0,0,0,.35);
+          pointer-events:none;
         }
-        .lib-node-inner:hover .lib-glow-ring { opacity: 1; }
-
-        .lib-icon-wrap {
-          width: 52px; height: 52px; border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 1.9rem; flex-shrink: 0; overflow: hidden;
+        .lib-node-label {
+          position:absolute; top:${NR * 2 + 7}px;
+          left:50%; transform:translateX(-50%);
+          width:110px; text-align:center;
+          color:#e2e8f0; font-size:.67rem; font-weight:700; line-height:1.3;
+          text-shadow:0 1px 6px rgba(0,0,0,.9);
+          white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+          pointer-events:none;
         }
-        .lib-tag {
-          position: absolute; top: 9px; right: 9px;
-          border-radius: 20px; padding: 2px 8px;
-          font-size: .62rem; font-weight: 800;
-        }
-        .lib-edit-btn {
-          position: absolute; top: 9px; left: 9px;
-          background: rgba(255,255,255,.9); border: none; border-radius: 8px;
-          width: 26px; height: 26px; cursor: pointer; font-size: .78rem;
-          display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 2px 6px rgba(0,0,0,.15);
-          opacity: 0; transition: opacity .18s; z-index: 2;
-        }
-        .lib-node-inner:hover .lib-edit-btn { opacity: 1; }
-        .lib-card-title {
-          font-size: .88rem; font-weight: 800;
-          color: #1e293b; line-height: 1.3; margin: 0;
-        }
-        .lib-card-desc {
-          font-size: .7rem; color: #64748b;
-          line-height: 1.45; margin: 0; flex: 1;
-        }
-        .lib-start-btn {
-          display: inline-block; border: none; border-radius: 50px;
-          padding: 5px 14px; color: #fff; font-size: .74rem; font-weight: 700;
-          cursor: pointer; font-family: 'Cairo','Tajawal',sans-serif;
-          transition: transform .16s, box-shadow .16s;
-          box-shadow: 0 3px 10px rgba(0,0,0,.2); text-decoration: none;
-          margin-top: 2px;
-        }
-        .lib-start-btn:hover { transform: scale(1.07); box-shadow: 0 5px 16px rgba(0,0,0,.25); }
-        .lib-coming-badge {
-          display: inline-block; background: #f1f5f9; color: #94a3b8;
-          border-radius: 50px; padding: 4px 12px; font-size: .7rem;
-          font-weight: 700; border: 1.5px dashed #cbd5e1; margin-top: 2px;
-        }
-
-        /* نقاط التوهج خلف بعض البطاقات */
         .lib-ping {
-          position: absolute; border-radius: 50%;
-          animation: libPingRing 2.2s ease-out infinite;
-          pointer-events: none; z-index: 2;
+          position:absolute; border-radius:50%; pointer-events:none;
+          top:50%; left:50%; transform:translate(-50%,-50%);
+          animation:libPingRing 2.4s ease-out infinite;
         }
 
-        @media (max-width: 600px) {
-          .lib-bg { margin: -8px -12px -24px; }
-          .lib-hero h1 { font-size: 1.5rem; }
-          .lib-node { width: 148px; }
-          .lib-icon-wrap { width: 44px; height: 44px; font-size: 1.6rem; }
-          .lib-card-title { font-size: .8rem; }
-          .lib-card-desc { font-size: .65rem; }
-          .lib-start-btn { font-size: .68rem; padding: 4px 11px; }
+        /* نافذة النشاط */
+        .lib-popup-bg {
+          position:fixed; inset:0; background:rgba(0,0,0,.58);
+          z-index:2000; display:flex; align-items:center; justify-content:center;
+          padding:20px;
+        }
+        .lib-popup {
+          background:#fff; border-radius:24px; padding:22px 18px 20px;
+          width:100%; max-width:290px; text-align:center;
+          animation:libPopIn .22s cubic-bezier(.34,1.56,.64,1) both;
+          position:relative;
+        }
+
+        @media (max-width:600px) {
+          .lib-bg { margin:-8px -12px -24px; }
+          .lib-hero h1 { font-size:1.5rem; }
+          .lib-node { width:${Math.round(NR * 1.72)}px; }
+          .lib-node-btn { width:${Math.round(NR * 1.72)}px; height:${Math.round(NR * 1.72)}px; font-size:1.6rem; }
+          .lib-node-label { font-size:.6rem; width:88px; top:${Math.round(NR * 1.72) + 7}px; }
+          .lib-node-num { width:17px; height:17px; font-size:.5rem; }
         }
       `}</style>
 
@@ -448,10 +405,10 @@ export default function LibraryGrid({ initialMeta, isTeacher }) {
 
         {/* أقواس ضوئية محيطية */}
         <div aria-hidden="true" style={{ position:'absolute', inset:0, pointerEvents:'none', overflow:'hidden' }}>
-          <div style={{ position:'absolute', width:400, height:400, top:-60, left:-90, borderRadius:'50%', background:'radial-gradient(circle,#f472b6,transparent 70%)', opacity:.22, filter:'blur(40px)' }} />
-          <div style={{ position:'absolute', width:340, height:340, top:'26%', right:-70, borderRadius:'50%', background:'radial-gradient(circle,#818cf8,transparent 70%)', opacity:.18, filter:'blur(38px)' }} />
-          <div style={{ position:'absolute', width:360, height:360, top:'56%', left:-80, borderRadius:'50%', background:'radial-gradient(circle,#34d399,transparent 70%)', opacity:.17, filter:'blur(40px)' }} />
-          <div style={{ position:'absolute', width:300, height:300, top:'82%', right:-60, borderRadius:'50%', background:'radial-gradient(circle,#fb923c,transparent 70%)', opacity:.18, filter:'blur(36px)' }} />
+          <div style={{ position:'absolute', width:400, height:400, top:-60, left:-90, borderRadius:'50%', background:'radial-gradient(circle,#f472b6,transparent 70%)', opacity:.22, filter:'blur(40px)' }}/>
+          <div style={{ position:'absolute', width:340, height:340, top:'26%', right:-70, borderRadius:'50%', background:'radial-gradient(circle,#818cf8,transparent 70%)', opacity:.18, filter:'blur(38px)' }}/>
+          <div style={{ position:'absolute', width:360, height:360, top:'56%', left:-80, borderRadius:'50%', background:'radial-gradient(circle,#34d399,transparent 70%)', opacity:.17, filter:'blur(40px)' }}/>
+          <div style={{ position:'absolute', width:300, height:300, top:'82%', right:-60, borderRadius:'50%', background:'radial-gradient(circle,#fb923c,transparent 70%)', opacity:.18, filter:'blur(36px)' }}/>
         </div>
 
         {/* حلوى طائرة */}
@@ -459,10 +416,9 @@ export default function LibraryGrid({ initialMeta, isTeacher }) {
           {CANDIES.map((c, i) => (
             <span key={i} style={{
               position:'absolute', fontSize:'1.75rem', lineHeight:1,
-              top:c.top, [c.left?'left':'right']: c.left||c.right,
-              opacity:.28,
+              top:c.top, [c.left ? 'left' : 'right']: c.left || c.right,
+              opacity:.28, userSelect:'none',
               animation:`libFloat ${c.s}s ease-in-out infinite ${c.d}s`,
-              userSelect:'none',
             }}>{c.e}</span>
           ))}
         </div>
@@ -474,12 +430,12 @@ export default function LibraryGrid({ initialMeta, isTeacher }) {
           <p>اختر نشاطاً وابدأ مغامرتك في اللغة العربية!</p>
           {isTeacher && (
             <span style={{ background:'rgba(255,255,255,.12)', color:'#a5f3fc', borderRadius:20, padding:'3px 14px', fontSize:'.78rem', fontWeight:700, border:'1px solid rgba(165,243,252,.3)' }}>
-              ✏️ حرّك الماوس فوق أي بطاقة للتعديل
+              ✏️ انقر على أي نشاط ثم اضغط زر التعديل
             </span>
           )}
         </div>
 
-        {/* ═══ حاوية المسار والبطاقات ═══ */}
+        {/* ═══ حاوية المسار والنقاط ═══ */}
         <div className="lib-path-wrap" style={{ height: TOTAL_H }}>
 
           {/* SVG المسار */}
@@ -489,124 +445,162 @@ export default function LibraryGrid({ initialMeta, isTeacher }) {
             preserveAspectRatio="xMidYMid meet"
             style={{ height: TOTAL_H }}
           >
-            {/* ظل المسار */}
-            <path d={PATH_D} stroke="rgba(0,0,0,.45)" strokeWidth={88} strokeLinecap="round" fill="none"/>
+            {/* ظل */}
+            <path d={PATH_D} stroke="rgba(0,0,0,.55)" strokeWidth={72} strokeLinecap="round" fill="none"/>
             {/* قاعدة داكنة */}
-            <path d={PATH_D} stroke="#1e0a4a" strokeWidth={74} strokeLinecap="round" fill="none"/>
+            <path d={PATH_D} stroke="#1a0848" strokeWidth={58} strokeLinecap="round" fill="none"/>
             {/* مقاطع ملونة */}
             {SEGMENTS.map((seg, i) => (
-              <path key={i} d={seg.d} stroke={seg.color} strokeWidth={58} strokeLinecap="round" fill="none" opacity=".82"/>
+              <path key={i} d={seg.d} stroke={seg.color} strokeWidth={44} strokeLinecap="round" fill="none" opacity=".82"/>
             ))}
-            {/* وميض مركزي */}
-            <path d={PATH_D} stroke="rgba(255,255,255,.14)" strokeWidth={18} strokeLinecap="round" fill="none" strokeDasharray="1 52"/>
+            {/* شريط وميض مركزي */}
+            <path d={PATH_D} stroke="rgba(255,255,255,.13)" strokeWidth={12} strokeLinecap="round" fill="none" strokeDasharray="1 38"/>
             {/* حافة لامعة */}
-            <path d={PATH_D} stroke="rgba(255,255,255,.2)" strokeWidth={2.5} strokeLinecap="round" fill="none" strokeDasharray="30 22"/>
+            <path d={PATH_D} stroke="rgba(255,255,255,.18)" strokeWidth={2} strokeLinecap="round" fill="none" strokeDasharray="22 16"/>
             {/* نقاط وسيطة */}
             {DOTS.map((d, i) => (
-              <circle key={i} cx={d.x} cy={d.y} r={i % 3 === 0 ? 7 : 5}
-                fill={SEG_COLORS[Math.floor(i / 4) % SEG_COLORS.length]} opacity=".6"/>
+              <circle key={i}
+                cx={d.x} cy={d.y}
+                r={i % 2 === 0 ? 5.5 : 3.5}
+                fill={SEG_COLORS[Math.floor(i / 4) % SEG_COLORS.length]}
+                opacity=".7"
+              />
             ))}
           </svg>
 
-          {/* البطاقات */}
+          {/* ═══ النقاط على المسار ═══ */}
           {RESOURCES.map((r, i) => {
             const meta         = cardMeta[r.key] || {};
-            const displayTitle = meta.title       || r.title;
-            const displayDesc  = meta.description || r.desc;
-            const displayImg   = meta.image_url   || null;
-            const displayIcon  = displayImg ? null : (meta.icon || r.icon);
-            const tagStyle     = TAG_COLORS[r.tag] ?? { bg: '#f1f5f9', color: '#475569' };
+            const displayTitle = meta.title || r.title;
+            const displayIcon  = meta.image_url ? null : (meta.icon || r.icon);
+            const displayImg   = meta.image_url || null;
             const pos          = ALL_POS[i];
-            const topPx        = TOP0 + i * VGAP;
-
-            /* حلقة نبض للبطاقات الجاهزة */
-            const showPing = r.ready && (i < 3 || i === 7);
-
-            const cardInner = (
-              <>
-                {showPing && (
-                  <div className="lib-ping" style={{
-                    width: 185, height: 185, top: -5, left: -5,
-                    border: `2.5px solid ${r.accent}55`,
-                    animationDelay: `${i * 0.3}s`,
-                  }}/>
-                )}
-                {/* زجاجية الشبح */}
-                <div className="lib-glow-ring" style={{
-                  background: `radial-gradient(ellipse at center, ${r.accent}25, transparent 70%)`,
-                  boxShadow: `0 0 28px ${r.accent}55`,
-                }}/>
-
-                {/* أيقونة تعديل للمعلم */}
-                {isTeacher && (
-                  <button
-                    className="lib-edit-btn"
-                    onClick={e => { e.preventDefault(); e.stopPropagation(); openEdit(r); }}
-                    title="تعديل البطاقة"
-                  >✏️</button>
-                )}
-
-                {/* وسم المستوى */}
-                <span className="lib-tag" style={{ background: tagStyle.bg, color: tagStyle.color }}>
-                  {r.tag}
-                </span>
-
-                {/* الأيقونة */}
-                <div className="lib-icon-wrap" style={{ background: r.iconBg, marginTop: 14 }}>
-                  {displayImg
-                    ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                    : displayIcon
-                  }
-                </div>
-
-                {/* العنوان */}
-                <p className="lib-card-title">{displayTitle}</p>
-
-                {/* الوصف */}
-                <p className="lib-card-desc">{displayDesc}</p>
-
-                {/* زر الانطلاق */}
-                {r.ready
-                  ? <span className="lib-start-btn" style={{ background: r.btnBg }}>ابدأ الآن ←</span>
-                  : <span className="lib-coming-badge">قريباً…</span>
-                }
-              </>
-            );
+            const showPing     = r.ready && i < 5;
+            const nodeGrad     = r.ready
+              ? (r.btnBg || `linear-gradient(135deg,${r.accent},${r.accent}bb)`)
+              : 'linear-gradient(135deg,#374151,#4b5563)';
 
             return (
               <div
                 key={r.key}
                 className="lib-node"
-                style={{
-                  top: topPx,
-                  left: `${XPCTS[i]}%`,
-                  animationDelay: `${i * 0.055}s`,
-                }}
+                style={{ top: pos.y - NR, left: `${XPCTS[i]}%`, animationDelay: `${i * 0.065}s` }}
+                onClick={() => setActiveNode(activeNode === i ? null : i)}
               >
-                {r.ready ? (
-                  <Link
-                    href={r.link}
-                    className="lib-node-inner"
-                    style={{ background: r.bg, borderColor: r.border, boxShadow: `0 6px 24px ${r.accent}22` }}
-                  >
-                    {cardInner}
-                  </Link>
-                ) : (
-                  <div
-                    className="lib-node-inner coming"
-                    style={{ background: r.bg, borderColor: r.border }}
-                  >
-                    {cardInner}
-                  </div>
+                {/* حلقة نبض للنشاطات الجاهزة */}
+                {showPing && (
+                  <div className="lib-ping" style={{
+                    width: NR * 2 + 22, height: NR * 2 + 22,
+                    border: `2.5px solid ${r.accent}77`,
+                    animationDelay: `${i * 0.35}s`,
+                  }}/>
                 )}
+                {showPing && (
+                  <div className="lib-ping" style={{
+                    width: NR * 2 + 10, height: NR * 2 + 10,
+                    border: `1.5px solid ${r.accent}55`,
+                    animationDelay: `${i * 0.35 + 0.8}s`,
+                  }}/>
+                )}
+
+                {/* رقم النقطة */}
+                <span className="lib-node-num">{i + 1}</span>
+
+                {/* دائرة النقطة */}
+                <button
+                  className="lib-node-btn"
+                  aria-label={displayTitle}
+                  style={{
+                    background: nodeGrad,
+                    boxShadow: r.ready
+                      ? `0 0 0 4px rgba(255,255,255,.15), 0 8px 28px ${r.accent}66`
+                      : '0 4px 16px rgba(0,0,0,.45)',
+                  }}
+                >
+                  {/* الأيقونة */}
+                  {displayImg
+                    ? <img src={displayImg} alt="" style={{ width:'60%', height:'60%', objectFit:'cover', borderRadius:'50%', filter:r.ready?'none':'grayscale(1) brightness(.55)' }}/>
+                    : <span style={{ fontSize:'1.9rem', lineHeight:1, filter:r.ready?'none':'grayscale(1) brightness(.55)' }}>{displayIcon}</span>
+                  }
+                  {/* طبقة قفل */}
+                  {!r.ready && (
+                    <span style={{ position:'absolute', inset:0, borderRadius:'50%', background:'rgba(0,0,0,.38)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1rem' }}>🔒</span>
+                  )}
+                </button>
+
+                {/* اسم النشاط تحت النقطة */}
+                <span className="lib-node-label">{displayTitle}</span>
               </div>
             );
           })}
         </div>
 
-        {/* مسافة سفلية */}
-        <div style={{ height: 40 }} />
+        <div style={{ height: 40 }}/>
       </div>
+
+      {/* ═══════════════════════════════════════════
+          نافذة تفاصيل النشاط عند النقر
+      ═══════════════════════════════════════════ */}
+      {activeNode !== null && activeResource && (() => {
+        const r            = activeResource;
+        const meta         = cardMeta[r.key] || {};
+        const displayTitle = meta.title       || r.title;
+        const displayDesc  = meta.description || r.desc;
+        const displayImg   = meta.image_url   || null;
+        const displayIcon  = displayImg ? null : (meta.icon || r.icon);
+        const tagStyle     = TAG_COLORS[r.tag] ?? { bg:'#f1f5f9', color:'#475569' };
+
+        return (
+          <div className="lib-popup-bg" onClick={() => setActiveNode(null)}>
+            <div
+              className="lib-popup"
+              style={{ boxShadow: `0 20px 60px ${r.accent}55` }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* إغلاق */}
+              <button
+                onClick={() => setActiveNode(null)}
+                style={{ position:'absolute', top:12, left:12, background:'#f3f4f6', border:'none', borderRadius:'50%', width:30, height:30, cursor:'pointer', fontSize:'1rem', display:'flex', alignItems:'center', justifyContent:'center' }}
+              >✕</button>
+
+              {/* تعديل المعلم */}
+              {isTeacher && (
+                <button
+                  onClick={() => openEdit(r)}
+                  style={{ position:'absolute', top:12, right:12, background:'#eff6ff', border:'none', borderRadius:'50%', width:30, height:30, cursor:'pointer', fontSize:'.85rem', display:'flex', alignItems:'center', justifyContent:'center' }}
+                >✏️</button>
+              )}
+
+              {/* الأيقونة */}
+              <div style={{ width:72, height:72, borderRadius:'50%', background:r.iconBg||'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'2.4rem', margin:'0 auto 12px', border:`3px solid ${r.accent}33`, overflow:'hidden' }}>
+                {displayImg
+                  ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                  : displayIcon
+                }
+              </div>
+
+              {/* الوسم */}
+              <span style={{ background:tagStyle.bg, color:tagStyle.color, borderRadius:20, padding:'2px 10px', fontSize:'.65rem', fontWeight:800 }}>{r.tag}</span>
+
+              {/* العنوان */}
+              <h3 style={{ margin:'10px 0 6px', color:'#1e293b', fontSize:'1rem', fontWeight:800 }}>{displayTitle}</h3>
+
+              {/* الوصف */}
+              <p style={{ margin:'0 0 16px', color:'#64748b', fontSize:'.78rem', lineHeight:1.55 }}>{displayDesc}</p>
+
+              {/* زر الانطلاق */}
+              {r.ready ? (
+                <Link
+                  href={r.link}
+                  style={{ display:'block', background:r.btnBg||r.accent, color:'#fff', borderRadius:50, padding:'10px 20px', textDecoration:'none', fontWeight:700, fontSize:'.88rem', boxShadow:`0 4px 14px ${r.accent}44` }}
+                >ابدأ الآن ←</Link>
+              ) : (
+                <span style={{ display:'block', background:'#f1f5f9', color:'#94a3b8', borderRadius:50, padding:'10px 20px', fontWeight:700, fontSize:'.8rem', border:'1.5px dashed #cbd5e1' }}>قريباً…</span>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ═══════════════════════════════════════════
           نافذة تعديل بطاقة — محفوظة كاملاً للمعلمين
@@ -627,11 +621,10 @@ export default function LibraryGrid({ initialMeta, isTeacher }) {
 
             <div
               onClick={() => fileRef.current?.click()}
-              title="انقر لتغيير الصورة"
               style={{ width:90, height:90, borderRadius:18, margin:'0 auto 16px', background:editingResource.iconBg, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', overflow:'hidden', border:'2px dashed #e5e7eb', fontSize:'2.8rem', boxShadow:'0 4px 14px rgba(0,0,0,.1)' }}
             >
               {editImg
-                ? <img src={editImg} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                ? <img src={editImg} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
                 : editIcon
               }
             </div>
@@ -658,9 +651,9 @@ export default function LibraryGrid({ initialMeta, isTeacher }) {
               <span style={{ fontWeight:700, color:'#374151', fontSize:'.85rem' }}>الأيقونة (رمز)</span>
               <div style={{ display:'flex', gap:8 }}>
                 <input value={editImg ? '' : editIcon} onChange={e => { setEditIcon(e.target.value); setEditImg(null); }} disabled={!!editImg} placeholder="🎯" maxLength={2}
-                  style={{ width:56, textAlign:'center', fontSize:'1.5rem', border:'1.5px solid #e5e7eb', borderRadius:10, padding:'6px', fontFamily:'inherit', background:editImg?'#f3f4f6':'#fff' }} />
+                  style={{ width:56, textAlign:'center', fontSize:'1.5rem', border:'1.5px solid #e5e7eb', borderRadius:10, padding:'6px', fontFamily:'inherit', background:editImg?'#f3f4f6':'#fff' }}/>
                 <input value={editImg ? '' : editIcon} onChange={e => { setEditIcon(e.target.value); setEditImg(null); }} disabled={!!editImg} placeholder="أو اكتب أي نص"
-                  style={{ flex:1, border:'1.5px solid #e5e7eb', borderRadius:10, padding:'8px 12px', fontFamily:'inherit', fontSize:'.9rem', direction:'rtl', background:editImg?'#f3f4f6':'#fff' }} />
+                  style={{ flex:1, border:'1.5px solid #e5e7eb', borderRadius:10, padding:'8px 12px', fontFamily:'inherit', fontSize:'.9rem', direction:'rtl', background:editImg?'#f3f4f6':'#fff' }}/>
               </div>
               {editImg && <span style={{ fontSize:'.75rem', color:'#9ca3af' }}>الأيقونة معطّلة — الصورة تحل محلها</span>}
             </label>
@@ -668,13 +661,13 @@ export default function LibraryGrid({ initialMeta, isTeacher }) {
             <label style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:14 }}>
               <span style={{ fontWeight:700, color:'#374151', fontSize:'.85rem' }}>عنوان النشاط</span>
               <input value={editTitle} onChange={e => setEditTitle(e.target.value)}
-                style={{ border:'1.5px solid #e5e7eb', borderRadius:10, padding:'8px 12px', fontFamily:'inherit', fontSize:'.95rem', direction:'rtl' }} />
+                style={{ border:'1.5px solid #e5e7eb', borderRadius:10, padding:'8px 12px', fontFamily:'inherit', fontSize:'.95rem', direction:'rtl' }}/>
             </label>
 
             <label style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:18 }}>
               <span style={{ fontWeight:700, color:'#374151', fontSize:'.85rem' }}>الوصف</span>
               <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3}
-                style={{ border:'1.5px solid #e5e7eb', borderRadius:10, padding:'8px 12px', fontFamily:'inherit', fontSize:'.88rem', direction:'rtl', resize:'vertical' }} />
+                style={{ border:'1.5px solid #e5e7eb', borderRadius:10, padding:'8px 12px', fontFamily:'inherit', fontSize:'.88rem', direction:'rtl', resize:'vertical' }}/>
             </label>
 
             {msg && (
