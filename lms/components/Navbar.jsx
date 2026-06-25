@@ -344,8 +344,9 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
   const dropRef   = useRef(null);
   const { t, lang } = useLanguage();
 
-  const [user,     setUser]     = useState(initialUser ?? null);
-  const [dropOpen, setDropOpen] = useState(false);
+  const [user,      setUser]      = useState(initialUser ?? null);
+  const [dropOpen,  setDropOpen]  = useState(false);
+  const [glowLevel, setGlowLevel] = useState(-1);
 
   useEffect(() => {
     const supabase = createClient();
@@ -368,6 +369,21 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
       document.removeEventListener('mousedown', onOutsideClick);
     };
   }, [initialUser]);
+
+  useEffect(() => {
+    const isStud = user?.user_metadata?.role === 'student';
+    if (!isStud || !user?.id) return;
+    const key = `arem_glow_${user.id}`;
+    try {
+      const cached = sessionStorage.getItem(key);
+      if (cached !== null) { setGlowLevel(parseInt(cached, 10)); return; }
+    } catch {}
+    fetch('/api/points').then(r => r.json()).then(j => {
+      const idx = Math.min(4, Math.floor((j.earned ?? 0) / 1000));
+      setGlowLevel(idx);
+      try { sessionStorage.setItem(key, String(idx)); } catch {}
+    }).catch(() => {});
+  }, [user?.id, user?.user_metadata?.role]);
 
   async function handleLogout() {
     setDropOpen(false);
@@ -486,10 +502,32 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
                 onClick={() => setDropOpen(o => !o)}
                 aria-label="قائمة المستخدم"
               >
-                {avatarURL
-                  ? <img src={avatarURL} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,.5)' }} />
-                  : <Initials name={fullName} />
-                }
+                {/* Avatar with colored glow ring for leveled-up students */}
+                <div style={{ position: 'relative', flexShrink: 0, display: 'inline-flex' }}>
+                  <div style={{
+                    borderRadius: '50%',
+                    boxShadow: glowLevel >= 1
+                      ? `0 0 0 2.5px ${PTS_LEVELS[glowLevel].color}, 0 0 12px ${PTS_LEVELS[glowLevel].color}80`
+                      : 'none',
+                  }}>
+                    {avatarURL
+                      ? <img src={avatarURL} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,.5)', display: 'block' }} />
+                      : <Initials name={fullName} />
+                    }
+                  </div>
+                  {glowLevel >= 1 && (
+                    <div style={{
+                      position: 'absolute', bottom: -2, right: -2,
+                      width: 16, height: 16, borderRadius: '50%',
+                      background: PTS_LEVELS[glowLevel].color,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '.6rem', border: '1.5px solid rgba(255,255,255,.9)',
+                      zIndex: 1, lineHeight: 1,
+                    }}>
+                      {PTS_LEVELS[glowLevel].icon}
+                    </div>
+                  )}
+                </div>
                 <span className="nav-username">{fullName}</span>
                 <span style={{ fontSize: 10, opacity: .65, marginRight: 2 }}>▾</span>
               </button>

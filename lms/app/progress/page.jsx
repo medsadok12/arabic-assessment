@@ -175,6 +175,27 @@ export default async function ProgressPage() {
     prevD = ds;
   });
 
+  // ── Achievement badges ────────────────────────────────────────────
+  const currentLevelIdx = Math.min(4, Math.floor(earnedPoints / 1000));
+  const earnedBadgeIds = [
+    earnedPoints >= 100   ? 'pts_100'  : null,
+    earnedPoints >= 500   ? 'pts_500'  : null,
+    earnedPoints >= 1000  ? 'pts_1000' : null,
+    earnedPoints >= 3000  ? 'pts_3000' : null,
+    totalFlash > 0        ? 'fc_first' : null,
+    masteredCount >= 10   ? 'fc_10'    : null,
+    masteredCount >= 50   ? 'fc_50'    : null,
+    masteredCount >= 100  ? 'fc_100'   : null,
+    bestStreak >= 3       ? 'streak_3'  : null,
+    bestStreak >= 7       ? 'streak_7'  : null,
+    bestStreak >= 30      ? 'streak_30' : null,
+    completedCount >= 1                                          ? 'act_1'   : null,
+    completedCount >= 5                                          ? 'act_5'   : null,
+    completedCount >= totalActivities && totalActivities > 0     ? 'act_all' : null,
+    accuracy !== null && accuracy >= 80 ? 'acc_80' : null,
+    accuracy !== null && accuracy >= 90 ? 'acc_90' : null,
+  ].filter(Boolean);
+
   // ── Recent activity log ───────────────────────────────────────────
   const recentLogs = logs
     .filter(l => (l.delta || 0) > 0)
@@ -218,6 +239,8 @@ export default async function ProgressPage() {
             gameAccuracy={gameAccuracy}
             gamesPlayedCount={gamesPlayedCount}
             puzzleCount={puzzles.length}
+            earnedBadgeIds={earnedBadgeIds}
+            currentLevelIdx={currentLevelIdx}
             user={user}
           />
         </div>
