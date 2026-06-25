@@ -143,8 +143,15 @@ export default function RegisterPage() {
 
         {success && (
           <div style={{ textAlign: 'center', padding: '8px 0' }}>
-            <Link href="/auth/login" className="btn btn-primary" style={{ display: 'inline-block', marginTop: 8 }}>
-              تسجيل الدخول ←
+            <p style={{ color: '#555', fontSize: '.9rem', marginBottom: 16, lineHeight: 1.7 }}>
+              ✅ تم إنشاء حسابك! تحقق من بريدك الإلكتروني لتفعيل الحساب.
+            </p>
+            <Link href="/assessment" className="btn btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%', marginBottom: 10 }}>
+              ابدأ التقييم الآن ←
+            </Link>
+            <Link href="/auth/login" style={{ fontSize: '.85rem', color: '#888', textDecoration: 'underline' }}>
+              تسجيل الدخول لاحقاً
             </Link>
           </div>
         )}

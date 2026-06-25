@@ -64,7 +64,7 @@ export default function LandingPage() {
                 ))}
               </p>
               <div className="hero-btns">
-                <Link href="/assessment"
+                <Link href="/auth/register"
                   className="btn btn-accent btn-lg"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   {t('landing.heroCta')}
