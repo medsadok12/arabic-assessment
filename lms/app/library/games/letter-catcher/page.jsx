@@ -870,7 +870,7 @@ export default function LetterCatcherGame() {
   if (phase === 'start') {
     const categories = [...new Set(gameWords.map(w => w.category).filter(Boolean))];
 
-    /* modal data */
+    /* modal data when a category was tapped */
     const modalCatLabel = pendingCategory === '__all__' ? 'كل المجموعات' : pendingCategory;
     const modalWords    = pendingCategory === '__all__' || pendingCategory === undefined
       ? gameWords
@@ -889,93 +889,89 @@ export default function LetterCatcherGame() {
 
     return (
       <div style={{ ...S.page, justifyContent: 'flex-start', paddingTop: 36, paddingBottom: 44 }}>
-
-        {/* custom keyframes only — everything else is Tailwind */}
+        {/* non-blocking progress strip */}
+        {loadProgress > 0 && loadProgress < 100 && (
+          <div style={{ position:'fixed', top:0, left:0, right:0, height:3, zIndex:9999, background:'#ede9fe' }}>
+            <div style={{ height:'100%', width:`${loadProgress}%`, background:'#7c3aed', transition:'width .4s ease' }} />
+          </div>
+        )}
         <style>{`
           @keyframes lcCatIn {
-            0%  { opacity:0; transform:scale(.3) rotate(-12deg); }
-            60% { transform:scale(1.12) rotate(2deg); }
+            0%  { opacity:0; transform:scale(.28) rotate(-10deg); }
+            55% { transform:scale(1.14) rotate(2deg); }
             100%{ opacity:1; transform:scale(1) rotate(0deg); }
           }
           @keyframes lcModalIn {
-            0%  { opacity:0; transform:scale(.85) translateY(28px); }
+            0%  { opacity:0; transform:scale(.88) translateY(24px); }
             100%{ opacity:1; transform:scale(1)   translateY(0); }
           }
-          @keyframes lcOwlFloat {
-            0%,100% { transform:translateY(0); }
-            50%     { transform:translateY(-8px); }
+          .lc-cat {
+            cursor:pointer;
+            transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease;
           }
-          .lc-owl { animation: lcOwlFloat 3s ease-in-out infinite; display:inline-block; }
+          .lc-cat:hover  { transform:scale(1.11) !important; box-shadow:0 22px 48px rgba(0,0,0,.32) !important; }
+          .lc-cat:active { transform:scale(0.94) !important; }
         `}</style>
 
         {isTeacher && showCfg && (
-          <SettingsPanel cfg={cfg} onChange={setCfg} onClose={() => setShowCfg(false)}
-            dbWords={dbWords} onRefresh={loadWords} catMeta={catMeta} onCatMetaRefresh={loadCatMeta} />
+          <SettingsPanel cfg={cfg} onChange={setCfg} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={loadWords} catMeta={catMeta} onCatMetaRefresh={loadCatMeta} />
         )}
 
-        {/* ── progress strip (non-blocking) ── */}
-        {loadProgress > 0 && loadProgress < 100 && (
-          <div className="fixed top-0 left-0 right-0 h-[3px] z-[9999] bg-purple-200">
-            <div className="h-full bg-purple-500 transition-[width] duration-500 ease-out" style={{ width:`${loadProgress}%` }} />
-          </div>
-        )}
-
-        {/* ── STEP 2: modal overlay ── */}
+        {/* ── STEP 2 MODAL: settings + start button ── */}
         {pendingCategory !== undefined && (
           <div
-            className="fixed inset-0 z-[800] flex items-center justify-center p-5"
-            style={{ background:'rgba(20,0,50,.6)', backdropFilter:'blur(6px)' }}
-            onClick={e => { if (e.target === e.currentTarget) setPendingCategory(undefined); }}
+            style={{
+              position:'fixed', inset:0, zIndex:800,
+              background:'rgba(30,0,60,.55)', backdropFilter:'blur(4px)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              padding:20,
+            }}
+            onClick={(e) => { if (e.target === e.currentTarget) setPendingCategory(undefined); }}
           >
-            <div
-              className="bg-white rounded-[28px] p-8 w-full max-w-sm text-center shadow-2xl"
-              style={{ animation:'lcModalIn .3s cubic-bezier(.34,1.56,.64,1) both' }}
-            >
+            <div style={{
+              background:'#fff', borderRadius:28, padding:'32px 28px', maxWidth:340, width:'100%',
+              textAlign:'center', boxShadow:'0 24px 64px rgba(0,0,0,.4)',
+              animation:'lcModalIn .28s cubic-bezier(.34,1.56,.64,1) both',
+            }}>
               {/* category badge */}
-              <div
-                className="inline-flex items-center gap-2 rounded-full px-5 py-2 mb-5"
-                style={{ background: modalCatObj?.gradient || modalCatStyle.grad }}
-              >
-                <span className="text-2xl leading-none">
+              <div style={{
+                display:'inline-flex', alignItems:'center', gap:8,
+                background: modalCatObj?.gradient || modalCatStyle.grad,
+                borderRadius:50, padding:'8px 20px', marginBottom:20,
+              }}>
+                <span style={{ fontSize:'1.6rem' }}>
                   {modalCatObj?.image_url
-                    ? <img src={modalCatObj.image_url} className="w-8 h-8 rounded-lg object-cover" />
+                    ? <img src={modalCatObj.image_url} style={{ width:32, height:32, borderRadius:8, objectFit:'cover' }} />
                     : (modalCatObj?.emoji || modalCatStyle.emoji)
                   }
                 </span>
-                <span className="text-base font-black text-white" style={{ textShadow:'0 1px 4px rgba(0,0,0,.3)' }}>
+                <span style={{ fontSize:'1rem', fontWeight:800, color:'#fff', textShadow:'0 1px 4px rgba(0,0,0,.3)' }}>
                   {modalCatLabel}
                 </span>
               </div>
 
-              <h3 className="text-lg font-black text-gray-800 mt-0 mb-5">جاهز للصيد؟ 🎯</h3>
+              <h3 style={{ margin:'0 0 20px', fontSize:'1.1rem', fontWeight:800, color:'#1f2937' }}>
+                جاهز للصيد؟ 🎯
+              </h3>
 
               {/* stats */}
-              <div className="flex items-center justify-center gap-6 mb-6">
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-3xl font-black text-purple-700">{modalCount}</span>
-                  <span className="text-xs text-gray-400 font-semibold">سؤال</span>
+              <div style={{ ...S.statsRow, marginBottom:24 }}>
+                <div style={S.statBox}>
+                  <span style={S.statNum}>{modalCount}</span>
+                  <span style={S.statLbl}>سؤال</span>
                 </div>
-                <div className="w-px h-10 bg-gray-200" />
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-3xl font-black text-purple-700">{cfg.optionsCount}</span>
-                  <span className="text-xs text-gray-400 font-semibold">خيارات</span>
+                <div style={S.statDiv} />
+                <div style={S.statBox}>
+                  <span style={S.statNum}>{cfg.optionsCount}</span>
+                  <span style={S.statLbl}>خيارات</span>
                 </div>
               </div>
 
-              {/* start button */}
-              <button
-                className="w-full py-4 rounded-2xl font-black text-lg text-white shadow-lg
-                  hover:scale-[1.04] hover:shadow-xl active:scale-95
-                  transition-all duration-200 mb-3"
-                style={{ background:'linear-gradient(135deg,#f59e0b,#f97316)' }}
-                onClick={handleStartFromModal}
-              >
+              <button style={{ ...S.btnGold, width:'100%', marginBottom:10 }} onClick={handleStartFromModal}>
                 🚀 ابدأ اللعبة
               </button>
-
               <button
-                className="text-purple-700 font-bold text-sm bg-transparent border-0 cursor-pointer
-                  hover:text-purple-900 transition-colors duration-150"
+                style={{ background:'none', border:'none', cursor:'pointer', color:'#7c3aed', fontWeight:700, fontSize:'.9rem', fontFamily:'inherit' }}
                 onClick={() => setPendingCategory(undefined)}
               >
                 ← رجوع للمجموعات
@@ -984,56 +980,41 @@ export default function LetterCatcherGame() {
           </div>
         )}
 
-        {/* ── STEP 1: main content ── */}
-        <div className="w-full max-w-[580px] box-border text-center relative px-2">
+        <div style={{ width:'100%', maxWidth:580, boxSizing:'border-box', textAlign:'center', position:'relative' }}>
 
-          {/* teacher settings button */}
+          {/* settings button (teachers only) */}
           {isTeacher && (
-            <div className="text-left mb-2">
-              <button
-                className="px-4 py-2 rounded-xl text-white font-bold text-sm
-                  bg-white/20 backdrop-blur hover:bg-white/30 active:scale-95
-                  transition-all duration-150 border border-white/20"
-                onClick={() => setShowCfg(true)}
-              >
-                ⚙️ الإعدادات
-              </button>
+            <div style={{ textAlign:'left', marginBottom:8 }}>
+              <button style={{ ...S.cfgBtn, position:'static' }} onClick={() => setShowCfg(true)}>⚙️ الإعدادات</button>
             </div>
           )}
 
           {/* header */}
-          <div className="mb-7">
-            <div className="lc-owl text-6xl leading-none">🦉</div>
-            <h1
-              className="text-[1.85rem] font-black text-white mt-2 mb-1"
-              style={{ textShadow:'0 2px 16px rgba(0,0,0,.4)' }}
-            >
+          <div style={{ marginBottom:28 }}>
+            <div style={{ fontSize:'4rem', lineHeight:1 }}>🦉</div>
+            <h1 style={{ fontSize:'1.9rem', fontWeight:900, color:'#fff', margin:'8px 0 4px', textShadow:'0 2px 14px rgba(0,0,0,.35)' }}>
               صيّاد الحروف!
             </h1>
-            <p className="text-sm text-white/80 m-0">اختر مجموعتك وابدأ الصيد 🎯</p>
+            <p style={{ fontSize:'.9rem', color:'rgba(255,255,255,.8)', margin:0 }}>
+              اختر مجموعتك وابدأ الصيد 🎯
+            </p>
           </div>
 
-          {/* ── empty / lock state ── */}
+          {/* ── empty / lock ── */}
           {gameWords.length === 0 ? (
-            <div className="bg-white rounded-3xl p-8 shadow-xl flex flex-col items-center gap-4">
+            <div style={{ ...S.centerCard, padding:'32px 24px' }}>
               {isTeacher ? (
                 <>
-                  <span className="text-5xl">📭</span>
-                  <p className="text-gray-700 font-bold text-base leading-loose text-center m-0">
+                  <div style={{ fontSize:'3rem' }}>📭</div>
+                  <p style={{ color:'#374151', fontSize:'.97rem', fontWeight:700, lineHeight:1.9, margin:0, textAlign:'center' }}>
                     عذراً، لا توجد كلمات مضافة.<br />أضف كلمات أولاً من لوحة الإعدادات.
                   </p>
-                  <button
-                    className="px-6 py-2.5 rounded-xl border-2 border-purple-600 text-purple-700
-                      font-bold hover:bg-purple-50 active:scale-95 transition-all duration-150"
-                    onClick={() => setShowCfg(true)}
-                  >
-                    ⚙️ إضافة كلمات
-                  </button>
+                  <button style={S.btnOutline} onClick={() => setShowCfg(true)}>⚙️ إضافة كلمات</button>
                 </>
               ) : (
                 <>
-                  <span className="text-5xl">🔒</span>
-                  <p className="text-gray-700 font-bold text-base leading-loose text-center m-0">
+                  <div style={{ fontSize:'3rem' }}>🔒</div>
+                  <p style={{ color:'#374151', fontSize:'.97rem', fontWeight:700, lineHeight:1.9, margin:0, textAlign:'center' }}>
                     اللعبة غير متاحة حالياً.<br />تواصل مع معلمك لإعداد الكلمات.
                   </p>
                 </>
@@ -1041,8 +1022,8 @@ export default function LetterCatcherGame() {
             </div>
 
           ) : (
-            /* ── STEP 1: category grid ── */
-            <div className="flex flex-col gap-3">
+            /* ── STEP 1: always show category grid ── */
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
 
               {/* play-all card */}
               {(() => {
@@ -1051,93 +1032,84 @@ export default function LetterCatcherGame() {
                 const allStars = allPct === null ? 0 : allPct >= 80 ? 3 : allPct >= 50 ? 2 : 1;
                 return (
                   <div
-                    className="flex items-center gap-4 rounded-[18px] px-5 py-4 cursor-pointer
-                      border-2 border-white/30 shadow-lg
-                      hover:scale-[1.04] hover:shadow-2xl hover:border-white/50
-                      active:scale-[0.97] transition-all duration-200"
+                    className="lc-cat"
                     style={{
                       background:'rgba(255,255,255,.18)', backdropFilter:'blur(10px)',
+                      border:'2px solid rgba(255,255,255,.3)', borderRadius:18,
+                      padding:'16px 20px', display:'flex', alignItems:'center', gap:14,
+                      boxShadow:'0 6px 22px rgba(0,0,0,.2)',
                       animation:'lcCatIn .4s cubic-bezier(.34,1.56,.64,1) both',
                     }}
                     onClick={() => setPendingCategory('__all__')}
                   >
-                    <span className="text-[2.2rem] leading-none shrink-0">🌟</span>
-                    <div className="flex-1 text-right">
-                      <div className="text-[1.05rem] font-black text-white" style={{ textShadow:'0 1px 6px rgba(0,0,0,.25)' }}>
-                        العب الكل
-                      </div>
-                      <div className="text-xs text-white/75 mt-0.5">
-                        {gameWords.length} كلمة من كل المجموعات
-                      </div>
+                    <span style={{ fontSize:'2.2rem', lineHeight:1, flexShrink:0 }}>🌟</span>
+                    <div style={{ flex:1, textAlign:'right' }}>
+                      <div style={{ fontSize:'1.08rem', fontWeight:800, color:'#fff', textShadow:'0 1px 6px rgba(0,0,0,.25)' }}>العب الكل</div>
+                      <div style={{ fontSize:'.75rem', color:'rgba(255,255,255,.75)', marginTop:2 }}>{gameWords.length} كلمة من كل المجموعات</div>
                       {allRes && (
-                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <span className="text-sm text-green-300 font-bold">
-                            {'⭐'.repeat(allStars)}{'☆'.repeat(3 - allStars)}
-                          </span>
-                          <span className="text-[.72rem] bg-green-600 text-white rounded-full px-2.5 py-0.5 font-black shadow">
-                            ✓ {allRes.correct}
-                          </span>
-                          <span className="text-[.72rem] bg-red-600 text-white rounded-full px-2.5 py-0.5 font-black shadow">
-                            ✗ {allRes.wrong}
-                          </span>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5, flexWrap:'wrap' }}>
+                          <span style={{ fontSize:'.8rem', color:'#86efac', fontWeight:700 }}>{'⭐'.repeat(allStars)}{'☆'.repeat(3 - allStars)}</span>
+                          <span style={{ fontSize:'.76rem', background:'#16a34a', color:'#fff', borderRadius:30, padding:'2px 10px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.25)' }}>✓ {allRes.correct}</span>
+                          <span style={{ fontSize:'.76rem', background:'#dc2626', color:'#fff', borderRadius:30, padding:'2px 10px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.25)' }}>✗ {allRes.wrong}</span>
                         </div>
                       )}
                     </div>
-                    <span className="text-xl text-white/60 shrink-0">←</span>
+                    <span style={{ fontSize:'1.4rem', color:'rgba(255,255,255,.65)', flexShrink:0 }}>←</span>
                   </div>
                 );
               })()}
 
-              {/* category grid */}
+              {/* category grid — show topic as label when no explicit categories */}
               {categories.length > 0 && (
-                <div className="grid grid-cols-3 gap-3.5">
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:14 }}>
                   {categories.map((cat, idx) => {
-                    const cs     = getCatStyle(cat, idx);
-                    const custom = catMeta[cat];
-                    const bgGrad = custom?.gradient || cs.grad;
-                    const count  = gameWords.filter(w => w.category === cat).length;
-                    const res    = catResults[cat];
-                    const pct    = res ? Math.round((res.correct / res.total) * 100) : null;
-                    const stars  = pct === null ? 0 : pct >= 80 ? 3 : pct >= 50 ? 2 : 1;
+                    const cs      = getCatStyle(cat, idx);
+                    const custom  = catMeta[cat];
+                    const bgGrad  = custom?.gradient || cs.grad;
+                    const count   = gameWords.filter(w => w.category === cat).length;
+                    const res     = catResults[cat];
+                    const pct     = res ? Math.round((res.correct / res.total) * 100) : null;
+                    const stars   = pct === null ? 0 : pct >= 80 ? 3 : pct >= 50 ? 2 : 1;
                     return (
                       <div
                         key={cat}
-                        className="flex flex-col items-center gap-1.5 rounded-[22px] py-5 px-2 cursor-pointer
-                          relative shadow-[0_8px_28px_rgba(0,0,0,.28)]
-                          hover:scale-110 hover:shadow-[0_20px_44px_rgba(0,0,0,.38)]
-                          active:scale-95 transition-all duration-200"
+                        className="lc-cat"
                         style={{
                           background: bgGrad,
+                          borderRadius: 22,
+                          padding: '18px 8px 14px',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                          boxShadow: '0 8px 28px rgba(0,0,0,.26)',
                           animation: `lcCatIn .45s ${(idx + 1) * 0.07}s cubic-bezier(.34,1.56,.64,1) both`,
+                          position: 'relative',
                         }}
                         onClick={() => setPendingCategory(cat)}
                       >
                         {custom?.image_url
-                          ? <img src={custom.image_url} className="w-14 h-14 rounded-[14px] object-cover shadow-md" />
-                          : <span className="text-[2.4rem] leading-none">{custom?.emoji || cs.emoji}</span>
+                          ? <img src={custom.image_url} style={{ width:56, height:56, borderRadius:14, objectFit:'cover', boxShadow:'0 2px 8px rgba(0,0,0,.22)' }} />
+                          : <span style={{ fontSize:'2.4rem', lineHeight:1 }}>{custom?.emoji || cs.emoji}</span>
                         }
-                        <span
-                          className="text-[.76rem] font-black text-white text-center leading-snug px-1"
-                          style={{ textShadow:'0 1px 4px rgba(0,0,0,.3)' }}
-                        >
+                        <span style={{
+                          fontSize:'.78rem', fontWeight:800, color:'#fff',
+                          textShadow:'0 1px 4px rgba(0,0,0,.3)', lineHeight:1.3,
+                          textAlign:'center', padding:'0 4px',
+                        }}>
                           {cat}
                         </span>
                         {res ? (
                           <>
-                            <span className="text-[.68rem] tracking-wide text-white/95">
+                            <span style={{ fontSize:'.72rem', letterSpacing:1, color:'rgba(255,255,255,.95)' }}>
                               {'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}
                             </span>
-                            <div className="flex gap-1">
-                              <span className="text-[.67rem] bg-green-600 text-white rounded-full px-2 py-0.5 font-black shadow">
-                                ✓ {res.correct}
-                              </span>
-                              <span className="text-[.67rem] bg-red-600 text-white rounded-full px-2 py-0.5 font-black shadow">
-                                ✗ {res.wrong}
-                              </span>
+                            <div style={{ display:'flex', gap:5 }}>
+                              <span style={{ fontSize:'.7rem', background:'#16a34a', color:'#fff', borderRadius:20, padding:'2px 9px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.3)' }}>✓ {res.correct}</span>
+                              <span style={{ fontSize:'.7rem', background:'#dc2626', color:'#fff', borderRadius:20, padding:'2px 9px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.3)' }}>✗ {res.wrong}</span>
                             </div>
                           </>
                         ) : (
-                          <span className="text-[.63rem] text-white/70 font-semibold">{count} كلمة</span>
+                          <span style={{ fontSize:'.65rem', color:'rgba(255,255,255,.7)', fontWeight:600 }}>
+                            {count} كلمة
+                          </span>
                         )}
                       </div>
                     );
@@ -1147,7 +1119,7 @@ export default function LetterCatcherGame() {
             </div>
           )}
 
-          <Link href="/library" className="text-white/60 text-sm block mt-7 hover:text-white transition-colors duration-150">
+          <Link href="/library" style={{ ...S.backLink, color:'rgba(255,255,255,.6)', display:'block', marginTop:28 }}>
             ← العودة للمكتبة
           </Link>
         </div>
