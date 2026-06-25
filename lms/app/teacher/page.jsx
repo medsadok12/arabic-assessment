@@ -715,6 +715,40 @@ export default function TeacherPage() {
           <div style={{ textAlign:'center', padding:'40px 0', color:'var(--muted)' }}>جارٍ التحميل...</div>
         ) : (
           <>
+            {/* ── روابط سريعة ── */}
+            {activeTab === 'sessions' && (
+              <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap' }}>
+                <a href="/teacher/stories" style={{
+                  display:'flex', alignItems:'center', gap:10,
+                  background:'linear-gradient(135deg,#ecfdf5,#d1fae5)',
+                  border:'1.5px solid #86efac', borderRadius:14,
+                  padding:'12px 18px', textDecoration:'none', flex:1, minWidth:160,
+                  transition:'all .18s',
+                }}>
+                  <span style={{ fontSize:'1.6rem' }}>📚</span>
+                  <div>
+                    <div style={{ fontWeight:900, color:'#065f46', fontSize:'.88rem' }}>إدارة القصص</div>
+                    <div style={{ color:'#059669', fontSize:'.72rem' }}>أضف وانشر قصصاً للطلاب</div>
+                  </div>
+                  <span style={{ marginRight:'auto', color:'#059669', fontSize:'.85rem' }}>←</span>
+                </a>
+                <a href="/teacher/logbook" style={{
+                  display:'flex', alignItems:'center', gap:10,
+                  background:'linear-gradient(135deg,#fffbeb,#fef3c7)',
+                  border:'1.5px solid #fde68a', borderRadius:14,
+                  padding:'12px 18px', textDecoration:'none', flex:1, minWidth:160,
+                  transition:'all .18s',
+                }}>
+                  <span style={{ fontSize:'1.6rem' }}>📓</span>
+                  <div>
+                    <div style={{ fontWeight:900, color:'#78350f', fontSize:'.88rem' }}>كراس الدروس</div>
+                    <div style={{ color:'#92400e', fontSize:'.72rem' }}>سجّل وتابع درس اليوم</div>
+                  </div>
+                  <span style={{ marginRight:'auto', color:'#92400e', fontSize:'.85rem' }}>←</span>
+                </a>
+              </div>
+            )}
+
             {/* ── UPCOMING SESSIONS ── */}
             {activeTab === 'sessions' && (
               upcoming.length === 0 ? (
