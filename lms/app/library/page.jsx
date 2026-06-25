@@ -18,13 +18,47 @@ export default async function LibraryPage() {
   const role      = user?.user_metadata?.role ?? '';
   const isTeacher = ['super_admin', 'admin', 'teacher'].includes(role);
 
-  // fetch card customizations (ignore errors — page still works without them)
+  const admin = createAdminClient();
+
+  // fetch card customizations
   let initialMeta = {};
   try {
-    const admin = createAdminClient();
     const { data } = await admin.from('library_card_meta').select('*');
     (data || []).forEach(c => { initialMeta[c.card_key] = c; });
   } catch {}
+
+  // fetch activity progress for students only
+  let initialProgress = {};
+  if (!isTeacher) {
+    try {
+      const [logsRes, gamesRes, flashRes, puzzleRes] = await Promise.all([
+        admin.from('points_log').select('reason').eq('user_id', user.id),
+        admin.from('game_results').select('game_id').eq('user_id', user.id),
+        admin.from('flashcard_progress')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id),
+        admin.from('puzzle_progress')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id),
+      ]);
+
+      const reasons = new Set((logsRes.data  || []).map(l => l.reason));
+      const games   = new Set((gamesRes.data || []).map(g => g.game_id));
+
+      initialProgress = {
+        'huroof':           reasons.has('huroof_all_complete'),
+        'vowel-balloon':    reasons.has('vowel_balloon'),
+        'letter-catcher':   games.has('letter_catcher'),
+        'word-scramble':    reasons.has('word_scramble'),
+        'word-image-match': reasons.has('word_image_match'),
+        'word-smash':       reasons.has('word_smash'),
+        'word-wheel':       reasons.has('word_wheel'),
+        'flashcards':       (flashRes.count ?? 0) > 0,
+        'puzzle':           (puzzleRes.count ?? 0) > 0,
+        'challenge':        [...reasons].some(r => r.startsWith('challenge_')),
+      };
+    } catch {}
+  }
 
   return (
     <>
@@ -44,7 +78,11 @@ export default async function LibraryPage() {
               )}
             </p>
           </div>
-          <LibraryGrid initialMeta={initialMeta} isTeacher={isTeacher} />
+          <LibraryGrid
+            initialMeta={initialMeta}
+            isTeacher={isTeacher}
+            initialProgress={initialProgress}
+          />
         </div>
       </main>
     </>
