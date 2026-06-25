@@ -120,6 +120,20 @@ const RESOURCES = [
   },
 ];
 
+/* ══════════════════════════════════════════════
+   بيانات القصص والحكايات
+══════════════════════════════════════════════ */
+const STORIES = [
+  { key:'s1', title:'الأرنب الشجاع',     icon:'🐰', level:'مستوى 1', length:'قصيرة',   ready:true,  accent:'#10b981', bg:'#ecfdf5', border:'#6ee7b7' },
+  { key:'s2', title:'النمر والقمر',       icon:'🐯', level:'مستوى 1', length:'قصيرة',   ready:true,  accent:'#f59e0b', bg:'#fffbeb', border:'#fde68a' },
+  { key:'s3', title:'مغامرة الفيل',       icon:'🐘', level:'مستوى 2', length:'متوسطة', ready:false, accent:'#6366f1', bg:'#eef2ff', border:'#c7d2fe' },
+  { key:'s4', title:'الأميرة والنهر',     icon:'👸', level:'مستوى 2', length:'متوسطة', ready:false, accent:'#ec4899', bg:'#fdf2f8', border:'#fbcfe8' },
+  { key:'s5', title:'رحلة النحلة',        icon:'🐝', level:'مستوى 1', length:'قصيرة',   ready:false, accent:'#eab308', bg:'#fefce8', border:'#fef08a' },
+  { key:'s6', title:'الثعلب الذكي',       icon:'🦊', level:'مستوى 3', length:'طويلة',  ready:false, accent:'#f97316', bg:'#fff7ed', border:'#fed7aa' },
+  { key:'s7', title:'طائر البحر',          icon:'🦅', level:'مستوى 2', length:'متوسطة', ready:false, accent:'#0284c7', bg:'#f0f9ff', border:'#bae6fd' },
+  { key:'s8', title:'الحصان والريح',      icon:'🐎', level:'مستوى 3', length:'طويلة',  ready:false, accent:'#7c3aed', bg:'#f5f3ff', border:'#ddd6fe' },
+];
+
 const TAG_COLORS = {
   'مستوى 1': { bg: '#EFF6FF', color: '#1D4ED8' },
   'مستوى 2': { bg: '#FFF7ED', color: '#C2410C' },
@@ -509,6 +523,128 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress })
           color:#94a3b8; font-weight:700; font-size:.92rem;
         }
         .lib-empty span { display:block; font-size:2.8rem; margin-bottom:10px; }
+
+        /* ══════════════════════════════════════════
+           قسم القصص والحكايات
+        ══════════════════════════════════════════ */
+        @keyframes storyCardIn {
+          from { opacity:0; transform:translateX(18px) scale(.94); }
+          to   { opacity:1; transform:translateX(0)    scale(1); }
+        }
+        @keyframes storyLeafFloat {
+          0%,100% { transform:translateY(0) rotate(0deg); }
+          50%      { transform:translateY(-7px) rotate(6deg); }
+        }
+
+        .stories-section {
+          margin-top:44px;
+          border-radius:26px;
+          overflow:hidden;
+          box-shadow:0 8px 40px rgba(5,150,105,.16), 0 2px 10px rgba(0,0,0,.07);
+        }
+
+        .stories-layout {
+          display:grid;
+          grid-template-columns:2fr 3fr;
+          min-height:270px;
+        }
+        @media(max-width:680px){ .stories-layout{ grid-template-columns:1fr; } }
+
+        /* ── البانر (اليمين) ── */
+        .stories-banner {
+          background:linear-gradient(155deg,#064e3b 0%,#065f46 55%,#047857 100%);
+          padding:26px 20px;
+          display:flex; flex-direction:column; justify-content:space-between;
+          position:relative; overflow:hidden;
+        }
+        .stories-banner-deco {
+          position:absolute; inset:0; pointer-events:none; user-select:none;
+        }
+        .stories-banner-inner {
+          position:relative; z-index:1;
+          display:flex; flex-direction:column; gap:16px; height:100%;
+        }
+
+        /* ── شريط التمرير (اليسار) ── */
+        .stories-scroll-wrap {
+          background:linear-gradient(145deg,#f0fdf4,#ecfdf5 60%,#d1fae5);
+          border-right:2.5px solid #a7f3d0;
+          padding:20px 18px;
+          display:flex; flex-direction:column; gap:10px;
+        }
+        .stories-scroll-header {
+          display:flex; align-items:center;
+          justify-content:space-between; flex-shrink:0;
+        }
+        .stories-scroll-title {
+          font-size:.9rem; font-weight:900; color:#064e3b;
+          display:flex; align-items:center; gap:6px;
+        }
+        .stories-soon-badge {
+          background:#dcfce7; color:#15803d;
+          border:1.5px solid #86efac; border-radius:20px;
+          padding:3px 10px; font-size:.68rem; font-weight:800;
+        }
+        .stories-hint {
+          color:#059669; font-size:.74rem; font-weight:600; margin:0;
+          display:flex; align-items:center; gap:5px;
+        }
+
+        /* ── شريط الأفقي ── */
+        .stories-scroll {
+          display:flex; gap:13px;
+          overflow-x:auto; padding-bottom:8px; padding-top:2px;
+          scroll-snap-type:x mandatory;
+          -webkit-overflow-scrolling:touch;
+        }
+        .stories-scroll::-webkit-scrollbar { height:5px; }
+        .stories-scroll::-webkit-scrollbar-track { background:#d1fae5; border-radius:99px; }
+        .stories-scroll::-webkit-scrollbar-thumb { background:#6ee7b7; border-radius:99px; }
+
+        /* ── بطاقة القصة ── */
+        .story-card {
+          flex-shrink:0; width:144px;
+          border-radius:18px; padding:16px 12px 14px;
+          display:flex; flex-direction:column; align-items:center;
+          text-align:center; gap:6px; border:2px solid;
+          scroll-snap-align:start;
+          animation:storyCardIn .42s cubic-bezier(.34,1.56,.64,1) both;
+          transition:transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
+          position:relative; cursor:pointer; text-decoration:none;
+        }
+        .story-card.s-ready:hover {
+          transform:translateY(-6px) scale(1.04);
+          box-shadow:0 14px 32px rgba(5,150,105,.22);
+        }
+        .story-card.s-locked { opacity:.75; cursor:default; }
+
+        .story-icon { font-size:2.6rem; line-height:1; }
+        .story-level-badge {
+          border-radius:20px; padding:2px 9px;
+          font-size:.59rem; font-weight:800;
+          background:rgba(0,0,0,.07);
+        }
+        .story-title {
+          font-size:.77rem; font-weight:800; color:#1e293b;
+          margin:0; line-height:1.38;
+        }
+        .story-length { font-size:.62rem; color:#64748b; font-weight:600; }
+
+        .story-read-btn {
+          display:inline-block; border:none; border-radius:50px;
+          padding:6px 13px; color:#fff; font-size:.7rem; font-weight:800;
+          cursor:pointer; font-family:'Cairo','Tajawal',sans-serif;
+          box-shadow:0 3px 10px rgba(0,0,0,.2);
+          transition:transform .15s; text-decoration:none;
+        }
+        .story-card.s-ready:hover .story-read-btn { transform:scale(1.1); }
+
+        .story-locked-btn {
+          display:inline-flex; align-items:center; gap:4px;
+          background:#f1f5f9; color:#94a3b8;
+          border:1.5px dashed #cbd5e1; border-radius:50px;
+          padding:5px 12px; font-size:.65rem; font-weight:700;
+        }
       `}</style>
 
       <div className="lib-page">
@@ -589,7 +725,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress })
         </div>
 
         {/* ── الشبكة ── */}
-        <div className="lib-grid">
+        <div className="lib-grid" id="lib-activities-grid">
           {filtered.length === 0 ? (
             <div className="lib-empty">
               <span>🔍</span>لا توجد نتائج مطابقة
@@ -686,6 +822,158 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress })
             );
           })}
         </div>
+
+        {/* ══════════════════════════════════════════════
+            قسم القصص والحكايات
+        ══════════════════════════════════════════════ */}
+        <div className="stories-section">
+          <div className="stories-layout">
+
+            {/* ── الجانب الأيمن: البانر اللافت ── */}
+            <div className="stories-banner">
+
+              {/* ديكور الخلفية — أشجار وحيوانات شفافة */}
+              <div className="stories-banner-deco" aria-hidden="true">
+                <span style={{position:'absolute',top:10,right:14,fontSize:'3.2rem',opacity:.11,animation:'storyLeafFloat 4s ease-in-out infinite'}}>🌲</span>
+                <span style={{position:'absolute',top:55,left:12,fontSize:'1.8rem',opacity:.1,animation:'storyLeafFloat 5s ease-in-out infinite .8s'}}>🦋</span>
+                <span style={{position:'absolute',top:105,right:55,fontSize:'1.4rem',opacity:.09}}>🐦</span>
+                <span style={{position:'absolute',bottom:55,right:16,fontSize:'2.2rem',opacity:.1,animation:'storyLeafFloat 6s ease-in-out infinite 1.2s'}}>🌿</span>
+                <span style={{position:'absolute',bottom:10,left:18,fontSize:'3rem',opacity:.11}}>🌳</span>
+                <span style={{position:'absolute',bottom:80,right:65,fontSize:'1.2rem',opacity:.08}}>⭐</span>
+                <span style={{position:'absolute',top:25,right:82,fontSize:'1.1rem',opacity:.09}}>🍃</span>
+                <span style={{position:'absolute',top:75,right:30,fontSize:'1rem',opacity:.07}}>🌸</span>
+                {/* شعاع نور خفيف */}
+                <div style={{
+                  position:'absolute', top:'-20%', left:'30%',
+                  width:180, height:260,
+                  background:'radial-gradient(ellipse,rgba(255,255,255,.07) 0%,transparent 70%)',
+                  borderRadius:'50%', pointerEvents:'none',
+                }}/>
+              </div>
+
+              <div className="stories-banner-inner">
+                {/* الصورة التعبيرية */}
+                <div style={{textAlign:'center'}}>
+                  <div style={{
+                    fontSize:'4.4rem', lineHeight:1,
+                    filter:'drop-shadow(0 6px 14px rgba(0,0,0,.35))',
+                    display:'inline-block',
+                  }}>🦁</div>
+                  <div style={{
+                    display:'flex', justifyContent:'center', gap:8, marginTop:6,
+                    filter:'drop-shadow(0 2px 6px rgba(0,0,0,.25))',
+                  }}>
+                    <span style={{fontSize:'1.3rem'}}>🌲</span>
+                    <span style={{fontSize:'1.55rem'}}>🦒</span>
+                    <span style={{fontSize:'1.3rem'}}>🌲</span>
+                  </div>
+                </div>
+
+                {/* النص */}
+                <div style={{textAlign:'center'}}>
+                  <h2 style={{
+                    color:'#fff', fontWeight:900, fontSize:'1.12rem',
+                    margin:'0 0 7px', lineHeight:1.35,
+                    textShadow:'0 2px 8px rgba(0,0,0,.3)',
+                  }}>
+                    حكايات الغابة السحرية
+                  </h2>
+                  <p style={{
+                    color:'rgba(255,255,255,.75)', fontSize:'.77rem',
+                    margin:0, lineHeight:1.65,
+                  }}>
+                    قصص تنمّي الخيال<br/>وتُثري اللغة العربية
+                  </p>
+                </div>
+
+                {/* شارة الإحصاء */}
+                <div style={{
+                  background:'rgba(255,255,255,.14)',
+                  border:'1.5px solid rgba(255,255,255,.28)',
+                  borderRadius:14, padding:'9px 14px', textAlign:'center',
+                  backdropFilter:'blur(4px)',
+                }}>
+                  <div style={{color:'#fff', fontSize:'.72rem', fontWeight:800, marginBottom:3}}>
+                    ✨ 8 قصص قادمة قريباً
+                  </div>
+                  <div style={{
+                    display:'flex', justifyContent:'center', gap:8,
+                    color:'rgba(255,255,255,.6)', fontSize:'.62rem',
+                  }}>
+                    <span>مستوى 1</span><span>·</span>
+                    <span>مستوى 2</span><span>·</span>
+                    <span>مستوى 3</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── الجانب الأيسر: شريط التمرير ── */}
+            <div className="stories-scroll-wrap">
+              <div className="stories-scroll-header">
+                <div className="stories-scroll-title">
+                  <span>📖</span>
+                  قصص وحكايات
+                </div>
+                <span className="stories-soon-badge">🔜 قريباً</span>
+              </div>
+
+              <p className="stories-hint">
+                <span>←</span>
+                مرّر لاستكشاف المزيد من القصص
+              </p>
+
+              <div className="stories-scroll">
+                {STORIES.map((s, i) => (
+                  <div
+                    key={s.key}
+                    className={`story-card ${s.ready ? 's-ready' : 's-locked'}`}
+                    style={{
+                      background:   s.bg,
+                      borderColor:  s.border,
+                      boxShadow:    s.ready ? `0 4px 18px ${s.accent}20` : 'none',
+                      animationDelay:`${i * 0.07}s`,
+                    }}
+                  >
+                    {/* نجمة للمتاح */}
+                    {s.ready && (
+                      <span style={{
+                        position:'absolute', top:8, left:8,
+                        background:s.accent, color:'#fff',
+                        borderRadius:20, padding:'2px 7px',
+                        fontSize:'.56rem', fontWeight:900,
+                      }}>جديد ✨</span>
+                    )}
+
+                    <div className="story-icon">{s.icon}</div>
+
+                    <div className="story-level-badge" style={{color:s.accent}}>
+                      {s.level}
+                    </div>
+
+                    <p className="story-title">{s.title}</p>
+
+                    <div className="story-length">⏱ {s.length}</div>
+
+                    {s.ready ? (
+                      <span
+                        className="story-read-btn"
+                        style={{background:`linear-gradient(135deg,${s.accent},${s.accent}bb)`}}
+                      >
+                        اقرأ الآن ←
+                      </span>
+                    ) : (
+                      <span className="story-locked-btn">🔒 قريباً</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </div>
+        {/* نهاية قسم القصص */}
+
       </div>
 
       {/* ══════════════════════════════════════════════
