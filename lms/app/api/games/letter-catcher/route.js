@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 
-// Cache GET responses at Vercel's CDN for 5 minutes, serve stale for 10 more
+export const runtime   = 'edge';
 export const revalidate = 300;
 
 const ARABIC_LETTERS = 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي';
