@@ -220,6 +220,131 @@ const TOPIC_EMOJIS = {
   'المهن':'👷','الأدوات':'🔧','عام':'📋',
 };
 
+/* ── per-topic visual themes ── */
+const TOPIC_THEMES = {
+  'الحيوانات': {
+    grad:'linear-gradient(145deg,#86efac 0%,#4ade80 45%,#16a34a 100%)',
+    glow:'rgba(22,163,74,.5)', text:'#052e16',
+    bubble:{ bg:'#bbf7d0', color:'#14532d' },
+    decos:[
+      { e:'🐾', s:{ top:'9%',  right:'11%', fontSize:'2rem',  opacity:.22, transform:'rotate(-22deg)' }},
+      { e:'🌿', s:{ bottom:'22%', left:'8%', fontSize:'1.5rem', opacity:.2,  transform:'rotate(28deg)' }},
+      { e:'🐾', s:{ top:'52%', left:'62%', fontSize:'1rem',  opacity:.15, transform:'rotate(12deg)' }},
+    ],
+  },
+  'الأشكال': {
+    grad:'linear-gradient(145deg,#a5b4fc 0%,#818cf8 45%,#4f46e5 100%)',
+    glow:'rgba(79,70,229,.5)', text:'#1e1b4b',
+    bubble:{ bg:'#e0e7ff', color:'#3730a3' },
+    decos:[
+      { e:'◆', s:{ top:'10%', right:'12%', fontSize:'1.8rem', opacity:.22, color:'#fff' }},
+      { e:'●',  s:{ bottom:'20%', left:'9%',  fontSize:'1.4rem', opacity:.18, color:'#fff' }},
+      { e:'▲', s:{ top:'52%', left:'58%', fontSize:'1rem',  opacity:.16, color:'#fff' }},
+    ],
+  },
+  'الأسرة': {
+    grad:'linear-gradient(145deg,#fda4af 0%,#fb7185 45%,#e11d48 100%)',
+    glow:'rgba(225,29,72,.5)', text:'#4c0519',
+    bubble:{ bg:'#ffe4e6', color:'#9f1239' },
+    decos:[
+      { e:'💕', s:{ top:'8%',  right:'12%', fontSize:'1.6rem', opacity:.25 }},
+      { e:'🏠', s:{ bottom:'20%', left:'8%', fontSize:'1.3rem', opacity:.2  }},
+      { e:'💕', s:{ top:'54%', left:'60%', fontSize:'1rem',  opacity:.18 }},
+    ],
+  },
+  'الألوان': {
+    grad:'linear-gradient(145deg,#f0abfc 0%,#e879f9 45%,#a21caf 100%)',
+    glow:'rgba(162,28,175,.5)', text:'#3b0764',
+    bubble:{ bg:'#fae8ff', color:'#7e22ce' },
+    decos:[
+      { e:'🎨', s:{ top:'8%',  right:'11%', fontSize:'1.7rem', opacity:.25 }},
+      { e:'🌈', s:{ bottom:'20%', left:'8%', fontSize:'1.4rem', opacity:.2  }},
+      { e:'✏️', s:{ top:'53%', left:'60%', fontSize:'1rem',  opacity:.18 }},
+    ],
+  },
+  'الفواكه': {
+    grad:'linear-gradient(145deg,#fde68a 0%,#fbbf24 45%,#ea580c 100%)',
+    glow:'rgba(234,88,12,.5)', text:'#431407',
+    bubble:{ bg:'#fef3c7', color:'#92400e' },
+    decos:[
+      { e:'🍊', s:{ top:'8%',  right:'11%', fontSize:'2rem',  opacity:.25, transform:'rotate(-15deg)' }},
+      { e:'🍋', s:{ bottom:'20%', left:'8%', fontSize:'1.5rem', opacity:.22, transform:'rotate(22deg)' }},
+      { e:'🍓', s:{ top:'53%', left:'60%', fontSize:'1.1rem', opacity:.2  }},
+    ],
+  },
+  'المدرسة': {
+    grad:'linear-gradient(145deg,#7dd3fc 0%,#38bdf8 45%,#0284c7 100%)',
+    glow:'rgba(2,132,199,.5)', text:'#0c4a6e',
+    bubble:{ bg:'#e0f2fe', color:'#075985' },
+    decos:[
+      { e:'✏️', s:{ top:'9%',  right:'11%', fontSize:'1.7rem', opacity:.25, transform:'rotate(-20deg)' }},
+      { e:'📖', s:{ bottom:'20%', left:'8%', fontSize:'1.4rem', opacity:.2  }},
+      { e:'🔍', s:{ top:'53%', left:'60%', fontSize:'1rem',  opacity:.18 }},
+    ],
+  },
+  'الطقس': {
+    grad:'linear-gradient(145deg,#bae6fd 0%,#7dd3fc 45%,#0369a1 100%)',
+    glow:'rgba(3,105,161,.5)', text:'#0c4a6e',
+    bubble:{ bg:'#e0f2fe', color:'#0369a1' },
+    decos:[
+      { e:'☁️', s:{ top:'8%',  right:'10%', fontSize:'2rem',  opacity:.25 }},
+      { e:'⛅', s:{ bottom:'20%', left:'7%', fontSize:'1.5rem', opacity:.22 }},
+      { e:'🌤️', s:{ top:'52%', left:'60%', fontSize:'1.1rem', opacity:.18 }},
+    ],
+  },
+  'الأرقام': {
+    grad:'linear-gradient(145deg,#fca5a5 0%,#f87171 45%,#dc2626 100%)',
+    glow:'rgba(220,38,38,.5)', text:'#450a0a',
+    bubble:{ bg:'#fee2e2', color:'#991b1b' },
+    decos:[
+      { e:'🔢', s:{ top:'8%',  right:'12%', fontSize:'1.7rem', opacity:.25 }},
+      { e:'💯', s:{ bottom:'20%', left:'8%', fontSize:'1.4rem', opacity:.2  }},
+      { e:'🔢', s:{ top:'53%', left:'60%', fontSize:'1rem',  opacity:.15 }},
+    ],
+  },
+  'المهن': {
+    grad:'linear-gradient(145deg,#fcd34d 0%,#f59e0b 45%,#b45309 100%)',
+    glow:'rgba(180,83,9,.5)', text:'#431a03',
+    bubble:{ bg:'#fef3c7', color:'#78350f' },
+    decos:[
+      { e:'🔨', s:{ top:'9%',  right:'11%', fontSize:'1.7rem', opacity:.25, transform:'rotate(-20deg)' }},
+      { e:'⚙️', s:{ bottom:'20%', left:'8%', fontSize:'1.4rem', opacity:.2  }},
+      { e:'👷', s:{ top:'53%', left:'60%', fontSize:'1rem',  opacity:.18 }},
+    ],
+  },
+  'الأدوات': {
+    grad:'linear-gradient(145deg,#d1d5db 0%,#9ca3af 45%,#4b5563 100%)',
+    glow:'rgba(75,85,99,.5)', text:'#111827',
+    bubble:{ bg:'#f3f4f6', color:'#1f2937' },
+    decos:[
+      { e:'🔧', s:{ top:'9%',  right:'11%', fontSize:'1.7rem', opacity:.25, transform:'rotate(-22deg)' }},
+      { e:'🔩', s:{ bottom:'20%', left:'8%', fontSize:'1.4rem', opacity:.2  }},
+      { e:'🪛', s:{ top:'53%', left:'60%', fontSize:'1rem',  opacity:.18 }},
+    ],
+  },
+  'عام': {
+    grad:'linear-gradient(145deg,#c084fc 0%,#a855f7 45%,#7c3aed 100%)',
+    glow:'rgba(124,58,237,.5)', text:'#2e1065',
+    bubble:{ bg:'#f3e8ff', color:'#581c87' },
+    decos:[
+      { e:'✨', s:{ top:'8%',  right:'12%', fontSize:'1.6rem', opacity:.28 }},
+      { e:'🌟', s:{ bottom:'20%', left:'8%', fontSize:'1.4rem', opacity:.22 }},
+      { e:'✨', s:{ top:'53%', left:'60%', fontSize:'1rem',  opacity:.18 }},
+    ],
+  },
+};
+
+const DONE_THEME = {
+  grad:'linear-gradient(145deg,#fef08a 0%,#fbbf24 45%,#d97706 100%)',
+  glow:'rgba(217,119,6,.55)', text:'#451a03',
+  bubble:{ bg:'#fef9c3', color:'#713f12' },
+  decos:[
+    { e:'🏆', s:{ top:'9%',  right:'11%', fontSize:'1.7rem', opacity:.28 }},
+    { e:'⭐', s:{ bottom:'20%', left:'8%', fontSize:'1.4rem', opacity:.22 }},
+    { e:'🏆', s:{ top:'53%', left:'60%', fontSize:'1rem',  opacity:.18 }},
+  ],
+};
+
 /* ─────────────── game area ─────────────── */
 function GameArea({ gamePairs, cfg, isTeacher }) {
   const containerRef  = useRef(null);
@@ -428,22 +553,11 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
       </div>
     );
 
-    const CARD_COLORS = [
-      { bg:'linear-gradient(135deg,#fde68a,#fbbf24)', border:'#f59e0b', shadow:'#d97706', text:'#78350f' },
-      { bg:'linear-gradient(135deg,#a5f3fc,#67e8f9)', border:'#06b6d4', shadow:'#0891b2', text:'#164e63' },
-      { bg:'linear-gradient(135deg,#bbf7d0,#6ee7b7)', border:'#10b981', shadow:'#059669', text:'#064e3b' },
-      { bg:'linear-gradient(135deg,#fecaca,#f87171)', border:'#ef4444', shadow:'#dc2626', text:'#7f1d1d' },
-      { bg:'linear-gradient(135deg,#ddd6fe,#c4b5fd)', border:'#8b5cf6', shadow:'#7c3aed', text:'#4c1d95' },
-      { bg:'linear-gradient(135deg,#fed7aa,#fb923c)', border:'#f97316', shadow:'#ea580c', text:'#7c2d12' },
-      { bg:'linear-gradient(135deg,#e9d5ff,#d8b4fe)', border:'#a855f7', shadow:'#9333ea', text:'#581c87' },
-      { bg:'linear-gradient(135deg,#bfdbfe,#93c5fd)', border:'#3b82f6', shadow:'#2563eb', text:'#1e3a8a' },
-    ];
-
     return (
-      <div style={{ fontFamily:"'Cairo',sans-serif", padding:'12px 2px' }}>
+      <div style={{ fontFamily:"'Cairo',sans-serif", padding:'4px 2px' }}>
 
         {/* header banner */}
-        <div style={{ textAlign:'center', marginBottom:22, background:'linear-gradient(135deg,#faf5ff,#ede9fe)', borderRadius:20, padding:'20px 16px', border:'2px solid #ddd6fe' }}>
+        <div style={{ textAlign:'center', marginBottom:28, background:'linear-gradient(135deg,#faf5ff,#ede9fe)', borderRadius:20, padding:'20px 16px', border:'2px solid #ddd6fe' }}>
           <div style={{ fontSize:'3.2rem', lineHeight:1, marginBottom:8, animation:'wimIconBob 2s ease-in-out infinite', display:'inline-block' }}>🖼️</div>
           <h2 style={{ fontSize:'1.4rem', fontWeight:900, color:'#3730a3', margin:'0 0 4px' }}>صِل الكلمة بصورتها!</h2>
           <p style={{ color:'#7c3aed', fontSize:'.9rem', fontWeight:700, margin:0 }}>
@@ -456,35 +570,114 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
           )}
         </div>
 
-        {/* topic cards grid */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(138px, 1fr))', gap:14 }}>
-          {topicList.map((topic, idx) => {
-            const isDone  = completedTopics.has(topic);
-            const count   = topicGroups[topic].length;
-            const emoji   = TOPIC_EMOJIS[topic] || '📋';
-            const rounds  = Math.ceil(count / 4);
-            const colors  = isDone
-              ? { bg:'linear-gradient(135deg,#d1fae5,#a7f3d0)', border:'#10b981', shadow:'#059669', text:'#065f46' }
-              : CARD_COLORS[idx % CARD_COLORS.length];
+        {/* topic cards grid — thematic glassmorphic cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+          gap: 24,
+          padding: '10px 4px 6px',
+        }}>
+          {topicList.map((topic) => {
+            const isDone = completedTopics.has(topic);
+            const count  = topicGroups[topic].length;
+            const emoji  = TOPIC_EMOJIS[topic] || '📋';
+            const rounds = Math.ceil(count / 4);
+            const theme  = isDone ? DONE_THEME : (TOPIC_THEMES[topic] || TOPIC_THEMES['عام']);
+
             return (
-              <button key={topic} onClick={() => startTopicGame(topic)} className="wim-topic-card" style={{
-                background: colors.bg,
-                border:`3px solid ${colors.border}`,
-                borderBottom:`7px solid ${colors.shadow}`,
-                borderRadius:22, padding:'20px 10px 16px', cursor:'pointer',
-                textAlign:'center', fontFamily:"'Cairo',sans-serif",
-                boxShadow:`0 6px 0 ${colors.shadow}, 0 12px 24px rgba(0,0,0,.1)`,
-                position:'relative',
-              }}>
-                {isDone && (
-                  <div style={{ position:'absolute', top:8, left:8, fontSize:'1.1rem', background:'#fff', borderRadius:'50%', width:26, height:26, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 6px rgba(0,0,0,.15)' }}>✅</div>
-                )}
-                <div className="wim-topic-icon" style={{ fontSize:'4.2rem', lineHeight:1, marginBottom:10, display:'inline-block' }}>{emoji}</div>
-                <div style={{ fontWeight:900, fontSize:'1rem', color:colors.text, marginBottom:6 }}>{topic}</div>
-                <div style={{ fontSize:'.72rem', color:'#1e293b', fontWeight:800, background:'rgba(255,255,255,.78)', borderRadius:20, padding:'3px 10px', display:'inline-block', boxShadow:'0 1px 4px rgba(0,0,0,.1)' }}>
+              /* wrapper — gives room for the overflowing speech bubble */
+              <div key={topic} style={{ position:'relative', paddingTop:18 }}>
+
+                {/* ── speech bubble ── */}
+                <div style={{
+                  position:'absolute', top:0, left:'50%',
+                  transform:'translateX(-50%)',
+                  zIndex:10, pointerEvents:'none',
+                  background: theme.bubble.bg,
+                  color: theme.bubble.color,
+                  borderRadius:10,
+                  padding:'3px 11px',
+                  fontSize:'.68rem', fontWeight:900,
+                  whiteSpace:'nowrap',
+                  boxShadow:'0 3px 10px rgba(0,0,0,.14)',
+                }}>
                   {count} كلمة{rounds > 1 ? ` · ${rounds} جولات` : ''}
+                  {/* triangle tail */}
+                  <div style={{
+                    position:'absolute', bottom:-6, left:'50%',
+                    transform:'translateX(-50%)',
+                    width:0, height:0,
+                    borderLeft:'6px solid transparent',
+                    borderRight:'6px solid transparent',
+                    borderTop:`6px solid ${theme.bubble.bg}`,
+                  }} />
                 </div>
-              </button>
+
+                {/* ── card button ── */}
+                <button
+                  onClick={() => startTopicGame(topic)}
+                  className="wim-topic-card"
+                  style={{
+                    width:'100%', aspectRatio:'1',
+                    position:'relative', overflow:'hidden',
+                    background: theme.grad,
+                    border:'none', borderRadius:26,
+                    cursor:'pointer', padding:0,
+                    boxShadow:`0 10px 32px ${theme.glow}, 0 3px 8px rgba(0,0,0,.12)`,
+                    display:'flex', flexDirection:'column',
+                  }}
+                >
+                  {/* shimmer overlay */}
+                  <div style={{
+                    position:'absolute', inset:0, pointerEvents:'none',
+                    background:'linear-gradient(135deg,rgba(255,255,255,.28) 0%,transparent 50%,rgba(0,0,0,.06) 100%)',
+                  }} />
+
+                  {/* decorative background elements */}
+                  {(theme.decos || []).map((d, i) => (
+                    <span key={i} aria-hidden="true" style={{
+                      position:'absolute', pointerEvents:'none',
+                      userSelect:'none', lineHeight:1,
+                      ...d.s,
+                    }}>{d.e}</span>
+                  ))}
+
+                  {/* emoji zone */}
+                  <div style={{
+                    flex:1, display:'flex', alignItems:'center',
+                    justifyContent:'center', paddingTop:10, position:'relative', zIndex:1,
+                  }}>
+                    <span className="wim-topic-icon" style={{
+                      fontSize:'3.6rem', lineHeight:1, display:'inline-block',
+                      filter:`drop-shadow(0 4px 10px ${theme.glow})`,
+                    }}>
+                      {isDone ? '🏆' : emoji}
+                    </span>
+                  </div>
+
+                  {/* glass bottom panel */}
+                  <div style={{
+                    position:'relative', zIndex:1,
+                    background:'rgba(255,255,255,.22)',
+                    backdropFilter:'blur(10px)', WebkitBackdropFilter:'blur(10px)',
+                    borderTop:'1px solid rgba(255,255,255,.38)',
+                    padding:'9px 10px 12px',
+                  }}>
+                    <div style={{
+                      fontWeight:900, fontSize:'.95rem',
+                      color: theme.text,
+                      textShadow:'0 1px 4px rgba(0,0,0,.18)',
+                      textAlign:'center',
+                    }}>{topic}</div>
+                    {isDone && (
+                      <div style={{
+                        fontSize:'.65rem', color:theme.text, opacity:.8,
+                        fontWeight:800, textAlign:'center', marginTop:2,
+                      }}>✅ مكتمل</div>
+                    )}
+                  </div>
+                </button>
+              </div>
             );
           })}
         </div>
@@ -816,11 +1009,27 @@ export default function WordImageMatchPage() {
         .wim-img-card:not(.wim-done):hover  { transform: scale(1.05) translateY(-3px) !important; box-shadow: 0 14px 32px rgba(92,79,196,.28) !important; }
         .wim-img-card:not(.wim-done):active { transform: scale(.96) translateY(3px) !important; }
 
-        .wim-topic-card { transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .15s; }
-        .wim-topic-card:hover  { transform: scale(1.07) translateY(-3px) !important; }
-        .wim-topic-card:active { transform: scale(.94) translateY(4px) !important; }
-        .wim-topic-card:hover .wim-topic-icon { animation: wimIconCardBob .5s ease-in-out; }
-        @keyframes wimIconCardBob { 0%,100%{transform:scale(1) rotate(0deg)} 40%{transform:scale(1.35) rotate(-18deg)} 70%{transform:scale(1.15) rotate(10deg)} }
+        /* ── topic card — thematic glassmorphic ── */
+        .wim-topic-card {
+          transition: transform .22s cubic-bezier(.34,1.56,.64,1),
+                      box-shadow .2s ease;
+        }
+        .wim-topic-card:hover {
+          transform: translateY(-10px) scale(1.04) !important;
+        }
+        .wim-topic-card:active {
+          transform: translateY(2px) scale(.97) !important;
+          transition-duration: .08s !important;
+        }
+        .wim-topic-card:hover .wim-topic-icon {
+          animation: wimIconCardBob .55s cubic-bezier(.34,1.56,.64,1) forwards;
+        }
+        @keyframes wimIconCardBob {
+          0%   { transform: scale(1)    rotate(0deg)   translateY(0); }
+          35%  { transform: scale(1.38) rotate(-16deg) translateY(-6px); }
+          65%  { transform: scale(1.18) rotate(10deg)  translateY(-2px); }
+          100% { transform: scale(1.08) rotate(0deg)   translateY(0); }
+        }
 
         .wim-nav-pill {
           background:rgba(255,255,255,.82); color:#92400e;
