@@ -543,33 +543,21 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress })
           box-shadow:0 8px 40px rgba(5,150,105,.16), 0 2px 10px rgba(0,0,0,.07);
         }
 
-        .stories-layout {
-          display:grid;
-          grid-template-columns:2fr 3fr;
-          min-height:270px;
-        }
-        @media(max-width:680px){ .stories-layout{ grid-template-columns:1fr; } }
-
-        /* ── البانر (اليمين) ── */
-        .stories-banner {
+        /* ── البانر العلوي (شريط ممتد) ── */
+        .stories-top-banner {
           background:linear-gradient(155deg,#064e3b 0%,#065f46 55%,#047857 100%);
-          padding:26px 20px;
-          display:flex; flex-direction:column; justify-content:space-between;
+          padding:20px 28px;
+          display:flex; align-items:center; gap:18px;
           position:relative; overflow:hidden;
         }
         .stories-banner-deco {
           position:absolute; inset:0; pointer-events:none; user-select:none;
         }
-        .stories-banner-inner {
-          position:relative; z-index:1;
-          display:flex; flex-direction:column; gap:16px; height:100%;
-        }
 
-        /* ── شريط التمرير (اليسار) ── */
-        .stories-scroll-wrap {
+        /* ── قسم البطاقات السفلي ── */
+        .stories-bottom {
           background:linear-gradient(145deg,#f0fdf4,#ecfdf5 60%,#d1fae5);
-          border-right:2.5px solid #a7f3d0;
-          padding:20px 18px;
+          padding:16px 20px 20px;
           display:flex; flex-direction:column; gap:10px;
         }
         .stories-scroll-header {
@@ -827,150 +815,128 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress })
             قسم القصص والحكايات
         ══════════════════════════════════════════════ */}
         <div className="stories-section">
-          <div className="stories-layout">
 
-            {/* ── الجانب الأيمن: البانر اللافت ── */}
-            <div className="stories-banner">
+          {/* ── البانر العلوي — شريط ممتد بالكامل ── */}
+          <div className="stories-top-banner">
 
-              {/* ديكور الخلفية — أشجار وحيوانات شفافة */}
-              <div className="stories-banner-deco" aria-hidden="true">
-                <span style={{position:'absolute',top:10,right:14,fontSize:'3.2rem',opacity:.11,animation:'storyLeafFloat 4s ease-in-out infinite'}}>🌲</span>
-                <span style={{position:'absolute',top:55,left:12,fontSize:'1.8rem',opacity:.1,animation:'storyLeafFloat 5s ease-in-out infinite .8s'}}>🦋</span>
-                <span style={{position:'absolute',top:105,right:55,fontSize:'1.4rem',opacity:.09}}>🐦</span>
-                <span style={{position:'absolute',bottom:55,right:16,fontSize:'2.2rem',opacity:.1,animation:'storyLeafFloat 6s ease-in-out infinite 1.2s'}}>🌿</span>
-                <span style={{position:'absolute',bottom:10,left:18,fontSize:'3rem',opacity:.11}}>🌳</span>
-                <span style={{position:'absolute',bottom:80,right:65,fontSize:'1.2rem',opacity:.08}}>⭐</span>
-                <span style={{position:'absolute',top:25,right:82,fontSize:'1.1rem',opacity:.09}}>🍃</span>
-                <span style={{position:'absolute',top:75,right:30,fontSize:'1rem',opacity:.07}}>🌸</span>
-                {/* شعاع نور خفيف */}
-                <div style={{
-                  position:'absolute', top:'-20%', left:'30%',
-                  width:180, height:260,
-                  background:'radial-gradient(ellipse,rgba(255,255,255,.07) 0%,transparent 70%)',
-                  borderRadius:'50%', pointerEvents:'none',
-                }}/>
-              </div>
+            {/* ديكور خلفية شفاف */}
+            <div className="stories-banner-deco" aria-hidden="true">
+              <span style={{position:'absolute',top:8,right:18,fontSize:'2.6rem',opacity:.1,animation:'storyLeafFloat 4s ease-in-out infinite'}}>🌲</span>
+              <span style={{position:'absolute',top:16,left:22,fontSize:'1.5rem',opacity:.09,animation:'storyLeafFloat 5s ease-in-out infinite .8s'}}>🦋</span>
+              <span style={{position:'absolute',bottom:6,right:60,fontSize:'1.8rem',opacity:.09,animation:'storyLeafFloat 6s ease-in-out infinite 1.2s'}}>🌿</span>
+              <span style={{position:'absolute',bottom:8,left:26,fontSize:'2.2rem',opacity:.09}}>🌳</span>
+              <div style={{
+                position:'absolute', top:'-40%', left:'50%',
+                width:200, height:200,
+                background:'radial-gradient(ellipse,rgba(255,255,255,.06) 0%,transparent 70%)',
+                borderRadius:'50%', pointerEvents:'none',
+              }}/>
+            </div>
 
-              <div className="stories-banner-inner">
-                {/* الصورة التعبيرية */}
-                <div style={{textAlign:'center'}}>
-                  <div style={{
-                    fontSize:'4.4rem', lineHeight:1,
-                    filter:'drop-shadow(0 6px 14px rgba(0,0,0,.35))',
-                    display:'inline-block',
-                  }}>🦁</div>
-                  <div style={{
-                    display:'flex', justifyContent:'center', gap:8, marginTop:6,
-                    filter:'drop-shadow(0 2px 6px rgba(0,0,0,.25))',
-                  }}>
-                    <span style={{fontSize:'1.3rem'}}>🌲</span>
-                    <span style={{fontSize:'1.55rem'}}>🦒</span>
-                    <span style={{fontSize:'1.3rem'}}>🌲</span>
-                  </div>
-                </div>
-
-                {/* النص */}
-                <div style={{textAlign:'center'}}>
-                  <h2 style={{
-                    color:'#fff', fontWeight:900, fontSize:'1.12rem',
-                    margin:'0 0 7px', lineHeight:1.35,
-                    textShadow:'0 2px 8px rgba(0,0,0,.3)',
-                  }}>
-                    حكايات الغابة السحرية
-                  </h2>
-                  <p style={{
-                    color:'rgba(255,255,255,.75)', fontSize:'.77rem',
-                    margin:0, lineHeight:1.65,
-                  }}>
-                    قصص تنمّي الخيال<br/>وتُثري اللغة العربية
-                  </p>
-                </div>
-
-                {/* شارة الإحصاء */}
-                <div style={{
-                  background:'rgba(255,255,255,.14)',
-                  border:'1.5px solid rgba(255,255,255,.28)',
-                  borderRadius:14, padding:'9px 14px', textAlign:'center',
-                  backdropFilter:'blur(4px)',
-                }}>
-                  <div style={{color:'#fff', fontSize:'.72rem', fontWeight:800, marginBottom:3}}>
-                    ✨ 8 قصص قادمة قريباً
-                  </div>
-                  <div style={{
-                    display:'flex', justifyContent:'center', gap:8,
-                    color:'rgba(255,255,255,.6)', fontSize:'.62rem',
-                  }}>
-                    <span>مستوى 1</span><span>·</span>
-                    <span>مستوى 2</span><span>·</span>
-                    <span>مستوى 3</span>
-                  </div>
-                </div>
+            {/* الحيوانات — يمين (أول في RTL) */}
+            <div style={{position:'relative',zIndex:1,flexShrink:0,display:'flex',alignItems:'center',gap:10}}>
+              <div style={{
+                fontSize:'3.2rem', lineHeight:1,
+                filter:'drop-shadow(0 4px 12px rgba(0,0,0,.35))',
+              }}>🦁</div>
+              <div style={{display:'flex',flexDirection:'column',gap:2,opacity:.85}}>
+                <span style={{fontSize:'1.2rem'}}>🌲</span>
+                <span style={{fontSize:'1.5rem'}}>🦒</span>
+                <span style={{fontSize:'1.2rem'}}>🌲</span>
               </div>
             </div>
 
-            {/* ── الجانب الأيسر: شريط التمرير ── */}
-            <div className="stories-scroll-wrap">
-              <div className="stories-scroll-header">
-                <div className="stories-scroll-title">
-                  <span>📖</span>
-                  قصص وحكايات
-                </div>
-                <span className="stories-soon-badge">🔜 قريباً</span>
-              </div>
-
-              <p className="stories-hint">
-                <span>←</span>
-                مرّر لاستكشاف المزيد من القصص
+            {/* النص — وسط */}
+            <div style={{position:'relative',zIndex:1,flex:1,minWidth:0}}>
+              <h2 style={{
+                color:'#fff', fontWeight:900, fontSize:'1.12rem',
+                margin:'0 0 5px', lineHeight:1.35,
+                textShadow:'0 2px 8px rgba(0,0,0,.3)',
+              }}>
+                حكايات الغابة السحرية
+              </h2>
+              <p style={{
+                color:'rgba(255,255,255,.75)', fontSize:'.78rem',
+                margin:0, lineHeight:1.6,
+              }}>
+                قصص تنمّي الخيال وتُثري اللغة العربية
               </p>
-
-              <div className="stories-scroll">
-                {STORIES.map((s, i) => (
-                  <div
-                    key={s.key}
-                    className={`story-card ${s.ready ? 's-ready' : 's-locked'}`}
-                    style={{
-                      background:   s.bg,
-                      borderColor:  s.border,
-                      boxShadow:    s.ready ? `0 4px 18px ${s.accent}20` : 'none',
-                      animationDelay:`${i * 0.07}s`,
-                    }}
-                  >
-                    {/* نجمة للمتاح */}
-                    {s.ready && (
-                      <span style={{
-                        position:'absolute', top:8, left:8,
-                        background:s.accent, color:'#fff',
-                        borderRadius:20, padding:'2px 7px',
-                        fontSize:'.56rem', fontWeight:900,
-                      }}>جديد ✨</span>
-                    )}
-
-                    <div className="story-icon">{s.icon}</div>
-
-                    <div className="story-level-badge" style={{color:s.accent}}>
-                      {s.level}
-                    </div>
-
-                    <p className="story-title">{s.title}</p>
-
-                    <div className="story-length">⏱ {s.length}</div>
-
-                    {s.ready ? (
-                      <span
-                        className="story-read-btn"
-                        style={{background:`linear-gradient(135deg,${s.accent},${s.accent}bb)`}}
-                      >
-                        اقرأ الآن ←
-                      </span>
-                    ) : (
-                      <span className="story-locked-btn">🔒 قريباً</span>
-                    )}
-                  </div>
-                ))}
-              </div>
             </div>
 
+            {/* شارة الإحصاء — يسار */}
+            <div style={{
+              position:'relative', zIndex:1, flexShrink:0,
+              background:'rgba(255,255,255,.14)',
+              border:'1.5px solid rgba(255,255,255,.28)',
+              borderRadius:14, padding:'10px 16px', textAlign:'center',
+              backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)',
+            }}>
+              <div style={{color:'#fff', fontSize:'.72rem', fontWeight:800, marginBottom:3}}>
+                ✨ 8 قصص قادمة
+              </div>
+              <div style={{
+                display:'flex', justifyContent:'center', gap:6,
+                color:'rgba(255,255,255,.6)', fontSize:'.6rem',
+              }}>
+                <span>مستوى 1</span><span>·</span>
+                <span>مستوى 2</span><span>·</span>
+                <span>مستوى 3</span>
+              </div>
+            </div>
           </div>
+
+          {/* ── شريط بطاقات القصص ── */}
+          <div className="stories-bottom">
+
+            <div className="stories-scroll-header">
+              <div className="stories-scroll-title">
+                <span>📖</span>
+                قصص وحكايات
+              </div>
+              <span className="stories-soon-badge">🔜 قريباً</span>
+            </div>
+
+            <p className="stories-hint">
+              <span>←</span>
+              مرّر لاستكشاف المزيد من القصص
+            </p>
+
+            <div className="stories-scroll">
+              {STORIES.map((s, i) => (
+                <div
+                  key={s.key}
+                  className={`story-card ${s.ready ? 's-ready' : 's-locked'}`}
+                  style={{
+                    background:    s.bg,
+                    borderColor:   s.border,
+                    boxShadow:     s.ready ? `0 4px 18px ${s.accent}20` : 'none',
+                    animationDelay:`${i * 0.07}s`,
+                  }}
+                >
+                  {s.ready && (
+                    <span style={{
+                      position:'absolute', top:8, left:8,
+                      background:s.accent, color:'#fff',
+                      borderRadius:20, padding:'2px 7px',
+                      fontSize:'.56rem', fontWeight:900,
+                    }}>جديد ✨</span>
+                  )}
+                  <div className="story-icon">{s.icon}</div>
+                  <div className="story-level-badge" style={{color:s.accent}}>{s.level}</div>
+                  <p className="story-title">{s.title}</p>
+                  <div className="story-length">⏱ {s.length}</div>
+                  {s.ready ? (
+                    <span className="story-read-btn" style={{background:`linear-gradient(135deg,${s.accent},${s.accent}bb)`}}>
+                      اقرأ الآن ←
+                    </span>
+                  ) : (
+                    <span className="story-locked-btn">🔒 قريباً</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
         {/* نهاية قسم القصص */}
 
