@@ -710,6 +710,8 @@ body {
   .nav-bottom-bar { display: flex; }
   body { padding-bottom: 120px; }
   .page-wrap { padding-bottom: 120px; }
+  /* استوديو الأبطال in bottom nav — hide the fixed desktop button */
+  .avatar-shop-desktop { display: none !important; }
   /* Lift Faheem widget above the bottom nav bar */
   :root {
     --faheem-btn-bottom: 90px;

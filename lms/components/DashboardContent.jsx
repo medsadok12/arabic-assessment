@@ -425,9 +425,9 @@ export default function DashboardContent({
             </div>
           </div>
 
-          {/* ── AvatarShop — fixed on right edge, below points counter ── */}
+          {/* ── AvatarShop — fixed on right edge, desktop only (mobile → bottom nav) ── */}
           {isStudent && (
-            <div style={{
+            <div className="avatar-shop-desktop" style={{
               position: 'fixed',
               right: 12,
               top: 242,
