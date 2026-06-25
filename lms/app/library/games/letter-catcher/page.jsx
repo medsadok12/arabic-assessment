@@ -3,6 +3,37 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
+/* ────────────────────────── fallback words (instant start) ─── */
+const LC_FALLBACK = [
+  { id:'f1',  word:'قِطَّة',   missing_letter:'ق', options:['ق','ك','ع','ج','ح'], emoji:'🐱', topic:'الحيوانات', grade_level:1, category:null },
+  { id:'f2',  word:'كَلْب',   missing_letter:'ك', options:['ك','ق','ع','غ','ج'], emoji:'🐶', topic:'الحيوانات', grade_level:1, category:null },
+  { id:'f3',  word:'بَيْت',   missing_letter:'ب', options:['ب','ت','ن','ف','ث'], emoji:'🏠', topic:'المنزل',    grade_level:1, category:null },
+  { id:'f4',  word:'شَمْس',   missing_letter:'ش', options:['ش','س','ص','ض','ز'], emoji:'☀️', topic:'الطبيعة',   grade_level:1, category:null },
+  { id:'f5',  word:'نَجْم',   missing_letter:'ن', options:['ن','م','ب','ت','ي'], emoji:'⭐', topic:'الطبيعة',   grade_level:1, category:null },
+  { id:'f6',  word:'سَمَك',   missing_letter:'س', options:['س','ش','ص','ث','ز'], emoji:'🐟', topic:'الحيوانات', grade_level:1, category:null },
+  { id:'f7',  word:'تُفَّاح', missing_letter:'ت', options:['ت','ث','ن','ب','ف'], emoji:'🍎', topic:'الفواكه',   grade_level:1, category:null },
+  { id:'f8',  word:'مَاء',    missing_letter:'م', options:['م','ن','ب','ه','و'], emoji:'💧', topic:'الطبيعة',   grade_level:1, category:null },
+  { id:'f9',  word:'كِتَاب',  missing_letter:'ك', options:['ك','ق','ع','غ','خ'], emoji:'📚', topic:'المدرسة',   grade_level:1, category:null },
+  { id:'f10', word:'قَمَر',   missing_letter:'ق', options:['ق','ك','ع','غ','خ'], emoji:'🌙', topic:'الطبيعة',   grade_level:1, category:null },
+];
+
+const LC_CACHE_KEY = 'lc_words_cache_v1';
+const LC_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCachedWords() {
+  try {
+    const raw = localStorage.getItem(LC_CACHE_KEY);
+    if (!raw) return null;
+    const { words, ts } = JSON.parse(raw);
+    if (Date.now() - ts > LC_CACHE_TTL) return null;
+    return words;
+  } catch { return null; }
+}
+
+function setCachedWords(words) {
+  try { localStorage.setItem(LC_CACHE_KEY, JSON.stringify({ words, ts: Date.now() })); } catch {}
+}
+
 /* ────────────────────────── helpers ────────────────────────── */
 const DIACRITICS = /[ً-ْٰ]/g;
 function stripDia(s) { return (s || '').replace(DIACRITICS, ''); }
@@ -643,7 +674,8 @@ export default function LetterCatcherGame() {
   const [showCfg,    setShowCfg]    = useState(false);
   const [catMeta,    setCatMeta]    = useState({});
   const [isTeacher,        setIsTeacher]        = useState(false);
-  const [isLoading,        setIsLoading]        = useState(true);
+  const [isLoading,        setIsLoading]        = useState(false);
+  const [loadProgress,     setLoadProgress]     = useState(0);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [cfg, setCfg] = useState({
     questionsPerRound: 10,
@@ -696,22 +728,40 @@ export default function LetterCatcherGame() {
     }
   }, [isTeacher]);
 
-  /* ── load game words with active filters from API ── */
+  /* ── load game words: instant start from cache/fallback, then refresh from API ── */
   const loadGameWords = useCallback(async () => {
-    setIsLoading(true);
+    // Step 1 (0ms): try localStorage cache first
+    const cached = getCachedWords();
+    if (cached && cached.length > 0) {
+      setGameWords(cached.filter(isValid));
+      setLoadProgress(100);
+    } else {
+      // Step 2: use fallback words instantly so game can start right away
+      setGameWords(LC_FALLBACK.filter(isValid));
+      setLoadProgress(30);
+    }
+
+    // Step 3: fetch fresh words from API in background (no UI blocking)
     try {
+      setLoadProgress(prev => Math.max(prev, 50));
       const p = new URLSearchParams();
-      if (cfg.topic)    p.set('topic',  cfg.topic);
-      if (cfg.grade > 0) p.set('grade', String(cfg.grade));
+      if (cfg.topic)     p.set('topic',  cfg.topic);
+      if (cfg.grade > 0) p.set('grade',  String(cfg.grade));
       p.set('minLen', String(cfg.minLen));
       p.set('maxLen', String(cfg.maxLen));
+      setLoadProgress(prev => Math.max(prev, 70));
       const res  = await fetch(`/api/games/letter-catcher?${p}`);
       const json = await res.json();
-      setGameWords((json.words || []).filter(isValid));
+      setLoadProgress(90);
+      const fresh = (json.words || []).filter(isValid);
+      if (fresh.length > 0) {
+        setGameWords(fresh);
+        setCachedWords(fresh);
+      }
+      setLoadProgress(100);
     } catch {
-      setGameWords([]);
-    } finally {
-      setIsLoading(false);
+      // silently keep fallback/cached words already set above
+      setLoadProgress(100);
     }
   }, [cfg.topic, cfg.grade, cfg.minLen, cfg.maxLen]);
 
@@ -827,8 +877,8 @@ export default function LetterCatcherGame() {
 
   const notEnough = isTeacher && gameWords.length > 0 && gameWords.length < cfg.questionsPerRound;
 
-  /* ══════════════════════ RENDER: LOADING ══════════════════════ */
-  if (phase === 'start' && isLoading) {
+  /* ══════════════════════ RENDER: LOADING (progress bar, shown only when 0–99%) ═════════ */
+  if (phase === 'start' && loadProgress < 100 && loadProgress > 0) {
     return (
       <div style={S.page}>
         <style>{`
@@ -836,24 +886,34 @@ export default function LetterCatcherGame() {
             0%,100% { transform: translateY(0px) rotate(-4deg); }
             50%      { transform: translateY(-16px) rotate(4deg); }
           }
-          @keyframes lcDot {
-            0%,80%,100% { opacity: .2; transform: scale(.65); }
-            40%         { opacity: 1;  transform: scale(1.2);  }
+          @keyframes lcBarShimmer {
+            0%   { background-position: -200px 0; }
+            100% { background-position: 200px 0; }
           }
         `}</style>
         <div style={S.centerCard}>
           <div style={{ fontSize:'4.8rem', lineHeight:1, animation:'lcOwlBob 1.6s ease-in-out infinite', display:'inline-block' }}>🦉</div>
           <h1 style={S.mainTitle}>صيّاد الحروف!</h1>
           <p style={{ ...S.sub, color:'#7c3aed', fontWeight:700, margin:0 }}>
-            انتظر، فهيم يُجهّز اللعبة... 🎈
+            فهيم يُجهّز الكلمات... 🎈
           </p>
-          <div style={{ display:'flex', gap:10 }}>
-            {[0, 180, 360].map(delay => (
-              <div key={delay} style={{
-                width:13, height:13, borderRadius:'50%', background:'#7c3aed',
-                animation:`lcDot 1.3s ${delay}ms ease-in-out infinite`,
+          {/* numerical progress bar */}
+          <div style={{ width:'100%', maxWidth:260, margin:'12px auto 0' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4, fontSize:'.82rem', color:'#7c3aed', fontWeight:700 }}>
+              <span>جاري التحميل</span>
+              <span>{loadProgress}%</span>
+            </div>
+            <div style={{ height:10, borderRadius:8, background:'#ede9fe', overflow:'hidden' }}>
+              <div style={{
+                height:'100%',
+                width:`${loadProgress}%`,
+                borderRadius:8,
+                background:'linear-gradient(90deg,#7c3aed,#a78bfa)',
+                transition:'width .35s ease',
+                backgroundSize:'200px 100%',
+                animation:'lcBarShimmer 1.4s linear infinite',
               }} />
-            ))}
+            </div>
           </div>
           <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
         </div>
