@@ -382,7 +382,8 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
 
   const ROLE_LABELS = lang === 'ar' ? ROLE_LABELS_AR : ROLE_LABELS_EN;
 
-  const isAdmin = role === 'admin' || role === 'super_admin';
+  const isAdmin   = role === 'admin' || role === 'super_admin';
+  const isStudent = role === 'student';
   const navLinks = [
     {
       href:  destPath,
@@ -390,6 +391,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
       icon:  isAdmin ? '⚙️' : '🏠',
     },
     { href: '/library', label: t('nav.library'), icon: '📚' },
+    ...(isStudent ? [{ href: '/progress', label: 'تقدمي', icon: '📊' }] : []),
   ];
 
   return (
