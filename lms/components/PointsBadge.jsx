@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-/* كل 1000 نقطة مكتسبة = مستوى جديد — لا ينخفض المستوى عند إنفاق النقاط */
 const LEVELS = [
   { min: 0,    color: '#D97706', icon: '🌱', name: 'مبتدئ'  },
   { min: 1000, color: '#94A3B8', icon: '⚡', name: 'مستكشف' },
@@ -17,7 +16,7 @@ function getLvl(earned) {
 }
 
 const R    = 22;
-const CIRC = 2 * Math.PI * R; // 138.2
+const CIRC = 2 * Math.PI * R;
 
 const ANIM_ID = 'pts-float-anim';
 if (typeof document !== 'undefined' && !document.getElementById(ANIM_ID)) {
@@ -27,34 +26,40 @@ if (typeof document !== 'undefined' && !document.getElementById(ANIM_ID)) {
     @keyframes pfBounce { 0%{transform:translate(-50%,-50%)scale(1)} 40%{transform:translate(-50%,-50%)scale(1.6)} 70%{transform:translate(-50%,-50%)scale(.85)} 100%{transform:translate(-50%,-50%)scale(1)} }
     @keyframes pfRipple { 0%{transform:scale(.6);opacity:.8} 100%{transform:scale(2.4);opacity:0} }
     @keyframes pfFadeIn { from{opacity:0;transform:translateX(8px)} to{opacity:1;transform:translateX(0)} }
-    @keyframes pfFadeInUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
     @keyframes pfFloat  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
     @keyframes pfLvlUp  { 0%{transform:scale(1)} 30%{transform:scale(1.4)} 55%{transform:scale(.88)} 75%{transform:scale(1.1)} 100%{transform:scale(1)} }
     @keyframes pfNum    { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes pfSheetIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
   `;
   document.head.appendChild(s);
 }
 
 export default function PointsBadge() {
-  const [pts,      setPts]      = useState(0);
-  const [earned,   setEarned]   = useState(0);
-  const [shownE,   setShownE]   = useState(0);
-  const [burst,    setBurst]    = useState(false);
-  const [lvlUp,    setLvlUp]    = useState(false);
-  const [open,     setOpen]     = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const prevEarned = useRef(0);
-  const prevLvlIdx = useRef(0);
-  const rafRef     = useRef(null);
-  const wrapRef    = useRef(null);
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 640);
+    const check = () => setIsMobile(window.innerWidth < 769);
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  // On mobile the bottom nav shows points — no floating badge needed
+  if (isMobile) return null;
+
+  return <PointsBadgeDesktop />;
+}
+
+function PointsBadgeDesktop() {
+  const [pts,    setPts]    = useState(0);
+  const [earned, setEarned] = useState(0);
+  const [shownE, setShownE] = useState(0);
+  const [burst,  setBurst]  = useState(false);
+  const [lvlUp,  setLvlUp]  = useState(false);
+  const [open,   setOpen]   = useState(false);
+  const prevEarned = useRef(0);
+  const prevLvlIdx = useRef(0);
+  const rafRef     = useRef(null);
+  const wrapRef    = useRef(null);
 
   const load = useCallback(async () => {
     try {
@@ -102,9 +107,7 @@ export default function PointsBadge() {
 
   useEffect(() => {
     if (!open) return;
-    const fn = e => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
-    };
+    const fn = e => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', fn);
     return () => document.removeEventListener('mousedown', fn);
   }, [open]);
@@ -115,184 +118,6 @@ export default function PointsBadge() {
   const fill     = (progress / 100) * CIRC;
   const toNext   = PER_LVL - inLevel;
 
-  /* ── mobile: compact pill at bottom-right, above bottom nav ── */
-  if (isMobile) {
-    const R_SM   = 16;
-    const CIRC_SM = 2 * Math.PI * R_SM;
-    const fill_sm = (progress / 100) * CIRC_SM;
-
-    return (
-      <div ref={wrapRef} style={{ fontFamily: "'Cairo','Tajawal',sans-serif", direction: 'rtl' }}>
-        {/* compact pill */}
-        <button
-          onClick={() => setOpen(o => !o)}
-          style={{
-            position: 'fixed', right: 12, bottom: 76, zIndex: 500,
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: 'rgba(15,23,42,0.92)',
-            backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-            border: `2px solid ${burst ? lvl.color : lvl.color + '60'}`,
-            borderRadius: 40, padding: '8px 14px 8px 10px',
-            cursor: 'pointer', color: '#fff',
-            boxShadow: burst
-              ? `0 0 22px ${lvl.color}70, 0 4px 20px rgba(0,0,0,.5)`
-              : `0 4px 20px rgba(0,0,0,.45), 0 0 10px ${lvl.color}25`,
-            transition: 'border-color .4s, box-shadow .4s',
-            animation: lvlUp ? 'pfLvlUp .7s ease' : 'none',
-            outline: 'none', WebkitTapHighlightColor: 'transparent',
-          }}
-        >
-          {/* mini ring */}
-          <div style={{ position: 'relative', width: 36, height: 36, flexShrink: 0 }}>
-            {burst && (
-              <div style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: `2px solid ${lvl.color}`,
-                animation: 'pfRipple .7s ease-out forwards',
-                pointerEvents: 'none',
-              }} />
-            )}
-            <svg width="36" height="36" viewBox="0 0 36 36"
-              style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}>
-              <circle cx="18" cy="18" r={R_SM} fill="none"
-                stroke="rgba(255,255,255,0.1)" strokeWidth="3" />
-              <circle cx="18" cy="18" r={R_SM} fill="none"
-                stroke={lvl.color} strokeWidth="3" strokeLinecap="round"
-                strokeDasharray={`${fill_sm} ${CIRC_SM}`}
-                style={{
-                  transition: 'stroke-dasharray 1.3s cubic-bezier(.4,0,.2,1)',
-                  filter: `drop-shadow(0 0 4px ${lvl.color}bb)`,
-                }}
-              />
-            </svg>
-            <span style={{
-              position: 'absolute', top: '50%', left: '50%',
-              fontSize: '1rem', lineHeight: 1,
-              transform: 'translate(-50%,-50%)',
-              animation: burst ? 'pfBounce .6s ease' : 'pfFloat 3s ease-in-out infinite',
-            }}>{lvl.icon}</span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{
-              fontWeight: 900, fontSize: '.95rem',
-              color: lvl.color, fontVariantNumeric: 'tabular-nums', lineHeight: 1,
-              animation: burst ? 'pfNum .3s ease' : 'none',
-            }}>{shownE.toLocaleString()}</span>
-            <span style={{ fontSize: '.6rem', color: '#94a3b8', fontWeight: 700, lineHeight: 1 }}>
-              {lvl.name}
-            </span>
-          </div>
-        </button>
-
-        {/* mobile: detail sheet as centered modal */}
-        {open && (
-          <div
-            style={{
-              position: 'fixed', inset: 0, zIndex: 600,
-              background: 'rgba(0,0,0,.55)',
-              backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
-              display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-              padding: '0 0 80px',
-            }}
-            onClick={e => { if (e.target === e.currentTarget) setOpen(false); }}
-          >
-            <div style={{
-              background: 'linear-gradient(160deg,#0f172a,#1e293b)',
-              border: `1.5px solid ${lvl.color}45`, borderRadius: '24px 24px 20px 20px',
-              padding: '20px 20px 24px', width: '100%', maxWidth: 360,
-              boxShadow: `0 -8px 40px rgba(0,0,0,.6), 0 0 28px ${lvl.color}20`,
-              animation: 'pfSheetIn .28s ease', color: '#fff',
-              direction: 'rtl',
-            }}>
-              {/* drag handle */}
-              <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,.18)', borderRadius: 99, margin: '0 auto 16px' }} />
-
-              {/* header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                <div style={{
-                  width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
-                  background: `radial-gradient(circle,${lvl.color}28,transparent 70%)`,
-                  border: `2px solid ${lvl.color}70`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '1.7rem', boxShadow: `0 0 18px ${lvl.color}40`,
-                  animation: 'pfFloat 2.5s ease-in-out infinite',
-                }}>{lvl.icon}</div>
-                <div>
-                  <div style={{ fontWeight: 900, fontSize: '1.05rem', color: lvl.color }}>{lvl.name}</div>
-                  <div style={{ fontSize: '.73rem', color: '#94a3b8', marginTop: 2 }}>
-                    {earned.toLocaleString()} نقطة مكتسبة
-                  </div>
-                  <div style={{ fontSize: '.7rem', color: '#475569', marginTop: 1 }}>
-                    رصيد متاح: <span style={{ color: '#F59E0B', fontWeight: 700 }}>{pts.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* progress bar */}
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.7rem', marginBottom: 5 }}>
-                  <span style={{ color: '#94a3b8' }}>
-                    {lvl.idx < LEVELS.length - 1
-                      ? `نحو "${LEVELS[lvl.idx + 1].name}"`
-                      : '🏆 أعلى مستوى!'}
-                  </span>
-                  <span style={{ fontWeight: 700, color: lvl.color }}>
-                    {inLevel.toLocaleString()} / {PER_LVL.toLocaleString()}
-                  </span>
-                </div>
-                <div style={{ height: 8, background: 'rgba(255,255,255,.07)', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%', width: `${progress}%`,
-                    background: `linear-gradient(90deg,${lvl.color}70,${lvl.color})`,
-                    borderRadius: 99, boxShadow: `0 0 8px ${lvl.color}90`,
-                    transition: 'width 1.2s cubic-bezier(.4,0,.2,1)',
-                  }} />
-                </div>
-              </div>
-
-              {lvl.idx < LEVELS.length - 1 && (
-                <div style={{ fontSize: '.7rem', color: '#475569', textAlign: 'center', marginBottom: 14 }}>
-                  {toNext.toLocaleString()} نقطة إضافية للمستوى التالي
-                </div>
-              )}
-
-              {/* levels map */}
-              <div style={{
-                display: 'flex', justifyContent: 'space-between',
-                paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.07)',
-              }}>
-                {LEVELS.map((l, i) => {
-                  const reached = earned >= l.min;
-                  const current = i === lvl.idx;
-                  return (
-                    <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 1 }}>
-                      <div style={{
-                        width: 32, height: 32, borderRadius: '50%',
-                        background: reached ? `${l.color}20` : 'rgba(255,255,255,.04)',
-                        border: `1.5px solid ${reached ? l.color + (current ? 'ff' : '70') : 'rgba(255,255,255,.1)'}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '1rem',
-                        boxShadow: current ? `0 0 12px ${l.color}80` : 'none',
-                        opacity: reached ? 1 : .3,
-                        animation: current ? 'pfFloat 2s ease-in-out infinite' : 'none',
-                      }}>{l.icon}</div>
-                      <span style={{
-                        fontSize: '.56rem', fontWeight: current ? 800 : 500,
-                        color: current ? l.color : reached ? '#64748b' : '#334155',
-                      }}>{l.name}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  /* ── desktop: original layout ── */
   return (
     <div
       ref={wrapRef}

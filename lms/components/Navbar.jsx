@@ -8,11 +8,15 @@ import { useLanguage } from '../contexts/LanguageContext';
 import TeamChat        from './TeamChat';
 import PointsBadge     from './PointsBadge';
 
-/* ── Global style for navbar pulse ── */
+/* ── Global style for navbar pulse + points sheet ── */
 if (typeof document !== 'undefined' && !document.getElementById('nav-pulse-style')) {
   const s = document.createElement('style');
   s.id = 'nav-pulse-style';
-  s.textContent = '@keyframes navPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.82;transform:scale(1.04)}}';
+  s.textContent = `
+    @keyframes navPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.82;transform:scale(1.04)}}
+    @keyframes ptsSheetIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes ptsFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+  `;
   document.head.appendChild(s);
 }
 
@@ -144,18 +148,168 @@ const NAV_ICONS = {
   '/library':    '📚',
 };
 
-function BottomNav({ navLinks, pathname, onLogout }) {
-  const allItems = [
-    ...navLinks,
-    { href: '/profile', label: 'حسابي', icon: '👤' },
-  ];
+/* ── Points levels (mirrors PointsBadge — used in mobile sheet) ── */
+const PTS_LEVELS = [
+  { min: 0,    color: '#D97706', icon: '🌱', name: 'مبتدئ'  },
+  { min: 1000, color: '#94A3B8', icon: '⚡', name: 'مستكشف' },
+  { min: 2000, color: '#F59E0B', icon: '⭐', name: 'بطل'     },
+  { min: 3000, color: '#A78BFA', icon: '💎', name: 'محترف'  },
+  { min: 4000, color: '#22D3EE', icon: '🚀', name: 'أسطورة' },
+];
+const PTS_PER_LVL = 1000;
+function getPtsLvl(earned) {
+  const idx = Math.min(PTS_LEVELS.length - 1, Math.floor(earned / PTS_PER_LVL));
+  return { ...PTS_LEVELS[idx], idx };
+}
+
+/* ── Points tab for the bottom nav (students, mobile only) ── */
+function PointsBottomItem() {
+  const [pts,    setPts]    = useState(0);
+  const [earned, setEarned] = useState(0);
+  const [open,   setOpen]   = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const r = await fetch('/api/points');
+        const j = await r.json();
+        setPts(j.points ?? 0);
+        setEarned(j.earned ?? 0);
+      } catch {}
+    }
+    load();
+    const id = setInterval(load, 20000);
+    return () => clearInterval(id);
+  }, []);
+
+  const lvl      = getPtsLvl(earned);
+  const inLevel  = earned - lvl.idx * PTS_PER_LVL;
+  const progress = Math.min(100, (inLevel / PTS_PER_LVL) * 100);
+  const toNext   = PTS_PER_LVL - inLevel;
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="nav-bottom-item"
+      >
+        <span className="nav-bottom-icon" style={{ fontSize: '1.3rem' }}>{lvl.icon}</span>
+        <span className="nav-bottom-label" style={{ color: lvl.color, fontVariantNumeric: 'tabular-nums' }}>
+          {earned > 0 ? earned.toLocaleString() : 'نقاطي'}
+        </span>
+      </button>
+
+      {open && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setOpen(false); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,.55)',
+            backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            padding: '0 0 74px',
+            fontFamily: "'Cairo','Tajawal',sans-serif", direction: 'rtl',
+          }}
+        >
+          <div style={{
+            background: 'linear-gradient(160deg,#0f172a,#1e293b)',
+            border: `1.5px solid ${lvl.color}45`,
+            borderRadius: '24px 24px 20px 20px',
+            padding: '20px 20px 24px', width: '100%', maxWidth: 400,
+            boxShadow: `0 -8px 40px rgba(0,0,0,.6), 0 0 28px ${lvl.color}18`,
+            animation: 'ptsSheetIn .25s ease', color: '#fff',
+          }}>
+            {/* drag handle */}
+            <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,.2)', borderRadius: 99, margin: '0 auto 18px' }} />
+
+            {/* header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
+                background: `radial-gradient(circle,${lvl.color}28,transparent 70%)`,
+                border: `2px solid ${lvl.color}70`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.9rem', boxShadow: `0 0 20px ${lvl.color}40`,
+                animation: 'ptsFloat 2.5s ease-in-out infinite',
+              }}>{lvl.icon}</div>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: '1.1rem', color: lvl.color }}>{lvl.name}</div>
+                <div style={{ fontSize: '.75rem', color: '#94a3b8', marginTop: 3 }}>
+                  {earned.toLocaleString()} نقطة مكتسبة
+                </div>
+                <div style={{ fontSize: '.72rem', color: '#475569', marginTop: 2 }}>
+                  رصيد متاح: <span style={{ color: '#F59E0B', fontWeight: 700 }}>{pts.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* progress */}
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.72rem', marginBottom: 6 }}>
+                <span style={{ color: '#94a3b8' }}>
+                  {lvl.idx < PTS_LEVELS.length - 1
+                    ? `نحو "${PTS_LEVELS[lvl.idx + 1].name}"`
+                    : '🏆 أعلى مستوى!'}
+                </span>
+                <span style={{ fontWeight: 700, color: lvl.color }}>
+                  {inLevel.toLocaleString()} / {PTS_PER_LVL.toLocaleString()}
+                </span>
+              </div>
+              <div style={{ height: 9, background: 'rgba(255,255,255,.08)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', width: `${progress}%`,
+                  background: `linear-gradient(90deg,${lvl.color}70,${lvl.color})`,
+                  borderRadius: 99, boxShadow: `0 0 8px ${lvl.color}90`,
+                  transition: 'width 1.2s cubic-bezier(.4,0,.2,1)',
+                }} />
+              </div>
+            </div>
+
+            {lvl.idx < PTS_LEVELS.length - 1 && (
+              <div style={{ fontSize: '.71rem', color: '#475569', textAlign: 'center', marginBottom: 16 }}>
+                {toNext.toLocaleString()} نقطة للمستوى التالي
+              </div>
+            )}
+
+            {/* levels map */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.08)' }}>
+              {PTS_LEVELS.map((l, i) => {
+                const reached = earned >= l.min;
+                const current = i === lvl.idx;
+                return (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flex: 1 }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: '50%',
+                      background: reached ? `${l.color}22` : 'rgba(255,255,255,.04)',
+                      border: `1.5px solid ${reached ? l.color + (current ? 'ff' : '70') : 'rgba(255,255,255,.1)'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '1.05rem',
+                      boxShadow: current ? `0 0 14px ${l.color}90` : 'none',
+                      opacity: reached ? 1 : .28,
+                      animation: current ? 'ptsFloat 2s ease-in-out infinite' : 'none',
+                    }}>{l.icon}</div>
+                    <span style={{
+                      fontSize: '.58rem', fontWeight: current ? 800 : 500,
+                      color: current ? l.color : reached ? '#64748b' : '#334155',
+                    }}>{l.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function BottomNav({ navLinks, pathname, role }) {
+  const isStudent = role === 'student';
   return (
     <div className="nav-bottom-bar">
-      {allItems.map(l => {
+      {navLinks.map(l => {
         const icon = l.icon ?? NAV_ICONS[l.href] ?? '📄';
-        const active = l.href === '/profile'
-          ? pathname === '/profile'
-          : pathname.startsWith(l.href);
+        const active = pathname.startsWith(l.href);
         return (
           <Link key={l.href} href={l.href} className={`nav-bottom-item${active ? ' active' : ''}`}>
             <span className="nav-bottom-icon">{icon}</span>
@@ -163,6 +317,16 @@ function BottomNav({ navLinks, pathname, onLogout }) {
           </Link>
         );
       })}
+      {isStudent && (
+        <Link
+          href="/dashboard/heroes-studio"
+          className={`nav-bottom-item${pathname.startsWith('/dashboard/heroes-studio') ? ' active' : ''}`}
+        >
+          <span className="nav-bottom-icon">🎭</span>
+          <span className="nav-bottom-label">استوديو</span>
+        </Link>
+      )}
+      {isStudent && <PointsBottomItem />}
     </div>
   );
 }
@@ -354,7 +518,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
 
     </nav>
     <TeamChat user={user} />
-    {user && <BottomNav navLinks={navLinks} pathname={pathname} onLogout={handleLogout} />}
+    {user && <BottomNav navLinks={navLinks} pathname={pathname} role={role} />}
     {user && role === 'student' && <PointsBadge />}
     </>
   );
