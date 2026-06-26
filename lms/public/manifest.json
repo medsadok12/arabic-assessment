@@ -1,0 +1,50 @@
+{
+  "name": "أكاديمية عارم",
+  "short_name": "عارم",
+  "description": "منصة تعليمية عربية متكاملة لتقييم وتطوير مهارات اللغة العربية",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#185FA5",
+  "theme_color": "#185FA5",
+  "orientation": "portrait-primary",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["education"],
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "تسجيل الدخول",
+      "short_name": "دخول",
+      "url": "/auth/login",
+      "icons": [{ "src": "/logo.svg", "sizes": "any" }]
+    },
+    {
+      "name": "تقييم المستوى",
+      "short_name": "تقييم",
+      "url": "/",
+      "icons": [{ "src": "/logo.svg", "sizes": "any" }]
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

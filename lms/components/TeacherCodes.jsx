@@ -154,10 +154,10 @@ export default function TeacherCodes() {
                     </span>
                   </td>
                   <td style={{ fontSize: '.85rem', color: 'var(--muted)', direction: 'ltr', textAlign: 'right' }}>
-                    {c.created_at ? new Date(c.created_at).toLocaleDateString('ar-SA') : '—'}
+                    {c.created_at ? new Date(c.created_at).toLocaleDateString('en-GB') : '—'}
                   </td>
                   <td style={{ fontSize: '.85rem', color: 'var(--muted)', direction: 'ltr', textAlign: 'right' }}>
-                    {c.used_at ? new Date(c.used_at).toLocaleDateString('ar-SA') : '—'}
+                    {c.used_at ? new Date(c.used_at).toLocaleDateString('en-GB') : '—'}
                   </td>
                   <td>
                     <button
