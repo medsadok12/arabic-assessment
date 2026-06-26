@@ -34,6 +34,7 @@ const StoryPage = forwardRef(function StoryPage({ html, fontSize, pageNum, total
           position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
           fontSize: '.58rem', color: '#c4a96d', fontWeight: 700,
           letterSpacing: '.05em', whiteSpace: 'nowrap',
+          direction: 'ltr',
         }}>
           {pageNum} / {total}
         </div>
@@ -168,9 +169,10 @@ export default function StoryFlipBook({
           textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
         }}>→ رجوع</Link>
 
-        {/* نقاط التقدم */}
+        {/* نقاط التقدم — مقلوبة لتبدأ من اليمين (اتجاه القراءة العربي) */}
         <div style={{
-          position: 'absolute', top: 18, left: '50%', transform: 'translateX(-50%)',
+          position: 'absolute', top: 18, left: '50%',
+          transform: 'translateX(-50%) scaleX(-1)',
           zIndex: 30, display: 'flex', gap: 6,
         }}>
           {pages.map((_, i) => (
@@ -182,11 +184,11 @@ export default function StoryFlipBook({
           ))}
         </div>
 
-        {/* الكتاب */}
+        {/* الكتاب — مقلوب لجعل حركة القلب من اليمين لليسار (عربي) */}
         <div
           onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
-          onClick={(e) => safeFlip(e.clientX > window.innerWidth / 2 ? 'next' : 'prev')}
-          style={{ position: 'absolute', inset: 0, touchAction: 'pan-y' }}
+          onClick={(e) => safeFlip(e.clientX < window.innerWidth / 2 ? 'next' : 'prev')}
+          style={{ position: 'absolute', inset: 0, touchAction: 'pan-y', transform: 'scaleX(-1)' }}
         >
           <HTMLFlipBook
             key={`fs-${dims.w}x${dims.h}`}
@@ -195,7 +197,7 @@ export default function StoryFlipBook({
             minWidth={240} minHeight={360} maxWidth={600} maxHeight={1200}
           >
             {pages.map((html, i) => (
-              <StoryPage key={i} html={html} fontSize={fontSize} pageNum={i+1} total={totalPages} />
+              <StoryPage key={i} html={html} fontSize={fontSize} pageNum={i+1} total={totalPages} mirrorX={true} />
             ))}
           </HTMLFlipBook>
         </div>
