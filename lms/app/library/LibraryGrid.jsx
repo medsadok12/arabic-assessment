@@ -967,7 +967,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
               onClick={() => fileRef.current?.click()}
               style={{ width:90, height:90, borderRadius:18, margin:'0 auto 16px', background:editingResource.iconBg, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', overflow:'hidden', border:'2px dashed #e5e7eb', fontSize:'2.8rem', boxShadow:'0 4px 14px rgba(0,0,0,.1)' }}
             >
-              {editImg ? <img src={editImg} style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : editIcon}
+              {editImg ? <img src={editImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : editIcon}
             </div>
             <input type="file" accept="image/*" hidden ref={fileRef}
               onChange={async e => {
