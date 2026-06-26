@@ -1,6 +1,14 @@
 'use client';
 import { useState, useRef } from 'react';
 import Link from 'next/link';
+import FanCarousel from '../../components/FanCarousel';
+
+const CAROUSEL_GROUPS = [
+  { tag: 'مستوى 1', emoji: '⭐' },
+  { tag: 'مستوى 2', emoji: '📗' },
+  { tag: 'مستوى 3', emoji: '🏆' },
+  { tag: 'تعزيزي',  emoji: '🎮' },
+];
 
 const RESOURCES = [
   {
@@ -153,6 +161,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
   const [activeFilter,  setActiveFilter]  = useState('الكل');
   const [search,        setSearch]        = useState('');
   const [bannerDismiss, setBannerDismiss] = useState(false);
+  const [dockHover,     setDockHover]     = useState(null);
   const fileRef = useRef();
 
   /* ── مجموعة المكتملة ── */
@@ -513,6 +522,20 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         }
         .lib-empty span { display:block; font-size:2.8rem; margin-bottom:10px; }
 
+        /* ── fan-card: تأكد أن البطاقة تملأ عرض الحاوي ── */
+        .fan-card .lib-card { width:100%; box-sizing:border-box; animation:none !important; }
+        /* رأس المجموعة */
+        .fan-group-header {
+          display:flex; align-items:center; gap:8px;
+          margin:24px 0 8px; direction:rtl;
+        }
+        .fan-group-label {
+          font-size:.78rem; font-weight:800; border-radius:20px;
+          padding:4px 13px; flex-shrink:0;
+        }
+        .fan-group-line { flex:1; height:1.5px; background:linear-gradient(90deg,#e2e8f0,transparent); }
+        .fan-group-count { font-size:.7rem; color:#94a3b8; font-weight:700; flex-shrink:0; }
+
         /* ══════════════════════════════════════════
            قسم القصص والحكايات
         ══════════════════════════════════════════ */
@@ -740,17 +763,31 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           />
         </div>
 
-        {/* ── فلاتر ── */}
-        <div className="lib-filters">
-          {FILTERS.map(f => {
+        {/* ── فلاتر بأسلوب Dock ── */}
+        <div
+          className="lib-filters"
+          style={{ alignItems: 'flex-end', paddingTop: 38, paddingBottom: 4 }}
+          onMouseLeave={() => setDockHover(null)}
+        >
+          {FILTERS.map((f, i) => {
             const count = f === 'الكل'
               ? RESOURCES.length
               : RESOURCES.filter(r => r.tag === f).length;
+            const d     = dockHover === null ? Infinity : Math.abs(i - dockHover);
+            const scale = d === 0 ? 1.6 : d === 1 ? 1.3 : d === 2 ? 1.1 : 1;
             return (
               <button
                 key={f}
+                onMouseEnter={() => setDockHover(i)}
                 className={`lib-filter-btn${activeFilter === f ? ' active' : ''}`}
                 onClick={() => { setActiveFilter(f); setSearch(''); }}
+                style={{
+                  transform: `scale(${scale})`,
+                  transformOrigin: 'bottom center',
+                  position: 'relative',
+                  zIndex: scale > 1 ? 10 : 1,
+                  transition: 'transform .22s cubic-bezier(.34,1.56,.64,1), border-color .18s, background .18s, color .18s, box-shadow .18s',
+                }}
               >
                 {f}
                 <span className="lib-filter-count">{count}</span>
@@ -775,13 +812,10 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           </span>
         </div>
 
-        {/* ── الشبكة ── */}
-        <div className="lib-grid" id="lib-activities-grid">
-          {filtered.length === 0 ? (
-            <div className="lib-empty">
-              <span>🔍</span>لا توجد نتائج مطابقة
-            </div>
-          ) : filtered.map((r, i) => {
+        {/* ── الشبكة / مروحة البطاقات ── */}
+        {(() => {
+          /* دالة رسم بطاقة واحدة — مشتركة بين المروحة والشبكة */
+          const renderLibCard = (r, i) => {
             const meta         = cardMeta[r.key] || {};
             const displayTitle = meta.title       || r.title;
             const displayDesc  = meta.description || r.desc;
@@ -790,37 +824,22 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
             const tagStyle     = TAG_COLORS[r.tag] ?? { bg:'#f1f5f9', color:'#475569' };
             const isLvl1       = r.tag === 'مستوى 1';
             const done         = completedKeys.has(r.key);
-
             const cardContent = (
               <>
-                {/* زر تعديل المعلم */}
                 {isTeacher && (
-                  <button
-                    className="lib-edit-btn"
+                  <button className="lib-edit-btn"
                     onClick={e => { e.preventDefault(); e.stopPropagation(); openEdit(r); }}
-                    title="تعديل البطاقة"
-                  >✏️</button>
+                    title="تعديل البطاقة">✏️</button>
                 )}
-
-                {/* وسم المستوى */}
-                <span className="lib-tag" style={{ background:tagStyle.bg, color:tagStyle.color }}>
-                  {r.tag}
-                </span>
-
-                {/* نجمة لمستوى 1 */}
+                <span className="lib-tag" style={{ background:tagStyle.bg, color:tagStyle.color }}>{r.tag}</span>
                 {isLvl1 && r.ready && !done && (
                   <span style={{ position:'absolute', top:9, left:isTeacher?42:10, fontSize:'.85rem' }}>⭐</span>
                 )}
-
-                {/* الأيقونة + شارة الإكمال */}
                 <div className="lib-icon-outer">
-                  <div
-                    className="lib-icon-wrap"
-                    style={{
-                      background: r.iconBg,
-                      boxShadow: done ? '0 0 0 2.5px #22c55e, 0 0 0 5px rgba(34,197,94,.12)' : 'none',
-                    }}
-                  >
+                  <div className="lib-icon-wrap" style={{
+                    background: r.iconBg,
+                    boxShadow: done ? '0 0 0 2.5px #22c55e, 0 0 0 5px rgba(34,197,94,.12)' : 'none',
+                  }}>
                     {displayImg
                       ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
                       : <span style={{ filter:r.ready?'none':'grayscale(1) brightness(.65)' }}>{displayIcon}</span>
@@ -828,51 +847,49 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
                   </div>
                   {done && <span className="lib-done-badge">✓</span>}
                 </div>
-
-                {/* العنوان */}
                 <p className="lib-card-title">{displayTitle}</p>
-
-                {/* الوصف */}
                 <p className="lib-card-desc">{displayDesc}</p>
-
-                {/* زر الانطلاق */}
                 {r.ready
                   ? done
                     ? <span className="lib-replay-btn">✓ العب مجدداً</span>
                     : <span className="lib-start-btn" style={{ background:r.btnBg }}>ابدأ الآن ←</span>
                   : <span className="lib-coming-badge">🔒 قريباً</span>
                 }
-
-                {/* طبقة القفل */}
                 {!r.ready && <div className="lib-lock-overlay">🔒</div>}
               </>
             );
+            const cls = ['lib-card', r.ready?'ready':'coming', isLvl1?'lvl1':'', done?'done':''].filter(Boolean).join(' ');
+            const sty = { background:r.bg, borderColor:done?'#86efac':r.border, boxShadow:r.ready?`0 4px 16px ${r.accent}18`:'none' };
+            return r.ready
+              ? <Link key={r.key} href={r.link} className={cls} style={sty}>{cardContent}</Link>
+              : <div  key={r.key}               className={cls} style={sty}>{cardContent}</div>;
+          };
 
-            const cls = [
-              'lib-card',
-              r.ready  ? 'ready'  : 'coming',
-              isLvl1   ? 'lvl1'   : '',
-              done     ? 'done'   : '',
-            ].filter(Boolean).join(' ');
+          /* بحث أو فلتر → شبكة عادية */
+          if (search.trim() || activeFilter !== 'الكل') return (
+            <div className="lib-grid" id="lib-activities-grid">
+              {filtered.length === 0
+                ? <div className="lib-empty"><span>🔍</span>لا توجد نتائج مطابقة</div>
+                : filtered.map(renderLibCard)
+              }
+            </div>
+          );
 
-            const sty = {
-              background:      r.bg,
-              borderColor:     done ? '#86efac' : r.border,
-              boxShadow:       r.ready ? `0 4px 16px ${r.accent}18` : 'none',
-              animationDelay: `${i * 0.05}s`,
-            };
+          /* العرض الافتراضي: 3 مراوح متساوية (5 بطاقات لكل مروحة) */
+          const rows = [
+            RESOURCES.slice(0,  5),
+            RESOURCES.slice(5,  10),
+            RESOURCES.slice(10, 15),
+          ];
 
-            return r.ready ? (
-              <Link key={r.key} href={r.link} className={cls} style={sty}>
-                {cardContent}
-              </Link>
-            ) : (
-              <div key={r.key} className={cls} style={sty}>
-                {cardContent}
-              </div>
-            );
-          })}
-        </div>
+          return (
+            <div id="lib-activities-grid">
+              {rows.map((row, i) => (
+                <FanCarousel key={i} items={row} renderCard={renderLibCard} />
+              ))}
+            </div>
+          );
+        })()}
 
         {/* ══════════════════════════════════════════════
             قسم القصص والحكايات
@@ -943,7 +960,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
                 backgroundClip:'text',
                 filter:'drop-shadow(0 2px 12px rgba(16,185,129,.4))',
               }}>
-                حكايات الغابة السحرية
+                حكاياتي
               </h2>
               <p style={{
                 color:'rgba(255,255,255,.68)', fontSize:'.8rem',
