@@ -1,7 +1,8 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import DOMPurify from 'isomorphic-dompurify';
+import StoryFlipBook from '../../../../components/StoryFlipBook';
 
 const LEVEL_LABELS = { 1: 'مستوى 1', 2: 'مستوى 2', 3: 'مستوى 3' };
 
@@ -42,9 +43,6 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
   const pages      = (story.content || '').split('<!-- PAGE -->').map(p => p.trim()).filter(Boolean);
   const isMultiPage = pages.length > 1;
 
-  const [pageIdx,    setPageIdx]    = useState(0);
-  const [direction,  setDirection]  = useState('forward');
-  const [animKey,    setAnimKey]    = useState(0);
   const [read,       setRead]       = useState(alreadyRead);
   const [loading,    setLoading]    = useState(false);
   const [showCelebr, setShowCelebr] = useState(false);
@@ -52,46 +50,6 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
   const [scrollPct,  setScrollPct]  = useState(0);
   const [btnReady,   setBtnReady]   = useState(alreadyRead);
   const contentRef = useRef(null);
-
-  const isLastPage     = pageIdx === pages.length - 1;
-  const currentContent = isMultiPage ? pages[pageIdx] : (story.content || '');
-
-  /* ── تنقل ── */
-  const goNext = useCallback(() => {
-    if (pageIdx >= pages.length - 1) return;
-    playPageSound();
-    setDirection('forward');
-    setAnimKey(k => k + 1);
-    setPageIdx(p => p + 1);
-  }, [pageIdx, pages.length]);
-
-  const goPrev = useCallback(() => {
-    if (pageIdx <= 0) return;
-    playPageSound();
-    setDirection('back');
-    setAnimKey(k => k + 1);
-    setPageIdx(p => p - 1);
-  }, [pageIdx]);
-
-  /* ── النقر على منطقة القراءة ── */
-  const handleAreaClick = useCallback((e) => {
-    if (!isMultiPage) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const relX = (e.clientX - rect.left) / rect.width;
-    if (relX < 0.22) goPrev();
-    else goNext();
-  }, [isMultiPage, goNext, goPrev]);
-
-  /* ── لوحة المفاتيح ── */
-  useEffect(() => {
-    if (!isMultiPage) return;
-    const fn = (e) => {
-      if (e.key === 'ArrowLeft'  || e.key === 'ArrowDown')  goNext();
-      if (e.key === 'ArrowRight' || e.key === 'ArrowUp')    goPrev();
-    };
-    window.addEventListener('keydown', fn);
-    return () => window.removeEventListener('keydown', fn);
-  }, [isMultiPage, goNext, goPrev]);
 
   /* ── تتبع التمرير (صفحة واحدة) ── */
   useEffect(() => {
@@ -311,69 +269,18 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
           </div>
         </div>
 
-        {/* ══ وضع الكتاب (متعدد الصفحات) ══ */}
+        {/* ══ وضع الكتاب (متعدد الصفحات) — HTMLFlipBook ══ */}
         {isMultiPage ? (
           <div className="sr-book-wrap">
-            {/* نقاط الصفحات */}
-            <div className="sr-dots">
-              {pages.map((_, i) => (
-                <div
-                  key={i}
-                  className={`sr-dot${i === pageIdx ? ' active' : i < pageIdx ? ' done' : ''}`}
-                  title={`صفحة ${i + 1}`}
-                />
-              ))}
-            </div>
-
-            {/* الصفحة */}
-            <div className="sr-book-area" onClick={handleAreaClick}>
-              <div
-                key={animKey}
-                className={`sr-page ${direction}`}
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentContent) }}
-              />
-              {/* مناطق النقر */}
-              <div className="sr-zone-r"><span className="sr-zone-icon">▶</span></div>
-              {pageIdx > 0 && <div className="sr-zone-l"><span className="sr-zone-icon">◀</span></div>}
-              <div className="sr-page-num">صفحة {pageIdx + 1} من {pages.length}</div>
-              {!isLastPage && (
-                <div className="sr-tap-hint">← اضغط للصفحة التالية</div>
-              )}
-            </div>
-
-            {/* أزرار التنقل */}
-            <div className="sr-nav">
-              <button className="sr-nav-btn prev" onClick={goPrev} disabled={pageIdx === 0}>
-                ▶ السابق
-              </button>
-              <span className="sr-page-label">{pageIdx + 1} / {pages.length}</span>
-              {isLastPage ? (
-                !isTeacher && (
-                  read ? (
-                    <div style={{ background:'#d1fae5', border:'1.5px solid #86efac', borderRadius:50, padding:'9px 22px', color:'#065f46', fontWeight:900, fontSize:'.85rem' }}>
-                      ✅ أنهيت القصة
-                    </div>
-                  ) : (
-                    <button
-                      className="sr-nav-btn next"
-                      onClick={handleComplete}
-                      disabled={loading}
-                      style={{ background:`linear-gradient(135deg,${accent},${accent}cc)` }}
-                    >
-                      {loading ? '⏳...' : `🎉 انتهيت! +${story.points || 10} نقطة`}
-                    </button>
-                  )
-                )
-              ) : (
-                <button
-                  className="sr-nav-btn next"
-                  onClick={goNext}
-                  style={{ background:`linear-gradient(135deg,${accent},${accent}cc)` }}
-                >
-                  التالي ◀
-                </button>
-              )}
-            </div>
+            <StoryFlipBook
+              pages={pages}
+              accent={accent}
+              onComplete={handleComplete}
+              read={read}
+              loading={loading}
+              isTeacher={isTeacher}
+              points={story.points || 10}
+            />
           </div>
 
         ) : (
