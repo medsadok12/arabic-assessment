@@ -1096,7 +1096,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
                 backgroundClip:'text',
                 filter:'drop-shadow(0 2px 12px rgba(16,185,129,.4))',
               }}>
-                حكايات الغابة السحرية
+                حكاياتي
               </h2>
               <p style={{
                 color:'rgba(255,255,255,.68)', fontSize:'.8rem',
