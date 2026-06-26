@@ -27,13 +27,18 @@ const SECURITY_HEADERS = [
       "img-src 'self' data: blob: https:",
       // Fonts self-hosted via next/font
       "font-src 'self' data:",
-      // API connections: Supabase, Gemini, Azure TTS, Google TTS proxy
+      // API connections: Supabase, Gemini, Azure TTS, Google TTS proxy, 3D models
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co " +
         "https://generativelanguage.googleapis.com " +
         "https://*.api.cognitive.microsoft.com " +
         "https://*.tts.speech.microsoft.com " +
         "https://translate.googleapis.com " +
-        "https://api.anthropic.com",
+        "https://api.anthropic.com " +
+        "https://modelviewer.dev " +
+        "https://raw.githubusercontent.com " +
+        "https://threejs.org",
+      // model-viewer uses Web Workers for loading GLB files
+      "worker-src blob: 'self'",
       // Audio/video from Supabase storage and blobs (Web Audio API)
       "media-src 'self' blob: https:",
       // Allow iframes only from same origin (Google Meet opens in new tab, not iframe)
