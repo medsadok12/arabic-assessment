@@ -305,8 +305,17 @@ export default function HeroesStudio() {
 
         {/* Top bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link href="/dashboard" style={{ color: '#475569', fontSize: 13, textDecoration: 'none', padding: '4px 8px', fontFamily: 'Cairo,sans-serif' }}>
-            → لوحتي
+          <Link href="/dashboard" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: 'linear-gradient(135deg,rgba(139,92,246,.22),rgba(99,102,241,.18))',
+            border: '1.5px solid rgba(139,92,246,.45)',
+            borderRadius: 50, padding: '8px 18px',
+            color: '#c4b5fd', fontSize: 13, fontWeight: 700,
+            textDecoration: 'none', fontFamily: 'Cairo,sans-serif',
+            backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 14px rgba(139,92,246,.2)',
+          }}>
+            🏠 لوحتي
           </Link>
           <div style={{ background: 'rgba(234,179,8,.1)', border: '1.5px solid rgba(234,179,8,.28)', borderRadius: 40, padding: '5px 16px', display: 'flex', alignItems: 'center', gap: 7 }}>
             <span style={{ fontSize: 16 }}>⭐</span>
