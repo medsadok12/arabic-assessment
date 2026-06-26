@@ -36,7 +36,7 @@ const StoryPage = forwardRef(function StoryPage({ html, fontSize, pageNum, total
           letterSpacing: '.05em', whiteSpace: 'nowrap',
           direction: 'ltr',
         }}>
-          {pageNum} / {total}
+          {total} / {pageNum}
         </div>
       </div>
     </div>
@@ -323,9 +323,8 @@ export default function StoryFlipBook({
           </button>
 
           <span style={{ color: '#94a3b8', fontSize: '.85rem', fontWeight: 700, direction: 'ltr' }}>
-            {current + 1}
-            {current + 1 < totalPages ? `‒${Math.min(current + 2, totalPages)}` : ''}
-            {' / '}{totalPages}
+            {totalPages}{' / '}
+            {current + 1}{current + 1 < totalPages ? `‒${Math.min(current + 2, totalPages)}` : ''}
           </span>
 
           {isLastPage ? (
@@ -404,7 +403,7 @@ export default function StoryFlipBook({
           <button onClick={() => safeFlip('prev')} disabled={current === 0} style={{
             ...BTN, background: '#f1f5f9', color: '#64748b', opacity: current === 0 ? .25 : 1,
           }}>▶ السابق</button>
-          <span style={{ color: '#94a3b8', fontSize: '.8rem', fontWeight: 700 }}>{current+1} / {totalPages}</span>
+          <span style={{ color: '#94a3b8', fontSize: '.8rem', fontWeight: 700, direction: 'ltr' }}>{totalPages} / {current+1}</span>
           {isLastPage ? (!isTeacher && (read ? (
             <div style={{ ...BTN, background: '#d1fae5', color: '#065f46', border: '1.5px solid #86efac', cursor: 'default' }}>✅ أنهيت</div>
           ) : (
