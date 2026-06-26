@@ -54,7 +54,10 @@ export default function DashboardContent({
 
   const nextSession = upcomingSessions[0] ?? null;
   const pendingHw   = homework.filter(h => h.status !== 'done').length;
-  const today       = new Date().toISOString().slice(0, 10);
+
+  // ── today must come from state so server/client initial renders match ──
+  const [today, setToday] = useState('');
+  useEffect(() => { setToday(new Date().toISOString().slice(0, 10)); }, []);
 
   // ── Live session status — polls Supabase every 15 s to detect teacher "active" ──
   const [liveStatus, setLiveStatus] = useState(nextSession?.status ?? 'scheduled');

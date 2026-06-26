@@ -13,18 +13,13 @@ function loadMvScript() {
   document.head.appendChild(s);
 }
 
-/* ── Inject companion CSS once ────────────────────────────────────────── */
-if (typeof document !== 'undefined' && !document.getElementById('hero3d-anim')) {
-  const s = document.createElement('style');
-  s.id = 'hero3d-anim';
-  s.textContent = `
-    @keyframes h3dFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
-    @keyframes h3dPulse { 0%,100%{opacity:.4;transform:scale(1)} 50%{opacity:.9;transform:scale(1.08)} }
-    @keyframes h3dSlide { from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:translateX(0)} }
-    model-viewer { --progress-bar-color:#8b5cf6; --poster-color:transparent; }
-  `;
-  document.head.appendChild(s);
-}
+/* ── Companion CSS (injected once on client via useEffect in component) ── */
+const HERO3D_CSS = `
+  @keyframes h3dFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+  @keyframes h3dPulse { 0%,100%{opacity:.4;transform:scale(1)} 50%{opacity:.9;transform:scale(1.08)} }
+  @keyframes h3dSlide { from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:translateX(0)} }
+  model-viewer { --progress-bar-color:#8b5cf6; --poster-color:transparent; }
+`;
 
 /* ── Per-hero static data ────────── */
 const HERO_META = {
@@ -49,9 +44,18 @@ const GREETINGS = [
 export default function DashboardHero3D({ displayName, pendingHw, nextSession, isStudent }) {
   const [cfg,      setCfg]      = useState(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [greeting, setGreeting] = useState('');
   const mvRef = useRef(null);
 
-  useEffect(() => { setIsMobile(window.innerWidth < 640); }, []);
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 640);
+    setGreeting(GREETINGS[Math.floor(Date.now() / 86400000) % GREETINGS.length]);
+    if (document.getElementById('hero3d-anim')) return;
+    const s = document.createElement('style');
+    s.id = 'hero3d-anim';
+    s.textContent = HERO3D_CSS;
+    document.head.appendChild(s);
+  }, []);
 
   useEffect(() => {
     if (!isStudent) { setCfg({}); return; }
@@ -91,7 +95,6 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
   const heroId  = cfg.avatar_id ?? 'robot';
   const meta    = HERO_META[heroId] ?? HERO_META.robot;
   const color   = meta.color;
-  const greeting = GREETINGS[Math.floor(Date.now() / 86400000) % GREETINGS.length];
 
   const statusMsg = pendingHw > 0
     ? `لديك ${pendingHw} واجب${pendingHw === 1 ? '' : 'ات'} معلّقة ⚡`

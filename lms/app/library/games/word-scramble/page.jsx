@@ -863,7 +863,7 @@ export default function WordScrambleGame() {
           <div style={{ ...S.barFill, width: `${((cur + 1) / queue.length) * 100}%` }} />
         </div>
         <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
-          <span style={{ background: 'rgba(245,158,11,0.28)', borderRadius: 20, padding: '4px 12px', fontSize: '.88rem', fontWeight: 800, color: '#fff' }}>⭐ {totalPoints.toLocaleString()}</span>
+          <span style={{ background: 'rgba(245,158,11,0.28)', borderRadius: 20, padding: '4px 12px', fontSize: '.88rem', fontWeight: 800, color: '#fff' }}>⭐ {totalPoints.toLocaleString('ar-EG')}</span>
           {ptPopupActive && (
             <span key={ptPopupKey} style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', color: '#fbbf24', fontWeight: 900, fontSize: '1.05rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards', textShadow: '0 1px 6px rgba(0,0,0,.45)' }}>+5 ⭐</span>
           )}

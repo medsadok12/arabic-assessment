@@ -549,7 +549,7 @@ export default function HeroesStudio() {
                                   fontSize: 11, fontFamily: 'Cairo,sans-serif', fontWeight: 700,
                                   transition: 'all .15s',
                                 }}>
-                                {isBuying_ ? '⏳' : canBuy ? `⭐ ${h.price.toLocaleString()} نجمة` : `🔒 ${h.price.toLocaleString()} ⭐`}
+                                {isBuying_ ? '⏳' : canBuy ? `⭐ ${h.price.toLocaleString('ar-EG')} نجمة` : `🔒 ${h.price.toLocaleString('ar-EG')} ⭐`}
                               </button>
                             )}
                           </div>
