@@ -850,8 +850,8 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
               : <div  key={r.key}               className={cls} style={sty}>{cardContent}</div>;
           };
 
-          /* عند البحث → شبكة عادية للتصفح السريع */
-          if (search.trim()) return (
+          /* بحث أو فلتر → شبكة عادية */
+          if (search.trim() || activeFilter !== 'الكل') return (
             <div className="lib-grid" id="lib-activities-grid">
               {filtered.length === 0
                 ? <div className="lib-empty"><span>🔍</span>لا توجد نتائج مطابقة</div>
@@ -860,35 +860,18 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
             </div>
           );
 
-          /* بدون بحث → مروحة مجمّعة بالمستوى */
-          const visibleGroups = CAROUSEL_GROUPS
-            .filter(g => activeFilter === 'الكل' || g.tag === activeFilter)
-            .map(g => ({ ...g, items: filtered.filter(r => r.tag === g.tag) }))
-            .filter(g => g.items.length > 0);
-
-          if (visibleGroups.length === 0) return (
-            <div className="lib-grid" id="lib-activities-grid">
-              <div className="lib-empty"><span>🔍</span>لا توجد نتائج مطابقة</div>
-            </div>
-          );
+          /* العرض الافتراضي: 3 مراوح متساوية (5 بطاقات لكل مروحة) */
+          const rows = [
+            RESOURCES.slice(0,  5),
+            RESOURCES.slice(5,  10),
+            RESOURCES.slice(10, 15),
+          ];
 
           return (
             <div id="lib-activities-grid">
-              {visibleGroups.map(g => {
-                const tagStyle = TAG_COLORS[g.tag] ?? { bg:'#f1f5f9', color:'#475569' };
-                return (
-                  <div key={g.tag}>
-                    <div className="fan-group-header">
-                      <span className="fan-group-label" style={{ background:tagStyle.bg, color:tagStyle.color }}>
-                        {g.emoji} {g.tag}
-                      </span>
-                      <div className="fan-group-line" />
-                      <span className="fan-group-count">{g.items.length} {g.items.length === 1 ? 'نشاط' : 'أنشطة'}</span>
-                    </div>
-                    <FanCarousel items={g.items} renderCard={renderLibCard} />
-                  </div>
-                );
-              })}
+              {rows.map((row, i) => (
+                <FanCarousel key={i} items={row} renderCard={renderLibCard} />
+              ))}
             </div>
           );
         })()}
