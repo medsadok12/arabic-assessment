@@ -5,7 +5,7 @@ import HTMLFlipBook from 'react-pageflip';
 import DOMPurify from 'isomorphic-dompurify';
 
 /* ── صفحة واحدة ── */
-const StoryPage = forwardRef(function StoryPage({ html, fontSize, pageNum, total, isRight }, ref) {
+const StoryPage = forwardRef(function StoryPage({ html, fontSize, pageNum, total, isRight, mirrorX }, ref) {
   return (
     <div ref={ref} style={{ overflow: 'hidden', background: 'transparent' }}>
       <div style={{
@@ -19,8 +19,13 @@ const StoryPage = forwardRef(function StoryPage({ html, fontSize, pageNum, total
         fontSize, lineHeight: 1.95, color: '#2d1f0e',
         direction: 'rtl',
         userSelect: 'none', WebkitUserSelect: 'none',
-        borderLeft: isRight ? '1px solid #e8d9b8' : 'none',
-        borderRight: isRight ? 'none' : '1px solid #e8d9b8',
+        /* نعكس المحتوى مرة ثانية ليُقرأ بشكل صحيح بعد عكس الحاوية */
+        ...(mirrorX
+          ? { transform: 'scaleX(-1)' }
+          : {
+              borderLeft: isRight ? '1px solid #e8d9b8' : 'none',
+              borderRight: isRight ? 'none' : '1px solid #e8d9b8',
+            }),
       }}>
         <div style={{ flex: 1, overflow: 'hidden' }}
           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
@@ -271,6 +276,8 @@ export default function StoryFlipBook({
               `,
               borderRadius: 6,
               position: 'relative',
+              /* عكس ترتيب الصفحات لتصبح الصفحة 1 يميناً (اتجاه العربية) */
+              transform: 'scaleX(-1)',
             }}
           >
             {/* خط الوسط (عمود الكتاب) */}
@@ -293,6 +300,7 @@ export default function StoryFlipBook({
                   key={i} html={html} fontSize={fontSize}
                   pageNum={i+1} total={totalPages}
                   isRight={i % 2 === 0}
+                  mirrorX={true}
                 />
               ))}
             </HTMLFlipBook>
