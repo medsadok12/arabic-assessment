@@ -8,16 +8,19 @@ import { useLanguage } from '../contexts/LanguageContext';
 import TeamChat        from './TeamChat';
 import PointsBadge     from './PointsBadge';
 
-/* ── Global style for navbar pulse + points sheet ── */
-if (typeof document !== 'undefined' && !document.getElementById('nav-pulse-style')) {
-  const s = document.createElement('style');
-  s.id = 'nav-pulse-style';
-  s.textContent = `
-    @keyframes navPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.82;transform:scale(1.04)}}
-    @keyframes ptsSheetIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes ptsFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-  `;
-  document.head.appendChild(s);
+/* ── Global style injected once on mount (avoids SSR mismatch) ── */
+function useNavStyle() {
+  useEffect(() => {
+    if (document.getElementById('nav-pulse-style')) return;
+    const s = document.createElement('style');
+    s.id = 'nav-pulse-style';
+    s.textContent = `
+      @keyframes navPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.82;transform:scale(1.04)}}
+      @keyframes ptsSheetIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes ptsFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+    `;
+    document.head.appendChild(s);
+  }, []);
 }
 
 /* ── أيقونات التواصل الاجتماعي ── */
@@ -339,6 +342,7 @@ function dashboardPath(role) {
 }
 
 export default function Navbar({ user: initialUser, sessionCountdown = null }) {
+  useNavStyle();
   const pathname  = usePathname();
   const router    = useRouter();
   const dropRef   = useRef(null);

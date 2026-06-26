@@ -6,6 +6,7 @@ const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {
   const [lang, setLangState] = useState('ar');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('lang');
@@ -13,6 +14,7 @@ export function LanguageProvider({ children }) {
       setLangState(saved);
       applyHtml(saved);
     }
+    setMounted(true);
   }, []);
 
   function applyHtml(l) {
@@ -26,7 +28,6 @@ export function LanguageProvider({ children }) {
     applyHtml(l);
   }, []);
 
-  // t('nav.home') or t('admin.tabs.overview')
   const t = useCallback((key) => {
     const parts = key.split('.');
     let node = translations[lang];
@@ -39,8 +40,9 @@ export function LanguageProvider({ children }) {
 
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
 
+  // Render with default 'ar' on server — client picks up localStorage after mount
   return (
-    <LanguageContext.Provider value={{ lang, setLang, t, dir }}>
+    <LanguageContext.Provider value={{ lang, setLang, t, dir, mounted }}>
       {children}
     </LanguageContext.Provider>
   );

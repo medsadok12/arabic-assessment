@@ -13,8 +13,10 @@ export default function PWAInstall() {
   const [isIOS,       setIsIOS]       = useState(false);
   const [visible,     setVisible]     = useState(false);
   const [isMobile,    setIsMobile]    = useState(false);
+  const [mounted,     setMounted]     = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const checkMobile = () => setIsMobile(window.innerWidth <= 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -89,7 +91,9 @@ export default function PWAInstall() {
     navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
   }
 
-  // On authenticated / admin pages the install prompt blocks the UI — hide it
+  // Don't render anything until client is mounted (prevents hydration mismatch)
+  if (!mounted) return null;
+
   const onAdminPath = ADMIN_PATHS.some(p => pathname?.startsWith(p));
 
   return (
