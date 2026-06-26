@@ -681,6 +681,12 @@ body {
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
+  /* Prevent horizontal overflow from GSAP animations or scaled elements
+     causing fixed/sticky bars to appear narrower than the viewport */
+  html { overflow-x: hidden; }
+  .navbar { width: 100%; max-width: 100%; }
+  .nav-bottom-bar { width: 100%; max-width: 100%; }
+
   .hero h1 { font-size: 1.9rem; }
   /* Remove the large padding-bottom — photo is in normal flow on mobile */
   .hero-main { padding: 32px 0 28px; }
