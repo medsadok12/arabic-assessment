@@ -1,50 +1,5 @@
 'use client';
 import { useState, useRef } from 'react';
-
-const CAROUSEL_GROUPS = [
-  { tag: 'مستوى 1', emoji: '⭐' },
-  { tag: 'مستوى 2', emoji: '📗' },
-  { tag: 'مستوى 3', emoji: '🏆' },
-  { tag: 'تعزيزي',  emoji: '🎮' },
-];
-
-function DeckCarousel({ items, renderCard }) {
-  const [idx, setIdx] = useState(0);
-  const total = items.length;
-  const go = (n) => setIdx(i => Math.max(0, Math.min(total - 1, i + n)));
-  return (
-    <div className="deck-car">
-      <button className={`deck-arr deck-arr-r${idx <= 0 ? ' deck-hidden' : ''}`}
-        onClick={() => go(-1)} aria-label="السابق">›</button>
-      <div className="deck-vp">
-        {items.map((item, i) => {
-          const off = i - idx;
-          const abs = Math.abs(off);
-          return (
-            <div key={item.key} className="deck-slot" style={{
-              transform: `translateX(calc(-50% - ${off * 78}%)) scale(${off === 0 ? 1 : 0.82})`,
-              opacity:  abs === 0 ? 1 : abs === 1 ? 0.48 : 0,
-              zIndex:   abs === 0 ? 3 : 1,
-              pointerEvents: off === 0 ? 'auto' : 'none',
-            }}>
-              {renderCard(item, i)}
-            </div>
-          );
-        })}
-      </div>
-      <button className={`deck-arr deck-arr-l${idx >= total - 1 ? ' deck-hidden' : ''}`}
-        onClick={() => go(1)} aria-label="التالي">‹</button>
-      {total > 1 && (
-        <div className="deck-dots">
-          {items.map((_, i) => (
-            <button key={i} className={`deck-dot${i === idx ? ' active' : ''}`}
-              onClick={() => setIdx(i)} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 import Link from 'next/link';
 
 const RESOURCES = [
@@ -558,60 +513,6 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         }
         .lib-empty span { display:block; font-size:2.8rem; margin-bottom:10px; }
 
-        /* ══ كاروسيل deck-peek ══ */
-        .deck-car {
-          position:relative; padding:0 46px; margin-bottom:24px;
-        }
-        .deck-vp {
-          position:relative; height:272px; overflow:hidden;
-        }
-        .deck-slot {
-          position:absolute; width:min(230px,66vw); left:50%; top:0;
-          transition:transform .42s cubic-bezier(.34,1.1,.64,1), opacity .3s ease;
-        }
-        .deck-slot .lib-card {
-          width:100%; box-sizing:border-box; animation:none !important;
-        }
-        .deck-arr {
-          position:absolute; top:124px; z-index:10;
-          background:#fff; border:1.5px solid #e2e8f0; border-radius:50%;
-          width:38px; height:38px; font-size:1.35rem; font-weight:700;
-          cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.12);
-          display:flex; align-items:center; justify-content:center;
-          transition:all .2s; color:#4f46e5; padding:0; line-height:1;
-        }
-        .deck-arr:hover { transform:scale(1.12); box-shadow:0 6px 20px rgba(0,0,0,.18); }
-        .deck-arr-r { right:0; }
-        .deck-arr-l { left:0; }
-        .deck-hidden { opacity:0; pointer-events:none; }
-        .deck-dots {
-          display:flex; justify-content:center; gap:6px; margin-top:10px;
-        }
-        .deck-dot {
-          width:8px; height:8px; border-radius:99px; border:none;
-          background:#cbd5e1; cursor:pointer; transition:all .3s; padding:0;
-        }
-        .deck-dot.active { width:22px; background:#6366f1; }
-        .deck-group-header {
-          display:flex; align-items:center; gap:8px;
-          margin:20px 0 10px; direction:rtl;
-        }
-        .deck-group-label {
-          font-size:.78rem; font-weight:800; border-radius:20px;
-          padding:4px 13px; flex-shrink:0;
-        }
-        .deck-group-line {
-          flex:1; height:1.5px;
-          background:linear-gradient(90deg,#e2e8f0,transparent);
-        }
-        .deck-group-count { font-size:.7rem; color:#94a3b8; font-weight:700; flex-shrink:0; }
-        @media (max-width:600px) {
-          .deck-car { padding:0 36px; }
-          .deck-vp  { height:252px; }
-          .deck-slot { width:min(200px,72vw); }
-          .deck-arr { width:32px; height:32px; font-size:1.1rem; top:112px; }
-        }
-
         /* ══════════════════════════════════════════
            قسم القصص والحكايات
         ══════════════════════════════════════════ */
@@ -874,9 +775,13 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           </span>
         </div>
 
-        {/* ── الشبكة / الكاروسيل ── */}
-        {(() => {
-          const renderLibCard = (r, i) => {
+        {/* ── الشبكة ── */}
+        <div className="lib-grid" id="lib-activities-grid">
+          {filtered.length === 0 ? (
+            <div className="lib-empty">
+              <span>🔍</span>لا توجد نتائج مطابقة
+            </div>
+          ) : filtered.map((r, i) => {
             const meta         = cardMeta[r.key] || {};
             const displayTitle = meta.title       || r.title;
             const displayDesc  = meta.description || r.desc;
@@ -885,22 +790,37 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
             const tagStyle     = TAG_COLORS[r.tag] ?? { bg:'#f1f5f9', color:'#475569' };
             const isLvl1       = r.tag === 'مستوى 1';
             const done         = completedKeys.has(r.key);
+
             const cardContent = (
               <>
+                {/* زر تعديل المعلم */}
                 {isTeacher && (
-                  <button className="lib-edit-btn"
+                  <button
+                    className="lib-edit-btn"
                     onClick={e => { e.preventDefault(); e.stopPropagation(); openEdit(r); }}
-                    title="تعديل البطاقة">✏️</button>
+                    title="تعديل البطاقة"
+                  >✏️</button>
                 )}
-                <span className="lib-tag" style={{ background:tagStyle.bg, color:tagStyle.color }}>{r.tag}</span>
+
+                {/* وسم المستوى */}
+                <span className="lib-tag" style={{ background:tagStyle.bg, color:tagStyle.color }}>
+                  {r.tag}
+                </span>
+
+                {/* نجمة لمستوى 1 */}
                 {isLvl1 && r.ready && !done && (
                   <span style={{ position:'absolute', top:9, left:isTeacher?42:10, fontSize:'.85rem' }}>⭐</span>
                 )}
+
+                {/* الأيقونة + شارة الإكمال */}
                 <div className="lib-icon-outer">
-                  <div className="lib-icon-wrap" style={{
-                    background: r.iconBg,
-                    boxShadow: done ? '0 0 0 2.5px #22c55e, 0 0 0 5px rgba(34,197,94,.12)' : 'none',
-                  }}>
+                  <div
+                    className="lib-icon-wrap"
+                    style={{
+                      background: r.iconBg,
+                      boxShadow: done ? '0 0 0 2.5px #22c55e, 0 0 0 5px rgba(34,197,94,.12)' : 'none',
+                    }}
+                  >
                     {displayImg
                       ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
                       : <span style={{ filter:r.ready?'none':'grayscale(1) brightness(.65)' }}>{displayIcon}</span>
@@ -908,69 +828,51 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
                   </div>
                   {done && <span className="lib-done-badge">✓</span>}
                 </div>
+
+                {/* العنوان */}
                 <p className="lib-card-title">{displayTitle}</p>
+
+                {/* الوصف */}
                 <p className="lib-card-desc">{displayDesc}</p>
+
+                {/* زر الانطلاق */}
                 {r.ready
                   ? done
                     ? <span className="lib-replay-btn">✓ العب مجدداً</span>
                     : <span className="lib-start-btn" style={{ background:r.btnBg }}>ابدأ الآن ←</span>
                   : <span className="lib-coming-badge">🔒 قريباً</span>
                 }
+
+                {/* طبقة القفل */}
                 {!r.ready && <div className="lib-lock-overlay">🔒</div>}
               </>
             );
-            const cls = ['lib-card', r.ready?'ready':'coming', isLvl1?'lvl1':'', done?'done':''].filter(Boolean).join(' ');
-            const sty = { background:r.bg, borderColor:done?'#86efac':r.border, boxShadow:r.ready?`0 4px 16px ${r.accent}18`:'none' };
-            return r.ready
-              ? <Link key={r.key} href={r.link} className={cls} style={sty}>{cardContent}</Link>
-              : <div  key={r.key}               className={cls} style={sty}>{cardContent}</div>;
-          };
 
-          /* بحث → شبكة عادية */
-          if (search.trim()) return (
-            <div className="lib-grid" id="lib-activities-grid">
-              {filtered.length === 0
-                ? <div className="lib-empty"><span>🔍</span>لا توجد نتائج مطابقة</div>
-                : filtered.map((r, i) => renderLibCard(r, i))
-              }
-            </div>
-          );
+            const cls = [
+              'lib-card',
+              r.ready  ? 'ready'  : 'coming',
+              isLvl1   ? 'lvl1'   : '',
+              done     ? 'done'   : '',
+            ].filter(Boolean).join(' ');
 
-          /* عرض الكاروسيل المجمّع */
-          const visibleGroups = CAROUSEL_GROUPS
-            .filter(g => activeFilter === 'الكل' || g.tag === activeFilter)
-            .map(g => ({ ...g, items: filtered.filter(r => r.tag === g.tag) }))
-            .filter(g => g.items.length > 0);
+            const sty = {
+              background:      r.bg,
+              borderColor:     done ? '#86efac' : r.border,
+              boxShadow:       r.ready ? `0 4px 16px ${r.accent}18` : 'none',
+              animationDelay: `${i * 0.05}s`,
+            };
 
-          if (visibleGroups.length === 0) return (
-            <div className="lib-grid" id="lib-activities-grid">
-              <div className="lib-empty"><span>🔍</span>لا توجد نتائج مطابقة</div>
-            </div>
-          );
-
-          return (
-            <div id="lib-activities-grid">
-              {visibleGroups.map(g => {
-                const tagStyle = TAG_COLORS[g.tag] ?? { bg:'#f1f5f9', color:'#475569' };
-                return (
-                  <div key={g.tag}>
-                    <div className="deck-group-header">
-                      <span className="deck-group-label" style={{ background:tagStyle.bg, color:tagStyle.color }}>
-                        {g.emoji} {g.tag}
-                      </span>
-                      <div className="deck-group-line" />
-                      <span className="deck-group-count">{g.items.length} {g.items.length === 1 ? 'نشاط' : 'أنشطة'}</span>
-                    </div>
-                    <DeckCarousel
-                      items={g.items}
-                      renderCard={(r, i) => renderLibCard(r, i)}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
+            return r.ready ? (
+              <Link key={r.key} href={r.link} className={cls} style={sty}>
+                {cardContent}
+              </Link>
+            ) : (
+              <div key={r.key} className={cls} style={sty}>
+                {cardContent}
+              </div>
+            );
+          })}
+        </div>
 
         {/* ══════════════════════════════════════════════
             قسم القصص والحكايات
