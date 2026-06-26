@@ -52,22 +52,24 @@ export async function POST(req, { params }) {
       .maybeSingle();
     const newTotal = (balRow?.total ?? 0) + pts;
 
+    // Award points (always works even if story_reads table missing)
     await Promise.all([
-      admin.from('story_reads').insert({
-        user_id:  user.id,
-        story_id: id,
-        read_at:  new Date().toISOString(),
-      }),
       admin.from('user_points').upsert(
         { user_id: user.id, total: newTotal, updated_at: new Date().toISOString() },
         { onConflict: 'user_id' }
       ),
-      admin.from('points_log').insert({
-        user_id: user.id,
-        delta:   pts,
-        reason,
-      }),
+      admin.from('points_log').insert({ user_id: user.id, delta: pts, reason }),
     ]);
+
+    // Mark as read — silently skip if table doesn't exist yet
+    const { error: readErr } = await admin.from('story_reads').insert({
+      user_id:  user.id,
+      story_id: id,
+      read_at:  new Date().toISOString(),
+    });
+    if (readErr && readErr.code !== '42P01' && readErr.code !== '23505') {
+      console.error('story_reads insert:', readErr.message);
+    }
 
     return NextResponse.json({ success: true, points: newTotal, earned: pts });
   } catch (e) {

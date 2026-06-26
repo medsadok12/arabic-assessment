@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import DOMPurify from 'isomorphic-dompurify';
 
 const LEVEL_LABELS = { 1: 'مستوى 1', 2: 'مستوى 2', 3: 'مستوى 3' };
 
@@ -329,7 +330,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
               <div
                 key={animKey}
                 className={`sr-page ${direction}`}
-                dangerouslySetInnerHTML={{ __html: currentContent }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentContent) }}
               />
               {/* مناطق النقر */}
               <div className="sr-zone-r"><span className="sr-zone-icon">▶</span></div>
@@ -383,7 +384,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
             </div>
             <div className="sr-scroll-box" ref={contentRef}>
               {story.content
-                ? <div dangerouslySetInnerHTML={{ __html: story.content }} />
+                ? <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(story.content) }} />
                 : <p style={{ color:'#94a3b8', textAlign:'center', padding:'40px 0' }}>محتوى القصة سيضاف قريباً...</p>
               }
             </div>

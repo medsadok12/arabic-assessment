@@ -42,7 +42,7 @@ export async function POST(req) {
       }
     }
 
-    const { data: current } = await admin.from('user_points').select('total').eq('user_id', user.id).single();
+    const { data: current } = await admin.from('user_points').select('total').eq('user_id', user.id).maybeSingle();
     const newTotal = (current?.total ?? 0) + Math.round(amount);
 
     await Promise.all([
