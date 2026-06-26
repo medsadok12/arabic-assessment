@@ -22,6 +22,16 @@ function FanCarousel({ items, renderCard }) {
   const total = items.length;
   const go = (n) => setIdx(i => ((i + n) + total) % total);
 
+  /* ── دعم السحب باللمس ── */
+  const touchStartX = useRef(null);
+  const onTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const onTouchEnd   = (e) => {
+    if (touchStartX.current === null) return;
+    const delta = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(delta) > 45) go(delta > 0 ? 1 : -1);
+    touchStartX.current = null;
+  };
+
   /* نحدد البطاقات الظاهرة: أقصى 5 (‎−2 إلى +2 من المركز) */
   const offsets = total >= 5 ? [-2,-1,0,1,2]
                 : total === 4 ? [-1,0,0,1]   // fallback
@@ -40,7 +50,7 @@ function FanCarousel({ items, renderCard }) {
       <button className={`fan-arr fan-arr-r${total <= 1 ? ' fan-hidden' : ''}`}
         onClick={() => go(-1)} aria-label="السابق">›</button>
 
-      <div className="fan-stage">
+      <div className="fan-stage" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {offsets.map((off, si) => {
           const ci = ((idx + off) % total + total) % total;
           const c  = cfg[si] || FAN_CFG[2];
