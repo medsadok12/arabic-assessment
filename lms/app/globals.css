@@ -874,7 +874,7 @@ body {
 }
 .fsr-input:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.1); }
 .fsr-textarea { resize: vertical; min-height: 100px; }
-.fsr-char-count { font-size: .73rem; color: #94a3b8; text-align: left; margin-top: 3px; }
+.fsr-char-count { font-size: .73rem; color: #64748b; text-align: left; margin-top: 3px; }
 .fsr-err { font-size: .83rem; color: #dc2626; background: #fef2f2; border-radius: 8px; padding: 8px 12px; font-weight: 600; }
 .fsr-modal-actions { display: flex; gap: 10px; margin-top: 4px; }
 .fsr-btn-primary {

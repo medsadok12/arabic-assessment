@@ -411,7 +411,7 @@ export default function LetterCatcherGame() {
               }}>
                 <span style={{ fontSize:'1.6rem' }}>
                   {modalCatObj?.image_url
-                    ? <img src={modalCatObj.image_url} style={{ width:32, height:32, borderRadius:8, objectFit:'cover' }} />
+                    ? <img src={modalCatObj.image_url} alt="" style={{ width:32, height:32, borderRadius:8, objectFit:'cover' }} />
                     : (modalCatObj?.emoji || modalCatStyle.emoji)
                   }
                 </span>
@@ -556,7 +556,7 @@ export default function LetterCatcherGame() {
                         onClick={() => setPendingCategory(cat)}
                       >
                         {custom?.image_url
-                          ? <img src={custom.image_url} style={{ width:56, height:56, borderRadius:14, objectFit:'cover', boxShadow:'0 2px 8px rgba(0,0,0,.22)' }} />
+                          ? <img src={custom.image_url} alt="" style={{ width:56, height:56, borderRadius:14, objectFit:'cover', boxShadow:'0 2px 8px rgba(0,0,0,.22)' }} />
                           : <span style={{ fontSize:'2.4rem', lineHeight:1 }}>{custom?.emoji || cs.emoji}</span>
                         }
                         <span style={{

@@ -329,7 +329,7 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
               return (
                 <div key={key}>
                   <div style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:8, marginBottom: isEditing ? 0 : 6, background: accentColor+'12', borderRight:`3px solid ${accentColor}`, borderBottomLeftRadius: isEditing ? 0 : 8, borderBottomRightRadius: isEditing ? 0 : 8 }}>
-                    {displayImg ? <img src={displayImg} style={{ width:22, height:22, borderRadius:5, objectFit:'cover', flexShrink:0 }} /> : <span style={{ fontSize:'1rem' }}>{displayEmoji}</span>}
+                    {displayImg ? <img src={displayImg} alt="" style={{ width:22, height:22, borderRadius:5, objectFit:'cover', flexShrink:0 }} /> : <span style={{ fontSize:'1rem' }}>{displayEmoji}</span>}
                     <span style={{ fontWeight:800, color:'#1f2937', fontSize:'.86rem' }}>{cat || 'بدون تصنيف'}</span>
                     <span style={{ marginRight:'auto', background:'#f3f4f6', borderRadius:20, padding:'1px 8px', fontSize:'.72rem', color:'#6b7280', fontWeight:700 }}>{words.length}</span>
                     {cat && (
@@ -345,7 +345,7 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
                       <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                         <div onClick={() => catImgRef.current?.click()} title="انقر لتغيير الصورة"
                           style={{ width:44, height:44, borderRadius:10, overflow:'hidden', background:cs.grad, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'0 2px 8px rgba(0,0,0,.18)', flexShrink:0 }}>
-                          {catImgVal ? <img src={catImgVal} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <span style={{ fontSize:'1.5rem', lineHeight:1 }}>{catEmojiVal}</span>}
+                          {catImgVal ? <img src={catImgVal} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <span style={{ fontSize:'1.5rem', lineHeight:1 }}>{catEmojiVal}</span>}
                         </div>
                         <input value={catImgVal ? '' : catEmojiVal} onChange={e => { setCatEmojiVal(e.target.value); setCatImgVal(null); }}
                           placeholder="🔤 أيقونة" disabled={!!catImgVal} maxLength={2}

@@ -56,7 +56,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <LanguageProvider>
-          {children}
+          <main id="main-content">{children}</main>
         </LanguageProvider>
         <PWAInstall />
       </body>
