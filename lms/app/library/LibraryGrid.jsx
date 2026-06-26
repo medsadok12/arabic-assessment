@@ -520,50 +520,124 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           from { opacity:0; transform:translateX(18px) scale(.94); }
           to   { opacity:1; transform:translateX(0)    scale(1); }
         }
-        @keyframes storyLeafFloat {
-          0%,100% { transform:translateY(0) rotate(0deg); }
-          50%      { transform:translateY(-7px) rotate(6deg); }
+        @keyframes storyStarTwinkle {
+          0%,100% { opacity:.55; }
+          50%      { opacity:1; }
+        }
+        @keyframes storySparkle {
+          0%,100% { opacity:0; transform:scale(.3) rotate(0deg); }
+          45%,55% { opacity:1; transform:scale(1.15) rotate(180deg); }
+        }
+        @keyframes storyMoonGlow {
+          0%,100% { box-shadow:0 0 10px 3px rgba(245,208,100,.35),0 0 24px 6px rgba(245,208,100,.15); }
+          50%      { box-shadow:0 0 18px 6px rgba(245,208,100,.65),0 0 40px 12px rgba(245,208,100,.28); }
+        }
+        @keyframes storyOwlFloat {
+          0%,100% { transform:translateY(0) rotate(-2deg); }
+          50%      { transform:translateY(-8px) rotate(2deg); }
+        }
+        @keyframes storyTreeSway {
+          0%,100% { transform-origin:bottom center; transform:rotate(0deg); }
+          50%      { transform-origin:bottom center; transform:rotate(1.4deg); }
+        }
+        @keyframes storyMistDrift {
+          0%,100% { opacity:.22; transform:scaleX(1); }
+          50%      { opacity:.35; transform:scaleX(1.06); }
         }
 
         .stories-section {
           margin-top:44px;
           border-radius:26px;
           overflow:hidden;
-          box-shadow:0 8px 40px rgba(5,150,105,.16), 0 2px 10px rgba(0,0,0,.07);
+          box-shadow:0 12px 48px rgba(0,0,0,.35), 0 2px 12px rgba(0,0,0,.15);
         }
 
-        /* ── البانر العلوي (شريط ممتد) ── */
+        /* ── البانر العلوي — غابة ليلية سحرية ── */
         .stories-top-banner {
-          background:linear-gradient(155deg,#064e3b 0%,#065f46 55%,#047857 100%);
-          padding:20px 28px;
+          background:
+            radial-gradient(ellipse at 78% 15%, rgba(124,58,237,.22) 0%, transparent 48%),
+            radial-gradient(ellipse at 10% 85%, rgba(16,185,129,.26) 0%, transparent 44%),
+            radial-gradient(ellipse at 45% 100%, rgba(6,78,59,.55) 0%, transparent 52%),
+            linear-gradient(168deg, #060e1e 0%, #0c1a38 22%, #081f13 60%, #040d09 100%);
+          min-height:195px;
+          padding:22px 26px 22px;
           display:flex; align-items:center; gap:18px;
           position:relative; overflow:hidden;
+          border-bottom:1px solid rgba(16,185,129,.12);
         }
+
+        /* نجوم السماء */
+        .stories-banner-stars {
+          position:absolute; inset:0; pointer-events:none;
+          background-image:
+            radial-gradient(circle 1.5px at 11% 16%, rgba(255,255,255,.9) 0%,transparent 100%),
+            radial-gradient(circle 1px  at 27% 9%,  rgba(255,255,255,.7) 0%,transparent 100%),
+            radial-gradient(circle 2px  at 43% 20%, rgba(255,255,255,.75)0%,transparent 100%),
+            radial-gradient(circle 1px  at 57% 7%,  rgba(255,255,255,.55)0%,transparent 100%),
+            radial-gradient(circle 1.5px at 71% 14%, rgba(255,255,255,.85)0%,transparent 100%),
+            radial-gradient(circle 1px  at 84% 25%, rgba(255,255,255,.6) 0%,transparent 100%),
+            radial-gradient(circle 1px  at 19% 36%, rgba(255,255,255,.45)0%,transparent 100%),
+            radial-gradient(circle 1.5px at 38% 28%, rgba(255,255,255,.55)0%,transparent 100%),
+            radial-gradient(circle 1px  at 53% 33%, rgba(255,255,255,.4) 0%,transparent 100%),
+            radial-gradient(circle 2px  at 67% 22%, rgba(255,255,255,.65)0%,transparent 100%),
+            radial-gradient(circle 1px  at 79% 38%, rgba(255,255,255,.45)0%,transparent 100%),
+            radial-gradient(circle 1px  at 93% 11%, rgba(255,255,255,.7) 0%,transparent 100%),
+            radial-gradient(circle 1px  at 6%  48%, rgba(255,255,255,.35)0%,transparent 100%),
+            radial-gradient(circle 1.5px at 88% 42%, rgba(255,255,255,.5) 0%,transparent 100%);
+          animation:storyStarTwinkle 4s ease-in-out infinite;
+        }
+
+        /* ضباب الغابة */
+        .stories-banner-mist {
+          position:absolute; bottom:0; left:0; right:0; height:72px;
+          background:linear-gradient(to top, rgba(6,78,59,.42) 0%, rgba(6,78,59,.14) 55%, transparent 100%);
+          pointer-events:none;
+          animation:storyMistDrift 7s ease-in-out infinite;
+        }
+
+        /* أشجار الظل — يمين */
+        .stories-trees-r {
+          position:absolute; bottom:0; right:14px;
+          display:flex; align-items:flex-end; gap:3px;
+          pointer-events:none;
+        }
+        /* أشجار الظل — يسار */
+        .stories-trees-l {
+          position:absolute; bottom:0; left:10px;
+          display:flex; align-items:flex-end; gap:4px;
+          pointer-events:none;
+        }
+        .s-tree {
+          background:rgba(3,14,8,.88);
+          clip-path:polygon(50% 0%,0% 100%,100% 100%);
+        }
+
         .stories-banner-deco {
           position:absolute; inset:0; pointer-events:none; user-select:none;
         }
 
         /* ── قسم البطاقات السفلي ── */
         .stories-bottom {
-          background:linear-gradient(145deg,#f0fdf4,#ecfdf5 60%,#d1fae5);
+          background:linear-gradient(160deg,#0c1a0f 0%,#0f2318 50%,#0a1c10 100%);
           padding:16px 20px 20px;
           display:flex; flex-direction:column; gap:10px;
+          border-top:1px solid rgba(16,185,129,.12);
         }
         .stories-scroll-header {
           display:flex; align-items:center;
           justify-content:space-between; flex-shrink:0;
         }
         .stories-scroll-title {
-          font-size:.9rem; font-weight:900; color:#064e3b;
+          font-size:.9rem; font-weight:900; color:#a7f3d0;
           display:flex; align-items:center; gap:6px;
         }
         .stories-soon-badge {
-          background:#dcfce7; color:#15803d;
-          border:1.5px solid #86efac; border-radius:20px;
+          background:rgba(16,185,129,.15); color:#6ee7b7;
+          border:1px solid rgba(16,185,129,.3); border-radius:20px;
           padding:3px 10px; font-size:.68rem; font-weight:800;
         }
         .stories-hint {
-          color:#059669; font-size:.74rem; font-weight:600; margin:0;
+          color:rgba(110,231,183,.55); font-size:.74rem; font-weight:600; margin:0;
           display:flex; align-items:center; gap:5px;
         }
 
@@ -574,9 +648,9 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           scroll-snap-type:x mandatory;
           -webkit-overflow-scrolling:touch;
         }
-        .stories-scroll::-webkit-scrollbar { height:5px; }
-        .stories-scroll::-webkit-scrollbar-track { background:#d1fae5; border-radius:99px; }
-        .stories-scroll::-webkit-scrollbar-thumb { background:#6ee7b7; border-radius:99px; }
+        .stories-scroll::-webkit-scrollbar { height:4px; }
+        .stories-scroll::-webkit-scrollbar-track { background:rgba(16,185,129,.08); border-radius:99px; }
+        .stories-scroll::-webkit-scrollbar-thumb { background:rgba(16,185,129,.4); border-radius:99px; }
 
         /* ── بطاقة القصة ── */
         .story-card {
@@ -605,7 +679,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           font-size:.77rem; font-weight:800; color:#1e293b;
           margin:0; line-height:1.38;
         }
-        .story-length { font-size:.62rem; color:#64748b; font-weight:600; }
+        .story-length { font-size:.62rem; color:#475569; font-weight:600; }
 
         .story-read-btn {
           display:inline-block; border:none; border-radius:50px;
@@ -805,71 +879,130 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         ══════════════════════════════════════════════ */}
         <div className="stories-section">
 
-          {/* ── البانر العلوي — شريط ممتد بالكامل ── */}
+          {/* ── البانر العلوي — غابة ليلية سحرية ── */}
           <div className="stories-top-banner">
 
-            {/* ديكور خلفية شفاف */}
+            {/* نجوم + ضباب + أشجار ظل */}
+            <div className="stories-banner-stars" aria-hidden="true" />
+            <div className="stories-banner-mist"  aria-hidden="true" />
+
+            {/* أشجار ظل — يمين */}
+            <div className="stories-trees-r" aria-hidden="true">
+              <div className="s-tree" style={{width:18,height:52,animation:'storyTreeSway 5s ease-in-out infinite .4s'}}/>
+              <div className="s-tree" style={{width:26,height:76,animation:'storyTreeSway 6s ease-in-out infinite'}}/>
+              <div className="s-tree" style={{width:16,height:44,animation:'storyTreeSway 4.5s ease-in-out infinite .8s'}}/>
+            </div>
+
+            {/* أشجار ظل — يسار */}
+            <div className="stories-trees-l" aria-hidden="true">
+              <div className="s-tree" style={{width:14,height:40,animation:'storyTreeSway 5.5s ease-in-out infinite .2s'}}/>
+              <div className="s-tree" style={{width:22,height:64,animation:'storyTreeSway 4.8s ease-in-out infinite .6s'}}/>
+            </div>
+
+            {/* ✦ بريق متحرك */}
             <div className="stories-banner-deco" aria-hidden="true">
-              <span style={{position:'absolute',top:8,right:18,fontSize:'2.6rem',opacity:.1,animation:'storyLeafFloat 4s ease-in-out infinite'}}>🌲</span>
-              <span style={{position:'absolute',top:16,left:22,fontSize:'1.5rem',opacity:.09,animation:'storyLeafFloat 5s ease-in-out infinite .8s'}}>🦋</span>
-              <span style={{position:'absolute',bottom:6,right:60,fontSize:'1.8rem',opacity:.09,animation:'storyLeafFloat 6s ease-in-out infinite 1.2s'}}>🌿</span>
-              <span style={{position:'absolute',bottom:8,left:26,fontSize:'2.2rem',opacity:.09}}>🌳</span>
-              <div style={{
-                position:'absolute', top:'-40%', left:'50%',
-                width:200, height:200,
-                background:'radial-gradient(ellipse,rgba(255,255,255,.06) 0%,transparent 70%)',
-                borderRadius:'50%', pointerEvents:'none',
-              }}/>
+              <span style={{position:'absolute',top:'18%',right:'22%',fontSize:'1rem',animation:'storySparkle 3.2s ease-in-out infinite'}}>✦</span>
+              <span style={{position:'absolute',top:'12%',right:'38%',fontSize:'.7rem',color:'#f5d87a',animation:'storySparkle 4s ease-in-out infinite 1.1s'}}>★</span>
+              <span style={{position:'absolute',top:'28%',left:'38%',fontSize:'.8rem',animation:'storySparkle 3.6s ease-in-out infinite .6s'}}>✦</span>
+              <span style={{position:'absolute',top:'10%',left:'25%',fontSize:'.65rem',color:'#a78bfa',animation:'storySparkle 5s ease-in-out infinite 1.8s'}}>◆</span>
+              <span style={{position:'absolute',top:'38%',right:'12%',fontSize:'.75rem',color:'#6ee7b7',animation:'storySparkle 4.4s ease-in-out infinite 2.2s'}}>✦</span>
             </div>
 
-            {/* الحيوانات — يمين (أول في RTL) */}
-            <div style={{position:'relative',zIndex:1,flexShrink:0,display:'flex',alignItems:'center',gap:10}}>
+            {/* القمر + الكائنات */}
+            <div style={{position:'relative',zIndex:2,flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',gap:10}}>
+              {/* هلال القمر */}
               <div style={{
-                fontSize:'3.2rem', lineHeight:1,
-                filter:'drop-shadow(0 4px 12px rgba(0,0,0,.35))',
-              }}>🦁</div>
-              <div style={{display:'flex',flexDirection:'column',gap:2,opacity:.85}}>
-                <span style={{fontSize:'1.2rem'}}>🌲</span>
-                <span style={{fontSize:'1.5rem'}}>🦒</span>
-                <span style={{fontSize:'1.2rem'}}>🌲</span>
+                position:'relative', width:42, height:42,
+                borderRadius:'50%',
+                background:'#f5d080',
+                animation:'storyMoonGlow 3s ease-in-out infinite',
+                flexShrink:0,
+              }}>
+                {/* الجزء الداكن ليكوّن الهلال */}
+                <div style={{
+                  position:'absolute', top:-4, right:-4,
+                  width:36, height:36, borderRadius:'50%',
+                  background:'#0a1628',
+                }}/>
               </div>
+              {/* الكائنات */}
+              <div style={{
+                fontSize:'2.8rem', lineHeight:1,
+                filter:'drop-shadow(0 4px 18px rgba(0,0,0,.5))',
+                animation:'storyOwlFloat 4s ease-in-out infinite',
+              }}>🦁</div>
             </div>
 
-            {/* النص — وسط */}
-            <div style={{position:'relative',zIndex:1,flex:1,minWidth:0}}>
+            {/* النص الرئيسي */}
+            <div style={{position:'relative',zIndex:2,flex:1,minWidth:0}}>
               <h2 style={{
-                color:'#fff', fontWeight:900, fontSize:'1.12rem',
-                margin:'0 0 5px', lineHeight:1.35,
-                textShadow:'0 2px 8px rgba(0,0,0,.3)',
+                fontWeight:900, fontSize:'1.2rem',
+                margin:'0 0 6px', lineHeight:1.4,
+                background:'linear-gradient(135deg,#ffffff 0%,#a7f3d0 50%,#f5d080 100%)',
+                WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+                backgroundClip:'text',
+                filter:'drop-shadow(0 2px 12px rgba(16,185,129,.4))',
               }}>
                 حكايات الغابة السحرية
               </h2>
               <p style={{
-                color:'rgba(255,255,255,.75)', fontSize:'.78rem',
-                margin:0, lineHeight:1.6,
+                color:'rgba(255,255,255,.68)', fontSize:'.8rem',
+                margin:'0 0 12px', lineHeight:1.65,
               }}>
                 قصص تنمّي الخيال وتُثري اللغة العربية
               </p>
+              {/* شارة حيوانات صغيرة */}
+              <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+                {['🦊','🐇','🦉','🐢'].map(e => (
+                  <span key={e} style={{
+                    fontSize:'1.3rem',
+                    filter:'drop-shadow(0 2px 6px rgba(0,0,0,.4))',
+                    opacity:.85,
+                  }}>{e}</span>
+                ))}
+                <span style={{
+                  color:'rgba(167,243,208,.7)', fontSize:'.65rem',
+                  fontWeight:700, marginRight:4,
+                }}>أبطال قصصنا</span>
+              </div>
             </div>
 
-            {/* شارة الإحصاء — يسار */}
+            {/* شارة الإحصاء */}
             <div style={{
-              position:'relative', zIndex:1, flexShrink:0,
-              background:'rgba(255,255,255,.14)',
-              border:'1.5px solid rgba(255,255,255,.28)',
-              borderRadius:14, padding:'10px 16px', textAlign:'center',
-              backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)',
+              position:'relative', zIndex:2, flexShrink:0,
+              background:'rgba(255,255,255,.08)',
+              border:'1px solid rgba(167,243,208,.25)',
+              borderRadius:16, padding:'12px 16px', textAlign:'center',
+              backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)',
+              boxShadow:'0 4px 20px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.1)',
             }}>
-              <div style={{color:'#fff', fontSize:'.72rem', fontWeight:800, marginBottom:3}}>
+              <div style={{
+                color:'#a7f3d0', fontSize:'.78rem', fontWeight:900,
+                marginBottom:5, letterSpacing:'.3px',
+              }}>
                 {stories.length > 0 ? `✨ ${stories.length} قصة متاحة` : '✨ قصص قادمة'}
               </div>
+              <div style={{display:'flex',justifyContent:'center',gap:5,marginBottom:6}}>
+                {[1,2,3].map(l => (
+                  <span key={l} style={{
+                    background:'rgba(16,185,129,.2)',
+                    border:'1px solid rgba(16,185,129,.35)',
+                    borderRadius:20, padding:'1px 7px',
+                    fontSize:'.58rem', fontWeight:800, color:'#6ee7b7',
+                  }}>م {l}</span>
+                ))}
+              </div>
               <div style={{
-                display:'flex', justifyContent:'center', gap:6,
-                color:'rgba(255,255,255,.6)', fontSize:'.6rem',
+                width:'100%', height:3, borderRadius:99,
+                background:'rgba(255,255,255,.1)',
+                overflow:'hidden',
               }}>
-                <span>مستوى 1</span><span>·</span>
-                <span>مستوى 2</span><span>·</span>
-                <span>مستوى 3</span>
+                <div style={{
+                  height:'100%', borderRadius:99,
+                  width: stories.length > 0 ? '100%' : '30%',
+                  background:'linear-gradient(90deg,#10b981,#f5d080)',
+                  transition:'width 1s ease',
+                }}/>
               </div>
             </div>
           </div>
@@ -896,7 +1029,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
             )}
 
             {stories.length === 0 ? (
-              <p style={{ color:'#6ee7b7', fontSize:'.82rem', fontWeight:700, textAlign:'center', padding:'18px 0' }}>
+              <p style={{ color:'rgba(110,231,183,.65)', fontSize:'.82rem', fontWeight:700, textAlign:'center', padding:'18px 0' }}>
                 القصص قادمة قريباً — ترقّب المزيد! 🌟
               </p>
             ) : (
