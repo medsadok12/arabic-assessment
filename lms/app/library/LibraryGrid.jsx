@@ -1,88 +1,14 @@
 'use client';
 import { useState, useRef } from 'react';
 import Link from 'next/link';
+import FanCarousel from '../../components/FanCarousel';
 
-/* زوايا ومقاييس المروحة لـ 5 بطاقات */
-const FAN_CFG = [
-  { rot: -32, scale: 0.72, opacity: 0.6, z: 1 },
-  { rot: -16, scale: 0.86, opacity: 0.82, z: 2 },
-  { rot:   0, scale: 1,    opacity: 1,    z: 5 },
-  { rot:  16, scale: 0.86, opacity: 0.82, z: 2 },
-  { rot:  32, scale: 0.72, opacity: 0.6,  z: 1 },
-];
 const CAROUSEL_GROUPS = [
   { tag: 'مستوى 1', emoji: '⭐' },
   { tag: 'مستوى 2', emoji: '📗' },
   { tag: 'مستوى 3', emoji: '🏆' },
   { tag: 'تعزيزي',  emoji: '🎮' },
 ];
-
-function FanCarousel({ items, renderCard }) {
-  const [idx, setIdx] = useState(0);
-  const total = items.length;
-  const go = (n) => setIdx(i => ((i + n) + total) % total);
-
-  /* ── دعم السحب باللمس ── */
-  const touchStartX = useRef(null);
-  const onTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
-  const onTouchEnd   = (e) => {
-    if (touchStartX.current === null) return;
-    const delta = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(delta) > 45) go(delta > 0 ? 1 : -1);
-    touchStartX.current = null;
-  };
-
-  /* نحدد البطاقات الظاهرة: أقصى 5 (‎−2 إلى +2 من المركز) */
-  const offsets = total >= 5 ? [-2,-1,0,1,2]
-                : total === 4 ? [-1,0,0,1]   // fallback
-                : total === 3 ? [-1,0,1]
-                : total === 2 ? [0,1]
-                : [0];
-
-  /* نختار إعدادات المروحة حسب عدد البطاقات */
-  const cfg = total >= 5 ? FAN_CFG
-    : total === 3 ? [FAN_CFG[1], FAN_CFG[2], FAN_CFG[3]]
-    : total === 2 ? [FAN_CFG[2], FAN_CFG[3]]
-    : [FAN_CFG[2]];
-
-  return (
-    <div className="fan-car">
-      <button className={`fan-arr fan-arr-r${total <= 1 ? ' fan-hidden' : ''}`}
-        onClick={() => go(-1)} aria-label="السابق">›</button>
-
-      <div className="fan-stage" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        {offsets.map((off, si) => {
-          const ci = ((idx + off) % total + total) % total;
-          const c  = cfg[si] || FAN_CFG[2];
-          return (
-            <div key={`${ci}-${si}`} className={`fan-slot${off === 0 ? ' fan-active' : ''}`}
-              style={{
-                transform: `rotate(${c.rot}deg) scale(${c.scale})`,
-                opacity:   c.opacity,
-                zIndex:    c.z,
-              }}
-              onClick={() => off !== 0 && go(off)}
-            >
-              {renderCard(items[ci], ci)}
-            </div>
-          );
-        })}
-      </div>
-
-      <button className={`fan-arr fan-arr-l${total <= 1 ? ' fan-hidden' : ''}`}
-        onClick={() => go(1)} aria-label="التالي">‹</button>
-
-      {total > 1 && (
-        <div className="fan-dots">
-          {items.map((_, i) => (
-            <button key={i} className={`fan-dot${i === idx ? ' active' : ''}`}
-              onClick={() => setIdx(i)} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 const RESOURCES = [
   {
@@ -595,79 +521,19 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         }
         .lib-empty span { display:block; font-size:2.8rem; margin-bottom:10px; }
 
-        /* ══ مروحة البطاقات (Card Fan Carousel) ══ */
-        .fan-car {
-          position:relative; padding:0 44px; margin-bottom:28px;
-          user-select:none;
-        }
-        .fan-stage {
-          position:relative; height:310px;
-          display:flex; align-items:flex-end; justify-content:center;
-          overflow:visible;
-        }
-        /* كل بطاقة تنبثق من نقطة محورية تحتها — هذا يصنع شكل المروحة */
-        .fan-slot {
-          position:absolute;
-          width:min(210px, 58vw);
-          bottom:0; left:50%;
-          margin-left:calc(min(210px, 58vw) / -2);
-          transform-origin: 50% 148%;
-          transition: transform .44s cubic-bezier(.34,1.1,.64,1),
-                      opacity  .32s ease;
-          cursor:pointer;
-        }
-        .fan-slot.fan-active { cursor:default; }
-        .fan-slot .lib-card {
-          width:100%; box-sizing:border-box;
-          animation:none !important;
-          transition:box-shadow .22s;
-        }
-        .fan-slot.fan-active .lib-card {
-          box-shadow:0 24px 60px rgba(0,0,0,.22) !important;
-        }
-        /* أسهم التنقل */
-        .fan-arr {
-          position:absolute; top:128px; z-index:10;
-          background:#fff; border:1.5px solid #e2e8f0; border-radius:50%;
-          width:40px; height:40px; font-size:1.4rem; font-weight:700;
-          cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.12);
-          display:flex; align-items:center; justify-content:center;
-          transition:transform .2s, box-shadow .2s;
-          color:#4f46e5; padding:0; line-height:1;
-        }
-        .fan-arr:hover { transform:scale(1.12); box-shadow:0 6px 20px rgba(0,0,0,.18); }
-        .fan-arr-r { right:0; }
-        .fan-arr-l { left:0; }
-        .fan-hidden { opacity:0; pointer-events:none; }
-        /* نقاط التنقل */
-        .fan-dots {
-          display:flex; justify-content:center; gap:6px; margin-top:14px;
-        }
-        .fan-dot {
-          width:8px; height:8px; border-radius:99px; border:none;
-          background:#cbd5e1; cursor:pointer; transition:all .3s; padding:0;
-        }
-        .fan-dot.active { width:22px; background:#6366f1; }
+        /* ── fan-card: تأكد أن البطاقة تملأ عرض الحاوي ── */
+        .fan-card .lib-card { width:100%; box-sizing:border-box; animation:none !important; }
         /* رأس المجموعة */
         .fan-group-header {
           display:flex; align-items:center; gap:8px;
-          margin:24px 0 14px; direction:rtl;
+          margin:24px 0 8px; direction:rtl;
         }
         .fan-group-label {
           font-size:.78rem; font-weight:800; border-radius:20px;
           padding:4px 13px; flex-shrink:0;
         }
-        .fan-group-line {
-          flex:1; height:1.5px;
-          background:linear-gradient(90deg,#e2e8f0,transparent);
-        }
+        .fan-group-line { flex:1; height:1.5px; background:linear-gradient(90deg,#e2e8f0,transparent); }
         .fan-group-count { font-size:.7rem; color:#94a3b8; font-weight:700; flex-shrink:0; }
-        @media (max-width:600px) {
-          .fan-car   { padding:0 36px; }
-          .fan-stage { height:270px; }
-          .fan-slot  { width:min(185px, 64vw); margin-left:calc(min(185px,64vw)/-2); }
-          .fan-arr   { width:32px; height:32px; font-size:1.1rem; top:110px; }
-        }
 
         /* ══════════════════════════════════════════
            قسم القصص والحكايات
