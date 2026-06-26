@@ -162,7 +162,8 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
   const [search,        setSearch]        = useState('');
   const [bannerDismiss, setBannerDismiss] = useState(false);
   const [dockHover,     setDockHover]     = useState(null);
-  const fileRef = useRef();
+  const fileRef    = useRef();
+  const touchTimer = useRef(null);
 
   /* ── مجموعة المكتملة ── */
   const completedKeys = new Set(
@@ -779,6 +780,12 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
               <button
                 key={f}
                 onMouseEnter={() => setDockHover(i)}
+                onTouchStart={() => {
+                  /* تأثير الـ Dock على الجوال: تكبير لحظي عند اللمس */
+                  clearTimeout(touchTimer.current);
+                  setDockHover(i);
+                  touchTimer.current = setTimeout(() => setDockHover(null), 380);
+                }}
                 className={`lib-filter-btn${activeFilter === f ? ' active' : ''}`}
                 onClick={() => { setActiveFilter(f); setSearch(''); }}
                 style={{
