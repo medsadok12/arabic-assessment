@@ -161,6 +161,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
   const [activeFilter,  setActiveFilter]  = useState('الكل');
   const [search,        setSearch]        = useState('');
   const [bannerDismiss, setBannerDismiss] = useState(false);
+  const [dockHover,     setDockHover]     = useState(null);
   const fileRef = useRef();
 
   /* ── مجموعة المكتملة ── */
@@ -762,17 +763,31 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           />
         </div>
 
-        {/* ── فلاتر ── */}
-        <div className="lib-filters">
-          {FILTERS.map(f => {
+        {/* ── فلاتر بأسلوب Dock ── */}
+        <div
+          className="lib-filters"
+          style={{ alignItems: 'flex-end', paddingTop: 38, paddingBottom: 4 }}
+          onMouseLeave={() => setDockHover(null)}
+        >
+          {FILTERS.map((f, i) => {
             const count = f === 'الكل'
               ? RESOURCES.length
               : RESOURCES.filter(r => r.tag === f).length;
+            const d     = dockHover === null ? Infinity : Math.abs(i - dockHover);
+            const scale = d === 0 ? 1.6 : d === 1 ? 1.3 : d === 2 ? 1.1 : 1;
             return (
               <button
                 key={f}
+                onMouseEnter={() => setDockHover(i)}
                 className={`lib-filter-btn${activeFilter === f ? ' active' : ''}`}
                 onClick={() => { setActiveFilter(f); setSearch(''); }}
+                style={{
+                  transform: `scale(${scale})`,
+                  transformOrigin: 'bottom center',
+                  position: 'relative',
+                  zIndex: scale > 1 ? 10 : 1,
+                  transition: 'transform .22s cubic-bezier(.34,1.56,.64,1), border-color .18s, background .18s, color .18s, box-shadow .18s',
+                }}
               >
                 {f}
                 <span className="lib-filter-count">{count}</span>
