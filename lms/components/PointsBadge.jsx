@@ -18,30 +18,29 @@ function getLvl(earned) {
 const R    = 22;
 const CIRC = 2 * Math.PI * R;
 
-const ANIM_ID = 'pts-float-anim';
-if (typeof document !== 'undefined' && !document.getElementById(ANIM_ID)) {
-  const s = document.createElement('style');
-  s.id = ANIM_ID;
-  s.textContent = `
-    @keyframes pfBounce { 0%{transform:translate(-50%,-50%)scale(1)} 40%{transform:translate(-50%,-50%)scale(1.6)} 70%{transform:translate(-50%,-50%)scale(.85)} 100%{transform:translate(-50%,-50%)scale(1)} }
-    @keyframes pfRipple { 0%{transform:scale(.6);opacity:.8} 100%{transform:scale(2.4);opacity:0} }
-    @keyframes pfFadeIn { from{opacity:0;transform:translateX(8px)} to{opacity:1;transform:translateX(0)} }
-    @keyframes pfFloat  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-    @keyframes pfLvlUp  { 0%{transform:scale(1)} 30%{transform:scale(1.4)} 55%{transform:scale(.88)} 75%{transform:scale(1.1)} 100%{transform:scale(1)} }
-    @keyframes pfNum    { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
-  `;
-  document.head.appendChild(s);
-}
+const ANIM_CSS = `
+  @keyframes pfBounce { 0%{transform:translate(-50%,-50%)scale(1)} 40%{transform:translate(-50%,-50%)scale(1.6)} 70%{transform:translate(-50%,-50%)scale(.85)} 100%{transform:translate(-50%,-50%)scale(1)} }
+  @keyframes pfRipple { 0%{transform:scale(.6);opacity:.8} 100%{transform:scale(2.4);opacity:0} }
+  @keyframes pfFadeIn { from{opacity:0;transform:translateX(8px)} to{opacity:1;transform:translateX(0)} }
+  @keyframes pfFloat  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+  @keyframes pfLvlUp  { 0%{transform:scale(1)} 30%{transform:scale(1.4)} 55%{transform:scale(.88)} 75%{transform:scale(1.1)} 100%{transform:scale(1)} }
+  @keyframes pfNum    { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+`;
 
 export default function PointsBadge() {
   const [isMobile, setIsMobile] = useState(false);
+  const [mounted,  setMounted]  = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 769);
     check();
+    setMounted(true);
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  // Render nothing until client mounts — avoids server/client HTML mismatch
+  if (!mounted) return null;
 
   // On mobile the bottom nav shows points — no floating badge needed
   if (isMobile) return null;
@@ -60,6 +59,14 @@ function PointsBadgeDesktop() {
   const prevLvlIdx = useRef(0);
   const rafRef     = useRef(null);
   const wrapRef    = useRef(null);
+
+  useEffect(() => {
+    if (document.getElementById('pts-float-anim')) return;
+    const s = document.createElement('style');
+    s.id = 'pts-float-anim';
+    s.textContent = ANIM_CSS;
+    document.head.appendChild(s);
+  }, []);
 
   const load = useCallback(async () => {
     try {
