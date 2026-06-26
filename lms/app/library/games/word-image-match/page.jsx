@@ -125,7 +125,7 @@ function PairManager({ allPairs, onRefresh }) {
 
   return (
     <div style={{ border:'1.5px solid #e2e8f0', borderRadius:12, background:'#fff', overflow:'hidden', marginBottom:16 }}>
-      <div style={{ background:'#f8fafc', borderBottom:'1px solid #e2e8f0', padding:'10px 14px', fontWeight:700, color:'#1e40af', fontFamily:'Cairo,sans-serif', fontSize:'.9rem' }}>📚 إدارة الكلمات والصور</div>
+      <div style={{ background:'#f8fafc', borderBottom:'1px solid #e2e8f0', padding:'10px 14px', fontWeight:700, color:'#1e40af', fontFamily:'inherit', fontSize:'.9rem' }}>📚 إدارة الكلمات والصور</div>
       <div style={{ padding:14, borderBottom:'1px solid #f1f5f9' }}>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
           <div><label style={S.label}>الكلمة</label><input value={word} onChange={e=>setWord(e.target.value)} placeholder="مثال: أسد" style={S.input} dir="rtl" /></div>
@@ -143,7 +143,7 @@ function PairManager({ allPairs, onRefresh }) {
         <div style={{ marginBottom:10 }}>
           <label style={S.label}>الصوت (اختياري)</label>
           {!audioUrl ? (
-            <button onClick={() => recording ? stopRecording() : startRecording(url => setAudioUrl(url))} style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:`1.5px solid ${recording?'#fca5a5':'#86efac'}`, background:recording?'#fee2e2':'#f0fdf4', cursor:'pointer', fontFamily:'Cairo,sans-serif', fontSize:'.88rem' }}>
+            <button onClick={() => recording ? stopRecording() : startRecording(url => setAudioUrl(url))} style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:`1.5px solid ${recording?'#fca5a5':'#86efac'}`, background:recording?'#fee2e2':'#f0fdf4', cursor:'pointer', fontFamily:'inherit', fontSize:'.88rem' }}>
               {recording ? `⏹️ إيقاف (${recSecs}ث)` : '🎙️ تسجيل صوت'}
             </button>
           ) : (
@@ -157,7 +157,7 @@ function PairManager({ allPairs, onRefresh }) {
             </div>
           )}
         </div>
-        {msg && <div style={{ padding:'7px 10px', borderRadius:7, marginBottom:8, background:msg.ok?'#f0fdf4':'#fef2f2', color:msg.ok?'#15803d':'#dc2626', fontSize:'.85rem', fontFamily:'Cairo,sans-serif' }}>{msg.text}</div>}
+        {msg && <div style={{ padding:'7px 10px', borderRadius:7, marginBottom:8, background:msg.ok?'#f0fdf4':'#fef2f2', color:msg.ok?'#15803d':'#dc2626', fontSize:'.85rem', fontFamily:'inherit' }}>{msg.text}</div>}
         <div style={{ display:'flex', gap:7 }}>
           <button onClick={handleSave} disabled={saving} style={{ ...S.btnPrimary, flex:1 }}>{saving?'⏳ جارٍ الحفظ...':editId?'💾 حفظ التعديل':'➕ إضافة'}</button>
           {editId && <button onClick={reset} style={S.btnSm}>إلغاء</button>}
@@ -165,11 +165,11 @@ function PairManager({ allPairs, onRefresh }) {
       </div>
       <div style={{ maxHeight:280, overflowY:'auto' }}>
         {allPairs.length === 0 ? (
-          <div style={{ padding:20, textAlign:'center', color:'#94a3b8', fontFamily:'Cairo,sans-serif', fontSize:'.88rem' }}>لا توجد كلمات بعد</div>
+          <div style={{ padding:20, textAlign:'center', color:'#94a3b8', fontFamily:'inherit', fontSize:'.88rem' }}>لا توجد كلمات بعد</div>
         ) : allPairs.map(p => (
           <div key={p.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderBottom:'1px solid #f1f5f9', background:editId===p.id?'#eff6ff':'transparent' }}>
             {p.image_url && <img src={p.image_url} alt="" style={{ width:42, height:42, objectFit:'cover', borderRadius:6, flexShrink:0 }} />}
-            <div style={{ flex:1, fontFamily:'Cairo,sans-serif', direction:'rtl', textAlign:'right' }}>
+            <div style={{ flex:1, fontFamily:'inherit', direction:'rtl', textAlign:'right' }}>
               <div style={{ fontWeight:700, fontSize:'.95rem' }}>{p.word_text}</div>
               <div style={{ fontSize:'.74rem', color:'#64748b' }}>{[p.topic, p.grade_level?`ص${p.grade_level}`:'', p.audio_url?'🔊':''].filter(Boolean).join(' · ')}</div>
             </div>
@@ -186,7 +186,7 @@ function PairManager({ allPairs, onRefresh }) {
 function SettingsPanel({ cfg, setCfg }) {
   return (
     <div style={{ border:'1.5px solid #e2e8f0', borderRadius:12, background:'#fff', padding:14, marginBottom:14 }}>
-      <div style={{ fontWeight:700, color:'#1e40af', marginBottom:10, fontFamily:'Cairo,sans-serif', fontSize:'.9rem' }}>⚙️ إعدادات اللعبة</div>
+      <div style={{ fontWeight:700, color:'#1e40af', marginBottom:10, fontFamily:'inherit', fontSize:'.9rem' }}>⚙️ إعدادات اللعبة</div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
         <div><label style={S.label}>الموضوع</label><select value={cfg.topic} onChange={e=>setCfg(c=>({...c,topic:e.target.value}))} style={S.input}><option value="">— الكل —</option>{TOPICS.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
         <div><label style={S.label}>الصف</label><select value={cfg.grade} onChange={e=>setCfg(c=>({...c,grade:Number(e.target.value)}))} style={S.input}><option value={0}>— الكل —</option>{[1,2,3,4,5,6,7,8,9].map(g=><option key={g} value={g}>الصف {g}</option>)}</select></div>
@@ -539,12 +539,12 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
   const handleWordClick  = (wordId) => { if (correct.has(wordId) || dragWordIdRef.current) return; setSelectedWord(p => p===wordId ? null : wordId); };
   const handleImageClick = (imgId)  => { if (dragWordIdRef.current || !selectedWord) return; attemptConnect(selectedWord, imgId); };
 
-  const btnStyle = { background:'linear-gradient(135deg,#7c3aed,#5b4fc4)', color:'#fff', border:'none', borderBottom:'5px solid #4338ca', borderRadius:18, cursor:'pointer', fontFamily:"'Cairo',sans-serif", fontWeight:800, fontSize:'1rem', boxShadow:'0 8px 24px rgba(124,58,237,.28)' };
+  const btnStyle = { background:'linear-gradient(135deg,#7c3aed,#5b4fc4)', color:'#fff', border:'none', borderBottom:'5px solid #4338ca', borderRadius:18, cursor:'pointer', fontFamily:'inherit', fontWeight:800, fontSize:'1rem', boxShadow:'0 8px 24px rgba(124,58,237,.28)' };
 
   /* ── topic selection ── */
   if (phase === 'topics') {
     if (gamePairs.length === 0) return (
-      <div style={{ textAlign:'center', padding:'44px 20px', fontFamily:"'Cairo',sans-serif" }}>
+      <div style={{ textAlign:'center', padding:'44px 20px', fontFamily:'inherit' }}>
         <div style={{ fontSize:'3.5rem', marginBottom:14 }}>🖼️</div>
         <h2 style={{ fontSize:'1.4rem', fontWeight:900, color:'#3730a3', margin:'0 0 8px' }}>صِل الكلمة بصورتها</h2>
         <div style={{ background:'#fffbeb', border:'2px solid #fde68a', borderRadius:14, padding:'14px 20px', color:'#92400e', fontWeight:600 }}>
@@ -554,7 +554,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
     );
 
     return (
-      <div style={{ fontFamily:"'Cairo',sans-serif", padding:'4px 2px' }}>
+      <div style={{ fontFamily:'inherit', padding:'4px 2px' }}>
 
         {/* header banner */}
         <div style={{ textAlign:'center', marginBottom:28, background:'linear-gradient(135deg,#faf5ff,#ede9fe)', borderRadius:20, padding:'20px 16px', border:'2px solid #ddd6fe' }}>
@@ -690,7 +690,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
     const remaining = topicList.filter(t => !completedTopics.has(t));
     const nextTopic = remaining[0];
     return (
-      <div style={{ textAlign:'center', padding:'36px 20px', fontFamily:"'Cairo',sans-serif" }}>
+      <div style={{ textAlign:'center', padding:'36px 20px', fontFamily:'inherit' }}>
         <div style={{ fontSize:'3.5rem', marginBottom:10 }}>🌟</div>
         <h2 style={{ fontSize:'1.3rem', fontWeight:900, color:'#059669', margin:'0 0 6px' }}>
           أحسنت! أكملت موضوع "{currentTopic}" 🎉
@@ -708,7 +708,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
               🔄 إعادة من البداية
             </button>
           )}
-          <button onClick={() => setPhase('topics')} style={{ background:'#f5f3ff', color:'#6d28d9', border:'3px solid #ddd6fe', borderBottom:'5px solid #a5b4fc', borderRadius:18, padding:'12px 24px', cursor:'pointer', fontFamily:"'Cairo',sans-serif", fontWeight:700 }}>
+          <button onClick={() => setPhase('topics')} style={{ background:'#f5f3ff', color:'#6d28d9', border:'3px solid #ddd6fe', borderBottom:'5px solid #a5b4fc', borderRadius:18, padding:'12px 24px', cursor:'pointer', fontFamily:'inherit', fontWeight:700 }}>
             📋 اختر موضوعاً آخر
           </button>
         </div>
@@ -725,10 +725,10 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, direction:'rtl' }}>
         <div style={{ flex:1 }}>
           <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:5 }}>
-            <span style={{ fontFamily:"'Cairo',sans-serif", fontWeight:800, fontSize:'.95rem', color:'#7c3aed' }}>
+            <span style={{ fontFamily:'inherit', fontWeight:800, fontSize:'.95rem', color:'#7c3aed' }}>
               {TOPIC_EMOJIS[currentTopic]||'📋'} {currentTopic}
             </span>
-            <span style={{ fontFamily:"'Cairo',sans-serif", fontSize:'.82rem', color:'#9ca3af' }}>
+            <span style={{ fontFamily:'inherit', fontSize:'.82rem', color:'#9ca3af' }}>
               · {correct.size}/{currentPairs.length} ✅
             </span>
           </div>
@@ -742,7 +742,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
             <span key={ptPopupKey} style={{ position: 'absolute', top: -26, left: '50%', transform: 'translateX(-50%)', color: '#7c3aed', fontWeight: 900, fontSize: '1rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards' }}>+5 ⭐</span>
           )}
         </div>
-        <button onClick={() => setPhase('topics')} style={{ background:'#fef2f2', color:'#ef4444', border:'1.5px solid #fca5a5', borderRadius:10, padding:'5px 12px', cursor:'pointer', fontFamily:"'Cairo',sans-serif", fontSize:'.8rem', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>✕ إنهاء</button>
+        <button onClick={() => setPhase('topics')} style={{ background:'#fef2f2', color:'#ef4444', border:'1.5px solid #fca5a5', borderRadius:10, padding:'5px 12px', cursor:'pointer', fontFamily:'inherit', fontSize:'.8rem', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>✕ إنهاء</button>
       </div>
 
       {/* columns */}
@@ -799,7 +799,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
                         : 'linear-gradient(135deg,#faf5ff,#f5f3ff)',
                     cursor: isCorrect?'default':'grab',
                     userSelect:'none', touchAction:'none',
-                    fontFamily:"'Cairo',sans-serif", fontSize:'1.15rem', fontWeight:800,
+                    fontFamily:'inherit', fontSize:'1.15rem', fontWeight:800,
                     height:92, position:'relative', overflow:'hidden',
                     boxShadow: isCorrect
                       ? '0 5px 0 #059669, 0 10px 24px rgba(5,150,105,.18)'
@@ -882,7 +882,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
       </div>
 
       {selectedWord && (
-        <div style={{ textAlign:'center', marginTop:14, fontFamily:"'Cairo',sans-serif", fontSize:'.9rem', fontWeight:700, color:'#7c3aed', background:'#f5f3ff', borderRadius:10, padding:'8px 16px' }}>
+        <div style={{ textAlign:'center', marginTop:14, fontFamily:'inherit', fontSize:'.9rem', fontWeight:700, color:'#7c3aed', background:'#f5f3ff', borderRadius:10, padding:'8px 16px' }}>
           👆 اختر الصورة المناسبة لـ «{pairMap[selectedWord]?.word_text}»
         </div>
       )}
@@ -892,10 +892,10 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
 
 /* ─────────────── styles ─────────────── */
 const S = {
-  label:      { display:'block', fontSize:'.78rem', fontWeight:600, color:'#475569', marginBottom:3, fontFamily:'Cairo,sans-serif' },
-  input:      { width:'100%', padding:'7px 10px', borderRadius:8, border:'1.5px solid #d1d5db', fontFamily:'Cairo,sans-serif', fontSize:'.88rem', boxSizing:'border-box', direction:'rtl' },
-  btnPrimary: { background:'#1e40af', color:'#fff', border:'none', padding:'10px 20px', borderRadius:8, cursor:'pointer', fontFamily:'Cairo,sans-serif', fontWeight:700, fontSize:'.9rem' },
-  btnSm:      { background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:7, padding:'6px 10px', cursor:'pointer', fontFamily:'Cairo,sans-serif', fontSize:'.8rem' },
+  label:      { display:'block', fontSize:'.78rem', fontWeight:600, color:'#475569', marginBottom:3, fontFamily:'inherit' },
+  input:      { width:'100%', padding:'7px 10px', borderRadius:8, border:'1.5px solid #d1d5db', fontFamily:'inherit', fontSize:'.88rem', boxSizing:'border-box', direction:'rtl' },
+  btnPrimary: { background:'#1e40af', color:'#fff', border:'none', padding:'10px 20px', borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontWeight:700, fontSize:'.9rem' },
+  btnSm:      { background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:7, padding:'6px 10px', cursor:'pointer', fontFamily:'inherit', fontSize:'.8rem' },
 };
 
 /* ─────────────── main page ─────────────── */
@@ -1049,7 +1049,7 @@ export default function WordImageMatchPage() {
         }
       `}</style>
 
-      <div style={{ maxWidth:700, margin:'0 auto', padding:'16px 12px', fontFamily:"'Cairo',sans-serif" }}>
+      <div style={{ maxWidth:700, margin:'0 auto', padding:'16px 12px', fontFamily:'inherit' }}>
 
         {/* header — minimal nav pills only; title lives inside the game card banner */}
         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10, direction:'rtl', flexWrap:'wrap' }}>
@@ -1083,7 +1083,7 @@ export default function WordImageMatchPage() {
           <span style={{ position:'absolute', bottom:10, left:12, fontSize:'1.7rem', lineHeight:1, display:'block', animation:'wimDecA 4.1s ease-in-out infinite .3s', pointerEvents:'none' }}>⭐</span>
 
           {loading ? (
-            <div style={{ textAlign:'center', padding:'44px 20px 36px', fontFamily:"'Cairo',sans-serif" }}>
+            <div style={{ textAlign:'center', padding:'44px 20px 36px', fontFamily:'inherit' }}>
 
               {/* spinning sun */}
               <div style={{

@@ -76,7 +76,7 @@ export default function DemoPage() {
   return (
     <div dir="rtl" style={{
       minHeight: '100vh', background: '#f0f4f8',
-      fontFamily: "'Tajawal', 'Cairo', sans-serif",
+      fontFamily:'inherit',
       padding: '0',
     }}>
       {/* Header */}
@@ -423,7 +423,7 @@ export default function DemoPage() {
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap');
+        
         @keyframes popIn {
           0%   { transform: scale(.7) translateY(10px); opacity: 0; }
           60%  { transform: scale(1.06) translateY(-3px); opacity: 1; }
@@ -447,7 +447,7 @@ const labelStyle = {
 const inputStyle = {
   width: '100%', padding: '9px 12px', borderRadius: 9,
   border: '1.5px solid #d0e4f7', fontSize: '.88rem',
-  fontFamily: "'Tajawal', 'Cairo', sans-serif",
+  fontFamily:'inherit',
   outline: 'none', background: '#fff', direction: 'rtl',
   transition: 'border-color .2s',
 };

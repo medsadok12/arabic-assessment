@@ -57,18 +57,18 @@ function fileToBase64(file) {
 const P = {
   input: {
     width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10,
-    padding: '9px 12px', fontSize: '1rem', fontFamily: "'Tajawal', sans-serif",
+    padding: '9px 12px', fontSize: '1rem', fontFamily:'inherit',
     boxSizing: 'border-box', outline: 'none',
   },
   addBtn: {
     marginTop: 12, width: '100%', background: 'linear-gradient(135deg,#5b4fc4,#7c3aed)',
     color: '#fff', border: 'none', borderRadius: 10, padding: '11px 0',
-    fontSize: '.9rem', fontWeight: 700, fontFamily: "'Tajawal', sans-serif",
+    fontSize: '.9rem', fontWeight: 700, fontFamily:'inherit',
   },
   btnGold: {
     background: 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#fff', border: 'none',
     borderRadius: 14, padding: '14px 0', fontSize: '1.1rem', fontWeight: 700,
-    cursor: 'pointer', fontFamily: "'Tajawal', sans-serif", width: '100%',
+    cursor: 'pointer', fontFamily:'inherit', width: '100%',
     boxShadow: '0 4px 16px rgba(245,158,11,0.4)',
   },
   overlay: {
@@ -79,7 +79,7 @@ const P = {
     background: '#fff', borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 520,
     boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 0,
     boxShadow: '0 16px 48px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto',
-    fontFamily: "'Tajawal', sans-serif",
+    fontFamily:'inherit',
   },
   label: {
     display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.95rem', fontWeight: 600,
@@ -87,7 +87,7 @@ const P = {
   },
   select: {
     padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb',
-    fontSize: '1rem', fontFamily: "'Tajawal', sans-serif", direction: 'rtl',
+    fontSize: '1rem', fontFamily:'inherit', direction: 'rtl',
     color: '#1a1a2e', cursor: 'pointer',
   },
 };
@@ -257,7 +257,7 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
           {!audioUrl ? (
             <button type="button" onClick={recording ? stopRecording : startRecording} style={{
               width:'100%', border:'none', borderRadius:10, padding:'11px',
-              fontSize:'.88rem', fontWeight:700, cursor:'pointer', fontFamily:"'Tajawal', sans-serif",
+              fontSize:'.88rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit',
               background: recording ? '#fee2e2' : '#f0fdf4',
               color: recording ? '#dc2626' : '#16a34a',
             }}>
@@ -272,13 +272,13 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
               <div style={{ display:'flex', gap:8, marginTop:8 }}>
                 <button type="button" onClick={recording ? stopRecording : startRecording} style={{
                   flex:1, border:'none', borderRadius:8, padding:'7px', fontSize:'.8rem',
-                  fontWeight:700, cursor:'pointer', fontFamily:"'Tajawal', sans-serif",
+                  fontWeight:700, cursor:'pointer', fontFamily:'inherit',
                   background: recording ? '#fee2e2' : '#ede9fe',
                   color: recording ? '#dc2626' : '#7c3aed',
                 }}>{recording ? `⏹️ إيقاف (${recSecs}ث)` : '🔄 إعادة التسجيل'}</button>
                 <button type="button" onClick={() => setAudioUrl(null)} style={{
                   border:'none', borderRadius:8, padding:'7px 14px', fontSize:'.8rem',
-                  fontWeight:700, cursor:'pointer', fontFamily:"'Tajawal', sans-serif",
+                  fontWeight:700, cursor:'pointer', fontFamily:'inherit',
                   background:'#fee2e2', color:'#dc2626',
                 }}>🗑️ حذف</button>
               </div>
@@ -410,7 +410,7 @@ export default function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefre
         </div>
 
         <div style={{ marginBottom:16, borderRadius:12, border:'1.5px solid #e5e7eb', overflow:'hidden' }}>
-          <button onClick={() => setCfgOpen(o => !o)} style={{ width:'100%', background: cfgOpen ? '#f5f3ff' : '#f9fafb', border:'none', padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:"'Tajawal', sans-serif" }}>
+          <button onClick={() => setCfgOpen(o => !o)} style={{ width:'100%', background: cfgOpen ? '#f5f3ff' : '#f9fafb', border:'none', padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:'inherit' }}>
             <span style={{ fontWeight:700, color:'#5b4fc4', fontSize:'.9rem' }}>⚙️ إعدادات الجولة</span>
             <span style={{ color:'#9ca3af', fontSize:'.78rem' }}>{cfgOpen ? '▲ طي' : '▼ توسيع'}</span>
           </button>

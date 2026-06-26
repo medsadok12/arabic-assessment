@@ -142,7 +142,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
         @keyframes dotPop      { 0%{transform:scale(1)} 50%{transform:scale(1.5)} 100%{transform:scale(1.35)} }
 
         .sr-wrap {
-          direction:rtl; font-family:'Cairo','Tajawal',sans-serif;
+          direction:rtl; font-family:inherit;
           max-width:760px; margin:0 auto; padding:20px 16px 60px;
           animation:srFadeIn .4s ease both;
         }
@@ -234,7 +234,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
           display:inline-flex; align-items:center; gap:6px;
           border:none; border-radius:50px; padding:10px 22px;
           font-size:.88rem; font-weight:800; cursor:pointer;
-          font-family:'Cairo','Tajawal',sans-serif; transition:all .18s;
+          font-family:inherit; transition:all .18s;
         }
         .sr-nav-btn:disabled { opacity:.28; cursor:default; }
         .sr-nav-btn.prev { background:#f1f5f9; color:#64748b; }
@@ -261,7 +261,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
           display:flex; align-items:center; justify-content:center; gap:10px;
           width:100%; border:none; border-radius:18px; padding:16px 24px;
           font-size:1.05rem; font-weight:900; cursor:pointer; color:#fff;
-          font-family:'Cairo','Tajawal',sans-serif;
+          font-family:inherit;
           transition:all .22s; box-shadow:0 6px 24px rgba(0,0,0,.18);
           margin-top:18px;
         }

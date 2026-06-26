@@ -128,16 +128,16 @@ export default function LexiconAdmin() {
   }
 
   return (
-    <div style={{ minHeight:'100vh', background:'#f8fafc', fontFamily:"'Cairo','Tajawal',sans-serif", direction:'rtl', padding:'24px 16px' }}>
+    <div style={{ minHeight:'100vh', background:'#f8fafc', fontFamily:'inherit', direction:'rtl', padding:'24px 16px' }}>
       <style>{`
         .lex-table { width:100%; border-collapse:collapse; }
         .lex-table th { padding:10px 12px; font-weight:800; color:#475569; font-size:.79rem; text-align:right; background:#f1f5f9; border-bottom:2px solid #e2e8f0; }
         .lex-table td { padding:9px 12px; border-bottom:1px solid #f1f5f9; font-size:.86rem; color:#334155; }
         .lex-table tr:hover td { background:#fafafe; }
-        .lex-btn { border:none; border-radius:8px; padding:5px 11px; cursor:pointer; font-family:'Cairo','Tajawal',sans-serif; font-size:.78rem; font-weight:700; }
-        .lex-input { border:1.5px solid #e2e8f0; border-radius:10px; padding:9px 12px; font-family:'Cairo','Tajawal',sans-serif; font-size:.9rem; direction:rtl; width:100%; box-sizing:border-box; }
+        .lex-btn { border:none; border-radius:8px; padding:5px 11px; cursor:pointer; font-family:inherit; font-size:.78rem; font-weight:700; }
+        .lex-input { border:1.5px solid #e2e8f0; border-radius:10px; padding:9px 12px; font-family:inherit; font-size:.9rem; direction:rtl; width:100%; box-sizing:border-box; }
         .lex-input:focus { outline:none; border-color:#6366f1; }
-        .lex-select { border:1.5px solid #e2e8f0; border-radius:10px; padding:9px 10px; font-family:'Cairo','Tajawal',sans-serif; direction:rtl; width:100%; box-sizing:border-box; background:#fff; }
+        .lex-select { border:1.5px solid #e2e8f0; border-radius:10px; padding:9px 10px; font-family:inherit; direction:rtl; width:100%; box-sizing:border-box; background:#fff; }
       `}</style>
 
       <div style={{ maxWidth:960, margin:'0 auto' }}>
@@ -256,7 +256,7 @@ export default function LexiconAdmin() {
                   <tbody>
                     {displayed.map(w => (
                       <tr key={w.id}>
-                        <td style={{ fontWeight:900, fontSize:'1.05rem', color:'#1e293b', fontFamily:"'Cairo','Tajawal',sans-serif" }}>{w.word}</td>
+                        <td style={{ fontWeight:900, fontSize:'1.05rem', color:'#1e293b', fontFamily:'inherit' }}>{w.word}</td>
                         <td style={{ color:'#64748b' }}>{w.word_type || '—'}</td>
                         <td>
                           <span style={{ background:'#eff6ff', color:'#2563eb', borderRadius:20, padding:'2px 9px', fontSize:'.72rem', fontWeight:700 }}>
@@ -359,7 +359,7 @@ export default function LexiconAdmin() {
             <button
               onClick={handleSave}
               disabled={saving || !form.word.trim()}
-              style={{ width:'100%', background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'#fff', border:'none', borderRadius:12, padding:'13px', fontWeight:900, cursor: (saving||!form.word.trim())?'not-allowed':'pointer', fontFamily:"'Cairo','Tajawal',sans-serif", fontSize:'1rem', opacity: !form.word.trim()?.55:1 }}>
+              style={{ width:'100%', background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'#fff', border:'none', borderRadius:12, padding:'13px', fontWeight:900, cursor: (saving||!form.word.trim())?'not-allowed':'pointer', fontFamily:'inherit', fontSize:'1rem', opacity: !form.word.trim()?.55:1 }}>
               {saving ? 'جارٍ الحفظ…' : modal==='add' ? '➕ إضافة الكلمة' : '💾 حفظ التعديلات'}
             </button>
           </div>

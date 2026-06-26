@@ -154,7 +154,7 @@ function FlipCard({ card, onEasy, onHard, onForgot, cardNum, total }) {
           <div style={{
             fontSize:'4rem', fontWeight:900,
             color:'#1e293b', textAlign:'center', lineHeight:1.2,
-            fontFamily:"'Cairo','Tajawal',sans-serif",
+            fontFamily:'inherit',
             letterSpacing:'-.02em',
           }}>{card.word}</div>
 
@@ -182,7 +182,7 @@ function FlipCard({ card, onEasy, onHard, onForgot, cardNum, total }) {
           {/* Word echo */}
           <div style={{
             fontSize:'2.5rem', fontWeight:900, color:'#e0e7ff',
-            textAlign:'center', fontFamily:"'Cairo','Tajawal',sans-serif",
+            textAlign:'center', fontFamily:'inherit',
           }}>{card.word}</div>
 
           {/* Type + Sentence */}
@@ -197,7 +197,7 @@ function FlipCard({ card, onEasy, onHard, onForgot, cardNum, total }) {
             {card.sentence ? (
               <div style={{
                 fontSize:'1.05rem', color:'#e0e7ff',
-                lineHeight:1.9, fontFamily:"'Cairo','Tajawal',sans-serif",
+                lineHeight:1.9, fontFamily:'inherit',
                 fontWeight:500, direction:'rtl',
                 background:'rgba(255,255,255,.08)', borderRadius:14,
                 padding:'10px 14px',
@@ -221,7 +221,7 @@ function FlipCard({ card, onEasy, onHard, onForgot, cardNum, total }) {
               flex:1, padding:'11px 6px', borderRadius:14, border:'2px solid rgba(239,68,68,.4)',
               background:'rgba(239,68,68,.15)', color:'#fca5a5',
               fontSize:'.82rem', fontWeight:900, cursor:'pointer',
-              fontFamily:"'Cairo','Tajawal',sans-serif", transition:'all .15s',
+              fontFamily:'inherit', transition:'all .15s',
             }}>
               ❌<br/>لم أحفظ
             </button>
@@ -229,7 +229,7 @@ function FlipCard({ card, onEasy, onHard, onForgot, cardNum, total }) {
               flex:1, padding:'11px 6px', borderRadius:14, border:'2px solid rgba(251,191,36,.4)',
               background:'rgba(251,191,36,.12)', color:'#fde68a',
               fontSize:'.82rem', fontWeight:900, cursor:'pointer',
-              fontFamily:"'Cairo','Tajawal',sans-serif", transition:'all .15s',
+              fontFamily:'inherit', transition:'all .15s',
             }}>
               ⏰<br/>صعبة
             </button>
@@ -237,7 +237,7 @@ function FlipCard({ card, onEasy, onHard, onForgot, cardNum, total }) {
               flex:1, padding:'11px 6px', borderRadius:14, border:'2px solid rgba(16,185,129,.4)',
               background:'rgba(16,185,129,.18)', color:'#6ee7b7',
               fontSize:'.82rem', fontWeight:900, cursor:'pointer',
-              fontFamily:"'Cairo','Tajawal',sans-serif", transition:'all .15s',
+              fontFamily:'inherit', transition:'all .15s',
             }}>
               ✅<br/>حفظتها
             </button>
@@ -257,7 +257,7 @@ function FlipCard({ card, onEasy, onHard, onForgot, cardNum, total }) {
             <div style={{
               background:'white', borderRadius:20, padding:'20px 32px',
               textAlign:'center', boxShadow:'0 8px 32px rgba(0,0,0,.4)',
-              fontFamily:"'Cairo','Tajawal',sans-serif",
+              fontFamily:'inherit',
             }}>
               <div style={{ fontSize:'2rem', marginBottom:6 }}>{feedback.emoji}</div>
               <div style={{ fontSize:'1.05rem', fontWeight:900, color:feedback.color }}>{feedback.msg}</div>
@@ -282,7 +282,7 @@ function DoneScreen({ easy, hard, forgot, stats }) {
       padding:'36px 24px', textAlign:'center',
       boxShadow:'0 20px 60px rgba(0,0,0,.18)', maxWidth:380, margin:'0 auto',
       animation:'fcEnter .4s cubic-bezier(0,.9,.57,1) both',
-      fontFamily:"'Cairo','Tajawal',sans-serif",
+      fontFamily:'inherit',
     }}>
       <div style={{ fontSize:'3.5rem', marginBottom:10 }}>
         {pct >= 80 ? '🏆' : pct >= 50 ? '⭐' : '💡'}
@@ -329,7 +329,7 @@ function DoneScreen({ easy, hard, forgot, stats }) {
         background:'linear-gradient(135deg,#6366f1,#4f46e5)',
         color:'white', fontSize:'1rem', fontWeight:900,
         textDecoration:'none', marginBottom:10,
-        fontFamily:"'Cairo','Tajawal',sans-serif",
+        fontFamily:'inherit',
         boxShadow:'0 6px 20px rgba(99,102,241,.35)',
       }}>← العودة للمكتبة</Link>
     </div>
@@ -440,7 +440,7 @@ export default function FlashcardsPage() {
     <>
       {authDone && <Navbar user={user} />}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Tajawal:wght@400;700;900&display=swap');
+        
         * { box-sizing:border-box; }
         @keyframes fcEnter  { from{opacity:0;transform:translateY(18px) scale(.96)} to{opacity:1;transform:none} }
         @keyframes fcLeave  { from{opacity:1;transform:none} to{opacity:0;transform:translateY(-14px) scale(.96)} }
@@ -456,7 +456,7 @@ export default function FlashcardsPage() {
       <div style={{
         minHeight:'100vh',
         background:'linear-gradient(160deg,#0f172a 0%,#1e1b4b 50%,#312e81 100%)',
-        fontFamily:"'Cairo','Tajawal',sans-serif",
+        fontFamily:'inherit',
         display:'flex', flexDirection:'column', alignItems:'center',
         justifyContent:'center', padding:'80px 16px 32px',
       }}>
@@ -493,7 +493,7 @@ export default function FlashcardsPage() {
               display:'block', padding:'12px', borderRadius:12,
               background:'linear-gradient(135deg,#6366f1,#4f46e5)',
               color:'white', fontSize:'1rem', fontWeight:900,
-              textDecoration:'none', fontFamily:"'Cairo','Tajawal',sans-serif",
+              textDecoration:'none', fontFamily:'inherit',
             }}>← العودة للمكتبة</Link>
           </div>
         )}

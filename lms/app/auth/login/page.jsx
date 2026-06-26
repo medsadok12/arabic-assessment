@@ -157,7 +157,7 @@ function LoginForm() {
             gap: 10, width: '100%', padding: '11px 16px', marginBottom: 18,
             background: '#fff', border: '1.5px solid #dadce0', borderRadius: 10,
             cursor: gLoading ? 'wait' : anyLoading ? 'not-allowed' : 'pointer',
-            fontSize: '1rem', fontFamily: 'Cairo, Tajawal, sans-serif',
+            fontSize: '1rem', fontFamily:'inherit',
             fontWeight: 600, color: '#3c4043',
             boxShadow: '0 1px 3px rgba(0,0,0,.08)',
             transition: 'box-shadow .15s, border-color .15s',

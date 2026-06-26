@@ -275,7 +275,7 @@ export default function ChallengePage() {
     <>
       {authDone && <Navbar user={user} />}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Tajawal:wght@400;700;900&display=swap');
+        
         * { box-sizing: border-box; }
 
         @keyframes chSpin     { to{transform:rotate(360deg)} }

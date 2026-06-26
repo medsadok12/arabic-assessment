@@ -526,7 +526,7 @@ export default function VowelBalloonPage() {
           70%  { opacity: 1; }
           100% { opacity: 0; transform: translateY(-48px) scale(0.9); }
         }
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Tajawal:wght@400;700;900&display=swap');
+        
         * { box-sizing: border-box; }
 
         @keyframes vbFloat0 { 0%,100%{transform:translateY(0px) rotate(-1deg)}  50%{transform:translateY(-16px) rotate(1.5deg)} }

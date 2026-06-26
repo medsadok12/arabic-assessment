@@ -347,7 +347,7 @@ export default function ProgressDashboard({
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+        
         .prog-wrap        { font-family:'Cairo','Tajawal',sans-serif; direction:rtl; padding:20px 0 80px; }
         .prog-stat-grid   { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; margin-bottom:18px; }
         .prog-row-3-1     { display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:16px; }

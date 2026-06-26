@@ -265,7 +265,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           to   { opacity:1; transform:translateY(0); }
         }
 
-        .lib-page { direction:rtl; font-family:'Cairo','Tajawal',sans-serif; }
+        .lib-page { direction:rtl; font-family:inherit; }
 
         /* ── هيدر ── */
         .lib-header { text-align:center; margin-bottom:20px; }
@@ -296,7 +296,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           background:linear-gradient(135deg,#22c55e,#16a34a);
           color:#fff; border:none; border-radius:50px;
           padding:8px 18px; font-size:.82rem; font-weight:700;
-          cursor:pointer; font-family:'Cairo','Tajawal',sans-serif;
+          cursor:pointer; font-family:inherit;
           text-decoration:none; white-space:nowrap; flex-shrink:0;
           box-shadow:0 4px 12px rgba(34,197,94,.35);
           transition:transform .18s, box-shadow .18s;
@@ -314,7 +314,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         .lib-search {
           width:100%; border:2px solid #e2e8f0; border-radius:14px;
           padding:10px 42px 10px 16px; font-size:.92rem;
-          font-family:'Cairo','Tajawal',sans-serif; direction:rtl;
+          font-family:inherit; direction:rtl;
           background:#fff; color:#1e293b; outline:none; box-sizing:border-box;
           transition:border-color .18s, box-shadow .18s;
         }
@@ -334,7 +334,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           border:2px solid #e2e8f0; border-radius:50px;
           padding:5px 13px; font-size:.8rem; font-weight:700;
           cursor:pointer; background:#fff; color:#64748b;
-          font-family:'Cairo','Tajawal',sans-serif;
+          font-family:inherit;
           transition:all .18s;
         }
         .lib-filter-btn:hover:not(.active) { border-color:#a5b4fc; color:#4f46e5; }
@@ -460,7 +460,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         .lib-start-btn {
           display:inline-block; border:none; border-radius:50px;
           padding:7px 18px; color:#fff; font-size:.8rem; font-weight:700;
-          cursor:pointer; font-family:'Cairo','Tajawal',sans-serif;
+          cursor:pointer; font-family:inherit;
           box-shadow:0 4px 12px rgba(0,0,0,.18); text-decoration:none;
           transition:transform .18s, box-shadow .18s;
         }
@@ -469,7 +469,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           display:inline-flex; align-items:center; gap:5px;
           border:none; border-radius:50px;
           padding:7px 14px; color:#fff; font-size:.78rem; font-weight:700;
-          cursor:pointer; font-family:'Cairo','Tajawal',sans-serif;
+          cursor:pointer; font-family:inherit;
           text-decoration:none;
           background:linear-gradient(135deg,#22c55e,#16a34a);
           box-shadow:0 4px 12px rgba(34,197,94,.3);
@@ -610,7 +610,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         .story-read-btn {
           display:inline-block; border:none; border-radius:50px;
           padding:6px 13px; color:#fff; font-size:.7rem; font-weight:800;
-          cursor:pointer; font-family:'Cairo','Tajawal',sans-serif;
+          cursor:pointer; font-family:inherit;
           box-shadow:0 3px 10px rgba(0,0,0,.2);
           transition:transform .15s; text-decoration:none;
         }

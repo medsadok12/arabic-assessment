@@ -74,7 +74,7 @@ function LetterCard({ data, index, active, onToggle }) {
   const pal = PALETTE[index % PALETTE.length];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', fontFamily: 'Cairo, Tajawal, sans-serif' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', fontFamily:'inherit' }}>
       {/* ── Letter button ── */}
       <button
         onClick={() => { speak(data.name); onToggle(index); }}

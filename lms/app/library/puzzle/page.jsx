@@ -9,7 +9,7 @@ export default function PuzzlePage() {
       minHeight: '100vh',
       background: 'linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%)',
       paddingBottom: 48,
-      fontFamily: "'Cairo','Tajawal',sans-serif",
+      fontFamily:'inherit',
       direction: 'rtl',
     }}>
       {/* Header */}
