@@ -9,7 +9,7 @@ const StoryPage = forwardRef(function StoryPage({ html, pageNum, total, fontSize
       <div style={{
         background: '#fffdf5',
         height: '100%',
-        padding: '28px 22px 44px',
+        padding: '24px 20px 40px',
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
@@ -22,20 +22,13 @@ const StoryPage = forwardRef(function StoryPage({ html, pageNum, total, fontSize
         userSelect: 'none',
         WebkitUserSelect: 'none',
       }}>
-        <div
-          style={{ flex: 1, overflow: 'hidden' }}
+        <div style={{ flex: 1, overflow: 'hidden' }}
           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
         />
         <div style={{
-          position: 'absolute',
-          bottom: 12,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          fontSize: '.6rem',
-          color: '#c4a96d',
-          fontWeight: 700,
-          letterSpacing: '.05em',
-          whiteSpace: 'nowrap',
+          position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
+          fontSize: '.58rem', color: '#c4a96d', fontWeight: 700,
+          letterSpacing: '.05em', whiteSpace: 'nowrap',
         }}>
           {pageNum} / {total}
         </div>
@@ -46,40 +39,57 @@ const StoryPage = forwardRef(function StoryPage({ html, pageNum, total, fontSize
 
 const BTN = {
   display: 'inline-flex', alignItems: 'center', gap: 6,
-  border: 'none', borderRadius: 50, padding: '10px 20px',
-  fontSize: '.86rem', fontWeight: 800, cursor: 'pointer',
+  border: 'none', borderRadius: 50, padding: '9px 18px',
+  fontSize: '.84rem', fontWeight: 800, cursor: 'pointer',
   fontFamily: 'inherit', transition: 'opacity .15s',
 };
 
-export default function StoryFlipBook({ pages, accent = '#10b981', onComplete, read, loading, isTeacher, points }) {
-  const bookRef       = useRef(null);
-  const isFlipping    = useRef(false);
-  const touchStartX   = useRef(null);
+export default function StoryFlipBook({
+  pages, accent = '#10b981', onComplete, read, loading, isTeacher, points,
+  fullScreen = false,   // وضع الشاشة الكاملة على الهاتف
+}) {
+  const bookRef     = useRef(null);
+  const isFlipping  = useRef(false);
+  const touchStartX = useRef(null);
 
   const [current, setCurrent] = useState(0);
-  const [pageW,   setPageW]   = useState(320);
+  const [dims,    setDims]    = useState({ w: 320, h: 454 });
+
   const totalPages = pages.length;
   const isLastPage = current >= totalPages - 1;
 
-  /* resize — debounced ليتجنب تهيئة الكتاب بشكل متكرر */
+  /* حساب الأبعاد */
   useEffect(() => {
     let timer;
     const update = () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
-        /* pageW > containerWidth/2 دائماً → usePortrait يُفعّل وضع صفحة واحدة */
-        setPageW(Math.min(window.innerWidth - 32, 500));
-      }, 120);
+        if (fullScreen) {
+          /*
+            وضع الشاشة الكاملة: الارتفاع = المتاح بعد شريط العنوان (≈52px) والأزرار (≈76px)
+            pageW يُحسب من الارتفاع للحفاظ على النسبة
+          */
+          const availH  = window.innerHeight - 52 - 76 - 24;
+          const maxH    = Math.min(availH, 680);
+          const calcW   = Math.round(maxH / 1.42);
+          const pageW   = Math.min(calcW, window.innerWidth - 24);
+          const pageH   = Math.round(pageW * 1.42);
+          setDims({ w: pageW, h: pageH });
+        } else {
+          /* وضع الحاسوب: العرض يقود */
+          const pageW = Math.min(window.innerWidth - 32, 500);
+          const pageH = Math.round(pageW * 1.42);
+          setDims({ w: pageW, h: pageH });
+        }
+      }, 100);
     };
     update();
     window.addEventListener('resize', update);
     return () => { window.removeEventListener('resize', update); clearTimeout(timer); };
-  }, []);
+  }, [fullScreen]);
 
-  const pageH    = Math.round(pageW * 1.42);
-  const fontSize = pageW < 320 ? '.88rem' : pageW < 420 ? '1rem' : '1.08rem';
+  const fontSize = dims.w < 280 ? '.82rem' : dims.w < 360 ? '.9rem' : dims.w < 440 ? '1rem' : '1.08rem';
 
-  /* flip آمن: يمنع التنفيذ المتكرر خلال الأنيميشن */
   const safeFlip = useCallback((dir) => {
     if (isFlipping.current) return;
     if (dir === 'next' && current >= totalPages - 1) return;
@@ -89,14 +99,12 @@ export default function StoryFlipBook({ pages, accent = '#10b981', onComplete, r
     else                bookRef.current?.pageFlip().flipPrev();
   }, [current, totalPages]);
 
-  /* استعادة القدرة على الانتقال بعد انتهاء الأنيميشن */
   const onChangeState = useCallback((e) => {
     if (e.data === 'read') isFlipping.current = false;
   }, []);
 
   const onFlip = useCallback((e) => setCurrent(e.data), []);
 
-  /* لوحة المفاتيح */
   useEffect(() => {
     const fn = (e) => {
       if (e.key === 'ArrowLeft'  || e.key === 'ArrowDown')  safeFlip('next');
@@ -106,12 +114,8 @@ export default function StoryFlipBook({ pages, accent = '#10b981', onComplete, r
     return () => window.removeEventListener('keydown', fn);
   }, [safeFlip]);
 
-  /* سحب اللمس — كشف يدوي بدل useMouseEvents للمكتبة */
-  const onTouchStart = useCallback((e) => {
-    touchStartX.current = e.touches[0].clientX;
-  }, []);
-
-  const onTouchEnd = useCallback((e) => {
+  const onTouchStart = useCallback((e) => { touchStartX.current = e.touches[0].clientX; }, []);
+  const onTouchEnd   = useCallback((e) => {
     if (touchStartX.current === null) return;
     const delta = touchStartX.current - e.changedTouches[0].clientX;
     touchStartX.current = null;
@@ -120,42 +124,39 @@ export default function StoryFlipBook({ pages, accent = '#10b981', onComplete, r
   }, [safeFlip]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
 
       {/* نقاط التقدم */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 7, margin: '0 0 18px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 7, marginBottom: 12 }}>
         {pages.map((_, i) => (
           <div key={i} style={{
-            width:  i === current ? 22 : 10,
-            height: 10,
-            borderRadius: 99,
+            width: i === current ? 22 : 10, height: 10, borderRadius: 99,
             background: i < current ? `${accent}66` : i === current ? accent : '#e2e8f0',
-            transition: 'all .3s',
-            cursor: 'pointer',
+            transition: 'all .3s', cursor: 'pointer',
           }} />
         ))}
       </div>
 
-      {/* الكتاب — سحب اللمس معالَج يدوياً، أحداث المكتبة معطّلة */}
+      {/* الكتاب */}
       <div
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         style={{
-          filter: 'drop-shadow(2px 4px 0 #e8d9b8) drop-shadow(4px 8px 0 #ddd0a8) drop-shadow(0 14px 28px rgba(0,0,0,.16))',
+          filter: 'drop-shadow(2px 4px 0 #e8d9b8) drop-shadow(4px 8px 0 #ddd0a8) drop-shadow(0 12px 24px rgba(0,0,0,.15))',
           borderRadius: 6,
           touchAction: 'pan-y',
         }}
       >
         <HTMLFlipBook
           ref={bookRef}
-          width={pageW}
-          height={pageH}
+          width={dims.w}
+          height={dims.h}
           size="fixed"
-          minWidth={220}
-          minHeight={300}
+          minWidth={200}
+          minHeight={280}
           maxWidth={500}
           maxHeight={720}
-          flippingTime={480}
+          flippingTime={460}
           drawShadow={true}
           usePortrait={true}
           startPage={0}
@@ -167,26 +168,16 @@ export default function StoryFlipBook({ pages, accent = '#10b981', onComplete, r
           onChangeState={onChangeState}
         >
           {pages.map((html, i) => (
-            <StoryPage
-              key={i}
-              html={html}
-              pageNum={i + 1}
-              total={totalPages}
-              fontSize={fontSize}
-            />
+            <StoryPage key={i} html={html} pageNum={i + 1} total={totalPages} fontSize={fontSize} />
           ))}
         </HTMLFlipBook>
       </div>
 
       {/* أزرار التنقل */}
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        width: '100%',
-        maxWidth: pageW,
-        marginTop: 20,
-        direction: 'rtl',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        width: '100%', maxWidth: dims.w,
+        marginTop: 14, direction: 'rtl',
       }}>
         <button
           onClick={() => safeFlip('prev')}
@@ -196,7 +187,7 @@ export default function StoryFlipBook({ pages, accent = '#10b981', onComplete, r
           ▶ السابق
         </button>
 
-        <span style={{ color: '#94a3b8', fontSize: '.8rem', fontWeight: 700 }}>
+        <span style={{ color: '#94a3b8', fontSize: '.78rem', fontWeight: 700 }}>
           {current + 1} / {totalPages}
         </span>
 
@@ -205,38 +196,28 @@ export default function StoryFlipBook({ pages, accent = '#10b981', onComplete, r
             read ? (
               <div style={{
                 background: '#d1fae5', border: '1.5px solid #86efac',
-                borderRadius: 50, padding: '9px 18px',
-                color: '#065f46', fontWeight: 900, fontSize: '.82rem',
+                borderRadius: 50, padding: '8px 16px',
+                color: '#065f46', fontWeight: 900, fontSize: '.8rem',
               }}>
                 ✅ أنهيت القصة
               </div>
             ) : (
-              <button
-                onClick={onComplete}
-                disabled={loading}
-                style={{
-                  ...BTN,
-                  background: `linear-gradient(135deg,${accent},${accent}cc)`,
-                  color: '#fff',
-                  boxShadow: `0 4px 16px ${accent}44`,
-                  opacity: loading ? .6 : 1,
-                  cursor: loading ? 'default' : 'pointer',
-                }}
-              >
+              <button onClick={onComplete} disabled={loading} style={{
+                ...BTN,
+                background: `linear-gradient(135deg,${accent},${accent}cc)`,
+                color: '#fff', boxShadow: `0 4px 14px ${accent}44`,
+                opacity: loading ? .6 : 1, cursor: loading ? 'default' : 'pointer',
+              }}>
                 {loading ? '⏳...' : `🎉 انتهيت! +${points}`}
               </button>
             )
           )
         ) : (
-          <button
-            onClick={() => safeFlip('next')}
-            style={{
-              ...BTN,
-              background: `linear-gradient(135deg,${accent},${accent}cc)`,
-              color: '#fff',
-              boxShadow: `0 4px 16px ${accent}44`,
-            }}
-          >
+          <button onClick={() => safeFlip('next')} style={{
+            ...BTN,
+            background: `linear-gradient(135deg,${accent},${accent}cc)`,
+            color: '#fff', boxShadow: `0 4px 14px ${accent}44`,
+          }}>
             التالي ◀
           </button>
         )}
