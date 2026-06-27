@@ -1,9 +1,12 @@
 import { Resend } from 'resend';
 
-const FROM = 'أكاديمية عارم <noreply@aarem.net>';
+const FROM       = 'أكاديمية عارم <noreply@aarem.net>';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'gandouzimohamed9@gmail.com';
 
 function resend() {
-  return new Resend(process.env.RESEND_API_KEY);
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error('RESEND_API_KEY is not set');
+  return new Resend(key);
 }
 
 function baseHtml(content) {
@@ -272,7 +275,7 @@ export async function sendMissingRecordingAlert({ teacherName, teacherEmail, stu
 
   const { error } = await resend().emails.send({
     from:    FROM,
-    to:      'gandouzimohamed9@gmail.com',
+    to:      ADMIN_EMAIL,
     subject: `⚠️ تنبيه: حصة بدون تسجيل — ${teacherName} / ${studentName} (${sessionDate})`,
     html,
   });
