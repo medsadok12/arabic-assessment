@@ -240,6 +240,45 @@ export async function sendTeacherDeclineEmail({ to, ownerName, inviteeName, sess
   if (error) throw new Error(error.message);
 }
 
+export async function sendMissingRecordingAlert({ teacherName, teacherEmail, studentName, sessionDate, startTime, subject, notes }) {
+  const html = baseHtml(`
+    <div class="card">
+      <div class="hdr" style="background:linear-gradient(135deg,#7f1d1d 0%,#b91c1c 100%)">
+        <h1>🎓 أكاديمية عارم للتعليم</h1>
+        <p>⚠️ تنبيه: حصة أُنهيت بدون رابط تسجيل</p>
+      </div>
+      <div class="body">
+        <p style="background:#fef2f2;border-right:4px solid #b91c1c;padding:14px 18px;border-radius:10px;color:#7f1d1d;font-weight:700;font-size:1rem">
+          ⚠️ أُنهيت حصة دراسية دون توفير رابط التسجيل — يُرجى المتابعة مع المعلم.
+        </p>
+        <div class="info">
+          <div class="info-row"><span class="info-lbl">👨‍🏫 المعلم</span><span>${teacherName} &lt;${teacherEmail}&gt;</span></div>
+          <div class="info-row"><span class="info-lbl">👤 الطالب</span><span>${studentName}</span></div>
+          ${subject ? `<div class="info-row"><span class="info-lbl">📚 الموضوع</span><span>${subject}</span></div>` : ''}
+          <div class="info-row"><span class="info-lbl">📅 التاريخ</span><span>${sessionDate}</span></div>
+          <div class="info-row"><span class="info-lbl">⏰ الوقت</span><span>${startTime}</span></div>
+        </div>
+        ${notes ? `
+        <div style="background:#fffbeb;border-right:4px solid #d97706;border-radius:10px;padding:14px 18px;margin:18px 0">
+          <div style="font-weight:800;color:#92400e;margin-bottom:6px">💬 سبب / ملاحظة المعلم:</div>
+          <div style="color:#451a03;font-size:.93rem;line-height:1.75">${notes}</div>
+        </div>` : `
+        <p style="color:#dc2626;font-weight:700">❗ لم يُذكر أي سبب من قِبل المعلم.</p>`}
+        <p class="note">يُرجى التواصل مع المعلم لمتابعة توفير رابط التسجيل وإرساله للطالب.</p>
+      </div>
+      <div class="ftr">أكاديمية عارم للتعليم — نظام الإشعارات الفورية</div>
+    </div>
+  `);
+
+  const { error } = await resend().emails.send({
+    from:    FROM,
+    to:      'gandouzimohamed9@gmail.com',
+    subject: `⚠️ تنبيه: حصة بدون تسجيل — ${teacherName} / ${studentName} (${sessionDate})`,
+    html,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function sendWelcomeEmail({ to, name, password }) {
   const html = baseHtml(`
     <div class="card">
