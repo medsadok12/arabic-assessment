@@ -201,18 +201,30 @@ export async function PATCH(req) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // ── إشعار فوري للإدارة عند إنهاء حصة بدون رابط تسجيل ──
-  // يجب await حتى لا تُلغى العملية في Vercel Serverless قبل إرسال الإيميل
   if (status === 'completed' && !recording_url) {
     const teacherName = teacher.user_metadata?.full_name ?? teacher.email;
+    const sName       = data.student_name ?? studentName ?? '—';
+    const sDate       = data.session_date ?? sessionDate ?? '—';
+    const sTime       = (data.start_time ?? startTime ?? '—').slice(0, 5);
+    const sNotes      = data.notes ?? notes ?? null;
+
+    // 1) إشعار جرس داخل التطبيق (أحمر — لجميع المشرفين)
+    await notify(
+      'missing_recording',
+      `⚠️ حصة بدون تسجيل — ${teacherName}`,
+      `${sName} · ${sDate} الساعة ${sTime}${sNotes ? ` · ${sNotes}` : ''}`,
+    );
+
+    // 2) إيميل تفصيلي للإدارة
     try {
       await sendMissingRecordingAlert({
         teacherName,
         teacherEmail: teacher.email,
-        studentName:  data.student_name ?? studentName ?? '—',
-        sessionDate:  data.session_date ?? sessionDate ?? '—',
-        startTime:    (data.start_time ?? startTime ?? '—').slice(0, 5),
+        studentName:  sName,
+        sessionDate:  sDate,
+        startTime:    sTime,
         subject:      data.subject ?? subject ?? null,
-        notes:        data.notes   ?? notes   ?? null,
+        notes:        sNotes,
       });
     } catch (e) {
       console.error('[alert] sendMissingRecordingAlert failed:', e?.message);
