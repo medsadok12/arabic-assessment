@@ -222,6 +222,7 @@ export default function DashboardContent({
   const [attendanceLogged, setAttendanceLogged] = useState(nextSession?.attended === true);
   const [attLoading,       setAttLoading]       = useState(false);
   const [attError,         setAttError]         = useState(null);
+  const [sessionCardHidden, setSessionCardHidden] = useState(false);
 
   // تُجلب حالة الحضور فقط بعد أن يبدأ المعلم الحصة (liveStatus === 'active')
   useEffect(() => {
@@ -246,7 +247,12 @@ export default function DashboardContent({
       if (data.ok || data.already) {
         setAttendanceLogged(true);
         const meetUrl = data.meet_link || nextSession.meet_link;
-        if (meetUrl) window.open(meetUrl, '_blank', 'noopener');
+        if (meetUrl) {
+          window.open(meetUrl, '_blank', 'noopener');
+          setTimeout(() => setSessionCardHidden(true), 1800);
+        } else {
+          setTimeout(() => setSessionCardHidden(true), 1800);
+        }
       } else {
         setAttError(data.error ?? 'تعذّر تسجيل الحضور — حاول مرة أخرى');
       }
@@ -626,14 +632,14 @@ export default function DashboardContent({
           </div>
 
           {/* ── Next session ── */}
-          {nextSession && (() => {
+          {nextSession && !sessionCardHidden && (() => {
 
             // ── لون البطاقة ──
             const cardBg = sessionHasEnded
               ? 'linear-gradient(135deg,#64748b,#475569)'
               : isLiveOrActive
                 ? 'linear-gradient(135deg,#1a7c40,#15803d)'
-                : 'linear-gradient(135deg,#185FA5,#1d4ed8)';
+                : 'linear-gradient(135deg,oklch(0.74 0.13 28),oklch(0.62 0.14 28))';
 
             // ── تسمية الحالة ──
             const statusLabel = sessionHasEnded
