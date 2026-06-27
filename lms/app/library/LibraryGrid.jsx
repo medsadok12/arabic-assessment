@@ -278,9 +278,9 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         .lib-page { direction:rtl; font-family:inherit; }
 
         /* ── هيدر ── */
-        .lib-header { text-align:center; margin-bottom:20px; }
+        .lib-header { text-align:center; margin-bottom:18px; }
         .lib-header h1 {
-          font-size:1.75rem; font-weight:900; margin:0 0 4px;
+          font-size:1.75rem; font-weight:900; margin:0;
           background:linear-gradient(135deg,#4f46e5,#7c3aed,#ec4899);
           -webkit-background-clip:text; -webkit-text-fill-color:transparent;
           background-clip:text;
@@ -727,7 +727,6 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         {/* ── هيدر ── */}
         <div className="lib-header">
           <h1>🌟 اختر نشاطك وابدأ الرحلة</h1>
-          <p>15 نشاطاً متنوعاً لتعلّم العربية بمتعة وإبداع</p>
         </div>
 
         {/* ── بنر الاستمرار / البداية ── */}
