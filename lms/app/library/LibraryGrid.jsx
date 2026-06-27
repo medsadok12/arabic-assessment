@@ -736,7 +736,6 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           const title = meta.title || nextActivity.title;
           return (
             <div className="lib-banner">
-              <span className="lib-banner-icon">{icon}</span>
               <div className="lib-banner-text">
                 <p className="lib-banner-title">
                   {hasAnyProgress ? '👋 استمر من حيث توقفت!' : '🚀 ابدأ رحلتك من هنا!'}
@@ -750,18 +749,6 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
             </div>
           );
         })()}
-
-        {/* ── بحث ── */}
-        <div className="lib-search-wrap">
-          <span className="lib-search-icon">🔍</span>
-          <input
-            className="lib-search"
-            type="text"
-            placeholder="ابحث عن نشاط..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
 
         {/* ── فلاتر بأسلوب Dock ── */}
         <div
