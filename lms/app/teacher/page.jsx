@@ -69,6 +69,8 @@ export default function TeacherPage() {
   const [completeFor,    setCompleteFor]    = useState(null);
   const [recordingUrl,   setRecordingUrl]   = useState('');
   const [completeSaving, setCompleteSaving] = useState(false);
+  const [completeNotes,  setCompleteNotes]  = useState('');
+  const [recordingError, setRecordingError] = useState(false);
   // Calendar week offset
   const [weekOffset,   setWeekOffset]   = useState(0);
   // Student profile panel
@@ -356,17 +358,29 @@ export default function TeacherPage() {
   }
 
   // ── Complete session ──
-  function openComplete(s) { setCompleteFor(s); setRecordingUrl('https://drive.google.com/drive/folders/1jdsF69TWQOJAq47Q6-UCN5hUbGWzYCqD?usp=drive_link'); }
+  function openComplete(s) {
+    setCompleteFor(s);
+    setRecordingUrl('');
+    setCompleteNotes('');
+    setRecordingError(false);
+  }
 
   async function handleComplete() {
+    if (!recordingUrl.trim()) { setRecordingError(true); return; }
+    setRecordingError(false);
     setCompleteSaving(true);
     const res = await fetch('/api/teacher/sessions', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: completeFor.id, status: 'completed', recording_url: recordingUrl || null }),
+      body: JSON.stringify({
+        id: completeFor.id,
+        status: 'completed',
+        recording_url: recordingUrl.trim(),
+        notes: completeNotes.trim() || null,
+      }),
     });
     if (res.ok) {
       setSessions(prev => prev.map(s => s.id === completeFor.id
-        ? { ...s, status: 'completed', recording_url: recordingUrl || null } : s));
+        ? { ...s, status: 'completed', recording_url: recordingUrl.trim() } : s));
       setCompleteFor(null);
     }
     setCompleteSaving(false);
@@ -1528,15 +1542,48 @@ export default function TeacherPage() {
             <p style={{ fontSize:'.88rem', color:'var(--muted)', marginBottom:20 }}>
               {completeFor.subject || 'حصة عامة'} — {completeFor.student_name}
             </p>
+
+            {/* رابط التسجيل — إلزامي */}
             <div className="form-group">
-              <label className="form-label">رابط تسجيل الحصة (اختياري)</label>
-              <input className="form-input" type="url" dir="ltr"
+              <label className="form-label" style={{ color: recordingError ? '#dc2626' : undefined }}>
+                رابط تسجيل الحصة <span style={{ color:'#dc2626' }}>*</span>
+              </label>
+              <input
+                className="form-input"
+                type="url"
+                dir="ltr"
                 placeholder="https://drive.google.com/..."
-                value={recordingUrl} onChange={e => setRecordingUrl(e.target.value)} />
-              <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:4 }}>
-                يظهر للطالب في سجل حصصه السابقة
-              </div>
+                value={recordingUrl}
+                onChange={e => { setRecordingUrl(e.target.value); if (e.target.value.trim()) setRecordingError(false); }}
+                style={{
+                  borderColor: recordingError ? '#dc2626' : undefined,
+                  boxShadow:   recordingError ? '0 0 0 3px rgba(220,38,38,.15)' : undefined,
+                }}
+              />
+              {recordingError ? (
+                <div style={{ fontSize:'.78rem', color:'#dc2626', fontWeight:700, marginTop:5 }}>
+                  ⚠️ رابط التسجيل مطلوب — يرجى إدخال رابط الحصة قبل الإنهاء
+                </div>
+              ) : (
+                <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:4 }}>
+                  يظهر للطالب في سجل حصصه السابقة
+                </div>
+              )}
             </div>
+
+            {/* ملاحظات — دائمة الظهور */}
+            <div className="form-group" style={{ marginTop:14 }}>
+              <label className="form-label">ملاحظات / سبب عدم توفر الرابط</label>
+              <textarea
+                className="form-input"
+                rows={3}
+                placeholder="مثال: تعذّر التسجيل بسبب عطل تقني — سيُرسل الرابط لاحقاً..."
+                value={completeNotes}
+                onChange={e => setCompleteNotes(e.target.value)}
+                style={{ resize:'vertical', fontFamily:'inherit', fontSize:'.88rem' }}
+              />
+            </div>
+
             <div style={{ display:'flex', gap:10, marginTop:20 }}>
               <button onClick={handleComplete} disabled={completeSaving}
                 className="btn btn-primary" style={{ flex:1, justifyContent:'center', background:'#1a7c40', borderColor:'#1a7c40' }}>
