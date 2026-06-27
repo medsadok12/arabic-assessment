@@ -76,18 +76,17 @@ export default async function LibraryPage() {
       <Navbar user={user} />
       <main className="page-wrap">
         <div className="container">
-          <div style={{ textAlign:'center', padding:'8px 0 28px' }}>
-            <h1 style={{ fontSize:'1.9rem', fontWeight:900, color:'#1e3a5f', margin:'0 0 6px' }}>
+          <div style={{ textAlign:'center', padding:'8px 0 10px' }}>
+            <h1 style={{ fontSize:'1.9rem', fontWeight:900, color:'#1e3a5f', margin:0 }}>
               المكتبة التعليمية 📚
             </h1>
-            <p style={{ color:'#64748b', fontSize:'.95rem', margin:0 }}>
-              اختر نشاطاً وابدأ رحلة تعلّم اللغة العربية!
-              {isTeacher && (
-                <span style={{ marginRight:10, background:'#f0fdf4', color:'#15803d', borderRadius:20, padding:'2px 10px', fontSize:'.78rem', fontWeight:700, border:'1px solid #86efac' }}>
+            {isTeacher && (
+              <p style={{ margin:'8px 0 0' }}>
+                <span style={{ background:'#f0fdf4', color:'#15803d', borderRadius:20, padding:'2px 10px', fontSize:'.78rem', fontWeight:700, border:'1px solid #86efac' }}>
                   ✏️ حرّك الماوس فوق أي بطاقة للتعديل
                 </span>
-              )}
-            </p>
+              </p>
+            )}
           </div>
           <LibraryGrid
             initialMeta={initialMeta}
