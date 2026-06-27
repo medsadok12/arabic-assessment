@@ -201,17 +201,22 @@ export async function PATCH(req) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // ── إشعار فوري للإدارة عند إنهاء حصة بدون رابط تسجيل ──
+  // يجب await حتى لا تُلغى العملية في Vercel Serverless قبل إرسال الإيميل
   if (status === 'completed' && !recording_url) {
     const teacherName = teacher.user_metadata?.full_name ?? teacher.email;
-    sendMissingRecordingAlert({
-      teacherName,
-      teacherEmail: teacher.email,
-      studentName:  data.student_name ?? studentName ?? '—',
-      sessionDate:  data.session_date ?? sessionDate ?? '—',
-      startTime:    (data.start_time ?? startTime ?? '—').slice(0, 5),
-      subject:      data.subject ?? subject ?? null,
-      notes:        data.notes   ?? notes   ?? null,
-    }).catch(() => {}); // best-effort — لا يوقف الاستجابة
+    try {
+      await sendMissingRecordingAlert({
+        teacherName,
+        teacherEmail: teacher.email,
+        studentName:  data.student_name ?? studentName ?? '—',
+        sessionDate:  data.session_date ?? sessionDate ?? '—',
+        startTime:    (data.start_time ?? startTime ?? '—').slice(0, 5),
+        subject:      data.subject ?? subject ?? null,
+        notes:        data.notes   ?? notes   ?? null,
+      });
+    } catch (e) {
+      console.error('[alert] sendMissingRecordingAlert failed:', e?.message);
+    }
   }
 
   return NextResponse.json({ session: data });
