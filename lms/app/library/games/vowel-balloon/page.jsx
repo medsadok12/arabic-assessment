@@ -583,7 +583,7 @@ export default function VowelBalloonPage() {
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:7 }}>
                 <span style={{ background:'linear-gradient(135deg,#f59e0b,#d97706)', color:'#fff', borderRadius:20, padding:'4px 14px', fontSize:'.88rem', fontWeight:800, boxShadow:'0 3px 10px rgba(245,158,11,.4)' }}>⭐ {score}</span>
                 <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                  <span style={{ background: 'rgba(245,158,11,0.18)', border: '1px solid #fde68a', borderRadius: 20, padding: '4px 12px', fontSize: '.82rem', fontWeight: 800, color: '#92400e' }}>⭐ {totalPoints.toLocaleString('ar-EG')} نقطة</span>
+                  <span style={{ background: 'rgba(245,158,11,0.18)', border: '1px solid #fde68a', borderRadius: 20, padding: '4px 12px', fontSize: '.82rem', fontWeight: 800, color: '#92400e' }}>⭐ {totalPoints.toLocaleString('en-US')} نقطة</span>
                   {ptPopupActive && (
                     <span key={ptPopupKey} style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', color: '#d97706', fontWeight: 900, fontSize: '1.05rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards', textShadow: '0 1px 6px rgba(0,0,0,.2)' }}>+5 ⭐</span>
                   )}

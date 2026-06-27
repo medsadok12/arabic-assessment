@@ -235,7 +235,7 @@ export default function PuzzleWidget() {
         </div>
         <div style={S.pointsPill}>
           <span style={{ fontSize: '1.1rem', animation: 'pw-star 2s ease-in-out infinite' }}>⭐</span>
-          <span style={{ fontSize: '1.05rem', fontWeight: 900, color: '#D97706' }}>{points.toLocaleString('ar-EG')}</span>
+          <span style={{ fontSize: '1.05rem', fontWeight: 900, color: '#D97706' }}>{points.toLocaleString('en-US')}</span>
           <span style={{ fontSize: '.72rem', color: '#92400E', fontWeight: 600 }}>نقطة</span>
         </div>
       </div>

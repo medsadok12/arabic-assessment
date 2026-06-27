@@ -186,7 +186,7 @@ function PointsBadgeDesktop() {
           fontWeight: 900, fontSize: '1.1rem',
           color: lvl.color, fontVariantNumeric: 'tabular-nums', lineHeight: 1,
           animation: burst ? 'pfNum .3s ease' : 'none',
-        }}>{shownE.toLocaleString('ar-EG')}</span>
+        }}>{shownE.toLocaleString('en-US')}</span>
 
         <span style={{ fontSize: '.65rem', color: '#94a3b8', fontWeight: 700, lineHeight: 1, letterSpacing: '.3px' }}>
           {lvl.name}
@@ -214,10 +214,10 @@ function PointsBadgeDesktop() {
             <div>
               <div style={{ fontWeight: 900, fontSize: '1.1rem', color: lvl.color }}>{lvl.name}</div>
               <div style={{ fontSize: '.73rem', color: '#94a3b8', marginTop: 2 }}>
-                {earned.toLocaleString('ar-EG')} نقطة مكتسبة
+                {earned.toLocaleString('en-US')} نقطة مكتسبة
               </div>
               <div style={{ fontSize: '.7rem', color: '#475569', marginTop: 1 }}>
-                رصيد متاح: <span style={{ color: '#F59E0B', fontWeight: 700 }}>{pts.toLocaleString('ar-EG')}</span>
+                رصيد متاح: <span style={{ color: '#F59E0B', fontWeight: 700 }}>{pts.toLocaleString('en-US')}</span>
               </div>
             </div>
           </div>
@@ -230,7 +230,7 @@ function PointsBadgeDesktop() {
                   : '🏆 أعلى مستوى!'}
               </span>
               <span style={{ fontWeight: 700, color: lvl.color }}>
-                {inLevel.toLocaleString('ar-EG')} / {PER_LVL.toLocaleString('ar-EG')}
+                {inLevel.toLocaleString('en-US')} / {PER_LVL.toLocaleString('en-US')}
               </span>
             </div>
             <div style={{ height: 8, background: 'rgba(255,255,255,.07)', borderRadius: 99, overflow: 'hidden' }}>
@@ -245,7 +245,7 @@ function PointsBadgeDesktop() {
 
           {lvl.idx < LEVELS.length - 1 && (
             <div style={{ fontSize: '.7rem', color: '#475569', textAlign: 'center', marginBottom: 14 }}>
-              {toNext.toLocaleString('ar-EG')} نقطة إضافية للمستوى التالي
+              {toNext.toLocaleString('en-US')} نقطة إضافية للمستوى التالي
             </div>
           )}
 
@@ -257,7 +257,7 @@ function PointsBadgeDesktop() {
               const reached = earned >= l.min;
               const current = i === lvl.idx;
               return (
-                <div key={i} title={`${l.name} (${l.min.toLocaleString('ar-EG')} نقطة)`} style={{
+                <div key={i} title={`${l.name} (${l.min.toLocaleString('en-US')} نقطة)`} style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 1,
                 }}>
                   <div style={{

@@ -388,7 +388,7 @@ export default function ProgressDashboard({
         <div className="prog-stat-grid">
           <StatCard
             icon="⭐" iconBg="#fffbeb"
-            value={earnedPoints.toLocaleString('ar-EG')}
+            value={earnedPoints.toLocaleString('en-US')}
             label="مجموع النقاط المكتسبة"
             sub={weekDelta !== null
               ? `${weekDelta >= 0 ? '↑ +' : '↓ '}${weekDelta}% عن الأسبوع الماضي`
