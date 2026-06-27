@@ -309,6 +309,11 @@ api/send-email.js         ← sizeLimit: 10mb
   - إضافة `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION` في Vercel
   - الكود جاهز — مجرد إضافة المتغيرات يكفي
 
+- [ ] **Supabase Custom Auth Domain** — عند الترقية للخطة المدفوعة ($25/شهر Pro)
+  - إنشاء `auth.aarem.net` كـ custom auth domain في Supabase Dashboard → Authentication → URL Configuration
+  - سيُعرض `auth.aarem.net` بدلاً من `uqspozzkzyytwwidojxv.supabase.co` في شاشة Google OAuth
+  - يُحسّن مظهر تسجيل الدخول بـ Google للمستخدمين
+
 ### ✅ مكتمل (يونيو 2026)
 - [x] Google Meet تلقائي لكل حصة
 - [x] فصل دخول الطالب عن المعلم
