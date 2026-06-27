@@ -737,7 +737,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
           </div>
         </div>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-          <span style={{ background: '#f3e8ff', border: '1.5px solid #d8b4fe', borderRadius: 20, padding: '4px 10px', fontSize: '.78rem', fontWeight: 800, color: '#7c3aed', whiteSpace: 'nowrap' }}>⭐ {totalPoints.toLocaleString('ar-EG')}</span>
+          <span style={{ background: '#f3e8ff', border: '1.5px solid #d8b4fe', borderRadius: 20, padding: '4px 10px', fontSize: '.78rem', fontWeight: 800, color: '#7c3aed', whiteSpace: 'nowrap' }}>⭐ {totalPoints.toLocaleString('en-US')}</span>
           {ptPopupActive && (
             <span key={ptPopupKey} style={{ position: 'absolute', top: -26, left: '50%', transform: 'translateX(-50%)', color: '#7c3aed', fontWeight: 900, fontSize: '1rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards' }}>+5 ⭐</span>
           )}

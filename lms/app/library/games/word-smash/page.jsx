@@ -1016,7 +1016,7 @@ export default function WordSmashGame() {
                 {/* total accumulated points with popup */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(251,191,36,.28)', borderRadius: 20, padding: '4px 12px', fontSize: '.9rem', fontWeight: 800 }}>
-                    ⭐ {totalPoints.toLocaleString('ar-EG')}
+                    ⭐ {totalPoints.toLocaleString('en-US')}
                   </span>
                   {ptPopupActive && (
                     <span key={ptPopupKey} style={{

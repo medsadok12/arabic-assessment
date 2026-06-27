@@ -509,7 +509,7 @@ export default function FlashcardsPage() {
                 margin:0, opacity:.85,
               }}>📚 بطاقات الحفظ</h1>
               <div style={{ position:'relative', display:'inline-flex', alignItems:'center' }}>
-                <span style={{ background:'rgba(255,255,255,0.18)', borderRadius:20, padding:'5px 14px', fontSize:'.88rem', fontWeight:800, color:'#fff' }}>⭐ {totalPoints.toLocaleString('ar-EG')}</span>
+                <span style={{ background:'rgba(255,255,255,0.18)', borderRadius:20, padding:'5px 14px', fontSize:'.88rem', fontWeight:800, color:'#fff' }}>⭐ {totalPoints.toLocaleString('en-US')}</span>
                 {ptPopupActive && (
                   <span key={ptPopupKey} style={{ position:'absolute', top:-28, left:'50%', transform:'translateX(-50%)', color:'#fbbf24', fontWeight:900, fontSize:'1.05rem', pointerEvents:'none', whiteSpace:'nowrap', animation:'ptFloatUp 1.1s ease forwards', textShadow:'0 1px 6px rgba(0,0,0,.5)' }}>+3 ⭐</span>
                 )}
