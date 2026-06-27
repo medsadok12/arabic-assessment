@@ -6,7 +6,7 @@ import { getGradeInfo } from './scoring.js';
 export async function generateAssessmentPDF(studentInfo, scores, finalLevel) {
   const levelInfo = LEVELS.find(l => l.id === finalLevel);
   const grade     = getGradeInfo(scores.overall);
-  const dateStr   = new Date().toLocaleDateString('ar-SA', {
+  const dateStr   = new Date().toLocaleDateString('ar-SA-u-nu-latn', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
 

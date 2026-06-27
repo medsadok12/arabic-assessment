@@ -58,7 +58,7 @@ export default function ImageWordMatching({ question, onAnswer }) {
 
   return (
     <div className="question-box">
-      <div className="question-number">تدريب ٣</div>
+      <div className="question-number">تدريب 3</div>
       <p className="question-text" style={{ textAlign: 'right' }}>{question.text}</p>
 
       <div className="matching-layout" style={{ margin: '14px auto', overflowX: 'auto' }}>

@@ -59,7 +59,7 @@ export default function LetterListenChoose({ question, onAnswer }) {
 
   return (
     <div className="question-box">
-      <div className="question-number">تدريب ١</div>
+      <div className="question-number">تدريب 1</div>
       <p className="question-text" style={{ fontSize: 18 }}>
         اسْتَمِعْ وَاخْتَرِ الحَرْفَ الصَّحِيح
       </p>
