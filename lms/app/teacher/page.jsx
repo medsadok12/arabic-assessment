@@ -366,7 +366,8 @@ export default function TeacherPage() {
   }
 
   async function handleComplete() {
-    if (!recordingUrl.trim()) { setRecordingError(true); return; }
+    // يُقبل إما رابط أو ملاحظة توضيحية — لا يجوز إنهاء الحصة بدون أيٍّ منهما
+    if (!recordingUrl.trim() && !completeNotes.trim()) { setRecordingError(true); return; }
     setRecordingError(false);
     setCompleteSaving(true);
     const res = await fetch('/api/teacher/sessions', {
@@ -1543,10 +1544,13 @@ export default function TeacherPage() {
               {completeFor.subject || 'حصة عامة'} — {completeFor.student_name}
             </p>
 
-            {/* رابط التسجيل — إلزامي */}
+            {/* رابط التسجيل */}
             <div className="form-group">
               <label className="form-label" style={{ color: recordingError ? '#dc2626' : undefined }}>
-                رابط تسجيل الحصة <span style={{ color:'#dc2626' }}>*</span>
+                رابط تسجيل الحصة
+                <span style={{ fontSize:'.75rem', fontWeight:400, color: recordingError ? '#dc2626' : 'var(--muted)', marginRight:6 }}>
+                  (مطلوب أو اكتب ملاحظة توضيحية أدناه)
+                </span>
               </label>
               <input
                 className="form-input"
@@ -1554,7 +1558,7 @@ export default function TeacherPage() {
                 dir="ltr"
                 placeholder="https://drive.google.com/..."
                 value={recordingUrl}
-                onChange={e => { setRecordingUrl(e.target.value); if (e.target.value.trim()) setRecordingError(false); }}
+                onChange={e => { setRecordingUrl(e.target.value); if (e.target.value.trim() || completeNotes.trim()) setRecordingError(false); }}
                 style={{
                   borderColor: recordingError ? '#dc2626' : undefined,
                   boxShadow:   recordingError ? '0 0 0 3px rgba(220,38,38,.15)' : undefined,
@@ -1562,16 +1566,16 @@ export default function TeacherPage() {
               />
               {recordingError ? (
                 <div style={{ fontSize:'.78rem', color:'#dc2626', fontWeight:700, marginTop:5 }}>
-                  ⚠️ رابط التسجيل مطلوب — يرجى إدخال رابط الحصة قبل الإنهاء
+                  ⚠️ يرجى إضافة رابط التسجيل، أو توضيح السبب في خانة الملاحظات أدناه
                 </div>
-              ) : (
+              ) : recordingUrl.trim() ? (
                 <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:4 }}>
                   يظهر للطالب في سجل حصصه السابقة
                 </div>
-              )}
+              ) : null}
             </div>
 
-            {/* ملاحظات — دائمة الظهور */}
+            {/* ملاحظات الحصة */}
             <div className="form-group" style={{ marginTop:14 }}>
               <label className="form-label">ملاحظات الحصة</label>
               <textarea
@@ -1579,10 +1583,17 @@ export default function TeacherPage() {
                 rows={3}
                 placeholder="أي ملاحظات تتعلق بالحصة: مستوى الطالب، نقاط تحتاج متابعة، ملاحظات تقنية..."
                 value={completeNotes}
-                onChange={e => setCompleteNotes(e.target.value)}
+                onChange={e => { setCompleteNotes(e.target.value); if (e.target.value.trim()) setRecordingError(false); }}
                 style={{ resize:'vertical', fontFamily:'inherit', fontSize:'.88rem' }}
               />
             </div>
+
+            {/* تنبيه: سيصل إشعار للإدارة عند غياب الرابط */}
+            {!recordingUrl.trim() && completeNotes.trim() && (
+              <div style={{ background:'#fffbeb', border:'1px solid #f59e0b', borderRadius:8, padding:'10px 14px', marginTop:10, fontSize:'.8rem', color:'#92400e', fontWeight:600 }}>
+                📧 سيصل إشعار فوري للإدارة مع ملاحظاتك — تأكد من توضيح السبب بشكل كافٍ
+              </div>
+            )}
 
             <div style={{ display:'flex', gap:10, marginTop:20 }}>
               <button onClick={handleComplete} disabled={completeSaving}
