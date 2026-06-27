@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useRouter }                    from 'next/navigation';
 import Link                             from 'next/link';
 import { createClient }                 from '../../lib/supabase';
@@ -476,6 +476,8 @@ export default function BoggarAdminPage() {
   const [permSaving,   setPermSaving]   = useState({});
   const [permError,    setPermError]    = useState(null);
   const permPopoverRef = useRef(null);
+  // inline perms panel per admin row
+  const [openPermsFor, setOpenPermsFor] = useState(null);
 
   // Promotion
   const [promoting, setPromoting] = useState(false);
@@ -867,6 +869,24 @@ export default function BoggarAdminPage() {
   }
 
   // ── Granular ACL ──────────────────────────────────────────────────────────
+  async function toggleAdminPermsPanel(adminId) {
+    if (openPermsFor === adminId) { setOpenPermsFor(null); return; }
+    setOpenPermsFor(adminId);
+    if (Object.keys(allPerms).length > 0) return; // already loaded
+    setPermsLoading(true);
+    try {
+      const res = await fetch('/api/bogga/permissions');
+      const data = await res.json();
+      const map = {};
+      (data.permissions ?? []).forEach(p => {
+        if (!map[p.admin_id]) map[p.admin_id] = {};
+        map[p.admin_id][p.tab_key] = p.is_allowed;
+      });
+      setAllPerms(map);
+    } catch { /* silent */ }
+    setPermsLoading(false);
+  }
+
   async function openPermPopover(tabKey, e) {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
@@ -2177,55 +2197,113 @@ export default function BoggarAdminPage() {
                   <table className="data-table">
                     <thead><tr><th>{lang === 'ar' ? 'الاسم' : 'Name'}</th><th>{lang === 'ar' ? 'البريد الإلكتروني' : 'Email'}</th><th>{lang === 'ar' ? 'حالة الحساب' : 'Account Status'}</th><th>{lang === 'ar' ? 'آخر نشاط' : 'Last Seen'}</th><th>{lang === 'ar' ? 'تاريخ الإنشاء' : 'Created'}</th><th>{lang === 'ar' ? 'إجراءات' : 'Actions'}</th></tr></thead>
                     <tbody>
-                      {admins.map(a => (
-                        <tr key={a.id}>
-                          <td style={{ fontWeight: 700 }}>{a.name}</td>
-                          <td style={{ direction: 'ltr', textAlign: 'right' }}>{a.email}</td>
-                          <td>
-                            <span style={{
-                              padding: '3px 10px', borderRadius: 20, fontSize: '.75rem', fontWeight: 700,
-                              background: a.status === 'suspended' ? '#fee2e2' : '#dcfce7',
-                              color:      a.status === 'suspended' ? '#b91c1c' : '#166534',
-                            }}>
-                              {a.status === 'suspended' ? (lang === 'ar' ? '🚫 موقوف' : '🚫 Suspended') : (lang === 'ar' ? '✅ مفعَّل' : '✅ Active')}
-                            </span>
-                          </td>
-                          <td>
-                            {(() => {
-                              const s = getOnlineInfo(a.id);
-                              return (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '.75rem', fontWeight: 700, color: s.color }}>
-                                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'inline-block', flexShrink: 0 }} />
-                                  {s.label}
+                      {admins.map(a => {
+                        const permsOpen = openPermsFor === a.id;
+                        return (
+                          <Fragment key={a.id}>
+                            <tr>
+                              <td style={{ fontWeight: 700 }}>{a.name}</td>
+                              <td style={{ direction: 'ltr', textAlign: 'right' }}>{a.email}</td>
+                              <td>
+                                <span style={{
+                                  padding: '3px 10px', borderRadius: 20, fontSize: '.75rem', fontWeight: 700,
+                                  background: a.status === 'suspended' ? '#fee2e2' : '#dcfce7',
+                                  color:      a.status === 'suspended' ? '#b91c1c' : '#166534',
+                                }}>
+                                  {a.status === 'suspended' ? (lang === 'ar' ? '🚫 موقوف' : '🚫 Suspended') : (lang === 'ar' ? '✅ مفعَّل' : '✅ Active')}
                                 </span>
-                              );
-                            })()}
-                          </td>
-                          <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>{new Date(a.created_at).toLocaleDateString(lang === 'ar' ? 'en-GB' : 'en-GB')}</td>
-                          <td>
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                              <button onClick={() => openActivityModal(a)} className="btn btn-sm" style={{ background: '#eef5ff', color: '#185FA5', border: 'none' }}>
-                                📊 {lang === 'ar' ? 'النشاط' : 'Activity'}
-                              </button>
-                              <button
-                                onClick={() => handleSuspendAdmin(a.id, a.status ?? 'active')}
-                                disabled={suspendingId === a.id}
-                                className="btn btn-sm"
-                                style={{ background: a.status === 'suspended' ? '#1a7c40' : '#f59e0b', color: '#fff', border: 'none' }}
-                              >
-                                {suspendingId === a.id
-                                  ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-                                  : a.status === 'suspended'
-                                    ? (lang === 'ar' ? '✅ تفعيل' : '✅ Activate')
-                                    : (lang === 'ar' ? '⏸ إيقاف' : '⏸ Suspend')}
-                              </button>
-                              <button onClick={() => handleDeleteAdmin(a.id, a.name)} disabled={deletingId === a.id} className="btn btn-sm btn-danger">
-                                {deletingId === a.id ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : (lang === 'ar' ? '🗑️ حذف' : '🗑️ Delete')}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                              </td>
+                              <td>
+                                {(() => {
+                                  const s = getOnlineInfo(a.id);
+                                  return (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '.75rem', fontWeight: 700, color: s.color }}>
+                                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'inline-block', flexShrink: 0 }} />
+                                      {s.label}
+                                    </span>
+                                  );
+                                })()}
+                              </td>
+                              <td style={{ color: 'var(--muted)', fontSize: '.83rem' }}>{new Date(a.created_at).toLocaleDateString(lang === 'ar' ? 'en-GB' : 'en-GB')}</td>
+                              <td>
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                  <button onClick={() => openActivityModal(a)} className="btn btn-sm" style={{ background: '#eef5ff', color: '#185FA5', border: 'none' }}>
+                                    📊 {lang === 'ar' ? 'النشاط' : 'Activity'}
+                                  </button>
+                                  <button
+                                    onClick={() => toggleAdminPermsPanel(a.id)}
+                                    className="btn btn-sm"
+                                    style={{ background: permsOpen ? '#7c3aed' : '#f3e8ff', color: permsOpen ? '#fff' : '#7c3aed', border: 'none', fontWeight: 700 }}
+                                  >
+                                    🔐 {lang === 'ar' ? 'الصلاحيات' : 'Permissions'}
+                                  </button>
+                                  <button
+                                    onClick={() => handleSuspendAdmin(a.id, a.status ?? 'active')}
+                                    disabled={suspendingId === a.id}
+                                    className="btn btn-sm"
+                                    style={{ background: a.status === 'suspended' ? '#1a7c40' : '#f59e0b', color: '#fff', border: 'none' }}
+                                  >
+                                    {suspendingId === a.id
+                                      ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                                      : a.status === 'suspended'
+                                        ? (lang === 'ar' ? '✅ تفعيل' : '✅ Activate')
+                                        : (lang === 'ar' ? '⏸ إيقاف' : '⏸ Suspend')}
+                                  </button>
+                                  <button onClick={() => handleDeleteAdmin(a.id, a.name)} disabled={deletingId === a.id} className="btn btn-sm btn-danger">
+                                    {deletingId === a.id ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : (lang === 'ar' ? '🗑️ حذف' : '🗑️ Delete')}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {permsOpen && (
+                              <tr>
+                                <td colSpan={6} style={{ background: '#faf5ff', padding: '16px 20px', borderBottom: '2px solid #e9d5ff' }}>
+                                  {permsLoading ? (
+                                    <div style={{ textAlign: 'center', padding: 12 }}><span className="spinner" style={{ borderTopColor: '#7c3aed', borderColor: '#e9d5ff' }} /></div>
+                                  ) : (
+                                    <div>
+                                      <p style={{ fontWeight: 700, color: '#7c3aed', marginBottom: 12, fontSize: '.9rem' }}>
+                                        🔐 {lang === 'ar' ? `صلاحيات ${a.name}` : `${a.name}'s Permissions`}
+                                      </p>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                                        {CONTROLLABLE.map(tabKey => {
+                                          const isAllowed = allPerms[a.id]?.[tabKey] === true;
+                                          return (
+                                            <button
+                                              key={tabKey}
+                                              onClick={() => togglePerm(a.id, tabKey)}
+                                              style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                                padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                                                fontFamily: 'inherit', fontWeight: 700, fontSize: '.82rem',
+                                                background: isAllowed ? '#7c3aed' : '#e9d5ff',
+                                                color: isAllowed ? '#fff' : '#7c3aed',
+                                                transition: 'background .18s, color .18s',
+                                              }}
+                                            >
+                                              <span style={{
+                                                width: 12, height: 12, borderRadius: '50%', flexShrink: 0,
+                                                background: isAllowed ? '#a78bfa' : '#c4b5fd',
+                                                border: isAllowed ? '2px solid #fff' : '2px solid #a78bfa',
+                                                display: 'inline-block',
+                                              }} />
+                                              {lang === 'ar' ? TAB_NAMES[tabKey] : TAB_NAMES_EN[tabKey]}
+                                              <span style={{ fontSize: '.75rem', opacity: .85 }}>{isAllowed ? '✓' : '✗'}</span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                      <p style={{ marginTop: 10, fontSize: '.78rem', color: '#9f67e4' }}>
+                                        {lang === 'ar' ? '* اضغط على أي صلاحية لتفعيلها أو إيقافها' : '* Click any permission to toggle it'}
+                                      </p>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -1573,11 +1573,11 @@ export default function TeacherPage() {
 
             {/* ملاحظات — دائمة الظهور */}
             <div className="form-group" style={{ marginTop:14 }}>
-              <label className="form-label">ملاحظات / سبب عدم توفر الرابط</label>
+              <label className="form-label">ملاحظات الحصة</label>
               <textarea
                 className="form-input"
                 rows={3}
-                placeholder="مثال: تعذّر التسجيل بسبب عطل تقني — سيُرسل الرابط لاحقاً..."
+                placeholder="أي ملاحظات تتعلق بالحصة: مستوى الطالب، نقاط تحتاج متابعة، ملاحظات تقنية..."
                 value={completeNotes}
                 onChange={e => setCompleteNotes(e.target.value)}
                 style={{ resize:'vertical', fontFamily:'inherit', fontSize:'.88rem' }}
