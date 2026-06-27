@@ -4,6 +4,24 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase';
+import { useLanguage } from '../contexts/LanguageContext';
+import TeamChat        from './TeamChat';
+import PointsBadge     from './PointsBadge';
+
+/* ── Global style injected once on mount (avoids SSR mismatch) ── */
+function useNavStyle() {
+  useEffect(() => {
+    if (document.getElementById('nav-pulse-style')) return;
+    const s = document.createElement('style');
+    s.id = 'nav-pulse-style';
+    s.textContent = `
+      @keyframes navPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.82;transform:scale(1.04)}}
+      @keyframes ptsSheetIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes ptsFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+    `;
+    document.head.appendChild(s);
+  }, []);
+}
 
 /* ── أيقونات التواصل الاجتماعي ── */
 function WhatsAppIcon() {
@@ -92,44 +110,289 @@ function Initials({ name, size = 34 }) {
   );
 }
 
-const ROLE_LABELS = { admin: 'مدير', teacher: 'معلم', student: 'طالب' };
+/* ── Language Toggle ── */
+function LangToggle() {
+  const { lang, setLang } = useLanguage();
+  const next = lang === 'ar' ? 'en' : 'ar';
+  return (
+    <button
+      onClick={() => setLang(next)}
+      title={next === 'en' ? 'Switch to English' : 'التبديل للعربية'}
+      style={{
+        background: 'rgba(255,255,255,0.12)',
+        border: '1.5px solid rgba(255,255,255,0.3)',
+        borderRadius: 8,
+        color: '#fff',
+        fontWeight: 700,
+        fontSize: '.8rem',
+        padding: '5px 10px',
+        cursor: 'pointer',
+        letterSpacing: '.5px',
+        transition: 'background .2s',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+      }}
+      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.24)'}
+      onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+    >
+      {lang === 'ar' ? 'EN' : 'AR'}
+    </button>
+  );
+}
+
+const ROLE_LABELS_AR = { admin: 'مدير', teacher: 'معلم', student: 'طالب', supervisor: 'مرشد' };
+const ROLE_LABELS_EN = { admin: 'Admin', teacher: 'Teacher', student: 'Student', supervisor: 'Supervisor' };
+
+const NAV_ICONS = {
+  '/dashboard':  '🏠',
+  '/bogga':      '⚙️',
+  '/teacher':    '🏫',
+  '/supervisor': '👁️',
+  '/library':    '📚',
+};
+
+/* ── Points levels (mirrors PointsBadge — used in mobile sheet) ── */
+const PTS_LEVELS = [
+  { min: 0,    color: '#D97706', icon: '🌱', name: 'مبتدئ'  },
+  { min: 1000, color: '#94A3B8', icon: '⚡', name: 'مستكشف' },
+  { min: 2000, color: '#F59E0B', icon: '⭐', name: 'بطل'     },
+  { min: 3000, color: '#A78BFA', icon: '💎', name: 'محترف'  },
+  { min: 4000, color: '#22D3EE', icon: '🚀', name: 'أسطورة' },
+];
+const PTS_PER_LVL = 1000;
+function getPtsLvl(earned) {
+  const idx = Math.min(PTS_LEVELS.length - 1, Math.floor(earned / PTS_PER_LVL));
+  return { ...PTS_LEVELS[idx], idx };
+}
+
+/* ── Points tab for the bottom nav (students, mobile only) ── */
+function PointsBottomItem() {
+  const [pts,    setPts]    = useState(0);
+  const [earned, setEarned] = useState(0);
+  const [open,   setOpen]   = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const r = await fetch('/api/points');
+        const j = await r.json();
+        setPts(j.points ?? 0);
+        setEarned(j.earned ?? 0);
+      } catch {}
+    }
+    load();
+    const id = setInterval(load, 20000);
+    return () => clearInterval(id);
+  }, []);
+
+  const lvl      = getPtsLvl(earned);
+  const inLevel  = earned - lvl.idx * PTS_PER_LVL;
+  const progress = Math.min(100, (inLevel / PTS_PER_LVL) * 100);
+  const toNext   = PTS_PER_LVL - inLevel;
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="nav-bottom-item"
+      >
+        <span className="nav-bottom-icon" style={{ fontSize: '1.3rem' }}>{lvl.icon}</span>
+        <span className="nav-bottom-label" style={{ color: lvl.color, fontVariantNumeric: 'tabular-nums' }}>
+          {earned > 0 ? earned.toLocaleString('en-US') : 'نقاطي'}
+        </span>
+      </button>
+
+      {open && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setOpen(false); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,.55)',
+            backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            padding: '0 0 74px',
+            fontFamily: "'Cairo','Tajawal',sans-serif", direction: 'rtl',
+          }}
+        >
+          <div style={{
+            background: 'linear-gradient(160deg,#0f172a,#1e293b)',
+            border: `1.5px solid ${lvl.color}45`,
+            borderRadius: '24px 24px 20px 20px',
+            padding: '20px 20px 24px', width: '100%', maxWidth: 400,
+            boxShadow: `0 -8px 40px rgba(0,0,0,.6), 0 0 28px ${lvl.color}18`,
+            animation: 'ptsSheetIn .25s ease', color: '#fff',
+          }}>
+            {/* drag handle */}
+            <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,.2)', borderRadius: 99, margin: '0 auto 18px' }} />
+
+            {/* header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
+                background: `radial-gradient(circle,${lvl.color}28,transparent 70%)`,
+                border: `2px solid ${lvl.color}70`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.9rem', boxShadow: `0 0 20px ${lvl.color}40`,
+                animation: 'ptsFloat 2.5s ease-in-out infinite',
+              }}>{lvl.icon}</div>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: '1.1rem', color: lvl.color }}>{lvl.name}</div>
+                <div style={{ fontSize: '.75rem', color: '#94a3b8', marginTop: 3 }}>
+                  {earned.toLocaleString('en-US')} نقطة مكتسبة
+                </div>
+                <div style={{ fontSize: '.72rem', color: '#475569', marginTop: 2 }}>
+                  رصيد متاح: <span style={{ color: '#F59E0B', fontWeight: 700 }}>{pts.toLocaleString('en-US')}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* progress */}
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.72rem', marginBottom: 6 }}>
+                <span style={{ color: '#94a3b8' }}>
+                  {lvl.idx < PTS_LEVELS.length - 1
+                    ? `نحو "${PTS_LEVELS[lvl.idx + 1].name}"`
+                    : '🏆 أعلى مستوى!'}
+                </span>
+                <span style={{ fontWeight: 700, color: lvl.color }}>
+                  {inLevel.toLocaleString('en-US')} / {PTS_PER_LVL.toLocaleString('en-US')}
+                </span>
+              </div>
+              <div style={{ height: 9, background: 'rgba(255,255,255,.08)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', width: `${progress}%`,
+                  background: `linear-gradient(90deg,${lvl.color}70,${lvl.color})`,
+                  borderRadius: 99, boxShadow: `0 0 8px ${lvl.color}90`,
+                  transition: 'width 1.2s cubic-bezier(.4,0,.2,1)',
+                }} />
+              </div>
+            </div>
+
+            {lvl.idx < PTS_LEVELS.length - 1 && (
+              <div style={{ fontSize: '.71rem', color: '#475569', textAlign: 'center', marginBottom: 16 }}>
+                {toNext.toLocaleString('en-US')} نقطة للمستوى التالي
+              </div>
+            )}
+
+            {/* levels map */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.08)' }}>
+              {PTS_LEVELS.map((l, i) => {
+                const reached = earned >= l.min;
+                const current = i === lvl.idx;
+                return (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flex: 1 }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: '50%',
+                      background: reached ? `${l.color}22` : 'rgba(255,255,255,.04)',
+                      border: `1.5px solid ${reached ? l.color + (current ? 'ff' : '70') : 'rgba(255,255,255,.1)'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '1.05rem',
+                      boxShadow: current ? `0 0 14px ${l.color}90` : 'none',
+                      opacity: reached ? 1 : .28,
+                      animation: current ? 'ptsFloat 2s ease-in-out infinite' : 'none',
+                    }}>{l.icon}</div>
+                    <span style={{
+                      fontSize: '.58rem', fontWeight: current ? 800 : 500,
+                      color: current ? l.color : reached ? '#64748b' : '#334155',
+                    }}>{l.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function BottomNav({ navLinks, pathname, role }) {
+  const isStudent = role === 'student';
+  return (
+    <div className="nav-bottom-bar">
+      {navLinks.map(l => {
+        const icon = l.icon ?? NAV_ICONS[l.href] ?? '📄';
+        const active = pathname.startsWith(l.href);
+        return (
+          <Link key={l.href} href={l.href} className={`nav-bottom-item${active ? ' active' : ''}`}>
+            <span className="nav-bottom-icon">{icon}</span>
+            <span className="nav-bottom-label">{l.label}</span>
+          </Link>
+        );
+      })}
+      {isStudent && (
+        <Link
+          href="/dashboard/heroes-studio"
+          className={`nav-bottom-item${pathname.startsWith('/dashboard/heroes-studio') ? ' active' : ''}`}
+        >
+          <span className="nav-bottom-icon">🎭</span>
+          <span className="nav-bottom-label">استوديو</span>
+        </Link>
+      )}
+      {isStudent && <PointsBottomItem />}
+    </div>
+  );
+}
 
 function dashboardPath(role) {
-  if (role === 'admin')   return '/admin';
-  if (role === 'teacher') return '/dashboard';
+  if (role === 'admin' || role === 'super_admin') return '/bogga';
+  if (role === 'teacher') return '/teacher';
+  if (role === 'supervisor') return '/supervisor';
   return '/dashboard';
 }
 
-export default function Navbar({ user: initialUser }) {
+export default function Navbar({ user: initialUser, sessionCountdown = null }) {
+  useNavStyle();
   const pathname  = usePathname();
   const router    = useRouter();
   const dropRef   = useRef(null);
+  const { t, lang } = useLanguage();
 
-  const [user,     setUser]     = useState(initialUser ?? null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [dropOpen, setDropOpen] = useState(false);
+  const [user,      setUser]      = useState(initialUser ?? null);
+  const [dropOpen,  setDropOpen]  = useState(false);
+  const [glowLevel, setGlowLevel] = useState(-1);
 
   useEffect(() => {
+    const supabase = createClient();
+
     if (!initialUser) {
-      const supabase = createClient();
       supabase.auth.getUser().then(({ data: { user } }) => setUser(user ?? null));
     }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Handle both login and logout state changes
+      setUser(session?.user ?? null);
+    });
 
     function onOutsideClick(e) {
       if (dropRef.current && !dropRef.current.contains(e.target)) setDropOpen(false);
     }
     document.addEventListener('mousedown', onOutsideClick);
-    return () => document.removeEventListener('mousedown', onOutsideClick);
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('mousedown', onOutsideClick);
+    };
   }, [initialUser]);
 
+  useEffect(() => {
+    const isStud = user?.user_metadata?.role === 'student';
+    if (!isStud || !user?.id) return;
+    const key = `arem_glow_${user.id}`;
+    try {
+      const cached = sessionStorage.getItem(key);
+      if (cached !== null) { setGlowLevel(parseInt(cached, 10)); return; }
+    } catch {}
+    fetch('/api/points').then(r => r.json()).then(j => {
+      const idx = Math.min(4, Math.floor((j.earned ?? 0) / 1000));
+      setGlowLevel(idx);
+      try { sessionStorage.setItem(key, String(idx)); } catch {}
+    }).catch(() => {});
+  }, [user?.id, user?.user_metadata?.role]);
+
   async function handleLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    setUser(null);
-    setMenuOpen(false);
     setDropOpen(false);
-    router.push('/');
-    router.refresh();
+    // Redirect to server-side signout route which clears cookies properly
+    window.location.href = '/api/auth/signout';
   }
 
   const role      = user?.user_metadata?.role ?? 'student';
@@ -137,19 +400,35 @@ export default function Navbar({ user: initialUser }) {
   const avatarURL = user?.user_metadata?.avatar_url ?? null;
   const destPath  = dashboardPath(role);
 
+  const ROLE_LABELS = lang === 'ar' ? ROLE_LABELS_AR : ROLE_LABELS_EN;
+
+  const isAdmin   = role === 'admin' || role === 'super_admin';
+  const isStudent = role === 'student';
   const navLinks = [
-    { href: destPath,   label: 'الرئيسية' },
-    { href: '/library', label: 'المكتبة'  },
-    ...(role === 'admin' ? [{ href: '/admin', label: 'الإدارة' }] : []),
+    {
+      href:  destPath,
+      label: isAdmin ? t('nav.admin') : t('nav.home'),
+      icon:  isAdmin ? '⚙️' : '🏠',
+    },
+    { href: '/library', label: t('nav.library'), icon: '📚' },
+    ...(isStudent ? [{ href: '/progress', label: 'تقدمي', icon: '📊' }] : []),
   ];
 
   return (
+    <>
     <nav className="navbar">
       <div className="container navbar-inner">
 
         {/* ── الجانب الأيمن: الشعار ── */}
-        <Link href={user ? destPath : '/'} className="navbar-brand">
-          <span>📚</span> أكاديمية عارم
+        <Link href={user ? destPath : '/'} className="navbar-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+          <img
+            src="/logo.svg"
+            alt={t('siteName')}
+            style={{ height: 42, width: 42, borderRadius: '50%', flexShrink: 0, display: 'block' }}
+          />
+          <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff', letterSpacing: '.3px' }}>
+            {t('siteName')}
+          </span>
         </Link>
 
         {/* ── الوسط: روابط التنقل (desktop) — تظهر فقط عند تسجيل الدخول ── */}
@@ -158,6 +437,7 @@ export default function Navbar({ user: initialUser }) {
             {navLinks.map(l => (
               <li key={l.href}>
                 <Link href={l.href} className={pathname.startsWith(l.href) ? 'active' : ''}>
+                  {l.icon && <span style={{ fontSize: '1rem', lineHeight: 1 }}>{l.icon}</span>}
                   {l.label}
                 </Link>
               </li>
@@ -168,15 +448,56 @@ export default function Navbar({ user: initialUser }) {
         {/* ── الجانب الأيسر: رابط تعريفي + أيقونات التواصل + أزرار الدخول/الحساب ── */}
         <div className="navbar-user">
 
-          {/* رابط تعريفي — desktop فقط، محاذٍ لليسار بجانب أيقونات التواصل */}
-          <Link href="/#about" className="navbar-about-link">
-            تعرّف على أكاديمية عارم
-          </Link>
+          {!user && (
+            <Link href="/#about" className="navbar-about-link">
+              {t('nav.about')}
+            </Link>
+          )}
 
-          {/* أيقونات التواصل الاجتماعي — desktop فقط */}
-          <div className="navbar-social-desktop">
+          <div className="navbar-social-desktop" style={{ borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: 20 }}>
             <SocialIcons />
           </div>
+
+          {sessionCountdown && (
+            <div style={{
+              background: 'linear-gradient(135deg,#dc2626,#b91c1c)',
+              color: '#fff', borderRadius: 20, padding: '5px 14px',
+              fontSize: '.82rem', fontWeight: 900, letterSpacing: '.5px',
+              fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+              boxShadow: '0 0 12px rgba(220,38,38,.5)',
+              animation: 'navPulse 1.5s ease-in-out infinite',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <span>⏱️</span> {sessionCountdown}
+            </div>
+          )}
+
+          <LangToggle />
+
+          {!user && (
+            <Link
+              href="/auth/login?for=student"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(255,255,255,0.15)',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '.88rem',
+                padding: '7px 14px',
+                borderRadius: 10,
+                textDecoration: 'none',
+                border: '1.5px solid rgba(255,255,255,0.35)',
+                transition: 'background .2s',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.26)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+            >
+              {t('nav.studentPortal')}
+            </Link>
+          )}
 
           {user ? (
             <div className="nav-dropdown" ref={dropRef}>
@@ -185,10 +506,32 @@ export default function Navbar({ user: initialUser }) {
                 onClick={() => setDropOpen(o => !o)}
                 aria-label="قائمة المستخدم"
               >
-                {avatarURL
-                  ? <img src={avatarURL} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,.5)' }} />
-                  : <Initials name={fullName} />
-                }
+                {/* Avatar with colored glow ring for leveled-up students */}
+                <div style={{ position: 'relative', flexShrink: 0, display: 'inline-flex' }}>
+                  <div style={{
+                    borderRadius: '50%',
+                    boxShadow: glowLevel >= 1
+                      ? `0 0 0 2.5px ${PTS_LEVELS[glowLevel].color}, 0 0 12px ${PTS_LEVELS[glowLevel].color}80`
+                      : 'none',
+                  }}>
+                    {avatarURL
+                      ? <img src={avatarURL} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,.5)', display: 'block' }} />
+                      : <Initials name={fullName} />
+                    }
+                  </div>
+                  {glowLevel >= 1 && (
+                    <div style={{
+                      position: 'absolute', bottom: -2, right: -2,
+                      width: 16, height: 16, borderRadius: '50%',
+                      background: PTS_LEVELS[glowLevel].color,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '.6rem', border: '1.5px solid rgba(255,255,255,.9)',
+                      zIndex: 1, lineHeight: 1,
+                    }}>
+                      {PTS_LEVELS[glowLevel].icon}
+                    </div>
+                  )}
+                </div>
                 <span className="nav-username">{fullName}</span>
                 <span style={{ fontSize: 10, opacity: .65, marginRight: 2 }}>▾</span>
               </button>
@@ -197,80 +540,30 @@ export default function Navbar({ user: initialUser }) {
                 <div className="nav-dropdown-menu">
                   <div className="nav-dropdown-header">
                     <div style={{ fontWeight: 700, fontSize: '.92rem' }}>{fullName}</div>
-                    <div style={{ fontSize: '.78rem', opacity: .65 }}>{ROLE_LABELS[role] ?? 'طالب'}</div>
+                    <div style={{ fontSize: '.78rem', opacity: .65 }}>{ROLE_LABELS[role] ?? t('nav.roleStudent')}</div>
                   </div>
                   <Link href="/profile" className="nav-dropdown-item" onClick={() => setDropOpen(false)}>
-                    👤 الملف الشخصي
+                    {t('nav.profile')}
                   </Link>
                   <Link href={destPath} className="nav-dropdown-item" onClick={() => setDropOpen(false)}>
-                    🏠 لوحة التحكم
+                    {t('nav.dashboard')}
                   </Link>
                   <div className="nav-dropdown-divider" />
                   <button className="nav-dropdown-item nav-dropdown-logout" onClick={handleLogout}>
-                    🚪 تسجيل الخروج
+                    {t('nav.signOut')}
                   </button>
                 </div>
               )}
             </div>
           ) : null}
 
-          {/* ── Hamburger (mobile) ── */}
-          <button
-            className="nav-hamburger"
-            onClick={() => setMenuOpen(o => !o)}
-            aria-label="القائمة"
-          >
-            {menuOpen ? '✕' : '☰'}
-          </button>
         </div>
       </div>
 
-      {/* ── Mobile Menu ── */}
-      {menuOpen && (
-        <div className="nav-mobile-menu">
-          {/* أيقونات التواصل في الموبايل */}
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,.1)', paddingBottom: 12, marginBottom: 4 }}>
-            <div style={{ fontSize: '.75rem', color: 'rgba(255,255,255,.5)', textAlign: 'center', marginBottom: 8 }}>
-              تواصل معنا
-            </div>
-            <SocialIcons mobile />
-          </div>
-
-          {user ? (
-            <>
-              <div className="nav-mobile-user">
-                {avatarURL
-                  ? <img src={avatarURL} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
-                  : <Initials name={fullName} size={40} />
-                }
-                <div>
-                  <div style={{ fontWeight: 700 }}>{fullName}</div>
-                  <div style={{ fontSize: '.8rem', opacity: .65 }}>{ROLE_LABELS[role] ?? 'طالب'}</div>
-                </div>
-              </div>
-              {navLinks.map(l => (
-                <Link key={l.href} href={l.href} className="nav-mobile-item" onClick={() => setMenuOpen(false)}>
-                  {l.label}
-                </Link>
-              ))}
-              <Link href="/profile" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>
-                👤 الملف الشخصي
-              </Link>
-              <div className="nav-mobile-divider" />
-              <button className="nav-mobile-item nav-mobile-logout" onClick={handleLogout}>
-                🚪 تسجيل الخروج
-              </button>
-            </>
-          ) : (
-            <>
-              <Link href="/#about" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>تعرّف على أكاديمية عارم</Link>
-              <a href="https://api.whatsapp.com/send/?phone=447400755914" target="_blank" rel="noopener noreferrer" className="nav-mobile-item" onClick={() => setMenuOpen(false)}>
-                💬 تواصل مع الإدارة
-              </a>
-            </>
-          )}
-        </div>
-      )}
     </nav>
+    <TeamChat user={user} />
+    {user && <BottomNav navLinks={navLinks} pathname={pathname} role={role} />}
+    {user && role === 'student' && <PointsBadge />}
+    </>
   );
 }

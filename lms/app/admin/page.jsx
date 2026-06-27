@@ -56,6 +56,18 @@ export default async function AdminPage() {
             ))}
           </div>
 
+          {/* Quick Links */}
+          <div className="dash-section-title">أدوات الإدارة</div>
+          <div style={{ marginBottom: 32, marginTop: 16 }}>
+            <a href="/admin/lexicon" className="card" style={{ display: 'inline-flex', alignItems: 'center', gap: 14, padding: '18px 20px', textDecoration: 'none', color: 'inherit', maxWidth: 280 }}>
+              <span style={{ fontSize: 32 }}>📚</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '1rem' }}>بطاقات المفردات</div>
+                <div style={{ fontSize: '.83rem', color: 'var(--muted)', marginTop: 2 }}>إضافة وتعديل كلمات الحفظ</div>
+              </div>
+            </a>
+          </div>
+
           {/* Teacher Codes */}
           <TeacherCodes />
 

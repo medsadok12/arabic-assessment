@@ -1,13 +1,18 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import { createClient } from '../../lib/supabase-server';
-import Navbar from '../../components/Navbar';
-import ParentPanel from '../../components/ParentPanel';
+import { createAdminClient } from '../../lib/supabase-admin';
+import DashboardContent from '../../components/DashboardContent';
 
 export default async function DashboardPage() {
+  let user;
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/auth/login');
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) redirect('/auth/login');
+    user = data.user;
+  } catch {
+    redirect('/auth/login');
+  }
 
   const { data: assessments } = await supabase
     .from('assessments')
@@ -19,141 +24,169 @@ export default async function DashboardPage() {
   const role      = user.user_metadata?.role ?? 'student';
   const isStudent = role === 'student';
 
-  // المدير لا يحتاج لوحة الطالب — أعد توجيهه فوراً
-  if (role === 'admin') redirect('/admin');
+  if (role === 'admin' || role === 'super_admin') redirect('/bogga');
+  if (role === 'teacher') redirect('/teacher');
+  if (role === 'supervisor') redirect('/supervisor');
 
-  const avgScore = assessments?.length
-    ? Math.round(assessments.reduce((s, a) => s + (a.score ?? 0), 0) / assessments.length)
-    : null;
+  const today = new Date().toISOString().slice(0, 10);
+  const admin = createAdminClient();
 
-  const stats = isStudent
-    ? [
-        { icon: '📊', val: assessments?.length ?? 0, lbl: 'عدد تقييماتي' },
-        { icon: '✅', val: assessments?.length ? 'مكتمل' : '—', lbl: 'حالة التقييم' },
-      ]
-    : [
-        { icon: '📊', val: assessments?.length ?? 0,          lbl: 'عدد تقييماتي' },
-        { icon: '⭐', val: avgScore != null ? avgScore + '%' : '—', lbl: 'متوسط نتائجي' },
-        { icon: '🏅', val: assessments?.[0]?.level ? `المستوى ${assessments[0].level}` : '—', lbl: 'آخر مستوى' },
-      ];
+  const [{ data: sessionsRaw }, { data: supportLinks }] = await Promise.all([
+    admin
+      .from('sessions')
+      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, meet_link, status, attended')
+      .ilike('student_email', user.email)
+      .in('status', ['scheduled', 'active'])
+      .gte('session_date', today)
+      .order('session_date', { ascending: true })
+      .order('start_time',   { ascending: true })
+      .limit(5)
+      .then(r => r.error?.code === '42P01' ? { data: [] } : r),
+    admin
+      .from('session_support_students')
+      .select('session_id')
+      .ilike('student_email', user.email)
+      .then(r => r.error ? { data: [] } : r),
+  ]);
 
-  const actions = [
-    { icon: '📚', title: 'المكتبة التعليمية', desc: 'تصفح المناهج والدروس المتاحة لك',                    href: '/library'  },
-    { icon: '📈', title: 'تقارير التقدم',      desc: 'شاهد نتيجة تقييمك التشخيصي ومستوى تقدمك', href: '/admin'    },
-  ];
+  // Fetch support-student sessions separately and merge
+  let supportSessions = [];
+  const supportIds = (supportLinks ?? []).map(r => r.session_id).filter(Boolean);
+  if (supportIds.length > 0) {
+    const { data: supRaw } = await admin
+      .from('sessions')
+      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, meet_link, status, attended')
+      .in('id', supportIds)
+      .in('status', ['scheduled', 'active'])
+      .gte('session_date', today);
+    // attended على الحصة يخص الطالب الأساسي — لا نمرره للطالب الإضافي
+    supportSessions = (supRaw ?? []).map(s => ({ ...s, is_support: true, attended: null }));
+  }
 
-  const displayName = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'طالب';
+  const mainIds  = new Set((sessionsRaw ?? []).map(s => s.id));
+  const nowMs    = Date.now();
+  const merged   = [
+    ...(sessionsRaw ?? []),
+    ...supportSessions.filter(s => !mainIds.has(s.id)),
+  ]
+  .sort((a, b) => a.session_date.localeCompare(b.session_date) || a.start_time.localeCompare(b.start_time))
+  .filter(s => {
+    // حذف الحصص التي انتهت وقتها (تاريخ البدء + المدة < الآن)
+    const startMs = new Date(`${s.session_date}T${s.start_time}`).getTime();
+    const endMs   = startMs + (s.duration_minutes ?? 60) * 60000;
+    return nowMs < endMs;
+  })
+  .slice(0, 5);
+
+  const upcomingSessions = merged;
+
+  // Flashcard mastery
+  const { data: fcProgress } = await admin
+    .from('flashcard_progress')
+    .select('level')
+    .eq('user_id', user.id)
+    .then(r => r.error ? { data: [] } : r);
+  const masteredCount = (fcProgress ?? []).filter(p => p.level >= 5).length;
+  const studiedCount  = (fcProgress ?? []).length;
+
+  // Attendance stats
+  const { data: pastRaw } = await admin
+    .from('sessions')
+    .select('id, attended')
+    .ilike('student_email', user.email)
+    .not('attended', 'is', null)
+    .limit(100)
+    .then(r => r.error ? { data: [] } : r);
+  const attendanceRecords = pastRaw ?? [];
+  const attendedCount     = attendanceRecords.filter(s => s.attended === true).length;
+  const attendancePct     = attendanceRecords.length > 0 ? Math.round((attendedCount / attendanceRecords.length) * 100) : null;
+
+  // Past sessions with teacher notes
+  const { data: notedRaw } = await admin
+    .from('sessions')
+    .select('id, teacher_name, session_date, subject, notes')
+    .ilike('student_email', user.email)
+    .not('notes', 'is', null)
+    .neq('notes', '')
+    .order('session_date', { ascending: false })
+    .limit(10)
+    .then(r => r.error ? { data: [] } : r);
+  const sessionNotes = notedRaw ?? [];
+
+  // Homework
+  const { data: hwRaw } = await admin
+    .from('homework')
+    .select('id, teacher_name, title, description, due_date, status, created_at')
+    .ilike('student_email', user.email)
+    .order('due_date', { ascending: true, nullsFirst: false })
+    .limit(20)
+    .then(r => r.error ? { data: [] } : r);
+  const homework = hwRaw ?? [];
+
+  const displayName   = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '';
+  const studentGender = user.user_metadata?.gender === 'female' ? 'female' : 'male';
+
+  /* ── Streak ── */
+  const { data: logsRaw } = await admin
+    .from('daily_logs')
+    .select('log_date')
+    .eq('user_id', user.id)
+    .order('log_date', { ascending: false })
+    .limit(365)
+    .then(r => r.error?.code === '42P01' ? { data: [] } : r);
+
+  const logDates  = (logsRaw || []).map(r => r.log_date);
+  const dateSet   = new Set(logDates);
+  const todayStr  = new Date().toISOString().slice(0, 10);
+
+  function calcStreak(dates) {
+    if (!dates.length) return 0;
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (dates[0] !== todayStr && dates[0] !== yesterday) return 0;
+    let streak = 0, expected = dates[0];
+    for (const d of dates) {
+      if (d === expected) {
+        streak++;
+        const dt = new Date(expected); dt.setDate(dt.getDate() - 1);
+        expected = dt.toISOString().slice(0, 10);
+      } else break;
+    }
+    return streak;
+  }
+
+  const streakCount  = calcStreak(logDates);
+  const loggedToday  = dateSet.has(todayStr);
+  // Forward-looking: index 0 = today (RIGHT in RTL), index 1-6 = next days (going LEFT)
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() + i);
+    const ds = d.toISOString().slice(0, 10);
+    return {
+      date:     ds,
+      active:   i === 0 && dateSet.has(ds),
+      day:      d.getDate(),
+      isToday:  i === 0,
+      isFuture: i > 0,
+    };
+  });
 
   return (
-    <>
-      <Navbar user={user} />
-      <main className="page-wrap">
-        <div className="container">
-          <h1 className="dash-welcome">مرحباً، {displayName} 👋</h1>
-
-          {/* زر لوحة الإدارة — للمعلمين فقط */}
-          {role === 'teacher' && (
-            <div style={{ marginBottom: 24 }}>
-              <Link href="/admin" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                ⚙️ الانتقال للوحة الإدارة
-              </Link>
-            </div>
-          )}
-
-          {/* Stats */}
-          <div className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-            {stats.map(s => (
-              <div key={s.lbl} className="stat-card">
-                <span className="stat-icon">{s.icon}</span>
-                <div>
-                  <div className="stat-val">{s.val}</div>
-                  <div className="stat-lbl">{s.lbl}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="dash-section">
-            <div className="dash-section-title">إجراءات سريعة</div>
-            <div className="card-grid">
-              {actions.map(a => (
-                <Link key={a.href} href={a.href} className="dash-action-card">
-                  <span className="dash-action-icon">{a.icon}</span>
-                  <div className="dash-action-title">{a.title}</div>
-                  <div className="dash-action-desc">{a.desc}</div>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* Parent Panel — teachers/admins only */}
-          {!isStudent && <ParentPanel assessments={assessments ?? []} />}
-
-          {/* Recent Assessments */}
-          <div className="dash-section">
-            <div className="dash-section-title">آخر تقييماتي</div>
-            {assessments && assessments.length > 0 ? (
-              isStudent ? (
-                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>المستوى</th>
-                        <th>الحالة</th>
-                        <th>التاريخ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {assessments.slice(0, 5).map(a => (
-                        <tr key={a.id}>
-                          <td><span className="badge badge-blue">المستوى {a.level}</span></td>
-                          <td><span className="badge badge-green">تم الإرسال ✓</span></td>
-                          <td style={{ direction: 'ltr', textAlign: 'right' }}>
-                            {a.completed_at ? new Date(a.completed_at).toLocaleDateString('ar-SA') : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>المستوى</th>
-                        <th>النتيجة</th>
-                        <th>التاريخ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {assessments.slice(0, 5).map(a => (
-                        <tr key={a.id}>
-                          <td><span className="badge badge-blue">المستوى {a.level}</span></td>
-                          <td>
-                            <span className={`badge ${(a.score ?? 0) >= 70 ? 'badge-green' : 'badge-orange'}`}>
-                              {a.score ?? 0}%
-                            </span>
-                          </td>
-                          <td style={{ direction: 'ltr', textAlign: 'right' }}>
-                            {a.completed_at ? new Date(a.completed_at).toLocaleDateString('ar-SA') : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )
-            ) : (
-              <div className="empty-state card">
-                <span className="empty-icon">📋</span>
-                <p>لا توجد تقييمات بعد</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
-    </>
+    <DashboardContent
+      user={user}
+      assessments={assessments ?? []}
+      isStudent={isStudent}
+      upcomingSessions={upcomingSessions}
+      displayName={displayName}
+      studentGender={studentGender}
+      attendancePct={attendancePct}
+      attendedCount={attendedCount}
+      attendanceTotal={attendanceRecords.length}
+      homework={homework}
+      sessionNotes={sessionNotes}
+      streakCount={streakCount}
+      loggedToday={loggedToday}
+      last7Days={last7Days}
+      masteredCount={masteredCount}
+      studiedCount={studiedCount}
+    />
   );
 }
