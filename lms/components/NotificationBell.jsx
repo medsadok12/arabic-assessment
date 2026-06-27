@@ -3,16 +3,20 @@ import { useEffect, useRef, useState } from 'react';
 import { createClient } from '../lib/supabase';
 
 const ICONS = {
-  recruitment:     '📋',
-  interview:       '🗓️',
-  assessment:      '📝',
-  teacher:         '👨‍🏫',
-  session:         '📅',
-  space_post:      '🏫',
-  space_comment:   '💬',
-  lesson_feedback: '📓',
-  parent_message:  '📩',
+  recruitment:       '📋',
+  interview:         '🗓️',
+  assessment:        '📝',
+  teacher:           '👨‍🏫',
+  session:           '📅',
+  space_post:        '🏫',
+  space_comment:     '💬',
+  lesson_feedback:   '📓',
+  parent_message:    '📩',
+  missing_recording: '⚠️',
 };
+
+// أنواع الإشعارات الحرجة — تُعرض باللون الأحمر
+const URGENT_TYPES = new Set(['missing_recording']);
 
 function relTime(iso, lang) {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -94,6 +98,8 @@ export default function NotificationBell({ userId, role, lang = 'ar' }) {
     if (!wasOpen && unread > 0) markAllRead();
   }
 
+  const hasUrgentUnread = notifications.some(n => !n.is_read && URGENT_TYPES.has(n.type));
+
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       {/* Bell button */}
@@ -102,15 +108,18 @@ export default function NotificationBell({ userId, role, lang = 'ar' }) {
         title={lang === 'ar' ? 'الإشعارات' : 'Notifications'}
         style={{
           position: 'relative',
-          background: open ? 'var(--primary)' : 'var(--bg)',
-          border: '1.5px solid var(--border)',
+          background: open
+            ? (hasUrgentUnread ? '#b91c1c' : 'var(--primary)')
+            : (hasUrgentUnread ? '#fee2e2' : 'var(--bg)'),
+          border: hasUrgentUnread ? '1.5px solid #f87171' : '1.5px solid var(--border)',
           borderRadius: 10, width: 40, height: 40,
           cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '1.2rem', transition: 'all .15s',
-          color: open ? '#fff' : 'var(--text)',
+          color: open ? '#fff' : (hasUrgentUnread ? '#b91c1c' : 'var(--text)'),
+          animation: hasUrgentUnread && !open ? 'bellShake .5s ease infinite alternate' : 'none',
         }}>
-        🔔
+        {hasUrgentUnread ? '🚨' : '🔔'}
         {unread > 0 && (
           <span style={{
             position: 'absolute', top: -6, left: -6,
@@ -122,6 +131,12 @@ export default function NotificationBell({ userId, role, lang = 'ar' }) {
           }}>{unread > 99 ? '99+' : unread}</span>
         )}
       </button>
+      <style>{`
+        @keyframes bellShake {
+          0%   { transform: rotate(-8deg); }
+          100% { transform: rotate(8deg); }
+        }
+      `}</style>
 
       {/* Dropdown */}
       {open && (
@@ -164,40 +179,57 @@ export default function NotificationBell({ userId, role, lang = 'ar' }) {
               <div style={{ fontSize: '2rem', marginBottom: 8 }}>🔕</div>
               {lang === 'ar' ? 'لا توجد إشعارات' : 'No notifications'}
             </div>
-          ) : notifications.map(n => (
-            <div
-              key={n.id}
-              onClick={() => n.link && (window.location.href = n.link)}
-              style={{
-                padding: '12px 16px',
-                borderBottom: '1px solid var(--border)',
-                background: n.is_read ? 'transparent' : 'rgba(24,95,165,.05)',
-                display: 'flex', gap: 10, alignItems: 'flex-start',
-                cursor: n.link ? 'pointer' : 'default',
-                transition: 'background .12s',
-              }}
-            >
-              <span style={{ fontSize: '1.2rem', lineHeight: 1.4, flexShrink: 0 }}>
-                {ICONS[n.type] ?? '🔔'}
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: n.is_read ? 500 : 700, fontSize: '.88rem', color: 'var(--text)', wordBreak: 'break-word' }}>
-                  {n.title}
-                </div>
-                {n.body && (
-                  <div style={{ fontSize: '.8rem', color: 'var(--muted)', marginTop: 2, wordBreak: 'break-word', lineHeight: 1.5 }}>
-                    {n.body}
+          ) : notifications.map(n => {
+            const isUrgent = URGENT_TYPES.has(n.type);
+            return (
+              <div
+                key={n.id}
+                onClick={() => n.link && (window.location.href = n.link)}
+                style={{
+                  padding: '12px 16px',
+                  borderBottom: '1px solid var(--border)',
+                  background: n.is_read
+                    ? 'transparent'
+                    : isUrgent
+                      ? 'rgba(185,28,28,.07)'
+                      : 'rgba(24,95,165,.05)',
+                  borderRight: !n.is_read && isUrgent ? '4px solid #b91c1c' : undefined,
+                  display: 'flex', gap: 10, alignItems: 'flex-start',
+                  cursor: n.link ? 'pointer' : 'default',
+                  transition: 'background .12s',
+                }}
+              >
+                <span style={{ fontSize: '1.2rem', lineHeight: 1.4, flexShrink: 0 }}>
+                  {ICONS[n.type] ?? '🔔'}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontWeight: n.is_read ? 500 : 700,
+                    fontSize: '.88rem',
+                    color: isUrgent && !n.is_read ? '#b91c1c' : 'var(--text)',
+                    wordBreak: 'break-word',
+                  }}>
+                    {n.title}
                   </div>
-                )}
-                <div style={{ fontSize: '.72rem', color: 'var(--muted)', marginTop: 4 }}>
-                  {relTime(n.created_at, lang)}
+                  {n.body && (
+                    <div style={{ fontSize: '.8rem', color: 'var(--muted)', marginTop: 2, wordBreak: 'break-word', lineHeight: 1.5 }}>
+                      {n.body}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '.72rem', color: 'var(--muted)', marginTop: 4 }}>
+                    {relTime(n.created_at, lang)}
+                  </div>
                 </div>
+                {!n.is_read && (
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: isUrgent ? '#b91c1c' : 'var(--primary)',
+                    flexShrink: 0, marginTop: 5,
+                  }} />
+                )}
               </div>
-              {!n.is_read && (
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0, marginTop: 5 }} />
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
