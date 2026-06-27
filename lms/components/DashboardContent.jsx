@@ -413,7 +413,7 @@ export default function DashboardContent({
       `}</style>
 
       <Navbar user={user} />
-      <main className="page-wrap">
+      <main className="page-wrap db-page">
         <div className="db-wrap">
 
           {/* ── Header ── */}
