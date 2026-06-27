@@ -2,7 +2,7 @@ import { NextResponse }     from 'next/server';
 import { createClient }    from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { notify }           from '../../../../lib/notify';
-import { sendSessionEmail, sendTeacherInviteEmail } from '../../../../lib/email';
+import { sendSessionEmail, sendTeacherInviteEmail, sendMissingRecordingAlert } from '../../../../lib/email';
 import { createMeetSession, deleteMeetEvent } from '../../../../lib/google-meet';
 
 export const dynamic = 'force-dynamic';
@@ -199,6 +199,21 @@ export async function PATCH(req) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // ── إشعار فوري للإدارة عند إنهاء حصة بدون رابط تسجيل ──
+  if (status === 'completed' && !recording_url) {
+    const teacherName = teacher.user_metadata?.full_name ?? teacher.email;
+    sendMissingRecordingAlert({
+      teacherName,
+      teacherEmail: teacher.email,
+      studentName:  data.student_name ?? studentName ?? '—',
+      sessionDate:  data.session_date ?? sessionDate ?? '—',
+      startTime:    (data.start_time ?? startTime ?? '—').slice(0, 5),
+      subject:      data.subject ?? subject ?? null,
+      notes:        data.notes   ?? notes   ?? null,
+    }).catch(() => {}); // best-effort — لا يوقف الاستجابة
+  }
+
   return NextResponse.json({ session: data });
 }
 
