@@ -211,7 +211,7 @@ export async function PATCH(req) {
     // 1) إشعار جرس داخل التطبيق (أحمر — لجميع المشرفين)
     await notify(
       'missing_recording',
-      `⚠️ حصة بدون تسجيل — ${teacherName}`,
+      `⚠️ حصة دون تسجيل رابط — ${teacherName}`,
       `${sName} · ${sDate} الساعة ${sTime}${sNotes ? ` · ${sNotes}` : ''}`,
     );
 

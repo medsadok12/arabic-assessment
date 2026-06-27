@@ -248,11 +248,11 @@ export async function sendMissingRecordingAlert({ teacherName, teacherEmail, stu
     <div class="card">
       <div class="hdr" style="background:linear-gradient(135deg,#7f1d1d 0%,#b91c1c 100%)">
         <h1>🎓 أكاديمية عارم للتعليم</h1>
-        <p>⚠️ تنبيه: حصة أُنهيت بدون رابط تسجيل</p>
+        <p>⚠️ تنبيه: حصة أُنهيت دون تسجيل رابط</p>
       </div>
       <div class="body">
         <p style="background:#fef2f2;border-right:4px solid #b91c1c;padding:14px 18px;border-radius:10px;color:#7f1d1d;font-weight:700;font-size:1rem">
-          ⚠️ أُنهيت حصة دراسية دون توفير رابط التسجيل — يُرجى المتابعة مع المعلم.
+          ⚠️ أُنهيت حصة دراسية دون تسجيل رابط — يُرجى المتابعة مع المعلم.
         </p>
         <div class="info">
           <div class="info-row"><span class="info-lbl">👨‍🏫 المعلم</span><span>${teacherName} &lt;${teacherEmail}&gt;</span></div>
@@ -276,7 +276,7 @@ export async function sendMissingRecordingAlert({ teacherName, teacherEmail, stu
   const { error } = await resend().emails.send({
     from:    FROM,
     to:      ADMIN_EMAIL,
-    subject: `⚠️ تنبيه: حصة بدون تسجيل — ${teacherName} / ${studentName} (${sessionDate})`,
+    subject: `⚠️ تنبيه: حصة دون تسجيل رابط — ${teacherName} / ${studentName} (${sessionDate})`,
     html,
   });
   if (error) throw new Error(error.message);
