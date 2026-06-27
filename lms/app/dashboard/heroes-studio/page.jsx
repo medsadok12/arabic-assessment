@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense, lazy } from 'react';
+const Spline = lazy(() => import('@splinetool/react-spline'));
 import Link from 'next/link';
 
 /* ── Inject CSS animations once ─────────────────────────────────────────── */
@@ -39,6 +40,17 @@ const HEROES = [
     desc: 'بطلك المجاني — يتحرك ويتفاعل',
     glb:  'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
     anim: 'Idle',
+  },
+  {
+    id: 'whobee',
+    name: 'ويبي التفاعلي',
+    emoji: '🦾',
+    color: '#F59E0B',
+    price: 0,
+    desc: 'روبوت ذكي — حرّك الماوس ليتفاعل معك!',
+    glb:  null,
+    splineUrl: 'https://prod.spline.design/PyzDhpQ9E5f1E3MT/scene.splinecode',
+    anim: null,
   },
   {
     id: 'astronaut',
@@ -210,7 +222,7 @@ export default function HeroesStudio() {
   function isOwned(h) { return h.price === 0 || owned.includes(h.id); }
 
   function selectHero(h) {
-    if (!h.glb || h.comingSoon) return;
+    if ((!h.glb && !h.splineUrl) || h.comingSoon) return;
     setHero(h);
     setTint(h.color);
     setReady(false);
@@ -218,7 +230,7 @@ export default function HeroesStudio() {
   }
 
   async function handleBuy(h) {
-    if (buying || isOwned(h) || !h.glb || h.comingSoon) return;
+    if (buying || isOwned(h) || (!h.glb && !h.splineUrl) || h.comingSoon) return;
     setBuying(h.id);
     try {
       const res = await fetch('/api/hero-config/shop', {
@@ -254,7 +266,7 @@ export default function HeroesStudio() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          avatar_url:  hero.glb,
+          avatar_url:  hero.splineUrl ?? hero.glb,
           preview_url: previewUrl,
           avatar_id:   hero.id,
           tint:        tint,
@@ -305,17 +317,8 @@ export default function HeroesStudio() {
 
         {/* Top bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link href="/dashboard" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: 'linear-gradient(135deg,rgba(139,92,246,.22),rgba(99,102,241,.18))',
-            border: '1.5px solid rgba(139,92,246,.45)',
-            borderRadius: 50, padding: '8px 18px',
-            color: '#c4b5fd', fontSize: 13, fontWeight: 700,
-            textDecoration: 'none', fontFamily: 'Cairo,sans-serif',
-            backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-            boxShadow: '0 4px 14px rgba(139,92,246,.2)',
-          }}>
-            🏠 لوحتي
+          <Link href="/dashboard" style={{ color: '#475569', fontSize: 13, textDecoration: 'none', padding: '4px 8px', fontFamily: 'Cairo,sans-serif' }}>
+            → لوحتي
           </Link>
           <div style={{ background: 'rgba(234,179,8,.1)', border: '1.5px solid rgba(234,179,8,.28)', borderRadius: 40, padding: '5px 16px', display: 'flex', alignItems: 'center', gap: 7 }}>
             <span style={{ fontSize: 16 }}>⭐</span>
@@ -393,27 +396,37 @@ export default function HeroesStudio() {
               </div>
             )}
 
-            <model-viewer
-              ref={mvRef}
-              src={hero.glb}
-              camera-controls=""
-              auto-rotate=""
-              auto-rotate-delay="1200"
-              shadow-intensity="1"
-              shadow-softness="0.8"
-              environment-image="neutral"
-              exposure="1"
-              tone-mapping="commerce"
-              animation-name={hero.anim ?? undefined}
-              style={{ width: '100%', height: isMobile ? '300px' : '520px', background: 'transparent' }}
-            />
+            {hero.splineUrl ? (
+              <Suspense fallback={null}>
+                <Spline
+                  scene={hero.splineUrl}
+                  onLoad={() => setReady(true)}
+                  style={{ width: '100%', height: isMobile ? '300px' : '520px', background: 'transparent' }}
+                />
+              </Suspense>
+            ) : (
+              <model-viewer
+                ref={mvRef}
+                src={hero.glb}
+                camera-controls=""
+                auto-rotate=""
+                auto-rotate-delay="1200"
+                shadow-intensity="1"
+                shadow-softness="0.8"
+                environment-image="neutral"
+                exposure="1"
+                tone-mapping="commerce"
+                animation-name={hero.anim ?? undefined}
+                style={{ width: '100%', height: isMobile ? '300px' : '520px', background: 'transparent' }}
+              />
+            )}
 
             <div style={{
               position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
               background: 'rgba(0,0,0,.45)', borderRadius: 20, padding: '3px 14px',
               fontSize: 10, color: '#475569', pointerEvents: 'none', whiteSpace: 'nowrap',
             }}>
-              🖱️ اسحب لتدوير البطل
+              {hero.splineUrl ? '🖱️ حرّك الماوس للتفاعل مع البطل' : '🖱️ اسحب لتدوير البطل'}
             </div>
           </div>
 
@@ -461,11 +474,12 @@ export default function HeroesStudio() {
                       const isBuying_ = buying === h.id;
                       const locked    = !owned_h && !h.comingSoon;
                       const canBuy    = locked && coins >= h.price;
+                      const hasModel  = !!(h.glb || h.splineUrl);
 
                       return (
                         <div
                           key={h.id}
-                          onClick={() => owned_h && !h.comingSoon ? selectHero(h) : null}
+                          onClick={() => owned_h && !h.comingSoon && hasModel ? selectHero(h) : null}
                           style={{
                             borderRadius: 14, overflow: 'hidden', position: 'relative',
                             background: active
@@ -479,7 +493,7 @@ export default function HeroesStudio() {
                               h.comingSoon ? 'rgba(71,85,105,.15)' :
                                              'rgba(71,85,105,.2)'
                             }`,
-                            cursor: owned_h && !h.comingSoon ? 'pointer' : 'default',
+                            cursor: owned_h && !h.comingSoon && hasModel ? 'pointer' : 'default',
                             opacity: h.comingSoon ? 0.5 : 1,
                             transition: 'all .2s',
                             animation: idx < 9 ? `hsCardPop .3s ease-out ${idx * 0.05}s both` : 'none',
@@ -516,6 +530,15 @@ export default function HeroesStudio() {
                                 borderRadius: 6, padding: '2px 6px', fontSize: 9, color: '#22C55E',
                               }}>
                                 ✓ مملوك
+                              </div>
+                            )}
+                            {h.splineUrl && (
+                              <div style={{
+                                position: 'absolute', bottom: 6, left: 6,
+                                background: 'rgba(245,158,11,.22)', border: '1px solid rgba(245,158,11,.5)',
+                                borderRadius: 6, padding: '2px 6px', fontSize: 9, color: '#FCD34D',
+                              }}>
+                                ✨ تفاعلي
                               </div>
                             )}
                           </div>
