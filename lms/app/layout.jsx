@@ -54,9 +54,9 @@ export default function RootLayout({ children }) {
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </head>
-      <body>
+      <body style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
         <LanguageProvider>
-          <main id="main-content">{children}</main>
+          <main id="main-content" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>{children}</main>
         </LanguageProvider>
         <PWAInstall />
       </body>
