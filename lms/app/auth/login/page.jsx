@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '../../../lib/supabase';
@@ -127,6 +127,13 @@ function LoginForm() {
       setGLoading(false);
     }
   }
+
+  // إعادة ضبط حالة التحميل عند العودة للصفحة من bfcache (زر الرجوع)
+  useEffect(() => {
+    function onPageShow(e) { if (e.persisted) { setGLoading(false); setLoading(false); } }
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, []);
 
   const anyLoading = loading || gLoading;
 
