@@ -29,15 +29,23 @@ export async function POST(req) {
   const user = await requireSuperAdmin();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json();
+  const body  = await req.json();
   const admin = createAdminClient();
-  const { data, error } = await admin
+
+  // Try with new JSONB columns first; fall back to old flat columns if missing
+  const payload = buildPayload(body);
+  let { data, error } = await admin
     .from('pricing_plans')
-    .insert([sanitize(body)])
+    .insert([payload])
     .select()
     .single();
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error?.message?.includes("prices") || error?.message?.includes("checkout_urls")) {
+    const fallback = buildLegacyPayload(body);
+    ({ data, error } = await admin.from('pricing_plans').insert([fallback]).select().single());
+  }
+
+  if (error) return Response.json({ error: error.message, hint: 'Run SQL migration to add prices/checkout_urls columns' }, { status: 500 });
   return Response.json({ plan: data });
 }
 
@@ -48,13 +56,26 @@ export async function PATCH(req) {
   const { id, ...rest } = await req.json();
   if (!id) return Response.json({ error: 'id required' }, { status: 400 });
 
-  const admin = createAdminClient();
-  const { data, error } = await admin
+  const admin   = createAdminClient();
+  const payload = buildPayload(rest);
+  let { data, error } = await admin
     .from('pricing_plans')
-    .update({ ...sanitize(rest), updated_at: new Date().toISOString() })
+    .update(payload)
     .eq('id', id)
     .select()
     .single();
+
+  // If prices/checkout_urls columns don't exist yet, fall back to old columns
+  if (error?.message?.includes("prices") || error?.message?.includes("checkout_urls")) {
+    const fallback = buildLegacyPayload(rest);
+    ({ data, error } = await admin.from('pricing_plans').update(fallback).eq('id', id).select().single());
+    if (!error) {
+      return Response.json({
+        plan: data,
+        warning: 'عمودا prices و checkout_urls غير موجودَين بعد — يُرجى تشغيل SQL التالي في Supabase:\nALTER TABLE pricing_plans ADD COLUMN IF NOT EXISTS prices JSONB NOT NULL DEFAULT \'{}\', ADD COLUMN IF NOT EXISTS checkout_urls JSONB NOT NULL DEFAULT \'{}\'; NOTIFY pgrst, \'reload schema\';',
+      });
+    }
+  }
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ plan: data });
@@ -74,7 +95,8 @@ export async function DELETE(req) {
   return Response.json({ ok: true });
 }
 
-function sanitize(b) {
+/** Payload with new JSONB columns */
+function buildPayload(b) {
   return {
     plan_name_ar:   String(b.plan_name_ar  ?? ''),
     plan_name_en:   String(b.plan_name_en  ?? ''),
@@ -86,5 +108,24 @@ function sanitize(b) {
     accent_color:   String(b.accent_color  ?? '#185FA5'),
     sort_order:     Number(b.sort_order    ?? 0),
     is_active:      b.is_active !== undefined ? Boolean(b.is_active) : true,
+  };
+}
+
+/** Legacy payload for tables without prices/checkout_urls columns yet */
+function buildLegacyPayload(b) {
+  const pricesMap = (b.prices && typeof b.prices === 'object') ? b.prices : {};
+  const gbpEntry  = pricesMap['GBP'] || {};
+  return {
+    plan_name_ar:  String(b.plan_name_ar  ?? ''),
+    plan_name_en:  String(b.plan_name_en  ?? ''),
+    price_monthly: Number(gbpEntry.monthly ?? b.price_monthly ?? 0),
+    price_yearly:  Number(gbpEntry.yearly  ?? b.price_yearly  ?? 0),
+    checkout_url:  (b.checkout_urls?.GBP) || b.checkout_url || null,
+    features_list: Array.isArray(b.features_list) ? b.features_list : [],
+    plan_type:     ['lessons','content_only','family','school'].includes(b.plan_type) ? b.plan_type : 'lessons',
+    is_popular:    Boolean(b.is_popular),
+    accent_color:  String(b.accent_color  ?? '#185FA5'),
+    sort_order:    Number(b.sort_order    ?? 0),
+    is_active:     b.is_active !== undefined ? Boolean(b.is_active) : true,
   };
 }
