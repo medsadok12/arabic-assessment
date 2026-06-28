@@ -201,7 +201,18 @@ export default function PricingSection() {
   useEffect(() => {
     fetch('/api/pricing')
       .then(r => r.json())
-      .then(d => { setPlans(d.plans || []); setLoading(false); })
+      .then(d => {
+        const loaded = d.plans || [];
+        setPlans(loaded);
+        setLoading(false);
+        // Switch to first available plan type if the default has no plans
+        const hasDefault = loaded.some(p => p.plan_type === 'lessons');
+        if (!hasDefault && loaded.length > 0) {
+          const order = ['lessons', 'content_only', 'family', 'school'];
+          const first = order.find(t => loaded.some(p => p.plan_type === t));
+          if (first) setActiveType(first);
+        }
+      })
       .catch(() => setLoading(false));
   }, []);
 
