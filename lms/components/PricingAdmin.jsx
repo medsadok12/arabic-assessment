@@ -152,7 +152,19 @@ const iconBtn = { background: 'none', border: 'none', cursor: 'pointer', color: 
 
 /* ── PlanModal ── */
 function PlanModal({ plan, onClose, onSave, lang }) {
-  const [form, setForm]   = useState({ ...EMPTY, ...plan });
+  const [form, setForm] = useState(() => {
+    const base = { ...EMPTY, ...plan };
+    // Parse JSONB fields if they arrive as strings
+    if (typeof base.prices === 'string') {
+      try { base.prices = JSON.parse(base.prices); } catch { base.prices = {}; }
+    }
+    if (!base.prices || typeof base.prices !== 'object') base.prices = {};
+    if (typeof base.checkout_urls === 'string') {
+      try { base.checkout_urls = JSON.parse(base.checkout_urls); } catch { base.checkout_urls = {}; }
+    }
+    if (!base.checkout_urls || typeof base.checkout_urls !== 'object') base.checkout_urls = {};
+    return base;
+  });
   const [saving, setSaving] = useState(false);
   const [err, setErr]     = useState('');
 
@@ -321,10 +333,16 @@ export default function PricingAdmin({ lang = 'ar' }) {
   }
 
   function summaryPrices(plan) {
-    const prices = plan.prices || {};
-    const entries = Object.entries(prices).filter(([, v]) => v?.monthly > 0);
-    if (!entries.length) return '—';
-    return entries.slice(0, 3).map(([code, v]) => `${code}: ${v.monthly}`).join(' · ') + (entries.length > 3 ? ` +${entries.length - 3}` : '');
+    let prices = plan.prices;
+    if (typeof prices === 'string') { try { prices = JSON.parse(prices); } catch { prices = null; } }
+    if (!prices || typeof prices !== 'object') {
+      // Fallback: old flat columns
+      const m = Number(plan.price_monthly) || 0;
+      return m > 0 ? `GBP: ${m} (قديم)` : '—';
+    }
+    const entries = Object.entries(prices).filter(([, v]) => Number(v?.monthly) > 0 || Number(v?.yearly) > 0);
+    if (!entries.length) return '— (لم تُدخَل أسعار بعد)';
+    return entries.slice(0, 4).map(([code, v]) => `${code} ${Number(v.monthly)||0}`).join(' · ') + (entries.length > 4 ? ` +${entries.length - 4}` : '');
   }
 
   return (
