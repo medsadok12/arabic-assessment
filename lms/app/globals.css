@@ -139,6 +139,7 @@ body {
   transform: translateY(-1px) scale(1.03);
   box-shadow: 0 6px 22px rgba(255,255,255,.4);
 }
+.navbar-lang-center { display: flex; align-items: center; flex-shrink: 0; }
 .navbar-user { display: flex; align-items: center; gap: 16px; color: #fff; font-size: .9rem; flex-shrink: 0; }
 .btn-logout {
   background: rgba(255,255,255,.15);
@@ -603,7 +604,7 @@ body {
 /* ── Navbar: Dropdown ── */
 .nav-dropdown { position: relative; }
 .nav-dropdown-menu {
-  position: absolute; left: 0; top: calc(100% + 10px);
+  position: absolute; left: 0; right: auto; top: calc(100% + 10px);
   background: #fff; border-radius: 12px; min-width: 200px; max-width: calc(100vw - 16px);
   box-shadow: 0 8px 32px rgba(0,0,0,.18); z-index: 200;
   overflow: hidden; animation: dropIn .15s ease;
@@ -715,18 +716,6 @@ body {
 
   /* Shrink username on mobile so the avatar button stays within bounds */
   .nav-username { max-width: 90px !important; }
-
-  /* Dropdown: use fixed viewport positioning on mobile to avoid RTL left-overflow */
-  .nav-dropdown-menu {
-    position: fixed !important;
-    top: 68px !important;
-    right: 8px !important;
-    left: auto !important;
-    min-width: 220px !important;
-    max-width: calc(100vw - 16px) !important;
-    border-radius: 14px !important;
-    box-shadow: 0 8px 28px rgba(0,0,0,.22) !important;
-  }
 
   .hero h1 { font-size: 1.9rem; }
   /* Remove the large padding-bottom — photo is in normal flow on mobile */
