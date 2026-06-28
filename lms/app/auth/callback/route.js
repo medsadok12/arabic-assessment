@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { createAdminClient } from '../../../lib/supabase-admin';
 
 export async function GET(request) {
   const { searchParams, origin } = new URL(request.url);
@@ -45,8 +46,34 @@ export async function GET(request) {
         return NextResponse.redirect(`${origin}/auth/login?error=teachers_blocked`);
       }
 
-      // مستخدم Google جديد بدون دور → يُطلب منه كود الأكاديمية
+      // مستخدم بدون دور → تحقق إن كان مسجّلاً مسبقاً بنفس الإيميل
       if (!role) {
+        try {
+          const admin = createAdminClient();
+          const { data: { users: allUsers } } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+          const existing = allUsers.find(u =>
+            u.email === user.email &&
+            u.id !== user.id &&
+            u.user_metadata?.role
+          );
+          if (existing) {
+            // مستخدم موجود مسبقاً — انقل الدور لحسابه الجديد
+            await admin.auth.admin.updateUserById(user.id, {
+              user_metadata: {
+                ...user.user_metadata,
+                role:      existing.user_metadata.role,
+                full_name: existing.user_metadata.full_name ?? user.user_metadata?.full_name,
+              },
+            });
+            const r = existing.user_metadata.role;
+            const dest = r === 'super_admin' || r === 'admin' ? '/bogga'
+              : r === 'teacher'    ? '/teacher'
+              : r === 'supervisor' ? '/supervisor'
+              : '/dashboard';
+            return NextResponse.redirect(`${origin}${dest}`);
+          }
+        } catch (_) {}
+        // مستخدم جديد فعلاً → يحتاج كود الأكاديمية
         return NextResponse.redirect(`${origin}/auth/google-code`);
       }
 
