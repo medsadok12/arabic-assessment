@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Navbar from '../components/Navbar';
 import FloatingSidebar from '../components/FloatingSidebar';
 import SmartFAQ from '../components/SmartFAQ';
+import PricingSection from '../components/PricingSection';
 import { Target, FileBarChart, Globe, Smartphone, Lock, Zap } from 'lucide-react';
 import { createClient } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -148,6 +149,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Pricing ── */}
+      <PricingSection />
 
       {/* ── Smart FAQ ── */}
       <SmartFAQ />
