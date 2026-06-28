@@ -28,6 +28,7 @@ function resolveError(code, fallback) {
     network_error:        'تعذَّر الاتصال بالخادم — تحقق من الإنترنت وأعد المحاولة.',
     oauth_error:          'تعذَّر فتح نافذة جوجل — تأكد من أن المتصفح لا يحجب النوافذ المنبثقة.',
     invalid_credentials:  'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+    not_registered:       'هذا الحساب غير مسجّل في المنصة — تواصل مع الإدارة لإضافتك.',
     unexpected:           'حدث خطأ غير متوقع — يرجى المحاولة مجدداً.',
   };
   return MAP[code] ?? fallback ?? MAP.unexpected;
