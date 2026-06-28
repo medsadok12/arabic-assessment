@@ -230,18 +230,6 @@ export default function FanCarousel({ items, renderCard }) {
     touchStartX.current = null;
   };
 
-  const arrowStyle = {
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    width: 44, height: 44, borderRadius: '50%',
-    border: '1.5px solid rgba(0,0,0,.1)',
-    background: 'rgba(255,255,255,.85)',
-    backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-    cursor: 'pointer', fontSize: '1.35rem', fontWeight: 700,
-    color: 'rgba(0,0,0,.45)',
-    boxShadow: '0 4px 20px rgba(0,0,0,.1)',
-    transition: 'all .3s', outline: 'none', zIndex: 30, padding: 0,
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', padding: '8px 0 28px' }}>
 
@@ -267,30 +255,6 @@ export default function FanCarousel({ items, renderCard }) {
         ))}
       </div>
 
-      {/* أزرار التنقل + النقاط */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 4, zIndex: 30 }}>
-        <button onClick={() => cycle('left')}  style={arrowStyle} aria-label="السابق">‹</button>
-
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {items.map((_, i) => (
-            <span
-              key={i}
-              onClick={() => { if (!isAnimating.current) setCenterIndex(i); }}
-              style={{
-                width:      i === centerIndex ? 22 : 8,
-                height:     8,
-                borderRadius: 99,
-                background: i === centerIndex ? '#6366f1' : '#cbd5e1',
-                transition: 'all .3s',
-                display: 'inline-block',
-                cursor: 'pointer',
-              }}
-            />
-          ))}
-        </div>
-
-        <button onClick={() => cycle('right')} style={arrowStyle} aria-label="التالي">›</button>
-      </div>
     </div>
   );
 }
