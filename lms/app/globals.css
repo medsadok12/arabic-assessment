@@ -1030,4 +1030,18 @@ body {
 
   /* Modal */
   .modal-box { padding: 22px 18px; }
+
+  /* Pricing section — stack cards on mobile */
+  .pricing-card-item { opacity: 1 !important; }
+}
+
+/* ── Pricing grid responsive ── */
+@media (max-width: 700px) {
+  /* Override inline grid-template-columns via cascade */
+  .pricing-grid-inner {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (max-width: 900px) {
+  .pricing-tab-btn { font-size: .82rem; padding: 7px 14px; }
 }
