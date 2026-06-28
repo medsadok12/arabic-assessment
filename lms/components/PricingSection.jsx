@@ -164,8 +164,11 @@ function PricingCard({ plan, isYearly, currency, lang }) {
 }
 
 /* ── Currency selector ── */
-function CurrencySelect({ currency, onChange, lang }) {
-  const curr = CURRENCIES.find(c => c.code === currency) || CURRENCIES[0];
+function CurrencySelect({ currency, onChange, lang, availableCodes }) {
+  const visible = availableCodes.length > 0
+    ? CURRENCIES.filter(c => availableCodes.includes(c.code))
+    : CURRENCIES;
+  if (visible.length <= 1) return null; // لا داعي للقائمة إن كانت عملة واحدة فقط
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ fontSize: '.85rem', fontWeight: 600, color: '#475569' }}>
@@ -185,7 +188,7 @@ function CurrencySelect({ currency, onChange, lang }) {
             direction: 'ltr',
           }}
         >
-          {CURRENCIES.map(c => (
+          {visible.map(c => (
             <option key={c.code} value={c.code}>
               {c.symbol} {c.code} — {lang === 'ar' ? c.label : c.labelEn}
             </option>
@@ -214,13 +217,22 @@ export default function PricingSection() {
         const loaded = d.plans || [];
         setPlans(loaded);
         setLoading(false);
-        // Switch to first available plan type if default has no plans
-        const hasDefault = loaded.some(p => p.plan_type === 'lessons');
-        if (!hasDefault && loaded.length > 0) {
+
+        // Auto-select first plan type that has plans
+        const hasLessons = loaded.some(p => p.plan_type === 'lessons');
+        if (!hasLessons && loaded.length > 0) {
           const order = ['lessons', 'content_only', 'family', 'school'];
           const first = order.find(t => loaded.some(p => p.plan_type === t));
           if (first) setActiveType(first);
         }
+
+        // Auto-select first currency that has at least one plan with a price
+        const currencyOrder = ['QAR','SAR','AED','KWD','OMR','BHD','USD','EUR','GBP','TND'];
+        const firstWithPrice = currencyOrder.find(code =>
+          loaded.some(p => p.plan_type !== 'school' &&
+            (p.prices?.[code]?.monthly > 0 || p.prices?.[code]?.yearly > 0))
+        );
+        if (firstWithPrice) setCurrency(firstWithPrice);
       })
       .catch(() => setLoading(false));
   }, []);
@@ -241,6 +253,14 @@ export default function PricingSection() {
     obs.observe(el);
     return () => obs.disconnect();
   }, [plans, activeType]);
+
+  // Currencies that have at least one plan with a price (across all types)
+  const availableCurrencyCodes = CURRENCIES
+    .map(c => c.code)
+    .filter(code => plans.some(p =>
+      p.plan_type !== 'school' &&
+      (p.prices?.[code]?.monthly > 0 || p.prices?.[code]?.yearly > 0)
+    ));
 
   // Filter plans visible for selected currency (school type always visible)
   const filtered = plans.filter(p => {
@@ -352,7 +372,7 @@ export default function PricingSection() {
           )}
 
           {/* Currency selector */}
-          <CurrencySelect currency={currency} onChange={setCurrency} lang={lang} />
+          <CurrencySelect currency={currency} onChange={setCurrency} lang={lang} availableCodes={availableCurrencyCodes} />
         </div>
 
         {/* Cards */}
