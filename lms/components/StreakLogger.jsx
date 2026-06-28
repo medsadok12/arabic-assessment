@@ -42,13 +42,22 @@ export default function StreakLogger() {
   return (
     <>
       <style>{`
+        /* translateX(-50%) مُدمج في كل keyframe لأن animation تستبدل transform الأساسي */
         @keyframes stSlideUp {
-          from { opacity:0; transform:translateY(40px) scale(.92); }
-          to   { opacity:1; transform:translateY(0)    scale(1);   }
+          from { opacity:0; transform:translateX(-50%) translateY(40px) scale(.92); }
+          to   { opacity:1; transform:translateX(-50%) translateY(0)    scale(1);   }
         }
         @keyframes stSlideDown {
-          from { opacity:1; transform:translateY(0)    scale(1);   }
-          to   { opacity:0; transform:translateY(30px) scale(.94); }
+          from { opacity:1; transform:translateX(-50%) translateY(0)    scale(1);   }
+          to   { opacity:0; transform:translateX(-50%) translateY(30px) scale(.94); }
+        }
+        @keyframes stSlideFromTop {
+          from { opacity:0; transform:translateX(-50%) translateY(-30px) scale(.92); }
+          to   { opacity:1; transform:translateX(-50%) translateY(0)     scale(1);   }
+        }
+        @keyframes stSlideToTop {
+          from { opacity:1; transform:translateX(-50%) translateY(0)     scale(1);   }
+          to   { opacity:0; transform:translateX(-50%) translateY(-20px) scale(.94); }
         }
         @keyframes stFlame {
           0%,100% { transform:scale(1) rotate(-4deg); }
@@ -78,6 +87,15 @@ export default function StreakLogger() {
           cursor:pointer; user-select:none;
         }
         .st-card.leaving { animation:stSlideDown .4s ease forwards; }
+        /* موبايل: أعلى المنتصف أسفل الهيدر مباشرة، بعيداً عن شريط التنقل السفلي */
+        @media (max-width:768px) {
+          .st-card {
+            bottom:auto; top:74px;
+            width:min(90vw,440px);
+            animation:stSlideFromTop .45s cubic-bezier(0,.9,.57,1) both;
+          }
+          .st-card.leaving { animation:stSlideToTop .4s ease forwards; }
+        }
         .st-inner {
           padding:18px 20px 14px;
           display:flex; align-items:center; gap:14px;
