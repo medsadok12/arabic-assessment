@@ -445,6 +445,11 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
           </ul>
         )}
 
+        {/* ── وسط: زر اللغة — مستقل على الموبايل ليكون وسطاً بين الشعار والأفاتار ── */}
+        <div className="navbar-lang-center">
+          <LangToggle />
+        </div>
+
         {/* ── الجانب الأيسر: رابط تعريفي + أيقونات التواصل + أزرار الدخول/الحساب ── */}
         <div className="navbar-user">
 
@@ -471,8 +476,6 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
               <span>⏱️</span> {sessionCountdown}
             </div>
           )}
-
-          <LangToggle />
 
           {!user && (
             <Link
