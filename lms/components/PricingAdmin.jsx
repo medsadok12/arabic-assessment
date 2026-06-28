@@ -182,6 +182,13 @@ function PlanModal({ plan, onClose, onSave, lang }) {
       const r = await fetch('/api/bogga/pricing', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const d = await r.json();
       if (d.error) { setErr(d.error); setSaving(false); return; }
+      if (d.warning) {
+        // Columns missing — save worked with old columns, show SQL instruction
+        setErr('⚠️ ' + d.warning);
+        setSaving(false);
+        onSave(d.plan); // still close modal — old columns were saved
+        return;
+      }
       onSave(d.plan);
     } catch (e) {
       setErr(e.message);
