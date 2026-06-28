@@ -6,26 +6,72 @@ import gsap from 'gsap';
 const WHATSAPP_HREF = 'https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0';
 
 const CURRENCIES = [
-  { code: 'QAR', symbol: 'ر.ق', label: 'ريال قطري',     labelEn: 'Qatari Riyal'    },
-  { code: 'SAR', symbol: 'ر.س', label: 'ريال سعودي',    labelEn: 'Saudi Riyal'     },
-  { code: 'AED', symbol: 'د.إ', label: 'درهم إماراتي',  labelEn: 'UAE Dirham'      },
+  { code: 'QAR', symbol: 'ر.ق', label: 'ريال قطري',     labelEn: 'Qatari Riyal'   },
+  { code: 'SAR', symbol: 'ر.س', label: 'ريال سعودي',    labelEn: 'Saudi Riyal'    },
+  { code: 'AED', symbol: 'د.إ', label: 'درهم إماراتي',  labelEn: 'UAE Dirham'     },
   { code: 'KWD', symbol: 'د.ك', label: 'دينار كويتي',   labelEn: 'Kuwaiti Dinar'  },
   { code: 'OMR', symbol: 'ر.ع', label: 'ريال عماني',    labelEn: 'Omani Rial'     },
   { code: 'BHD', symbol: 'د.ب', label: 'دينار بحريني',  labelEn: 'Bahraini Dinar' },
   { code: 'USD', symbol: '$',   label: 'دولار أمريكي',  labelEn: 'US Dollar'      },
-  { code: 'EUR', symbol: '€',   label: 'يورو',          labelEn: 'Euro'            },
+  { code: 'EUR', symbol: '€',   label: 'يورو',          labelEn: 'Euro'           },
   { code: 'GBP', symbol: '£',   label: 'جنيه إسترليني', labelEn: 'British Pound'  },
   { code: 'TND', symbol: 'د.ت', label: 'دينار تونسي',   labelEn: 'Tunisian Dinar' },
 ];
 
 const PLAN_TYPES = [
-  { key: 'lessons',      labelAr: '🎓 دروس مباشرة',   labelEn: '🎓 Live Lessons'   },
+  { key: 'lessons',      labelAr: '🎓 دروس مباشرة',   labelEn: '🎓 Live Lessons'    },
   { key: 'content_only', labelAr: '📱 محتوى رقمي',     labelEn: '📱 Digital Content' },
-  { key: 'family',       labelAr: '👨‍👩‍👧 عائلي',         labelEn: '👨‍👩‍👧 Family'        },
-  { key: 'school',       labelAr: '🏫 مدارس ومؤسسات', labelEn: '🏫 Schools'         },
+  { key: 'family',       labelAr: '👨‍👩‍👧 عائلي',         labelEn: '👨‍👩‍👧 Family'         },
+  { key: 'school',       labelAr: '🏫 مدارس ومؤسسات', labelEn: '🏫 Schools'          },
 ];
 
-/* ── Animated price counter ── */
+// ── Helpers: backward-compatible with old flat columns ──────────────────────
+
+/**
+ * True if the plan has the new JSONB prices with at least one entry.
+ * False means old flat columns (price_monthly / price_yearly) should be used.
+ */
+function hasNewPrices(plan) {
+  return plan.prices && typeof plan.prices === 'object' && Object.keys(plan.prices).length > 0;
+}
+
+/**
+ * Returns {monthly, yearly} for the given currency.
+ * Falls back to old flat columns when the new JSONB column is empty/absent.
+ */
+function getPriceObj(plan, currency) {
+  if (hasNewPrices(plan)) {
+    const obj = plan.prices[currency];
+    return obj || null;
+  }
+  // Old format — show the same price regardless of currency
+  const m = Number(plan.price_monthly) || 0;
+  const y = Number(plan.price_yearly)  || 0;
+  return (m > 0 || y > 0) ? { monthly: m, yearly: y } : null;
+}
+
+/**
+ * Returns the checkout URL for the given currency.
+ * Falls back to old flat checkout_url column.
+ */
+function getCheckoutHref(plan, currency) {
+  if (hasNewPrices(plan) && plan.checkout_urls?.[currency]) {
+    return plan.checkout_urls[currency];
+  }
+  return plan.checkout_url || WHATSAPP_HREF;
+}
+
+/**
+ * True if this plan should appear in the grid for the selected currency.
+ */
+function planVisible(plan, currency) {
+  if (plan.plan_type === 'school') return true;
+  const obj = getPriceObj(plan, currency);
+  return !!(obj && (obj.monthly > 0 || obj.yearly > 0));
+}
+
+// ── Animated price counter ───────────────────────────────────────────────────
+
 function PriceCounter({ value }) {
   const spanRef = useRef(null);
   const prev    = useRef(value);
@@ -37,8 +83,8 @@ function PriceCounter({ value }) {
     if (from === to) { spanRef.current.textContent = to; return; }
     gsap.to({ val: from }, {
       val: to, duration: .65, ease: 'power2.out',
-      onUpdate() { if (spanRef.current) spanRef.current.textContent = Math.round(this.targets()[0].val); },
-      onComplete() { if (spanRef.current) spanRef.current.textContent = to; },
+      onUpdate()  { if (spanRef.current) spanRef.current.textContent = Math.round(this.targets()[0].val); },
+      onComplete(){ if (spanRef.current) spanRef.current.textContent = to; },
     });
   }, [value]);
   return <span ref={spanRef}>{value}</span>;
@@ -54,18 +100,19 @@ function CheckIcon({ color }) {
   );
 }
 
-/* ── Pricing card ── */
+// ── Pricing card ─────────────────────────────────────────────────────────────
+
 function PricingCard({ plan, isYearly, currency, lang }) {
-  const cardRef  = useRef(null);
-  const currData = CURRENCIES.find(c => c.code === currency) || CURRENCIES[0];
-  const priceObj = plan.prices?.[currency] || {};
-  const price    = isYearly ? (priceObj.yearly || 0) : (priceObj.monthly || 0);
-  const checkoutUrl = plan.checkout_urls?.[currency] || WHATSAPP_HREF;
-  const period   = isYearly ? (lang === 'ar' ? '/سنة' : '/yr') : (lang === 'ar' ? '/شهر' : '/mo');
-  const color    = plan.accent_color || '#185FA5';
-  const isSchool = plan.plan_type === 'school';
-  const name     = lang === 'ar' ? plan.plan_name_ar : plan.plan_name_en;
-  const features = Array.isArray(plan.features_list) ? plan.features_list : [];
+  const cardRef    = useRef(null);
+  const currData   = CURRENCIES.find(c => c.code === currency) || CURRENCIES[8]; // GBP fallback
+  const priceObj   = getPriceObj(plan, currency) || { monthly: 0, yearly: 0 };
+  const price      = isYearly ? (priceObj.yearly || 0) : (priceObj.monthly || 0);
+  const period     = isYearly ? (lang === 'ar' ? '/سنة' : '/yr') : (lang === 'ar' ? '/شهر' : '/mo');
+  const color      = plan.accent_color || '#185FA5';
+  const isSchool   = plan.plan_type === 'school';
+  const name       = lang === 'ar' ? plan.plan_name_ar : plan.plan_name_en;
+  const features   = Array.isArray(plan.features_list) ? plan.features_list : [];
+  const checkoutUrl = isSchool ? WHATSAPP_HREF : getCheckoutHref(plan, currency);
 
   function handleMouseMove(e) {
     const card = cardRef.current;
@@ -130,12 +177,10 @@ function PricingCard({ plan, isYearly, currency, lang }) {
         </div>
       )}
 
-      {/* Plan name */}
       <h3 style={{ fontWeight: 900, fontSize: '1.25rem', color: '#1a1a2e', marginTop: plan.is_popular ? 20 : 12, marginBottom: 16 }}>
         {name}
       </h3>
 
-      {/* Features */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, marginBottom: 20 }}>
         {features.map((feat, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: '#f8fafc', borderRadius: 8, border: '1.5px solid #e2e8f0' }}>
@@ -147,7 +192,6 @@ function PricingCard({ plan, isYearly, currency, lang }) {
         ))}
       </div>
 
-      {/* CTA */}
       {isSchool ? (
         <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer"
           style={{ display: 'block', width: '100%', padding: '11px 16px', background: '#25D366', color: '#fff', fontWeight: 800, fontSize: '.9rem', borderRadius: 12, textAlign: 'center', textDecoration: 'none', border: '2px solid rgba(0,0,0,.1)', boxShadow: '4px 4px 0 rgba(0,0,0,.1)' }}>
@@ -163,31 +207,28 @@ function PricingCard({ plan, isYearly, currency, lang }) {
   );
 }
 
-/* ── Currency selector ── */
+// ── Currency selector ────────────────────────────────────────────────────────
+
 function CurrencySelect({ currency, onChange, lang, availableCodes }) {
-  const visible = availableCodes.length > 0
+  const visible = availableCodes.length > 1
     ? CURRENCIES.filter(c => availableCodes.includes(c.code))
-    : CURRENCIES;
-  if (visible.length <= 1) return null; // لا داعي للقائمة إن كانت عملة واحدة فقط
+    : CURRENCIES; // Fallback: show all if none detected
+  if (visible.length <= 1) return null;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ fontSize: '.85rem', fontWeight: 600, color: '#475569' }}>
         {lang === 'ar' ? 'العملة:' : 'Currency:'}
       </span>
       <div style={{ position: 'relative' }}>
-        <select
-          value={currency}
-          onChange={e => onChange(e.target.value)}
+        <select value={currency} onChange={e => onChange(e.target.value)}
           style={{
             appearance: 'none', WebkitAppearance: 'none',
             background: '#fff', border: '2px solid #e2e8f0',
             borderRadius: 50, padding: '6px 32px 6px 14px',
             fontSize: '.88rem', fontWeight: 700, color: '#1e293b',
             cursor: 'pointer', fontFamily: 'inherit',
-            boxShadow: '0 1px 4px rgba(0,0,0,.07)',
-            direction: 'ltr',
-          }}
-        >
+            boxShadow: '0 1px 4px rgba(0,0,0,.07)', direction: 'ltr',
+          }}>
           {visible.map(c => (
             <option key={c.code} value={c.code}>
               {c.symbol} {c.code} — {lang === 'ar' ? c.label : c.labelEn}
@@ -200,14 +241,15 @@ function CurrencySelect({ currency, onChange, lang, availableCodes }) {
   );
 }
 
-/* ── Main section ── */
+// ── Main section ─────────────────────────────────────────────────────────────
+
 export default function PricingSection() {
   const { lang } = useLanguage();
   const [plans,      setPlans]      = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [activeType, setActiveType] = useState('lessons');
   const [isYearly,   setIsYearly]   = useState(false);
-  const [currency,   setCurrency]   = useState('QAR');
+  const [currency,   setCurrency]   = useState('GBP'); // Safe default until data loads
   const sectionRef = useRef(null);
 
   useEffect(() => {
@@ -226,13 +268,21 @@ export default function PricingSection() {
           if (first) setActiveType(first);
         }
 
-        // Auto-select first currency that has at least one plan with a price
-        const currencyOrder = ['QAR','SAR','AED','KWD','OMR','BHD','USD','EUR','GBP','TND'];
-        const firstWithPrice = currencyOrder.find(code =>
-          loaded.some(p => p.plan_type !== 'school' &&
-            (p.prices?.[code]?.monthly > 0 || p.prices?.[code]?.yearly > 0))
-        );
-        if (firstWithPrice) setCurrency(firstWithPrice);
+        // Determine if any plan uses the new JSONB prices format
+        const anyNewFormat = loaded.some(p => hasNewPrices(p));
+
+        if (anyNewFormat) {
+          // Find first currency (Gulf-first) that has at least one plan with a price
+          const order = ['QAR','SAR','AED','KWD','OMR','BHD','USD','EUR','GBP','TND'];
+          const first = order.find(code =>
+            loaded.some(p => p.plan_type !== 'school' &&
+              (p.prices?.[code]?.monthly > 0 || p.prices?.[code]?.yearly > 0))
+          );
+          if (first) setCurrency(first);
+        } else {
+          // Old format: show GBP symbol (the original currency before migration)
+          setCurrency('GBP');
+        }
       })
       .catch(() => setLoading(false));
   }, []);
@@ -254,25 +304,24 @@ export default function PricingSection() {
     return () => obs.disconnect();
   }, [plans, activeType]);
 
-  // Currencies that have at least one plan with a price (across all types)
-  const availableCurrencyCodes = CURRENCIES
-    .map(c => c.code)
-    .filter(code => plans.some(p =>
-      p.plan_type !== 'school' &&
-      (p.prices?.[code]?.monthly > 0 || p.prices?.[code]?.yearly > 0)
-    ));
+  // Currencies available in new JSONB format (for the dropdown filter)
+  const anyNewFormat = plans.some(p => hasNewPrices(p));
+  const availableCurrencyCodes = anyNewFormat
+    ? CURRENCIES.map(c => c.code).filter(code =>
+        plans.some(p => p.plan_type !== 'school' &&
+          (p.prices?.[code]?.monthly > 0 || p.prices?.[code]?.yearly > 0))
+      )
+    : []; // Empty → CurrencySelect shows all (fallback) or hides if 1 currency
 
-  // Filter plans visible for selected currency (school type always visible)
-  const filtered = plans.filter(p => {
-    if (p.plan_type !== activeType) return false;
-    if (p.plan_type === 'school') return true;
-    const priceObj = p.prices?.[currency];
-    return priceObj && (priceObj.monthly > 0 || priceObj.yearly > 0);
-  });
+  // Plans to display: use planVisible() which handles both old and new format
+  const filtered = plans.filter(p =>
+    p.plan_type === activeType && planVisible(p, currency)
+  );
 
+  // Show yearly toggle only if at least one plan has yearly price
   const hasYearly = filtered.some(p => {
-    const priceObj = p.prices?.[currency];
-    return priceObj?.yearly > 0 && priceObj?.yearly !== priceObj?.monthly;
+    const obj = getPriceObj(p, currency);
+    return obj && obj.yearly > 0 && obj.yearly !== obj.monthly;
   });
 
   const title    = lang === 'ar' ? 'الاشتراكات والأسعار' : 'Plans & Pricing';
@@ -305,7 +354,6 @@ export default function PricingSection() {
         @media (max-width: 900px) { .pricing-tab-btn { font-size: .82rem; padding: 7px 14px; } }
       `}</style>
 
-      {/* Dot grid background */}
       <div aria-hidden style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
         backgroundImage: 'radial-gradient(circle, #18519920 1px, transparent 1px)',
@@ -341,10 +389,9 @@ export default function PricingSection() {
           })}
         </div>
 
-        {/* Controls row: Monthly/Yearly + Currency */}
+        {/* Controls row */}
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 20, flexWrap: 'wrap', marginBottom: 36 }}>
 
-          {/* Monthly / Yearly toggle */}
           {hasYearly && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontWeight: 600, color: !isYearly ? 'var(--primary)' : '#94a3b8', fontSize: '.92rem' }}>
@@ -354,8 +401,7 @@ export default function PricingSection() {
                 style={{ width: 52, height: 28, borderRadius: 99, background: isYearly ? 'var(--primary)' : '#cbd5e1', border: 'none', cursor: 'pointer', position: 'relative', transition: 'background .25s' }}
                 aria-label="toggle billing period">
                 <span style={{
-                  position: 'absolute', top: 3,
-                  insetInlineStart: isYearly ? 26 : 3,
+                  position: 'absolute', top: 3, insetInlineStart: isYearly ? 26 : 3,
                   width: 22, height: 22, borderRadius: '50%', background: '#fff',
                   boxShadow: '0 1px 4px rgba(0,0,0,.2)', transition: 'inset-inline-start .25s',
                 }} />
@@ -371,8 +417,12 @@ export default function PricingSection() {
             </div>
           )}
 
-          {/* Currency selector */}
-          <CurrencySelect currency={currency} onChange={setCurrency} lang={lang} availableCodes={availableCurrencyCodes} />
+          <CurrencySelect
+            currency={currency}
+            onChange={setCurrency}
+            lang={lang}
+            availableCodes={availableCurrencyCodes}
+          />
         </div>
 
         {/* Cards */}
