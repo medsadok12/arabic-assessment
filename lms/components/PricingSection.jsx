@@ -25,44 +25,67 @@ const PLAN_TYPES = [
   { key: 'school',       labelAr: '🏫 مدارس ومؤسسات', labelEn: '🏫 Schools'          },
 ];
 
-// ── Helpers: backward-compatible with old flat columns ──────────────────────
+// ── Parsing helpers ───────────────────────────────────────────────────────────
 
 /**
- * True if the plan has the new JSONB prices with at least one entry.
- * False means old flat columns (price_monthly / price_yearly) should be used.
+ * Safely parse plan.prices which may arrive as object, JSON string, or {}
+ * Returns the inner map or null if empty / invalid.
  */
-function hasNewPrices(plan) {
-  return plan.prices && typeof plan.prices === 'object' && Object.keys(plan.prices).length > 0;
+function parsePricesMap(raw) {
+  if (!raw) return null;
+  let map = raw;
+  if (typeof map === 'string') {
+    try { map = JSON.parse(map); } catch { return null; }
+  }
+  if (typeof map !== 'object' || Array.isArray(map)) return null;
+  return Object.keys(map).length > 0 ? map : null;
 }
 
 /**
- * Returns {monthly, yearly} for the given currency.
- * Falls back to old flat columns when the new JSONB column is empty/absent.
+ * Safely parse plan.checkout_urls in the same way.
+ */
+function parseUrlsMap(raw) {
+  if (!raw) return {};
+  let map = raw;
+  if (typeof map === 'string') {
+    try { map = JSON.parse(map); } catch { return {}; }
+  }
+  return (typeof map === 'object' && !Array.isArray(map)) ? map : {};
+}
+
+/**
+ * Returns { monthly, yearly } for the requested currency.
+ * Priority: new JSONB prices[currency] → old flat columns (any currency) → null.
  */
 function getPriceObj(plan, currency) {
-  if (hasNewPrices(plan)) {
-    const obj = plan.prices[currency];
-    return obj || null;
+  const map = parsePricesMap(plan.prices);
+
+  if (map) {
+    // New multi-currency format is present
+    const entry = map[currency];
+    if (entry) {
+      return { monthly: Number(entry.monthly) || 0, yearly: Number(entry.yearly) || 0 };
+    }
+    // Currency not configured → don't fall back to old columns
+    return null;
   }
-  // Old format — show the same price regardless of currency
+
+  // Old flat-column fallback (before migration or SQL not yet run)
   const m = Number(plan.price_monthly) || 0;
   const y = Number(plan.price_yearly)  || 0;
   return (m > 0 || y > 0) ? { monthly: m, yearly: y } : null;
 }
 
 /**
- * Returns the checkout URL for the given currency.
- * Falls back to old flat checkout_url column.
+ * Checkout URL for the selected currency, with safe fallbacks.
  */
 function getCheckoutHref(plan, currency) {
-  if (hasNewPrices(plan) && plan.checkout_urls?.[currency]) {
-    return plan.checkout_urls[currency];
-  }
-  return plan.checkout_url || WHATSAPP_HREF;
+  const urls = parseUrlsMap(plan.checkout_urls);
+  return urls[currency] || plan.checkout_url || WHATSAPP_HREF;
 }
 
 /**
- * True if this plan should appear in the grid for the selected currency.
+ * True if the plan should appear in the grid for the given currency.
  */
 function planVisible(plan, currency) {
   if (plan.plan_type === 'school') return true;
@@ -70,7 +93,7 @@ function planVisible(plan, currency) {
   return !!(obj && (obj.monthly > 0 || obj.yearly > 0));
 }
 
-// ── Animated price counter ───────────────────────────────────────────────────
+// ── Animated price counter ────────────────────────────────────────────────────
 
 function PriceCounter({ value }) {
   const spanRef = useRef(null);
@@ -100,18 +123,18 @@ function CheckIcon({ color }) {
   );
 }
 
-// ── Pricing card ─────────────────────────────────────────────────────────────
+// ── Pricing card ──────────────────────────────────────────────────────────────
 
 function PricingCard({ plan, isYearly, currency, lang }) {
-  const cardRef    = useRef(null);
-  const currData   = CURRENCIES.find(c => c.code === currency) || CURRENCIES[8]; // GBP fallback
-  const priceObj   = getPriceObj(plan, currency) || { monthly: 0, yearly: 0 };
-  const price      = isYearly ? (priceObj.yearly || 0) : (priceObj.monthly || 0);
-  const period     = isYearly ? (lang === 'ar' ? '/سنة' : '/yr') : (lang === 'ar' ? '/شهر' : '/mo');
-  const color      = plan.accent_color || '#185FA5';
-  const isSchool   = plan.plan_type === 'school';
-  const name       = lang === 'ar' ? plan.plan_name_ar : plan.plan_name_en;
-  const features   = Array.isArray(plan.features_list) ? plan.features_list : [];
+  const cardRef     = useRef(null);
+  const currData    = CURRENCIES.find(c => c.code === currency) || CURRENCIES[8];
+  const priceObj    = getPriceObj(plan, currency) || { monthly: 0, yearly: 0 };
+  const price       = isYearly ? (priceObj.yearly || 0) : (priceObj.monthly || 0);
+  const period      = isYearly ? (lang === 'ar' ? '/سنة' : '/yr') : (lang === 'ar' ? '/شهر' : '/mo');
+  const color       = plan.accent_color || '#185FA5';
+  const isSchool    = plan.plan_type === 'school';
+  const name        = lang === 'ar' ? plan.plan_name_ar : plan.plan_name_en;
+  const features    = Array.isArray(plan.features_list) ? plan.features_list : [];
   const checkoutUrl = isSchool ? WHATSAPP_HREF : getCheckoutHref(plan, currency);
 
   function handleMouseMove(e) {
@@ -207,12 +230,13 @@ function PricingCard({ plan, isYearly, currency, lang }) {
   );
 }
 
-// ── Currency selector ────────────────────────────────────────────────────────
+// ── Currency selector ─────────────────────────────────────────────────────────
 
 function CurrencySelect({ currency, onChange, lang, availableCodes }) {
+  // Show only currencies with prices; if none detected yet, show all
   const visible = availableCodes.length > 1
     ? CURRENCIES.filter(c => availableCodes.includes(c.code))
-    : CURRENCIES; // Fallback: show all if none detected
+    : CURRENCIES;
   if (visible.length <= 1) return null;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -241,7 +265,7 @@ function CurrencySelect({ currency, onChange, lang, availableCodes }) {
   );
 }
 
-// ── Main section ─────────────────────────────────────────────────────────────
+// ── Main section ──────────────────────────────────────────────────────────────
 
 export default function PricingSection() {
   const { lang } = useLanguage();
@@ -249,7 +273,7 @@ export default function PricingSection() {
   const [loading,    setLoading]    = useState(true);
   const [activeType, setActiveType] = useState('lessons');
   const [isYearly,   setIsYearly]   = useState(false);
-  const [currency,   setCurrency]   = useState('GBP'); // Safe default until data loads
+  const [currency,   setCurrency]   = useState('GBP');
   const sectionRef = useRef(null);
 
   useEffect(() => {
@@ -268,21 +292,21 @@ export default function PricingSection() {
           if (first) setActiveType(first);
         }
 
-        // Determine if any plan uses the new JSONB prices format
-        const anyNewFormat = loaded.some(p => hasNewPrices(p));
+        // Determine if any plan uses new JSONB format
+        const anyNewFormat = loaded.some(p => parsePricesMap(p.prices) !== null);
 
         if (anyNewFormat) {
-          // Find first currency (Gulf-first) that has at least one plan with a price
+          // Auto-select first currency (Gulf-first) that has at least one plan with price
           const order = ['QAR','SAR','AED','KWD','OMR','BHD','USD','EUR','GBP','TND'];
           const first = order.find(code =>
-            loaded.some(p => p.plan_type !== 'school' &&
-              (p.prices?.[code]?.monthly > 0 || p.prices?.[code]?.yearly > 0))
+            loaded.some(p => {
+              const map = parsePricesMap(p.prices);
+              return map && (Number(map[code]?.monthly) > 0 || Number(map[code]?.yearly) > 0);
+            })
           );
           if (first) setCurrency(first);
-        } else {
-          // Old format: show GBP symbol (the original currency before migration)
-          setCurrency('GBP');
         }
+        // else: keep GBP default → old-format fallback will show price_monthly
       })
       .catch(() => setLoading(false));
   }, []);
@@ -304,21 +328,21 @@ export default function PricingSection() {
     return () => obs.disconnect();
   }, [plans, activeType]);
 
-  // Currencies available in new JSONB format (for the dropdown filter)
-  const anyNewFormat = plans.some(p => hasNewPrices(p));
+  // Currencies that have at least one plan with a price (for dropdown filter)
+  const anyNewFormat = plans.some(p => parsePricesMap(p.prices) !== null);
   const availableCurrencyCodes = anyNewFormat
     ? CURRENCIES.map(c => c.code).filter(code =>
-        plans.some(p => p.plan_type !== 'school' &&
-          (p.prices?.[code]?.monthly > 0 || p.prices?.[code]?.yearly > 0))
+        plans.some(p => {
+          const map = parsePricesMap(p.prices);
+          return map && (Number(map[code]?.monthly) > 0 || Number(map[code]?.yearly) > 0);
+        })
       )
-    : []; // Empty → CurrencySelect shows all (fallback) or hides if 1 currency
+    : [];
 
-  // Plans to display: use planVisible() which handles both old and new format
-  const filtered = plans.filter(p =>
-    p.plan_type === activeType && planVisible(p, currency)
-  );
+  // Plans to display for current type + currency
+  const filtered = plans.filter(p => p.plan_type === activeType && planVisible(p, currency));
 
-  // Show yearly toggle only if at least one plan has yearly price
+  // Show yearly toggle only when at least one plan has a yearly price
   const hasYearly = filtered.some(p => {
     const obj = getPriceObj(p, currency);
     return obj && obj.yearly > 0 && obj.yearly !== obj.monthly;
@@ -363,7 +387,6 @@ export default function PricingSection() {
 
       <div className="container">
 
-        {/* Heading */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <h2 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--primary)', marginBottom: 8 }}>{title}</h2>
           <p style={{ color: '#64748b', fontSize: '.97rem', marginTop: 4 }}>{subtitle}</p>
@@ -389,7 +412,7 @@ export default function PricingSection() {
           })}
         </div>
 
-        {/* Controls row */}
+        {/* Controls row: toggle + currency */}
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 20, flexWrap: 'wrap', marginBottom: 36 }}>
 
           {hasYearly && (
