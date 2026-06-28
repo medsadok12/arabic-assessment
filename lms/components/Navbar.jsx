@@ -426,7 +426,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
             alt={t('siteName')}
             style={{ height: 42, width: 42, borderRadius: '50%', flexShrink: 0, display: 'block' }}
           />
-          <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff', letterSpacing: '.3px' }}>
+          <span className="navbar-brand-text" style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff', letterSpacing: '.3px' }}>
             {t('siteName')}
           </span>
         </Link>
