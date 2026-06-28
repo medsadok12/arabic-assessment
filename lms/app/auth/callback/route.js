@@ -45,6 +45,11 @@ export async function GET(request) {
         return NextResponse.redirect(`${origin}/auth/login?error=teachers_blocked`);
       }
 
+      // مستخدم Google جديد بدون دور → يُطلب منه كود الأكاديمية
+      if (!role) {
+        return NextResponse.redirect(`${origin}/auth/google-code`);
+      }
+
       const dest =
         role === 'super_admin' || role === 'admin' ? '/bogga'
         : role === 'teacher'                        ? '/teacher'
