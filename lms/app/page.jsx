@@ -160,21 +160,49 @@ export default function LandingPage() {
       <TeamShowcase />
 
       <footer style={{ background: '#0e3d70', color: 'rgba(255,255,255,.55)', textAlign: 'center', padding: '24px 20px', fontSize: '.88rem' }}>
+        <style>{`
+          .footer-tlink {
+            color: rgba(255,255,255,.65);
+            text-decoration: none;
+            margin: 0 6px;
+            display: inline-block;
+            position: relative;
+            padding-bottom: 3px;
+            transition: color .25s, transform .28s cubic-bezier(.34,1.56,.64,1), letter-spacing .25s;
+          }
+          .footer-tlink::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 100%;
+            height: 1.5px;
+            background: linear-gradient(90deg, transparent, #c9952a, transparent);
+            border-radius: 2px;
+            transform: translateX(-50%) scaleX(0);
+            transition: transform .32s cubic-bezier(.4,0,.2,1);
+          }
+          .footer-tlink:hover {
+            color: #fff;
+            transform: scale(1.12);
+            letter-spacing: .03em;
+          }
+          .footer-tlink:hover::after {
+            transform: translateX(-50%) scaleX(1);
+          }
+        `}</style>
         <p>{t('landing.footer')}</p>
         <p style={{ marginTop: 10, fontSize: '.8rem' }}>
           <span style={{ opacity: .6 }}>للمعلمين: </span>
-          <Link href="/auth/login?for=teacher"
-            style={{ color: 'rgba(255,255,255,.65)', textDecoration: 'underline', margin: '0 6px' }}>
+          <Link href="/auth/login?for=teacher" className="footer-tlink">
             {t('landing.ctaLogin')}
           </Link>
           ·
-          <Link href="/auth/register/teacher"
-            style={{ color: 'rgba(255,255,255,.65)', textDecoration: 'underline', margin: '0 6px' }}>
+          <Link href="/auth/register/teacher" className="footer-tlink">
             {t('landing.ctaRegister')}
           </Link>
           ·
-          <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer"
-            style={{ color: 'rgba(255,255,255,.65)', textDecoration: 'underline', margin: '0 6px' }}>
+          <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className="footer-tlink">
             {t('landing.ctaApplyLink')}
           </a>
         </p>
