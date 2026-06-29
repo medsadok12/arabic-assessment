@@ -138,101 +138,153 @@ function LoginForm() {
 
   const anyLoading = loading || gLoading;
 
+  /* ── icon input helper ── */
+  function IconInput({ icon, children }) {
+    return (
+      <div style={{ position: 'relative' }}>
+        <span style={{
+          position: 'absolute', right: 12, top: '50%',
+          transform: 'translateY(-50%)', fontSize: '1rem', pointerEvents: 'none',
+        }}>{icon}</span>
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-logo">
-          <span className="logo-icon">{forTeacher ? '\u{1F468}‍\u{1F3EB}' : '\u{1F4DA}'}</span>
-          <h1>{t('siteName')}</h1>
-        </div>
-        <h2 className="auth-title">
-          {forTeacher ? t('login.teacherLogin') : t('login.studentLogin')}
-        </h2>
+      {/* override card padding so the blue header goes edge-to-edge */}
+      <div className="auth-card" style={{ padding: 0, overflow: 'hidden' }}>
 
-        {(error || urlErrorMsg) && (
-          <div className="alert alert-error" style={{ marginBottom: 16 }}>
-            {error || urlErrorMsg}
-          </div>
-        )}
-
-        {/* ── Google Sign-In Button ── */}
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          disabled={anyLoading}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            gap: 10, width: '100%', padding: '11px 16px', marginBottom: 18,
-            background: '#fff', border: '1.5px solid #dadce0', borderRadius: 10,
-            cursor: gLoading ? 'wait' : anyLoading ? 'not-allowed' : 'pointer',
-            fontSize: '1rem', fontFamily:'inherit',
-            fontWeight: 600, color: '#3c4043',
-            boxShadow: '0 1px 3px rgba(0,0,0,.08)',
-            transition: 'box-shadow .15s, border-color .15s',
-            outline: 'none', WebkitTapHighlightColor: 'transparent',
-            opacity: anyLoading && !gLoading ? 0.6 : 1,
-          }}
-          onMouseEnter={e => { if (!anyLoading) { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.18)'; e.currentTarget.style.borderColor = '#c0c0c0'; } }}
-          onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.08)'; e.currentTarget.style.borderColor = '#dadce0'; }}
-        >
-          {gLoading
-            ? <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} />
-            : <GoogleLogo />
-          }
-          <span>{gLoading ? 'جارٍ التحويل...' : 'تسجيل الدخول بواسطة Google'}</span>
-        </button>
-
-        {/* ── Divider ── */}
+        {/* ── Blue header strip ── */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          marginBottom: 18, color: '#9CA3AF', fontSize: '.85rem',
+          background: 'linear-gradient(135deg, #104880 0%, #185FA5 100%)',
+          padding: '22px 24px 18px',
         }}>
-          <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
-          <span>أو بالبريد الإلكتروني</span>
-          <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 44, height: 44, background: 'rgba(255,255,255,.15)',
+              borderRadius: 12, display: 'flex', alignItems: 'center',
+              justifyContent: 'center', fontSize: '1.5rem',
+            }}>
+              {forTeacher ? '👨‍🏫' : '📚'}
+            </div>
+            <div>
+              <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.05rem' }}>
+                {t('siteName')}
+              </div>
+              <div style={{ color: 'rgba(255,255,255,.72)', fontSize: '.78rem' }}>
+                {forTeacher ? t('login.teacherLogin') : t('login.studentLogin')}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* ── Email/Password Form ── */}
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">{t('login.email')}</label>
-            <input className="form-input" type="email" value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="example@email.com" required dir="ltr"
-              disabled={anyLoading} />
-          </div>
-          <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <label className="form-label" style={{ margin: 0 }}>{t('login.password')}</label>
-              <Link href="/auth/forgot-password" style={{ fontSize: '.82rem', color: 'var(--accent)', textDecoration: 'none' }}>
-                نسيت كلمة المرور؟
-              </Link>
+        {/* ── Tabs ── */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr',
+          background: '#e8f0fb', padding: '6px', gap: 4,
+        }}>
+          <button style={{
+            padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'default',
+            fontFamily: 'inherit', fontWeight: 700, fontSize: '.9rem',
+            background: '#fff', color: '#185FA5',
+            boxShadow: '0 2px 10px rgba(24,95,165,.14)',
+          }}>🔑 دخول</button>
+          <Link href={forTeacher ? '/auth/register/teacher' : '/auth/register'}
+            style={{
+              padding: '10px 0', borderRadius: 10, fontFamily: 'inherit',
+              fontWeight: 700, fontSize: '.9rem', background: 'transparent',
+              color: '#6b7280', textDecoration: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>✨ تسجيل جديد</Link>
+        </div>
+
+        {/* ── Form body ── */}
+        <div style={{ padding: '22px 24px 24px' }}>
+
+          {(error || urlErrorMsg) && (
+            <div className="alert alert-error" style={{ marginBottom: 16 }}>
+              {error || urlErrorMsg}
             </div>
-            <input className="form-input" type="password" value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••" required dir="ltr"
-              disabled={anyLoading} />
-          </div>
-          <button type="submit" className="btn btn-primary"
-            style={{ width: '100%', marginTop: 8 }} disabled={anyLoading}>
-            {loading ? <span className="spinner" /> : t('login.signIn')}
+          )}
+
+          {/* ── Google Sign-In Button ── */}
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={anyLoading}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 10, width: '100%', padding: '11px 16px', marginBottom: 18,
+              background: '#fff', border: '1.5px solid #dadce0', borderRadius: 10,
+              cursor: gLoading ? 'wait' : anyLoading ? 'not-allowed' : 'pointer',
+              fontSize: '1rem', fontFamily: 'inherit',
+              fontWeight: 600, color: '#3c4043',
+              boxShadow: '0 1px 3px rgba(0,0,0,.08)',
+              transition: 'box-shadow .15s, border-color .15s',
+              outline: 'none', WebkitTapHighlightColor: 'transparent',
+              opacity: anyLoading && !gLoading ? 0.6 : 1,
+            }}
+            onMouseEnter={e => { if (!anyLoading) { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.18)'; e.currentTarget.style.borderColor = '#c0c0c0'; } }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.08)'; e.currentTarget.style.borderColor = '#dadce0'; }}
+          >
+            {gLoading
+              ? <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} />
+              : <GoogleLogo />
+            }
+            <span>{gLoading ? 'جارٍ التحويل...' : 'تسجيل الدخول بواسطة Google'}</span>
           </button>
-        </form>
 
-        <p className="auth-footer">
-          {forTeacher
-            ? <>{t('login.newTeacher')} <Link href="/auth/register/teacher">{t('login.createTeacher')}</Link></>
-            : <>{t('login.noAccount')} <Link href="/auth/register">{t('login.createAccount')}</Link></>
-          }
-        </p>
+          {/* ── Divider ── */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            marginBottom: 18, color: '#9CA3AF', fontSize: '.85rem',
+          }}>
+            <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
+            <span>أو بالبريد الإلكتروني</span>
+            <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
+          </div>
 
-        {/* ── Session fix link ── */}
-        <p style={{ textAlign: 'center', marginTop: 12, fontSize: '.78rem', color: '#aaa' }}>
-          هل تواجه مشكلة في الدخول؟{' '}
-          <Link href="/auth/fix" style={{ color: '#aaa', textDecoration: 'underline' }}>
-            اضغط هنا
-          </Link>
-        </p>
+          {/* ── Email/Password Form ── */}
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label className="form-label">{t('login.email')}</label>
+              <IconInput icon="📧">
+                <input className="form-input" type="email" value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="example@email.com" required dir="ltr"
+                  disabled={anyLoading} style={{ paddingRight: 38 }} />
+              </IconInput>
+            </div>
+            <div className="form-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label className="form-label" style={{ margin: 0 }}>{t('login.password')}</label>
+                <Link href="/auth/forgot-password" style={{ fontSize: '.82rem', color: 'var(--accent)', textDecoration: 'none' }}>
+                  نسيت كلمة المرور؟
+                </Link>
+              </div>
+              <IconInput icon="🔒">
+                <input className="form-input" type="password" value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••" required dir="ltr"
+                  disabled={anyLoading} style={{ paddingRight: 38 }} />
+              </IconInput>
+            </div>
+            <button type="submit" className="btn btn-primary"
+              style={{ width: '100%', marginTop: 8 }} disabled={anyLoading}>
+              {loading ? <span className="spinner" /> : t('login.signIn')}
+            </button>
+          </form>
+
+          {/* ── Session fix link ── */}
+          <p style={{ textAlign: 'center', marginTop: 16, fontSize: '.78rem', color: '#aaa' }}>
+            هل تواجه مشكلة في الدخول؟{' '}
+            <Link href="/auth/fix" style={{ color: '#aaa', textDecoration: 'underline' }}>
+              اضغط هنا
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
