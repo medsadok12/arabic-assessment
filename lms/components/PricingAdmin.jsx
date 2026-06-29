@@ -306,11 +306,15 @@ const TYPE_LABELS = { lessons: 'دروس', content_only: 'محتوى', family: '
 
 /* ── PricingAdmin (main) ── */
 export default function PricingAdmin({ lang = 'ar' }) {
-  const [plans,   setPlans]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [modal,   setModal]   = useState(null);
-  const [delId,   setDelId]   = useState(null);
-  const [delBusy, setDelBusy] = useState(false);
+  const [plans,       setPlans]       = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [modal,       setModal]       = useState(null);
+  const [delId,       setDelId]       = useState(null);
+  const [delBusy,     setDelBusy]     = useState(false);
+  const [diag,        setDiag]        = useState(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [cleaning,    setCleaning]    = useState(false);
+  const [cleanMsg,    setCleanMsg]    = useState('');
 
   async function load() {
     setLoading(true);
@@ -321,6 +325,39 @@ export default function PricingAdmin({ lang = 'ar' }) {
   }
 
   useEffect(() => { load(); }, []);
+
+  async function checkDb() {
+    setDiagLoading(true);
+    setDiag(null);
+    setCleanMsg('');
+    try {
+      const r = await fetch('/api/bogga/pricing/cleanup');
+      const d = await r.json();
+      setDiag(d);
+    } catch { /* ignore */ }
+    setDiagLoading(false);
+  }
+
+  async function cleanupDuplicates() {
+    setCleaning(true);
+    setCleanMsg('');
+    try {
+      const r = await fetch('/api/bogga/pricing/cleanup', { method: 'POST' });
+      const d = await r.json();
+      if (d.error) {
+        setCleanMsg('❌ ' + d.error);
+      } else {
+        setCleanMsg(d.deleted > 0
+          ? `✅ تم حذف ${d.deleted} صف مكرر بنجاح`
+          : '✅ ' + (d.message || 'لا توجد صفوف مكررة'));
+        await load();
+        setDiag(null);
+      }
+    } catch (e) {
+      setCleanMsg('❌ ' + e.message);
+    }
+    setCleaning(false);
+  }
 
   function onSave(plan) {
     setPlans(prev => {
@@ -366,6 +403,30 @@ export default function PricingAdmin({ lang = 'ar' }) {
         <button onClick={() => setModal({ ...EMPTY })} className="btn btn-primary btn-sm">
           ➕ {lang === 'ar' ? 'باقة جديدة' : 'New Plan'}
         </button>
+      </div>
+
+      {/* Database diagnostic strip */}
+      <div style={{ marginBottom: 18, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '.82rem', color: '#64748b', fontWeight: 600 }}>🗄️ قاعدة البيانات</span>
+        <button onClick={checkDb} disabled={diagLoading} className="btn btn-outline btn-sm" style={{ fontSize: '.78rem', padding: '3px 12px' }}>
+          {diagLoading ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : '🔍 فحص'}
+        </button>
+        {diag && !diag.error && (
+          <>
+            <span style={{ fontSize: '.82rem', fontWeight: 700, color: diag.duplicateGroupCount > 0 ? '#b45309' : '#059669' }}>
+              {diag.total} خطة إجمالاً
+              {diag.duplicateGroupCount > 0 && ` · ⚠️ ${diag.duplicateGroupCount} مجموعة مكررة (${diag.toDeleteCount} صف زائد)`}
+              {diag.duplicateGroupCount === 0 && ' · لا تكرارات ✓'}
+            </span>
+            {diag.duplicateGroupCount > 0 && (
+              <button onClick={cleanupDuplicates} disabled={cleaning} className="btn btn-danger btn-sm" style={{ fontSize: '.78rem', padding: '3px 12px' }}>
+                {cleaning ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : '🧹 حذف التكرارات تلقائياً'}
+              </button>
+            )}
+          </>
+        )}
+        {diag?.error && <span style={{ color: '#dc2626', fontSize: '.8rem' }}>{diag.error}</span>}
+        {cleanMsg && <span style={{ fontSize: '.82rem', fontWeight: 600, color: cleanMsg.startsWith('✅') ? '#059669' : '#dc2626' }}>{cleanMsg}</span>}
       </div>
 
       {loading ? (
