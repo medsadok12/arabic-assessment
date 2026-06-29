@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { MessageCircle, UserPlus, LogIn, BookOpen } from 'lucide-react';
+import { MessageCircle, BookOpen } from 'lucide-react';
 
 const WHATSAPP_HREF = 'https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0';
 
@@ -64,8 +64,6 @@ export default function FloatingSidebar() {
   return (
     <>
       <nav className="fsr" aria-label="روابط الطالب السريعة">
-        <RailItem type="link" href="/auth/register" Icon={UserPlus} label={'تسجيل\nالطالب'} cls="fsr-reg" />
-        <RailItem type="link" href="/auth/login"    Icon={LogIn}     label={'دخول\nالطالب'}  cls="fsr-login" />
         <RailItem type="a"    href={WHATSAPP_HREF}  Icon={MessageCircle} label={'تواصل\nمعنا'} cls="fsr-wa" external />
         <RailItem Icon={BookOpen} label={'راسل\nالمرشد'} cls="fsr-sup" onClick={() => setOpen(true)} />
       </nav>
