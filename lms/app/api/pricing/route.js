@@ -11,7 +11,8 @@ export async function GET() {
       .from('pricing_plans')
       .select('*')
       .eq('is_active', true)
-      .order('sort_order', { ascending: true });
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false }); // prefer newest row when sort_order is tied (dedup safety)
 
     if (error) {
       console.error('[/api/pricing] supabase error:', error.message);
