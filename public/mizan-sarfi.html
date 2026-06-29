@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>الميزان الصرفي</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Cairo',sans-serif;background:#fff;overflow:hidden;color:#1a1a2e}
+
+/* ─── DECK ─── */
+#deck{width:100vw;height:100vh;position:relative}
+
+/* ─── SLIDE ─── */
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;
+  transform:translateX(-50px);
+  transition:opacity .4s ease,transform .4s ease;
+  overflow:hidden;
+}
+.slide.active{opacity:1;pointer-events:all;transform:translateX(0)}
+.slide.exit{opacity:0;transform:translateX(50px);pointer-events:none}
+
+/* ─── SLIDE HEADER STRIPE ─── */
+.s-header{
+  flex-shrink:0;
+  padding:18px 40px 16px;
+  display:flex;align-items:center;gap:14px;
+}
+.s-icon{font-size:2rem;line-height:1}
+.s-title{font-size:1.35rem;font-weight:900;letter-spacing:.3px}
+.s-tag{
+  margin-right:auto;
+  font-size:.82rem;font-weight:700;
+  padding:4px 14px;border-radius:20px;
+  background:rgba(255,255,255,.35);
+  white-space:nowrap;
+}
+
+/* ─── SLIDE BODY ─── */
+.s-body{
+  flex:1;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:0 48px 20px;
+  gap:20px;
+}
+
+/* ─── BACKGROUND THEMES ─── */
+.th-blue  {background:#f3f4f6}
+.th-blue  .s-header{background:linear-gradient(90deg,#1d4ed8,#2563eb);color:#fff}
+
+.th-green {background:#f3f4f6}
+.th-green .s-header{background:linear-gradient(90deg,#059669,#10b981);color:#fff}
+
+.th-purple{background:#f3f4f6}
+.th-purple .s-header{background:linear-gradient(90deg,#7c3aed,#8b5cf6);color:#fff}
+
+.th-orange{background:#f3f4f6}
+.th-orange .s-header{background:linear-gradient(90deg,#ea580c,#f97316);color:#fff}
+
+.th-teal  {background:#f3f4f6}
+.th-teal  .s-header{background:linear-gradient(90deg,#0d9488,#14b8a6);color:#fff}
+
+.th-red   {background:#f3f4f6}
+.th-red   .s-header{background:linear-gradient(90deg,#dc2626,#ef4444);color:#fff}
+
+.th-gold  {background:#f3f4f6}
+.th-gold  .s-header{background:linear-gradient(90deg,#b45309,#d97706);color:#fff}
+
+.th-navy  {background:linear-gradient(160deg,#1e1b4b 0%,#312e81 100%);color:#fff}
+.th-navy  .s-header{background:rgba(0,0,0,.25);color:#fff}
+
+/* ─── TYPOGRAPHY ─── */
+.main-word{
+  font-size:clamp(2.8rem,7vw,5rem);
+  font-weight:900;
+  text-align:center;
+  line-height:1.2;
+}
+.big-label{font-size:clamp(1.3rem,3vw,1.8rem);font-weight:700;text-align:center}
+.body-text{font-size:clamp(1rem,2.2vw,1.35rem);line-height:1.9;text-align:center;max-width:780px}
+
+/* ─── CARD ─── */
+.card{
+  background:#fff;
+  border-radius:20px;
+  padding:22px 28px;
+  box-shadow:0 4px 20px rgba(0,0,0,.08);
+  width:100%;max-width:820px;
+}
+.card-blue  {background:#eff6ff;border:2px solid #bfdbfe}
+.card-green {background:#f0fdf4;border:2px solid #bbf7d0}
+.card-purple{background:#f5f3ff;border:2px solid #ddd6fe}
+.card-orange{background:#fff7ed;border:2px solid #fed7aa}
+.card-teal  {background:#f0fdfa;border:2px solid #99f6e4}
+.card-red   {background:#fff1f2;border:2px solid #fecdd3}
+.card-gold  {background:#fffbeb;border:2px solid #fde68a}
+
+/* ─── LETTER BOXES ─── */
+.boxes-row{display:flex;justify-content:center;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.lbox{
+  display:flex;flex-direction:column;align-items:center;
+  border-radius:16px;padding:10px 6px 6px;
+  min-width:72px;
+}
+.lbox .ar{font-size:2.6rem;font-weight:900;line-height:1}
+.lbox .en{font-size:1rem;font-weight:900;opacity:.85;margin-top:4px}
+.lbox-f{background:#fef3c7;border:3px solid #f59e0b;color:#92400e}
+.lbox-a{background:#dbeafe;border:3px solid #3b82f6;color:#1e40af}
+.lbox-l{background:#d1fae5;border:3px solid #10b981;color:#065f46}
+.lbox-z{background:#fce7f3;border:3px solid #ec4899;color:#9d174d}
+.lbox-o{background:#f3f4f6;border:3px dashed #9ca3af;color:#6b7280;font-size:1.8rem!important}
+
+.equals{font-size:2rem;color:#94a3b8;align-self:center;margin:0 4px}
+
+/* ─── GRID ─── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;max-width:820px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;width:100%;max-width:860px}
+
+/* ─── TABLE ─── */
+.t-clean{border-collapse:collapse;width:100%;max-width:760px;font-size:1.05rem}
+.t-clean th,.t-clean td{padding:12px 16px;text-align:center;border:2px solid #e5e7eb}
+.t-clean thead th{font-weight:900;font-size:1.1rem;background:#1d4ed8;color:#fff}
+.t-clean tbody tr:nth-child(odd){background:#f8fafc}
+.ar-big{font-size:1.35rem;font-weight:700}
+
+/* ─── WAZN CHIP ─── */
+.wchip{
+  display:inline-block;
+  background:#1d4ed8;color:#fff;
+  font-size:1.1rem;font-weight:900;
+  padding:6px 20px;border-radius:50px;
+}
+.wchip-green{background:#059669}
+.wchip-purple{background:#7c3aed}
+.wchip-orange{background:#ea580c}
+.wchip-teal{background:#0d9488}
+
+/* ─── RULE BOX ─── */
+.rule{
+  display:flex;gap:14px;align-items:flex-start;
+  background:#fffbeb;border:2px solid #f59e0b;
+  border-radius:16px;padding:16px 20px;
+  width:100%;max-width:780px;
+  font-size:1.05rem;line-height:1.8;text-align:right;
+}
+.rule .icon{font-size:1.8rem;flex-shrink:0}
+
+/* ─── EXAMPLE ROW ─── */
+.ex-row{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  justify-content:center;
+}
+.ex-word{
+  font-size:1.8rem;font-weight:900;
+  background:#fff;border-radius:14px;
+  padding:8px 20px;box-shadow:0 2px 10px rgba(0,0,0,.08);
+}
+.ex-arrow{font-size:1.4rem;color:#94a3b8}
+.ex-wazn{
+  font-size:1.4rem;font-weight:900;
+  padding:8px 20px;border-radius:14px;
+}
+
+/* ─── EXERCISE STYLES ─── */
+/* Matching */
+.match-container{display:flex;gap:30px;justify-content:center;width:100%;max-width:860px;align-items:flex-start}
+.match-col{display:flex;flex-direction:column;gap:10px;flex:1}
+.match-col h3{font-size:1rem;font-weight:900;text-align:center;margin-bottom:4px;color:#64748b}
+.match-item{
+  padding:13px 18px;border-radius:14px;text-align:center;
+  font-size:1.1rem;font-weight:700;cursor:pointer;
+  transition:transform .15s,box-shadow .15s,background .15s;
+  user-select:none;position:relative;
+}
+.match-item:hover{transform:scale(1.03);box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.match-word{background:#fff;border:2px solid #cbd5e1;color:#1e293b}
+.match-wazn{background:#f8fafc;border:2px solid #cbd5e1;color:#1e293b}
+.match-item.selected{border-color:#1d4ed8;background:#dbeafe;transform:scale(1.04)}
+.match-item.matched{cursor:default;opacity:.95}
+.match-item.matched:hover{transform:none}
+/* pair colors — only on matched */
+[data-pair="p1"].matched{background:#bfdbfe!important;border-color:#1d4ed8!important;border-width:3px!important;color:#1e3a8a!important}
+[data-pair="p2"].matched{background:#ddd6fe!important;border-color:#7c3aed!important;border-width:3px!important;color:#3b0764!important}
+[data-pair="p3"].matched{background:#fdba74!important;border-color:#ea580c!important;border-width:3px!important;color:#7c2d12!important}
+[data-pair="p4"].matched{background:#fbcfe8!important;border-color:#db2777!important;border-width:3px!important;color:#831843!important}
+[data-pair="p5"].matched{background:#99f6e4!important;border-color:#0d9488!important;border-width:3px!important;color:#134e4a!important}
+[data-pair="p6"].matched{background:#fde68a!important;border-color:#d97706!important;border-width:3px!important;color:#713f12!important}
+/* selected highlight */
+[data-pair="p1"].selected{background:#dbeafe!important;border-color:#1d4ed8!important;border-width:3px!important;color:#1e3a8a!important}
+[data-pair="p2"].selected{background:#ede9fe!important;border-color:#7c3aed!important;border-width:3px!important;color:#3b0764!important}
+[data-pair="p3"].selected{background:#fed7aa!important;border-color:#ea580c!important;border-width:3px!important;color:#7c2d12!important}
+[data-pair="p4"].selected{background:#fce7f3!important;border-color:#db2777!important;border-width:3px!important;color:#831843!important}
+[data-pair="p5"].selected{background:#ccfbf1!important;border-color:#0d9488!important;border-width:3px!important;color:#134e4a!important}
+[data-pair="p6"].selected{background:#fef3c7!important;border-color:#d97706!important;border-width:3px!important;color:#713f12!important}
+.match-item.matched:hover{transform:none}
+.match-item.wrong-flash{animation:wflash .4s ease}
+@keyframes wflash{0%,100%{background:inherit}50%{background:#fee2e2;border-color:#ef4444}}
+
+/* Checkbox */
+.chk-list{list-style:none;width:100%;max-width:720px;display:flex;flex-direction:column;gap:10px}
+.chk-item{
+  display:flex;align-items:center;gap:14px;
+  background:#fff;border:2px solid #e2e8f0;
+  border-radius:14px;padding:14px 20px;cursor:pointer;
+  font-size:1.1rem;font-weight:600;
+  transition:border-color .2s,background .2s;
+}
+.chk-item:hover{border-color:#7c3aed;background:#f5f3ff}
+.chk-item input{width:22px;height:22px;cursor:pointer;accent-color:#7c3aed}
+.chk-item.correct-answer{border-color:#059669!important;background:#d1fae5!important}
+.chk-item.wrong-answer{border-color:#dc2626!important;background:#fee2e2!important}
+
+/* Fill table */
+.fill-table{border-collapse:collapse;width:100%;max-width:780px;font-size:1.05rem}
+.fill-table th,.fill-table td{padding:12px 14px;text-align:center;border:2px solid #e5e7eb}
+.fill-table thead th{background:#059669;color:#fff;font-size:1.1rem;font-weight:900}
+.fill-table tbody tr:nth-child(odd){background:#f8fafc}
+.fill-input{
+  width:100%;border:2px solid #d1d5db;border-radius:10px;
+  padding:8px 12px;font-family:'Cairo',sans-serif;font-size:1rem;
+  text-align:center;transition:border-color .2s,background .2s;background:#fff;
+}
+.fill-input:focus{outline:none;border-color:#059669;background:#f0fdf4}
+.fill-input.ok {border-color:#059669;background:#d1fae5;color:#065f46;font-weight:700}
+.fill-input.err{border-color:#dc2626;background:#fee2e2;color:#991b1b;font-weight:700}
+
+/* Buttons */
+.btn{
+  padding:13px 36px;border:none;border-radius:50px;
+  font-family:'Cairo',sans-serif;font-size:1.05rem;font-weight:900;
+  cursor:pointer;transition:transform .2s,box-shadow .2s;
+}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.btn-blue  {background:#1d4ed8;color:#fff}
+.btn-green {background:#059669;color:#fff}
+.btn-purple{background:#7c3aed;color:#fff}
+
+/* Result */
+.result-msg{font-size:1.1rem;font-weight:700;min-height:28px;text-align:center}
+
+/* ─── PROGRESS BAR ─── */
+#pbar{position:fixed;top:0;left:0;height:5px;background:linear-gradient(90deg,#1d4ed8,#7c3aed,#059669);z-index:999;transition:width .4s}
+
+/* ─── NAV ─── */
+#nav{position:fixed;bottom:18px;right:24px;display:flex;gap:10px;z-index:999}
+.nbtn{padding:10px 24px;border:none;border-radius:50px;font-family:'Cairo',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:transform .2s}
+.nbtn:hover{transform:translateY(-2px)}
+#nprev{background:#f1f5f9;color:#334155;border:2px solid #e2e8f0}
+#nnext{background:#1d4ed8;color:#fff}
+
+/* ─── DOTS ─── */
+#dots{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:999}
+.dot{width:9px;height:9px;border-radius:50%;background:#cbd5e1;cursor:pointer;transition:.25s}
+.dot.on{background:#1d4ed8;transform:scale(1.45)}
+
+#snum{position:fixed;bottom:22px;left:24px;font-size:.82rem;color:#94a3b8;font-weight:600;z-index:999}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:680px){
+  .s-body{padding:0 16px 70px}
+  .g2,.g3{grid-template-columns:1fr}
+  .match-container{flex-direction:column}
+  .lbox{min-width:56px}.lbox .ar{font-size:2rem}
+  .s-header{padding:14px 20px}
+}
+</style>
+</head>
+<body>
+<div id="pbar"></div>
+<div id="snum"></div>
+<div id="dots"></div>
+<div id="nav">
+  <button class="nbtn" id="nprev" onclick="go(-1)">◀ السابق</button>
+  <button class="nbtn" id="nnext" onclick="go(1)">التالي ▶</button>
+</div>
+
+<div id="deck">
+
+<!-- ══ 1. TITLE ══════════════════════════════════════════════════ -->
+<div class="slide th-navy active">
+  <div class="s-header" style="justify-content:center;padding:30px 40px 28px">
+    <span style="font-size:4rem">⚖️</span>
+  </div>
+  <div class="s-body" style="justify-content:center;gap:16px">
+    <p style="font-size:1rem;color:#a5b4fc;font-weight:700;letter-spacing:1px">الكلمة والجملة · الصرف</p>
+    <div class="main-word" style="color:#fff">الميزانُ<br><span style="color:#fcd34d">الصَّرْفِيّ</span></div>
+    <div style="width:60px;height:4px;background:linear-gradient(90deg,#818cf8,#fcd34d);border-radius:2px;margin:4px 0"></div>
+    <p style="color:#c7d2fe;font-size:1.1rem;font-weight:600;text-align:center">اضغط "التالي" للبدء ▶</p>
+  </div>
+</div>
+
+<!-- ══ 2. WHAT IS MIZAN ════════════════════════════════════════ -->
+<div class="slide th-blue">
+  <div class="s-header">
+    <span class="s-icon">🔍</span>
+    <span class="s-title" style="color:#fff">ما هو الميزان الصرفي؟</span>
+    <span class="s-tag">التعريف</span>
+  </div>
+  <div class="s-body">
+    <h2 style="font-size:clamp(1.8rem,4.5vw,2.8rem);font-weight:900;color:#dc2626;text-align:center;letter-spacing:.5px">
+      تعريف الميزان الصرفي
+    </h2>
+    <p class="body-text" style="font-size:clamp(1.1rem,2.5vw,1.45rem)">
+      المِيزَانُ الصَّرْفِيُّ هو <strong style="color:#1d4ed8">القَالَبُ</strong> الَّذِي تُوزَنُ بِهِ الكَلِمَةُ
+      لِتُعْرَفَ أَحْرُفُهَا <strong style="color:#1d4ed8">الأَصْلِيَّةُ</strong> وَالزَّائِدَةُ وَالمَحْذُوفَةُ.
+    </p>
+    <div class="card card-blue" style="text-align:center;max-width:680px">
+
+      <div class="main-word" style="color:#1d4ed8;font-size:clamp(3rem,8vw,5.5rem)">فَعَلَ</div>
+      <div class="boxes-row" style="margin-top:18px">
+        <div class="lbox lbox-f"><span class="ar">فَ</span><span class="en">الحرف الأول</span></div>
+        <div class="lbox lbox-a"><span class="ar">عَ</span><span class="en">الحرف الثاني</span></div>
+        <div class="lbox lbox-l"><span class="ar">لَ</span><span class="en">الحرف الثالث</span></div>
+      </div>
+    </div>
+    <div class="rule">
+      <span class="icon">💡</span>
+      <span>كل حرف في الكلمة يُقابَل بحرف مناسب في الميزان، وتنتقل الحركات كما هي</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 3. HOW IT WORKS ════════════════════════════════════════ -->
+<div class="slide th-green">
+  <div class="s-header">
+    <span class="s-icon">⚙️</span>
+    <span class="s-title" style="color:#fff">كيف نَزِن الفعل؟</span>
+    <span class="s-tag">خطوة بخطوة</span>
+  </div>
+  <div class="s-body" style="gap:14px">
+    <p class="body-text">نُقابل كل حرف من الكلمة بحرف من الميزان</p>
+
+    <!-- كتب -->
+    <div class="card card-green" style="max-width:720px;text-align:center;padding:16px 24px">
+      <p style="font-size:1rem;color:#065f46;font-weight:700;margin-bottom:10px">مثال ❶ — الفعل <span style="font-size:1.3rem">كَتَبَ</span></p>
+      <div class="boxes-row">
+        <div class="lbox lbox-f"><span class="ar">كَ</span><span class="en">فَ</span></div>
+        <div class="lbox lbox-a"><span class="ar">تَ</span><span class="en">عَ</span></div>
+        <div class="lbox lbox-l"><span class="ar">بَ</span><span class="en">لَ</span></div>
+        <span class="equals">＝</span>
+        <div class="lbox" style="min-width:110px;background:#059669;border:3px solid #059669;color:#fff;padding:10px 14px">
+          <span class="ar" style="font-size:2.2rem;letter-spacing:2px">فَعَلَ</span>
+          <span class="en" style="color:rgba(255,255,255,.8)">الوزن</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ركب -->
+    <div class="card card-green" style="max-width:720px;text-align:center;padding:16px 24px">
+      <p style="font-size:1rem;color:#065f46;font-weight:700;margin-bottom:10px">مثال ❷ — الفعل <span style="font-size:1.3rem">رَكِبَ</span></p>
+      <div class="boxes-row">
+        <div class="lbox lbox-f"><span class="ar">رَ</span><span class="en">فَ</span></div>
+        <div class="lbox lbox-a" style="background:#fee2e2;border-color:#ef4444;color:#991b1b"><span class="ar">كِ</span><span class="en" style="color:#991b1b">عِ</span></div>
+        <div class="lbox lbox-l"><span class="ar">بَ</span><span class="en">لَ</span></div>
+        <span class="equals">＝</span>
+        <div class="lbox" style="min-width:110px;background:#059669;border:3px solid #059669;color:#fff;padding:10px 14px">
+          <span class="ar" style="font-size:2.2rem;letter-spacing:2px">فَعِلَ</span>
+          <span class="en" style="color:rgba(255,255,255,.8)">الوزن</span>
+        </div>
+      </div>
+      <p style="font-size:.9rem;color:#64748b;margin-top:8px">الكسرة تحت الكاف ← تنتقل إلى العين في الميزان</p>
+    </div>
+
+    <!-- كبر -->
+    <div class="card card-green" style="max-width:720px;text-align:center;padding:16px 24px">
+      <p style="font-size:1rem;color:#065f46;font-weight:700;margin-bottom:10px">مثال ❸ — الفعل <span style="font-size:1.3rem">كَبُرَ</span></p>
+      <div class="boxes-row">
+        <div class="lbox lbox-f"><span class="ar">كَ</span><span class="en">فَ</span></div>
+        <div class="lbox lbox-a" style="background:#fef3c7;border-color:#f59e0b;color:#92400e"><span class="ar">بُ</span><span class="en" style="color:#92400e">عُ</span></div>
+        <div class="lbox lbox-l"><span class="ar">رَ</span><span class="en">لَ</span></div>
+        <span class="equals">＝</span>
+        <div class="lbox" style="min-width:110px;background:#059669;border:3px solid #059669;color:#fff;padding:10px 14px">
+          <span class="ar" style="font-size:2.2rem;letter-spacing:2px">فَعُلَ</span>
+          <span class="en" style="color:rgba(255,255,255,.8)">الوزن</span>
+        </div>
+      </div>
+      <p style="font-size:.9rem;color:#64748b;margin-top:8px">الضمة على الباء ← تنتقل إلى العين في الميزان</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 4. THULATHI MUJARRAD ════════════════════════════════════ -->
+<div class="slide th-blue">
+  <div class="s-header">
+    <span class="s-icon">1️⃣</span>
+    <span class="s-title" style="color:#fff">الثلاثي المجرد — ثلاثة أوزان</span>
+    <span class="s-tag">مجرد</span>
+  </div>
+  <div class="s-body">
+    <h2 style="font-size:clamp(1.6rem,4vw,2.4rem);font-weight:900;color:#1d4ed8;text-align:center">الفعل الثلاثي المجرد</h2>
+    <div class="g3">
+      <!-- فتحة -->
+      <div class="card" style="text-align:center;border:3px solid #f59e0b">
+        <span class="wchip" style="background:#b45309;font-size:1.3rem;margin-bottom:10px;display:block">فَعَلَ</span>
+        <p style="font-size:.9rem;color:#92400e;font-weight:700;margin-bottom:10px">حركة العين: <span style="background:#fef3c7;padding:2px 8px;border-radius:6px;color:#92400e">فَتْحَة</span></p>
+        <div class="ex-row" style="flex-direction:column;gap:8px">
+          <span style="font-size:1.4rem;font-weight:800">كَ<span style="background:#fef3c7;border-radius:6px;padding:0 4px;color:#b45309;border:2px solid #f59e0b">تَ</span>بَ</span>
+          <span style="font-size:1.4rem;font-weight:800">نَ<span style="background:#fef3c7;border-radius:6px;padding:0 4px;color:#b45309;border:2px solid #f59e0b">صَ</span>رَ</span>
+          <span style="font-size:1.4rem;font-weight:800">ذَ<span style="background:#fef3c7;border-radius:6px;padding:0 4px;color:#b45309;border:2px solid #f59e0b">هَ</span>بَ</span>
+        </div>
+      </div>
+      <!-- كسرة -->
+      <div class="card" style="text-align:center;border:3px solid #3b82f6">
+        <span class="wchip" style="font-size:1.3rem;margin-bottom:10px;display:block">فَعِلَ</span>
+        <p style="font-size:.9rem;color:#1e40af;font-weight:700;margin-bottom:10px">حركة العين: <span style="background:#dbeafe;padding:2px 8px;border-radius:6px;color:#1e40af">كَسْرَة</span></p>
+        <div class="ex-row" style="flex-direction:column;gap:8px">
+          <span style="font-size:1.4rem;font-weight:800;color:#dc2626">شَ<span style="background:#dbeafe;border-radius:6px;padding:0 4px;color:#1e40af;border:2px solid #3b82f6">هِ</span>دَ</span>
+          <span style="font-size:1.4rem;font-weight:800">عَ<span style="background:#dbeafe;border-radius:6px;padding:0 4px;color:#1e40af;border:2px solid #3b82f6">لِ</span>مَ</span>
+          <span style="font-size:1.4rem;font-weight:800">فَ<span style="background:#dbeafe;border-radius:6px;padding:0 4px;color:#1e40af;border:2px solid #3b82f6">رِ</span>حَ</span>
+        </div>
+      </div>
+      <!-- ضمة -->
+      <div class="card" style="text-align:center;border:3px solid #10b981">
+        <span class="wchip wchip-green" style="font-size:1.3rem;margin-bottom:10px;display:block">فَعُلَ</span>
+        <p style="font-size:.9rem;color:#065f46;font-weight:700;margin-bottom:10px">حركة العين: <span style="background:#d1fae5;padding:2px 8px;border-radius:6px;color:#065f46">ضَمَّة</span></p>
+        <div class="ex-row" style="flex-direction:column;gap:8px">
+          <span style="font-size:1.4rem;font-weight:800;color:#dc2626">شَ<span style="background:#d1fae5;border-radius:6px;padding:0 4px;color:#065f46;border:2px solid #10b981">رُ</span>فَ</span>
+          <span style="font-size:1.4rem;font-weight:800">كَ<span style="background:#d1fae5;border-radius:6px;padding:0 4px;color:#065f46;border:2px solid #10b981">رُ</span>مَ</span>
+          <span style="font-size:1.4rem;font-weight:800">حَ<span style="background:#d1fae5;border-radius:6px;padding:0 4px;color:#065f46;border:2px solid #10b981">سُ</span>نَ</span>
+        </div>
+      </div>
+    </div>
+    <div class="rule">
+      <span class="icon">👁️</span>
+      <span>الحرف الأوسط (العين) مُلوَّن في كل مثال — لاحِظ كيف تتغيّر حركته فيتغيّر الوزن!</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 5. RUBA'I MUJARRAD ══════════════════════════════════════ -->
+<div class="slide th-purple">
+  <div class="s-header">
+    <span class="s-icon">4️⃣</span>
+    <span class="s-title" style="color:#fff">الرباعي المجرد — وزن فَعْلَلَ</span>
+    <span class="s-tag">مجرد</span>
+  </div>
+  <div class="s-body">
+    <h2 style="font-size:clamp(1.6rem,4vw,2.4rem);font-weight:900;color:#7c3aed;text-align:center">الفعل الرباعي المجرد</h2>
+    <div class="card card-purple" style="text-align:center;max-width:640px">
+      <span class="wchip wchip-purple" style="font-size:1.6rem;margin-bottom:16px;display:block">فَعْلَلَ</span>
+      <div class="boxes-row" style="justify-content:center">
+        <div class="lbox lbox-f"><span class="ar">فَ</span><span class="en">ف</span></div>
+        <div class="lbox lbox-a"><span class="ar">عْ</span><span class="en">ع</span></div>
+        <div class="lbox lbox-l"><span class="ar">لَ</span><span class="en">ل</span></div>
+        <div class="lbox lbox-z"><span class="ar">لَ</span><span class="en">ل</span></div>
+      </div>
+    </div>
+    <div class="g2" style="max-width:720px">
+      <div class="card card-purple" style="text-align:center">
+        <p style="font-size:1rem;color:#5b21b6;font-weight:700;margin-bottom:12px">الفعل <span style="font-size:1.4rem">زَلْزَلَ</span></p>
+        <div class="boxes-row" style="gap:6px">
+          <div class="lbox lbox-f" style="min-width:56px"><span class="ar" style="font-size:2rem">زَ</span><span class="en">ف</span></div>
+          <div class="lbox lbox-a" style="min-width:56px"><span class="ar" style="font-size:2rem">لْ</span><span class="en">ع</span></div>
+          <div class="lbox lbox-l" style="min-width:56px"><span class="ar" style="font-size:2rem">زَ</span><span class="en">ل</span></div>
+          <div class="lbox lbox-z" style="min-width:56px"><span class="ar" style="font-size:2rem">لَ</span><span class="en">ل٢</span></div>
+        </div>
+        <span class="wchip wchip-purple" style="margin-top:12px;display:inline-block">فَعْلَلَ</span>
+      </div>
+      <div class="card card-purple" style="text-align:center">
+        <p style="font-size:1rem;color:#5b21b6;font-weight:700;margin-bottom:12px">الفعل <span style="font-size:1.4rem">دَحْرَجَ</span></p>
+        <div class="boxes-row" style="gap:6px">
+          <div class="lbox lbox-f" style="min-width:56px"><span class="ar" style="font-size:2rem">دَ</span><span class="en">ف</span></div>
+          <div class="lbox lbox-a" style="min-width:56px"><span class="ar" style="font-size:2rem">حْ</span><span class="en">ع</span></div>
+          <div class="lbox lbox-l" style="min-width:56px"><span class="ar" style="font-size:2rem">رَ</span><span class="en">ل</span></div>
+          <div class="lbox lbox-z" style="min-width:56px"><span class="ar" style="font-size:2rem">جَ</span><span class="en">ل٢</span></div>
+        </div>
+        <span class="wchip wchip-purple" style="margin-top:12px;display:inline-block">فَعْلَلَ</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 5b. RUBA'I MAZEED ══════════════════════════════════════ -->
+<div class="slide th-purple">
+  <div class="s-header">
+    <span class="s-icon">➕</span>
+    <span class="s-title" style="color:#fff">الفعل الرباعي المزيد</span>
+    <span class="s-tag">مزيد</span>
+  </div>
+  <div class="s-body" style="gap:18px">
+    <h2 style="font-size:clamp(1.6rem,4vw,2.4rem);font-weight:900;color:#7c3aed;text-align:center">الفعل الرباعي المزيد</h2>
+    <div class="rule" style="background:#f5f3ff;border-color:#8b5cf6;max-width:720px">
+      <span class="icon">📌</span>
+      <span>يُزاد على الرباعي المجرد حرفٌ واحد وهو <strong style="color:#7c3aed">التاء</strong> في أوله، فيصير وزنه <strong style="color:#7c3aed">تَفَعْلَلَ</strong></span>
+    </div>
+    <div class="card card-purple" style="max-width:740px;width:100%;text-align:center;padding:18px 24px">
+      <span class="wchip wchip-purple" style="font-size:1.6rem;margin-bottom:16px;display:block">تَفَعْلَلَ</span>
+      <p style="font-size:.9rem;color:#5b21b6;margin-bottom:6px">حرف الزيادة = <span style="background:#ddd6fe;color:#5b21b6;padding:2px 10px;border-radius:6px;font-weight:700">التاء في الأول</span></p>
+    </div>
+    <div class="g3" style="max-width:820px">
+      <div class="card card-purple" style="text-align:center">
+        <div style="font-size:2rem;font-weight:900;margin-bottom:8px">
+          <span style="color:#dc2626;background:#fecdd3;border-radius:6px;padding:0 4px">تَ</span>دَحْرَجَ
+        </div>
+        <div class="wchip wchip-purple" style="font-size:.95rem">تَفَعْلَلَ</div>
+        <p style="font-size:.85rem;color:#5b21b6;margin-top:8px">من الرباعي: دَحْرَجَ</p>
+      </div>
+      <div class="card card-purple" style="text-align:center">
+        <div style="font-size:2rem;font-weight:900;margin-bottom:8px">
+          <span style="color:#dc2626;background:#fecdd3;border-radius:6px;padding:0 4px">تَ</span>زَلْزَلَ
+        </div>
+        <div class="wchip wchip-purple" style="font-size:.95rem">تَفَعْلَلَ</div>
+        <p style="font-size:.85rem;color:#5b21b6;margin-top:8px">من الرباعي: زَلْزَلَ</p>
+      </div>
+      <div class="card card-purple" style="text-align:center">
+        <div style="font-size:2rem;font-weight:900;margin-bottom:8px">
+          <span style="color:#dc2626;background:#fecdd3;border-radius:6px;padding:0 4px">تَ</span>زَحْزَحَ
+        </div>
+        <div class="wchip wchip-purple" style="font-size:.95rem">تَفَعْلَلَ</div>
+        <p style="font-size:.85rem;color:#5b21b6;margin-top:8px">من الرباعي: زَحْزَحَ</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 6. MAZEED INTRO ═══════════════════════════════════════ -->
+<div class="slide th-orange">
+  <div class="s-header">
+    <span class="s-icon">➕</span>
+    <span class="s-title" style="color:#fff">الأفعال المزيدة</span>
+    <span class="s-tag">مزيد</span>
+  </div>
+  <div class="s-body" style="gap:14px">
+    <h2 style="font-size:clamp(1.5rem,3.5vw,2rem);font-weight:900;color:#ea580c;text-align:center">
+      الفعل الثلاثي المزيد بحرفٍ وبحرفَين وبثلاثةِ أحرف
+    </h2>
+    <p style="font-size:.95rem;color:#9a3412;font-weight:700;text-align:center">
+      الأحرف <span style="background:#fecdd3;color:#dc2626;padding:2px 10px;border-radius:6px;border:2px solid #f87171">باللون الأحمر</span> هي أحرف الزيادة
+    </p>
+
+    <!-- بحرف -->
+    <div class="card card-orange" style="max-width:820px;width:100%;padding:14px 20px">
+      <p style="font-weight:900;color:#ea580c;font-size:1rem;margin-bottom:10px">📌 مزيد بحرفٍ واحد</p>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:center;align-items:flex-end">
+        <div style="text-align:center">
+          <div style="font-size:2rem;font-weight:900"><span style="color:#dc2626;background:#fecdd3;border-radius:6px;padding:0 4px">أَ</span>كْرَمَ</div>
+          <div style="font-size:.95rem;color:#78350f;font-weight:700;margin-top:6px">أَفْعَلَ</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:2rem;font-weight:900">قَ<span style="color:#dc2626;background:#fecdd3;border-radius:6px;padding:0 4px">ا</span>تَلَ</div>
+          <div style="font-size:.95rem;color:#78350f;font-weight:700;margin-top:6px">فَاعَلَ</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- بحرفين -->
+    <div class="card card-orange" style="max-width:820px;width:100%;padding:14px 20px">
+      <p style="font-weight:900;color:#ea580c;font-size:1rem;margin-bottom:10px">📌 مزيد بحرفَين</p>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:center;align-items:flex-end">
+        <div style="text-align:center">
+          <div style="font-size:2rem;font-weight:900"><span style="color:#dc2626;background:#fecdd3;border-radius:6px;padding:0 4px">انْ</span>كَسَرَ</div>
+          <div style="font-size:.95rem;color:#78350f;font-weight:700;margin-top:6px">انْفَعَلَ</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:2rem;font-weight:900"><span style="color:#dc2626;background:#fecdd3;border-radius:6px;padding:0 4px">ا</span>جْ<span style="color:#dc2626;background:#fecdd3;border-radius:6px;padding:0 4px">تَ</span>مَعَ</div>
+          <div style="font-size:.95rem;color:#78350f;font-weight:700;margin-top:6px">افْتَعَلَ</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:2rem;font-weight:900"><span style="color:#dc2626;background:#fecdd3;border-radius:6px;padding:0 4px">تَ</span>عَ<span style="color:#dc2626;background:#fecdd3;border-radius:6px;padding:0 4px">ا</span>وَنَ</div>
+          <div style="font-size:.95rem;color:#78350f;font-weight:700;margin-top:6px">تَفَاعَلَ</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- بثلاثة -->
+    <div class="card card-orange" style="max-width:820px;width:100%;padding:14px 20px">
+      <p style="font-weight:900;color:#ea580c;font-size:1rem;margin-bottom:10px">📌 مزيد بثلاثة أحرف</p>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:center;align-items:flex-end">
+        <div style="text-align:center">
+          <div style="font-size:2rem;font-weight:900"><span style="color:#dc2626;background:#fecdd3;border-radius:6px;padding:0 4px">اسْتَ</span>خْرَجَ</div>
+          <div style="font-size:.95rem;color:#78350f;font-weight:700;margin-top:6px">اسْتَفْعَلَ</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:2rem;font-weight:900"><span style="color:#dc2626;background:#fecdd3;border-radius:6px;padding:0 4px">اسْتَ</span>قْبَلَ</div>
+          <div style="font-size:.95rem;color:#78350f;font-weight:700;margin-top:6px">اسْتَفْعَلَ</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:2rem;font-weight:900"><span style="color:#dc2626;background:#fecdd3;border-radius:6px;padding:0 4px">اسْتَ</span>عْمَلَ</div>
+          <div style="font-size:.95rem;color:#78350f;font-weight:700;margin-top:6px">اسْتَفْعَلَ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 7. MAZEED SUMMARY TABLE ════════════════════════════════ -->
+<div class="slide th-orange">
+  <div class="s-header">
+    <span class="s-icon">➕</span>
+    <span class="s-title" style="color:#fff">الأفعال المزيدة — جدول الأوزان</span>
+    <span class="s-tag">مزيد</span>
+  </div>
+  <div class="s-body" style="gap:14px">
+    <p class="body-text" style="font-size:1rem">الفعل المزيد = الثلاثي أو الرباعي + <strong style="color:#ea580c">أحرف زائدة</strong></p>
+    <table class="t-clean" style="max-width:800px">
+      <thead><tr><th>الوزن</th><th>مثال</th><th>نوعه</th></tr></thead>
+      <tbody>
+        <tr><td class="ar-big" style="color:#ea580c">أَفْعَلَ</td><td class="ar-big">أَخْرَجَ</td><td>ثلاثي مزيد بحرف</td></tr>
+        <tr><td class="ar-big" style="color:#ea580c">فَعَّلَ</td><td class="ar-big">قَدَّمَ</td><td>ثلاثي مزيد بحرف</td></tr>
+        <tr><td class="ar-big" style="color:#ea580c">فَاعَلَ</td><td class="ar-big">دَافَعَ</td><td>ثلاثي مزيد بحرف</td></tr>
+        <tr><td class="ar-big" style="color:#7c3aed">انْفَعَلَ</td><td class="ar-big">انْكَسَرَ</td><td>ثلاثي مزيد بحرفين</td></tr>
+        <tr><td class="ar-big" style="color:#7c3aed">افْتَعَلَ</td><td class="ar-big">اجْتَمَعَ</td><td>ثلاثي مزيد بحرفين</td></tr>
+        <tr><td class="ar-big" style="color:#7c3aed">تَفَعَّلَ</td><td class="ar-big">تَقَدَّمَ</td><td>ثلاثي مزيد بحرفين</td></tr>
+        <tr><td class="ar-big" style="color:#7c3aed">تَفَاعَلَ</td><td class="ar-big">تَدَافَعَ</td><td>ثلاثي مزيد بحرفين</td></tr>
+        <tr><td class="ar-big" style="color:#059669">اسْتَفْعَلَ</td><td class="ar-big">اسْتَخْرَجَ</td><td>ثلاثي مزيد بثلاثة</td></tr>
+        <tr><td class="ar-big" style="color:#0d9488">تَفَعْلَلَ</td><td class="ar-big">تَدَحْرَجَ</td><td>رباعي مزيد بحرف</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ 7. NAMES ════════════════════════════════════════════════ -->
+<div class="slide th-teal">
+  <div class="s-header">
+    <span class="s-icon">📝</span>
+    <span class="s-title" style="color:#fff">وزن الأسماء</span>
+    <span class="s-tag">أسماء</span>
+  </div>
+  <div class="s-body">
+    <p class="body-text" style="font-size:clamp(1rem,2.2vw,1.3rem);line-height:2;text-align:right;max-width:820px">
+      لِمَعْرِفَةِ الوَزْنِ الصَّرْفِيِّ يَتَوَجَّبُ مَعْرِفَةُ <strong style="color:#0d9488">الجِذْرِ الأَصْلِيِّ</strong> لِلْكَلِمَةِ.
+      فَالاسْمُ <strong>(مُوَاصَلَة)</strong> جِذْرُهُ أَصْلُهُ <strong style="color:#0d9488">(و، ص، ل)</strong>
+      وَ<strong>(إِبْدَاع)</strong> جِذْرُهُ أَصْلُهُ <strong style="color:#0d9488">(ب، د، ع)</strong>،
+      وَتُوزَنُ الأَحْرُفُ الأَصْلِيَّةُ بِمَا يُقَابِلُهَا وَتُوضَعُ <strong>الحُرُوفُ الزَّائِدَةُ</strong> فِي مَوْضِعِهَا مِنَ الاسْمِ المَوْزُونِ.
+      إِذَا حُذِفَ أَحَدُ الحُرُوفِ الأَصْلِيَّةِ مِنَ الاسْمِ فَإِنَّ الحَرْفَ الَّذِي يُقَابِلُهُ فِي الوَزْنِ يَسْقُطُ أَيْضاً،
+      مِثَالُ: <strong style="color:#dc2626">(صِلَة)</strong> وَزْنُهَا <strong style="color:#dc2626">(عِلَة)</strong>.
+    </p>
+    <table class="t-clean" style="max-width:740px">
+      <thead><tr><th>الكلمة</th><th>الجذر</th><th>الوزن</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="ar-big" style="color:#0d9488">مَوْصُول</td>
+          <td style="color:#475569">و ص ل</td>
+          <td><span class="wchip wchip-teal" style="font-size:1rem">مَفْعُول</span></td>
+        </tr>
+        <tr>
+          <td class="ar-big" style="color:#0d9488">وَاصِل</td>
+          <td style="color:#475569">و ص ل</td>
+          <td><span class="wchip wchip-teal" style="font-size:1rem">فَاعِل</span></td>
+        </tr>
+        <tr>
+          <td class="ar-big" style="color:#0d9488">مُوَاصَلَة</td>
+          <td style="color:#475569">و ص ل</td>
+          <td><span class="wchip wchip-teal" style="font-size:1rem">مُفَاعَلَة</span></td>
+        </tr>
+        <tr>
+          <td class="ar-big" style="color:#0d9488">صِلَة</td>
+          <td style="color:#475569">و ص ل</td>
+          <td><span class="wchip wchip-teal" style="font-size:1rem">عِلَة</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="rule" style="background:#f0fdfa;border-color:#0d9488">
+      <span class="icon">📌</span>
+      <span>إذا حُذف حرف أصلي في الاسم — يُحذف ما يقابله في الميزان أيضاً<br>
+      مثال: <strong>صِلَة</strong> أصلها وِصْلَة حُذفت الواو ← الوزن عِلَة (لا فِعْلَة)</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 8. EXCLUSIONS ══════════════════════════════════════════ -->
+<div class="slide th-red">
+  <div class="s-header">
+    <span class="s-icon">🚫</span>
+    <span class="s-title" style="color:#fff">ما لا يُوزن بالميزان الصرفي</span>
+    <span class="s-tag">استثناءات</span>
+  </div>
+  <div class="s-body">
+    <p class="body-text">بعض الكلمات لا يُطبَّق عليها الميزان — نحفظها كقاعدة</p>
+    <div class="g2" style="max-width:760px">
+      <div class="card card-red" style="text-align:center">
+        <p style="font-size:1.1rem;font-weight:900;color:#dc2626;margin-bottom:12px">🔴 الأسماء المبنية</p>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:1.15rem;font-weight:700">
+          <span>الضمائر: أنا، هو، هم</span>
+          <span>الإشارة: هذا، تلك</span>
+          <span>الموصولة: الذي، التي</span>
+        </div>
+      </div>
+      <div class="card card-red" style="text-align:center">
+        <p style="font-size:1.1rem;font-weight:900;color:#dc2626;margin-bottom:12px">🔴 الأسماء الأعجمية</p>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:1.15rem;font-weight:700">
+          <span>إبراهيم، إسحاق</span>
+          <span>يعقوب، إسماعيل</span>
+          <span>وموسى، وعيسى</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ 9. EXERCISE 1 — MATCHING ════════════════════════════════ -->
+<div class="slide th-gold">
+  <div class="s-header">
+    <span class="s-icon">🎯</span>
+    <span class="s-title" style="color:#fff">تدريب ١ — صِل كل كلمة بوزنها الصحيح</span>
+  </div>
+  <div class="s-body" style="gap:14px">
+    <p class="body-text" style="font-size:1rem;color:#78350f">اضغط على كلمة ثم اضغط على وزنها المقابل</p>
+    <div class="match-container">
+      <div class="match-col">
+        <h3>الكلمات</h3>
+        <div class="match-item match-word" data-id="w1" data-pair="p1" onclick="pick(this)">انْكَسَرَ</div>
+        <div class="match-item match-word" data-id="w2" data-pair="p2" onclick="pick(this)">اجْتِمَاع</div>
+        <div class="match-item match-word" data-id="w3" data-pair="p3" onclick="pick(this)">تَرَوَّى</div>
+        <div class="match-item match-word" data-id="w4" data-pair="p4" onclick="pick(this)">ابْيَضَّ</div>
+        <div class="match-item match-word" data-id="w5" data-pair="p5" onclick="pick(this)">اسْتَفَادَ</div>
+        <div class="match-item match-word" data-id="w6" data-pair="p6" onclick="pick(this)">الانْتِخَابَات</div>
+      </div>
+      <div class="match-col">
+        <h3>الأوزان</h3>
+        <div class="match-item match-wazn" data-id="z3" data-pair="p3" onclick="pick(this)">تَفَعَّلَ</div>
+        <div class="match-item match-wazn" data-id="z6" data-pair="p6" onclick="pick(this)">الافْتِعَالات</div>
+        <div class="match-item match-wazn" data-id="z1" data-pair="p1" onclick="pick(this)">انْفَعَلَ</div>
+        <div class="match-item match-wazn" data-id="z5" data-pair="p5" onclick="pick(this)">اسْتَفْعَلَ</div>
+        <div class="match-item match-wazn" data-id="z4" data-pair="p4" onclick="pick(this)">افْعَلَّ</div>
+        <div class="match-item match-wazn" data-id="z2" data-pair="p2" onclick="pick(this)">افْتِعَال</div>
+      </div>
+    </div>
+    <div id="match-result" class="result-msg"></div>
+  </div>
+</div>
+
+<!-- ══ 10. EXERCISE 2 — CHECKBOX ══════════════════════════════ -->
+<div class="slide th-purple">
+  <div class="s-header">
+    <span class="s-icon">✅</span>
+    <span class="s-title" style="color:#fff">تدريب ٢ — ما الجملة التي تحوي فعلاً على وزن "انفعل" مما يأتي؟</span>
+  </div>
+  <div class="s-body" style="gap:16px">
+    <p class="body-text" style="font-size:1rem;color:#4c1d95">ضع علامة ✓ على الجمل الصحيحة ثم اضغط "تحقق"</p>
+    <ul class="chk-list" id="chklist">
+      <li class="chk-item" data-correct="false" onclick="toggle(this)"><input type="checkbox" id="c1"/> انتبَهَ الطلابُ لشرح المعلم</li>
+      <li class="chk-item" data-correct="false" onclick="toggle(this)"><input type="checkbox" id="c2"/> انتصَرَ الجيشُ في كل معاركه</li>
+      <li class="chk-item" data-correct="false" onclick="toggle(this)"><input type="checkbox" id="c3"/> تَحَمَّلَ المواطنون مسؤولياتهم</li>
+      <li class="chk-item" data-correct="false" onclick="toggle(this)"><input type="checkbox" id="c4"/> انتقَلَ أخي إلى صفوف المرحلة الثانوية</li>
+      <li class="chk-item" data-correct="true"  onclick="toggle(this)"><input type="checkbox" id="c5"/> انطلَقَ المُسعفون مُسرعين لإنقاذ المريض</li>
+    </ul>
+    <button class="btn btn-purple" onclick="checkChk()">تحقق من إجاباتي ✓</button>
+    <div id="chk-result" class="result-msg"></div>
+  </div>
+</div>
+
+<!-- ══ 12. END ══════════════════════════════════════════════════ -->
+<div class="slide th-navy">
+  <div class="s-header" style="justify-content:center;padding:24px 40px">
+    <span style="font-size:3.5rem">🏆</span>
+  </div>
+  <div class="s-body" style="gap:24px;justify-content:center">
+    <div style="font-size:clamp(3rem,9vw,6rem);font-weight:900;color:#fcd34d;text-align:center;line-height:1.2">
+      أحسنتَ يا بطل
+    </div>
+    <p style="color:#c7d2fe;font-size:clamp(1.2rem,3vw,1.8rem);font-weight:700;text-align:center">
+      على اجتهادك 🌟
+    </p>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<script>
+const TOTAL=13;
+let current=0;
+const slides=Array.from(document.querySelectorAll('.slide'));
+const pbar=document.getElementById('pbar');
+const snum=document.getElementById('snum');
+const dotsEl=document.getElementById('dots');
+
+// dots
+slides.forEach((_,i)=>{
+  const d=document.createElement('div');
+  d.className='dot'+(i===0?' on':'');
+  d.onclick=()=>goTo(i);
+  dotsEl.appendChild(d);
+});
+
+function updateUI(){
+  pbar.style.width=((current+1)/TOTAL*100)+'%';
+  snum.textContent=(current+1)+' / '+TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i===current));
+  document.getElementById('nprev').style.opacity=current===0?'.35':'1';
+  document.getElementById('nnext').textContent=current===TOTAL-1?'النهاية ✓':'التالي ▶';
+}
+
+function goTo(idx){
+  if(idx===current||idx<0||idx>=TOTAL)return;
+  const prev=slides[current];
+  prev.classList.remove('active');
+  prev.classList.add('exit');
+  setTimeout(()=>prev.classList.remove('exit'),450);
+  current=idx;
+  slides[current].classList.add('active');
+  updateUI();
+}
+function go(d){goTo(current+d);}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='ArrowDown') go(1);
+  if(e.key==='ArrowRight'||e.key==='ArrowUp') go(-1);
+});
+let tx=null;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;});
+document.addEventListener('touchend',e=>{
+  if(tx===null)return;
+  const dx=e.changedTouches[0].clientX-tx;
+  if(Math.abs(dx)>50)go(dx>0?-1:1);
+  tx=null;
+});
+updateUI();
+
+/* ─── MATCHING ─── */
+let sel=null;
+function pick(el){
+  if(el.classList.contains('matched'))return;
+  if(sel===null){
+    document.querySelectorAll('.match-item.selected').forEach(x=>x.classList.remove('selected'));
+    el.classList.add('selected');
+    sel=el;
+  } else {
+    if(el===sel){el.classList.remove('selected');sel=null;return;}
+    if(el.classList.contains('selected')){el.classList.remove('selected');sel=null;return;}
+    const sameSide=(sel.classList.contains('match-word')&&el.classList.contains('match-word'))
+                 ||(sel.classList.contains('match-wazn')&&el.classList.contains('match-wazn'));
+    if(sameSide){
+      document.querySelectorAll('.match-item.selected').forEach(x=>x.classList.remove('selected'));
+      el.classList.add('selected');
+      sel=el;
+      return;
+    }
+    if(sel.dataset.pair===el.dataset.pair){
+      sel.classList.remove('selected');
+      sel.classList.add('matched');
+      el.classList.add('matched');
+      sel=null;
+      const all=document.querySelectorAll('.match-word');
+      const done=document.querySelectorAll('.match-word.matched');
+      if(done.length===all.length){
+        document.getElementById('match-result').innerHTML='<span style="color:#059669">🎉 ممتاز! كل الإجابات صحيحة!</span>';
+      }
+    } else {
+      sel.classList.add('wrong-flash');el.classList.add('wrong-flash');
+      setTimeout(()=>{sel.classList.remove('wrong-flash','selected');el.classList.remove('wrong-flash');sel=null;},450);
+    }
+  }
+}
+
+/* ─── CHECKBOX ─── */
+function toggle(li){
+  const cb=li.querySelector('input');
+  cb.checked=!cb.checked;
+}
+function checkChk(){
+  const items=document.querySelectorAll('#chklist .chk-item');
+  let ok=0;
+  items.forEach(li=>{
+    const cb=li.querySelector('input');
+    const correct=li.dataset.correct==='true';
+    li.classList.remove('correct-answer','wrong-answer');
+    if(cb.checked){
+      li.classList.add(correct?'correct-answer':'wrong-answer');
+      if(correct)ok++;
+    }
+  });
+  const res=document.getElementById('chk-result');
+  const totalCorrect=Array.from(items).filter(li=>li.dataset.correct==='true').length;
+  const wrong=Array.from(items).filter(li=>li.querySelector('input').checked && li.dataset.correct==='false').length;
+  if(ok===totalCorrect && wrong===0){
+    res.innerHTML='<span style="color:#059669">🎉 ممتاز! أصبتَ الجواب الصحيح!</span>';
+  } else {
+    res.innerHTML='<span style="color:#ea580c">راجع إجاباتك — الجملة الصحيحة مُضاءة باللون الأخضر</span>';
+  }
+}
+
+/* ─── FILL TABLE ─── */
+function norm(s){
+  return s.trim()
+    .replace(/[ً-ٟ]/g,'')
+    .replace(/[أإآ]/g,'ا')
+    .replace(/ة/g,'ه')
+    .replace(/ى/g,'ي')
+    .replace(/\s+/g,'');
+}
+function checkFill(){
+  const ids=['f1r','f1w','f2r','f2w','f3r','f3w'];
+  let ok=0;
+  ids.forEach(id=>{
+    const inp=document.getElementById(id);
+    const val=norm(inp.value);
+    const ans=norm(inp.dataset.ans);
+    inp.classList.remove('ok','err');
+    if(!val){return;}
+    const correct=val===ans||ans.includes(val)||val.includes(ans);
+    inp.classList.add(correct?'ok':'err');
+    if(correct)ok++;
+  });
+  const res=document.getElementById('fill-result');
+  if(ok===6) res.innerHTML='<span style="color:#059669">🎉 ممتاز! أجبتَ على كل الأسئلة صحيحاً!</span>';
+  else if(ok>=3) res.innerHTML=`<span style="color:#d97706">👍 جيد! أصبتَ ${ok} من ٦ — راجع الأخطاء بالإطار الأحمر</span>`;
+  else res.innerHTML=`<span style="color:#dc2626">حاول مرة أخرى — أصبتَ ${ok} من ٦</span>`;
+}
+</script>
+</body>
+</html>
