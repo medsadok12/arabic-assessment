@@ -529,63 +529,101 @@ export default function LetterCatcherGame() {
                 );
               })()}
 
-              {/* category grid — show topic as label when no explicit categories */}
-              {categories.length > 0 && (
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:14 }}>
-                  {categories.map((cat, idx) => {
-                    const cs      = getCatStyle(cat, idx);
-                    const custom  = catMeta[cat];
-                    const bgGrad  = custom?.gradient || cs.grad;
-                    const count   = gameWords.filter(w => w.category === cat).length;
-                    const res     = catResults[cat];
-                    const pct     = res ? Math.round((res.correct / res.total) * 100) : null;
-                    const stars   = pct === null ? 0 : pct >= 80 ? 3 : pct >= 50 ? 2 : 1;
-                    return (
-                      <div
-                        key={cat}
-                        className="lc-cat"
-                        style={{
-                          background: bgGrad,
-                          borderRadius: 22,
-                          padding: '18px 8px 14px',
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                          boxShadow: '0 8px 28px rgba(0,0,0,.26)',
-                          animation: `lcCatIn .45s ${(idx + 1) * 0.07}s cubic-bezier(.34,1.56,.64,1) both`,
-                          position: 'relative',
-                        }}
-                        onClick={() => setPendingCategory(cat)}
-                      >
-                        {custom?.image_url
-                          ? <img src={custom.image_url} alt="" style={{ width:56, height:56, borderRadius:14, objectFit:'cover', boxShadow:'0 2px 8px rgba(0,0,0,.22)' }} />
-                          : <span style={{ fontSize:'2.4rem', lineHeight:1 }}>{custom?.emoji || cs.emoji}</span>
-                        }
-                        <span style={{
-                          fontSize:'.78rem', fontWeight:800, color:'#fff',
-                          textShadow:'0 1px 4px rgba(0,0,0,.3)', lineHeight:1.3,
-                          textAlign:'center', padding:'0 4px',
-                        }}>
-                          {cat}
-                        </span>
-                        {res ? (
-                          <>
-                            <span style={{ fontSize:'.72rem', letterSpacing:1, color:'rgba(255,255,255,.95)' }}>
-                              {'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}
-                            </span>
-                            <div style={{ display:'flex', gap:5 }}>
-                              <span style={{ fontSize:'.7rem', background:'#16a34a', color:'#fff', borderRadius:20, padding:'2px 9px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.3)' }}>✓ {res.correct}</span>
-                              <span style={{ fontSize:'.7rem', background:'#dc2626', color:'#fff', borderRadius:20, padding:'2px 9px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.3)' }}>✗ {res.wrong}</span>
+              {/* category grid — الحيوانات first, progressive unlock */}
+              {categories.length > 0 && (() => {
+                const FIRST = 'الحيوانات';
+                const sorted = [
+                  ...(categories.includes(FIRST) ? [FIRST] : []),
+                  ...categories.filter(c => c !== FIRST),
+                ];
+                return (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:14 }}>
+                    {sorted.map((cat, idx) => {
+                      const cs       = getCatStyle(cat, idx);
+                      const custom   = catMeta[cat];
+                      const bgGrad   = custom?.gradient || cs.grad;
+                      const count    = gameWords.filter(w => w.category === cat).length;
+                      const res      = catResults[cat];
+                      const pct      = res ? Math.round((res.correct / res.total) * 100) : null;
+                      const stars    = pct === null ? 0 : pct >= 80 ? 3 : pct >= 50 ? 2 : 1;
+                      const unlocked = isTeacher || idx === 0 || !!catResults[sorted[idx - 1]];
+                      const prevCat  = sorted[idx - 1];
+                      return (
+                        <div
+                          key={cat}
+                          className={unlocked ? 'lc-cat' : ''}
+                          style={{
+                            background: bgGrad,
+                            borderRadius: 22,
+                            padding: '18px 8px 14px',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                            boxShadow: '0 8px 28px rgba(0,0,0,.26)',
+                            animation: `lcCatIn .45s ${(idx + 1) * 0.07}s cubic-bezier(.34,1.56,.64,1) both`,
+                            position: 'relative',
+                            cursor: unlocked ? 'pointer' : 'not-allowed',
+                          }}
+                          onClick={() => unlocked && setPendingCategory(cat)}
+                        >
+                          {/* Lock overlay */}
+                          {!unlocked && (
+                            <div style={{
+                              position:'absolute', inset:0, borderRadius:22, zIndex:2,
+                              background:'rgba(10,5,30,0.58)',
+                              backdropFilter:'blur(1px)',
+                              display:'flex', flexDirection:'column',
+                              alignItems:'center', justifyContent:'center', gap:6,
+                            }}>
+                              <span style={{ fontSize:'1.9rem', lineHeight:1, filter:'drop-shadow(0 2px 6px rgba(0,0,0,.6))' }}>🔒</span>
+                              <span style={{
+                                fontSize:'.6rem', color:'rgba(255,255,255,.8)',
+                                fontWeight:800, textAlign:'center', padding:'0 10px',
+                                lineHeight:1.55, textShadow:'0 1px 4px rgba(0,0,0,.5)',
+                              }}>
+                                أكمل {prevCat}<br/>أولاً
+                              </span>
                             </div>
-                          </>
-                        ) : (
-                          <span style={{ fontSize:'.65rem', color:'rgba(255,255,255,.7)', fontWeight:600 }}>
-                            {count} كلمة
+                          )}
+                          {/* First badge */}
+                          {idx === 0 && (
+                            <div style={{
+                              position:'absolute', top:8, right:8, zIndex:3,
+                              background:'#f59e0b', borderRadius:99,
+                              padding:'2px 8px', fontSize:'.58rem', fontWeight:900,
+                              color:'#fff', boxShadow:'0 2px 6px rgba(0,0,0,.3)',
+                            }}>ابدأ هنا ⭐</div>
+                          )}
+                          {custom?.image_url
+                            ? <img src={custom.image_url} alt="" style={{ width:56, height:56, borderRadius:14, objectFit:'cover', boxShadow:'0 2px 8px rgba(0,0,0,.22)' }} />
+                            : <span style={{ fontSize:'2.4rem', lineHeight:1 }}>{custom?.emoji || cs.emoji}</span>
+                          }
+                          <span style={{
+                            fontSize:'.78rem', fontWeight:800, color:'#fff',
+                            textShadow:'0 1px 4px rgba(0,0,0,.3)', lineHeight:1.3,
+                            textAlign:'center', padding:'0 4px',
+                          }}>
+                            {cat}
                           </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                          {res ? (
+                            <>
+                              <span style={{ fontSize:'.72rem', letterSpacing:1, color:'rgba(255,255,255,.95)' }}>
+                                {'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}
+                              </span>
+                              <div style={{ display:'flex', gap:5 }}>
+                                <span style={{ fontSize:'.7rem', background:'#16a34a', color:'#fff', borderRadius:20, padding:'2px 9px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.3)' }}>✓ {res.correct}</span>
+                                <span style={{ fontSize:'.7rem', background:'#dc2626', color:'#fff', borderRadius:20, padding:'2px 9px', fontWeight:800, boxShadow:'0 2px 6px rgba(0,0,0,.3)' }}>✗ {res.wrong}</span>
+                              </div>
+                            </>
+                          ) : (
+                            <span style={{ fontSize:'.65rem', color:'rgba(255,255,255,.7)', fontWeight:600 }}>
+                              {count} كلمة
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
