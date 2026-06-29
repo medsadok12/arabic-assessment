@@ -484,19 +484,20 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                background: 'rgba(255,255,255,0.15)',
+                background: '#16a34a',
                 color: '#fff',
-                fontWeight: 700,
+                fontWeight: 800,
                 fontSize: '.88rem',
-                padding: '7px 14px',
+                padding: '8px 16px',
                 borderRadius: 10,
                 textDecoration: 'none',
-                border: '1.5px solid rgba(255,255,255,0.35)',
-                transition: 'background .2s',
+                border: '2px solid rgba(255,255,255,.2)',
+                transition: 'filter .2s',
                 whiteSpace: 'nowrap',
+                boxShadow: '0 2px 8px rgba(22,163,74,.4)',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.26)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+              onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
+              onMouseLeave={e => e.currentTarget.style.filter = 'brightness(1)'}
             >
               {t('nav.studentPortal')}
             </Link>
