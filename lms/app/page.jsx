@@ -156,33 +156,25 @@ export default function LandingPage() {
       {/* ── Smart FAQ ── */}
       <SmartFAQ />
 
-      {/* ── CTA ── */}
-      <section style={{ background: 'var(--primary)', padding: '64px 0', textAlign: 'center', color: '#fff' }}>
-        <div className="container">
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 12 }}>{t('landing.ctaTitle')}</h2>
-          <p style={{ opacity: .82, marginBottom: 30, fontSize: '1rem' }}>{t('landing.ctaSub')}</p>
-          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/auth/register/teacher" className="btn btn-accent btn-lg"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              {t('landing.ctaRegister')}
-            </Link>
-            <Link href="/auth/login?for=teacher" className="btn btn-lg"
-              style={{ background: 'rgba(255,255,255,.15)', color: '#fff', border: '2px solid rgba(255,255,255,.5)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              {t('landing.ctaLogin')}
-            </Link>
-          </div>
-          <p style={{ marginTop: 16, fontSize: '.88rem', color: 'rgba(255,255,255,.6)' }}>
-            {t('landing.ctaApply')}{' '}
-            <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer"
-              style={{ color: 'rgba(255,255,255,.9)', textDecoration: 'underline', fontWeight: 700 }}>
-              {t('landing.ctaApplyLink')}
-            </a>
-          </p>
-        </div>
-      </section>
-
-      <footer style={{ background: '#0e3d70', color: 'rgba(255,255,255,.55)', textAlign: 'center', padding: '22px', fontSize: '.88rem' }}>
-        {t('landing.footer')}
+      <footer style={{ background: '#0e3d70', color: 'rgba(255,255,255,.55)', textAlign: 'center', padding: '24px 20px', fontSize: '.88rem' }}>
+        <p>{t('landing.footer')}</p>
+        <p style={{ marginTop: 10, fontSize: '.8rem' }}>
+          <span style={{ opacity: .6 }}>للمعلمين: </span>
+          <Link href="/auth/login?for=teacher"
+            style={{ color: 'rgba(255,255,255,.65)', textDecoration: 'underline', margin: '0 6px' }}>
+            {t('landing.ctaLogin')}
+          </Link>
+          ·
+          <Link href="/auth/register/teacher"
+            style={{ color: 'rgba(255,255,255,.65)', textDecoration: 'underline', margin: '0 6px' }}>
+            {t('landing.ctaRegister')}
+          </Link>
+          ·
+          <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer"
+            style={{ color: 'rgba(255,255,255,.65)', textDecoration: 'underline', margin: '0 6px' }}>
+            {t('landing.ctaApplyLink')}
+          </a>
+        </p>
       </footer>
     </>
   );
