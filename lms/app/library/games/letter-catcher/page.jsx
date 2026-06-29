@@ -21,8 +21,8 @@ const LC_FALLBACK = [
   { id:'f10', word:'قَمَر',   missing_letter:'ق', options:['ق','ك','ع','غ','خ'], emoji:'🌙', topic:'الطبيعة',   grade_level:1, category:'الطبيعة' },
 ];
 
-const LC_CACHE_KEY = 'lc_words_cache_v1';
-const LC_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const LC_CACHE_KEY = 'lc_words_cache_v2';
+const LC_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 function getCachedWords() {
   try {

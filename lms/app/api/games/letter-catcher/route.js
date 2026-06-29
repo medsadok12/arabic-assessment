@@ -3,7 +3,7 @@ import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 
 export const runtime   = 'edge';
-export const revalidate = 300;
+export const revalidate = 3600;
 
 const ARABIC_LETTERS = 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي';
 const DIACRITICS     = /[ً-ْٰ]/g;
@@ -34,7 +34,10 @@ export async function GET(request) {
     const category = searchParams.get('category') || '';
 
     const admin = createAdminClient();
-    let query = admin.from('letter_catcher_words').select('*').order('id');
+    let query = admin
+      .from('letter_catcher_words')
+      .select('id, word, missing_letter, options, emoji, image_url, audio_url, topic, grade_level, category')
+      .order('id');
     if (topic)    query = query.eq('topic', topic);
     if (grade > 0) query = query.eq('grade_level', grade);
     if (category) query = query.eq('category', category);
@@ -57,7 +60,7 @@ export async function GET(request) {
     const words = valid.length > 0 ? valid : FALLBACK_WORDS;
     return NextResponse.json(
       { words, source: valid.length > 0 ? 'database' : 'fallback' },
-      { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' } }
+      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } }
     );
   } catch {
     return NextResponse.json(
