@@ -470,31 +470,6 @@ export default function LetterCatcherGame() {
             </p>
           </div>
 
-          {/* ── Level selector ── */}
-          <div style={{ display:'flex', gap:7, flexWrap:'wrap', justifyContent:'center', marginBottom:18 }}>
-            {[0,1,2,3,4,5,6,7].map(g => {
-              const active = cfg.grade === g;
-              return (
-                <button
-                  key={g}
-                  onClick={() => setCfg(p => ({ ...p, grade: g }))}
-                  style={{
-                    padding: '7px 16px', borderRadius: 99, border: 'none', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 900, fontSize: '.82rem',
-                    transition: 'all .2s cubic-bezier(.34,1.56,.64,1)',
-                    background: active ? '#fff' : 'rgba(255,255,255,.18)',
-                    color: active ? '#7c3aed' : 'rgba(255,255,255,.85)',
-                    backdropFilter: 'blur(8px)',
-                    boxShadow: active ? '0 3px 12px rgba(0,0,0,.25), 0 0 0 2px rgba(255,255,255,.5)' : 'none',
-                    transform: active ? 'scale(1.08)' : 'scale(1)',
-                  }}
-                >
-                  {g === 0 ? '⭐ الكل' : `صف ${g}`}
-                </button>
-              );
-            })}
-          </div>
-
           {/* ── empty / lock ── */}
           {gameWords.length === 0 ? (
             <div style={{ ...S.centerCard, padding:'32px 24px' }}>
