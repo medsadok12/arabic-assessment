@@ -95,13 +95,30 @@ export async function DELETE(req) {
   return Response.json({ ok: true });
 }
 
-/** Payload with new JSONB columns */
+/** Payload with new JSONB columns — strips zero/empty entries before storing */
 function buildPayload(b) {
+  // Only store currencies where at least one of monthly/yearly is a positive number
+  const rawPrices = (b.prices && typeof b.prices === 'object') ? b.prices : {};
+  const prices = {};
+  for (const [code, entry] of Object.entries(rawPrices)) {
+    const m = Number(entry?.monthly) || 0;
+    const y = Number(entry?.yearly)  || 0;
+    if (m > 0 || y > 0) prices[code] = { monthly: m, yearly: y };
+  }
+
+  // Only store checkout URLs that are non-empty strings
+  const rawUrls = (b.checkout_urls && typeof b.checkout_urls === 'object') ? b.checkout_urls : {};
+  const checkout_urls = {};
+  for (const [code, url] of Object.entries(rawUrls)) {
+    const u = String(url || '').trim();
+    if (u) checkout_urls[code] = u;
+  }
+
   return {
     plan_name_ar:   String(b.plan_name_ar  ?? ''),
     plan_name_en:   String(b.plan_name_en  ?? ''),
-    prices:         (b.prices && typeof b.prices === 'object') ? b.prices : {},
-    checkout_urls:  (b.checkout_urls && typeof b.checkout_urls === 'object') ? b.checkout_urls : {},
+    prices,
+    checkout_urls,
     features_list:  Array.isArray(b.features_list) ? b.features_list : [],
     plan_type:      ['lessons','content_only','family','school'].includes(b.plan_type) ? b.plan_type : 'lessons',
     is_popular:     Boolean(b.is_popular),

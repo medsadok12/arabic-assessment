@@ -29,7 +29,8 @@ const PLAN_TYPES = [
 
 /**
  * Safely parse plan.prices which may arrive as object, JSON string, or {}
- * Returns the inner map or null if empty / invalid.
+ * Returns only currencies with non-zero prices, or null if none found.
+ * Zero/empty entries are treated as "not configured" to allow fallback.
  */
 function parsePricesMap(raw) {
   if (!raw) return null;
@@ -38,7 +39,14 @@ function parsePricesMap(raw) {
     try { map = JSON.parse(map); } catch { return null; }
   }
   if (typeof map !== 'object' || Array.isArray(map)) return null;
-  return Object.keys(map).length > 0 ? map : null;
+  // Only keep currencies that have at least one positive value
+  const active = {};
+  for (const [code, entry] of Object.entries(map)) {
+    if (typeof entry === 'object' && (Number(entry?.monthly) > 0 || Number(entry?.yearly) > 0)) {
+      active[code] = entry;
+    }
+  }
+  return Object.keys(active).length > 0 ? active : null;
 }
 
 /**
