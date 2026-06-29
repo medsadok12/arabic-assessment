@@ -182,13 +182,25 @@ function PlanModal({ plan, onClose, onSave, lang }) {
       const r = await fetch('/api/bogga/pricing', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const d = await r.json();
       if (d.error) { setErr(d.error); setSaving(false); return; }
+
       if (d.warning) {
-        // Columns missing — save worked with old columns, show SQL instruction
-        setErr('⚠️ ' + d.warning);
+        // Columns prices/checkout_urls missing in DB — don't close modal, show error prominently
+        setErr('❌ لم تُحفظ الأسعار — عمودا prices و checkout_urls غير موجودَين في قاعدة البيانات. يُرجى إضافتهما عبر Supabase SQL:\nALTER TABLE pricing_plans ADD COLUMN IF NOT EXISTS prices JSONB NOT NULL DEFAULT \'{}\', ADD COLUMN IF NOT EXISTS checkout_urls JSONB NOT NULL DEFAULT \'{}\'; NOTIFY pgrst, \'reload schema\';');
         setSaving(false);
-        onSave(d.plan); // still close modal — old columns were saved
+        return; // don't close modal — user must see this error
+      }
+
+      // Verify prices were actually stored in JSONB (not silently lost)
+      const sentPrices  = form.prices || {};
+      const savedPrices = d.plan?.prices || {};
+      const hasSent  = Object.values(sentPrices).some(v => Number(v?.monthly) > 0 || Number(v?.yearly) > 0);
+      const hasSaved = Object.values(savedPrices).some(v => Number(v?.monthly) > 0 || Number(v?.yearly) > 0);
+      if (hasSent && !hasSaved) {
+        setErr('⚠️ تنبيه: أُرسلت الأسعار لكن لم تُحفظ في قاعدة البيانات. تأكد من وجود عمود prices في الجدول.');
+        setSaving(false);
         return;
       }
+
       onSave(d.plan);
     } catch (e) {
       setErr(e.message);
