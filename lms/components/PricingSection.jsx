@@ -285,7 +285,7 @@ export default function PricingSection() {
   const sectionRef = useRef(null);
 
   useEffect(() => {
-    fetch('/api/pricing')
+    fetch('/api/pricing', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
         const loaded = d.plans || [];
