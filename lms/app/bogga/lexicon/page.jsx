@@ -30,6 +30,7 @@ export default function LexiconAdminPage() {
   const [search, setSearch] = useState('');
   const [filterType,  setFilterType]  = useState('');
   const [filterTopic, setFilterTopic] = useState('');
+  const [filterGrade, setFilterGrade] = useState(0);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg]       = useState(null);
   const [loadingMedia, setLoadingMedia] = useState(false);
@@ -181,7 +182,8 @@ export default function LexiconAdminPage() {
   const filtered = words.filter(w =>
     (!search     || w.word.includes(search) || (w.sentence ?? '').includes(search)) &&
     (!filterType  || w.word_type === filterType) &&
-    (!filterTopic || w.topic === filterTopic)
+    (!filterTopic || w.topic === filterTopic) &&
+    (filterGrade === 0 || (w.grade_from <= filterGrade && filterGrade <= w.grade_to))
   );
 
   const isSuperAdmin  = role === 'super_admin';
@@ -377,7 +379,7 @@ export default function LexiconAdminPage() {
 
             {/* ══ Table (right) ══ */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', gap: 12, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 <input className="form-input" value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="🔍 بحث عن كلمة..." style={{ flex: '1 1 200px', maxWidth: 280 }} />
                 <select className="form-input" value={filterType} onChange={e => setFilterType(e.target.value)} style={{ width: 130 }}>
@@ -391,6 +393,38 @@ export default function LexiconAdminPage() {
                 <span style={{ color: 'var(--muted)', fontSize: '.85rem', whiteSpace: 'nowrap' }}>
                   {filtered.length} كلمة
                 </span>
+              </div>
+              {/* ── Grade-level filter pills ── */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 18 }}>
+                <span style={{ fontSize: '.8rem', color: 'var(--muted)', fontWeight: 700, marginLeft: 4 }}>المستوى:</span>
+                {[0, 1, 2, 3, 4, 5, 6, 7].map(g => {
+                  const active = filterGrade === g;
+                  const count  = g === 0 ? words.length : words.filter(w => w.grade_from <= g && g <= w.grade_to).length;
+                  return (
+                    <button
+                      key={g}
+                      onClick={() => setFilterGrade(g)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '4px 12px', borderRadius: 99, border: 'none', cursor: 'pointer',
+                        fontFamily: 'inherit', fontWeight: 800, fontSize: '.78rem',
+                        transition: 'all .18s',
+                        background: active ? '#185FA5' : '#f1f5f9',
+                        color: active ? '#fff' : '#475569',
+                        boxShadow: active ? '0 2px 8px rgba(24,95,165,.35)' : 'none',
+                      }}
+                    >
+                      {g === 0 ? 'الكل' : `صف ${g}`}
+                      <span style={{
+                        background: active ? 'rgba(255,255,255,.25)' : '#e2e8f0',
+                        color: active ? '#fff' : '#64748b',
+                        borderRadius: 99, padding: '1px 6px', fontSize: '.72rem', fontWeight: 900,
+                      }}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
               {loading ? (
