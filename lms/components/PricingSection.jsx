@@ -288,7 +288,17 @@ export default function PricingSection() {
     fetch('/api/pricing', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
-        const loaded = d.plans || [];
+        // Deduplicate: keep one row per (plan_name_ar + plan_type), preferring the
+        // row with the richest JSONB prices. The API already orders newest first when
+        // sort_order is tied, so the first occurrence is the best candidate.
+        const seen = new Set();
+        const deduped = (d.plans || []).filter(p => {
+          const key = `${p.plan_name_ar}||${p.plan_type}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        const loaded = deduped;
         setPlans(loaded);
         setLoading(false);
 
