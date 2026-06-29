@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Navbar from '../components/Navbar';
 import FloatingSidebar from '../components/FloatingSidebar';
 import SmartFAQ from '../components/SmartFAQ';
+import TeamShowcase from '../components/TeamShowcase';
 import PricingSection from '../components/PricingSection';
 import { Target, FileBarChart, Globe, Smartphone, Lock, Zap } from 'lucide-react';
 import { createClient } from '../lib/supabase';
@@ -155,6 +156,8 @@ export default function LandingPage() {
 
       {/* ── Smart FAQ ── */}
       <SmartFAQ />
+
+      <TeamShowcase />
 
       <footer style={{ background: '#0e3d70', color: 'rgba(255,255,255,.55)', textAlign: 'center', padding: '24px 20px', fontSize: '.88rem' }}>
         <p>{t('landing.footer')}</p>

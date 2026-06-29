@@ -14,6 +14,7 @@ import NotificationBell                from '../../components/NotificationBell';
 import FinancialsTab                   from '../../components/FinancialsTab';
 import LifeSceneSimulator              from '../../components/LifeSceneSimulator';
 import PricingAdmin                    from '../../components/PricingAdmin';
+import TeamAdmin                        from '../../components/TeamAdmin';
 import { useLanguage }                  from '../../contexts/LanguageContext';
 
 // ── Time slots 00:00 → 23:55, 5-min increments (288 slots) ─────────────────
@@ -1355,6 +1356,7 @@ export default function BoggarAdminPage() {
     { id: 'stories',     label: 'القصص 📚',                  show: true },
     { id: 'puzzles',     label: 'الأحاجي 🧩',                show: isSuperAdmin },
     { id: 'pricing',     label: lang === 'ar' ? '💰 الباقات والأسعار' : '💰 Pricing Plans', show: isSuperAdmin },
+    { id: 'team',        label: '👨‍🏫 فريقنا',                show: isSuperAdmin },
     { id: 'setup',       label: tr('admin.tabs.setup'),       show: canSee('setup') },
   ].filter(tab => tab.show);
 
@@ -3148,6 +3150,10 @@ export default function BoggarAdminPage() {
           {/* ══ Setup ═════════════════════════════════════════════ */}
           {activeTab === 'pricing' && isSuperAdmin && (
             <PricingAdmin lang={lang} />
+          )}
+
+          {activeTab === 'team' && isSuperAdmin && (
+            <TeamAdmin />
           )}
 
           {activeTab === 'setup' && (
