@@ -53,6 +53,30 @@ function fileToBase64(file) {
   });
 }
 
+/* resize/compress a word image to the actual in-game display size (140×140, see S.wordImg) before upload */
+async function resizeImage(file, maxSize = 140, quality = 0.85) {
+  const bitmap = await createImageBitmap(file);
+  const scale  = Math.min(maxSize / bitmap.width, maxSize / bitmap.height, 1);
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = maxSize; canvas.height = maxSize;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, (maxSize - w) / 2, (maxSize - h) / 2, w, h);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
+  return blob || file;
+}
+
+async function uploadWordImage(file) {
+  const resized = await resizeImage(file);
+  const fd = new FormData();
+  fd.append('file', resized, `word-${Date.now()}.webp`);
+  const res  = await fetch('/api/games/letter-catcher/upload', { method: 'POST', body: fd });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'فشل رفع الصورة');
+  return json.url;
+}
+
 /* ── styles used only in this panel ── */
 const P = {
   input: {
@@ -188,7 +212,10 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
     setSaving(true); setMsg(null);
     try {
       let image_url = null;
-      if (imgFile) image_url = await fileToBase64(imgFile);
+      if (imgFile) {
+        setMsg({ ok: true, text: '⏳ جارٍ رفع الصورة...' });
+        image_url = await uploadWordImage(imgFile);
+      }
       const res = await fetch('/api/games/letter-catcher', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
