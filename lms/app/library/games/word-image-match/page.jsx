@@ -41,6 +41,30 @@ function fileToBase64(file) {
   });
 }
 
+/* resize/compress a pair image to the actual in-game display size (140×140) before upload */
+async function resizeImage(file, maxSize = 140, quality = 0.85) {
+  const bitmap = await createImageBitmap(file);
+  const scale  = Math.min(maxSize / bitmap.width, maxSize / bitmap.height, 1);
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = maxSize; canvas.height = maxSize;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, (maxSize - w) / 2, (maxSize - h) / 2, w, h);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
+  return blob || file;
+}
+
+async function uploadPairImage(file) {
+  const resized = await resizeImage(file);
+  const fd = new FormData();
+  fd.append('file', resized, `pair-${Date.now()}.webp`);
+  const res  = await fetch('/api/games/word-image-match/upload', { method: 'POST', body: fd });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'فشل رفع الصورة');
+  return json.url;
+}
+
 const TOPICS = ['الحيوانات','الأشكال','الأسرة','الألوان','الفواكه','المدرسة','الطقس','الأرقام','المهن','الأدوات'];
 
 /* ─────────────── recording hook ─────────────── */
@@ -88,21 +112,27 @@ function PairManager({ allPairs, onRefresh }) {
   const [grade,    setGrade]    = useState(0);
   const [imgUrl,   setImgUrl]   = useState('');
   const [imgPrev,  setImgPrev]  = useState('');
+  const [imgFile,  setImgFile]  = useState(null);
   const [audioUrl, setAudioUrl] = useState('');
   const [saving,   setSaving]   = useState(false);
   const [msg,      setMsg]      = useState(null);
   const { recording, recSecs, startRecording, stopRecording } = useRecorder();
 
-  const reset = () => { setEditId(null); setWord(''); setTopic(''); setGrade(0); setImgUrl(''); setImgPrev(''); setAudioUrl(''); setMsg(null); };
-  const startEdit = (p) => { setEditId(p.id); setWord(p.word_text); setTopic(p.topic||''); setGrade(p.grade_level||0); setImgUrl(p.image_url||''); setImgPrev(p.image_url||''); setAudioUrl(p.audio_url||''); setMsg(null); };
-  const handleImgFile = async (e) => { const f = e.target.files?.[0]; if (!f) return; const b = await fileToBase64(f); setImgUrl(b); setImgPrev(b); };
+  const reset = () => { setEditId(null); setWord(''); setTopic(''); setGrade(0); setImgUrl(''); setImgPrev(''); setImgFile(null); setAudioUrl(''); setMsg(null); };
+  const startEdit = (p) => { setEditId(p.id); setWord(p.word_text); setTopic(p.topic||''); setGrade(p.grade_level||0); setImgUrl(p.image_url||''); setImgPrev(p.image_url||''); setImgFile(null); setAudioUrl(p.audio_url||''); setMsg(null); };
+  const handleImgFile = (e) => { const f = e.target.files?.[0]; if (!f) return; setImgFile(f); setImgPrev(URL.createObjectURL(f)); };
 
   const handleSave = async () => {
     if (!word.trim()) { setMsg({ ok:false, text:'الكلمة مطلوبة' }); return; }
-    if (!imgUrl)      { setMsg({ ok:false, text:'الصورة مطلوبة' }); return; }
+    if (!imgUrl && !imgFile) { setMsg({ ok:false, text:'الصورة مطلوبة' }); return; }
     setSaving(true);
     try {
-      const body = { word_text: word.trim(), audio_url: audioUrl||null, image_url: imgUrl, topic: topic||null, grade_level: grade||null };
+      let finalImgUrl = imgUrl;
+      if (imgFile) {
+        setMsg({ ok:true, text:'⏳ جارٍ رفع الصورة...' });
+        finalImgUrl = await uploadPairImage(imgFile);
+      }
+      const body = { word_text: word.trim(), audio_url: audioUrl||null, image_url: finalImgUrl, topic: topic||null, grade_level: grade||null };
       const res = editId
         ? await fetch(`/api/games/word-image-match?id=${editId}`, { method:'PUT',  headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) })
         : await fetch('/api/games/word-image-match',               { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });

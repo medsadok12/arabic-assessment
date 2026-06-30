@@ -62,6 +62,30 @@ function fileToBase64(file) {
   });
 }
 
+/* resize/compress a word image to the actual in-game display size (96×96) before upload */
+async function resizeImage(file, maxSize = 96, quality = 0.85) {
+  const bitmap = await createImageBitmap(file);
+  const scale  = Math.min(maxSize / bitmap.width, maxSize / bitmap.height, 1);
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = maxSize; canvas.height = maxSize;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, (maxSize - w) / 2, (maxSize - h) / 2, w, h);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
+  return blob || file;
+}
+
+async function uploadWordImage(file) {
+  const resized = await resizeImage(file);
+  const fd = new FormData();
+  fd.append('file', resized, `word-${Date.now()}.webp`);
+  const res  = await fetch('/api/games/word-smash/upload', { method: 'POST', body: fd });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'فشل رفع الصورة');
+  return json.url;
+}
+
 /* ─── Word Manager (admin/teacher panel) ─── */
 function WordManager({ dbWords, onRefresh }) {
   const [editId,  setEditId]  = useState(null);
@@ -74,6 +98,7 @@ function WordManager({ dbWords, onRefresh }) {
   const [grade,   setGrade]   = useState(0);
   const [imgUrl,  setImgUrl]  = useState('');
   const [imgPrev, setImgPrev] = useState('');
+  const [imgFile, setImgFile] = useState(null);
   const [saving,  setSaving]  = useState(false);
   const [delId,   setDelId]   = useState(null);
   const [msg,     setMsg]     = useState(null);
@@ -82,7 +107,7 @@ function WordManager({ dbWords, onRefresh }) {
 
   const reset = () => {
     setEditId(null); setWord(''); setCorrect(''); setWrong1(''); setWrong2('');
-    setRule(''); setTopic(''); setGrade(0); setImgUrl(''); setImgPrev(''); setMsg(null);
+    setRule(''); setTopic(''); setGrade(0); setImgUrl(''); setImgPrev(''); setImgFile(null); setMsg(null);
   };
 
   const startEdit = item => {
@@ -97,15 +122,15 @@ function WordManager({ dbWords, onRefresh }) {
     setGrade(item.grade_level || 0);
     setImgUrl(item.image_url || '');
     setImgPrev(item.image_url || '');
+    setImgFile(null);
     setMsg(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleImgFile = async (e) => {
+  const handleImgFile = (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    const b = await fileToBase64(f);
-    setImgUrl(b); setImgPrev(b);
+    setImgFile(f); setImgPrev(URL.createObjectURL(f));
   };
 
   const handleSave = async () => {
@@ -119,6 +144,11 @@ function WordManager({ dbWords, onRefresh }) {
 
     setSaving(true); setMsg(null);
     try {
+      let finalImgUrl = imgUrl;
+      if (imgFile) {
+        setMsg({ ok: true, text: '⏳ جارٍ رفع الصورة...' });
+        finalImgUrl = await uploadWordImage(imgFile);
+      }
       const body = {
         word_text: word.trim(),
         correct_segments: cs,
@@ -126,7 +156,7 @@ function WordManager({ dbWords, onRefresh }) {
         rule_text: rule.trim(),
         topic: topic || null,
         grade_level: grade || null,
-        image_url: imgUrl || null,
+        image_url: finalImgUrl || null,
       };
       const url    = editId ? `/api/games/word-smash?id=${editId}` : '/api/games/word-smash';
       const method = editId ? 'PUT' : 'POST';

@@ -77,6 +77,17 @@ async function uploadWordImage(file) {
   return json.url;
 }
 
+/* category icon images display at 56×56 max (see page.jsx custom?.image_url) */
+async function uploadCatImage(file) {
+  const resized = await resizeImage(file, 56);
+  const fd = new FormData();
+  fd.append('file', resized, `cat-${Date.now()}.webp`);
+  const res  = await fetch('/api/games/letter-catcher/categories/upload', { method: 'POST', body: fd });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'فشل رفع الصورة');
+  return json.url;
+}
+
 /* ── styles used only in this panel ── */
 const P = {
   input: {
@@ -141,6 +152,7 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
   const [catImgVal,   setCatImgVal]   = useState(null);
   const [catSaving,   setCatSaving]   = useState(false);
   const [catMsg,      setCatMsg]      = useState(null);
+  const [catUploading, setCatUploading] = useState(false);
 
   const openCatEdit = (cat, idx) => {
     setEditingCat(cat);
@@ -380,11 +392,19 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
                         <button onClick={() => catImgRef.current?.click()}
                           style={{ background:'#f0fdf4', border:'1.5px solid #86efac', borderRadius:8, padding:'6px 10px', cursor:'pointer', fontSize:'.78rem', fontWeight:700, color:'#15803d' }}>🖼️ صورة</button>
                         <input type="file" accept="image/*" hidden ref={catImgRef}
-                          onChange={async e => { const f = e.target.files?.[0]; if (!f) return; const b64 = await fileToBase64(f); setCatImgVal(b64); setCatEmojiVal(''); }} />
+                          onChange={async e => {
+                            const f = e.target.files?.[0]; if (!f) return;
+                            setCatUploading(true); setCatMsg(null);
+                            try {
+                              const url = await uploadCatImage(f);
+                              setCatImgVal(url); setCatEmojiVal('');
+                            } catch (err) { setCatMsg({ ok: false, text: `❌ ${err.message}` }); }
+                            setCatUploading(false);
+                          }} />
                         {catImgVal && <button onClick={() => setCatImgVal(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:'.9rem', padding:'2px 4px' }}>✕ مسح</button>}
-                        <button onClick={saveCatMeta} disabled={catSaving}
+                        <button onClick={saveCatMeta} disabled={catSaving || catUploading}
                           style={{ background:'linear-gradient(135deg,#5b4fc4,#7c3aed)', border:'none', borderRadius:8, padding:'6px 14px', color:'#fff', fontSize:'.8rem', fontWeight:700, cursor:'pointer' }}>
-                          {catSaving ? '…' : 'حفظ'}
+                          {catUploading ? '⏳ جارٍ الرفع...' : catSaving ? '…' : 'حفظ'}
                         </button>
                         {(customMeta?.emoji || customMeta?.image_url) && (
                           <button onClick={resetCatMeta} disabled={catSaving}
