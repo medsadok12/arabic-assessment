@@ -51,7 +51,7 @@ export async function POST() {
 
     if (fetchErr) return Response.json({ error: fetchErr.message }, { status: 500 });
 
-    const code = buildNextCode('S', (existing ?? []).map(r => r.code));
+    const code = buildNextCode('A', (existing ?? []).map(r => r.code));
 
     const { data, error } = await supabase
       .from('assessment_codes')
