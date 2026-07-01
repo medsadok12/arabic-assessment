@@ -14,13 +14,6 @@ export default async function DashboardPage() {
     redirect('/auth/login');
   }
 
-  const { data: assessments } = await supabase
-    .from('assessments')
-    .select('id, level, score, completed_at, student_name')
-    .eq('user_id', user.id)
-    .order('completed_at', { ascending: false })
-    .limit(50);
-
   const role      = user.user_metadata?.role ?? 'student';
   const isStudent = role === 'student';
 
@@ -30,12 +23,23 @@ export default async function DashboardPage() {
 
   const today = new Date().toISOString().slice(0, 10);
   const admin = createAdminClient();
+  const email = (user.email ?? '').toLowerCase();
 
-  const [{ data: sessionsRaw }, { data: supportLinks }] = await Promise.all([
+  // جولة شبكة واحدة — 8 استعلامات مستقلة تعمل بالتوازي
+  const [
+    { data: sessionsRaw },
+    { data: supportLinks },
+    { data: assessments },
+    { data: fcProgress },
+    { data: pastRaw },
+    { data: notedRaw },
+    { data: hwRaw },
+    { data: logsRaw },
+  ] = await Promise.all([
     admin
       .from('sessions')
       .select('id, teacher_name, session_date, start_time, duration_minutes, subject, meet_link, status, attended')
-      .ilike('student_email', user.email)
+      .eq('student_email', email)
       .in('status', ['scheduled', 'active'])
       .gte('session_date', today)
       .order('session_date', { ascending: true })
@@ -45,11 +49,53 @@ export default async function DashboardPage() {
     admin
       .from('session_support_students')
       .select('session_id')
-      .ilike('student_email', user.email)
+      .eq('student_email', email)
       .then(r => r.error ? { data: [] } : r),
+    supabase
+      .from('assessments')
+      .select('id, level, score, completed_at, student_name')
+      .eq('user_id', user.id)
+      .order('completed_at', { ascending: false })
+      .limit(50)
+      .then(r => r.error ? { data: [] } : r),
+    admin
+      .from('flashcard_progress')
+      .select('level')
+      .eq('user_id', user.id)
+      .then(r => r.error ? { data: [] } : r),
+    admin
+      .from('sessions')
+      .select('id, attended')
+      .eq('student_email', email)
+      .not('attended', 'is', null)
+      .limit(100)
+      .then(r => r.error ? { data: [] } : r),
+    admin
+      .from('sessions')
+      .select('id, teacher_name, session_date, subject, notes')
+      .eq('student_email', email)
+      .not('notes', 'is', null)
+      .neq('notes', '')
+      .order('session_date', { ascending: false })
+      .limit(10)
+      .then(r => r.error ? { data: [] } : r),
+    admin
+      .from('homework')
+      .select('id, teacher_name, title, description, due_date, status, created_at')
+      .eq('student_email', email)
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .limit(20)
+      .then(r => r.error ? { data: [] } : r),
+    admin
+      .from('daily_logs')
+      .select('log_date')
+      .eq('user_id', user.id)
+      .order('log_date', { ascending: false })
+      .limit(365)
+      .then(r => r.error?.code === '42P01' ? { data: [] } : r),
   ]);
 
-  // Fetch support-student sessions separately and merge
+  // supportSessions تعتمد على supportLinks — تبقى بعد Promise.all
   let supportSessions = [];
   const supportIds = (supportLinks ?? []).map(r => r.session_id).filter(Boolean);
   if (supportIds.length > 0) {
@@ -63,15 +109,24 @@ export default async function DashboardPage() {
     supportSessions = (supRaw ?? []).map(s => ({ ...s, is_support: true, attended: null }));
   }
 
-  const mainIds  = new Set((sessionsRaw ?? []).map(s => s.id));
-  const nowMs    = Date.now();
-  const merged   = [
+  const masteredCount = (fcProgress ?? []).filter(p => p.level >= 5).length;
+  const studiedCount  = (fcProgress ?? []).length;
+
+  const attendanceRecords = pastRaw ?? [];
+  const attendedCount     = attendanceRecords.filter(s => s.attended === true).length;
+  const attendancePct     = attendanceRecords.length > 0 ? Math.round((attendedCount / attendanceRecords.length) * 100) : null;
+
+  const sessionNotes = notedRaw ?? [];
+  const homework     = hwRaw ?? [];
+
+  const mainIds = new Set((sessionsRaw ?? []).map(s => s.id));
+  const nowMs   = Date.now();
+  const merged  = [
     ...(sessionsRaw ?? []),
     ...supportSessions.filter(s => !mainIds.has(s.id)),
   ]
   .sort((a, b) => a.session_date.localeCompare(b.session_date) || a.start_time.localeCompare(b.start_time))
   .filter(s => {
-    // حذف الحصص التي انتهت وقتها (تاريخ البدء + المدة < الآن)
     const startMs = new Date(`${s.session_date}T${s.start_time}`).getTime();
     const endMs   = startMs + (s.duration_minutes ?? 60) * 60000;
     return nowMs < endMs;
@@ -80,64 +135,10 @@ export default async function DashboardPage() {
 
   const upcomingSessions = merged;
 
-  // Flashcard mastery
-  const { data: fcProgress } = await admin
-    .from('flashcard_progress')
-    .select('level')
-    .eq('user_id', user.id)
-    .then(r => r.error ? { data: [] } : r);
-  const masteredCount = (fcProgress ?? []).filter(p => p.level >= 5).length;
-  const studiedCount  = (fcProgress ?? []).length;
-
-  // Attendance stats
-  const { data: pastRaw } = await admin
-    .from('sessions')
-    .select('id, attended')
-    .ilike('student_email', user.email)
-    .not('attended', 'is', null)
-    .limit(100)
-    .then(r => r.error ? { data: [] } : r);
-  const attendanceRecords = pastRaw ?? [];
-  const attendedCount     = attendanceRecords.filter(s => s.attended === true).length;
-  const attendancePct     = attendanceRecords.length > 0 ? Math.round((attendedCount / attendanceRecords.length) * 100) : null;
-
-  // Past sessions with teacher notes
-  const { data: notedRaw } = await admin
-    .from('sessions')
-    .select('id, teacher_name, session_date, subject, notes')
-    .ilike('student_email', user.email)
-    .not('notes', 'is', null)
-    .neq('notes', '')
-    .order('session_date', { ascending: false })
-    .limit(10)
-    .then(r => r.error ? { data: [] } : r);
-  const sessionNotes = notedRaw ?? [];
-
-  // Homework
-  const { data: hwRaw } = await admin
-    .from('homework')
-    .select('id, teacher_name, title, description, due_date, status, created_at')
-    .ilike('student_email', user.email)
-    .order('due_date', { ascending: true, nullsFirst: false })
-    .limit(20)
-    .then(r => r.error ? { data: [] } : r);
-  const homework = hwRaw ?? [];
-
-  const displayName   = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '';
-  const studentGender = user.user_metadata?.gender === 'female' ? 'female' : 'male';
-
   /* ── Streak ── */
-  const { data: logsRaw } = await admin
-    .from('daily_logs')
-    .select('log_date')
-    .eq('user_id', user.id)
-    .order('log_date', { ascending: false })
-    .limit(365)
-    .then(r => r.error?.code === '42P01' ? { data: [] } : r);
-
-  const logDates  = (logsRaw || []).map(r => r.log_date);
-  const dateSet   = new Set(logDates);
-  const todayStr  = new Date().toISOString().slice(0, 10);
+  const logDates = (logsRaw || []).map(r => r.log_date);
+  const dateSet  = new Set(logDates);
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   function calcStreak(dates) {
     if (!dates.length) return 0;
@@ -154,10 +155,9 @@ export default async function DashboardPage() {
     return streak;
   }
 
-  const streakCount  = calcStreak(logDates);
-  const loggedToday  = dateSet.has(todayStr);
-  // Forward-looking: index 0 = today (RIGHT in RTL), index 1-6 = next days (going LEFT)
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
+  const streakCount = calcStreak(logDates);
+  const loggedToday = dateSet.has(todayStr);
+  const last7Days   = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() + i);
     const ds = d.toISOString().slice(0, 10);
     return {
@@ -168,6 +168,9 @@ export default async function DashboardPage() {
       isFuture: i > 0,
     };
   });
+
+  const displayName   = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '';
+  const studentGender = user.user_metadata?.gender === 'female' ? 'female' : 'male';
 
   return (
     <DashboardContent
