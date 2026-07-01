@@ -1,11 +1,11 @@
 /* Fonts loaded via next/font (self-hosted, no render-blocking @import) */
 
 :root {
-  --primary:    #185FA5;
-  --primary-dk: #104880;
-  --primary-lt: #e8f0fb;
-  --accent:     #F5A623;
-  --success:    #27ae60;
+  --primary:    #1A2B4A;
+  --primary-dk: #0d1f38;
+  --primary-lt: #EDE5D8;
+  --accent:     #E8B84B;
+  --success:    #2ABB7A;
   --danger:     #e74c3c;
   --text:       #1a1a2e;
   /* Faheem widget offsets — adjusted on mobile to float above bottom nav */
@@ -13,7 +13,7 @@
   --faheem-panel-bottom: 16px;
   --muted:      #6b7280;
   --border:     #d1d5db;
-  --bg:         #f4f7fc;
+  --bg:         #F4EFE6;
   --card:       #ffffff;
   --radius:     12px;
   --shadow:     0 2px 12px rgba(24,95,165,0.10);
@@ -129,7 +129,7 @@ body {
 }
 .navbar-links a.active {
   background: #fff;
-  color: #1565c0;
+  color: #1A2B4A;
   border-color: #fff;
   font-weight: 800;
   box-shadow: 0 4px 18px rgba(255,255,255,.35), 0 2px 6px rgba(0,0,0,.12);
@@ -209,14 +209,14 @@ body {
 .btn-outline:hover { background: var(--primary-lt); }
 .btn-accent {
   background: var(--accent);
-  color: #7A3800;
+  color: #1A2B4A;
   font-weight: 800;
-  box-shadow: 0 3px 12px rgba(245,166,35,.38);
+  box-shadow: 0 3px 12px rgba(232,184,75,.38);
 }
 .btn-accent:hover {
-  background: #f09410;
-  color: #5A2600;
-  box-shadow: 0 6px 20px rgba(245,166,35,.5);
+  background: #d4a637;
+  color: #1A2B4A;
+  box-shadow: 0 6px 20px rgba(232,184,75,.5);
 }
 .btn-ghost { background: transparent; color: var(--muted); }
 .btn-ghost:hover { background: var(--bg); }
@@ -371,7 +371,7 @@ body {
 
 /* ── Hero ── */
 .hero {
-  background: linear-gradient(135deg, var(--primary) 0%, #0e3d70 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, #0d1f38 100%);
   color: #fff;
   overflow: hidden;
   position: relative;  /* stacking root for all hero children */
@@ -418,7 +418,7 @@ body {
   height: auto;
   filter: drop-shadow(0 14px 30px rgba(0,0,0,0.22));
 }
-.features { padding: 80px 0; background: #fff; }
+.features { padding: 80px 0; background: #FAF7F2; }
 .features h2 {
   text-align: center;
   font-size: 1.9rem;
@@ -436,21 +436,21 @@ body {
   background: #fff;
   border-radius: 20px;
   padding: 36px 24px 28px;
-  box-shadow: 0 1px 4px rgba(24,95,165,.06), 0 4px 20px rgba(24,95,165,.08);
+  box-shadow: 0 1px 4px rgba(26,43,74,.06), 0 4px 20px rgba(26,43,74,.08);
   text-align: center;
-  border: 1.5px solid rgba(24,95,165,.08);
+  border: 1.5px solid rgba(26,43,74,.08);
   transition: transform .28s, box-shadow .28s, background .28s, border-color .28s;
 }
 .feature-card:hover {
   transform: translateY(-7px);
-  box-shadow: 0 12px 40px rgba(24,95,165,.28);
-  background: linear-gradient(145deg, #185FA5 0%, #1e88e5 100%);
+  box-shadow: 0 12px 40px rgba(26,43,74,.28);
+  background: linear-gradient(145deg, #1A2B4A 0%, #253d6a 100%);
   border-color: transparent;
 }
 .feature-icon {
   width: 72px; height: 72px;
   border-radius: 22px;
-  background: linear-gradient(135deg, #e8f0fb, #dbeafe);
+  background: linear-gradient(135deg, #EDE5D8, #F4EFE6);
   display: flex; align-items: center; justify-content: center;
   margin: 0 auto 20px;
   color: var(--primary);
@@ -778,7 +778,7 @@ body {
   border-radius: 16px 0 0 16px;
   /* left border strip in brand blue */
   border-left: 3px solid var(--primary);
-  box-shadow: -6px 0 28px rgba(24, 95, 165, .13), -1px 0 0 rgba(0,0,0,.05);
+  box-shadow: -6px 0 28px rgba(26, 43, 74, .13), -1px 0 0 rgba(0,0,0,.05);
   padding: 6px 0;
   width: 72px;
   gap: 2px;
