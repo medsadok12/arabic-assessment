@@ -484,17 +484,17 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                background: '#16a34a',
-                color: '#fff',
+                background: '#E8B84B',
+                color: '#1A2B4A',
                 fontWeight: 800,
                 fontSize: '.88rem',
                 padding: '8px 16px',
                 borderRadius: 10,
                 textDecoration: 'none',
-                border: '2px solid rgba(255,255,255,.2)',
+                border: 'none',
                 transition: 'filter .2s',
                 whiteSpace: 'nowrap',
-                boxShadow: '0 2px 8px rgba(22,163,74,.4)',
+                boxShadow: '0 2px 8px rgba(232,184,75,.4)',
               }}
               onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
               onMouseLeave={e => e.currentTarget.style.filter = 'brightness(1)'}
