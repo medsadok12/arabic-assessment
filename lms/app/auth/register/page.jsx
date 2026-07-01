@@ -5,6 +5,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../lib/supabase';
 
+function IconInput({ icon, children }) {
+  return (
+    <div style={{ position: 'relative' }}>
+      <span style={{
+        position: 'absolute', right: 12, top: '50%',
+        transform: 'translateY(-50%)', fontSize: '1rem', pointerEvents: 'none',
+      }}>{icon}</span>
+      {children}
+    </div>
+  );
+}
+
 export default function RegisterPage() {
   const [form, setForm]     = useState({ name: '', email: '', password: '', confirm: '', code: '', grade: '' });
   const [error,   setError]   = useState('');
@@ -74,19 +86,6 @@ export default function RegisterPage() {
 
     setLoading(false);
     setSuccess('تم إنشاء حسابك! تحقق من بريدك الإلكتروني واضغط على رابط التأكيد.');
-  }
-
-  /* ── icon input helper ── */
-  function IconInput({ icon, children }) {
-    return (
-      <div style={{ position: 'relative' }}>
-        <span style={{
-          position: 'absolute', right: 12, top: '50%',
-          transform: 'translateY(-50%)', fontSize: '1rem', pointerEvents: 'none',
-        }}>{icon}</span>
-        {children}
-      </div>
-    );
   }
 
   return (
