@@ -3,25 +3,52 @@ import { useState, useEffect, useRef } from 'react';
 
 const EMPTY = { name: '', title: '', bio: '', image_url: '', sort_order: 0, is_active: true };
 
+/* resize/compress a member photo to the actual max display size (110×110, see TeamShowcase) before upload */
+async function resizeImage(file, maxSize = 110, quality = 0.85) {
+  const bitmap = await createImageBitmap(file);
+  const scale  = Math.min(maxSize / bitmap.width, maxSize / bitmap.height, 1);
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = maxSize; canvas.height = maxSize;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, (maxSize - w) / 2, (maxSize - h) / 2, w, h);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
+  return blob || file;
+}
+
+async function uploadMemberImage(file) {
+  const resized = await resizeImage(file);
+  const fd = new FormData();
+  fd.append('file', resized, `member-${Date.now()}.webp`);
+  const res  = await fetch('/api/bogga/team/upload', { method: 'POST', body: fd });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'فشل رفع الصورة');
+  return json.url;
+}
+
 function MemberModal({ initial, onSave, onClose }) {
   const [form, setForm]   = useState(initial ?? EMPTY);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [err, setErr]     = useState('');
   const [preview, setPreview] = useState(initial?.image_url || '');
   const fileRef = useRef(null);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  function handleFileChange(e) {
+  async function handleFileChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const url = ev.target.result;
-      setPreview(url);
+    setPreview(URL.createObjectURL(file));
+    setUploading(true); setErr('');
+    try {
+      const url = await uploadMemberImage(file);
       set('image_url', url);
-    };
-    reader.readAsDataURL(file);
+    } catch (e2) {
+      setErr(e2.message || 'فشل رفع الصورة');
+    }
+    setUploading(false);
   }
 
   async function handleSave() {
@@ -187,13 +214,13 @@ function MemberModal({ initial, onSave, onClose }) {
 
           <div style={{ display: 'flex', gap: 10 }}>
             <button
-              onClick={handleSave} disabled={saving}
+              onClick={handleSave} disabled={saving || uploading}
               style={{
                 flex: 1, padding: '11px 16px', background: '#185FA5', color: '#fff',
                 fontWeight: 800, fontSize: '.92rem', borderRadius: 10, border: 'none',
-                cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit', minHeight: 44,
+                cursor: (saving || uploading) ? 'wait' : 'pointer', fontFamily: 'inherit', minHeight: 44,
               }}>
-              {saving ? 'جارٍ الحفظ...' : initial ? '💾 حفظ التعديل' : '➕ إضافة العضو'}
+              {uploading ? '⏳ جارٍ رفع الصورة...' : saving ? 'جارٍ الحفظ...' : initial ? '💾 حفظ التعديل' : '➕ إضافة العضو'}
             </button>
             <button onClick={onClose} style={{
               padding: '11px 16px', border: '2px solid #e2e8f0', borderRadius: 10,
