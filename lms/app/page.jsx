@@ -90,7 +90,7 @@ export default function LandingPage() {
 
         <svg className="hero-wave" xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 1440 80" preserveAspectRatio="none">
-          <path d="M0,80 L0,44 C240,80 480,8 720,44 C960,80 1200,8 1440,44 L1440,80 Z" fill="#ffffff" />
+          <path d="M0,80 L0,44 C240,80 480,8 720,44 C960,80 1200,8 1440,44 L1440,80 Z" fill="#FAF7F2" />
         </svg>
       </section>
 
@@ -114,7 +114,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── About + Video ── */}
-      <section id="about" style={{ background: '#f0f6ff', padding: '80px 0' }}>
+      <section id="about" style={{ background: '#EDE5D8', padding: '80px 0' }}>
         <div className="container">
           <div style={{ display: 'flex', gap: 52, alignItems: 'center', flexWrap: 'wrap' }}>
 
@@ -124,7 +124,7 @@ export default function LandingPage() {
               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary)', marginBottom: 8 }}>
                 {t('landing.aboutTitle')}
               </h2>
-              <p style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c', marginBottom: 20 }}>
+              <p style={{ fontSize: '1rem', fontWeight: 700, color: '#1A2B4A', marginBottom: 20 }}>
                 {t('landing.aboutMotto')}
               </p>
               <div style={{ lineHeight: 2, color: '#2d3748', fontSize: '1rem' }}>
@@ -159,7 +159,7 @@ export default function LandingPage() {
 
       <TeamShowcase />
 
-      <footer style={{ background: '#0e3d70', color: 'rgba(255,255,255,.55)', textAlign: 'center', padding: '24px 20px', fontSize: '.88rem' }}>
+      <footer style={{ background: '#0d1f38', color: 'rgba(255,255,255,.55)', textAlign: 'center', padding: '24px 20px', fontSize: '.88rem' }}>
         <style>{`
           .footer-tlink {
             color: rgba(255,255,255,.65);
