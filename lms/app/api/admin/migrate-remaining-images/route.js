@@ -71,7 +71,7 @@ async function migrateTable(admin, table, prefix) {
         .eq('id', row.id);
       if (updateErr) throw updateErr;
 
-      result.bytesBefore += Buffer.byteLength(row.image_url,  'utf8');
+      result.bytesBefore += Buffer.byteLength(row.image_url, 'utf8');
       result.bytesAfter  += Buffer.byteLength(publicUrl, 'utf8');
       result.migrated++;
     } catch (e) {
@@ -83,8 +83,9 @@ async function migrateTable(admin, table, prefix) {
   return result;
 }
 
-export async function POST(request) {
-  if (request.headers.get('x-migration-token') !== ONE_TIME_TOKEN) {
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  if (searchParams.get('token') !== ONE_TIME_TOKEN) {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
   }
 
@@ -94,11 +95,11 @@ export async function POST(request) {
     results.push(await migrateTable(admin, name, prefix));
   }
 
-  const totalBefore = results.reduce((s, r) => s + r.bytesBefore, 0);
-  const totalAfter  = results.reduce((s, r) => s + r.bytesAfter,  0);
-  const totalRows   = results.reduce((s, r) => s + r.total,       0);
-  const totalMig    = results.reduce((s, r) => s + r.migrated,    0);
-  const totalFailed = results.reduce((s, r) => s + r.failed,      0);
+  const totalBefore  = results.reduce((s, r) => s + r.bytesBefore, 0);
+  const totalAfter   = results.reduce((s, r) => s + r.bytesAfter,  0);
+  const totalRows    = results.reduce((s, r) => s + r.total,       0);
+  const totalMig     = results.reduce((s, r) => s + r.migrated,    0);
+  const totalFailed  = results.reduce((s, r) => s + r.failed,      0);
 
   return NextResponse.json({
     summary: { totalRows, totalMigrated: totalMig, totalFailed, totalBytesBefore: totalBefore, totalBytesAfter: totalAfter },
