@@ -1,0 +1,77 @@
+# أكاديمية عارم — robots.txt
+# السماح لمحركات البحث ووكلاء الذكاء الاصطناعي بالزحف للصفحات العامة فقط
+
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+Disallow: /bogga/
+Disallow: /teacher/
+Disallow: /admin/
+Disallow: /supervisor/
+Disallow: /profile/
+Disallow: /api/
+Disallow: /auth/
+
+# وكلاء الذكاء الاصطناعي — السماح بالزحف للصفحات العامة فقط (لا التدريب)
+User-agent: GPTBot
+Allow: /
+Disallow: /dashboard/
+Disallow: /bogga/
+Disallow: /teacher/
+Disallow: /admin/
+Disallow: /profile/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /dashboard/
+Disallow: /bogga/
+Disallow: /teacher/
+Disallow: /admin/
+Disallow: /profile/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /dashboard/
+Disallow: /bogga/
+Disallow: /teacher/
+Disallow: /admin/
+Disallow: /profile/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /dashboard/
+Disallow: /bogga/
+Disallow: /teacher/
+Disallow: /admin/
+Disallow: /profile/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /dashboard/
+Disallow: /bogga/
+Disallow: /teacher/
+Disallow: /admin/
+Disallow: /profile/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /dashboard/
+Disallow: /bogga/
+Disallow: /teacher/
+Disallow: /admin/
+Disallow: /profile/
+Disallow: /api/
+Disallow: /auth/
+
+# خريطة الموقع
+Sitemap: https://www.aarem.net/sitemap.xml

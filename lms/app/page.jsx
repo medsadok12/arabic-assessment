@@ -21,6 +21,37 @@ export default function LandingPage() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "EducationalOrganization",
+            "name": "أكاديمية عارم",
+            "alternateName": "Aarem Academy",
+            "url": "https://www.aarem.net",
+            "description": "منصة رقمية متخصصة في تعليم مهارات اللغة العربية والتأسيس القرائي للأطفال من الصف الأول إلى السابع",
+            "areaServed": "Worldwide",
+            "audience": {
+              "@type": "EducationalAudience",
+              "educationalRole": "student",
+              "audienceType": "أطفال المهجر الناطقين وغير الناطقين بالعربية"
+            },
+            "availableLanguage": ["ar", "en"],
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "telephone": "+44-7400-755914",
+              "contactType": "customer service",
+              "availableLanguage": ["ar", "en"]
+            },
+            "sameAs": [
+              "https://www.instagram.com/aremacademy/",
+              "https://www.facebook.com/Aremacademy",
+              "https://wa.me/447400755914"
+            ]
+          })
+        }}
+      />
       <Navbar />
       <FloatingSidebar />
 

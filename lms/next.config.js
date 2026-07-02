@@ -18,6 +18,33 @@ const nextConfig = {
       },
     ];
   },
+  async headers() {
+    return [
+      {
+        source: '/((?!dashboard|bogga|teacher|admin|supervisor|profile|api|auth).*)',
+        headers: [
+          {
+            key: 'X-Robots-Tag',
+            value: 'index, follow, max-snippet:-1, max-image-preview:large',
+          },
+          {
+            key: 'Link',
+            value: '</llms.txt>; rel="ai-content-description"; type="text/markdown"',
+          },
+        ],
+      },
+      {
+        // حماية الصفحات الداخلية من الفهرسة
+        source: '/(dashboard|bogga|teacher|admin|supervisor|profile|api|auth)(.*)',
+        headers: [
+          {
+            key: 'X-Robots-Tag',
+            value: 'noindex, nofollow',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
