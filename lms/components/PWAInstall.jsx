@@ -124,8 +124,8 @@ export default function PWAInstall() {
           transform: translateX(-50%);
           width: min(92vw, 400px);
           background: #fff; border-radius: 24px;
-          box-shadow: 0 20px 60px rgba(24,95,165,.22), 0 4px 16px rgba(0,0,0,.08);
-          border: 1.5px solid rgba(24,95,165,.12);
+          box-shadow: 0 20px 60px rgba(26,43,74,.22), 0 4px 16px rgba(0,0,0,.08);
+          border: 1.5px solid rgba(26,43,74,.12);
           z-index: 99998; direction: rtl; overflow: hidden;
         }
 
@@ -133,8 +133,8 @@ export default function PWAInstall() {
         .pwa-mob-strip {
           position: fixed; bottom: 76px; left: 0; right: 0;
           z-index: 99998; background: #fff;
-          border-top: 2px solid rgba(24,95,165,.18);
-          box-shadow: 0 -6px 24px rgba(24,95,165,.14);
+          border-top: 2px solid rgba(26,43,74,.18);
+          box-shadow: 0 -6px 24px rgba(26,43,74,.14);
           border-radius: 16px 16px 0 0;
           overflow: hidden; direction: rtl;
         }
@@ -144,16 +144,16 @@ export default function PWAInstall() {
       {showUpdate && (
         <div className="pwa-banner" style={{
           position: 'fixed', top: 0, left: 0, right: 0, zIndex: 99999,
-          background: 'linear-gradient(135deg,#1e40af,#185FA5)',
+          background: 'linear-gradient(135deg,#0d1f38,#1A2B4A)',
           color: '#fff', direction: 'rtl',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           gap: 14, padding: '10px 20px',
-          boxShadow: '0 4px 20px rgba(24,95,165,.4)',
+          boxShadow: '0 4px 20px rgba(26,43,74,.4)',
         }}>
           <span style={{ fontSize: '1.1rem' }}>🔄</span>
           <span style={{ fontWeight: 700, fontSize: '.92rem' }}>يوجد إصدار جديد من التطبيق</span>
           <button onClick={applyUpdate} className="pwa-btn-update" style={{
-            background: '#fff', color: '#185FA5', border: 'none', borderRadius: 8,
+            background: '#fff', color: '#1A2B4A', border: 'none', borderRadius: 8,
             padding: '6px 16px', fontWeight: 800, fontSize: '.85rem',
             cursor: 'pointer', fontFamily: 'inherit', transition: 'background .15s',
           }}>تحديث الآن</button>
@@ -172,14 +172,14 @@ export default function PWAInstall() {
           /* ── Mobile: compact strip above bottom nav ── */
           <div className={`pwa-mob-strip ${visible ? 'pwa-strip-in' : 'pwa-strip-out'}`}>
             {/* accent line */}
-            <div style={{ height: 3, background: 'linear-gradient(90deg,#185FA5,#d4952a,#185FA5)' }} />
+            <div style={{ height: 3, background: 'linear-gradient(90deg,#1A2B4A,#E8B84B,#1A2B4A)' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px 13px' }}>
               {/* small app icon */}
               <div style={{
                 width: 40, height: 40, borderRadius: 11, flexShrink: 0,
-                background: 'linear-gradient(135deg,#185FA5,#0d3d6e)',
+                background: 'linear-gradient(135deg,#1A2B4A,#0d1f38)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 3px 10px rgba(24,95,165,.3)',
+                boxShadow: '0 3px 10px rgba(26,43,74,.3)',
               }}>
                 <img src="/logo.svg" alt="عارم" width={26} height={26} style={{ filter: 'brightness(1.1)' }} />
               </div>
@@ -197,7 +197,7 @@ export default function PWAInstall() {
               {/* install / close */}
               {!isIOS && (
                 <button onClick={handleInstall} className="pwa-btn-install" style={{
-                  background: 'linear-gradient(135deg,#185FA5,#1d4ed8)',
+                  background: 'linear-gradient(135deg,#1A2B4A,#2d4373)',
                   color: '#fff', border: 'none', borderRadius: 10,
                   padding: '8px 14px', fontWeight: 800, fontSize: '.8rem',
                   cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
@@ -217,16 +217,16 @@ export default function PWAInstall() {
           <div className={`pwa-install-card ${visible ? 'pwa-card' : 'pwa-hide'}`}>
 
             {/* top gradient stripe */}
-            <div style={{ height: 4, background: 'linear-gradient(90deg,#185FA5,#d4952a,#185FA5)', backgroundSize: '200% 100%' }} />
+            <div style={{ height: 4, background: 'linear-gradient(90deg,#1A2B4A,#E8B84B,#1A2B4A)', backgroundSize: '200% 100%' }} />
 
             <div style={{ padding: '22px 24px 20px' }}>
               {/* Header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
                 <div style={{
                   width: 58, height: 58, borderRadius: 16, flexShrink: 0,
-                  background: 'linear-gradient(135deg,#185FA5,#0d3d6e)',
+                  background: 'linear-gradient(135deg,#1A2B4A,#0d1f38)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 4px 14px rgba(24,95,165,.35)',
+                  boxShadow: '0 4px 14px rgba(26,43,74,.35)',
                 }}>
                   <img src="/logo.svg" alt="عارم" width={38} height={38} style={{ filter: 'brightness(1.1)' }} />
                 </div>
@@ -248,7 +248,7 @@ export default function PWAInstall() {
               <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
                 {['⚡ سريع', '📶 بدون انترنت', '🔔 إشعارات'].map(f => (
                   <span key={f} style={{
-                    background: '#f0f6ff', color: '#185FA5', borderRadius: 20,
+                    background: '#f0f6ff', color: '#1A2B4A', borderRadius: 20,
                     padding: '4px 11px', fontSize: '.75rem', fontWeight: 700,
                     border: '1px solid #bfdbfe',
                   }}>{f}</span>
@@ -266,12 +266,12 @@ export default function PWAInstall() {
                 </div>
               ) : (
                 <button onClick={handleInstall} className="pwa-btn-install" style={{
-                  width: '100%', background: 'linear-gradient(135deg,#185FA5,#1d4ed8)',
+                  width: '100%', background: 'linear-gradient(135deg,#1A2B4A,#2d4373)',
                   color: '#fff', border: 'none', borderRadius: 14,
                   padding: '13px 0', fontWeight: 800, fontSize: '1rem',
                   cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 8, boxShadow: '0 4px 18px rgba(24,95,165,.4)',
+                  gap: 8, boxShadow: '0 4px 18px rgba(26,43,74,.4)',
                   transition: 'filter .15s, transform .1s',
                 }}>
                   <span style={{ fontSize: '1.15rem' }}>📲</span>

@@ -406,8 +406,8 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
     <>
       <style>{`
         @keyframes fPulse {
-          0%,100% { box-shadow: 0 8px 28px rgba(31,45,90,.38), 0 0 0 4px rgba(212,149,42,.22); }
-          50%      { box-shadow: 0 8px 28px rgba(31,45,90,.45), 0 0 0 10px rgba(212,149,42,.10); }
+          0%,100% { box-shadow: 0 8px 28px rgba(124,92,217,.38), 0 0 0 4px rgba(124,92,217,.22); }
+          50%      { box-shadow: 0 8px 28px rgba(124,92,217,.45), 0 0 0 10px rgba(124,92,217,.10); }
         }
         @keyframes fDot {
           0%,80%,100% { transform: scale(.55); opacity: .35; }
@@ -426,15 +426,15 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
           style={{
             position: 'fixed', bottom: 'var(--faheem-btn-bottom, 24px)', right: 24, zIndex: 1000,
             width: 72, height: 72, borderRadius: '50%',
-            border: '3px solid #d4952a',
-            background: 'linear-gradient(135deg,#1f2d5a,#2d4a8a)',
+            border: '3px solid rgba(255,255,255,.4)',
+            background: 'linear-gradient(135deg,#7C5CD9,#5B3FA8)',
             cursor: 'pointer', padding: 0,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             animation: 'fPulse 2.5s ease-in-out infinite',
           }}
         >
           <span style={{ fontSize: '2rem', lineHeight: 1 }}>🧒</span>
-          <span style={{ fontSize: '.52rem', color: '#d4952a', fontWeight: 800, marginTop: 2 }}>فَهِيمٌ</span>
+          <span style={{ fontSize: '.52rem', color: '#fff', fontWeight: 800, marginTop: 2 }}>فَهِيمٌ</span>
         </button>
       )}
 
@@ -443,14 +443,14 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
           position: 'fixed', bottom: 'var(--faheem-panel-bottom, 16px)', right: 16, zIndex: 1000,
           width: 348, maxWidth: 'calc(100vw - 32px)',
           background: '#fff', borderRadius: 24,
-          boxShadow: '0 20px 64px rgba(0,0,0,.22), 0 0 0 1px rgba(31,45,90,.08)',
+          boxShadow: '0 20px 64px rgba(0,0,0,.22), 0 0 0 1px rgba(124,92,217,.08)',
           display: 'flex', flexDirection: 'column',
           maxHeight: 'calc(100vh - 40px)',
           animation: 'fSlideUp .3s ease-out',
         }}>
 
           <div style={{
-            background: 'linear-gradient(135deg,#1f2d5a,#2d4a8a)',
+            background: 'linear-gradient(135deg,#7C5CD9,#5B3FA8)',
             padding: '12px 14px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             borderRadius: '24px 24px 0 0', flexShrink: 0,
@@ -458,7 +458,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
                 width: 42, height: 42, borderRadius: '50%',
-                border: '2px solid #d4952a', background: 'rgba(255,255,255,.1)',
+                border: '2px solid rgba(255,255,255,.4)', background: 'rgba(255,255,255,.1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.7rem',
               }}>🧒</div>
               <div>
@@ -490,7 +490,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
               <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-start' : 'flex-end' }}>
                 <div style={{
                   maxWidth: '83%',
-                  background: m.role === 'user' ? '#f1f5f9' : 'linear-gradient(135deg,#1f2d5a,#2d4a8a)',
+                  background: m.role === 'user' ? '#f1f5f9' : 'linear-gradient(135deg,#7C5CD9,#5B3FA8)',
                   color: m.role === 'user' ? '#1a2d4a' : '#fff',
                   borderRadius: m.role === 'user' ? '18px 18px 18px 4px' : '18px 18px 4px 18px',
                   padding: '10px 14px', fontSize: '1.05rem',
@@ -505,14 +505,14 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
             {phase === 'thinking' && (
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <div style={{
-                  background: 'linear-gradient(135deg,#1f2d5a,#2d4a8a)',
+                  background: 'linear-gradient(135deg,#7C5CD9,#5B3FA8)',
                   borderRadius: '18px 18px 4px 18px',
                   padding: '10px 18px', display: 'flex', gap: 5, alignItems: 'center',
                 }}>
                   {[0, 1, 2].map(i => (
                     <span key={i} style={{
                       width: 7, height: 7, borderRadius: '50%',
-                      background: '#d4952a', display: 'inline-block',
+                      background: '#fff', display: 'inline-block',
                       animation: `fDot 1.2s ease-in-out ${i * .22}s infinite`,
                     }} />
                   ))}
@@ -576,7 +576,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
                 width: 38, height: 38, borderRadius: '50%', border: 'none',
                 background: isRec ? '#e53935'
                           : locked ? '#c3cbd6'
-                          : 'linear-gradient(135deg,#1f2d5a,#2d4a8a)',
+                          : 'linear-gradient(135deg,#7C5CD9,#5B3FA8)',
                 color: '#fff', cursor: locked ? 'not-allowed' : 'pointer',
                 opacity: locked ? .65 : 1,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -618,7 +618,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
               disabled={!input.trim() || locked}
               style={{
                 width: 38, height: 38, borderRadius: '50%', border: 'none',
-                background: input.trim() && !locked ? '#d4952a' : '#e0e0e0',
+                background: input.trim() && !locked ? '#7C5CD9' : '#e0e0e0',
                 color: '#fff', cursor: input.trim() && !locked ? 'pointer' : 'not-allowed',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '1.1rem', flexShrink: 0, transition: 'background .2s',

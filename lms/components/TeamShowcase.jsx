@@ -15,7 +15,7 @@ export default function TeamShowcase() {
   if (loading || members.length === 0) return null;
 
   return (
-    <section style={{ background: '#fff', padding: '72px 0 60px', borderTop: '1px solid #e2e8f0' }}>
+    <section style={{ background: '#FAF7F2', padding: '72px 0 60px', borderTop: '1px solid #e2e8f0' }}>
       <style>{`
         .team-card {
           display: flex; flex-direction: column; align-items: center;
@@ -27,23 +27,23 @@ export default function TeamShowcase() {
         }
         .team-card:hover {
           transform: translateY(-5px);
-          box-shadow: 0 10px 32px rgba(24,95,165,.15), 4px 4px 0 rgba(24,95,165,.1);
-          border-color: #185FA5;
+          box-shadow: 0 10px 32px rgba(26,43,74,.15), 4px 4px 0 rgba(26,43,74,.1);
+          border-color: #1A2B4A;
         }
         .team-photo {
           width: 110px; height: 110px; border-radius: 50%; overflow: hidden;
-          border: 3px solid #185FA5; margin-bottom: 16px;
+          border: 3px solid #1A2B4A; margin-bottom: 16px;
           background: #e8f0fb; display: flex; align-items: center;
           justify-content: center; flex-shrink: 0;
           transition: border-color .22s, transform .22s;
         }
         .team-card:hover .team-photo {
-          border-color: #c9952a; transform: scale(1.04);
+          border-color: #E8B84B; transform: scale(1.04);
         }
         .team-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .team-name { font-weight: 800; font-size: 1rem; color: #1a1a2e; margin-bottom: 6px; }
         .team-title {
-          display: inline-block; background: #e8f0fb; color: #185FA5;
+          display: inline-block; background: #e8f0fb; color: #1A2B4A;
           font-size: .75rem; font-weight: 700; padding: 3px 12px;
           border-radius: 99px; margin-bottom: 10px; border: 1px solid #c5d9f2;
         }
@@ -57,7 +57,7 @@ export default function TeamShowcase() {
       <div className="container">
         <h2 style={{
           textAlign: 'center', fontSize: '1.8rem', fontWeight: 900,
-          color: '#1a3a6b', marginBottom: 8,
+          color: '#1A2B4A', marginBottom: 8,
         }}>فريقنا التعليمي</h2>
         <p style={{ textAlign: 'center', color: '#64748b', marginBottom: 48, fontSize: '.97rem' }}>
           نخبة من المعلمين المتخصصين في تعليم اللغة العربية

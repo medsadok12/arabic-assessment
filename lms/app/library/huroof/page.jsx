@@ -267,7 +267,7 @@ export default function HuroofPage() {
           {/* Breadcrumb */}
           <div style={{ marginBottom: 18 }}>
             <Link href="/library"
-              style={{ color: '#185FA5', fontSize: '.86rem', fontWeight: 700, textDecoration: 'none' }}>
+              style={{ color: '#1A2B4A', fontSize: '.86rem', fontWeight: 700, textDecoration: 'none' }}>
               ← المكتبة
             </Link>
           </div>
@@ -298,16 +298,16 @@ export default function HuroofPage() {
                 <div style={{
                   height: '100%',
                   width: `${progress}%`,
-                  background: 'linear-gradient(90deg, #185FA5, #1a7c40)',
+                  background: 'linear-gradient(90deg, #1A2B4A, #1a7c40)',
                   borderRadius: 99,
                   transition: 'width .4s ease',
-                  boxShadow: '0 2px 6px rgba(24,95,165,.35)',
+                  boxShadow: '0 2px 6px rgba(26,43,74,.35)',
                 }} />
               </div>
               {progress === 100 && (
                 <div style={{
                   marginTop: 10, textAlign: 'center',
-                  background: 'linear-gradient(135deg,#1a7c40,#185FA5)',
+                  background: 'linear-gradient(135deg,#1a7c40,#1A2B4A)',
                   color: '#fff', borderRadius: 12,
                   padding: '10px 16px', fontSize: '.88rem', fontWeight: 800,
                   animation: 'hfDown .3s ease',

@@ -177,7 +177,7 @@ export default function LandingPage() {
             left: 50%;
             width: 100%;
             height: 1.5px;
-            background: linear-gradient(90deg, transparent, #c9952a, transparent);
+            background: linear-gradient(90deg, transparent, #E8B84B, transparent);
             border-radius: 2px;
             transform: translateX(-50%) scaleX(0);
             transition: transform .32s cubic-bezier(.4,0,.2,1);

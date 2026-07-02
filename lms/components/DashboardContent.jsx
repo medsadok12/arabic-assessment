@@ -36,7 +36,7 @@ function HwToggle({ id, status }) {
 }
 
 const ACTION_CARDS = [
-  { icon: '📅', title: 'تقويمي',      desc: 'حصصي القادمة والمنتهية',  href: '/dashboard/calendar', grad: 'linear-gradient(135deg,#185FA5,#1d4ed8)' },
+  { icon: '📅', title: 'تقويمي',      desc: 'حصصي القادمة والمنتهية',  href: '/dashboard/calendar', grad: 'linear-gradient(135deg,#1A2B4A,#2d4373)' },
   { icon: '📖', title: 'بنك الكلمات', desc: 'تعلّم كلمات جديدة يومياً', href: '/dashboard/lexicon',  grad: 'linear-gradient(135deg,#7c3aed,#a855f7)' },
   { icon: '📈', title: 'تقاريري',     desc: 'تابع تطوّرك ونتائجك',     href: '/dashboard/progress', grad: 'linear-gradient(135deg,#059669,#10b981)' },
 ];
@@ -300,7 +300,7 @@ export default function DashboardContent({
         /* Next session */
         .db-session { border-radius:18px; padding:20px 22px; color:#fff;
                       display:flex; align-items:center; gap:16px; flex-wrap:wrap;
-                      box-shadow:0 6px 28px rgba(24,95,165,.2); margin-bottom:28px; }
+                      box-shadow:0 6px 28px rgba(26,43,74,.2); margin-bottom:28px; }
         .db-session-body { flex:1; min-width:180px; }
         .db-session-badge { display:inline-block; background:rgba(255,255,255,.22);
                             padding:4px 12px; border-radius:20px; font-size:.8rem; font-weight:700; margin-top:8px; }
@@ -338,7 +338,7 @@ export default function DashboardContent({
 
         @keyframes attPulse {
           0%,100% { box-shadow:0 4px 16px rgba(0,0,0,.18); transform:scale(1); }
-          50%     { box-shadow:0 6px 24px rgba(24,95,165,.45); transform:scale(1.04); }
+          50%     { box-shadow:0 6px 24px rgba(26,43,74,.45); transform:scale(1.04); }
         }
 
         /* ── Streak widget ── */

@@ -349,7 +349,7 @@ export function AvatarWithAccessory({ name, avatarURL, equipped = {}, equippedId
         position:'absolute', width:size, height:size,
         borderRadius:'50%', overflow:'hidden', zIndex:1,
         background:'linear-gradient(135deg,#dbeafe,#ede9fe)',
-        boxShadow:`0 3px 14px rgba(24,95,165,.28)`,
+        boxShadow:`0 3px 14px rgba(26,43,74,.28)`,
       }}>
         {avatarURL ? (
           <img src={avatarURL} alt="" style={{ width:size, height:size, objectFit:'cover', display:'block' }}/>

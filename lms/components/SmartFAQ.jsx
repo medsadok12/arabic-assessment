@@ -101,8 +101,8 @@ export default function SmartFAQ() {
                 borderRadius: 14,
                 marginBottom: 14,
                 boxShadow: openIdx === idx
-                  ? '0 4px 20px rgba(24,95,165,0.13)'
-                  : '0 2px 8px rgba(24,95,165,0.07)',
+                  ? '0 4px 20px rgba(26,43,74,0.13)'
+                  : '0 2px 8px rgba(26,43,74,0.07)',
                 border: openIdx === idx
                   ? '1.5px solid var(--primary)'
                   : '1.5px solid transparent',
@@ -161,10 +161,10 @@ export default function SmartFAQ() {
           {/* ── Left: AI Chat Box ── */}
           <div style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{
-              background: 'linear-gradient(145deg, #185FA5 0%, #104880 100%)',
+              background: 'linear-gradient(145deg, #1A2B4A 0%, #0d1f38 100%)',
               borderRadius: 20,
               padding: 28,
-              boxShadow: '0 8px 32px rgba(24,95,165,0.22)',
+              boxShadow: '0 8px 32px rgba(26,43,74,0.22)',
               color: '#fff',
               flex: 1,
               display: 'flex',
@@ -180,9 +180,9 @@ export default function SmartFAQ() {
                   width: 86,
                   height: 86,
                   borderRadius: '50%',
-                  background: 'linear-gradient(145deg, #fff9e6 0%, #fde68a 55%, #fbbf24 100%)',
+                  background: 'linear-gradient(145deg, #f3f0ff 0%, #c4b5fd 55%, #7C5CD9 100%)',
                   border: '3px solid rgba(255,255,255,0.55)',
-                  boxShadow: '0 4px 20px rgba(245,166,35,0.5)',
+                  boxShadow: '0 4px 20px rgba(124,92,217,0.5)',
                   overflow: 'hidden',
                   display: 'flex',
                   alignItems: 'flex-end',
@@ -226,7 +226,7 @@ export default function SmartFAQ() {
                     lineHeight: 1.55,
                   }}>
                     لم تجد إجابتك؟ اسأل{' '}
-                    <span style={{ color: 'var(--accent)', textShadow: '0 1px 8px rgba(245,166,35,0.35)' }}>
+                    <span style={{ color: 'var(--accent)', textShadow: '0 1px 8px rgba(232,184,75,0.35)' }}>
                       فهيم
                     </span>{' '}
                     مباشرة!
@@ -346,14 +346,14 @@ export default function SmartFAQ() {
                     justifyContent: 'center',
                     gap: 8,
                     background: 'var(--accent)',
-                    color: '#fff',
+                    color: '#1A2B4A',
                     fontWeight: 800,
                     fontSize: '.95rem',
                     padding: '12px 20px',
                     borderRadius: 12,
                     textDecoration: 'none',
                     transition: 'opacity .2s, transform .15s',
-                    boxShadow: '0 4px 16px rgba(245,166,35,0.4)',
+                    boxShadow: '0 4px 16px rgba(232,184,75,0.4)',
                     animation: 'fadeUp .4s ease',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.opacity = '.88'; e.currentTarget.style.transform = 'translateY(-2px)'; }}

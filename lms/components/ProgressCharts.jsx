@@ -100,8 +100,8 @@ export default function ProgressCharts({ assessments, pastSessions: initialSessi
             <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <defs>
                 <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#185FA5" stopOpacity={0.28} />
-                  <stop offset="95%" stopColor="#185FA5" stopOpacity={0.02} />
+                  <stop offset="5%"  stopColor="#1A2B4A" stopOpacity={0.28} />
+                  <stop offset="95%" stopColor="#1A2B4A" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f4f8" />
@@ -111,8 +111,8 @@ export default function ProgressCharts({ assessments, pastSessions: initialSessi
                 formatter={v => [`${v}%`, 'النتيجة']}
                 contentStyle={{ fontFamily: 'Cairo,sans-serif', direction: 'rtl', fontSize: '.85rem', borderRadius: 8 }}
               />
-              <Area type="monotone" dataKey="score" stroke="#185FA5" strokeWidth={2.5}
-                fill="url(#sg)" dot={{ r: 5, fill: '#185FA5', strokeWidth: 0 }} />
+              <Area type="monotone" dataKey="score" stroke="#1A2B4A" strokeWidth={2.5}
+                fill="url(#sg)" dot={{ r: 5, fill: '#1A2B4A', strokeWidth: 0 }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -183,7 +183,7 @@ export default function ProgressCharts({ assessments, pastSessions: initialSessi
                     )}
                     {s.recording_url && (
                       <a href={s.recording_url} target="_blank" rel="noopener noreferrer"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '7px 14px', background: '#eef5ff', borderRadius: 8, fontSize: '.85rem', color: '#185FA5', fontWeight: 700, textDecoration: 'none' }}>
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '7px 14px', background: '#eef5ff', borderRadius: 8, fontSize: '.85rem', color: '#1A2B4A', fontWeight: 700, textDecoration: 'none' }}>
                         🎬 مشاهدة تسجيل الحصة
                       </a>
                     )}

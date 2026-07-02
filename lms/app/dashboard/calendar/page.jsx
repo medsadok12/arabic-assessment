@@ -97,7 +97,7 @@ export default function CalendarPage() {
           </div>
 
           {/* Calendar card */}
-          <div style={{ background: '#fff', borderRadius: 18, boxShadow: '0 4px 24px rgba(24,95,165,.10)', overflow: 'hidden', marginBottom: 20 }}>
+          <div style={{ background: '#fff', borderRadius: 18, boxShadow: '0 4px 24px rgba(26,43,74,.10)', overflow: 'hidden', marginBottom: 20 }}>
 
             {/* Month nav */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid var(--border)' }}>
@@ -157,7 +157,7 @@ export default function CalendarPage() {
           </div>
 
           {/* Selected day sessions */}
-          <div style={{ background: '#fff', borderRadius: 18, boxShadow: '0 4px 24px rgba(24,95,165,.08)', overflow: 'hidden' }}>
+          <div style={{ background: '#fff', borderRadius: 18, boxShadow: '0 4px 24px rgba(26,43,74,.08)', overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontWeight: 700, fontSize: '.92rem', color: 'var(--text)' }}>
                 {fmtFullDate(selected)}

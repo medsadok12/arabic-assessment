@@ -32,12 +32,12 @@ function RescheduleForm() {
   const card = {
     background: '#fff', borderRadius: 18, padding: '38px 34px',
     maxWidth: 520, width: '100%',
-    boxShadow: '0 6px 32px rgba(24,95,165,.13)',
+    boxShadow: '0 6px 32px rgba(26,43,74,.13)',
   };
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#f4f7fc',
+      minHeight: '100vh', background: '#F4EFE6',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 20, direction: 'rtl',
       fontFamily: "'Segoe UI', Tahoma, Arial, sans-serif",
@@ -46,7 +46,7 @@ function RescheduleForm() {
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 30 }}>
           <div style={{ fontSize: '2.6rem', marginBottom: 10 }}>📅</div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#185FA5', margin: '0 0 6px' }}>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#1A2B4A', margin: '0 0 6px' }}>
             طلب إعادة جدولة الموعد
           </h1>
           <p style={{ color: '#6b7280', fontSize: '.9rem', margin: 0 }}>
@@ -91,7 +91,7 @@ function RescheduleForm() {
                 outline: 'none', transition: 'border-color .2s',
                 boxSizing: 'border-box',
               }}
-              onFocus={e => (e.target.style.borderColor = '#185FA5')}
+              onFocus={e => (e.target.style.borderColor = '#1A2B4A')}
               onBlur={e => (e.target.style.borderColor = '#d1d5db')}
               required
             />
