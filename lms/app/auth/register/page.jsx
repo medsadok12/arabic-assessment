@@ -116,24 +116,26 @@ export default function RegisterPage() {
         </div>
 
         {/* ── Tabs ── */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr',
-          background: '#e8f0fb', padding: '6px', gap: 4,
-        }}>
-          <Link href="/auth/login"
-            style={{
-              padding: '10px 0', borderRadius: 10, fontFamily: 'inherit',
-              fontWeight: 700, fontSize: '.9rem', background: 'transparent',
-              color: '#6b7280', textDecoration: 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>🔑 دخول</Link>
-          <button style={{
-            padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'default',
-            fontFamily: 'inherit', fontWeight: 700, fontSize: '.9rem',
-            background: '#fff', color: '#185FA5',
-            boxShadow: '0 2px 10px rgba(24,95,165,.14)',
-          }}>✨ تسجيل جديد</button>
-        </div>
+        {!success && (
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr',
+            background: '#e8f0fb', padding: '6px', gap: 4,
+          }}>
+            <Link href="/auth/login"
+              style={{
+                padding: '10px 0', borderRadius: 10, fontFamily: 'inherit',
+                fontWeight: 700, fontSize: '.9rem', background: 'transparent',
+                color: '#6b7280', textDecoration: 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>🔑 دخول</Link>
+            <button style={{
+              padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'default',
+              fontFamily: 'inherit', fontWeight: 700, fontSize: '.9rem',
+              background: '#fff', color: '#185FA5',
+              boxShadow: '0 2px 10px rgba(24,95,165,.14)',
+            }}>✨ تسجيل جديد</button>
+          </div>
+        )}
 
         {/* ── Form body ── */}
         <div style={{ padding: '22px 24px 24px' }}>
