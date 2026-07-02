@@ -21,7 +21,6 @@ export default function RegisterPage() {
   const [form, setForm]     = useState({ name: '', email: '', password: '', confirm: '', code: '', grade: '' });
   const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
-  const [autoConfirmed, setAutoConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -85,10 +84,8 @@ export default function RegisterPage() {
       return;
     }
 
-    const confirmed = !!signUpData?.user?.email_confirmed_at;
-    setAutoConfirmed(confirmed);
     setLoading(false);
-    setSuccess('تم إنشاء حسابك بنجاح! 🎉');
+    setSuccess('تم إنشاء حسابك بنجاح! 🎉 مرحباً بك في رحلتك مع أكاديمية عارم');
   }
 
   return (
@@ -213,20 +210,10 @@ export default function RegisterPage() {
 
           {success && (
             <div style={{ textAlign: 'center', padding: '8px 0' }}>
-              <p style={{ color: '#555', fontSize: '.9rem', marginBottom: 16, lineHeight: 1.7 }}>
-                {autoConfirmed
-                  ? 'يمكنك الآن الدخول والبدء بتقييمك'
-                  : 'تحقق من بريدك الإلكتروني لتفعيل الحساب'}
-              </p>
-              <Link href={autoConfirmed ? '/dashboard' : '/auth/login'} className="btn btn-primary"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%', marginBottom: 10 }}>
-                {autoConfirmed ? 'ابدأ التقييم الآن ←' : 'تسجيل الدخول ←'}
+              <Link href="/dashboard" className="btn btn-primary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%' }}>
+                الذهاب للوحتي ←
               </Link>
-              {!autoConfirmed && (
-                <Link href="/auth/login" style={{ fontSize: '.85rem', color: '#888', textDecoration: 'underline' }}>
-                  تسجيل الدخول لاحقاً
-                </Link>
-              )}
             </div>
           )}
         </div>
