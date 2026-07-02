@@ -17,6 +17,27 @@ function IconInput({ icon, children }) {
   );
 }
 
+/* ── زخرفة خلفية خفيفة للشريط الأزرق: دوائر شفافة + حرف "ع" كبير شفاف،
+     بنفس روح خلفية الهيرو في الصفحة الرئيسية ── */
+function BannerDecor() {
+  return (
+    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+      <div style={{
+        position: 'absolute', top: -60, left: -40, width: 200, height: 200,
+        borderRadius: '50%', background: 'rgba(255,255,255,.06)',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: -70, right: -30, width: 160, height: 160,
+        borderRadius: '50%', background: 'rgba(232,184,75,.10)',
+      }} />
+      <div style={{
+        position: 'absolute', top: -30, right: '18%', fontSize: '9rem', fontWeight: 900,
+        color: 'rgba(255,255,255,.05)', lineHeight: 1, userSelect: 'none',
+      }}>ع</div>
+    </div>
+  );
+}
+
 export default function RegisterPage() {
   const [form, setForm]     = useState({ name: '', email: '', password: '', confirm: '', code: '', grade: '' });
   const [error,   setError]   = useState('');
@@ -89,59 +110,47 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="auth-page">
-      {/* override card padding so the blue header goes edge-to-edge */}
-      <div className="auth-card" style={{ padding: 0, overflow: 'hidden' }}>
+    <div style={{ minHeight: '100vh', background: '#F4EFE6' }}>
 
-        {/* ── Blue header strip ── */}
+      {/* ── الشريط الأزرق العلوي ── */}
+      <div style={{ position: 'relative', background: '#1A2B4A', overflow: 'hidden', paddingBottom: 56 }}>
+        <BannerDecor />
         <div style={{
-          background: 'linear-gradient(135deg, #104880 0%, #185FA5 100%)',
-          padding: '22px 24px 18px',
+          position: 'relative', zIndex: 2, maxWidth: 440, margin: '0 auto',
+          padding: '44px 24px 0', textAlign: 'center',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 44, height: 44, background: 'rgba(255,255,255,.15)',
-              borderRadius: 12, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontSize: '1.5rem',
-            }}>📚</div>
-            <div>
-              <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.05rem' }}>
-                أكاديمية عارم
-              </div>
-              <div style={{ color: 'rgba(255,255,255,.72)', fontSize: '.78rem' }}>
-                إنشاء حساب طالب جديد
-              </div>
-            </div>
+          <div style={{
+            width: 52, height: 52, margin: '0 auto 14px', borderRadius: '50%',
+            background: '#E8B84B', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.5rem', fontWeight: 900, color: '#1A2B4A',
+          }}>ع</div>
+          <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.2rem' }}>
+            أكاديمية عارم
+          </div>
+          <div style={{ color: 'rgba(255,255,255,.72)', fontSize: '.85rem', marginTop: 4 }}>
+            إنشاء حساب طالب جديد
           </div>
         </div>
 
-        {/* ── Tabs ── */}
-        {!success && (
-          <div style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr',
-            background: '#e8f0fb', padding: '6px', gap: 4,
-          }}>
-            <Link href="/auth/login"
-              style={{
-                padding: '10px 0', borderRadius: 10, fontFamily: 'inherit',
-                fontWeight: 700, fontSize: '.9rem', background: 'transparent',
-                color: '#6b7280', textDecoration: 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>🔑 دخول</Link>
-            <button style={{
-              padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'default',
-              fontFamily: 'inherit', fontWeight: 700, fontSize: '.9rem',
-              background: '#fff', color: '#185FA5',
-              boxShadow: '0 2px 10px rgba(24,95,165,.14)',
-            }}>✨ تسجيل جديد</button>
-          </div>
-        )}
+        {/* موجة انتقالية بين الشريط الأزرق والخلفية الكريمية */}
+        <svg style={{ display: 'block', width: '100%', position: 'absolute', bottom: 0, left: 0, zIndex: 1 }}
+          xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 80" preserveAspectRatio="none">
+          <path d="M0,80 L0,44 C240,80 480,8 720,44 C960,80 1200,8 1440,44 L1440,80 Z" fill="#F4EFE6" />
+        </svg>
+      </div>
 
-        {/* ── Form body ── */}
-        <div style={{ padding: '22px 24px 24px' }}>
+      {/* ── البطاقة البيضاء، متداخلة مع أسفل الشريط الأزرق ── */}
+      <div style={{
+        maxWidth: 440, margin: '-40px auto 40px', padding: '0 24px',
+        position: 'relative', zIndex: 3,
+      }}>
+        <div style={{
+          background: '#fff', borderRadius: 18,
+          boxShadow: '0 16px 40px rgba(26,43,74,.18), 0 4px 12px rgba(26,43,74,.08)',
+          padding: '28px 24px 24px',
+        }}>
 
-          {error   && <div className="alert alert-error"   style={{ marginBottom: 16 }}>{error}</div>}
-          {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
+          {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
 
           {!success && (
             <form onSubmit={handleSubmit}>
@@ -207,13 +216,33 @@ export default function RegisterPage() {
                 style={{ width: '100%', marginTop: 8 }} disabled={loading}>
                 {loading ? <span className="spinner" /> : 'إنشاء الحساب ←'}
               </button>
+
+              <p style={{ textAlign: 'center', marginTop: 16, fontSize: '.85rem', color: '#888' }}>
+                لديك حساب بالفعل؟{' '}
+                <Link href="/auth/login" style={{ color: '#185FA5', fontWeight: 700, textDecoration: 'underline' }}>
+                  سجّل الدخول
+                </Link>
+              </p>
             </form>
           )}
 
           {success && (
             <div style={{ textAlign: 'center', padding: '8px 0' }}>
-              <Link href="/dashboard" className="btn btn-primary"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%' }}>
+              <div style={{
+                width: 64, height: 64, margin: '0 auto 18px', borderRadius: '50%',
+                background: '#2ABB7A', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '2rem', color: '#fff', boxShadow: '0 6px 18px rgba(42,187,122,.4)',
+              }}>✓</div>
+              <p style={{ color: '#1A2B4A', fontSize: '1rem', fontWeight: 700, marginBottom: 22, lineHeight: 1.7 }}>
+                {success}
+              </p>
+              <Link href="/dashboard"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center',
+                  width: '100%', padding: '14px 0', borderRadius: 10,
+                  background: '#1A2B4A', color: '#E8B84B', fontWeight: 800, fontSize: '1rem',
+                  textDecoration: 'none', boxShadow: '0 3px 12px rgba(26,43,74,.3)',
+                }}>
                 الذهاب للوحتي ←
               </Link>
             </div>
