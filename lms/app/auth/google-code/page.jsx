@@ -87,6 +87,12 @@ export default function GoogleCodePage() {
               disabled={loading}
               style={{ letterSpacing: '.08em', fontWeight: 700, textAlign: 'center' }}
             />
+            <p style={{ fontSize: '.8rem', color: '#888', marginTop: 4 }}>
+              يُوفَّر الكود من إدارة أكاديمية عارم —{' '}
+              <a href="https://api.whatsapp.com/send/?phone=447400755914"
+                target="_blank" rel="noopener noreferrer"
+                style={{ color: '#1a7c40', fontWeight: 700 }}>تواصل معنا</a>
+            </p>
           </div>
 
           <button type="submit" className="btn btn-primary"
