@@ -8,7 +8,7 @@ import { createClient } from '../../../lib/supabase';
 export default function RegisterPage() {
   const router = useRouter();
   const [accountType, setAccountType] = useState('student');
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', code: '', teacherCode: '' });
+  const [form, setForm] = useState({ name: '', age: '', email: '', password: '', confirm: '', code: '', teacherCode: '' });
   const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,9 +20,11 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
-    if (form.password !== form.confirm) { setError('كلمتا المرور غير متطابقتين'); return; }
-    if (form.password.length < 6)       { setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; }
-    if (!form.code.trim())              { setError('يرجى إدخال كود الأكاديمية'); return; }
+    if (!form.age)                        { setError('من فضلك اكتب عمرك 🌟'); return; }
+    if (+form.age < 4 || +form.age > 20) { setError('العمر يجب أن يكون بين 4 و 20 سنة 😊'); return; }
+    if (form.password !== form.confirm)   { setError('كلمتا المرور غير متطابقتين'); return; }
+    if (form.password.length < 6)        { setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; }
+    if (!form.code.trim())               { setError('يرجى إدخال كود الأكاديمية'); return; }
 
     setLoading(true);
     const res  = await fetch('/api/validate-code', {
@@ -42,7 +44,7 @@ export default function RegisterPage() {
       email:    form.email,
       password: form.password,
       options: {
-        data: { full_name: form.name, role: 'student' },
+        data: { full_name: form.name, role: 'student', age: +form.age },
         emailRedirectTo: 'https://aarem-lms.vercel.app/auth/callback',
       },
     });
@@ -142,6 +144,19 @@ export default function RegisterPage() {
               <label className="form-label">البريد الإلكتروني</label>
               <input className="form-input" type="email" value={form.email}
                 onChange={e => set('email', e.target.value)} placeholder="example@email.com" required dir="ltr" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">العمر</label>
+              <input
+                className="form-input"
+                type="number"
+                value={form.age}
+                onChange={e => set('age', e.target.value)}
+                placeholder="اكتب عمرك"
+                min="4"
+                max="20"
+                required
+              />
             </div>
             <div className="form-group">
               <label className="form-label">كلمة المرور</label>
