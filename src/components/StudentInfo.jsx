@@ -25,8 +25,8 @@ export default function StudentInfo({ onStart }) {
       setError('يرجى ملء جميع الحقول المطلوبة');
       return;
     }
-    if (+age < 5 || +age > 60) {
-      setError('العمر يجب أن يكون بين 5 و 60 سنة');
+    if (+age < 1) {
+      setError('يرجى إدخال عمر صحيح');
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -87,8 +87,7 @@ export default function StudentInfo({ onStart }) {
           <input
             type="number"
             placeholder="مثال: 12"
-            min="5"
-            max="60"
+            min="1"
             value={form.age}
             onChange={set('age')}
           />
