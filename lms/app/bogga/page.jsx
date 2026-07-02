@@ -2742,22 +2742,6 @@ export default function BoggarAdminPage() {
                               {u.last_sign_in && <span style={{ marginRight: 10 }}>· {lang === 'ar' ? 'آخر دخول:' : 'Last:'} {new Date(u.last_sign_in).toLocaleDateString('en-GB')}</span>}
                             </div>
                           </div>
-                          <div style={{ flex: '0 1 220px', minWidth: 160 }}>
-                            <div style={{ fontSize: '.72rem', fontWeight: 600, color: '#64748b', marginBottom: 5 }}>🔑 {lang === 'ar' ? 'كلمة السر' : 'Password'}</div>
-                            {u.password ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 10, padding: '7px 10px' }}>
-                                <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', userSelect: revealedPwds.has(u.id) ? 'all' : 'none', color: '#b45309', flex: 1 }}>
-                                  {revealedPwds.has(u.id) ? u.password : '••••••••'}
-                                </span>
-                                <button onClick={() => togglePwd(u.id)} title={revealedPwds.has(u.id) ? (lang === 'ar' ? 'إخفاء' : 'Hide') : (lang === 'ar' ? 'إظهار' : 'Show')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '.95rem', lineHeight: 1, padding: 2 }}>{revealedPwds.has(u.id) ? '🙈' : '👁️'}</button>
-                                <button onClick={() => navigator.clipboard.writeText(u.password)} title={lang === 'ar' ? 'نسخ' : 'Copy'} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: 2 }}>📋</button>
-                              </div>
-                            ) : (
-                              <div style={{ background: '#f8fafc', border: '1.5px dashed #cbd5e1', borderRadius: 10, padding: '7px 10px', color: '#94a3b8', fontSize: '.82rem', fontStyle: 'italic' }}>
-                                {lang === 'ar' ? 'غير متاحة — اضغط إعادة الضبط' : 'Unknown — click Reset'}
-                              </div>
-                            )}
-                          </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 7, flexShrink: 0 }}>
                             <button onClick={() => handleResetPassword(u.id)} disabled={resettingPwdId === u.id}
                               style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fde68a', borderRadius: 9, padding: '6px 12px', fontWeight: 600, fontSize: '.8rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -2872,22 +2856,6 @@ export default function BoggarAdminPage() {
                               📅 {dateJoined}
                               {u.last_sign_in && <span style={{ marginRight: 10 }}>· {lang === 'ar' ? 'آخر دخول:' : 'Last:'} {new Date(u.last_sign_in).toLocaleDateString('en-GB')}</span>}
                             </div>
-                          </div>
-                          <div style={{ flex: '0 1 220px', minWidth: 160 }}>
-                            <div style={{ fontSize: '.72rem', fontWeight: 600, color: '#64748b', marginBottom: 5 }}>🔑 {lang === 'ar' ? 'كلمة السر' : 'Password'}</div>
-                            {u.password ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 10, padding: '7px 10px' }}>
-                                <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', userSelect: revealedPwds.has(u.id) ? 'all' : 'none', color: '#b45309', flex: 1 }}>
-                                  {revealedPwds.has(u.id) ? u.password : '••••••••'}
-                                </span>
-                                <button onClick={() => togglePwd(u.id)} title={revealedPwds.has(u.id) ? (lang === 'ar' ? 'إخفاء' : 'Hide') : (lang === 'ar' ? 'إظهار' : 'Show')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '.95rem', lineHeight: 1, padding: 2 }}>{revealedPwds.has(u.id) ? '🙈' : '👁️'}</button>
-                                <button onClick={() => navigator.clipboard.writeText(u.password)} title={lang === 'ar' ? 'نسخ' : 'Copy'} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: 2 }}>📋</button>
-                              </div>
-                            ) : (
-                              <div style={{ background: '#f8fafc', border: '1.5px dashed #cbd5e1', borderRadius: 10, padding: '7px 10px', color: '#94a3b8', fontSize: '.82rem', fontStyle: 'italic' }}>
-                                {lang === 'ar' ? 'غير متاحة — اضغط إعادة الضبط' : 'Unknown — click Reset'}
-                              </div>
-                            )}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 7, flexShrink: 0 }}>
                             <a href={`/bogga/student-view/${u.id}`} target="_blank" rel="noopener noreferrer"
