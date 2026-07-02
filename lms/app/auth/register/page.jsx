@@ -63,7 +63,7 @@ export default function RegisterPage() {
       email:    form.email,
       password: form.password,
       options: {
-        data: { full_name: form.name, role: 'student', grade: form.grade || null, age: form.age ? parseInt(form.age) : null },
+        data: { full_name: form.name, role: 'student', grade: form.grade || null, age: form.age || null },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -207,12 +207,12 @@ export default function RegisterPage() {
                 <label className="form-label">
                   عمر الطالب <span style={{ color: '#e53935', fontSize: '0.85em' }}>*</span>
                 </label>
-                <select className="form-input" value={form.age} onChange={e => set('age', e.target.value)} required>
-                  <option value="">اختر العمر</option>
-                  {Array.from({ length: 17 }, (_, i) => i + 4).map(a => (
-                    <option key={a} value={a}>{a} سنوات</option>
-                  ))}
-                </select>
+                <IconInput icon="🎂">
+                  <input className="form-input" type="text" value={form.age}
+                    onChange={e => set('age', e.target.value)}
+                    placeholder="اكتب عمرك" required
+                    style={{ paddingRight: 38 }} />
+                </IconInput>
               </div>
               <div className="form-group">
                 <label className="form-label">الصف الدراسي</label>
