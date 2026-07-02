@@ -139,7 +139,7 @@ function PricingCard({ plan, isYearly, currency, lang }) {
   const priceObj    = getPriceObj(plan, currency) || { monthly: 0, yearly: 0 };
   const price       = isYearly ? (priceObj.yearly || 0) : (priceObj.monthly || 0);
   const period      = isYearly ? (lang === 'ar' ? '/سنة' : '/yr') : (lang === 'ar' ? '/شهر' : '/mo');
-  const color       = plan.accent_color || '#185FA5';
+  const color       = plan.accent_color || '#1A2B4A';
   const isSchool    = plan.plan_type === 'school';
   const name        = lang === 'ar' ? plan.plan_name_ar : plan.plan_name_en;
   const features    = Array.isArray(plan.features_list) ? plan.features_list : [];
@@ -422,7 +422,7 @@ export default function PricingSection() {
                   background: active ? 'var(--primary)' : '#fff',
                   color:      active ? '#fff' : '#475569',
                   borderColor: active ? 'var(--primary)' : '#e2e8f0',
-                  boxShadow:  active ? '0 4px 14px rgba(24,95,165,.28)' : '0 1px 4px rgba(0,0,0,.06)',
+                  boxShadow:  active ? '0 4px 14px rgba(26,43,74,.28)' : '0 1px 4px rgba(0,0,0,.06)',
                 }}>
                 {lang === 'ar' ? pt.labelAr : pt.labelEn}
               </button>

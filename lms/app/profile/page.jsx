@@ -15,7 +15,7 @@ function Initials({ name, size = 80 }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%',
-      background: 'linear-gradient(135deg, #185FA5, #1e88e5)',
+      background: 'linear-gradient(135deg, #1A2B4A, #2d4373)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.35, fontWeight: 800, color: '#fff',
       flexShrink: 0,
@@ -174,12 +174,12 @@ function AvatarCard({ user, onUserUpdate }) {
         >
           {avatarURL
             ? <img src={avatarURL} alt="صورة شخصية"
-                style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '3px solid #185FA5' }} />
+                style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '3px solid #1A2B4A' }} />
             : <Initials name={fullName} />
           }
           <div style={{
             position: 'absolute', bottom: 0, right: 0,
-            background: '#185FA5', borderRadius: '50%',
+            background: '#1A2B4A', borderRadius: '50%',
             width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 13, color: '#fff', border: '2px solid #fff',
           }}>

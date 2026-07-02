@@ -158,7 +158,7 @@ function LoginForm() {
 
         {/* ── Blue header strip ── */}
         <div style={{
-          background: 'linear-gradient(135deg, #104880 0%, #185FA5 100%)',
+          background: 'linear-gradient(135deg, #0d1f38 0%, #1A2B4A 100%)',
           padding: '22px 24px 18px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -188,8 +188,8 @@ function LoginForm() {
           <button style={{
             padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'default',
             fontFamily: 'inherit', fontWeight: 700, fontSize: '.9rem',
-            background: '#fff', color: '#185FA5',
-            boxShadow: '0 2px 10px rgba(24,95,165,.14)',
+            background: '#fff', color: '#1A2B4A',
+            boxShadow: '0 2px 10px rgba(26,43,74,.14)',
           }}>🔑 دخول</button>
           <Link href={forTeacher ? '/auth/register/teacher' : '/auth/register'}
             style={{

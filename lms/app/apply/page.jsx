@@ -83,7 +83,7 @@ export default function ApplyPage() {
           <div style={{
             background: '#fff', borderRadius: 20, padding: '48px 40px',
             maxWidth: 480, width: '100%', textAlign: 'center',
-            boxShadow: '0 8px 32px rgba(24,95,165,.12)',
+            boxShadow: '0 8px 32px rgba(26,43,74,.12)',
           }}>
             <div style={{ fontSize: '3.5rem', marginBottom: 16 }}>✅</div>
             <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1a7c40', marginBottom: 12 }}>
@@ -139,7 +139,7 @@ export default function ApplyPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} style={{
             background: '#fff', borderRadius: 20,
-            boxShadow: '0 4px 24px rgba(24,95,165,.10)',
+            boxShadow: '0 4px 24px rgba(26,43,74,.10)',
             padding: '36px 32px',
           }}>
 

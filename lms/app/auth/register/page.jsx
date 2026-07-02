@@ -219,7 +219,7 @@ export default function RegisterPage() {
 
               <p style={{ textAlign: 'center', marginTop: 16, fontSize: '.85rem', color: '#888' }}>
                 لديك حساب بالفعل؟{' '}
-                <Link href="/auth/login" style={{ color: '#185FA5', fontWeight: 700, textDecoration: 'underline' }}>
+                <Link href="/auth/login" style={{ color: '#1A2B4A', fontWeight: 700, textDecoration: 'underline' }}>
                   سجّل الدخول
                 </Link>
               </p>

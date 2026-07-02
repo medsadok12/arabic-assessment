@@ -8,7 +8,7 @@ const ACTIONS = {
   reject:  { value: 'rejected',   label: 'تمّ تسجيل اعتذارك' },
 };
 
-function page(icon, title, body, color = '#185FA5') {
+function page(icon, title, body, color = '#1A2B4A') {
   return `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -17,10 +17,10 @@ function page(icon, title, body, color = '#185FA5') {
   <title>أكاديمية عارم</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#f4f7fc;font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;
+    body{background:#F4EFE6;font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;
          display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
     .card{background:#fff;border-radius:18px;padding:44px 36px;max-width:460px;width:100%;
-          text-align:center;box-shadow:0 6px 32px rgba(24,95,165,.13)}
+          text-align:center;box-shadow:0 6px 32px rgba(26,43,74,.13)}
     .icon{font-size:3.2rem;margin-bottom:18px;line-height:1}
     h1{font-size:1.3rem;font-weight:800;color:${color};margin-bottom:12px}
     p{color:#475569;font-size:.96rem;line-height:1.8}

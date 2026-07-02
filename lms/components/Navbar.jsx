@@ -101,7 +101,7 @@ function Initials({ name, size = 34 }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%',
-      background: 'linear-gradient(135deg,#185FA5,#1e88e5)',
+      background: 'linear-gradient(135deg,#1A2B4A,#2d4373)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: Math.round(size * 0.38), fontWeight: 800, color: '#fff', flexShrink: 0,
     }}>

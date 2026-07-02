@@ -144,7 +144,7 @@ export default function NotificationBell({ userId, role, lang = 'ar' }) {
           position: 'absolute', top: 46, left: 0,
           width: 320, maxHeight: 440, overflowY: 'auto',
           background: '#fff', borderRadius: 14,
-          boxShadow: '0 8px 32px rgba(24,95,165,.18)',
+          boxShadow: '0 8px 32px rgba(26,43,74,.18)',
           border: '1px solid var(--border)', zIndex: 9999,
           direction: 'rtl',
         }}>
@@ -192,7 +192,7 @@ export default function NotificationBell({ userId, role, lang = 'ar' }) {
                     ? 'transparent'
                     : isUrgent
                       ? 'rgba(185,28,28,.07)'
-                      : 'rgba(24,95,165,.05)',
+                      : 'rgba(26,43,74,.05)',
                   borderRight: !n.is_read && isUrgent ? '4px solid #b91c1c' : undefined,
                   display: 'flex', gap: 10, alignItems: 'flex-start',
                   cursor: n.link ? 'pointer' : 'default',

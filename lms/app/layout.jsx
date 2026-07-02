@@ -23,7 +23,7 @@ export const metadata = {
   title:       'أكاديمية عارم',
   description: 'منصة تعليمية عربية متكاملة لتقييم وتطوير مهارات اللغة العربية',
   manifest:    '/manifest.json',
-  themeColor:  '#185FA5',
+  themeColor:  '#1A2B4A',
   appleWebApp: {
     capable:         true,
     title:           'أكاديمية عارم',
@@ -39,7 +39,7 @@ export const metadata = {
     'apple-mobile-web-app-capable':    'yes',
     'application-name':                'عارم',
     'apple-mobile-web-app-title':      'عارم',
-    'msapplication-TileColor':         '#185FA5',
+    'msapplication-TileColor':         '#1A2B4A',
     'msapplication-tap-highlight':     'no',
   },
 };

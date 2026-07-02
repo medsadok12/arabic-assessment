@@ -4,7 +4,7 @@ export default function AssessmentPage() {
     <div style={{ position: 'fixed', inset: 0, background: '#fff', zIndex: 10 }}>
       <div style={{
         height: 48,
-        background: '#185FA5',
+        background: '#1A2B4A',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
