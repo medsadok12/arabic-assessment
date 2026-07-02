@@ -37,9 +37,9 @@ export async function POST(req) {
   const teacher = await getTeacher();
   if (!teacher) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
-  const { student_name, student_email, level, section } = await req.json();
-  if (!student_name?.trim() || !level)
-    return NextResponse.json({ error: 'الاسم والمستوى مطلوبان' }, { status: 400 });
+  const { student_name, student_email, level, section, age } = await req.json();
+  if (!student_name?.trim() || !level || !age)
+    return NextResponse.json({ error: 'الاسم والمستوى والعمر مطلوبون' }, { status: 400 });
 
   const admin = createAdminClient();
   const { data, error } = await admin
@@ -50,6 +50,7 @@ export async function POST(req) {
       student_email: student_email?.trim() || null,
       level:         parseInt(level),
       section:       section?.trim() || 'أ',
+      age:           parseInt(age),
     })
     .select()
     .single();

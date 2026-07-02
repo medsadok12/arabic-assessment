@@ -80,7 +80,7 @@ export default function TeacherPage() {
   const [selectedStudents,  setSelectedStudents]  = useState([]);
   // My student roster (with level/section)
   const [myStudents,   setMyStudents]   = useState([]);
-  const [rosterForm,   setRosterForm]   = useState({ student_name:'', student_email:'', level:'1', section:'أ' });
+  const [rosterForm,   setRosterForm]   = useState({ student_name:'', student_email:'', level:'1', section:'أ', age:'' });
   const [rosterSaving, setRosterSaving] = useState(false);
   const [rosterMsg,    setRosterMsg]    = useState(null);
   // Homework state
@@ -1217,7 +1217,7 @@ export default function TeacherPage() {
                 setRosterSaving(false);
                 if (res.ok) {
                   setMyStudents(prev => [...prev, data.student].sort((a,b) => a.level - b.level || (a.section||'').localeCompare(b.section||'') || a.student_name.localeCompare(b.student_name)));
-                  setRosterForm({ student_name:'', student_email:'', level:'1', section:'أ' });
+                  setRosterForm({ student_name:'', student_email:'', level:'1', section:'أ', age:'' });
                   setRosterMsg({ ok:true, text:'✅ تمت الإضافة' });
                 } else setRosterMsg({ ok:false, text: data.error });
                 setTimeout(() => setRosterMsg(null), 3000);
@@ -1247,7 +1247,7 @@ export default function TeacherPage() {
                         </select>
                       </div>
                     </div>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
                       <div>
                         <label className="form-label">اسم الطالب *</label>
                         <input className="form-input" placeholder="محمد أحمد" value={rosterForm.student_name} onChange={e => setRosterForm(p=>({...p, student_name:e.target.value}))} required />
@@ -1256,6 +1256,15 @@ export default function TeacherPage() {
                         <label className="form-label">البريد الإلكتروني</label>
                         <input className="form-input" type="email" dir="ltr" placeholder="student@email.com" value={rosterForm.student_email} onChange={e => setRosterForm(p=>({...p, student_email:e.target.value}))} />
                       </div>
+                    </div>
+                    <div style={{ marginBottom:12 }}>
+                      <label className="form-label">عمر الطالب *</label>
+                      <select className="form-input" value={rosterForm.age} onChange={e => setRosterForm(p=>({...p, age:e.target.value}))} required>
+                        <option value="">اختر العمر</option>
+                        {Array.from({ length: 17 }, (_, i) => i + 4).map(a => (
+                          <option key={a} value={a}>{a} سنوات</option>
+                        ))}
+                      </select>
                     </div>
                     {rosterMsg && <div style={{ fontSize:'.85rem', fontWeight:700, color: rosterMsg.ok ? '#16a34a' : '#dc2626', marginBottom:8 }}>{rosterMsg.text}</div>}
                     <button type="submit" disabled={rosterSaving} className="btn btn-primary" style={{ alignSelf:'flex-start' }}>

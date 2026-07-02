@@ -39,7 +39,7 @@ function BannerDecor() {
 }
 
 export default function RegisterPage() {
-  const [form, setForm]     = useState({ name: '', email: '', password: '', confirm: '', code: '', grade: '' });
+  const [form, setForm]     = useState({ name: '', email: '', password: '', confirm: '', code: '', grade: '', age: '' });
   const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -63,7 +63,7 @@ export default function RegisterPage() {
       email:    form.email,
       password: form.password,
       options: {
-        data: { full_name: form.name, role: 'student', grade: form.grade || null },
+        data: { full_name: form.name, role: 'student', grade: form.grade || null, age: form.age ? parseInt(form.age) : null },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -202,6 +202,17 @@ export default function RegisterPage() {
                     target="_blank" rel="noopener noreferrer"
                     style={{ color: '#1a7c40', fontWeight: 700 }}>تواصل معنا</a>
                 </p>
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  عمر الطالب <span style={{ color: '#e53935', fontSize: '0.85em' }}>*</span>
+                </label>
+                <select className="form-input" value={form.age} onChange={e => set('age', e.target.value)} required>
+                  <option value="">اختر العمر</option>
+                  {Array.from({ length: 17 }, (_, i) => i + 4).map(a => (
+                    <option key={a} value={a}>{a} سنوات</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">الصف الدراسي</label>
