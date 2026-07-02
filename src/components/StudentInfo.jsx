@@ -25,10 +25,6 @@ export default function StudentInfo({ onStart }) {
       setError('يرجى ملء جميع الحقول المطلوبة');
       return;
     }
-    if (+age < 1) {
-      setError('يرجى إدخال عمر صحيح');
-      return;
-    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('يرجى إدخال بريد إلكتروني صحيح');
       return;
@@ -63,7 +59,7 @@ export default function StudentInfo({ onStart }) {
     }
 
     setValidating(false);
-    onStart({ name: name.trim(), age: +age, email: email.trim(), type });
+    onStart({ name: name.trim(), age: age.trim(), email: email.trim(), type });
   }
 
   return (
@@ -85,9 +81,8 @@ export default function StudentInfo({ onStart }) {
         <div className="form-group">
           <label>العمر *</label>
           <input
-            type="number"
+            type="text"
             placeholder="مثال: 12"
-            min="1"
             value={form.age}
             onChange={set('age')}
           />
