@@ -454,6 +454,7 @@ export default function BoggarAdminPage() {
   const [usersRoleFilter,  setUsersRoleFilter]  = useState('all');
   const [resettingPwdId,   setResettingPwdId]   = useState(null);
   const [resetPwdResult,   setResetPwdResult]   = useState(null); // { id, password }
+  const [revealedPwds,    setRevealedPwds]    = useState(new Set());
   const [deletingUserId,   setDeletingUserId]   = useState(null);
   const [editingUser,      setEditingUser]      = useState(null); // { id, name }
   const [savingUserId,     setSavingUserId]     = useState(null);
@@ -1045,6 +1046,14 @@ export default function BoggarAdminPage() {
   }
 
   // ── Users directory ───────────────────────────────────────────────────────
+  function togglePwd(key) {
+    setRevealedPwds(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }
+
   async function handleResetPassword(id) {
     setResettingPwdId(id);
     const res  = await fetch(`/api/bogga/users/${id}`, {
@@ -2186,9 +2195,11 @@ export default function BoggarAdminPage() {
                   {adminMsg.tempPassword && (
                     <div style={{ marginTop: 10, background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 8, padding: '10px 14px' }}>
                       <strong>{lang === 'ar' ? 'كلمة المرور المؤقتة:' : 'Temporary Password:'}</strong>
-                      <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.05rem', marginRight: 8, letterSpacing: '.08em', userSelect: 'all', color: '#b56a00' }}>
-                        {adminMsg.tempPassword}
+                      <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.05rem', marginRight: 8, letterSpacing: '.08em', userSelect: revealedPwds.has('adminTempPwd') ? 'all' : 'none', color: '#b56a00' }}>
+                        {revealedPwds.has('adminTempPwd') ? adminMsg.tempPassword : '••••••••••••'}
                       </span>
+                      <button onClick={() => togglePwd('adminTempPwd')} title={revealedPwds.has('adminTempPwd') ? (lang === 'ar' ? 'إخفاء' : 'Hide') : (lang === 'ar' ? 'إظهار' : 'Show')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1rem', marginRight: 6, padding: 2 }}>{revealedPwds.has('adminTempPwd') ? '🙈' : '👁️'}</button>
+                      <button onClick={() => navigator.clipboard.writeText(adminMsg.tempPassword)} title={lang === 'ar' ? 'نسخ' : 'Copy'} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: 2 }}>📋</button>
                     </div>
                   )}
                 </div>
@@ -2332,9 +2343,11 @@ export default function BoggarAdminPage() {
                     {supervisorMsg.tempPassword && (
                       <div style={{ marginTop: 10, background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 8, padding: '10px 14px' }}>
                         <strong>{lang === 'ar' ? 'كلمة المرور المؤقتة:' : 'Temporary Password:'}</strong>
-                        <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.05rem', marginRight: 8, letterSpacing: '.08em', userSelect: 'all', color: '#b56a00' }}>
-                          {supervisorMsg.tempPassword}
+                        <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.05rem', marginRight: 8, letterSpacing: '.08em', userSelect: revealedPwds.has('supervisorTempPwd') ? 'all' : 'none', color: '#b56a00' }}>
+                          {revealedPwds.has('supervisorTempPwd') ? supervisorMsg.tempPassword : '••••••••••••'}
                         </span>
+                        <button onClick={() => togglePwd('supervisorTempPwd')} title={revealedPwds.has('supervisorTempPwd') ? (lang === 'ar' ? 'إخفاء' : 'Hide') : (lang === 'ar' ? 'إظهار' : 'Show')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1rem', marginRight: 6, padding: 2 }}>{revealedPwds.has('supervisorTempPwd') ? '🙈' : '👁️'}</button>
+                        <button onClick={() => navigator.clipboard.writeText(supervisorMsg.tempPassword)} title={lang === 'ar' ? 'نسخ' : 'Copy'} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: 2 }}>📋</button>
                       </div>
                     )}
                   </div>
@@ -2733,7 +2746,10 @@ export default function BoggarAdminPage() {
                             <div style={{ fontSize: '.72rem', fontWeight: 600, color: '#64748b', marginBottom: 5 }}>🔑 {lang === 'ar' ? 'كلمة السر' : 'Password'}</div>
                             {u.password ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 10, padding: '7px 10px' }}>
-                                <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', userSelect: 'all', color: '#b45309', flex: 1 }}>{u.password}</span>
+                                <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', userSelect: revealedPwds.has(u.id) ? 'all' : 'none', color: '#b45309', flex: 1 }}>
+                                  {revealedPwds.has(u.id) ? u.password : '••••••••'}
+                                </span>
+                                <button onClick={() => togglePwd(u.id)} title={revealedPwds.has(u.id) ? (lang === 'ar' ? 'إخفاء' : 'Hide') : (lang === 'ar' ? 'إظهار' : 'Show')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '.95rem', lineHeight: 1, padding: 2 }}>{revealedPwds.has(u.id) ? '🙈' : '👁️'}</button>
                                 <button onClick={() => navigator.clipboard.writeText(u.password)} title={lang === 'ar' ? 'نسخ' : 'Copy'} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: 2 }}>📋</button>
                               </div>
                             ) : (
@@ -2861,7 +2877,10 @@ export default function BoggarAdminPage() {
                             <div style={{ fontSize: '.72rem', fontWeight: 600, color: '#64748b', marginBottom: 5 }}>🔑 {lang === 'ar' ? 'كلمة السر' : 'Password'}</div>
                             {u.password ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 10, padding: '7px 10px' }}>
-                                <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', userSelect: 'all', color: '#b45309', flex: 1 }}>{u.password}</span>
+                                <span dir="ltr" style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', userSelect: revealedPwds.has(u.id) ? 'all' : 'none', color: '#b45309', flex: 1 }}>
+                                  {revealedPwds.has(u.id) ? u.password : '••••••••'}
+                                </span>
+                                <button onClick={() => togglePwd(u.id)} title={revealedPwds.has(u.id) ? (lang === 'ar' ? 'إخفاء' : 'Hide') : (lang === 'ar' ? 'إظهار' : 'Show')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '.95rem', lineHeight: 1, padding: 2 }}>{revealedPwds.has(u.id) ? '🙈' : '👁️'}</button>
                                 <button onClick={() => navigator.clipboard.writeText(u.password)} title={lang === 'ar' ? 'نسخ' : 'Copy'} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: 2 }}>📋</button>
                               </div>
                             ) : (

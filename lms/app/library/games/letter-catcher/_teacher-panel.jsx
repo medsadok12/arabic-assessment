@@ -77,17 +77,6 @@ async function uploadWordImage(file) {
   return json.url;
 }
 
-/* category icon images display at 56×56 max (see page.jsx custom?.image_url) */
-async function uploadCatImage(file) {
-  const resized = await resizeImage(file, 56);
-  const fd = new FormData();
-  fd.append('file', resized, `cat-${Date.now()}.webp`);
-  const res  = await fetch('/api/games/letter-catcher/categories/upload', { method: 'POST', body: fd });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || 'فشل رفع الصورة');
-  return json.url;
-}
-
 /* ── styles used only in this panel ── */
 const P = {
   input: {
