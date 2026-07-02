@@ -18,6 +18,10 @@ export default function StreakLogger() {
       .then(r => r.json())
       .then(d => {
         if (d.ok && d.streak > 0) {
+          const today = new Date().toISOString().slice(0, 10);
+          if (localStorage.getItem('streak_shown_date') === today) return;
+          localStorage.setItem('streak_shown_date', today);
+
           setStreak(d.streak);
           setVisible(true);
           // بعد 7 ثوانٍ تبدأ رسوم الخروج
