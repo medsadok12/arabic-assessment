@@ -541,13 +541,8 @@ export default function DashboardContent({
                 {/* العداد مدمج مع النص: 🔥 2 يوم متتاليًا */}
                 <div className="streak-header">
                   <span className="streak-fire">{streakCount > 0 ? '🔥' : '💤'}</span>
-                  <span className="streak-num">{streakCount}</span>
                   <span className="streak-unit">
-                    {streakCount === 0 ? 'لا توجد سلسلة بعد'
-                    : streakCount === 1 ? 'يوم متتالٍ'
-                    : streakCount === 2 ? 'يومان متتاليان'
-                    : streakCount <= 10 ? 'أيام متتالية'
-                    : 'يوماً متتالياً'}
+                    {streakCount === 0 ? 'لا توجد سلسلة بعد' : `اليوم ${streakCount}`}
                   </span>
                   {loggedToday && <span className="streak-badge">✅ لعبت اليوم</span>}
                 </div>
