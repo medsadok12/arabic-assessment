@@ -33,14 +33,13 @@ export async function POST(req) {
 
     const admin = createAdminClient();
 
-    // For simple game reasons (no ':' separator), append today's date so the same
-    // game can award points once per day rather than once ever.
-    const today = new Date().toISOString().slice(0, 10);
-    const effectiveReason = reason && !reason.includes(':') ? `${reason}:${today}` : reason;
-
-    // Idempotency: if a specific reason was already awarded, skip
-    if (effectiveReason) {
-      const { data: dup } = await admin.from('points_log').select('id').eq('user_id', user.id).eq('reason', effectiveReason).maybeSingle();
+    // Idempotency only for structured rewards that carry a unique ID in their reason
+    // (e.g. daily_login:2026-07-03, story_abc123, session_attend:id, homework_done:id).
+    // Simple game-reward reasons (no ':') are always awarded — each correct answer
+    // should award points independently with no deduplication.
+    const hasUniqueId = reason && reason.includes(':');
+    if (hasUniqueId) {
+      const { data: dup } = await admin.from('points_log').select('id').eq('user_id', user.id).eq('reason', reason).maybeSingle();
       if (dup) {
         const { data: balRow } = await admin.from('user_points').select('total').eq('user_id', user.id).maybeSingle();
         return NextResponse.json({ skipped: true, points: balRow?.total ?? 0 });
@@ -52,7 +51,7 @@ export async function POST(req) {
 
     await Promise.all([
       admin.from('user_points').upsert({ user_id: user.id, total: newTotal, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }),
-      admin.from('points_log').insert({ user_id: user.id, delta: Math.round(amount), reason: effectiveReason || 'game_reward' }),
+      admin.from('points_log').insert({ user_id: user.id, delta: Math.round(amount), reason: reason || 'game_reward' }),
     ]);
 
     return NextResponse.json({ success: true, points: newTotal });
