@@ -141,6 +141,7 @@ export default function WordWheelGame() {
   const [customConfigs,  setCustomConfigs]  = useState([]);
   const [customConfig,   setCustomConfig]   = useState(null);
   const [wheelValidWords,setWheelValidWords]= useState([]);
+  const [totalPoints,    setTotalPoints]    = useState(0);
   const [wordImagePopup, setWordImagePopup] = useState(null);
   const [userRole,       setUserRole]       = useState(null);
   // ── Progress tracking ──
@@ -168,6 +169,7 @@ export default function WordWheelGame() {
     createClient().auth.getUser()
       .then(({data})=>setUserRole(data?.user?.user_metadata?.role||null))
       .catch(()=>{});
+    fetch('/api/points').then(r=>r.json()).then(j=>setTotalPoints(j.points??0)).catch(()=>{});
   }, []);
 
   /* ── Save progress when game finishes ─────────────────────────────────── */
@@ -231,15 +233,6 @@ export default function WordWheelGame() {
     return ()=>clearInterval(timerRef.current);
   }, [phase]);
 
-  /* ── Award points ──────────────────────────────────────────────────────── */
-  const pointsSentRef = useRef(false);
-  useEffect(() => {
-    if(phase==='playing') pointsSentRef.current=false;
-    if(phase==='finished'&&!pointsSentRef.current&&score>0) {
-      pointsSentRef.current=true;
-      fetch('/api/points',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:score,reason:'word_wheel'})}).catch(()=>{});
-    }
-  },[phase,score]);
 
   const allLetters  = [...letters,center];
   const wheelCounts = letterCounts(allLetters.join(''));
@@ -285,6 +278,7 @@ export default function WordWheelGame() {
     setTimeout(()=>{ setFlashing(false); setFlyWord(null); },900);
     speak(word);
     showFeedback(`+${pts} نقطة — ممتاز! ✨`,'success');
+    fetch('/api/points',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:pts,reason:'word_wheel'})}).then(r=>r.json()).then(j=>{if(j.points)setTotalPoints(j.points);}).catch(()=>{});
     setSelected([]); setInputText('');
     if(customConfig){
       const entry=(customConfig.valid_words||[]).find(vw=>vw.word===word);
