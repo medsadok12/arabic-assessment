@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect, Fragment } from 'react';
-import StudentInfo, { AVATARS } from './components/StudentInfo.jsx';
+import StudentInfo     from './components/StudentInfo.jsx';
 import Assessment      from './components/Assessment.jsx';
 import LevelTransition from './components/LevelTransition.jsx';
 import Results         from './components/Results.jsx';
 import { getLevelQuestions, shuffle } from './data/questions.js';
-import { calculateLevelScore, applyJumpLogic, saveToLocalStorage } from './utils/scoring.js';
+import { calculateLevelScore, applyJumpLogic, saveToLocalStorage, getAvatarForScore } from './utils/scoring.js';
 import './App.css';
 
 const PAGES       = { INFO: 'info', WELCOME: 'welcome', ASSESSMENT: 'assessment', TRANSITION: 'transition', RESULTS: 'results' };
@@ -281,16 +281,7 @@ export default function App() {
         )}
         {page === PAGES.WELCOME && studentInfo && (
           <div className="page-content welcome-page">
-            {(() => {
-              const av = AVATARS.find(a => a.id === studentInfo.avatar);
-              return av ? (
-                <div className="welcome-avatar" style={{ '--av-color': av.color }}>
-                  <span className="welcome-avatar-emoji">{av.emoji}</span>
-                </div>
-              ) : (
-                <div className="welcome-emoji">🌟</div>
-              );
-            })()}
+            <div className="welcome-emoji">🌟</div>
             <h2 className="welcome-greeting">
               أهلاً <span className="welcome-name">{studentInfo.name}</span>!
             </h2>
@@ -320,6 +311,9 @@ export default function App() {
             questionIndex={questionIdx}
             studentInfo={studentInfo}
             onAnswer={handleAnswer}
+            runningAvatar={getAvatarForScore(
+              calculateLevelScore([...allAnswers, ...levelData.answers]).overall
+            )}
           />
         )}
         {page === PAGES.TRANSITION && (

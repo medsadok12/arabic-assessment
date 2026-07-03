@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { generateAssessmentPDF } from '../utils/pdfGenerator.js';
 import { LEVELS } from '../data/questions.js';
-import { AVATARS } from './StudentInfo.jsx';
+import { getAvatarForScore, AVATAR_LEVELS } from '../utils/scoring.js';
 
 export default function Results({ studentInfo, finalLevel, scores, levelPath, onRestart }) {
   const [emailStatus, setEmailStatus] = useState('idle'); // idle | sending | success | error
@@ -59,20 +59,31 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, on
     }
   }
 
-  const av = AVATARS.find(a => a.id === studentInfo.avatar);
+  const earnedAvatar = getAvatarForScore(scores.overall);
 
   return (
     <div className="page-content">
       <div className="results-header">
-        {av ? (
-          <div className="results-avatar" style={{ '--av-color': av.color }}>
-            <span>{av.emoji}</span>
-          </div>
-        ) : (
-          <div className="results-icon">🎉</div>
-        )}
+        <div className="results-avatar" style={{ '--av-color': earnedAvatar.color, '--av-bg': earnedAvatar.bg }}>
+          <span>{earnedAvatar.emoji}</span>
+        </div>
+        <div className="results-avatar-label" style={{ color: earnedAvatar.color }}>
+          {earnedAvatar.label}
+        </div>
         <h2>أحسنت، {studentInfo.name}!</h2>
         <p>لقد أتممتَ التقييم بنجاح</p>
+        <div className="results-avatar-progress">
+          {AVATAR_LEVELS.map((av, i) => (
+            <div
+              key={av.label}
+              className={`rap-step${scores.overall >= av.minScore ? ' rap-earned' : ''}`}
+              title={av.label}
+              style={{ '--av-color': av.color }}
+            >
+              <span>{av.emoji}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="thankyou-card">

@@ -2,23 +2,8 @@ import { useState } from 'react';
 
 const LMS_URL = 'https://www.aarem.net';
 
-export const AVATARS = [
-  { id: 'lion',      emoji: '🦁', label: 'الأسد',    color: '#f59e0b' },
-  { id: 'tiger',     emoji: '🐯', label: 'النمر',    color: '#f97316' },
-  { id: 'fox',       emoji: '🦊', label: 'الثعلب',   color: '#ef4444' },
-  { id: 'bear',      emoji: '🐻', label: 'الدب',     color: '#92400e' },
-  { id: 'frog',      emoji: '🐸', label: 'الضفدع',   color: '#22c55e' },
-  { id: 'panda',     emoji: '🐼', label: 'الباندا',  color: '#6b7280' },
-  { id: 'eagle',     emoji: '🦅', label: 'النسر',    color: '#3b82f6' },
-  { id: 'butterfly', emoji: '🦋', label: 'الفراشة',  color: '#a855f7' },
-  { id: 'star',      emoji: '⭐', label: 'النجمة',   color: '#eab308' },
-  { id: 'rocket',    emoji: '🚀', label: 'الصاروخ',  color: '#6366f1' },
-  { id: 'book',      emoji: '📚', label: 'الكتاب',   color: '#0ea5e9' },
-  { id: 'crown',     emoji: '👑', label: 'التاج',    color: '#f59e0b' },
-];
-
 export default function StudentInfo({ onStart }) {
-  const [form,           setForm]           = useState({ name: '', age: '', email: '', type: '', code: '', avatar: '' });
+  const [form,           setForm]           = useState({ name: '', age: '', email: '', type: '', code: '' });
   const [error,          setError]          = useState('');
   const [validating,     setValidating]     = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
@@ -26,7 +11,6 @@ export default function StudentInfo({ onStart }) {
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
   const setCode = (e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase().replace(/\s/g, '') }));
-  const setAvatar = (id) => setForm((f) => ({ ...f, avatar: id }));
 
   async function handleStart() {
     if (lockedUntil && Date.now() < lockedUntil) {
@@ -39,10 +23,6 @@ export default function StudentInfo({ onStart }) {
 
     if (!name.trim() || !age || !email.trim() || !type || !code.trim()) {
       setError('يرجى ملء جميع الحقول المطلوبة');
-      return;
-    }
-    if (!form.avatar) {
-      setError('يرجى اختيار أفاتار يمثّلك');
       return;
     }
     if (+age < 5 || +age > 60) {
@@ -83,7 +63,7 @@ export default function StudentInfo({ onStart }) {
     }
 
     setValidating(false);
-    onStart({ name: name.trim(), age: +age, email: email.trim(), type, avatar: form.avatar });
+    onStart({ name: name.trim(), age: +age, email: email.trim(), type });
   }
 
   return (
@@ -131,27 +111,6 @@ export default function StudentInfo({ onStart }) {
           <option value="native">ناطق باللغة العربية</option>
           <option value="non-native">غير ناطق باللغة العربية</option>
         </select>
-      </div>
-
-      <div className="form-group">
-        <label>اختر أفاتارك *</label>
-        <div className="avatar-grid">
-          {AVATARS.map((av) => (
-            <button
-              key={av.id}
-              type="button"
-              className={`avatar-option${form.avatar === av.id ? ' avatar-selected' : ''}`}
-              style={{ '--av-color': av.color }}
-              onClick={() => setAvatar(av.id)}
-              title={av.label}
-              aria-label={av.label}
-              aria-pressed={form.avatar === av.id}
-            >
-              <span className="avatar-emoji">{av.emoji}</span>
-              {form.avatar === av.id && <span className="avatar-check">✓</span>}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="form-group">
