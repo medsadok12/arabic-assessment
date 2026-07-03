@@ -15,45 +15,60 @@ export async function POST(req) {
 
     const word = word_text.trim();
     const admin = createAdminClient();
-
-    // 1. Upsert the word into lexicon_words (unique on `word` column)
     const grade = grade_level ?? user.user_metadata?.grade ?? 1;
-    // Upsert returns the row; if word already existed the upsert updates nothing (merge) and still returns it
+
+    // 1. Find or create the word in lexicon_words
     let wordId;
-    const { data: upserted } = await admin
+    const { data: existing } = await admin
       .from('lexicon_words')
-      .upsert(
-        { word, topic, grade_from: grade, grade_to: Math.max(grade, 6) },
-        { onConflict: 'word', ignoreDuplicates: true }
-      )
       .select('id')
+      .eq('word', word)
       .maybeSingle();
 
-    if (upserted?.id) {
-      wordId = upserted.id;
-    } else {
-      const { data: existing } = await admin
-        .from('lexicon_words')
-        .select('id')
-        .eq('word', word)
-        .maybeSingle();
-      if (!existing) return NextResponse.json({ error: 'فشل إيجاد الكلمة' }, { status: 500 });
+    if (existing?.id) {
       wordId = existing.id;
+    } else {
+      const { data: inserted, error: insertErr } = await admin
+        .from('lexicon_words')
+        .insert({ word, word_type: 'اسم', topic, grade_from: grade, grade_to: Math.max(grade, 6) })
+        .select('id')
+        .single();
+
+      if (insertErr) {
+        // Race condition: another request inserted it first — retry the select
+        const { data: retry } = await admin.from('lexicon_words').select('id').eq('word', word).maybeSingle();
+        if (!retry) return NextResponse.json({ error: insertErr.message }, { status: 500 });
+        wordId = retry.id;
+      } else {
+        wordId = inserted.id;
+      }
     }
 
-    // 2. Upsert into flashcard_progress at level 0 (don't downgrade if already learned)
-    await admin
+    // 2. Add to student's flashcard queue (only if not already tracked at level > 0)
+    const { data: progress } = await admin
       .from('flashcard_progress')
-      .upsert(
-        {
-          user_id: user.id,
-          word_id: wordId,
-          level: 0,
-          next_review: new Date().toISOString().slice(0, 10),
-          last_reviewed: null,
-        },
-        { onConflict: 'user_id,word_id', ignoreDuplicates: true } // don't reset if already progressed
-      );
+      .select('id, level')
+      .eq('user_id', user.id)
+      .eq('word_id', wordId)
+      .maybeSingle();
+
+    if (!progress) {
+      // New word for this student — add at level 0, due today
+      await admin.from('flashcard_progress').insert({
+        user_id: user.id,
+        word_id: wordId,
+        level: 0,
+        next_review: new Date().toISOString().slice(0, 10),
+      });
+    } else if (progress.level > 0) {
+      // Student thought they knew it but got it wrong — demote one level
+      const newLevel = Math.max(0, progress.level - 1);
+      await admin.from('flashcard_progress').update({
+        level: newLevel,
+        next_review: new Date().toISOString().slice(0, 10),
+      }).eq('id', progress.id);
+    }
+    // level === 0 already: no change needed
 
     return NextResponse.json({ ok: true, word_id: wordId });
   } catch (e) {
