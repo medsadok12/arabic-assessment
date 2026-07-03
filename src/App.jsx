@@ -4,7 +4,7 @@ import Assessment      from './components/Assessment.jsx';
 import LevelTransition from './components/LevelTransition.jsx';
 import Results         from './components/Results.jsx';
 import { getLevelQuestions, shuffle } from './data/questions.js';
-import { calculateLevelScore, applyJumpLogic, saveToLocalStorage, getAvatarForScore } from './utils/scoring.js';
+import { calculateLevelScore, applyJumpLogic, saveToLocalStorage } from './utils/scoring.js';
 import './App.css';
 
 const PAGES       = { INFO: 'info', WELCOME: 'welcome', ASSESSMENT: 'assessment', TRANSITION: 'transition', RESULTS: 'results' };
@@ -311,9 +311,6 @@ export default function App() {
             questionIndex={questionIdx}
             studentInfo={studentInfo}
             onAnswer={handleAnswer}
-            runningAvatar={getAvatarForScore(
-              calculateLevelScore([...allAnswers, ...levelData.answers]).overall
-            )}
           />
         )}
         {page === PAGES.TRANSITION && (

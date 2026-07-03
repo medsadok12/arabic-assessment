@@ -21,7 +21,7 @@ import SyllableReading      from './SyllableReading.jsx';
 import ImageWordMatching    from './ImageWordMatching.jsx';
 import ListenSpeak          from './ListenSpeak.jsx';
 
-export default function Assessment({ questions, currentLevel, questionIndex, studentInfo, onAnswer, runningAvatar }) {
+export default function Assessment({ questions, currentLevel, questionIndex, studentInfo, onAnswer }) {
   const [selected, setSelected] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -92,19 +92,8 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
           </div>
           <div className="question-counter">{questionIndex + 1} / {total}</div>
         </div>
-        <div className="progress-bar-row">
-          {runningAvatar && (
-            <div
-              className="running-avatar"
-              style={{ '--av-color': runningAvatar.color, '--av-bg': runningAvatar.bg, left: `calc(${progress}% - 18px)` }}
-              title={runningAvatar.label}
-            >
-              {runningAvatar.emoji}
-            </div>
-          )}
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${progress}%`, background: runningAvatar?.color }} />
-          </div>
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: `${progress}%` }} />
         </div>
         {skillInfo && (
           <div className="skill-tag"><span>📌 {skillInfo.name}</span></div>
@@ -125,19 +114,8 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
         </div>
       </div>
 
-      <div className="progress-bar-row">
-        {runningAvatar && (
-          <div
-            className="running-avatar"
-            style={{ '--av-color': runningAvatar.color, '--av-bg': runningAvatar.bg, left: `calc(${progress}% - 18px)` }}
-            title={runningAvatar.label}
-          >
-            {runningAvatar.emoji}
-          </div>
-        )}
-        <div className="progress-bar">
-          <div className="progress-fill" style={{ width: `${progress}%`, background: runningAvatar?.color }} />
-        </div>
+      <div className="progress-bar">
+        <div className="progress-fill" style={{ width: `${progress}%` }} />
       </div>
 
       {skillInfo && (

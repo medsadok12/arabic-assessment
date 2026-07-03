@@ -50,22 +50,6 @@ export function getGradeInfo(score) {
   return             { label: 'يحتاج تحسين',         stars: 1, color: '#c62828' };
 }
 
-/* مستويات الأفاتار — تُكسب تلقائياً بالنقاط */
-export const AVATAR_LEVELS = [
-  { minScore:  0, emoji: '🌱', label: 'المبتدئ',   color: '#94a3b8', bg: '#f1f5f9' },
-  { minScore: 20, emoji: '🌿', label: 'المتعلم',   color: '#22c55e', bg: '#f0fdf4' },
-  { minScore: 40, emoji: '⭐', label: 'الجيد',     color: '#eab308', bg: '#fefce8' },
-  { minScore: 60, emoji: '🦋', label: 'المتميز',   color: '#a855f7', bg: '#faf5ff' },
-  { minScore: 80, emoji: '🦁', label: 'البطل',     color: '#f59e0b', bg: '#fffbeb' },
-];
-
-export function getAvatarForScore(score) {
-  for (let i = AVATAR_LEVELS.length - 1; i >= 0; i--) {
-    if (score >= AVATAR_LEVELS[i].minScore) return AVATAR_LEVELS[i];
-  }
-  return AVATAR_LEVELS[0];
-}
-
 export function saveToLocalStorage(data) {
   try {
     const history = JSON.parse(localStorage.getItem('areem_assessments') || '[]');
