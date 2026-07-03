@@ -25,7 +25,7 @@ export default async function DashboardPage() {
   const admin = createAdminClient();
   const email = (user.email ?? '').toLowerCase();
 
-  // جولة شبكة واحدة — 8 استعلامات مستقلة تعمل بالتوازي
+  // جولة شبكة واحدة — 9 استعلامات مستقلة تعمل بالتوازي
   const [
     { data: sessionsRaw },
     { data: supportLinks },
@@ -35,6 +35,7 @@ export default async function DashboardPage() {
     { data: notedRaw },
     { data: hwRaw },
     { data: logsRaw },
+    { data: heroConfigRow },
   ] = await Promise.all([
     admin
       .from('sessions')
@@ -93,6 +94,12 @@ export default async function DashboardPage() {
       .order('log_date', { ascending: false })
       .limit(365)
       .then(r => r.error?.code === '42P01' ? { data: [] } : r),
+    admin
+      .from('hero_config')
+      .select('avatar_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(r => r.error ? { data: null } : r),
   ]);
 
   // supportSessions تعتمد على supportLinks — تبقى بعد Promise.all
@@ -171,6 +178,7 @@ export default async function DashboardPage() {
 
   const displayName   = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '';
   const studentGender = user.user_metadata?.gender === 'female' ? 'female' : 'male';
+  const hasHero       = isStudent ? !!(heroConfigRow?.avatar_id) : true;
 
   return (
     <DashboardContent
@@ -190,6 +198,7 @@ export default async function DashboardPage() {
       last7Days={last7Days}
       masteredCount={masteredCount}
       studiedCount={studiedCount}
+      hasHero={hasHero}
     />
   );
 }

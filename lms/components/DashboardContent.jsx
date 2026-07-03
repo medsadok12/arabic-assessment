@@ -48,6 +48,7 @@ export default function DashboardContent({
   homework = [], sessionNotes = [],
   streakCount = 0, loggedToday = false, last7Days = [],
   masteredCount = 0, studiedCount = 0,
+  hasHero = false,
 }) {
   const { t, lang } = useLanguage();
   const locale = 'en-GB';
@@ -416,6 +417,31 @@ export default function DashboardContent({
           .prog-val     { font-size: 1.3rem; }
           .prog-bar     { margin-top: 4px; }
         }
+
+        /* ── Hero discovery card ── */
+        .hero-discover {
+          display: flex; align-items: center; gap: 16px;
+          background: linear-gradient(135deg,#1A2B4A 0%,#2d3e6b 100%);
+          border-radius: 18px; padding: 18px 22px; margin-bottom: 24px;
+          border: 2px solid rgba(232,184,75,.35);
+          box-shadow: 0 4px 20px rgba(26,43,74,.2);
+        }
+        .hero-discover-icon { font-size: 2.6rem; line-height: 1; flex-shrink: 0; }
+        .hero-discover-body { flex: 1; min-width: 0; }
+        .hero-discover-title { font-size: 1rem; font-weight: 900; color: #E8B84B; margin-bottom: 3px; }
+        .hero-discover-desc  { font-size: .83rem; color: rgba(255,255,255,.8); line-height: 1.5; }
+        .hero-discover-btn {
+          display: inline-flex; align-items: center; gap: 6px;
+          background: #E8B84B; color: #1A2B4A; font-weight: 900;
+          font-size: .88rem; border-radius: 12px; padding: 10px 18px;
+          text-decoration: none; flex-shrink: 0; white-space: nowrap;
+          transition: transform .15s, box-shadow .15s;
+        }
+        .hero-discover-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(232,184,75,.4); }
+        @media(max-width:500px) {
+          .hero-discover { flex-wrap: wrap; }
+          .hero-discover-btn { width: 100%; justify-content: center; }
+        }
       `}</style>
 
       <Navbar user={user} />
@@ -451,6 +477,22 @@ export default function DashboardContent({
             nextSession={nextSession}
             isStudent={isStudent}
           />
+
+          {/* ── Hero discovery card — يختفي بمجرد اختيار الطالب بطله ── */}
+          {isStudent && !hasHero && (
+            <div className="hero-discover">
+              <div className="hero-discover-icon">🦸</div>
+              <div className="hero-discover-body">
+                <div className="hero-discover-title">اختر بطلك!</div>
+                <div className="hero-discover-desc">
+                  ادخل استوديو الأبطال واختر شخصيتك — كل بطل له شخصية مميزة خاصة بك ✨
+                </div>
+              </div>
+              <Link href="/dashboard/heroes-studio" className="hero-discover-btn">
+                استوديو الأبطال ←
+              </Link>
+            </div>
+          )}
 
           {/* ── Stats ── */}
           <div className="db-stats">
