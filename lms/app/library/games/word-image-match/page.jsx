@@ -491,6 +491,8 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
         setConnections(prev => prev.filter(c => !(c.wordId === wordId && !c.correct)));
         setShaking(null);
       }, 650);
+      const pair = pairMap[wordId];
+      if (pair?.word_text) fetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: pair.word_text, topic: pair.topic, grade_level: pair.grade_level }) }).catch(() => {});
     }
     setSelectedWord(null);
     dragWordIdRef.current = null;

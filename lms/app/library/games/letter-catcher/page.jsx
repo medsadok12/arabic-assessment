@@ -313,6 +313,9 @@ export default function LetterCatcherGame() {
       fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 5, reason: 'letter_catcher' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
       if (w.audio_url) { try { new Audio(w.audio_url).play(); } catch {} }
       else speak(w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word);
+    } else {
+      const fullWord = w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word;
+      fetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: fullWord, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
     }
   }, [chosen, cur, queue]);
 

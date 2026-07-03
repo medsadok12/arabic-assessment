@@ -660,6 +660,8 @@ export default function WordSmashGame() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: 5, reason: 'word_smash' }),
       }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
+    } else {
+      fetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: w.word_text, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
     }
   }, [chosen, cur, queue]);
 
