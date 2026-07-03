@@ -317,6 +317,7 @@ export default function WordWheelGame() {
       const done=getTotalDone(prog);
       setAllDoneNew(done>=20);
       setPhase('allDone');
+      fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_wheel', category: 'عام', correct: done, wrong: 0, total: done }) }).catch(() => {});
     }
   }
   function handleRetryWheel() {

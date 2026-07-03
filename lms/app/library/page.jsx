@@ -58,12 +58,12 @@ export default async function LibraryPage() {
 
       initialProgress = {
         'huroof':           reasons.has('huroof_all_complete'),
-        'vowel-balloon':    reasons.has('vowel_balloon'),
+        'vowel-balloon':    games.has('vowel_balloon'),
         'letter-catcher':   games.has('letter_catcher'),
-        'word-scramble':    reasons.has('word_scramble'),
-        'word-image-match': reasons.has('word_image_match'),
-        'word-smash':       reasons.has('word_smash'),
-        'word-wheel':       reasons.has('word_wheel'),
+        'word-scramble':    games.has('word_scramble'),
+        'word-image-match': games.has('word_image_match'),
+        'word-smash':       games.has('word_smash'),
+        'word-wheel':       games.has('word_wheel'),
         'flashcards':       (flashRes.count ?? 0) > 0,
         'puzzle':           (puzzleRes.count ?? 0) > 0,
         'challenge':        [...reasons].some(r => r.startsWith('challenge_')),

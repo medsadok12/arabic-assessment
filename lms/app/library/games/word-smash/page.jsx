@@ -675,6 +675,7 @@ export default function WordSmashGame() {
         setPhase('worm');
       } else {
         setPhase('finished');
+        fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_smash', category: 'عام', correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
       }
     } else {
       setCur(n); setChosen(null); setIsRight(null); setCharAnim('idle'); setWordAnim('idle');

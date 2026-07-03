@@ -563,6 +563,7 @@ export default function WordScrambleGame() {
         setPhase('topics');
       } else {
         setPhase('finished');
+        fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_scramble', category: 'عام', correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
       }
       return;
     }

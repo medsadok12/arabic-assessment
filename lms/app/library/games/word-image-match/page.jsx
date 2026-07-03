@@ -452,6 +452,15 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
     }
   }, [correct.size, currentPairs.length, phase, currentTopic]);
 
+  /* all topics done → post completion */
+  const completionPostedRef = useRef(false);
+  useEffect(() => {
+    if (allDone && !completionPostedRef.current) {
+      completionPostedRef.current = true;
+      fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_image_match', category: 'عام', correct: completedTopics.size, wrong: 0, total: topicList.length }) }).catch(() => {});
+    }
+  }, [allDone]);
+
   const startTopicGame = useCallback((topic) => {
     const pairs = topicGroups[topic] || [];
     const sel   = shuffle(pairs).slice(0, 4);

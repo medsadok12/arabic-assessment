@@ -490,7 +490,7 @@ export default function VowelBalloonPage() {
         setShowConf(false); setLetterAnim('idle');
         setBalloonStates(['idle','idle','idle']);
         setChosen(null); setIsRight(null); setShowRule(false); setWrongFeedback(false);
-        if (cur + 1 >= queue.length) { setDone(true); return; }
+        if (cur + 1 >= queue.length) { setDone(true); fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'vowel_balloon', category: 'عام', correct: score + 1, wrong: (cur + 1) - (score + 1), total: queue.length }) }).catch(() => {}); return; }
         setCur(c => c + 1);
       }, 1200);
     } else {
