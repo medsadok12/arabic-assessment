@@ -81,8 +81,8 @@ export async function POST(req) {
     const unlocked = Array.isArray(prog.unlocked) ? prog.unlocked : [];
     if (unlocked.length >= total) return NextResponse.json({ success: false, reason: 'الأحجية مكتملة' });
 
-    let nextPiece = 0;
-    while (unlocked.includes(nextPiece) && nextPiece < total) nextPiece++;
+    const remaining = Array.from({ length: total }, (_, i) => i).filter(i => !unlocked.includes(i));
+    const nextPiece = remaining[Math.floor(Math.random() * remaining.length)];
 
     const newUnlocked = [...unlocked, nextPiece];
     const isCompleted = newUnlocked.length >= total;
