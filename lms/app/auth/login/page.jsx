@@ -6,6 +6,19 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '../../../lib/supabase';
 import { useLanguage } from '../../../contexts/LanguageContext';
 
+/* ── icon input helper ── */
+function IconInput({ icon, children }) {
+  return (
+    <div style={{ position: 'relative' }}>
+      <span style={{
+        position: 'absolute', right: 12, top: '50%',
+        transform: 'translateY(-50%)', fontSize: '1rem', pointerEvents: 'none',
+      }}>{icon}</span>
+      {children}
+    </div>
+  );
+}
+
 /* ── Google SVG logo (official brand colours) ── */
 function GoogleLogo() {
   return (
@@ -137,19 +150,6 @@ function LoginForm() {
   }, []);
 
   const anyLoading = loading || gLoading;
-
-  /* ── icon input helper ── */
-  function IconInput({ icon, children }) {
-    return (
-      <div style={{ position: 'relative' }}>
-        <span style={{
-          position: 'absolute', right: 12, top: '50%',
-          transform: 'translateY(-50%)', fontSize: '1rem', pointerEvents: 'none',
-        }}>{icon}</span>
-        {children}
-      </div>
-    );
-  }
 
   return (
     <div className="auth-page">
