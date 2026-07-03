@@ -348,9 +348,10 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
   const dropRef   = useRef(null);
   const { t, lang } = useLanguage();
 
-  const [user,      setUser]      = useState(initialUser ?? null);
-  const [dropOpen,  setDropOpen]  = useState(false);
-  const [glowLevel, setGlowLevel] = useState(-1);
+  const [user,        setUser]        = useState(initialUser ?? null);
+  const [dropOpen,    setDropOpen]    = useState(false);
+  const [glowLevel,   setGlowLevel]   = useState(-1);
+  const [heroPreview, setHeroPreview] = useState(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -377,6 +378,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
   useEffect(() => {
     const isStud = user?.user_metadata?.role === 'student';
     if (!isStud || !user?.id) return;
+
     const key = `arem_glow_${user.id}`;
     try {
       const cached = sessionStorage.getItem(key);
@@ -387,6 +389,15 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
       setGlowLevel(idx);
       try { sessionStorage.setItem(key, String(idx)); } catch {}
     }).catch(() => {});
+  }, [user?.id, user?.user_metadata?.role]);
+
+  useEffect(() => {
+    const isStud = user?.user_metadata?.role === 'student';
+    if (!isStud || !user?.id) { setHeroPreview(null); return; }
+    fetch('/api/hero-config')
+      .then(r => r.json())
+      .then(d => { setHeroPreview(d.preview_url ?? d.avatar_url ?? null); })
+      .catch(() => {});
   }, [user?.id, user?.user_metadata?.role]);
 
   async function handleLogout() {
@@ -518,8 +529,8 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
                       ? `0 0 0 2.5px ${PTS_LEVELS[glowLevel].color}, 0 0 12px ${PTS_LEVELS[glowLevel].color}80`
                       : 'none',
                   }}>
-                    {avatarURL
-                      ? <img src={avatarURL} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,.5)', display: 'block' }} />
+                    {(heroPreview ?? avatarURL)
+                      ? <img src={heroPreview ?? avatarURL} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,.5)', display: 'block' }} />
                       : <Initials name={fullName} />
                     }
                   </div>
