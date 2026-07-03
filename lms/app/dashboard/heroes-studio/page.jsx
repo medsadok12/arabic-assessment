@@ -67,13 +67,12 @@ const HEROES = [
   },
   {
     id: 'whobee',
-    name: 'ويبي التفاعلي',
+    name: 'ويبي المتحرك',
     emoji: '🦾',
     color: '#F59E0B',
     price: 0,
-    desc: 'روبوت ذكي — حرّك الماوس ليتفاعل معك!',
-    glb:  null,
-    splineUrl: 'https://prod.spline.design/PyzDhpQ9E5f1E3MT/scene.splinecode',
+    desc: 'روبوت آلي مميز يتحرك باحترافية',
+    glb:  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/BrainStem/glTF-Binary/BrainStem.glb',
     anim: null,
   },
   {
