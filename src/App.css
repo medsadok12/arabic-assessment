@@ -256,6 +256,69 @@ body {
   gap: 16px;
 }
 
+/* ====== أفاتار الطالب ====== */
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.avatar-option {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  background: color-mix(in srgb, var(--av-color) 15%, white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
+  padding: 0;
+}
+
+.avatar-option:hover {
+  transform: scale(1.1);
+  border-color: var(--av-color);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--av-color) 40%, transparent);
+}
+
+.avatar-selected {
+  border-color: var(--av-color) !important;
+  background: color-mix(in srgb, var(--av-color) 25%, white) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--av-color) 30%, transparent) !important;
+  transform: scale(1.08);
+}
+
+.avatar-emoji {
+  font-size: 1.8rem;
+  line-height: 1;
+  display: block;
+}
+
+.avatar-check {
+  position: absolute;
+  bottom: -2px;
+  left: -2px;
+  width: 18px;
+  height: 18px;
+  background: var(--av-color);
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+}
+
+@media (max-width: 480px) {
+  .avatar-grid { grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .avatar-emoji { font-size: 1.4rem; }
+}
+
 /* ====== أزرار ====== */
 button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 
@@ -524,6 +587,20 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 }
 
 .results-icon { font-size: 4rem; margin-bottom: 12px; }
+
+.results-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--av-color) 20%, white);
+  border: 4px solid var(--av-color);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--av-color) 35%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  font-size: 2.6rem;
+}
 
 .results-header h2 {
   font-size: 1.8rem;
@@ -1921,6 +1998,26 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   margin-bottom: 18px;
   display: block;
   animation: floatLetter 6s ease-in-out infinite;
+}
+
+.welcome-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--av-color) 20%, white);
+  border: 4px solid var(--av-color);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--av-color) 35%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  animation: floatLetter 6s ease-in-out infinite;
+}
+
+.welcome-avatar-emoji {
+  font-size: 3rem;
+  line-height: 1;
+  display: block;
 }
 
 .welcome-greeting {

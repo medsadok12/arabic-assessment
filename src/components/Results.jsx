@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { generateAssessmentPDF } from '../utils/pdfGenerator.js';
 import { LEVELS } from '../data/questions.js';
+import { AVATARS } from './StudentInfo.jsx';
 
 export default function Results({ studentInfo, finalLevel, scores, levelPath, onRestart }) {
   const [emailStatus, setEmailStatus] = useState('idle'); // idle | sending | success | error
@@ -58,10 +59,18 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, on
     }
   }
 
+  const av = AVATARS.find(a => a.id === studentInfo.avatar);
+
   return (
     <div className="page-content">
       <div className="results-header">
-        <div className="results-icon">🎉</div>
+        {av ? (
+          <div className="results-avatar" style={{ '--av-color': av.color }}>
+            <span>{av.emoji}</span>
+          </div>
+        ) : (
+          <div className="results-icon">🎉</div>
+        )}
         <h2>أحسنت، {studentInfo.name}!</h2>
         <p>لقد أتممتَ التقييم بنجاح</p>
       </div>
