@@ -671,6 +671,7 @@ export default function WordSmashGame() {
       if (currentTopic) {
         setCompletedTopics(prev => new Set([...prev, currentTopic]));
         setWormTotals(prev => ({ right: prev.right + score, total: prev.total + queue.length }));
+        fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_smash', category: currentTopic, correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
         setCurrentTopic('');
         setPhase('worm');
       } else {

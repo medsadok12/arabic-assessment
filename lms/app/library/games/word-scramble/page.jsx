@@ -559,6 +559,7 @@ export default function WordScrambleGame() {
       if (currentTopic) {
         setCompletedTopics(prev => new Set([...prev, currentTopic]));
         setTopicTotals(prev => ({ right: prev.right + score, total: prev.total + queue.length }));
+        fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_scramble', category: currentTopic, correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
         setCurrentTopic(null);
         setPhase('topics');
       } else {
