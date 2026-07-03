@@ -394,7 +394,7 @@ export default function HeroesStudio() {
               <span style={{ color: 'white', fontSize: 12, fontFamily: 'Cairo,sans-serif', fontWeight: 700 }}>{hero.name}</span>
             </div>
 
-            {!ready && (
+            {!ready && !hero.splineUrl && (
               <div style={{
                 position: 'absolute', inset: 0, zIndex: 3,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',

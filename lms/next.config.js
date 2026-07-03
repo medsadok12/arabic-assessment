@@ -36,9 +36,10 @@ const SECURITY_HEADERS = [
         "https://api.anthropic.com " +
         "https://modelviewer.dev " +
         "https://raw.githubusercontent.com " +
-        "https://threejs.org",
-      // model-viewer uses Web Workers for loading GLB files
-      "worker-src blob: 'self'",
+        "https://threejs.org " +
+        "https://*.spline.design https://prod.spline.design",
+      // model-viewer uses Web Workers for GLB; Spline uses workers from its CDN
+      "worker-src blob: 'self' https://*.spline.design",
       // Audio/video from Supabase storage and blobs (Web Audio API)
       "media-src 'self' blob: https:",
       // Allow iframes only from same origin (Google Meet opens in new tab, not iframe)
