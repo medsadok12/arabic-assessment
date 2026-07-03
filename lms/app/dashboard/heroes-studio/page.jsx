@@ -1,6 +1,30 @@
 'use client';
-import { useState, useEffect, useRef, Suspense, lazy } from 'react';
-const Spline = lazy(() => import('@splinetool/react-spline'));
+import { useState, useEffect, useRef, Suspense, lazy, Component } from 'react';
+const Spline = lazy(() =>
+  import('@splinetool/react-spline').then(m => ({ default: m.default ?? m }))
+);
+
+class SplineErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { err: false }; }
+  static getDerivedStateFromError() { return { err: true }; }
+  render() {
+    if (this.state.err) {
+      return (
+        <div style={{
+          position: 'absolute', inset: 0, display: 'flex',
+          flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(2,4,20,.85)',
+        }}>
+          <span style={{ fontSize: 72 }}>{this.props.emoji ?? '🦾'}</span>
+          <p style={{ color: '#64748B', fontFamily: 'Cairo,sans-serif', marginTop: 12, fontSize: 13 }}>
+            ⚠️ تعذّر تحميل المجسم التفاعلي
+          </p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import Link from 'next/link';
 
 /* ── Inject CSS animations once ─────────────────────────────────────────── */
@@ -397,13 +421,15 @@ export default function HeroesStudio() {
             )}
 
             {hero.splineUrl ? (
-              <Suspense fallback={null}>
-                <Spline
-                  scene={hero.splineUrl}
-                  onLoad={() => setReady(true)}
-                  style={{ width: '100%', height: isMobile ? '300px' : '520px', background: 'transparent' }}
-                />
-              </Suspense>
+              <SplineErrorBoundary emoji={hero.emoji}>
+                <Suspense fallback={null}>
+                  <Spline
+                    scene={hero.splineUrl}
+                    onLoad={() => setReady(true)}
+                    style={{ width: '100%', height: isMobile ? '300px' : '520px', background: 'transparent' }}
+                  />
+                </Suspense>
+              </SplineErrorBoundary>
             ) : (
               <model-viewer
                 ref={mvRef}
