@@ -79,21 +79,6 @@ export async function GET() {
 
     const { data: newWords } = await newWordsQuery.limit(5);
 
-    // Auto-seed new words into flashcard_progress (level 0, review today)
-    // so the admin can see what each student is exposed to
-    if (newWords?.length) {
-      const seeds = newWords.map(w => ({
-        user_id:       user.id,
-        word_id:       w.id,
-        level:         0,
-        next_review:   today,
-        last_reviewed: null,
-      }));
-      await admin
-        .from('flashcard_progress')
-        .upsert(seeds, { onConflict: 'user_id,word_id', ignoreDuplicates: true });
-    }
-
     const newCards = (newWords || []).map(w => ({ ...w, level: 0, is_new: true }));
 
     const cards = shuffle([...dueWords, ...newCards]);
