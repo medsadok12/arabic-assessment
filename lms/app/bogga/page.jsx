@@ -2753,6 +2753,14 @@ export default function BoggarAdminPage() {
                             </div>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 7, flexShrink: 0 }}>
+                            {u.password && (
+                              <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 9, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontFamily: 'monospace', fontSize: '.82rem', fontWeight: 700, color: '#166534', letterSpacing: 1 }}>{u.password}</span>
+                                <button onClick={() => navigator.clipboard.writeText(u.password)}
+                                  title={lang === 'ar' ? 'نسخ' : 'Copy'}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '.85rem', padding: 0, lineHeight: 1 }}>📋</button>
+                              </div>
+                            )}
                             <button onClick={() => handleResetPassword(u.id)} disabled={resettingPwdId === u.id}
                               style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fde68a', borderRadius: 9, padding: '6px 12px', fontWeight: 600, fontSize: '.8rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                               {resettingPwdId === u.id ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : '🔑'} {lang === 'ar' ? 'إعادة كلمة السر' : 'Reset Password'}
@@ -2884,6 +2892,14 @@ export default function BoggarAdminPage() {
                               onMouseLeave={e => e.currentTarget.style.background='linear-gradient(135deg,#eff6ff,#eef2ff)'}>
                               👁️ {lang === 'ar' ? 'عرض لوحته' : 'View Dashboard'}
                             </a>
+                            {u.password && (
+                              <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 9, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontFamily: 'monospace', fontSize: '.82rem', fontWeight: 700, color: '#166534', letterSpacing: 1 }}>{u.password}</span>
+                                <button onClick={() => navigator.clipboard.writeText(u.password)}
+                                  title={lang === 'ar' ? 'نسخ' : 'Copy'}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '.85rem', padding: 0, lineHeight: 1 }}>📋</button>
+                              </div>
+                            )}
                             <button onClick={() => handleResetPassword(u.id)} disabled={resettingPwdId === u.id}
                               style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fde68a', borderRadius: 9, padding: '6px 12px', fontWeight: 600, fontSize: '.8rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                               {resettingPwdId === u.id ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : '🔑'} {lang === 'ar' ? 'إعادة كلمة السر' : 'Reset Password'}
