@@ -789,21 +789,20 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           })}
         </div>
 
-        {/* ── شريط التقدم ── */}
-        <div className="lib-progress">
-          <div className="lib-progress-track">
-            <div
-              className={`lib-progress-fill${hasAnyProgress ? '' : ' avail'}`}
-              style={{ width: `${progressPct}%` }}
-            />
+        {/* ── شريط التقدم — يظهر فقط بعد إكمال نشاط واحد على الأقل ── */}
+        {hasAnyProgress && (
+          <div className="lib-progress">
+            <div className="lib-progress-track">
+              <div
+                className="lib-progress-fill"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+            <span className="lib-progress-label">
+              {doneInFilter}/{readyInFilter} مكتمل ✓
+            </span>
           </div>
-          <span className="lib-progress-label">
-            {hasAnyProgress
-              ? `${doneInFilter}/${readyInFilter} مكتمل ✓`
-              : `${readyInFilter}/${totalInFilter} متاح`
-            }
-          </span>
-        </div>
+        )}
 
         {/* ── الشبكة / مروحة البطاقات ── */}
         {(() => {
