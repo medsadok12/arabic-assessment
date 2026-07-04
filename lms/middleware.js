@@ -10,6 +10,9 @@ const PROTECTED = [
 // Auth pages where a logged-in user should be redirected away
 const REDIRECT_IF_LOGGED_IN = ['/auth/login', '/auth/register'];
 
+// Forced password-change page (exempt from REDIRECT_IF_LOGGED_IN but not from temp_password trap)
+const UPDATE_PASSWORD_ROUTE = '/auth/update-password';
+
 export async function middleware(request) {
   let supabaseResponse = NextResponse.next({ request });
   const { pathname } = request.nextUrl;
@@ -36,11 +39,32 @@ export async function middleware(request) {
 
     const isProtected       = PROTECTED.some(p => pathname === p || pathname.startsWith(p + '/'));
     const isRedirectIfLogIn = REDIRECT_IF_LOGGED_IN.some(p => pathname === p || pathname.startsWith(p + '/'));
+    const isUpdatePwdRoute  = pathname === UPDATE_PASSWORD_ROUTE;
+    const hasTempPwd        = !!user?.app_metadata?.temp_password;
 
     // Not logged in → send to login
     if (!user && isProtected) {
       const url = request.nextUrl.clone();
       url.pathname = '/auth/login';
+      return NextResponse.redirect(url);
+    }
+
+    // Logged-in user with temp_password accessing protected routes → force password change
+    if (user && hasTempPwd && isProtected && !isUpdatePwdRoute) {
+      const url = request.nextUrl.clone();
+      url.pathname = UPDATE_PASSWORD_ROUTE;
+      return NextResponse.redirect(url);
+    }
+
+    // Logged-in user with no temp_password trying to reach update-password → send to dashboard
+    if (user && !hasTempPwd && isUpdatePwdRoute) {
+      const role = user.user_metadata?.role;
+      const url  = request.nextUrl.clone();
+      url.pathname =
+        role === 'admin' || role === 'super_admin' ? '/bogga'
+        : role === 'teacher'                        ? '/teacher'
+        : role === 'supervisor'                     ? '/supervisor'
+        : '/dashboard';
       return NextResponse.redirect(url);
     }
 
