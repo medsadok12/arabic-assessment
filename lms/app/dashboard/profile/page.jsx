@@ -19,9 +19,11 @@ export default function ProfilePage() {
   const [nameMsg, setNameMsg]           = useState(null); // { type: 'success'|'error', text }
 
   // Password state
+  const [passPhase, setPassPhase]             = useState('form'); // 'form' | 'otp'
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword]         = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [passOtp, setPassOtp]                 = useState('');
   const [passLoading, setPassLoading]         = useState(false);
   const [passMsg, setPassMsg]                 = useState(null);
 
@@ -57,9 +59,10 @@ export default function ProfilePage() {
     }
   }
 
-  /* ── تغيير كلمة المرور ── */
-  async function handleSavePassword(e) {
+  /* ── المرحلة 1: التحقق من كلمة المرور الحالية وإرسال OTP ── */
+  async function handleSendOtp(e) {
     e.preventDefault();
+    setPassMsg(null);
     if (!currentPassword) {
       setPassMsg({ type: 'error', text: 'الرجاء إدخال كلمة المرور الحالية.' });
       return;
@@ -77,22 +80,46 @@ export default function ProfilePage() {
       return;
     }
     setPassLoading(true);
-    setPassMsg(null);
+    try {
+      const res  = await fetch('/api/auth/send-password-otp', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ currentPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPassMsg({ type: 'error', text: data.error ?? 'حدث خطأ أثناء إرسال كود التحقق.' });
+      } else {
+        setPassPhase('otp');
+      }
+    } catch {
+      setPassMsg({ type: 'error', text: 'حدث خطأ في الاتصال، يرجى المحاولة مجدداً.' });
+    }
+    setPassLoading(false);
+  }
 
+  /* ── المرحلة 2: تأكيد OTP وتغيير كلمة المرور ── */
+  async function handleConfirmOtp(e) {
+    e.preventDefault();
+    setPassMsg(null);
+    if (!passOtp || passOtp.length < 6) {
+      setPassMsg({ type: 'error', text: 'الرجاء إدخال الكود المكوّن من 6 أرقام.' });
+      return;
+    }
+    setPassLoading(true);
     try {
       const res  = await fetch('/api/auth/update-password', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ mode: 'change', newPassword, currentPassword }),
+        body:    JSON.stringify({ mode: 'change', newPassword, currentPassword, otp: passOtp }),
       });
       const data = await res.json();
       if (!res.ok) {
         setPassMsg({ type: 'error', text: data.error ?? 'حدث خطأ أثناء تغيير كلمة المرور.' });
       } else {
         setPassMsg({ type: 'success', text: 'تم تغيير كلمة المرور بنجاح.' });
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
+        setPassPhase('form');
+        setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setPassOtp('');
       }
     } catch {
       setPassMsg({ type: 'error', text: 'حدث خطأ في الاتصال، يرجى المحاولة مجدداً.' });
@@ -137,22 +164,15 @@ export default function ProfilePage() {
           {/* بطاقة 1: معلومات الحساب */}
           <div className="card" style={{ marginBottom: 24 }}>
             <h2 style={{
-              fontSize: '1.1rem',
-              fontWeight: 700,
-              color: 'var(--primary)',
-              marginBottom: 22,
-              paddingBottom: 12,
-              borderBottom: '1px solid var(--border)',
+              fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)',
+              marginBottom: 22, paddingBottom: 12, borderBottom: '1px solid var(--border)',
             }}>
               👤 معلومات الحساب
             </h2>
 
             <form onSubmit={handleSaveName} noValidate>
-              {/* البريد الإلكتروني — للقراءة فقط */}
               <div className="form-group">
-                <label className="form-label" htmlFor="profile-email">
-                  البريد الإلكتروني
-                </label>
+                <label className="form-label" htmlFor="profile-email">البريد الإلكتروني</label>
                 <input
                   id="profile-email"
                   type="email"
@@ -164,11 +184,8 @@ export default function ProfilePage() {
                 <p className="form-help">لا يمكن تغيير البريد الإلكتروني.</p>
               </div>
 
-              {/* الاسم الكامل */}
               <div className="form-group">
-                <label className="form-label" htmlFor="profile-name">
-                  الاسم الكامل
-                </label>
+                <label className="form-label" htmlFor="profile-name">الاسم الكامل</label>
                 <input
                   id="profile-name"
                   type="text"
@@ -180,11 +197,8 @@ export default function ProfilePage() {
                 />
               </div>
 
-              {/* رسالة نتيجة الحفظ */}
               {nameMsg && (
-                <div className={`alert alert-${nameMsg.type}`}>
-                  {nameMsg.text}
-                </div>
+                <div className={`alert alert-${nameMsg.type}`}>{nameMsg.text}</div>
               )}
 
               <button
@@ -201,82 +215,125 @@ export default function ProfilePage() {
           {/* بطاقة 2: تغيير كلمة المرور */}
           <div className="card">
             <h2 style={{
-              fontSize: '1.1rem',
-              fontWeight: 700,
-              color: 'var(--primary)',
-              marginBottom: 22,
-              paddingBottom: 12,
-              borderBottom: '1px solid var(--border)',
+              fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)',
+              marginBottom: 22, paddingBottom: 12, borderBottom: '1px solid var(--border)',
             }}>
               🔒 تغيير كلمة المرور
             </h2>
 
-            <form onSubmit={handleSavePassword} noValidate>
-              {/* كلمة المرور الحالية */}
-              <div className="form-group">
-                <label className="form-label" htmlFor="profile-current-pass">
-                  كلمة المرور الحالية
-                </label>
-                <input
-                  id="profile-current-pass"
-                  type="password"
-                  className="form-input"
-                  value={currentPassword}
-                  onChange={e => setCurrentPassword(e.target.value)}
-                  placeholder="أدخل كلمة مرورك الحالية"
-                  autoComplete="current-password"
-                  required
-                />
+            {passMsg && (
+              <div className={`alert alert-${passMsg.type}`} style={{ marginBottom: 16 }}>
+                {passMsg.text}
               </div>
+            )}
 
-              {/* كلمة المرور الجديدة */}
-              <div className="form-group">
-                <label className="form-label" htmlFor="profile-new-pass">
-                  كلمة المرور الجديدة
-                </label>
-                <input
-                  id="profile-new-pass"
-                  type="password"
-                  className="form-input"
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  placeholder="8 أحرف على الأقل"
-                  autoComplete="new-password"
-                />
-              </div>
-
-              {/* تأكيد كلمة المرور */}
-              <div className="form-group">
-                <label className="form-label" htmlFor="profile-confirm-pass">
-                  تأكيد كلمة المرور
-                </label>
-                <input
-                  id="profile-confirm-pass"
-                  type="password"
-                  className="form-input"
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder="أعد كتابة كلمة المرور الجديدة"
-                  autoComplete="new-password"
-                />
-              </div>
-
-              {/* رسالة نتيجة التغيير */}
-              {passMsg && (
-                <div className={`alert alert-${passMsg.type}`}>
-                  {passMsg.text}
+            {passPhase === 'form' ? (
+              <form onSubmit={handleSendOtp} noValidate>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="profile-current-pass">
+                    كلمة المرور الحالية
+                  </label>
+                  <input
+                    id="profile-current-pass"
+                    type="password"
+                    className="form-input"
+                    value={currentPassword}
+                    onChange={e => { setCurrentPassword(e.target.value); setPassMsg(null); }}
+                    placeholder="أدخل كلمة مرورك الحالية"
+                    autoComplete="current-password"
+                  />
                 </div>
-              )}
 
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={passLoading}
-                style={{ minWidth: 180 }}
-              >
-                {passLoading ? 'جارٍ التغيير...' : 'تغيير كلمة المرور'}
-              </button>
-            </form>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="profile-new-pass">
+                    كلمة المرور الجديدة
+                  </label>
+                  <input
+                    id="profile-new-pass"
+                    type="password"
+                    className="form-input"
+                    value={newPassword}
+                    onChange={e => { setNewPassword(e.target.value); setPassMsg(null); }}
+                    placeholder="8 أحرف على الأقل"
+                    autoComplete="new-password"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="profile-confirm-pass">
+                    تأكيد كلمة المرور
+                  </label>
+                  <input
+                    id="profile-confirm-pass"
+                    type="password"
+                    className="form-input"
+                    value={confirmPassword}
+                    onChange={e => { setConfirmPassword(e.target.value); setPassMsg(null); }}
+                    placeholder="أعد كتابة كلمة المرور الجديدة"
+                    autoComplete="new-password"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={passLoading}
+                  style={{ minWidth: 180 }}
+                >
+                  {passLoading ? 'جارٍ الإرسال...' : 'إرسال كود التحقق'}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleConfirmOtp} noValidate>
+                <div style={{
+                  background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10,
+                  padding: '10px 14px', marginBottom: 20, fontSize: '.85rem', color: '#92400e',
+                  display: 'flex', alignItems: 'flex-start', gap: 8,
+                }}>
+                  <span style={{ flexShrink: 0 }}>📧</span>
+                  <span>تم إرسال كود التحقق إلى بريدك الإلكتروني. أدخله أدناه لتأكيد تغيير كلمة المرور.</span>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="profile-otp">
+                    كود التحقق (6 أرقام)
+                  </label>
+                  <input
+                    id="profile-otp"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    className="form-input"
+                    value={passOtp}
+                    onChange={e => { setPassOtp(e.target.value.replace(/\D/g, '')); setPassMsg(null); }}
+                    placeholder="أدخل الكود"
+                    autoComplete="one-time-code"
+                    style={{ textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.2rem' }}
+                    autoFocus
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={passLoading}
+                    style={{ minWidth: 160 }}
+                  >
+                    {passLoading ? 'جارٍ التأكيد...' : 'تأكيد التغيير'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => { setPassPhase('form'); setPassOtp(''); setPassMsg(null); }}
+                    disabled={passLoading}
+                  >
+                    رجوع
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
 
         </div>

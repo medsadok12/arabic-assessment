@@ -296,53 +296,67 @@ function AvatarCard({ user, onUserUpdate }) {
 
 /* ── بطاقة كلمة المرور — معزولة تماماً ── */
 function PasswordCard() {
-  const [current,   setCurrent]   = useState('');
-  const [next,      setNext]      = useState('');
-  const [confirm,   setConfirm]   = useState('');
-  const [pwMsg,     setPwMsg]     = useState('');
-  const [pwLoading, setPwLoading] = useState(false);
+  const [phase,   setPhase]   = useState('form'); // 'form' | 'otp'
+  const [current, setCurrent] = useState('');
+  const [next,    setNext]    = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [otp,     setOtp]     = useState('');
+  const [pwMsg,   setPwMsg]   = useState('');
+  const [loading, setLoading] = useState(false);
 
-  async function handlePasswordChange(e) {
+  /* المرحلة 1 — التحقق من كلمة المرور الحالية وإرسال OTP */
+  async function handleSendOtp(e) {
     e.preventDefault();
     setPwMsg('');
+    if (!current)               { setPwMsg('❌ الرجاء إدخال كلمة المرور الحالية'); return; }
+    if (!next)                  { setPwMsg('❌ الرجاء إدخال كلمة المرور الجديدة'); return; }
+    if (next.length < 6)        { setPwMsg('❌ كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; }
+    if (next !== confirm)       { setPwMsg('❌ كلمتا المرور غير متطابقتين'); return; }
 
-    if (!current) {
-      setPwMsg('❌ الرجاء إدخال كلمة المرور الحالية');
-      return;
+    setLoading(true);
+    try {
+      const res  = await fetch('/api/auth/send-password-otp', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ currentPassword: current }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPwMsg('❌ ' + (data.error ?? 'حدث خطأ'));
+      } else {
+        setPhase('otp');
+      }
+    } catch {
+      setPwMsg('❌ حدث خطأ في الاتصال، يرجى المحاولة مجدداً');
     }
-    if (!next) {
-      setPwMsg('❌ الرجاء إدخال كلمة المرور الجديدة');
-      return;
-    }
-    if (next.length < 6) {
-      setPwMsg('❌ كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-      return;
-    }
-    if (next !== confirm) {
-      setPwMsg('❌ كلمتا المرور غير متطابقتين');
-      return;
-    }
+    setLoading(false);
+  }
 
-    setPwLoading(true);
+  /* المرحلة 2 — التحقق من كود البريد وتغيير كلمة المرور */
+  async function handleConfirmOtp(e) {
+    e.preventDefault();
+    setPwMsg('');
+    if (!otp || otp.length < 6) { setPwMsg('❌ الرجاء إدخال الكود المكوّن من 6 أرقام'); return; }
+
+    setLoading(true);
     try {
       const res  = await fetch('/api/auth/update-password', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ mode: 'change', newPassword: next, currentPassword: current }),
+        body:    JSON.stringify({ mode: 'change', newPassword: next, currentPassword: current, otp }),
       });
       const data = await res.json();
       if (!res.ok) {
         setPwMsg('❌ ' + (data.error ?? 'حدث خطأ أثناء تغيير كلمة المرور'));
       } else {
         setPwMsg('✅ تم تغيير كلمة المرور بنجاح');
-        setCurrent('');
-        setNext('');
-        setConfirm('');
+        setPhase('form');
+        setCurrent(''); setNext(''); setConfirm(''); setOtp('');
       }
     } catch {
       setPwMsg('❌ حدث خطأ في الاتصال، يرجى المحاولة مجدداً');
     }
-    setPwLoading(false);
+    setLoading(false);
   }
 
   return (
@@ -350,6 +364,7 @@ function PasswordCard() {
       <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1a237e', marginBottom: 18 }}>
         🔑 تغيير كلمة المرور
       </h2>
+
       {pwMsg && (
         <div
           className={`alert ${pwMsg.startsWith('✅') ? 'alert-success' : 'alert-error'}`}
@@ -358,52 +373,101 @@ function PasswordCard() {
           {pwMsg}
         </div>
       )}
-      <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">كلمة المرور الحالية</label>
-          <input
-            className="form-input"
-            type="password"
-            value={current}
-            onChange={e => { setCurrent(e.target.value); setPwMsg(''); }}
-            placeholder="أدخل كلمة مرورك الحالية"
-            autoComplete="current-password"
-            dir="ltr"
-          />
-        </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">كلمة المرور الجديدة</label>
-          <input
-            className="form-input"
-            type="password"
-            value={next}
-            onChange={e => { setNext(e.target.value); setPwMsg(''); }}
-            placeholder="6 أحرف على الأقل"
-            autoComplete="new-password"
-            dir="ltr"
-          />
-        </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">تأكيد كلمة المرور الجديدة</label>
-          <input
-            className="form-input"
-            type="password"
-            value={confirm}
-            onChange={e => { setConfirm(e.target.value); setPwMsg(''); }}
-            placeholder="أعد كتابة كلمة المرور"
-            autoComplete="new-password"
-            dir="ltr"
-          />
-        </div>
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={pwLoading}
-          style={{ marginTop: 4 }}
-        >
-          {pwLoading ? <span className="spinner" /> : 'حفظ'}
-        </button>
-      </form>
+
+      {phase === 'form' ? (
+        <form onSubmit={handleSendOtp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">كلمة المرور الحالية</label>
+            <input
+              className="form-input"
+              type="password"
+              value={current}
+              onChange={e => { setCurrent(e.target.value); setPwMsg(''); }}
+              placeholder="أدخل كلمة مرورك الحالية"
+              autoComplete="current-password"
+              dir="ltr"
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">كلمة المرور الجديدة</label>
+            <input
+              className="form-input"
+              type="password"
+              value={next}
+              onChange={e => { setNext(e.target.value); setPwMsg(''); }}
+              placeholder="6 أحرف على الأقل"
+              autoComplete="new-password"
+              dir="ltr"
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">تأكيد كلمة المرور الجديدة</label>
+            <input
+              className="form-input"
+              type="password"
+              value={confirm}
+              onChange={e => { setConfirm(e.target.value); setPwMsg(''); }}
+              placeholder="أعد كتابة كلمة المرور"
+              autoComplete="new-password"
+              dir="ltr"
+            />
+          </div>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={loading}
+            style={{ marginTop: 4 }}
+          >
+            {loading ? <span className="spinner" /> : 'إرسال كود التحقق'}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleConfirmOtp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{
+            background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10,
+            padding: '10px 14px', fontSize: '.85rem', color: '#92400e',
+            display: 'flex', alignItems: 'flex-start', gap: 8,
+          }}>
+            <span style={{ flexShrink: 0 }}>📧</span>
+            <span>تم إرسال كود التحقق إلى بريدك الإلكتروني. أدخله أدناه لتأكيد تغيير كلمة المرور.</span>
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">كود التحقق (6 أرقام)</label>
+            <input
+              className="form-input"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={otp}
+              onChange={e => { setOtp(e.target.value.replace(/\D/g, '')); setPwMsg(''); }}
+              placeholder="أدخل الكود"
+              autoComplete="one-time-code"
+              dir="ltr"
+              style={{ textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.2rem' }}
+              autoFocus
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={loading}
+              style={{ flex: 1 }}
+            >
+              {loading ? <span className="spinner" /> : 'تأكيد التغيير'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => { setPhase('form'); setOtp(''); setPwMsg(''); }}
+              disabled={loading}
+            >
+              رجوع
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

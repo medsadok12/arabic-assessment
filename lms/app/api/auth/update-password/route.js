@@ -8,10 +8,11 @@ import { createAdminClient } from '../../../../lib/supabase-admin';
  * Two modes:
  *   mode = 'forced'   → first-login temp password change; no current password required.
  *                        Clears app_metadata.temp_password on success.
- *   mode = 'change'   → voluntary change from profile; currentPassword MUST be verified.
- *                        Also clears temp_password if it somehow still exists.
+ *   mode = 'change'   → voluntary change from profile.
+ *                        Requires: currentPassword (already verified by send-password-otp)
+ *                                  otp (6-digit code sent to user's email via reauthenticate)
  *
- * Body: { mode, newPassword, currentPassword? }
+ * Body: { mode, newPassword, currentPassword?, otp? }
  */
 export async function POST(req) {
   try {
@@ -22,7 +23,7 @@ export async function POST(req) {
     }
 
     const body = await req.json();
-    const { mode = 'forced', newPassword, currentPassword } = body;
+    const { mode = 'forced', newPassword, currentPassword, otp } = body;
 
     if (!newPassword || newPassword.length < 8) {
       return NextResponse.json(
@@ -33,7 +34,7 @@ export async function POST(req) {
 
     const admin = createAdminClient();
 
-    // ── Voluntary change: verify current password first ──────────────────────
+    // ── Voluntary change: verify current password + email OTP ────────────────
     if (mode === 'change') {
       if (!currentPassword) {
         return NextResponse.json(
@@ -41,10 +42,16 @@ export async function POST(req) {
           { status: 400 }
         );
       }
+      if (!otp) {
+        return NextResponse.json(
+          { error: 'كود التحقق مطلوب' },
+          { status: 400 }
+        );
+      }
 
-      // Verify by attempting a sign-in with the current credentials
-      const { createClient: createBrowserClient } = await import('@supabase/supabase-js');
-      const verifyClient = createBrowserClient(
+      // Re-verify current password (defence-in-depth — also verified before OTP was sent)
+      const { createClient: createAnonClient } = await import('@supabase/supabase-js');
+      const verifyClient = createAnonClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
       );
@@ -55,6 +62,19 @@ export async function POST(req) {
       if (verifyErr) {
         return NextResponse.json(
           { error: 'كلمة المرور الحالية غير صحيحة' },
+          { status: 403 }
+        );
+      }
+
+      // Verify the email OTP sent by reauthenticate()
+      const { error: otpErr } = await supabase.auth.verifyOtp({
+        email: user.email,
+        token: otp,
+        type:  'reauthentication',
+      });
+      if (otpErr) {
+        return NextResponse.json(
+          { error: 'كود التحقق غير صحيح أو انتهت صلاحيته' },
           { status: 403 }
         );
       }
