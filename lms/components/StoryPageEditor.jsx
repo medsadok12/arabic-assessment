@@ -16,22 +16,23 @@ const BLANK = { layout: 'text-only', imageUrl: '', fit: 'cover', text: '' };
 
 /* ─── تحويل بيانات الصفحة → HTML للحفظ ────────────────────────── */
 function pageToHtml({ layout, imageUrl, fit = 'cover', text = '' }) {
-  const safeUrl = (imageUrl || '').replace(/'/g, '%27');
-  const imgTag  = `<img src="${imageUrl}" style="width:100%;display:block;border-radius:10px;object-fit:${fit}" alt="">`;
+  const safeUrl  = (imageUrl || '').replace(/'/g, '%27');
+  const safeAttr = (imageUrl || '').replace(/"/g, '%22');
+  const imgTag   = `<img src="${safeAttr}" style="width:100%;display:block;border-radius:10px;object-fit:${fit}" alt="">`;
 
   switch (layout) {
     case 'img-only':
-      return `<div data-sp-layout="img-only" data-sp-img="${imageUrl}" style="display:flex;align-items:center;justify-content:center;min-height:120px"><img src="${imageUrl}" style="max-width:100%;max-height:380px;object-fit:${fit};border-radius:12px;display:block;margin:auto" alt=""></div>`;
+      return `<div data-sp-layout="img-only" data-sp-img="${safeAttr}" style="display:flex;align-items:center;justify-content:center;min-height:120px"><img src="${safeAttr}" style="max-width:100%;max-height:380px;object-fit:${fit};border-radius:12px;display:block;margin:auto" alt=""></div>`;
     case 'img-top':
-      return `<div data-sp-layout="img-top" data-sp-img="${imageUrl}"><img src="${imageUrl}" style="width:100%;max-height:46%;object-fit:${fit};border-radius:10px;margin-bottom:12px;display:block" alt=""><div class="sp-text">${text}</div></div>`;
+      return `<div data-sp-layout="img-top" data-sp-img="${safeAttr}"><img src="${safeAttr}" style="width:100%;max-height:46%;object-fit:${fit};border-radius:10px;margin-bottom:12px;display:block" alt=""><div class="sp-text">${text}</div></div>`;
     case 'img-bottom':
-      return `<div data-sp-layout="img-bottom" data-sp-img="${imageUrl}"><div class="sp-text" style="margin-bottom:12px">${text}</div><img src="${imageUrl}" style="width:100%;max-height:46%;object-fit:${fit};border-radius:10px;display:block" alt=""></div>`;
+      return `<div data-sp-layout="img-bottom" data-sp-img="${safeAttr}"><div class="sp-text" style="margin-bottom:12px">${text}</div><img src="${safeAttr}" style="width:100%;max-height:46%;object-fit:${fit};border-radius:10px;display:block" alt=""></div>`;
     case 'img-right':
-      return `<div data-sp-layout="img-right" data-sp-img="${imageUrl}" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;direction:rtl">${imgTag}<div class="sp-text">${text}</div></div>`;
+      return `<div data-sp-layout="img-right" data-sp-img="${safeAttr}" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;direction:rtl">${imgTag}<div class="sp-text">${text}</div></div>`;
     case 'img-left':
-      return `<div data-sp-layout="img-left" data-sp-img="${imageUrl}" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;direction:rtl"><div class="sp-text">${text}</div>${imgTag}</div>`;
+      return `<div data-sp-layout="img-left" data-sp-img="${safeAttr}" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;direction:rtl"><div class="sp-text">${text}</div>${imgTag}</div>`;
     case 'img-bg':
-      return `<div data-sp-layout="img-bg" data-sp-img="${imageUrl}" style="position:relative;border-radius:12px;overflow:hidden;padding:20px 16px;min-height:160px"><div style="position:absolute;inset:0;background-image:url('${safeUrl}');background-size:cover;background-position:center;opacity:0.4;z-index:0"></div><div class="sp-text" style="position:relative;z-index:1">${text}</div></div>`;
+      return `<div data-sp-layout="img-bg" data-sp-img="${safeAttr}" style="position:relative;border-radius:12px;overflow:hidden;padding:20px 16px;min-height:160px"><div style="position:absolute;inset:0;background-image:url('${safeUrl}');background-size:cover;background-position:center;opacity:0.4;z-index:0"></div><div class="sp-text" style="position:relative;z-index:1">${text}</div></div>`;
     default: // text-only
       return `<div data-sp-layout="text-only">${text}</div>`;
   }
@@ -49,7 +50,8 @@ function htmlToPage(html) {
   const layout   = wrapper.getAttribute('data-sp-layout') || 'text-only';
   const imageUrl = wrapper.getAttribute('data-sp-img') || '';
   const textDiv  = wrapper.querySelector('.sp-text');
-  const text     = textDiv ? textDiv.innerHTML : '';
+  // text-only: no .sp-text child — content is direct innerHTML of wrapper
+  const text     = textDiv ? textDiv.innerHTML : wrapper.innerHTML;
   const img      = wrapper.querySelector('img');
   const fit      = img?.style?.objectFit || 'cover';
   return { layout, imageUrl, fit, text };
@@ -58,7 +60,7 @@ function htmlToPage(html) {
 /* ─── أيقونة مصغّرة للتخطيط (SVG) ─────────────────────────────── */
 function LayoutSvg({ type }) {
   const s = { width: 34, height: 26 };
-  const P = '#818cf8', T = '#6366f1', B = '#fffdf5';
+  const P = '#818cf8', T = '#6366f1';
   switch (type) {
     case 'text-only':
       return <svg {...s} viewBox="0 0 34 26"><rect x="3" y="5"  width="28" height="3" rx="1.5" fill={T}/><rect x="3" y="11" width="28" height="3" rx="1.5" fill={T}/><rect x="3" y="17" width="18" height="3" rx="1.5" fill={T}/></svg>;
@@ -87,8 +89,9 @@ export default function StoryPageEditor({ value = '', onChange }) {
   const [sel,       setSel]       = useState(0);
   const [uploading, setUploading] = useState(false);
   const [dragOver,  setDragOver]  = useState(false);
-  const textRef    = useRef(null);
-  const fileRef    = useRef(null);
+  const textRef = useRef(null);
+  const fileRef = useRef(null);
+  const selRef  = useRef(0); // ref للـ sel لتجنب stale closure في async
 
   /* ── تهيئة الصفحات من القيمة الأولية ── */
   useEffect(() => {
@@ -96,14 +99,20 @@ export default function StoryPageEditor({ value = '', onChange }) {
     const parsed = parts.length ? parts.map(htmlToPage) : [{ ...BLANK }];
     setPages(parsed);
     setSel(0);
+    selRef.current = 0;
   }, []); // eslint-disable-line
+
+  /* ── مزامنة ref عند تغيير sel ── */
+  useEffect(() => {
+    selRef.current = sel;
+  }, [sel]);
 
   /* ── مزامنة محرر النص عند تغيير الصفحة ── */
   useEffect(() => {
     if (textRef.current) textRef.current.innerHTML = pages[sel]?.text || '';
   }, [sel]); // eslint-disable-line
 
-  /* ── إرسال المحتوى المحدَّث للأب ── */
+  /* ── إرسال المحتوى المحدَّث للأب (يُستدعى خارج setPages) ── */
   function emit(newPages) {
     const content = newPages.map(pageToHtml).join('\n<!-- PAGE -->\n');
     onChange?.(content);
@@ -112,7 +121,8 @@ export default function StoryPageEditor({ value = '', onChange }) {
   function patchPage(idx, patch) {
     setPages(prev => {
       const next = prev.map((p, i) => i === idx ? { ...p, ...patch } : p);
-      emit(next);
+      // emit خارج الـ updater لتجنب آثار جانبية داخل React
+      Promise.resolve().then(() => emit(next));
       return next;
     });
   }
@@ -130,31 +140,31 @@ export default function StoryPageEditor({ value = '', onChange }) {
   }
 
   function changeLayout(newLayout) {
+    // لا نعيد ضبط textRef هنا — useEffect على sel يتولى المزامنة عند تغيير الصفحة
     patchPage(sel, { layout: newLayout });
-    // إعادة النص للمحرر إذا كان التخطيط الجديد يدعم النص
-    if (newLayout !== 'img-only' && textRef.current) {
-      textRef.current.innerHTML = pages[sel]?.text || '';
-    }
   }
 
   function addPage() {
-    const blank = { ...BLANK };
+    const blank  = { ...BLANK };
+    const newIdx = pages.length; // index الصفحة الجديدة = الطول الحالي
     setPages(prev => {
       const next = [...prev, blank];
-      emit(next);
+      Promise.resolve().then(() => emit(next));
       return next;
     });
-    setSel(pages.length); // pages.length = الطول قبل الإضافة = index الصفحة الجديدة
+    setSel(newIdx);
+    selRef.current = newIdx;
   }
 
   function removePage(idx) {
     if (pages.length <= 1) return;
     setPages(prev => {
       const next = prev.filter((_, i) => i !== idx);
-      emit(next);
+      Promise.resolve().then(() => emit(next));
       return next;
     });
-    setSel(s => Math.max(0, s > 0 ? s - 1 : 0));
+    // اجعل sel يشير للصفحة الصحيحة بعد الحذف
+    setSel(s => idx < s ? s - 1 : idx === s ? Math.max(0, s - 1) : s);
   }
 
   function movePage(idx, dir) {
@@ -163,21 +173,24 @@ export default function StoryPageEditor({ value = '', onChange }) {
     setPages(prev => {
       const next = [...prev];
       [next[idx], next[to]] = [next[to], next[idx]];
-      emit(next);
+      Promise.resolve().then(() => emit(next));
       return next;
     });
     setSel(to);
+    selRef.current = to;
   }
 
   async function uploadImage(file) {
     if (!file?.type?.startsWith('image/')) return;
+    // نلتقط index الصفحة الحالية لحظة الاستدعاء لتجنب stale closure
+    const targetIdx = selRef.current;
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append('file', file);
       const res  = await fetch('/api/stories/upload-image', { method: 'POST', body: fd });
       const json = await res.json();
-      if (json.url) patchPage(sel, { imageUrl: json.url });
+      if (json.url) patchPage(targetIdx, { imageUrl: json.url });
     } catch {}
     setUploading(false);
   }
