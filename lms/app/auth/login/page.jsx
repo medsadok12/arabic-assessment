@@ -182,18 +182,18 @@ function LoginForm() {
 
         {/* ── Tabs ── */}
         <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr',
+          display: 'flex', flexDirection: 'column',
           background: '#e8f0fb', padding: '6px', gap: 4,
         }}>
           <button style={{
-            padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'default',
+            padding: '11px 0', borderRadius: 10, border: 'none', cursor: 'default',
             fontFamily: 'inherit', fontWeight: 700, fontSize: '.9rem',
             background: '#fff', color: '#1A2B4A',
             boxShadow: '0 2px 10px rgba(26,43,74,.14)',
-          }}>🔑 دخول</button>
+          }}>🔑 لدي حساب</button>
           <Link href={forTeacher ? '/auth/register/teacher' : '/auth/register'}
             style={{
-              padding: '10px 0', borderRadius: 10, fontFamily: 'inherit',
+              padding: '11px 0', borderRadius: 10, fontFamily: 'inherit',
               fontWeight: 700, fontSize: '.9rem', background: 'transparent',
               color: '#6b7280', textDecoration: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
