@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../lib/supabase';
@@ -45,65 +45,51 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  useEffect(() => {
+    if (success) {
+      const t = setTimeout(() => router.replace('/dashboard'), 1800);
+      return () => clearTimeout(t);
+    }
+  }, [success]);
+
   function set(k, v) { setForm(prev => ({ ...prev, [k]: v })); setError(''); }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
 
+    if (!form.name.trim())              { setError('يرجى إدخال الاسم الكامل'); return; }
+    if (!form.age.toString().trim())    { setError('يرجى إدخال عمر الطالب'); return; }
     if (form.password !== form.confirm) { setError('كلمتا المرور غير متطابقتين'); return; }
     if (form.password.length < 6)       { setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; }
     if (!form.code.trim())              { setError('يرجى إدخال كود الأكاديمية'); return; }
 
     setLoading(true);
-    const supabase = createClient();
 
-    // ── الخطوة 1: إنشاء الحساب أولاً ──
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email:    form.email,
-      password: form.password,
-      options: {
-        data: { full_name: form.name, role: 'student', grade: form.grade || null, age: form.age || null },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    if (signUpError) {
-      setError(signUpError.message === 'User already registered'
-        ? 'هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول'
-        : signUpError.message);
-      setLoading(false);
-      return;
-    }
-
-    if (signUpData?.user?.identities?.length === 0) {
-      setError('هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول');
-      setLoading(false);
-      return;
-    }
-
-    const existingRole = signUpData?.user?.user_metadata?.role;
-    if (existingRole && existingRole !== 'student') {
-      await supabase.auth.signOut();
-      setError('هذا البريد مسجل بدور آخر — استخدم صفحة تسجيل الدخول');
-      setLoading(false);
-      return;
-    }
-
-    // ── الخطوة 2: استهلاك الكود مع تسجيل بيانات الطالب ──
-    const res = await fetch('/api/validate-code', {
-      method: 'POST',
+    // ── خطوة واحدة، ذرية تماماً: التحقق من الكود + إنشاء الحساب + استهلاك الكود ──
+    const res  = await fetch('/api/auth/register', {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: form.code, name: form.name, email: form.email }),
+      body:    JSON.stringify({
+        name:     form.name,
+        email:    form.email,
+        password: form.password,
+        code:     form.code,
+        age:      form.age,
+        grade:    form.grade,
+      }),
     });
-    const { valid } = await res.json();
+    const data = await res.json();
 
-    if (!valid) {
-      await supabase.auth.signOut();
-      setError('كود الأكاديمية غير صحيح أو غير مفعّل — تواصل مع إدارة الأكاديمية');
+    if (!res.ok) {
+      setError(data.error ?? 'حدث خطأ غير متوقع — يرجى المحاولة مجدداً');
       setLoading(false);
       return;
     }
+
+    // تسجيل الدخول تلقائياً بعد إنشاء الحساب
+    const supabase = createClient();
+    await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
 
     setLoading(false);
     setSuccess('تم إنشاء حسابك بنجاح! 🎉 مرحباً بك في رحلتك مع أكاديمية عارم');
