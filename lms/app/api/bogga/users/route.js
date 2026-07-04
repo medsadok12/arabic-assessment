@@ -32,3 +32,32 @@ export async function GET() {
 
   return NextResponse.json({ users: list });
 }
+
+// PATCH — toggle active/suspended status for any non-super_admin user
+export async function PATCH(req) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.user_metadata?.role !== 'super_admin') {
+    return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
+  }
+
+  const { id, action } = await req.json(); // action: 'suspend' | 'activate'
+  if (!id || !['suspend', 'activate'].includes(action)) {
+    return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
+  }
+
+  const admin  = createAdminClient();
+  const { data: { user: target }, error: fetchErr } = await admin.auth.admin.getUserById(id);
+  if (fetchErr || !target) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
+  if (target.user_metadata?.role === 'super_admin') {
+    return NextResponse.json({ error: 'لا يمكن تعديل حساب المدير' }, { status: 403 });
+  }
+
+  const newStatus = action === 'suspend' ? 'suspended' : 'active';
+  const { error: updateErr } = await admin.auth.admin.updateUserById(id, {
+    user_metadata: { ...target.user_metadata, status: newStatus },
+  });
+  if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
+
+  return NextResponse.json({ status: newStatus });
+}

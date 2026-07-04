@@ -455,7 +455,8 @@ export default function BoggarAdminPage() {
   const [resettingPwdId,   setResettingPwdId]   = useState(null);
   const [resetPwdResult,   setResetPwdResult]   = useState(null); // { id, password }
   const [revealedPwds,    setRevealedPwds]    = useState(new Set());
-  const [deletingUserId,   setDeletingUserId]   = useState(null);
+  const [deletingUserId,    setDeletingUserId]    = useState(null);
+  const [togglingUserId,   setTogglingUserId]   = useState(null);
   const [editingUser,      setEditingUser]      = useState(null); // { id, name }
   const [savingUserId,     setSavingUserId]     = useState(null);
   const [bulkResetting,    setBulkResetting]    = useState(false);
@@ -1079,6 +1080,22 @@ export default function BoggarAdminPage() {
       setEditingUser(null);
     } else { alert(data.error ?? (lang === 'ar' ? 'فشل حفظ الاسم' : 'Failed to save name')); }
     setSavingUserId(null);
+  }
+
+  async function handleToggleUserStatus(id, currentStatus) {
+    const action = currentStatus === 'suspended' ? 'activate' : 'suspend';
+    const labelAr = action === 'suspend' ? 'إيقاف' : 'تفعيل';
+    const labelEn = action === 'suspend' ? 'suspend' : 'activate';
+    if (!confirm(lang === 'ar' ? `هل تريد ${labelAr} هذا الحساب؟` : `Do you want to ${labelEn} this account?`)) return;
+    setTogglingUserId(id);
+    const res  = await fetch('/api/bogga/users', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action }),
+    });
+    const data = await res.json();
+    if (res.ok) setUsersList(prev => prev.map(u => u.id === id ? { ...u, status: data.status } : u));
+    else alert(data.error ?? (lang === 'ar' ? 'فشل تعديل حالة الحساب' : 'Failed to update account status'));
+    setTogglingUserId(null);
   }
 
   async function handleDeleteUser(id, name) {
@@ -2735,6 +2752,13 @@ export default function BoggarAdminPage() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                                 <span style={{ fontWeight: 700, fontSize: '.97rem', color: '#1e293b' }}>{u.name}</span>
                                 <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: '.72rem', fontWeight: 700, background: badge.bg, color: badge.color, flexShrink: 0 }}>{badge.label}</span>
+                                <span style={{
+                                  padding: '2px 9px', borderRadius: 20, fontSize: '.72rem', fontWeight: 700, flexShrink: 0,
+                                  background: u.status === 'suspended' ? '#fee2e2' : '#dcfce7',
+                                  color:      u.status === 'suspended' ? '#b91c1c' : '#166534',
+                                }}>
+                                  {u.status === 'suspended' ? '🔴 موقوف' : '🟢 نشط'}
+                                </span>
                               </div>
                             )}
                             <div dir="ltr" style={{ textAlign: lang === 'ar' ? 'right' : 'left', color: '#475569', fontSize: '.85rem', marginBottom: 3 }}>{u.email}</div>
@@ -2745,6 +2769,24 @@ export default function BoggarAdminPage() {
                             </div>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 7, flexShrink: 0 }}>
+                            {/* زر النشاط */}
+                            <button
+                              onClick={() => handleToggleUserStatus(u.id, u.status ?? 'active')}
+                              disabled={togglingUserId === u.id}
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                                background: u.status === 'suspended' ? '#dcfce7' : '#fee2e2',
+                                color:      u.status === 'suspended' ? '#166534' : '#b91c1c',
+                                border:     `1.5px solid ${u.status === 'suspended' ? '#86efac' : '#fca5a5'}`,
+                                borderRadius: 9, padding: '6px 12px', fontWeight: 700, fontSize: '.8rem',
+                                cursor: togglingUserId === u.id ? 'default' : 'pointer', whiteSpace: 'nowrap',
+                              }}>
+                              {togglingUserId === u.id
+                                ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                                : u.status === 'suspended'
+                                  ? (lang === 'ar' ? '🟢 تفعيل' : '🟢 Activate')
+                                  : (lang === 'ar' ? '🔴 إيقاف' : '🔴 Suspend')}
+                            </button>
                             <button onClick={() => handleResetPassword(u.id)} disabled={resettingPwdId === u.id}
                               style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fde68a', borderRadius: 9, padding: '6px 12px', fontWeight: 600, fontSize: '.8rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                               {resettingPwdId === u.id ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : '🔑'} {lang === 'ar' ? 'إعادة كلمة السر' : 'Reset Password'}
@@ -2852,6 +2894,13 @@ export default function BoggarAdminPage() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                                 <span style={{ fontWeight: 700, fontSize: '.97rem', color: '#1e293b' }}>{u.name}</span>
                                 <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: '.72rem', fontWeight: 700, background: badge.bg, color: badge.color, flexShrink: 0 }}>{badge.label}</span>
+                                <span style={{
+                                  padding: '2px 9px', borderRadius: 20, fontSize: '.72rem', fontWeight: 700, flexShrink: 0,
+                                  background: u.status === 'suspended' ? '#fee2e2' : '#dcfce7',
+                                  color:      u.status === 'suspended' ? '#b91c1c' : '#166534',
+                                }}>
+                                  {u.status === 'suspended' ? '🔴 موقوف' : '🟢 نشط'}
+                                </span>
                               </div>
                             )}
                             <div dir="ltr" style={{ textAlign: lang === 'ar' ? 'right' : 'left', color: '#475569', fontSize: '.85rem', marginBottom: 3 }}>{u.email}</div>
@@ -2862,6 +2911,24 @@ export default function BoggarAdminPage() {
                             </div>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 7, flexShrink: 0 }}>
+                            {/* زر النشاط */}
+                            <button
+                              onClick={() => handleToggleUserStatus(u.id, u.status ?? 'active')}
+                              disabled={togglingUserId === u.id}
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                                background: u.status === 'suspended' ? '#dcfce7' : '#fee2e2',
+                                color:      u.status === 'suspended' ? '#166534' : '#b91c1c',
+                                border:     `1.5px solid ${u.status === 'suspended' ? '#86efac' : '#fca5a5'}`,
+                                borderRadius: 9, padding: '6px 12px', fontWeight: 700, fontSize: '.8rem',
+                                cursor: togglingUserId === u.id ? 'default' : 'pointer', whiteSpace: 'nowrap',
+                              }}>
+                              {togglingUserId === u.id
+                                ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                                : u.status === 'suspended'
+                                  ? (lang === 'ar' ? '🟢 تفعيل' : '🟢 Activate')
+                                  : (lang === 'ar' ? '🔴 إيقاف' : '🔴 Suspend')}
+                            </button>
                             <a href={`/bogga/student-view/${u.id}`} target="_blank" rel="noopener noreferrer"
                               style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'linear-gradient(135deg,#eff6ff,#eef2ff)', color: '#1d4ed8', border: '1.5px solid #bfdbfe', borderRadius: 9, padding: '6px 12px', fontWeight: 700, fontSize: '.8rem', textDecoration: 'none', whiteSpace: 'nowrap', transition: 'background .18s' }}
                               onMouseEnter={e => e.currentTarget.style.background='#dbeafe'}
