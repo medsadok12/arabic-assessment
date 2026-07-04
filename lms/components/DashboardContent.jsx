@@ -9,6 +9,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { createClient } from '../lib/supabase';
 import AvatarShop from './AvatarShop';
 import DashboardHero3D from './DashboardHero3D';
+import FlashcardReminderToast from './FlashcardReminderToast';
 
 function HwToggle({ id, status }) {
   const [st, setSt] = useState(status);
@@ -897,6 +898,8 @@ export default function DashboardContent({
 
         </div>
       </main>
+
+      {isStudent && <FlashcardReminderToast />}
     </>
   );
 }
