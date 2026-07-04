@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import StoryPageEditor from '../../../components/StoryPageEditor';
 
 const ACCENTS = [
   { label: 'أخضر',   accent: '#10b981', bg: '#ecfdf5', border: '#6ee7b7' },
@@ -444,22 +445,22 @@ export default function StoryManager({ initialStories }) {
                   </div>
                 </div>
 
-                {/* محتوى القصة */}
+                {/* محرر صفحات القصة */}
                 <div className="sm-field" style={{ marginBottom:6 }}>
-                  <label className="sm-label">
-                    محتوى القصة
-                    <span style={{ fontSize:'.7rem', color:'#94a3b8', fontWeight:600, marginRight:8 }}>يدعم HTML (بتاغات: &lt;p&gt; &lt;strong&gt; &lt;em&gt; &lt;h2&gt; &lt;h3&gt;)</span>
+                  <label className="sm-label" style={{ marginBottom:12, display:'block' }}>
+                    صفحات القصة
+                    <span style={{ fontSize:'.7rem', color:'#94a3b8', fontWeight:600, marginRight:8 }}>
+                      — أضف صفحات وحدّد تخطيط كل صفحة واجعلها بالصور والنصوص التي تريد
+                    </span>
                   </label>
-                  <textarea
-                    className="sm-textarea"
-                    value={form.content}
-                    onChange={e => f('content', e.target.value)}
-                    placeholder={`<p>كان يا ما كان في قديم الزمان...</p>\n<p>قصة جميلة تحكي عن...</p>`}
-                  />
+                  <div style={{ border:'1.5px solid #e5e7eb', borderRadius:16, padding:'20px 18px', background:'#fafbff' }}>
+                    <StoryPageEditor
+                      key={editId || 'new'}
+                      value={form.content}
+                      onChange={v => f('content', v)}
+                    />
+                  </div>
                 </div>
-                <p style={{ color:'#94a3b8', fontSize:'.72rem', margin:'0 0 16px', fontWeight:600 }}>
-                  💡 تلميح: استخدم &lt;p&gt; للفقرات، &lt;strong&gt; للخط العريض، &lt;em&gt; لتمييز المفردات الجديدة
-                </p>
               </>
             )}
 
