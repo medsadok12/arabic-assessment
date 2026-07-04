@@ -29,7 +29,10 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, on
     // Save to LMS dashboard (links result to student account by email)
     fetch('https://www.aarem.net/api/save-assessment', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type':      'application/json',
+        'x-webhook-secret':  import.meta.env.VITE_ASSESSMENT_WEBHOOK_SECRET ?? '',
+      },
       body:    JSON.stringify({
         email:        studentInfo.email,
         studentName:  studentInfo.name,

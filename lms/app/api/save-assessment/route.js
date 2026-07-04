@@ -3,7 +3,7 @@ import { createAdminClient } from '../../../lib/supabase-admin';
 const CORS = {
   'Access-Control-Allow-Origin':  'https://arabic-assessment.vercel.app',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, x-webhook-secret',
 };
 
 export async function OPTIONS() {
@@ -12,6 +12,12 @@ export async function OPTIONS() {
 
 export async function POST(request) {
   try {
+    // Verify shared secret — rejects any request not originating from the assessment app
+    const secret = process.env.ASSESSMENT_WEBHOOK_SECRET;
+    if (!secret || request.headers.get('x-webhook-secret') !== secret) {
+      return Response.json({ ok: false }, { status: 401, headers: CORS });
+    }
+
     const { email, studentName, overallScore, finalLevel } = await request.json();
 
     if (!email || !finalLevel)
