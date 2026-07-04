@@ -25,13 +25,6 @@ function Initials({ name, size = 80 }) {
   );
 }
 
-const PW_ERRORS = {
-  'New password should be different from the old password': 'يجب أن تكون كلمة المرور الجديدة مختلفة عن كلمة المرور الحالية',
-  'Password should be at least 6 characters.': 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
-  'Auth session missing!': 'انتهت الجلسة، يرجى إعادة تسجيل الدخول',
-  'For security purposes, you can only request this once every 60 seconds': 'لأسباب أمنية، يمكنك المحاولة مرة واحدة كل دقيقة',
-};
-function translatePwError(msg) { return PW_ERRORS[msg] ?? msg; }
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -303,43 +296,51 @@ function AvatarCard({ user, onUserUpdate }) {
 
 /* ── بطاقة كلمة المرور — معزولة تماماً ── */
 function PasswordCard() {
-  const [pwForm,    setPwForm]    = useState({ next: '', confirm: '' });
+  const [current,   setCurrent]   = useState('');
+  const [next,      setNext]      = useState('');
+  const [confirm,   setConfirm]   = useState('');
   const [pwMsg,     setPwMsg]     = useState('');
   const [pwLoading, setPwLoading] = useState(false);
-  // يتتبع إذا قام المستخدم فعلاً بالكتابة (يمنع autofill من تفعيل الإرسال)
-  const [userTyped, setUserTyped] = useState(false);
-
-  function handleFieldChange(key, value) {
-    setPwForm(p => ({ ...p, [key]: value }));
-    setUserTyped(true);
-  }
 
   async function handlePasswordChange(e) {
     e.preventDefault();
     setPwMsg('');
 
-    // لا تفعل شيئاً إذا لم يكتب المستخدم شيئاً بنفسه
-    if (!userTyped || (!pwForm.next && !pwForm.confirm)) return;
-
-    if (pwForm.next !== pwForm.confirm) {
-      setPwMsg('❌ كلمتا المرور غير متطابقتين');
+    if (!current) {
+      setPwMsg('❌ الرجاء إدخال كلمة المرور الحالية');
       return;
     }
-    if (pwForm.next.length < 6) {
+    if (!next) {
+      setPwMsg('❌ الرجاء إدخال كلمة المرور الجديدة');
+      return;
+    }
+    if (next.length < 6) {
       setPwMsg('❌ كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      return;
+    }
+    if (next !== confirm) {
+      setPwMsg('❌ كلمتا المرور غير متطابقتين');
       return;
     }
 
     setPwLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password: pwForm.next });
-
-    if (error) {
-      setPwMsg('❌ ' + translatePwError(error.message));
-    } else {
-      setPwMsg('✅ تم تغيير كلمة المرور بنجاح');
-      setPwForm({ next: '', confirm: '' });
-      setUserTyped(false);
+    try {
+      const res  = await fetch('/api/auth/update-password', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ mode: 'change', newPassword: next, currentPassword: current }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPwMsg('❌ ' + (data.error ?? 'حدث خطأ أثناء تغيير كلمة المرور'));
+      } else {
+        setPwMsg('✅ تم تغيير كلمة المرور بنجاح');
+        setCurrent('');
+        setNext('');
+        setConfirm('');
+      }
+    } catch {
+      setPwMsg('❌ حدث خطأ في الاتصال، يرجى المحاولة مجدداً');
     }
     setPwLoading(false);
   }
@@ -359,12 +360,24 @@ function PasswordCard() {
       )}
       <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">كلمة المرور الحالية</label>
+          <input
+            className="form-input"
+            type="password"
+            value={current}
+            onChange={e => { setCurrent(e.target.value); setPwMsg(''); }}
+            placeholder="أدخل كلمة مرورك الحالية"
+            autoComplete="current-password"
+            dir="ltr"
+          />
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
           <label className="form-label">كلمة المرور الجديدة</label>
           <input
             className="form-input"
             type="password"
-            value={pwForm.next}
-            onChange={e => handleFieldChange('next', e.target.value)}
+            value={next}
+            onChange={e => { setNext(e.target.value); setPwMsg(''); }}
             placeholder="6 أحرف على الأقل"
             autoComplete="new-password"
             dir="ltr"
@@ -375,8 +388,8 @@ function PasswordCard() {
           <input
             className="form-input"
             type="password"
-            value={pwForm.confirm}
-            onChange={e => handleFieldChange('confirm', e.target.value)}
+            value={confirm}
+            onChange={e => { setConfirm(e.target.value); setPwMsg(''); }}
             placeholder="أعد كتابة كلمة المرور"
             autoComplete="new-password"
             dir="ltr"
