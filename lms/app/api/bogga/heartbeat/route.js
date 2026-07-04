@@ -9,7 +9,7 @@ export async function POST() {
 
   const admin = createAdminClient();
   await admin.auth.admin.updateUserById(user.id, {
-    user_metadata: { ...user.user_metadata, last_seen_at: new Date().toISOString() },
+    user_metadata: { last_seen_at: new Date().toISOString() },
   });
 
   return NextResponse.json({ ok: true });

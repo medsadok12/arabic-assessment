@@ -46,15 +46,16 @@ export async function POST(req) {
     if (!claimed) return NextResponse.json({ error: 'كود غير صحيح أو مستخدَم مسبقاً' }, { status: 400 });
 
     // تحديث بيانات المستخدم — الدور + البيانات التربوية + علم اكتمال التهيئة
+    // app_metadata.display_name: مصدر الحقيقة للاسم — Google لا يستطيع الكتابة عليه
     await admin.auth.admin.updateUserById(user.id, {
       user_metadata: {
-        ...user.user_metadata,
         role:                'student',
         full_name:           displayName,
         age:                 age.toString().trim(),
         grade:               grade || null,
         onboarding_complete: true,
       },
+      app_metadata: { display_name: displayName },
     });
 
     return NextResponse.json({ ok: true });

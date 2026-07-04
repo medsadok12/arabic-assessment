@@ -25,10 +25,7 @@ export async function GET(request) {
     if (user) {
       const admin = createAdminClient();
       await admin.auth.admin.updateUserById(user.id, {
-        user_metadata: {
-          ...user.user_metadata,
-          last_logout_at: new Date().toISOString(),
-        },
+        user_metadata: { last_logout_at: new Date().toISOString() },
       });
     }
   } catch {

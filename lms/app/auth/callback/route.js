@@ -58,6 +58,18 @@ export async function GET(request) {
           await supabase.auth.signOut();
           return NextResponse.redirect(`${origin}/auth/login?error=teachers_blocked`);
         }
+
+        // استعادة الاسم المحفوظ إن أعاد Google الكتابة فوقه
+        const savedName = user.app_metadata?.display_name;
+        if (savedName && user.user_metadata?.full_name !== savedName) {
+          try {
+            const admin = createAdminClient();
+            await admin.auth.admin.updateUserById(user.id, {
+              user_metadata: { full_name: savedName },
+            });
+          } catch (_) {}
+        }
+
         return NextResponse.redirect(`${origin}${destForRole(role)}`);
       }
 
