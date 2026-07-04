@@ -48,6 +48,7 @@ function resolveError(code, fallback) {
 }
 
 function LoginForm() {
+  const [view,     setView]     = useState('choose'); // 'choose' | 'login' | 'register'
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [error,    setError]    = useState('');
@@ -74,7 +75,6 @@ function LoginForm() {
         await supabase.auth.signInWithPassword({ email, password });
 
       if (authError) {
-        if (process.env.NODE_ENV === 'development') console.error('[login] auth error:', authError);
         setError(resolveError('invalid_credentials'));
         return;
       }
@@ -103,7 +103,6 @@ function LoginForm() {
       router.refresh();
 
     } catch (err) {
-      if (process.env.NODE_ENV === 'development') console.error('[login] unexpected error:', err);
       const isNetwork = !navigator.onLine || err?.message?.includes('fetch');
       setError(resolveError(isNetwork ? 'network_error' : 'unexpected'));
     } finally {
@@ -130,19 +129,16 @@ function LoginForm() {
       });
 
       if (oauthError) {
-        if (process.env.NODE_ENV === 'development') console.error('[login] google oauth error:', oauthError);
         setError(resolveError('oauth_error'));
         setGLoading(false);
       }
     } catch (err) {
-      if (process.env.NODE_ENV === 'development') console.error('[login] google unexpected error:', err);
       const isNetwork = !navigator.onLine || err?.message?.includes('fetch');
       setError(resolveError(isNetwork ? 'network_error' : 'oauth_error'));
       setGLoading(false);
     }
   }
 
-  // إعادة ضبط حالة التحميل عند العودة للصفحة من bfcache (زر الرجوع)
   useEffect(() => {
     function onPageShow(e) { if (e.persisted) { setGLoading(false); setLoading(false); } }
     window.addEventListener('pageshow', onPageShow);
@@ -150,141 +146,198 @@ function LoginForm() {
   }, []);
 
   const anyLoading = loading || gLoading;
+  const registerHref = forTeacher ? '/auth/register/teacher' : '/auth/register';
 
+  /* ════════════════════════════════════
+     RENDER
+  ════════════════════════════════════ */
   return (
     <div className="auth-page">
-      {/* override card padding so the blue header goes edge-to-edge */}
       <div className="auth-card" style={{ padding: 0, overflow: 'hidden' }}>
 
-        {/* ── Blue header strip ── */}
+        {/* ── شريط الرأس الأزرق ── */}
         <div style={{
           background: 'linear-gradient(135deg, #0d1f38 0%, #1A2B4A 100%)',
-          padding: '22px 24px 18px',
+          padding: '26px 24px 22px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
-              width: 44, height: 44, background: 'rgba(255,255,255,.15)',
-              borderRadius: 12, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontSize: '1.5rem',
-            }}>
-              {forTeacher ? '👨‍🏫' : '📚'}
-            </div>
+              width: 46, height: 46, background: '#E8B84B',
+              borderRadius: 13, display: 'flex', alignItems: 'center',
+              justifyContent: 'center', fontSize: '1.4rem', fontWeight: 900, color: '#1A2B4A',
+            }}>ع</div>
             <div>
-              <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.05rem' }}>
+              <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.08rem' }}>
                 {t('siteName')}
               </div>
-              <div style={{ color: 'rgba(255,255,255,.72)', fontSize: '.78rem' }}>
+              <div style={{ color: 'rgba(255,255,255,.65)', fontSize: '.78rem' }}>
                 {forTeacher ? t('login.teacherLogin') : t('login.studentLogin')}
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── Tabs ── */}
-        <div style={{
-          display: 'flex', flexDirection: 'column',
-          background: '#e8f0fb', padding: '6px', gap: 4,
-        }}>
-          <button style={{
-            padding: '11px 0', borderRadius: 10, border: 'none', cursor: 'default',
-            fontFamily: 'inherit', fontWeight: 700, fontSize: '.9rem',
-            background: '#fff', color: '#1A2B4A',
-            boxShadow: '0 2px 10px rgba(26,43,74,.14)',
-          }}>🔑 لدي حساب</button>
-          <Link href={forTeacher ? '/auth/register/teacher' : '/auth/register'}
-            style={{
-              padding: '11px 0', borderRadius: 10, fontFamily: 'inherit',
-              fontWeight: 700, fontSize: '.9rem', background: 'transparent',
-              color: '#6b7280', textDecoration: 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>✨ تسجيل جديد</Link>
-        </div>
+        {/* ════════ عرض الاختيار (الحالة الأولى) ════════ */}
+        {view === 'choose' && (
+          <div style={{ padding: '32px 24px 28px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* ── Form body ── */}
-        <div style={{ padding: '22px 24px 24px' }}>
+            {(urlErrorMsg) && (
+              <div className="alert alert-error" style={{ marginBottom: 4 }}>{urlErrorMsg}</div>
+            )}
 
-          {(error || urlErrorMsg) && (
-            <div className="alert alert-error" style={{ marginBottom: 16 }}>
-              {error || urlErrorMsg}
-            </div>
-          )}
+            <p style={{
+              textAlign: 'center', color: '#6b7280', fontSize: '.9rem', marginBottom: 6,
+            }}>
+              كيف تريد المتابعة؟
+            </p>
 
-          {/* ── Google Sign-In Button ── */}
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={anyLoading}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 10, width: '100%', padding: '11px 16px', marginBottom: 18,
-              background: '#fff', border: '1.5px solid #dadce0', borderRadius: 10,
-              cursor: gLoading ? 'wait' : anyLoading ? 'not-allowed' : 'pointer',
-              fontSize: '1rem', fontFamily: 'inherit',
-              fontWeight: 600, color: '#3c4043',
-              boxShadow: '0 1px 3px rgba(0,0,0,.08)',
-              transition: 'box-shadow .15s, border-color .15s',
-              outline: 'none', WebkitTapHighlightColor: 'transparent',
-              opacity: anyLoading && !gLoading ? 0.6 : 1,
-            }}
-            onMouseEnter={e => { if (!anyLoading) { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.18)'; e.currentTarget.style.borderColor = '#c0c0c0'; } }}
-            onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.08)'; e.currentTarget.style.borderColor = '#dadce0'; }}
-          >
-            {gLoading
-              ? <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} />
-              : <GoogleLogo />
-            }
-            <span>{gLoading ? 'جارٍ التحويل...' : 'تسجيل الدخول بواسطة Google'}</span>
-          </button>
-
-          {/* ── Divider ── */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            marginBottom: 18, color: '#9CA3AF', fontSize: '.85rem',
-          }}>
-            <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
-            <span>أو بالبريد الإلكتروني</span>
-            <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
-          </div>
-
-          {/* ── Email/Password Form ── */}
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label">{t('login.email')}</label>
-              <IconInput icon="📧">
-                <input className="form-input" type="email" value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="example@email.com" required dir="ltr"
-                  disabled={anyLoading} style={{ paddingRight: 38 }} />
-              </IconInput>
-            </div>
-            <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <label className="form-label" style={{ margin: 0 }}>{t('login.password')}</label>
-                <Link href="/auth/forgot-password" style={{ fontSize: '.82rem', color: 'var(--accent)', textDecoration: 'none' }}>
-                  نسيت كلمة المرور؟
-                </Link>
-              </div>
-              <IconInput icon="🔒">
-                <input className="form-input" type="password" value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••" required dir="ltr"
-                  disabled={anyLoading} style={{ paddingRight: 38 }} />
-              </IconInput>
-            </div>
-            <button type="submit" className="btn btn-primary"
-              style={{ width: '100%', marginTop: 8 }} disabled={anyLoading}>
-              {loading ? <span className="spinner" /> : t('login.signIn')}
+            {/* زر: لدي حساب */}
+            <button
+              onClick={() => { setError(''); setView('login'); }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                width: '100%', padding: '15px 20px',
+                background: '#1A2B4A', color: '#fff',
+                border: 'none', borderRadius: 14, cursor: 'pointer',
+                fontSize: '1rem', fontFamily: 'inherit', fontWeight: 700,
+                boxShadow: '0 4px 16px rgba(26,43,74,.25)',
+                transition: 'transform .12s, box-shadow .12s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(26,43,74,.35)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 16px rgba(26,43,74,.25)'; }}
+            >
+              <span style={{ fontSize: '1.2rem' }}>🔑</span>
+              <span>لدي حساب — دخول</span>
             </button>
-          </form>
 
-          {/* ── Session fix link ── */}
-          <p style={{ textAlign: 'center', marginTop: 16, fontSize: '.78rem', color: '#aaa' }}>
-            هل تواجه مشكلة في الدخول؟{' '}
-            <Link href="/auth/fix" style={{ color: '#aaa', textDecoration: 'underline' }}>
-              اضغط هنا
+            {/* زر: تسجيل جديد */}
+            <Link
+              href={registerHref}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                width: '100%', padding: '15px 20px',
+                background: '#E8B84B', color: '#1A2B4A',
+                border: 'none', borderRadius: 14, cursor: 'pointer',
+                fontSize: '1rem', fontFamily: 'inherit', fontWeight: 700,
+                textDecoration: 'none',
+                boxShadow: '0 4px 16px rgba(232,184,75,.35)',
+                transition: 'transform .12s, box-shadow .12s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(232,184,75,.5)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 16px rgba(232,184,75,.35)'; }}
+            >
+              <span style={{ fontSize: '1.2rem' }}>✨</span>
+              <span>تسجيل جديد — إنشاء حساب</span>
             </Link>
-          </p>
-        </div>
+
+            {/* رابط إصلاح الجلسة */}
+            <p style={{ textAlign: 'center', marginTop: 4, fontSize: '.75rem', color: '#bbb' }}>
+              هل تواجه مشكلة في الدخول؟{' '}
+              <Link href="/auth/fix" style={{ color: '#bbb', textDecoration: 'underline' }}>اضغط هنا</Link>
+            </p>
+          </div>
+        )}
+
+        {/* ════════ نموذج الدخول (بعد الضغط على "لدي حساب") ════════ */}
+        {view === 'login' && (
+          <div style={{ padding: '20px 24px 24px' }}>
+
+            {/* رجوع */}
+            <button
+              onClick={() => { setView('choose'); setError(''); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#6b7280', fontSize: '.85rem', fontFamily: 'inherit',
+                padding: '0 0 14px', marginBottom: 6,
+              }}
+            >
+              ← رجوع
+            </button>
+
+            {error && (
+              <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>
+            )}
+
+            {/* Google */}
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={anyLoading}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 10, width: '100%', padding: '11px 16px', marginBottom: 18,
+                background: '#fff', border: '1.5px solid #dadce0', borderRadius: 10,
+                cursor: gLoading ? 'wait' : anyLoading ? 'not-allowed' : 'pointer',
+                fontSize: '1rem', fontFamily: 'inherit', fontWeight: 600, color: '#3c4043',
+                boxShadow: '0 1px 3px rgba(0,0,0,.08)',
+                transition: 'box-shadow .15s, border-color .15s',
+                outline: 'none', WebkitTapHighlightColor: 'transparent',
+                opacity: anyLoading && !gLoading ? 0.6 : 1,
+              }}
+              onMouseEnter={e => { if (!anyLoading) { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.18)'; e.currentTarget.style.borderColor = '#c0c0c0'; } }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.08)'; e.currentTarget.style.borderColor = '#dadce0'; }}
+            >
+              {gLoading ? <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> : <GoogleLogo />}
+              <span>{gLoading ? 'جارٍ التحويل...' : 'تسجيل الدخول بواسطة Google'}</span>
+            </button>
+
+            {/* فاصل */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              marginBottom: 18, color: '#9CA3AF', fontSize: '.85rem',
+            }}>
+              <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
+              <span>أو بالبريد الإلكتروني</span>
+              <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
+            </div>
+
+            {/* نموذج البريد وكلمة المرور */}
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label">{t('login.email')}</label>
+                <IconInput icon="📧">
+                  <input className="form-input" type="email" value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="example@email.com" required dir="ltr"
+                    disabled={anyLoading} style={{ paddingRight: 38 }} />
+                </IconInput>
+              </div>
+              <div className="form-group">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label className="form-label" style={{ margin: 0 }}>{t('login.password')}</label>
+                  <Link href="/auth/forgot-password" style={{ fontSize: '.82rem', color: 'var(--accent)', textDecoration: 'none' }}>
+                    نسيت كلمة المرور؟
+                  </Link>
+                </div>
+                <IconInput icon="🔒">
+                  <input className="form-input" type="password" value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••" required dir="ltr"
+                    disabled={anyLoading} style={{ paddingRight: 38 }} />
+                </IconInput>
+              </div>
+              <button type="submit" className="btn btn-primary"
+                style={{ width: '100%', marginTop: 8 }} disabled={anyLoading}>
+                {loading ? <span className="spinner" /> : t('login.signIn')}
+              </button>
+            </form>
+
+            {/* رابط التسجيل */}
+            <p style={{ textAlign: 'center', marginTop: 16, fontSize: '.83rem', color: '#6b7280' }}>
+              ليس لديك حساب؟{' '}
+              <Link href={registerHref} style={{ color: '#1A2B4A', fontWeight: 700, textDecoration: 'none' }}>
+                سجّل الآن
+              </Link>
+            </p>
+
+            <p style={{ textAlign: 'center', marginTop: 8, fontSize: '.75rem', color: '#bbb' }}>
+              هل تواجه مشكلة في الدخول؟{' '}
+              <Link href="/auth/fix" style={{ color: '#bbb', textDecoration: 'underline' }}>اضغط هنا</Link>
+            </p>
+          </div>
+        )}
+
       </div>
     </div>
   );
