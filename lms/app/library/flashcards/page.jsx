@@ -397,7 +397,7 @@ export default function FlashcardsPage() {
     fetch('/api/points', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: 3, reason: `fc_${card.id}` }),
+      body: JSON.stringify({ reason: `fc:${card.id}` }),
     }).then(r => r.json()).then(j => { if (j.points != null) setTotalPoints(j.points); }).catch(() => {});
     const next = deck.slice(1);
     if (!next.length) { setPhase('done'); return; }

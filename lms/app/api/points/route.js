@@ -4,6 +4,40 @@ import { createClient } from '../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
+// Server-side point registry — client never controls the amount
+// Key = reason prefix (part before first ':'), value = points awarded
+const POINT_EVENTS = {
+  // Game events — per correct action, no dedup (repeating is part of gameplay)
+  letter_catcher:      5,
+  vowel_balloon:       5,
+  word_image_match:    5,
+  word_scramble:       5,
+  word_smash:          5,
+  word_wheel:          10,  // capped; was variable from client
+
+  // Unique events — reason must be "prefix:uniqueId", dedup prevents replays
+  huroof_letter:       2,   // e.g. "huroof_letter:ب"
+  huroof_all_complete: 10,  // e.g. "huroof_all_complete:userId" or plain
+  fc:                  3,   // e.g. "fc:cardId"
+  challenge_win:       15,  // e.g. "challenge_win:roomId"
+  challenge_draw:      10,  // e.g. "challenge_draw:roomId"
+  challenge_loss:      5,   // e.g. "challenge_loss:roomId"
+
+  // System events triggered server-side or with unique IDs
+  daily_login:         5,
+  story:               10,
+  session_attend:      5,
+  homework_done:       5,
+};
+
+// These event types are deduplicated by full reason string
+const DEDUP_PREFIXES = new Set([
+  'huroof_letter', 'huroof_all_complete',
+  'fc',
+  'challenge_win', 'challenge_draw', 'challenge_loss',
+  'daily_login', 'story', 'session_attend', 'homework_done',
+]);
+
 export async function GET() {
   try {
     const supabase = createClient();
@@ -28,30 +62,44 @@ export async function POST(req) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
 
-    const { amount, reason } = await req.json();
-    if (!amount || amount <= 0 || amount > 10000) return NextResponse.json({ error: 'قيمة غير صالحة' }, { status: 400 });
+    const body = await req.json();
+    const reason = body?.reason?.trim();
+    if (!reason) return NextResponse.json({ error: 'reason مطلوب' }, { status: 400 });
+
+    // Resolve server-side amount from reason prefix
+    const prefix = reason.split(':')[0];
+    const amount = POINT_EVENTS[prefix] ?? POINT_EVENTS[reason];
+    if (!amount) {
+      return NextResponse.json({ error: 'حدث غير معروف' }, { status: 400 });
+    }
 
     const admin = createAdminClient();
 
-    // Idempotency only for structured rewards that carry a unique ID in their reason
-    // (e.g. daily_login:2026-07-03, story_abc123, session_attend:id, homework_done:id).
-    // Simple game-reward reasons (no ':') are always awarded — each correct answer
-    // should award points independently with no deduplication.
-    const hasUniqueId = reason && reason.includes(':');
-    if (hasUniqueId) {
-      const { data: dup } = await admin.from('points_log').select('id').eq('user_id', user.id).eq('reason', reason).maybeSingle();
+    // Dedup check for unique events
+    if (DEDUP_PREFIXES.has(prefix)) {
+      const { data: dup } = await admin
+        .from('points_log')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('reason', reason)
+        .maybeSingle();
       if (dup) {
-        const { data: balRow } = await admin.from('user_points').select('total').eq('user_id', user.id).maybeSingle();
+        const { data: balRow } = await admin
+          .from('user_points').select('total').eq('user_id', user.id).maybeSingle();
         return NextResponse.json({ skipped: true, points: balRow?.total ?? 0 });
       }
     }
 
-    const { data: current } = await admin.from('user_points').select('total').eq('user_id', user.id).maybeSingle();
-    const newTotal = (current?.total ?? 0) + Math.round(amount);
+    const { data: current } = await admin
+      .from('user_points').select('total').eq('user_id', user.id).maybeSingle();
+    const newTotal = (current?.total ?? 0) + amount;
 
     await Promise.all([
-      admin.from('user_points').upsert({ user_id: user.id, total: newTotal, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }),
-      admin.from('points_log').insert({ user_id: user.id, delta: Math.round(amount), reason: reason || 'game_reward' }),
+      admin.from('user_points').upsert(
+        { user_id: user.id, total: newTotal, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      ),
+      admin.from('points_log').insert({ user_id: user.id, delta: amount, reason }),
     ]);
 
     return NextResponse.json({ success: true, points: newTotal });

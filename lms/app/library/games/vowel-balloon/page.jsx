@@ -483,7 +483,7 @@ export default function VowelBalloonPage() {
       setPtPopupKey(k => k + 1);
       setPtPopupActive(true);
       setTimeout(() => setPtPopupActive(false), 1200);
-      fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 5, reason: 'vowel_balloon' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
+      fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'vowel_balloon' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
       setConfKey(k => k + 1); setShowConf(true);
       if (q.audio_url) new Audio(q.audio_url).play().catch(() => {});
       setTimeout(() => {

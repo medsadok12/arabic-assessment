@@ -233,7 +233,7 @@ export default function HuroofPage() {
       fetch('/api/points', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 2, reason: `huroof_letter_${i}` }),
+        body: JSON.stringify({ reason: `huroof_letter:${i}` }),
       }).catch(() => {});
 
       if (seen.size + 1 === LETTERS.length && !completionBonusRef.current) {
@@ -241,7 +241,7 @@ export default function HuroofPage() {
         fetch('/api/points', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount: 10, reason: 'huroof_all_complete' }),
+          body: JSON.stringify({ reason: 'huroof_all_complete' }),
         }).catch(() => {});
       }
     }

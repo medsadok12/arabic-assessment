@@ -521,7 +521,7 @@ export default function WordScrambleGame() {
         setPtPopupKey(k => k + 1);
         setPtPopupActive(true);
         setTimeout(() => setPtPopupActive(false), 1200);
-        fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 5, reason: 'word_scramble' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
+        fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'word_scramble' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
         setTimeout(() => speak(w.word), 200);
         if (w.audio_url) { try { new Audio(w.audio_url).play().catch(() => {}); } catch {} }
       } else {

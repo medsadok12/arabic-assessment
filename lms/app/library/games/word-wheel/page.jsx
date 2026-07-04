@@ -278,7 +278,7 @@ export default function WordWheelGame() {
     setTimeout(()=>{ setFlashing(false); setFlyWord(null); },900);
     speak(word);
     showFeedback(`+${pts} نقطة — ممتاز! ✨`,'success');
-    fetch('/api/points',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:pts,reason:'word_wheel'})}).then(r=>r.json()).then(j=>{if(j.points)setTotalPoints(j.points);}).catch(()=>{});
+    fetch('/api/points',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:'word_wheel'})}).then(r=>r.json()).then(j=>{if(j.points)setTotalPoints(j.points);}).catch(()=>{});
     setSelected([]); setInputText('');
     if(customConfig){
       const entry=(customConfig.valid_words||[]).find(vw=>vw.word===word);

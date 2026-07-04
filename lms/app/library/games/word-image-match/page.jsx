@@ -485,7 +485,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
       setPtPopupKey(k => k + 1);
       setPtPopupActive(true);
       setTimeout(() => setPtPopupActive(false), 1200);
-      fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 5, reason: 'word_image_match' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
+      fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'word_image_match' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
       const pair = pairMap[wordId];
       if (pair) setTimeout(() => playAudio(pair.audio_url, pair.word_text), 150);
       setBursting(prev => new Set([...prev, wordId]));

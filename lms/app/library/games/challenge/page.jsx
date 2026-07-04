@@ -122,7 +122,7 @@ export default function ChallengePage() {
     fetch('/api/points', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, reason: `challenge_${tag}_${room.id}` }),
+      body: JSON.stringify({ reason: `challenge_${tag}:${room.id}` }),
     }).catch(() => {});
   }, [phase, room, earnedPts, user]);
 
