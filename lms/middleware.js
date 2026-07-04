@@ -13,6 +13,9 @@ const REDIRECT_IF_LOGGED_IN = ['/auth/login', '/auth/register'];
 // Forced password-change page (exempt from REDIRECT_IF_LOGGED_IN but not from temp_password trap)
 const UPDATE_PASSWORD_ROUTE = '/auth/update-password';
 
+// Onboarding screen for new Google OAuth users — must stay accessible even when logged in
+const ONBOARDING_ROUTE = '/auth/google-code';
+
 export async function middleware(request) {
   let supabaseResponse = NextResponse.next({ request });
   const { pathname } = request.nextUrl;
@@ -40,12 +43,21 @@ export async function middleware(request) {
     const isProtected       = PROTECTED.some(p => pathname === p || pathname.startsWith(p + '/'));
     const isRedirectIfLogIn = REDIRECT_IF_LOGGED_IN.some(p => pathname === p || pathname.startsWith(p + '/'));
     const isUpdatePwdRoute  = pathname === UPDATE_PASSWORD_ROUTE;
+    const isOnboardingRoute = pathname === ONBOARDING_ROUTE;
     const hasTempPwd        = !!user?.app_metadata?.temp_password;
+    const hasRole           = !!user?.user_metadata?.role;
 
     // Not logged in → send to login
     if (!user && isProtected) {
       const url = request.nextUrl.clone();
       url.pathname = '/auth/login';
+      return NextResponse.redirect(url);
+    }
+
+    // New Google OAuth user (no role yet) accessing a protected route → force onboarding
+    if (user && !hasRole && isProtected) {
+      const url = request.nextUrl.clone();
+      url.pathname = ONBOARDING_ROUTE;
       return NextResponse.redirect(url);
     }
 
@@ -58,6 +70,18 @@ export async function middleware(request) {
 
     // Logged-in user with no temp_password trying to reach update-password → send to dashboard
     if (user && !hasTempPwd && isUpdatePwdRoute) {
+      const role = user.user_metadata?.role;
+      const url  = request.nextUrl.clone();
+      url.pathname =
+        role === 'admin' || role === 'super_admin' ? '/bogga'
+        : role === 'teacher'                        ? '/teacher'
+        : role === 'supervisor'                     ? '/supervisor'
+        : '/dashboard';
+      return NextResponse.redirect(url);
+    }
+
+    // Completed user visiting onboarding → send to their dashboard
+    if (user && hasRole && isOnboardingRoute) {
       const role = user.user_metadata?.role;
       const url  = request.nextUrl.clone();
       url.pathname =
