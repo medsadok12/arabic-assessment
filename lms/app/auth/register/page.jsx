@@ -23,9 +23,24 @@ export default function RegisterPage() {
     if (!form.code.trim())              { setError('يرجى إدخال كود الأكاديمية'); return; }
 
     setLoading(true);
-    const supabase = createClient();
 
-    // ── الخطوة 1: إنشاء الحساب أولاً ──
+    // ── الخطوة 1: التحقق من صلاحية الكود أولاً (بدون استهلاكه) ──
+    try {
+      const checkRes = await fetch(`/api/validate-code?code=${encodeURIComponent(form.code.trim().toUpperCase())}`);
+      const { valid: codeExists } = await checkRes.json();
+      if (!codeExists) {
+        setError('كود الأكاديمية غير صحيح أو غير مفعّل — تواصل مع إدارة الأكاديمية');
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setError('تعذّر التحقق من الكود — تأكد من اتصالك بالإنترنت وأعد المحاولة');
+      setLoading(false);
+      return;
+    }
+
+    // ── الخطوة 2: إنشاء الحساب ──
+    const supabase = createClient();
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email:    form.email,
       password: form.password,
@@ -57,17 +72,24 @@ export default function RegisterPage() {
       return;
     }
 
-    // ── الخطوة 2: استهلاك الكود مع تسجيل بيانات الطالب ──
-    const res = await fetch('/api/validate-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: form.code, name: form.name, email: form.email }),
-    });
-    const { valid } = await res.json();
-
-    if (!valid) {
+    // ── الخطوة 3: استهلاك الكود وربطه بالطالب ──
+    try {
+      const res = await fetch('/api/validate-code', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ code: form.code, name: form.name, email: form.email }),
+      });
+      const { valid } = await res.json();
+      if (!valid) {
+        // حالة نادرة: استُهلك الكود بين الخطوة 1 و3 (race condition)
+        await supabase.auth.signOut();
+        setError('تعذّر ربط الكود — قد يكون استُخدم للتو. تواصل مع الإدارة');
+        setLoading(false);
+        return;
+      }
+    } catch {
       await supabase.auth.signOut();
-      setError('كود الأكاديمية غير صحيح أو غير مفعّل — تواصل مع إدارة الأكاديمية');
+      setError('تعذّر ربط الكود بحسابك — تواصل مع الإدارة لتفعيل حسابك يدوياً');
       setLoading(false);
       return;
     }
@@ -211,15 +233,17 @@ export default function RegisterPage() {
 
           {success && (
             <div style={{ textAlign: 'center', padding: '8px 0' }}>
-              <p style={{ color: '#555', fontSize: '.9rem', marginBottom: 16, lineHeight: 1.7 }}>
-                ✅ تم إنشاء حسابك! تحقق من بريدك الإلكتروني لتفعيل الحساب.
+              <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>📬</div>
+              <p style={{ color: '#555', fontSize: '.9rem', marginBottom: 6, lineHeight: 1.7 }}>
+                <strong>تم إنشاء حسابك بنجاح!</strong>
               </p>
-              <Link href="/assessment" className="btn btn-primary"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%', marginBottom: 10 }}>
-                ابدأ التقييم الآن ←
-              </Link>
-              <Link href="/auth/login" style={{ fontSize: '.85rem', color: '#888', textDecoration: 'underline' }}>
-                تسجيل الدخول لاحقاً
+              <p style={{ color: '#777', fontSize: '.85rem', marginBottom: 20, lineHeight: 1.7 }}>
+                أرسلنا رابط التأكيد إلى بريدك الإلكتروني.<br />
+                افتح البريد واضغط على الرابط، ثم سجّل دخولك.
+              </p>
+              <Link href="/auth/login?for=student" className="btn btn-primary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%' }}>
+                الانتقال إلى تسجيل الدخول ←
               </Link>
             </div>
           )}
