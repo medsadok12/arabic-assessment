@@ -19,10 +19,11 @@ export default function ProfilePage() {
   const [nameMsg, setNameMsg]           = useState(null); // { type: 'success'|'error', text }
 
   // Password state
-  const [newPassword, setNewPassword]       = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword]         = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [passLoading, setPassLoading]       = useState(false);
-  const [passMsg, setPassMsg]               = useState(null);
+  const [passLoading, setPassLoading]         = useState(false);
+  const [passMsg, setPassMsg]                 = useState(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user }, error }) => {
@@ -59,6 +60,10 @@ export default function ProfilePage() {
   /* ── تغيير كلمة المرور ── */
   async function handleSavePassword(e) {
     e.preventDefault();
+    if (!currentPassword) {
+      setPassMsg({ type: 'error', text: 'الرجاء إدخال كلمة المرور الحالية.' });
+      return;
+    }
     if (!newPassword) {
       setPassMsg({ type: 'error', text: 'الرجاء إدخال كلمة المرور الجديدة.' });
       return;
@@ -73,15 +78,26 @@ export default function ProfilePage() {
     }
     setPassLoading(true);
     setPassMsg(null);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    setPassLoading(false);
-    if (error) {
-      setPassMsg({ type: 'error', text: 'حدث خطأ أثناء تغيير كلمة المرور: ' + error.message });
-    } else {
-      setPassMsg({ type: 'success', text: 'تم تغيير كلمة المرور بنجاح.' });
-      setNewPassword('');
-      setConfirmPassword('');
+
+    try {
+      const res  = await fetch('/api/auth/update-password', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ mode: 'change', newPassword, currentPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPassMsg({ type: 'error', text: data.error ?? 'حدث خطأ أثناء تغيير كلمة المرور.' });
+      } else {
+        setPassMsg({ type: 'success', text: 'تم تغيير كلمة المرور بنجاح.' });
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch {
+      setPassMsg({ type: 'error', text: 'حدث خطأ في الاتصال، يرجى المحاولة مجدداً.' });
     }
+    setPassLoading(false);
   }
 
   if (loading) {
@@ -196,6 +212,23 @@ export default function ProfilePage() {
             </h2>
 
             <form onSubmit={handleSavePassword} noValidate>
+              {/* كلمة المرور الحالية */}
+              <div className="form-group">
+                <label className="form-label" htmlFor="profile-current-pass">
+                  كلمة المرور الحالية
+                </label>
+                <input
+                  id="profile-current-pass"
+                  type="password"
+                  className="form-input"
+                  value={currentPassword}
+                  onChange={e => setCurrentPassword(e.target.value)}
+                  placeholder="أدخل كلمة مرورك الحالية"
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+
               {/* كلمة المرور الجديدة */}
               <div className="form-group">
                 <label className="form-label" htmlFor="profile-new-pass">
