@@ -141,6 +141,12 @@ export default function ProfilePage() {
     );
   }
 
+  const isGoogleUser = (() => {
+    const providers = user?.app_metadata?.providers ?? [];
+    const provider  = user?.app_metadata?.provider  ?? '';
+    return providers.includes('google') || provider === 'google';
+  })();
+
   return (
     <>
       <Navbar user={user} />
@@ -221,6 +227,20 @@ export default function ProfilePage() {
               🔒 تغيير كلمة المرور
             </h2>
 
+            {/* مستخدمو Google لا يملكون كلمة مرور محلية */}
+            {isGoogleUser ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                background: '#f0f9ff', border: '1px solid #bae6fd',
+                borderRadius: 10, padding: '14px 16px',
+              }}>
+                <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>🔐</span>
+                <p style={{ margin: 0, color: '#0369a1', fontSize: '.9rem', fontWeight: 600, lineHeight: 1.5 }}>
+                  حسابك مرتبط ومؤمَّن بواسطة Google
+                </p>
+              </div>
+            ) : (
+              <>
             {passMsg && (
               <div className={`alert alert-${passMsg.type}`} style={{ marginBottom: 16 }}>
                 {passMsg.text}
@@ -333,6 +353,8 @@ export default function ProfilePage() {
                   </button>
                 </div>
               </form>
+            )}
+              </>
             )}
           </div>
 

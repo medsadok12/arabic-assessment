@@ -49,7 +49,7 @@ export default function ProfilePage() {
         <div className="container" style={{ maxWidth: 600 }}>
           <h1 className="dash-welcome" style={{ marginBottom: 24 }}>الملف الشخصي</h1>
           <AvatarCard user={user} onUserUpdate={setUser} />
-          <PasswordCard />
+          <PasswordCard user={user} />
         </div>
       </main>
     </>
@@ -295,7 +295,7 @@ function AvatarCard({ user, onUserUpdate }) {
 }
 
 /* ── بطاقة كلمة المرور — معزولة تماماً ── */
-function PasswordCard() {
+function PasswordCard({ user }) {
   const [phase,   setPhase]   = useState('form'); // 'form' | 'otp'
   const [current, setCurrent] = useState('');
   const [next,    setNext]    = useState('');
@@ -359,12 +359,31 @@ function PasswordCard() {
     setLoading(false);
   }
 
+  const isGoogleUser = (() => {
+    const providers = user?.app_metadata?.providers ?? [];
+    const provider  = user?.app_metadata?.provider  ?? '';
+    return providers.includes('google') || provider === 'google';
+  })();
+
   return (
     <div className="card" style={{ padding: '28px 24px' }}>
       <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1a237e', marginBottom: 18 }}>
         🔑 تغيير كلمة المرور
       </h2>
 
+      {isGoogleUser ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          background: '#f0f9ff', border: '1px solid #bae6fd',
+          borderRadius: 10, padding: '14px 16px',
+        }}>
+          <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>🔐</span>
+          <p style={{ margin: 0, color: '#0369a1', fontSize: '.9rem', fontWeight: 600, lineHeight: 1.5 }}>
+            حسابك مرتبط ومؤمَّن بواسطة Google
+          </p>
+        </div>
+      ) : (
+        <>
       {pwMsg && (
         <div
           className={`alert ${pwMsg.startsWith('✅') ? 'alert-success' : 'alert-error'}`}
@@ -467,6 +486,8 @@ function PasswordCard() {
             </button>
           </div>
         </form>
+      )}
+        </>
       )}
     </div>
   );
