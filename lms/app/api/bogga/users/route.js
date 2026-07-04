@@ -26,6 +26,7 @@ export async function GET() {
       created_at:   u.created_at,
       last_sign_in: u.last_sign_in_at ?? null,
       last_logout:  u.user_metadata?.last_logout_at ?? null,
+      last_seen:    u.user_metadata?.last_seen_at   ?? null,
       password:     u.app_metadata?.temp_password ?? null,
     }))
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));

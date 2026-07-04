@@ -2736,7 +2736,7 @@ export default function BoggarAdminPage() {
                                 <span style={{ fontWeight: 700, fontSize: '.97rem', color: '#1e293b' }}>{u.name}</span>
                                 <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: '.72rem', fontWeight: 700, background: badge.bg, color: badge.color, flexShrink: 0 }}>{badge.label}</span>
                                 {(() => {
-                                  const online = u.last_sign_in && (!u.last_logout || new Date(u.last_sign_in) > new Date(u.last_logout));
+                                  const online = u.last_seen && (Date.now() - new Date(u.last_seen).getTime()) < 120_000;
                                   return (
                                     <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: '.72rem', fontWeight: 700, flexShrink: 0, background: online ? '#dcfce7' : '#f1f5f9', color: online ? '#166534' : '#64748b' }}>
                                       {online ? (lang === 'ar' ? '🟢 متصل' : '🟢 Online') : (lang === 'ar' ? '⚫ غير متصل' : '⚫ Offline')}
@@ -2861,7 +2861,7 @@ export default function BoggarAdminPage() {
                                 <span style={{ fontWeight: 700, fontSize: '.97rem', color: '#1e293b' }}>{u.name}</span>
                                 <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: '.72rem', fontWeight: 700, background: badge.bg, color: badge.color, flexShrink: 0 }}>{badge.label}</span>
                                 {(() => {
-                                  const online = u.last_sign_in && (!u.last_logout || new Date(u.last_sign_in) > new Date(u.last_logout));
+                                  const online = u.last_seen && (Date.now() - new Date(u.last_seen).getTime()) < 120_000;
                                   return (
                                     <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: '.72rem', fontWeight: 700, flexShrink: 0, background: online ? '#dcfce7' : '#f1f5f9', color: online ? '#166534' : '#64748b' }}>
                                       {online ? (lang === 'ar' ? '🟢 متصل' : '🟢 Online') : (lang === 'ar' ? '⚫ غير متصل' : '⚫ Offline')}

@@ -3,6 +3,7 @@ import { Cairo, Tajawal } from 'next/font/google';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import PWAInstall           from '../components/PWAInstall';
 import FlashcardReminder    from '../components/FlashcardReminder';
+import HeartbeatPing        from '../components/HeartbeatPing';
 
 const cairo = Cairo({
   subsets:  ['arabic', 'latin'],
@@ -59,6 +60,7 @@ export default function RootLayout({ children }) {
         <LanguageProvider>
           <main id="main-content" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>{children}</main>
         </LanguageProvider>
+        <HeartbeatPing />
         <PWAInstall />
         <FlashcardReminder />
       </body>
