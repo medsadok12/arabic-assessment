@@ -2710,7 +2710,8 @@ export default function BoggarAdminPage() {
                     {filtered.map(u => {
                       const badge     = ROLE_BADGES[u.role] ?? ROLE_BADGES.teacher;
                       const isEditing = editingUser?.id === u.id;
-                      const dateJoined = new Date(u.created_at).toLocaleDateString('en-GB');
+                      const fmtDT = iso => iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'medium' }) : '—';
+                      const dateJoined = fmtDT(u.created_at);
                       return (
                         <div key={u.id} style={{ background: '#fff', borderRadius: 16, border: '1.5px solid var(--border)', padding: '14px 18px', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', boxShadow: '0 1px 6px rgba(24,95,165,.05)' }}>
                           {u.avatar_url ? (
@@ -2737,9 +2738,10 @@ export default function BoggarAdminPage() {
                               </div>
                             )}
                             <div dir="ltr" style={{ textAlign: lang === 'ar' ? 'right' : 'left', color: '#475569', fontSize: '.85rem', marginBottom: 3 }}>{u.email}</div>
-                            <div style={{ color: '#94a3b8', fontSize: '.78rem' }}>
-                              📅 {dateJoined}
-                              {u.last_sign_in && <span style={{ marginRight: 10 }}>· {lang === 'ar' ? 'آخر دخول:' : 'Last:'} {new Date(u.last_sign_in).toLocaleDateString('en-GB')}</span>}
+                            <div style={{ color: '#94a3b8', fontSize: '.78rem', lineHeight: 1.7 }}>
+                              📅 {lang === 'ar' ? 'انضمام:' : 'Joined:'} {dateJoined}
+                              {u.last_sign_in && <><br />🔑 {lang === 'ar' ? 'آخر دخول:' : 'Last in:'} {fmtDT(u.last_sign_in)}</>}
+                              {u.last_logout  && <><br />🚪 {lang === 'ar' ? 'آخر خروج:' : 'Last out:'} {fmtDT(u.last_logout)}</>}
                             </div>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 7, flexShrink: 0 }}>
@@ -2825,7 +2827,8 @@ export default function BoggarAdminPage() {
                     {filtered.map(u => {
                       const badge     = STUDENT_BADGE;
                       const isEditing = editingUser?.id === u.id;
-                      const dateJoined = new Date(u.created_at).toLocaleDateString('en-GB');
+                      const fmtDT = iso => iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'medium' }) : '—';
+                      const dateJoined = fmtDT(u.created_at);
                       return (
                         <div key={u.id} style={{ background: '#fff', borderRadius: 16, border: '1.5px solid var(--border)', padding: '14px 18px', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', boxShadow: '0 1px 6px rgba(24,95,165,.05)' }}>
                           {u.avatar_url ? (
@@ -2852,9 +2855,10 @@ export default function BoggarAdminPage() {
                               </div>
                             )}
                             <div dir="ltr" style={{ textAlign: lang === 'ar' ? 'right' : 'left', color: '#475569', fontSize: '.85rem', marginBottom: 3 }}>{u.email}</div>
-                            <div style={{ color: '#94a3b8', fontSize: '.78rem' }}>
-                              📅 {dateJoined}
-                              {u.last_sign_in && <span style={{ marginRight: 10 }}>· {lang === 'ar' ? 'آخر دخول:' : 'Last:'} {new Date(u.last_sign_in).toLocaleDateString('en-GB')}</span>}
+                            <div style={{ color: '#94a3b8', fontSize: '.78rem', lineHeight: 1.7 }}>
+                              📅 {lang === 'ar' ? 'انضمام:' : 'Joined:'} {dateJoined}
+                              {u.last_sign_in && <><br />🔑 {lang === 'ar' ? 'آخر دخول:' : 'Last in:'} {fmtDT(u.last_sign_in)}</>}
+                              {u.last_logout  && <><br />🚪 {lang === 'ar' ? 'آخر خروج:' : 'Last out:'} {fmtDT(u.last_logout)}</>}
                             </div>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 7, flexShrink: 0 }}>

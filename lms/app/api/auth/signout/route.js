@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { cookies }            from 'next/headers';
+import { NextResponse }       from 'next/server';
+import { createAdminClient }  from '../../../../lib/supabase-admin';
 
 export async function GET(request) {
   const cookieStore = cookies();
@@ -17,6 +18,22 @@ export async function GET(request) {
       },
     }
   );
+
+  // Record precise logout timestamp before clearing the session
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const admin = createAdminClient();
+      await admin.auth.admin.updateUserById(user.id, {
+        user_metadata: {
+          ...user.user_metadata,
+          last_logout_at: new Date().toISOString(),
+        },
+      });
+    }
+  } catch {
+    // Non-blocking — proceed with signout even if recording fails
+  }
 
   await supabase.auth.signOut();
 

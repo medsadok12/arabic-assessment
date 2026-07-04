@@ -49,9 +49,10 @@ export default async function StudentViewPage({ params }) {
   const displayName = student.user_metadata?.full_name ?? email.split('@')[0] ?? '—';
   const avatarURL   = student.user_metadata?.avatar_url ?? null;
   const gender      = student.user_metadata?.gender === 'female' ? 'female' : 'male';
-  const joinedAt    = new Date(student.created_at).toLocaleDateString('en-GB');
-  const lastLogin   = student.last_sign_in_at
-    ? new Date(student.last_sign_in_at).toLocaleDateString('en-GB') : '—';
+  const fmtDT = iso => iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'medium' }) : '—';
+  const joinedAt    = fmtDT(student.created_at);
+  const lastLogin   = fmtDT(student.last_sign_in_at);
+  const lastLogout  = fmtDT(student.user_metadata?.last_logout_at ?? null);
 
   /* parallel data fetch */
   const today = new Date().toISOString().slice(0, 10);
@@ -254,7 +255,8 @@ export default async function StudentViewPage({ params }) {
             </div>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '.78rem', color: '#64748b' }}>
               <span>📅 انضم: {joinedAt}</span>
-              <span>🕐 آخر دخول: {lastLogin}</span>
+              <span>🔑 آخر دخول: {lastLogin}</span>
+              {lastLogout !== '—' && <span>🚪 آخر خروج: {lastLogout}</span>}
               {loggedToday && <span style={{ color: '#16a34a', fontWeight: 700 }}>✅ نشط اليوم</span>}
             </div>
           </div>
