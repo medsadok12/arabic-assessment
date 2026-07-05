@@ -60,7 +60,8 @@ export async function POST(req) {
       if (msg.includes('already registered') || msg.includes('already been registered')) {
         return NextResponse.json({ error: 'هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول' }, { status: 409 });
       }
-      return NextResponse.json({ error: msg }, { status: 500 });
+      console.error('[register] createUser error:', msg);
+      return NextResponse.json({ error: 'حدث خطأ أثناء إنشاء الحساب — يرجى المحاولة مجدداً أو التواصل مع إدارة الأكاديمية' }, { status: 500 });
     }
 
     // ── Step 3: consume code atomically ──────────────────────────────────────
