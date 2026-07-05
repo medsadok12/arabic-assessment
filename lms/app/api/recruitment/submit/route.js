@@ -15,6 +15,11 @@ export async function POST(req) {
       return NextResponse.json({ error: 'الاسم والبريد الإلكتروني مطلوبان' }, { status: 400 });
     }
 
+    // ~7MB base64 ≈ 5MB binary file — reject oversized payloads
+    if (cvBase64 && cvBase64.length > 7 * 1024 * 1024) {
+      return NextResponse.json({ error: 'حجم ملف الـCV يتجاوز الحد المسموح (5 ميجابايت)' }, { status: 413 });
+    }
+
     const supabase = createAdminClient();
 
     // Encode CV as JSON in the existing cv_path column — no schema changes required
