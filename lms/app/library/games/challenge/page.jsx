@@ -87,12 +87,12 @@ export default function ChallengePage() {
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { roomRef.current  = room;  }, [room]);
 
-  /* auth + player ID */
+  /* auth + player ID — use real user.id from session, never a local random UUID */
   useEffect(() => {
-    playerIdRef.current = getPlayerId();
     createClient().auth.getUser().then(({ data: { user } }) => {
       setUser(user);
       setAuthDone(true);
+      if (user?.id) playerIdRef.current = user.id;
       if (user?.user_metadata?.full_name && !name)
         setName(user.user_metadata.full_name);
     });

@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { createClient as createServerClient } from '../../../../lib/supabase-server';
 
 // POST — atomic round win claim
 export async function POST(request) {
   try {
-    const { room_id, player_id, q_index, picked_option } = await request.json();
-    if (!room_id || !player_id || q_index === undefined || !picked_option)
+    const supabase = createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
+
+    const { room_id, q_index, picked_option } = await request.json();
+    const player_id = user.id;
+    if (!room_id || q_index === undefined || !picked_option)
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
 
     const admin = createAdminClient();

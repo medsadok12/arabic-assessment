@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { createClient as createServerClient } from '../../../../lib/supabase-server';
 
 const WIN_SCORE = 5;
 
 // POST — advance to next question (atomic, both clients call this after a round ends)
 export async function POST(request) {
   try {
+    const supabase = createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
+
     const { room_id, from_q_index } = await request.json();
     if (!room_id || from_q_index === undefined)
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
