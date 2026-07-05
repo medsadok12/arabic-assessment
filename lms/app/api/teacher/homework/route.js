@@ -35,7 +35,9 @@ export async function POST(req) {
   const teacher = await getTeacher();
   if (!teacher) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
-  const { title, description, student_email, student_name, due_date } = await req.json();
+  let body;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
+  const { title, description, student_email, student_name, due_date } = body;
   if (!title?.trim() || !student_email?.trim())
     return NextResponse.json({ error: 'العنوان والطالب مطلوبان' }, { status: 400 });
 
@@ -63,7 +65,9 @@ export async function DELETE(req) {
   const teacher = await getTeacher();
   if (!teacher) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
-  const { id } = await req.json();
+  let body;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
+  const { id } = body;
   if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
 
   const admin = createAdminClient();
