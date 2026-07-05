@@ -52,14 +52,24 @@ export async function POST(request) {
   return Response.json({ message: data });
 }
 
-export async function DELETE() {
+export async function DELETE(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
   if (!ALLOWED.includes(user.user_metadata?.role)) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
+  const { id } = await request.json().catch(() => ({}));
+  if (!id) return Response.json({ error: 'id الرسالة مطلوب' }, { status: 400 });
+
   const admin = createAdminClient();
-  const { error } = await admin.from('team_messages').delete().gte('created_at', '2000-01-01');
+  const role  = user.user_metadata?.role;
+  const isAdmin = role === 'admin' || role === 'super_admin';
+
+  // Admins can delete any message; others only their own
+  let query = admin.from('team_messages').delete().eq('id', id);
+  if (!isAdmin) query = query.eq('sender_id', user.id);
+
+  const { error } = await query;
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ ok: true });
 }
