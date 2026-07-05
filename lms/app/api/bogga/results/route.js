@@ -43,29 +43,30 @@ export async function GET(req) {
   const { data, count, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Aggregate stats (no filters — always full picture)
-  const [{ count: total }, { count: passed }, { data: allData }] = await Promise.all([
-    admin.from('assessments').select('id', { count: 'exact', head: true }),
-    admin.from('assessments').select('id', { count: 'exact', head: true }).gte('score', 70),
-    admin.from('assessments').select('score, level'),
+  // Aggregate stats via parallel DB-level queries — no full table scan in JS
+  const [
+    { count: total },
+    { count: passed },
+    { data: avgRow },
+    { count: lvl1 }, { count: lvl2 }, { count: lvl3 },
+    { count: d0 }, { count: d30 }, { count: d50 }, { count: d70 }, { count: d90 },
+  ] = await Promise.all([
+    admin.from('assessments').select('*', { count: 'exact', head: true }),
+    admin.from('assessments').select('*', { count: 'exact', head: true }).gte('score', 70),
+    admin.from('assessments').select('score.avg()').single(),
+    admin.from('assessments').select('*', { count: 'exact', head: true }).eq('level', 1),
+    admin.from('assessments').select('*', { count: 'exact', head: true }).eq('level', 2),
+    admin.from('assessments').select('*', { count: 'exact', head: true }).eq('level', 3),
+    admin.from('assessments').select('*', { count: 'exact', head: true }).lt('score', 30),
+    admin.from('assessments').select('*', { count: 'exact', head: true }).gte('score', 30).lt('score', 50),
+    admin.from('assessments').select('*', { count: 'exact', head: true }).gte('score', 50).lt('score', 70),
+    admin.from('assessments').select('*', { count: 'exact', head: true }).gte('score', 70).lt('score', 90),
+    admin.from('assessments').select('*', { count: 'exact', head: true }).gte('score', 90),
   ]);
 
-  const avg = allData?.length
-    ? Math.round(allData.reduce((s, a) => s + (a.score ?? 0), 0) / allData.length)
-    : 0;
-
-  const levelCounts = {};
-  const scoreDist   = { '0-29': 0, '30-49': 0, '50-69': 0, '70-89': 0, '90-100': 0 };
-  for (const r of allData ?? []) {
-    const l = r.level ?? 1;
-    levelCounts[l] = (levelCounts[l] || 0) + 1;
-    const s = r.score ?? 0;
-    if      (s < 30) scoreDist['0-29']++;
-    else if (s < 50) scoreDist['30-49']++;
-    else if (s < 70) scoreDist['50-69']++;
-    else if (s < 90) scoreDist['70-89']++;
-    else             scoreDist['90-100']++;
-  }
+  const avg        = Math.round(avgRow?.score ?? 0);
+  const levelCounts = { 1: lvl1 ?? 0, 2: lvl2 ?? 0, 3: lvl3 ?? 0 };
+  const scoreDist   = { '0-29': d0 ?? 0, '30-49': d30 ?? 0, '50-69': d50 ?? 0, '70-89': d70 ?? 0, '90-100': d90 ?? 0 };
 
   return NextResponse.json({
     results: data ?? [],
