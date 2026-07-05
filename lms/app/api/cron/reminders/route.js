@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 // يُستدعى كل 30 دقيقة — يُرسل تذكيراً للطلاب الذين حصتهم خلال 25-35 دقيقة
 export async function GET(req) {
   const secret = req.headers.get('x-cron-secret');
-  if (secret !== process.env.CRON_SECRET && process.env.CRON_SECRET)
+  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET)
     return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
   const admin = createAdminClient();
