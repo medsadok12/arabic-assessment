@@ -383,7 +383,8 @@ export default function PricingAdmin({ lang = 'ar' }) {
   async function deletePlan() {
     if (!delId) return;
     setDelBusy(true);
-    await fetch('/api/bogga/pricing', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: delId }) });
+    const res = await fetch('/api/bogga/pricing', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: delId }) });
+    if (!res.ok) { alert('فشل الحذف — يرجى المحاولة مجدداً'); setDelBusy(false); return; }
     setPlans(prev => prev.filter(p => p.id !== delId));
     setDelId(null); setDelBusy(false);
   }

@@ -307,9 +307,10 @@ function StoriesTab({ lang }) {
     if (!confirm('حذف القصة نهائياً؟')) return;
     setDeleting(id);
     try {
-      await fetch(`/api/stories/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/stories/${id}`, { method: 'DELETE' });
+      if (!res.ok) { alert('فشل الحذف — يرجى المحاولة مجدداً'); setDeleting(null); return; }
       setStories(p => p.filter(s => s.id !== id));
-    } catch {}
+    } catch { alert('فشل الحذف — تحقق من الاتصال'); }
     setDeleting(null);
   };
 
@@ -1166,7 +1167,8 @@ export default function BoggarAdminPage() {
 
   async function handleDeletePuzzle(id) {
     if (!confirm('هل أنت متأكد من حذف هذه الأحجية؟')) return;
-    await fetch(`/api/bogga/puzzles?id=${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/bogga/puzzles?id=${id}`, { method: 'DELETE' });
+    if (!res.ok) { alert('فشل الحذف — يرجى المحاولة مجدداً'); return; }
     await loadPuzzles();
   }
 

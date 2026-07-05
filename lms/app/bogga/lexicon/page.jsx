@@ -174,8 +174,14 @@ export default function LexiconAdminPage() {
   async function handleDelete(id) {
     if (role !== 'super_admin') { setMsg({ type: 'error', text: 'لا تملك صلاحية الحذف' }); return; }
     if (!confirm('هل تريد حذف هذه الكلمة نهائياً؟')) return;
-    await fetch(`/api/bogga/lexicon/${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/bogga/lexicon/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setMsg({ type: 'error', text: body.error ?? 'فشل الحذف — يرجى المحاولة مجدداً' });
+      return;
+    }
     setWords(p => p.filter(w => w.id !== id));
+    setMsg({ type: 'success', text: 'تم حذف الكلمة بنجاح' });
   }
 
   const filtered = words.filter(w =>

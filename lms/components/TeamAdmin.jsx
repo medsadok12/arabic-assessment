@@ -272,8 +272,9 @@ export default function TeamAdmin() {
   async function handleDelete(id) {
     if (!confirm('هل تريد حذف هذا العضو نهائياً؟')) return;
     setDeleting(id);
-    await fetch(`/api/bogga/team/${id}`, { method: 'DELETE' }).catch(() => null);
+    const res = await fetch(`/api/bogga/team/${id}`, { method: 'DELETE' }).catch(() => null);
     setDeleting(null);
+    if (!res?.ok) { alert('فشل الحذف — يرجى المحاولة مجدداً'); return; }
     load();
   }
 
