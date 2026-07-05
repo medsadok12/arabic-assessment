@@ -89,9 +89,13 @@ export default function RegisterPage() {
 
     // تسجيل الدخول تلقائياً بعد إنشاء الحساب
     const supabase = createClient();
-    await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
+    const { error: loginErr } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
 
     setLoading(false);
+    if (loginErr) {
+      setError('تم إنشاء حسابك بنجاح، لكن تعذّر تسجيل الدخول تلقائياً — يرجى تسجيل الدخول يدوياً.');
+      return;
+    }
     setSuccess('تم إنشاء حسابك بنجاح! 🎉 مرحباً بك في رحلتك مع أكاديمية عارم');
   }
 
