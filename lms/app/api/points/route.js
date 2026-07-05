@@ -92,15 +92,27 @@ export async function POST(req) {
 
     const { data: current } = await admin
       .from('user_points').select('total').eq('user_id', user.id).maybeSingle();
-    const newTotal = (current?.total ?? 0) + amount;
+    const prevTotal = current?.total ?? 0;
+    const newTotal  = prevTotal + amount;
 
-    await Promise.all([
-      admin.from('user_points').upsert(
-        { user_id: user.id, total: newTotal, updated_at: new Date().toISOString() },
-        { onConflict: 'user_id' }
-      ),
-      admin.from('points_log').insert({ user_id: user.id, delta: amount, reason }),
-    ]);
+    if (current) {
+      // Optimistic lock — UPDATE only if total hasn't changed since we read it
+      const { data: updated } = await admin
+        .from('user_points')
+        .update({ total: newTotal, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .eq('total', prevTotal)
+        .select('total')
+        .maybeSingle();
+      if (!updated)
+        return NextResponse.json({ error: 'تعارض في العملية، يرجى المحاولة مجدداً' }, { status: 409 });
+    } else {
+      await admin.from('user_points').insert(
+        { user_id: user.id, total: newTotal, updated_at: new Date().toISOString() }
+      );
+    }
+
+    await admin.from('points_log').insert({ user_id: user.id, delta: amount, reason });
 
     return NextResponse.json({ success: true, points: newTotal });
   } catch (e) {
