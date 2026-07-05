@@ -9,6 +9,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { createClient } from '../lib/supabase';
 import AvatarShop from './AvatarShop';
 import DashboardHero3D from './DashboardHero3D';
+import WordOfDay from './WordOfDay';
+import StreakFreeze from './StreakFreeze';
 
 function HwToggle({ id, status }) {
   const [st, setSt] = useState(status);
@@ -571,6 +573,10 @@ export default function DashboardContent({
             );
           })()}
 
+          {isStudent && <StreakFreeze />}
+
+          {isStudent && <WordOfDay />}
+
           {/* ── Personal Progress Card ── */}
           <div className="prog-card">
             <div className="prog-header">
@@ -914,7 +920,7 @@ export default function DashboardContent({
           </div>
 
           {/* ── Faheem widget ── */}
-          {isStudent && <FaheemWidget studentName={displayName} studentGender={studentGender} />}
+          {isStudent && <FaheemWidget studentName={displayName} studentGender={studentGender} streakCount={streakCount} masteredCount={masteredCount} />}
 
           {/* ── Life-Scene Simulator ── */}
           {isStudent && (

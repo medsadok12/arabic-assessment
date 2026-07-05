@@ -240,8 +240,47 @@ const FALLBACKS = [
   'الشَّبَكَةُ مَشْغُولَةٌ قَلِيلاً. لَا تَقْلَقْ وَحَاوِلْ مُجَدَّدًا! 💡',
 ];
 
+/* ── Arabic-correct counted-noun forms for the personalized greeting ── */
+function arDays(n) {
+  if (n === 2)              return 'يَوْمَيْنِ';
+  if (n >= 3 && n <= 10)    return `${n} أَيَّامٍ`;
+  return `${n} يَوْمًا`;
+}
+function arWords(n) {
+  if (n === 1)              return 'كَلِمَةً';
+  if (n === 2)              return 'كَلِمَتَيْنِ';
+  if (n >= 3 && n <= 10)    return `${n} كَلِمَاتٍ`;
+  return `${n} كَلِمَةً`;
+}
+
+/* Personalized first message: greets the child by name, and — when there is
+   something to celebrate — mentions their live streak or mastered-words count so
+   Fahim feels like a friend who remembers them, not a generic bot. */
+function buildGreeting(name, isFemale, streak, mastered) {
+  const friend = isFemale ? 'صَدِيقُكِ وَمُرَافِقُكِ' : 'صَدِيقُكَ وَمُرَافِقُكَ';
+  const hero   = isFemale ? 'يَا بَطَلَةُ' : 'يَا بَطَلُ';
+  const intro  = `مَرْحَبًا يَا ${name} فِي أَكَادِيمِيَّةِ عَارِم! أَنَا ${friend} الذَّكِيُّ فَهِيمٌ.`;
+
+  let middle = '';
+  if (streak >= 2) {
+    const back     = isFemale ? 'عُدْتِ'         : 'عُدْتَ';
+    const yourStr  = isFemale ? 'سِلْسِلَتُكِ'   : 'سِلْسِلَتُكَ';
+    const yourCont = isFemale ? 'اسْتِمْرَارُكِ' : 'اسْتِمْرَارُكَ';
+    middle = ` ${back} ${hero}! 🔥 ${yourStr} الآنَ ${arDays(streak)} مُتَوَاصِلَةٌ، وَ${yourCont} يُبْهِرُنِي!`;
+  } else if (mastered >= 1) {
+    const done = isFemale ? 'أَتْقَنْتِ' : 'أَتْقَنْتَ';
+    middle = ` 🌟 لَقَدْ ${done} ${arWords(mastered)} حَتَّى الآنَ، أَحْسَنْتَ ${hero}!`;
+  }
+
+  const outro = isFemale
+    ? ` أَخْبِرِينِي ${hero}، مَاذَا تُرِيدِينَ أَنْ نَتَعَلَّمَ الْيَوْمَ؟`
+    : ` أَخْبِرْنِي ${hero}، مَاذَا تُرِيدُ أَنْ نَتَعَلَّمَ الْيَوْمَ؟`;
+
+  return intro + middle + outro;
+}
+
 /* ── Main FaheemWidget component ── */
-export default function FaheemWidget({ studentName = 'بطل', studentGender = 'male' }) {
+export default function FaheemWidget({ studentName = 'بطل', studentGender = 'male', streakCount = 0, masteredCount = 0 }) {
   const isFemale = studentGender === 'female';
   const { speak, cancel } = useSpeech();
 
@@ -302,13 +341,11 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
   useEffect(() => {
     if (!open || greeted) return;
     setGreeted(true);
-    const g = isFemale
-      ? `مَرْحَبًا يَا ${studentName} فِي أَكَادِيمِيَّةِ عَارِم! أَنَا صَدِيقُكِ وَمُرَافِقُكِ الذَّكِيُّ فَهِيمٌ. أَخْبِرِينِي يَا بَطَلَةُ، مَاذَا تُرِيدِينَ أَنْ نَتَحَدَّثَ عَنْهُ الْيَوْمَ؟`
-      : `مَرْحَبًا يَا ${studentName} فِي أَكَادِيمِيَّةِ عَارِم! أَنَا صَدِيقُكَ وَمُرَافِقُكَ الذَّكِيُّ فَهِيمٌ. أَخْبِرْنِي يَا بَطَلُ، مَاذَا تُرِيدُ أَنْ نَتَحَدَّثَ عَنْهُ الْيَوْمَ؟`;
+    const g = buildGreeting(studentName, isFemale, streakCount, masteredCount);
     setMsgs([{ role: 'ai', text: g }]);
     const t = setTimeout(() => sayText(g), 700);
     return () => clearTimeout(t);
-  }, [open, greeted, studentName, isFemale, sayText]);
+  }, [open, greeted, studentName, isFemale, streakCount, masteredCount, sayText]);
 
   const locked = phase === 'thinking' || phase === 'speaking';
 

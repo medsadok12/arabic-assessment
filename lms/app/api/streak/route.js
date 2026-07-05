@@ -67,12 +67,13 @@ export async function POST() {
     if (!user) return NextResponse.json({ ok: false });
 
     const admin = createAdminClient();
+    const today = new Date().toISOString().slice(0, 10);
+
     await admin
       .from('daily_logs')
-      .upsert({ user_id: user.id, log_date: new Date().toISOString().slice(0, 10) },
+      .upsert({ user_id: user.id, log_date: today },
                { onConflict: 'user_id,log_date', ignoreDuplicates: true });
 
-    // Return updated streak
     const { data } = await admin
       .from('daily_logs')
       .select('log_date')
@@ -80,10 +81,41 @@ export async function POST() {
       .order('log_date', { ascending: false })
       .limit(365);
 
-    const dates  = (data || []).map(r => r.log_date);
+    const dates = (data || []).map(r => r.log_date);
+
+    // ── Streak-freeze auto-apply ──
+    // If the child returned after a gap, spend held freezes to bridge the missed days
+    // (only when the balance covers the WHOLE gap — otherwise the streak breaks anyway,
+    // so we don't waste tokens). Bridged days are written to daily_logs, so every streak
+    // view stays consistent with no change to calcStreak.
+    const priorToToday = dates.filter(d => d < today);
+    if (priorToToday.length > 0) {
+      const last   = priorToToday[0];               // most recent active day before today
+      const missed = [];
+      const cur    = new Date(`${last}T00:00:00Z`);
+      cur.setUTCDate(cur.getUTCDate() + 1);
+      const todayD = new Date(`${today}T00:00:00Z`);
+      while (cur < todayD) { missed.push(cur.toISOString().slice(0, 10)); cur.setUTCDate(cur.getUTCDate() + 1); }
+
+      if (missed.length > 0) {
+        const { data: fz } = await admin
+          .from('streak_freezes').select('balance').eq('user_id', user.id).maybeSingle();
+        const balance = fz?.balance ?? 0;
+        if (balance >= missed.length) {
+          await admin.from('daily_logs').upsert(
+            missed.map(d => ({ user_id: user.id, log_date: d })),
+            { onConflict: 'user_id,log_date', ignoreDuplicates: true }
+          );
+          await admin.from('streak_freezes')
+            .update({ balance: balance - missed.length }).eq('user_id', user.id);
+          dates.push(...missed);
+          dates.sort((a, b) => b.localeCompare(a));   // keep descending for calcStreak
+        }
+      }
+    }
+
     const streak = calcStreak(dates);
 
-    const today = new Date().toISOString().slice(0, 10);
     awardPoints(user.id, 10, `daily_login:${today}`).catch(() => {});
 
     return NextResponse.json({ ok: true, streak });

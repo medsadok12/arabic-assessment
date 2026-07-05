@@ -28,6 +28,7 @@ const POINT_EVENTS = {
   story:               10,
   session_attend:      5,
   homework_done:       5,
+  daily_word:          3,   // e.g. "daily_word:2026-07-05" — once per day per child
 };
 
 // These event types are deduplicated by full reason string
@@ -35,7 +36,7 @@ const DEDUP_PREFIXES = new Set([
   'huroof_letter', 'huroof_all_complete',
   'fc',
   'challenge_win', 'challenge_draw', 'challenge_loss',
-  'daily_login', 'story', 'session_attend', 'homework_done',
+  'daily_login', 'story', 'session_attend', 'homework_done', 'daily_word',
 ]);
 
 export async function GET() {
