@@ -1,4 +1,5 @@
 import { createClient } from '../../../lib/supabase-server';
+import { createAdminClient } from '../../../lib/supabase-admin';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
@@ -10,6 +11,13 @@ export async function POST(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response('غير مصرح', { status: 401 });
+
+  // Shared 'gen' rate limit with /api/faheem — caps AI spend. Fails open on limiter error.
+  const rateAdmin = createAdminClient();
+  const { data: streamAllowed } = await rateAdmin.rpc('ai_rate_check', {
+    p_user: user.id, p_bucket: 'gen', p_per_minute: 20, p_per_day: 300,
+  });
+  if (streamAllowed === false) return new Response('rate_limited', { status: 429 });
 
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return new Response('API key missing', { status: 500 });

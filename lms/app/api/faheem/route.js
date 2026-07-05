@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase-server';
+import { createAdminClient } from '../../../lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 10; // use the full Vercel Hobby budget
@@ -100,6 +101,17 @@ export async function POST(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'غير مخول' }, { status: 401 });
+
+  // Per-user rate limit — caps AI spend from runaway loops / abuse. Fails open on limiter error.
+  const rateAdmin = createAdminClient();
+  const { data: aiAllowed } = await rateAdmin.rpc('ai_rate_check', {
+    p_user: user.id, p_bucket: 'gen', p_per_minute: 20, p_per_day: 300,
+  });
+  if (aiAllowed === false) {
+    return NextResponse.json({
+      reply: 'وااو يا بَطَل، أسئِلَتُكَ سَريعةٌ كالصّاروخ! 🚀 أَمْهِلْني دَقيقةً صَغيرةً لِأَلتَقِطَ أنفاسي، ثُمَّ عُدْ لِتَسْأَلَني وسأُجيبُكَ بِكُلِّ سُرورٍ 🌟',
+    }, { status: 429 });
+  }
 
   let body;
   try { body = await req.json(); } catch {

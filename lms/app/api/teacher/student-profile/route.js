@@ -31,7 +31,7 @@ export async function GET(req) {
     .limit(50);
 
   sessionsQuery = email
-    ? sessionsQuery.ilike('student_email', email)
+    ? sessionsQuery.eq('student_email', email.toLowerCase())
     : sessionsQuery.ilike('student_name', name);
 
   // Homework
@@ -43,7 +43,7 @@ export async function GET(req) {
     .limit(50);
 
   hwQuery = email
-    ? hwQuery.ilike('student_email', email)
+    ? hwQuery.eq('student_email', email.toLowerCase())
     : hwQuery.ilike('student_name', name);
 
   const [{ data: sessions }, { data: homework }] = await Promise.all([

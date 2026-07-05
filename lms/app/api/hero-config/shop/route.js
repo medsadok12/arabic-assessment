@@ -35,35 +35,47 @@ export async function POST(req) {
 
     const admin = createAdminClient();
 
-    /* Already owned? */
-    const { data: existing } = await admin
+    /* Claim ownership FIRST, atomically. The composite unique (user_id,item_id) means a
+       concurrent duplicate purchase raises 23505 → already owned, so we never double-charge. */
+    const { error: claimErr } = await admin
       .from('avatar_items')
-      .select('item_id')
-      .eq('user_id', user.id)
-      .eq('item_id', item_id)
-      .maybeSingle();
-    if (existing) return NextResponse.json({ error: 'العنصر مملوك بالفعل' }, { status: 409 });
-
-    /* Deduct points */
-    if (price > 0) {
-      const { data: pts } = await admin
-        .from('user_points')
-        .select('total')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      const current = pts?.total ?? 0;
-      if (current < price) {
-        return NextResponse.json({ error: `نقاط غير كافية — رصيدك ${current}، السعر ${price}` }, { status: 400 });
-      }
-      await admin
-        .from('user_points')
-        .upsert({ user_id: user.id, total: current - price }, { onConflict: 'user_id' });
+      .insert({ user_id: user.id, item_id, equipped: false });
+    if (claimErr) {
+      if (claimErr.code === '23505') return NextResponse.json({ error: 'العنصر مملوك بالفعل' }, { status: 409 });
+      return NextResponse.json({ error: claimErr.message }, { status: 500 });
     }
 
-    /* Add to owned items */
-    await admin.from('avatar_items').insert({ user_id: user.id, item_id });
+    /* Deduct points with an optimistic lock. On any failure, roll back the claim so the
+       child is never charged for an item they didn't get, and never gets an item for free. */
+    let newBalance = null;
+    if (price > 0) {
+      const { data: balRow } = await admin
+        .from('user_points').select('total').eq('user_id', user.id).maybeSingle();
+      const balance = balRow?.total ?? 0;
 
-    return NextResponse.json({ success: true, price_charged: price });
+      if (balance < price) {
+        await admin.from('avatar_items').delete().eq('user_id', user.id).eq('item_id', item_id);
+        return NextResponse.json({ error: `نقاط غير كافية — رصيدك ${balance}، السعر ${price}` }, { status: 400 });
+      }
+
+      const { data: deducted } = await admin
+        .from('user_points')
+        .update({ total: balance - price, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .eq('total', balance)   // optimistic lock — matches only if balance unchanged since read
+        .select('total')
+        .maybeSingle();
+
+      if (!deducted) {
+        await admin.from('avatar_items').delete().eq('user_id', user.id).eq('item_id', item_id);
+        return NextResponse.json({ error: 'تعارض في العملية، يرجى المحاولة مجدداً' }, { status: 409 });
+      }
+      newBalance = deducted.total;
+
+      await admin.from('points_log').insert({ user_id: user.id, delta: -price, reason: `avatar_buy_${item_id}` });
+    }
+
+    return NextResponse.json({ success: true, price_charged: price, newBalance });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

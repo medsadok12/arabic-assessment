@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createClient } from '../../../../lib/supabase-server';
+import { createAdminClient } from '../../../../lib/supabase-admin';
 
 /* Escape text for safe embedding inside SSML XML */
 function xmlEscape(s) {
@@ -77,6 +78,13 @@ export async function GET(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response('Unauthorized', { status: 401 });
+
+  // Per-user TTS rate limit (own bucket — more generous than generation). Fails open.
+  const rateAdmin = createAdminClient();
+  const { data: ttsAllowed } = await rateAdmin.rpc('ai_rate_check', {
+    p_user: user.id, p_bucket: 'tts', p_per_minute: 60, p_per_day: 600,
+  });
+  if (ttsAllowed === false) return new Response(null, { status: 429 });
 
   const { searchParams } = new URL(req.url);
   const text = (searchParams.get('t') ?? '').trim().slice(0, 400);

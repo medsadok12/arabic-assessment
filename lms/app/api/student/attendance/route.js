@@ -22,7 +22,7 @@ export async function POST(req) {
     .from('sessions')
     .select('id, student_email, student_name, session_date, start_time, attended, status, meet_link, teacher_id, subject')
     .eq('id', session_id)
-    .ilike('student_email', user.email)
+    .eq('student_email', (user.email ?? '').toLowerCase())
     .single();
 
   let session   = primarySession;
@@ -34,7 +34,7 @@ export async function POST(req) {
       .from('session_support_students')
       .select('session_id')
       .eq('session_id', session_id)
-      .ilike('student_email', user.email)
+      .eq('student_email', (user.email ?? '').toLowerCase())
       .maybeSingle()
       .then(r => r.error ? { data: null } : r);
 
@@ -59,7 +59,7 @@ export async function POST(req) {
         .from('attendance_logs')
         .select('id')
         .eq('session_id', session_id)
-        .ilike('student_email', user.email)
+        .eq('student_email', (user.email ?? '').toLowerCase())
         .maybeSingle()
         .then(r => !!r.data)
     // الطالب الأساسي → sessions.attended
@@ -77,7 +77,7 @@ export async function POST(req) {
     await admin.from('sessions')
       .update({ attended: true })
       .eq('id', session_id)
-      .ilike('student_email', user.email);
+      .eq('student_email', (user.email ?? '').toLowerCase());
   }
 
   // جميع الطلاب: تسجيل في attendance_logs (best-effort — لا يُوقف العملية)
@@ -150,7 +150,7 @@ export async function GET(req) {
     .from('sessions')
     .select('attended')
     .eq('id', session_id)
-    .ilike('student_email', user.email)
+    .eq('student_email', (user.email ?? '').toLowerCase())
     .maybeSingle();
 
   if (sessionData?.attended === true) return NextResponse.json({ logged: true });
@@ -160,7 +160,7 @@ export async function GET(req) {
     .from('attendance_logs')
     .select('id')
     .eq('session_id', session_id)
-    .ilike('student_email', user.email)
+    .eq('student_email', (user.email ?? '').toLowerCase())
     .maybeSingle()
     .then(r => r.error ? { data: null } : r);
 

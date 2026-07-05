@@ -15,7 +15,7 @@ export async function GET() {
   const { data, error } = await admin
     .from('homework')
     .select('id, teacher_name, title, description, due_date, status, created_at')
-    .ilike('student_email', user.email)
+    .eq('student_email', (user.email ?? '').toLowerCase())
     .order('due_date', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false });
 
@@ -41,7 +41,7 @@ export async function PATCH(req) {
     .from('homework')
     .update({ status })
     .eq('id', id)
-    .ilike('student_email', user.email);
+    .eq('student_email', (user.email ?? '').toLowerCase());
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

@@ -19,6 +19,16 @@ export async function PUT(req, { params }) {
     const { name, center_letter, outer_letters, valid_words, time_seconds, is_active } = body;
 
     const admin = createAdminClient();
+
+    // Teachers may edit only their own wheels; admins/super_admins may edit any.
+    if (user.user_metadata?.role === 'teacher') {
+      const { data: owned } = await admin
+        .from('word_wheel_configs').select('created_by').eq('id', params.id).maybeSingle();
+      if (!owned) return NextResponse.json({ error: 'العجلة غير موجودة' }, { status: 404 });
+      if (owned.created_by !== user.id)
+        return NextResponse.json({ error: 'لا يمكنك تعديل عجلة أنشأها معلم آخر' }, { status: 403 });
+    }
+
     const update = {};
     if (name          !== undefined) update.name           = name.trim();
     if (center_letter !== undefined) update.center_letter  = center_letter;
@@ -49,6 +59,16 @@ export async function DELETE(req, { params }) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
     const admin = createAdminClient();
+
+    // Teachers may delete only their own wheels; admins/super_admins may delete any.
+    if (user.user_metadata?.role === 'teacher') {
+      const { data: owned } = await admin
+        .from('word_wheel_configs').select('created_by').eq('id', params.id).maybeSingle();
+      if (!owned) return NextResponse.json({ error: 'العجلة غير موجودة' }, { status: 404 });
+      if (owned.created_by !== user.id)
+        return NextResponse.json({ error: 'لا يمكنك حذف عجلة أنشأها معلم آخر' }, { status: 403 });
+    }
+
     const { error } = await admin
       .from('word_wheel_configs')
       .update({ is_active: false })
