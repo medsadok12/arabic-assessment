@@ -3,15 +3,21 @@ import { createAdminClient } from './supabase-admin';
 export async function awardPoints(userId, amount, reason) {
   const admin = createAdminClient();
 
-  // upsert with ignoreDuplicates prevents double-insert under concurrent calls
-  const { data: inserted } = await admin
+  // The points_log_unique_event_idx partial UNIQUE index on (user_id, reason)
+  // (reasons that contain ':' — daily_login:DATE, homework_done:ID, session_attend:ID …)
+  // guarantees each unique event is logged at most once. Insert directly and treat a
+  // duplicate-key violation (23505) as an already-awarded event: skip silently, never crash.
+  // A plain insert is used deliberately — onConflict inference cannot target a partial index.
+  const { error: insertErr } = await admin
     .from('points_log')
-    .upsert({ user_id: userId, delta: amount, reason }, { onConflict: 'user_id,reason', ignoreDuplicates: true })
-    .select('id')
-    .maybeSingle();
+    .insert({ user_id: userId, delta: amount, reason });
 
-  if (!inserted) return { ok: true, skipped: true };
+  if (insertErr) {
+    if (insertErr.code === '23505') return { ok: true, skipped: true }; // already awarded
+    return { ok: false, error: insertErr.message };
+  }
 
+  // Only a genuinely new event reaches here → apply the balance change exactly once.
   const { data: row } = await admin
     .from('user_points')
     .select('total')
