@@ -265,6 +265,10 @@ export async function POST(request) {
   const nowISO = new Date().toISOString();
 
   for (const g of Object.values(groups)) {
+    if (type === 'teacher_payout' && g.user_email.endsWith('@teacher')) {
+      console.warn(`[financials] Skipping teacher "${g.user_name}" — no valid email resolved. Fix their account data manually.`);
+      continue;
+    }
     const hours = parseFloat((g.totalMinutes / 60).toFixed(2));
     const ex    = existingMap[g.user_email];
     if (ex) {
