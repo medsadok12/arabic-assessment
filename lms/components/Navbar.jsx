@@ -355,12 +355,12 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
   useEffect(() => {
     const supabase = createClient();
 
-    if (!initialUser) {
-      supabase.auth.getUser().then(({ data: { user } }) => setUser(user ?? null));
-    }
+    // Always fetch fresh user data from the server so name/avatar reflect latest metadata
+    supabase.auth.getUser().then(({ data: { user: fresh } }) => {
+      if (fresh) setUser(fresh);
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      // Handle both login and logout state changes
       setUser(session?.user ?? null);
     });
 
@@ -372,7 +372,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
       subscription.unsubscribe();
       document.removeEventListener('mousedown', onOutsideClick);
     };
-  }, [initialUser]);
+  }, []);
 
   useEffect(() => {
     const isStud = user?.user_metadata?.role === 'student';
@@ -396,7 +396,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
   }
 
   const role      = user?.user_metadata?.role ?? 'student';
-  const fullName  = user?.user_metadata?.full_name ?? user?.email?.split('@')[0] ?? '';
+  const fullName  = user?.user_metadata?.full_name ?? '';
   const avatarURL = user?.user_metadata?.avatar_url ?? null;
   const destPath  = dashboardPath(role);
 
