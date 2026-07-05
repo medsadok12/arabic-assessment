@@ -37,19 +37,10 @@ export async function POST(req) {
 
     const admin = createAdminClient();
 
-    /* Already owned? */
-    const { data: existing } = await admin
-      .from('avatar_items')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('item_id', itemId)
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json({ error: 'تملك هذه القطعة بالفعل' }, { status: 400 });
-    }
-
-    /* Check and deduct balance only when price > 0 */
+    /* Check and deduct balance only when price > 0.
+       Optimistic-lock pattern: read current total, then UPDATE WHERE total = <read value>.
+       If a concurrent request already changed the balance, the WHERE clause matches 0 rows
+       and we return 409 — preventing double-spend without a database-level stored procedure. */
     let newBalance = null;
     if (price > 0) {
       const { data: balRow } = await admin
@@ -59,29 +50,36 @@ export async function POST(req) {
         .maybeSingle();
 
       const balance = balRow?.total ?? 0;
-      if (balance < price) {
+      if (balance < price)
         return NextResponse.json({ error: 'نقاط غير كافية', balance }, { status: 400 });
-      }
 
-      newBalance = balance - price;
-      await Promise.all([
-        admin.from('user_points').upsert(
-          { user_id: user.id, total: newBalance, updated_at: new Date().toISOString() },
-          { onConflict: 'user_id' }
-        ),
-        admin.from('points_log').insert({
-          user_id: user.id,
-          delta: -price,
-          reason: `avatar_buy_${itemId}`,
-        }),
-      ]);
+      const { data: deducted } = await admin
+        .from('user_points')
+        .update({ total: balance - price, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .eq('total', balance)   // optimistic lock — matches only if balance unchanged
+        .select('total')
+        .maybeSingle();
+
+      if (!deducted)
+        return NextResponse.json({ error: 'تعارض في العملية، يرجى المحاولة مجدداً' }, { status: 409 });
+
+      newBalance = deducted.total;
+
+      await admin.from('points_log').insert({
+        user_id: user.id,
+        delta:   -price,
+        reason:  `avatar_buy_${itemId}`,
+      });
     }
 
-    await admin.from('avatar_items').insert({
-      user_id: user.id,
-      item_id: itemId,
-      equipped: false,
-    });
+    /* upsert with ignoreDuplicates prevents duplicate row on concurrent requests */
+    await admin
+      .from('avatar_items')
+      .upsert(
+        { user_id: user.id, item_id: itemId, equipped: false },
+        { onConflict: 'user_id,item_id', ignoreDuplicates: true }
+      );
 
     return NextResponse.json({ success: true, newBalance, price_charged: price });
   } catch (e) {
