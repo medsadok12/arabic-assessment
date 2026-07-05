@@ -121,24 +121,25 @@ export async function POST(req) {
     }
   }
 
-  // Invite colleague teacher — info comes directly from frontend, no getUserById needed
-  if (anchorId && invitedTeacher?.id && invitedTeacher?.email) {
-    admin.from('session_teacher_invites')
-      .insert({
-        session_id:    anchorId,
-        teacher_id:    invitedTeacher.id,
-        teacher_email: invitedTeacher.email,
-        teacher_name:  invitedTeacher.name ?? invitedTeacher.email,
-      })
-      .then(() => {
+  // Invite colleague teacher — verify identity from Auth before sending email
+  if (anchorId && invitedTeacher?.id) {
+    try {
+      const { data: { user: verifiedTeacher } } = await admin.auth.admin.getUserById(invitedTeacher.id);
+      if (verifiedTeacher && verifiedTeacher.user_metadata?.role === 'teacher' && verifiedTeacher.email) {
+        await admin.from('session_teacher_invites').insert({
+          session_id:    anchorId,
+          teacher_id:    verifiedTeacher.id,
+          teacher_email: verifiedTeacher.email,
+          teacher_name:  verifiedTeacher.user_metadata?.full_name ?? verifiedTeacher.email,
+        });
         sendTeacherInviteEmail({
-          to:              invitedTeacher.email,
-          teacherName:     invitedTeacher.name ?? invitedTeacher.email,
+          to:              verifiedTeacher.email,
+          teacherName:     verifiedTeacher.user_metadata?.full_name ?? verifiedTeacher.email,
           inviterName:     teacherName,
           sessionDate, startTime, durationMinutes, subject,
         }).catch(() => {});
-      })
-      .catch(() => {});
+      }
+    } catch (_) {}
   }
 
   await notify('session', '📅 حصة جديدة مجدولة',
