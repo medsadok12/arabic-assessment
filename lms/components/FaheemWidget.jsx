@@ -445,7 +445,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
           background: '#fff', borderRadius: 24,
           boxShadow: '0 20px 64px rgba(0,0,0,.22), 0 0 0 1px rgba(124,92,217,.08)',
           display: 'flex', flexDirection: 'column',
-          maxHeight: 'calc(100vh - 40px)',
+          maxHeight: 'calc(100dvh - env(safe-area-inset-top, 20px) - var(--faheem-panel-bottom, 16px) - 24px)',
           animation: 'fSlideUp .3s ease-out',
         }}>
 
