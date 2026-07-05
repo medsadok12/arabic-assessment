@@ -191,7 +191,7 @@ export async function POST(request) {
   const groups = {};
   for (const s of sessions) {
     const key = type === 'teacher_payout'
-      ? `${s.teacher_id ?? s.teacher_name}__${s.teacher_name}__${s.teacher_name}`
+      ? `${s.teacher_id ?? s.teacher_name}__${s.teacher_name}__${s.teacher_email ?? ''}`
       : `${s.student_email}__${s.student_name}__${s.student_email}`;
 
     if (!groups[key]) {
