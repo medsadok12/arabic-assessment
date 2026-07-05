@@ -1,6 +1,6 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
-import { createAdminClient, fetchAllUsers } from '../../../../lib/supabase-admin';
+import { createAdminClient } from '../../../../lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,9 +55,8 @@ export async function GET(req) {
   let assessments = [];
   if (email) {
     try {
-      const users = await fetchAllUsers(admin);
-      const found = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-      if (found) {
+      const { data: { user: found }, error: lookupErr } = await admin.auth.admin.getUserByEmail(email);
+      if (!lookupErr && found) {
         const { data } = await admin
           .from('assessments')
           .select('level, score, completed_at')
