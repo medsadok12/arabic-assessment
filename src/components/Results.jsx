@@ -27,7 +27,7 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, on
     }).catch(() => {});
 
     // Save to LMS dashboard (links result to student account by email)
-    fetch('https://www.aarem.net/api/save-assessment', {
+    fetch(`${import.meta.env.VITE_LMS_URL ?? 'https://www.aarem.net'}/api/save-assessment`, {
       method:  'POST',
       headers: {
         'Content-Type':      'application/json',
