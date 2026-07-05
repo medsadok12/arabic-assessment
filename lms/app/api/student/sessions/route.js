@@ -55,10 +55,10 @@ export async function PATCH(req) {
 
   const admin = createAdminClient();
 
-  // Verify session belongs to this student
+  // Verify session belongs to this student — DB-level check avoids case-sensitivity issues
   const { data: session } = await admin
-    .from('sessions').select('student_email').eq('id', id).single();
-  if (!session || session.student_email !== user.email)
+    .from('sessions').select('id').eq('id', id).eq('student_email', user.email.toLowerCase()).maybeSingle();
+  if (!session)
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const { error } = await admin.from('sessions').update({ rating }).eq('id', id);
