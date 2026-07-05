@@ -792,6 +792,33 @@ export default function DashboardContent({
             );
           })()}
 
+          {/* ── Empty state: no upcoming sessions → nudge toward the library ── */}
+          {upcomingSessions.length === 0 && (
+            <div className="db-sec">
+              <div style={{
+                background: 'linear-gradient(135deg,#fff,#FAF7F2)',
+                border: '2px dashed var(--border)',
+                borderRadius: 16, padding: '30px 22px', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '2.8rem', marginBottom: 8, lineHeight: 1 }}>🚀</div>
+                <div style={{ fontWeight: 900, fontSize: '1.05rem', color: '#1e293b', marginBottom: 6 }}>
+                  لا حصص قادمة الآن — لكنّ المغامرة لا تتوقّف!
+                </div>
+                <div style={{ fontSize: '.9rem', color: 'var(--muted)', marginBottom: 18, lineHeight: 1.7, maxWidth: '38ch', marginInline: 'auto' }}>
+                  اذهب إلى المكتبة والعب لعبةً جديدة، أو اقرأ قصّةً ممتعة، واجمع النقاط 🌟
+                </div>
+                <Link href="/library" style={{
+                  display: 'inline-block', background: 'var(--accent)', color: 'var(--primary)',
+                  fontWeight: 800, fontSize: '.95rem', textDecoration: 'none',
+                  borderRadius: 12, padding: '12px 30px',
+                  boxShadow: '0 4px 14px rgba(232,184,75,.4)',
+                }}>
+                  🎮 إلى المكتبة
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* ── Other upcoming sessions ── */}
           {upcomingSessions.length > 1 && (
             <div className="db-sec">
