@@ -1,4 +1,4 @@
-import { createAdminClient } from '../../../lib/supabase-admin';
+import { createAdminClient, fetchAllUsers } from '../../../lib/supabase-admin';
 
 const CORS = {
   'Access-Control-Allow-Origin':  'https://arabic-assessment.vercel.app',
@@ -26,8 +26,8 @@ export async function POST(request) {
     const supabase = createAdminClient();
 
     // Find the LMS user by email
-    const { data: { users } } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    const user = users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    const users = await fetchAllUsers(supabase);
+    const user = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
     if (!user)
       return Response.json({ ok: false, reason: 'user_not_found' }, { headers: CORS });

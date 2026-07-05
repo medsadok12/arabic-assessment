@@ -1,5 +1,5 @@
 import { createClient }      from '../../../../lib/supabase-server';
-import { createAdminClient } from '../../../../lib/supabase-admin';
+import { createAdminClient, fetchAllUsers } from '../../../../lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,8 +12,9 @@ export async function GET() {
   if (!ALLOWED.includes(user.user_metadata?.role)) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
   const admin = createAdminClient();
-  const { data: { users }, error } = await admin.auth.admin.listUsers({ perPage: 500 });
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  let users;
+  try { users = await fetchAllUsers(admin); }
+  catch (e) { return Response.json({ error: e.message }, { status: 500 }); }
 
   const members = users
     .filter(u => ALLOWED.includes(u.user_metadata?.role) && u.id !== user.id)

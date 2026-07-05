@@ -1,6 +1,6 @@
 import { NextResponse }     from 'next/server';
 import { createClient }    from '../../../../lib/supabase-server';
-import { createAdminClient } from '../../../../lib/supabase-admin';
+import { createAdminClient, fetchAllUsers } from '../../../../lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,8 +22,9 @@ export async function GET(req) {
   const time = searchParams.get('time');
 
   const admin = createAdminClient();
-  const { data: { users }, error } = await admin.auth.admin.listUsers({ perPage: 500 });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  let users;
+  try { users = await fetchAllUsers(admin); }
+  catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 
   const teachers = users
     .filter(u => u.user_metadata?.role === 'teacher' && u.id !== teacher.id)

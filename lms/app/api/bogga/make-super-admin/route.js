@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
-import { createAdminClient } from '../../../../lib/supabase-admin';
+import { createAdminClient, fetchAllUsers } from '../../../../lib/supabase-admin';
 
 export async function POST() {
   const supabase = createClient();
@@ -15,10 +15,11 @@ export async function POST() {
   const admin = createAdminClient();
 
   // Check if a super_admin already exists in the system
-  const { data: { users: allUsers }, error: listErr } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 });
+  let allUsers;
+  try { allUsers = await fetchAllUsers(admin); }
+  catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 
-  const existingSuperAdmin = allUsers?.find(
+  const existingSuperAdmin = allUsers.find(
     u => u.user_metadata?.role === 'super_admin' && u.id !== user.id
   );
   if (existingSuperAdmin) {

@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '../../../lib/supabase-admin';
+import { createAdminClient, fetchAllUsers } from '../../../lib/supabase-admin';
 
 function destForRole(role) {
   if (role === 'super_admin' || role === 'admin') return '/bogga';
@@ -77,7 +77,7 @@ export async function GET(request) {
       // تحقق أولاً إن كان مسجّلاً بنفس الإيميل عبر طريقة أخرى
       try {
         const admin = createAdminClient();
-        const { data: { users: all } } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        const all = await fetchAllUsers(admin);
         const existing = all.find(u =>
           u.email === user.email &&
           u.id    !== user.id   &&

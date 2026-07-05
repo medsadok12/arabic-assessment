@@ -1,6 +1,6 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../../lib/supabase-server';
-import { createAdminClient } from '../../../../../lib/supabase-admin';
+import { createAdminClient, fetchAllUsers } from '../../../../../lib/supabase-admin';
 
 function generateTempPassword() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
@@ -17,8 +17,9 @@ export async function POST() {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
 
   const admin = createAdminClient();
-  const { data: { users }, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  let users;
+  try { users = await fetchAllUsers(admin); }
+  catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 
   // Only users without a stored temp_password (and not super_admin)
   const targets = users.filter(u =>

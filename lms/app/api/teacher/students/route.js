@@ -1,6 +1,6 @@
 import { NextResponse }     from 'next/server';
 import { createClient }    from '../../../../lib/supabase-server';
-import { createAdminClient } from '../../../../lib/supabase-admin';
+import { createAdminClient, fetchAllUsers } from '../../../../lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +52,7 @@ export async function GET() {
   const emails = Object.values(map).filter(s => s.email).map(s => s.email);
   if (emails.length > 0) {
     try {
-      const { data: { users } } = await admin.auth.admin.listUsers({ perPage: 1000 });
+      const users = await fetchAllUsers(admin);
       const emailToId = {};
       users?.forEach(u => { if (emails.includes(u.email)) emailToId[u.email] = u.id; });
 

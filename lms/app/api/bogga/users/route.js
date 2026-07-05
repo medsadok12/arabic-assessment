@@ -1,6 +1,6 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
-import { createAdminClient } from '../../../../lib/supabase-admin';
+import { createAdminClient, fetchAllUsers } from '../../../../lib/supabase-admin';
 
 // GET — list all users (students, teachers, supervisors)
 export async function GET() {
@@ -11,8 +11,9 @@ export async function GET() {
   }
 
   const admin = createAdminClient();
-  const { data: { users }, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  let users;
+  try { users = await fetchAllUsers(admin); }
+  catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 
   const list = users
     .filter(u => u.user_metadata?.role !== 'super_admin')

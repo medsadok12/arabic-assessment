@@ -1,5 +1,5 @@
 import { createClient }     from '../../../../lib/supabase-server';
-import { createAdminClient } from '../../../../lib/supabase-admin';
+import { createAdminClient, fetchAllUsers } from '../../../../lib/supabase-admin';
 
 // ── auth helper ─────────────────────────────────────────────────────────────
 async function requireAdmin(req) {
@@ -223,8 +223,7 @@ export async function POST(request) {
     // 1. Fetch all auth users once — needed for name-based fallback
     let allUsers = [];
     try {
-      const { data: { users } = {} } = await admin.auth.admin.listUsers({ perPage: 1000 });
-      allUsers = users ?? [];
+      allUsers = await fetchAllUsers(admin);
     } catch (_) {}
 
     // Build name → email map from user metadata

@@ -1,4 +1,4 @@
-import { createAdminClient } from './supabase-admin';
+import { createAdminClient, fetchAllUsers } from './supabase-admin';
 
 // Global notification (admin/super_admin only, recipient_id = NULL)
 export async function notify(type, title, body = null, meta = null) {
@@ -12,7 +12,7 @@ export async function notify(type, title, body = null, meta = null) {
 export async function notifyByRole(roles, type, title, body = null, link = null, excludeId = null) {
   try {
     const admin = createAdminClient();
-    const { data: { users } } = await admin.auth.admin.listUsers({ perPage: 1000 });
+    const users = await fetchAllUsers(admin);
     const targets = users.filter(u =>
       roles.includes(u.user_metadata?.role) &&
       u.user_metadata?.status !== 'suspended' &&

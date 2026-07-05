@@ -1,6 +1,6 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
-import { createAdminClient } from '../../../../lib/supabase-admin';
+import { createAdminClient, fetchAllUsers } from '../../../../lib/supabase-admin';
 import { sendWelcomeEmail }  from '../../../../lib/email';
 
 const MAX_ADMINS = 2;
@@ -21,8 +21,9 @@ export async function GET() {
   }
 
   const admin = createAdminClient();
-  const { data: { users }, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  let users;
+  try { users = await fetchAllUsers(admin); }
+  catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 
   const admins = users
     .filter(u => u.user_metadata?.role === 'admin')
@@ -53,8 +54,8 @@ export async function POST(req) {
   const admin = createAdminClient();
 
   // Enforce max 2 admins
-  const { data: { users: allUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  const currentAdmins = allUsers?.filter(u => u.user_metadata?.role === 'admin') ?? [];
+  const allUsers = await fetchAllUsers(admin).catch(() => []);
+  const currentAdmins = allUsers.filter(u => u.user_metadata?.role === 'admin');
   if (currentAdmins.length >= MAX_ADMINS) {
     return NextResponse.json({
       error: `الحد الأقصى للمشرفين المساعدين هو ${MAX_ADMINS} حسابات فقط. احذف مشرفاً حالياً أولاً.`,
