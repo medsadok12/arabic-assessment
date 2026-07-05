@@ -51,7 +51,14 @@ export async function PATCH(req) {
   const isAdmin = ADMIN_ROLES.includes(user.user_metadata?.role);
 
   if (body.id) {
-    await admin.from('notifications').update({ is_read: true }).eq('id', body.id);
+    const filter = isAdmin
+      ? `recipient_id.is.null,recipient_id.eq.${user.id}`
+      : `recipient_id.eq.${user.id}`;
+    await admin
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', body.id)
+      .or(filter);
   } else {
     const filter = isAdmin
       ? `recipient_id.is.null,recipient_id.eq.${user.id}`
