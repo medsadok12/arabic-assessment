@@ -28,11 +28,11 @@ function fmtLocal(d) {
 
 // يُستدعى كل 5 دقائق — يُرسل تذكيراً عاجلاً للمعلم في صندوق الرسائل
 export async function GET(req) {
-  const authHeader = req.headers.get('authorization');
-  const cronSecret = req.headers.get('x-cron-secret');
-  const vercelAuth = authHeader === `Bearer ${process.env.CRON_SECRET}`;
-  const manualAuth = cronSecret === process.env.CRON_SECRET;
-  if (process.env.CRON_SECRET && !vercelAuth && !manualAuth)
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+  const vercelAuth = req.headers.get('authorization') === `Bearer ${secret}`;
+  const manualAuth = req.headers.get('x-cron-secret') === secret;
+  if (!vercelAuth && !manualAuth)
     return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
   const admin = createAdminClient();
