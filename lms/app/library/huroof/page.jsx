@@ -74,141 +74,149 @@ function LetterCard({ data, index, active, onToggle }) {
   const pal = PALETTE[index % PALETTE.length];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', fontFamily:'inherit' }}>
-      {/* ── Letter button ── */}
-      <button
-        onClick={() => { speak(data.name); onToggle(index); }}
-        style={{
-          background: active
-            ? `linear-gradient(145deg, ${pal.main}, ${pal.main}dd)`
-            : pal.light,
-          border: `2.5px solid ${pal.main}`,
-          borderRadius: active ? '16px 16px 0 0' : 16,
-          padding: '22px 8px 14px',
-          cursor: 'pointer',
-          transition: 'all .22s ease',
-          transform: active ? 'scale(1.03)' : 'scale(1)',
-          boxShadow: active
-            ? `0 8px 24px ${pal.main}45, inset 0 1px 0 rgba(255,255,255,.25)`
-            : '0 2px 8px rgba(0,0,0,.07)',
-          textAlign: 'center',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {active && (
-          <div style={{
-            position: 'absolute', inset: 0, borderRadius: '14px 14px 0 0',
-            background: 'radial-gradient(circle at 50% 40%, rgba(255,255,255,.22), transparent 70%)',
-            pointerEvents: 'none',
-          }} />
-        )}
-        {/* Letter */}
+    <button
+      onClick={() => { speak(data.name); onToggle(index); }}
+      style={{
+        background: active
+          ? `linear-gradient(145deg, ${pal.main}, ${pal.main}dd)`
+          : pal.light,
+        border: `2.5px solid ${pal.main}`,
+        borderRadius: 16,
+        padding: '22px 8px 14px',
+        cursor: 'pointer',
+        transition: 'all .22s ease',
+        transform: active ? 'scale(1.06)' : 'scale(1)',
+        boxShadow: active
+          ? `0 8px 24px ${pal.main}55, inset 0 1px 0 rgba(255,255,255,.25)`
+          : '0 2px 8px rgba(0,0,0,.07)',
+        textAlign: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        fontFamily: 'inherit',
+        width: '100%',
+      }}
+    >
+      {active && (
         <div style={{
-          fontSize: '2.7rem',
-          fontWeight: 900,
-          color: active ? '#fff' : pal.main,
-          lineHeight: 1,
-          marginBottom: 7,
-          textShadow: active ? '0 2px 8px rgba(0,0,0,.2)' : 'none',
-          transition: 'color .22s',
+          position: 'absolute', inset: 0, borderRadius: 14,
+          background: 'radial-gradient(circle at 50% 40%, rgba(255,255,255,.22), transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+      )}
+      <div style={{
+        fontSize: '2.7rem', fontWeight: 900,
+        color: active ? '#fff' : pal.main,
+        lineHeight: 1, marginBottom: 7,
+        textShadow: active ? '0 2px 8px rgba(0,0,0,.2)' : 'none',
+        transition: 'color .22s',
+      }}>
+        {data.l}
+      </div>
+      <div style={{
+        fontSize: '.68rem', color: active ? 'rgba(255,255,255,.88)' : '#64748b',
+        fontWeight: 700, letterSpacing: '.01em', transition: 'color .22s',
+      }}>
+        {data.name}
+      </div>
+      {!active && (
+        <div style={{
+          position: 'absolute', top: 7, left: 8,
+          width: 7, height: 7, borderRadius: '50%',
+          background: pal.main, opacity: .35,
+        }} />
+      )}
+    </button>
+  );
+}
+
+/* ── Bottom sheet shown when a letter is selected ── */
+function LetterSheet({ data, index, onClose }) {
+  const pal = PALETTE[index % PALETTE.length];
+  return (
+    <>
+      {/* backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,.45)',
+          backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
+          animation: 'hfFadeIn .2s ease',
+        }}
+      />
+      {/* sheet */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1001,
+        background: '#fff',
+        borderRadius: '24px 24px 0 0',
+        padding: '20px 24px 40px',
+        textAlign: 'center',
+        fontFamily: "'Cairo','Tajawal',sans-serif",
+        direction: 'rtl',
+        animation: 'hfSlideUp .28s cubic-bezier(.4,0,.2,1)',
+        boxShadow: '0 -8px 40px rgba(0,0,0,.18)',
+        maxWidth: 520,
+        margin: '0 auto',
+      }}>
+        {/* drag handle */}
+        <div style={{ width: 40, height: 4, background: '#e2e8f0', borderRadius: 99, margin: '0 auto 20px' }} />
+
+        {/* letter badge */}
+        <div style={{
+          width: 88, height: 88, borderRadius: '50%', margin: '0 auto 16px',
+          background: `linear-gradient(145deg, ${pal.main}, ${pal.main}cc)`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '3rem', fontWeight: 900, color: '#fff',
+          boxShadow: `0 8px 24px ${pal.main}50`,
         }}>
           {data.l}
         </div>
-        {/* Name */}
-        <div style={{
-          fontSize: '.68rem',
-          color: active ? 'rgba(255,255,255,.88)' : '#64748b',
-          fontWeight: 700,
-          letterSpacing: '.01em',
-          transition: 'color .22s',
-        }}>
+        <div style={{ fontSize: '.9rem', color: pal.main, fontWeight: 700, marginBottom: 18 }}>
           {data.name}
         </div>
-        {/* Seen dot */}
-        {!active && (
-          <div style={{
-            position: 'absolute', top: 7, left: 8,
-            width: 7, height: 7, borderRadius: '50%',
-            background: pal.main, opacity: .35,
-          }} />
-        )}
-      </button>
 
-      {/* ── Expanded panel ── */}
-      {active && (
+        {/* emoji */}
         <div style={{
-          background: '#fff',
-          border: `2.5px solid ${pal.main}`,
-          borderTop: 'none',
-          borderRadius: '0 0 16px 16px',
-          padding: '18px 12px 16px',
-          textAlign: 'center',
-          animation: 'hfDown .22s ease',
+          fontSize: '4rem', lineHeight: 1, marginBottom: 12,
+          filter: 'drop-shadow(0 4px 8px rgba(0,0,0,.12))',
         }}>
-          {/* Emoji illustration */}
-          <div style={{
-            fontSize: '3.2rem',
-            lineHeight: 1,
-            marginBottom: 10,
-            filter: 'drop-shadow(0 3px 6px rgba(0,0,0,.12))',
-          }}>
-            {data.emoji}
-          </div>
-
-          {/* Word */}
-          <div style={{
-            fontSize: '1.3rem',
-            fontWeight: 900,
-            color: pal.main,
-            marginBottom: 6,
-            letterSpacing: '.01em',
-          }}>
-            {data.word}
-          </div>
-
-          {/* Sentence */}
-          <div style={{
-            fontSize: '.77rem',
-            color: '#475569',
-            lineHeight: 1.9,
-            marginBottom: 13,
-            padding: '0 4px',
-            background: '#f8faff',
-            borderRadius: 8,
-            padding: '8px 10px',
-            border: `1px solid ${pal.main}22`,
-          }}>
-            {data.sentence}
-          </div>
-
-          {/* Listen button */}
-          <button
-            onClick={e => { e.stopPropagation(); speak(`${data.word}. ${data.sentence}`); }}
-            style={{
-              background: `linear-gradient(135deg, ${pal.main}, ${pal.main}cc)`,
-              color: '#fff',
-              border: 'none',
-              borderRadius: 10,
-              padding: '7px 16px',
-              fontSize: '.78rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              boxShadow: `0 3px 10px ${pal.main}40`,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              transition: 'opacity .15s, transform .15s',
-            }}
-            onMouseOver={e => { e.currentTarget.style.opacity = '.88'; e.currentTarget.style.transform = 'scale(1.04)'; }}
-            onMouseOut={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; }}
-          >
-            🔊 <span>استمع</span>
-          </button>
+          {data.emoji}
         </div>
-      )}
-    </div>
+
+        {/* word */}
+        <div style={{
+          fontSize: '1.7rem', fontWeight: 900, color: pal.main, marginBottom: 12,
+        }}>
+          {data.word}
+        </div>
+
+        {/* sentence */}
+        <div style={{
+          fontSize: '.88rem', color: '#475569', lineHeight: 2,
+          background: '#f8faff', borderRadius: 12,
+          padding: '12px 16px', marginBottom: 20,
+          border: `1.5px solid ${pal.main}20`,
+        }}>
+          {data.sentence}
+        </div>
+
+        {/* listen button */}
+        <button
+          onClick={() => speak(`${data.word}. ${data.sentence}`)}
+          style={{
+            background: `linear-gradient(135deg, ${pal.main}, ${pal.main}cc)`,
+            color: '#fff', border: 'none', borderRadius: 14,
+            padding: '13px 32px', fontSize: '1rem', fontWeight: 800,
+            cursor: 'pointer', fontFamily: 'inherit',
+            boxShadow: `0 4px 14px ${pal.main}50`,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            width: '100%', justifyContent: 'center',
+          }}
+        >
+          🔊 استمع
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -258,6 +266,14 @@ export default function HuroofPage() {
             @keyframes hfDown {
               from { opacity:0; transform:translateY(-8px); }
               to   { opacity:1; transform:translateY(0); }
+            }
+            @keyframes hfFadeIn {
+              from { opacity:0; }
+              to   { opacity:1; }
+            }
+            @keyframes hfSlideUp {
+              from { transform:translateY(100%); }
+              to   { transform:translateY(0); }
             }
             /* 28 ÷ 7 = 4 equal rows on desktop, 28 ÷ 4 = 7 equal rows on mobile */
             .huroof-grid { grid-template-columns: repeat(7, 1fr); }
@@ -336,10 +352,15 @@ export default function HuroofPage() {
             textAlign: 'center', color: '#94a3b8',
             fontSize: '.76rem', marginTop: 30, lineHeight: 1.8,
           }}>
-            💡 اضغط الحرف مرة أخرى لإغلاقه · زر 🔊 يقرأ الكلمة والجملة كاملة
+            💡 اضغط على أي حرف لفتح التفاصيل · زر 🔊 يقرأ الكلمة والجملة كاملة
           </p>
         </div>
       </main>
+
+      {/* Bottom sheet — rendered outside grid so it never breaks layout */}
+      {active !== null && (
+        <LetterSheet data={LETTERS[active]} index={active} onClose={() => setActive(null)} />
+      )}
     </>
   );
 }
