@@ -1,4 +1,4 @@
-const CACHE = 'aarem-v2';
+const CACHE = 'aarem-v3';
 
 const PRECACHE = [
   '/',
@@ -34,23 +34,16 @@ self.addEventListener('fetch', e => {
   // API + Supabase: network only (no caching)
   if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase')) return;
 
-  // Navigation (HTML pages): network-first → cache fallback
+  // Navigation (HTML pages): NETWORK ONLY — الصفحات لا تُخزَّن أبداً في كاش الـSW.
+  // فقط عند انقطاع الإنترنت فعلياً نعرض الهيكل المخزَّن مسبقاً كي لا تظهر شاشة خطأ.
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request)
-        .then(res => {
-          if (res.ok) {
-            const clone = res.clone();
-            caches.open(CACHE).then(c => c.put(e.request, clone));
-          }
-          return res;
-        })
-        .catch(() => caches.match(e.request) || caches.match('/'))
+      fetch(e.request).catch(() => caches.match('/'))
     );
     return;
   }
 
-  // Static assets: cache-first → network fallback
+  // Static assets (hashed, immutable): cache-first → network fallback
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
