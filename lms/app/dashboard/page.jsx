@@ -9,18 +9,36 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/auth/login');
 
-  const { data: assessments } = await supabase
-    .from('assessments')
-    .select('id, level, score, completed_at, student_name')
-    .eq('user_id', user.id)
-    .order('completed_at', { ascending: false })
-    .limit(50);
-
   const role      = user.user_metadata?.role ?? 'student';
   const isStudent = role === 'student';
 
-  // المدير لا يحتاج لوحة الطالب — أعد توجيهه فوراً
   if (role === 'admin') redirect('/admin');
+
+  const [{ data: assessments }, { data: rawSessions }] = await Promise.all([
+    supabase
+      .from('assessments')
+      .select('id, level, score, completed_at, student_name')
+      .eq('user_id', user.id)
+      .order('completed_at', { ascending: false })
+      .limit(50),
+    supabase
+      .from('sessions')
+      .select('id, session_date, attended, status')
+      .eq('student_email', user.email)
+      .neq('status', 'cancelled'),
+  ]);
+
+  // حساب الحضور الصحيح
+  const todayStr = new Date().toISOString().split('T')[0];
+  const countedSessions = (rawSessions ?? []).filter(s =>
+    s.attended !== null || s.session_date <= todayStr
+  );
+  const attendedCount  = countedSessions.filter(s => s.attended === true).length;
+  const totalSessions  = countedSessions.length;
+  const absentCount    = totalSessions - attendedCount;
+  const attendanceRate = totalSessions > 0
+    ? Math.round((attendedCount / totalSessions) * 100)
+    : null;
 
   const avgScore = assessments?.length
     ? Math.round(assessments.reduce((s, a) => s + (a.score ?? 0), 0) / assessments.length)
@@ -72,6 +90,49 @@ export default async function DashboardPage() {
               </div>
             ))}
           </div>
+
+          {/* Attendance */}
+          {totalSessions > 0 && (
+            <div className="dash-section">
+              <div className="dash-section-title">نسبة الحضور 📅</div>
+              <div className="card" style={{ padding: '20px 24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+                  {/* النسبة المئوية */}
+                  <div style={{ textAlign: 'center', minWidth: 80 }}>
+                    <div style={{
+                      fontSize: '2.2rem', fontWeight: 800,
+                      color: attendanceRate >= 75 ? '#2e7d32' : attendanceRate >= 50 ? '#e65100' : '#c62828',
+                    }}>
+                      {attendanceRate}%
+                    </div>
+                    <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginTop: 2 }}>نسبة الحضور</div>
+                  </div>
+
+                  {/* شريط التقدم */}
+                  <div style={{ flex: 1, minWidth: 160 }}>
+                    <div style={{ background: '#e0e0e0', borderRadius: 8, height: 10, overflow: 'hidden' }}>
+                      <div style={{
+                        width: `${attendanceRate}%`, height: '100%', borderRadius: 8,
+                        background: attendanceRate >= 75 ? '#4caf50' : attendanceRate >= 50 ? '#ff9800' : '#f44336',
+                        transition: 'width .4s',
+                      }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, gap: 12, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '.82rem', color: '#2e7d32', fontWeight: 600 }}>
+                        ✅ حضر: {attendedCount}
+                      </span>
+                      <span style={{ fontSize: '.82rem', color: '#c62828', fontWeight: 600 }}>
+                        ❌ غاب: {absentCount}
+                      </span>
+                      <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>
+                        إجمالي الحصص المنقضية: {totalSessions}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Quick Actions */}
           <div className="dash-section">
