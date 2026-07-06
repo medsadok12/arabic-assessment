@@ -21,14 +21,37 @@ export default function PWAInstall() {
     checkMobile();
     window.addEventListener('resize', checkMobile);
 
-    // Already installed as standalone — don't show
-    if (window.matchMedia('(display-mode: standalone)').matches) return;
-
-    // Dismissed within 5 days — skip
-    const ts = localStorage.getItem('pwa-dismiss');
-    if (ts && Date.now() - Number(ts) < 5 * 864e5) {
-      return () => window.removeEventListener('resize', checkMobile);
+    // تسجيل الـService Worker واكتشاف الإصدارات الجديدة — دائماً وبلا أي شرط.
+    // (خلل سابق مُصلَح: كان هذا الجزء خلف شرط pwa-dismiss، فأي مستخدم أغلق
+    // بطاقة التثبيت خلال 5 أيام لا يصله إشعار "يوجد إصدار جديد" إطلاقاً،
+    // وتبقى تبويباته المفتوحة على نسخة قديمة بلا أي تنبيه)
+    let swInterval;
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        if (reg.waiting) { setShowUpdate(true); return; }
+        reg.addEventListener('updatefound', () => {
+          const sw = reg.installing;
+          sw?.addEventListener('statechange', () => {
+            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+              setShowUpdate(true);
+            }
+          });
+        });
+        swInterval = setInterval(() => reg.update(), 60_000);
+      }).catch(() => {});
     }
+
+    const baseCleanup = () => {
+      window.removeEventListener('resize', checkMobile);
+      if (swInterval) clearInterval(swInterval);
+    };
+
+    // Already installed as standalone — don't show the install UI
+    if (window.matchMedia('(display-mode: standalone)').matches) return baseCleanup;
+
+    // Dismissed within 5 days — skip the install prompt only (not SW updates)
+    const ts = localStorage.getItem('pwa-dismiss');
+    if (ts && Date.now() - Number(ts) < 5 * 864e5) return baseCleanup;
 
     // Detect iOS Safari (no beforeinstallprompt support)
     const ua     = navigator.userAgent;
@@ -49,24 +72,8 @@ export default function PWAInstall() {
       setTimeout(() => { setShowInstall(true); setTimeout(() => setVisible(true), 30); }, 5000);
     }
 
-    // Register Service Worker + detect updates
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').then(reg => {
-        if (reg.waiting) { setShowUpdate(true); return; }
-        reg.addEventListener('updatefound', () => {
-          const sw = reg.installing;
-          sw?.addEventListener('statechange', () => {
-            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-              setShowUpdate(true);
-            }
-          });
-        });
-        setInterval(() => reg.update(), 60_000);
-      }).catch(() => {});
-    }
-
     return () => {
-      window.removeEventListener('resize', checkMobile);
+      baseCleanup();
       window.removeEventListener('beforeinstallprompt', handler);
     };
   }, []);
@@ -87,8 +94,10 @@ export default function PWAInstall() {
   }
 
   function applyUpdate() {
-    navigator.serviceWorker.controller?.postMessage('skipWaiting');
-    navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+    // الـSW الجديد يفعّل نفسه ذاتياً (skipWaiting في install)، فقد يكون
+    // controllerchange وقع قبل الضغط — إعادة التحميل المباشرة هي الضمانة
+    try { navigator.serviceWorker.controller?.postMessage('skipWaiting'); } catch {}
+    setTimeout(() => window.location.reload(), 250);
   }
 
   // Don't render anything until client is mounted (prevents hydration mismatch)
