@@ -14,16 +14,40 @@ export default function WordOfDay() {
 
   useEffect(() => {
     let alive = true;
-    // ?t=... عنوان فريد لكل تحميل → لا يجد الـCDN نسخة محفوظة فيقرأ حيّاً من قاعدة البيانات
-    fetch(`/api/word-of-day?t=${Date.now()}`, { cache: 'no-store' })
-      .then(r => r.json())
-      .then(d => {
-        if (!alive || !d.word) return;
-        setWord(d.word);
-        setDate(d.date || new Date().toISOString().slice(0, 10));
-      })
-      .catch(() => {});
-    return () => { alive = false; audioRef.current?.pause(); };
+
+    // قراءة حيّة دائماً: ?t=... عنوان فريد لكل طلب → لا يجد الـCDN نسخة محفوظة
+    // فيقرأ من قاعدة البيانات مباشرة في كل مرة.
+    const load = () => {
+      fetch(`/api/word-of-day?t=${Date.now()}`, { cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => {
+          if (!alive) return;
+          // d.word === null → الكلمة حُذفت من الإدارة → تختفي البطاقة فوراً
+          setWord(d.word ?? null);
+          if (d.word) setDate(d.date || new Date().toISOString().slice(0, 10));
+        })
+        .catch(() => {});
+    };
+
+    load();
+
+    // تصحيح ذاتي للتبويبات المفتوحة منذ وقت طويل: أي إضافة/حذف/تعديل من
+    // لوحة الإدارة يظهر فور العودة للتبويب، أو خلال دقيقة على الأكثر —
+    // دون الحاجة لإعادة تحميل الصفحة يدوياً.
+    const onWake = () => { if (document.visibilityState !== 'hidden') load(); };
+    document.addEventListener('visibilitychange', onWake);
+    window.addEventListener('focus', onWake);
+    window.addEventListener('pageshow', onWake); // يشمل الاستعادة من ذاكرة الرجوع (BFCache)
+    const iv = setInterval(onWake, 60_000);
+
+    return () => {
+      alive = false;
+      clearInterval(iv);
+      document.removeEventListener('visibilitychange', onWake);
+      window.removeEventListener('focus', onWake);
+      window.removeEventListener('pageshow', onWake);
+      audioRef.current?.pause();
+    };
   }, []);
 
   function listen() {
