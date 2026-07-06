@@ -42,45 +42,58 @@ export async function POST(req) {
       );
     }
 
-    // ── Step 2: create account + send verification email ─────────────────────
-    // generateLink(type:'signup') creates the user UNCONFIRMED and sends the
-    // verification email via Supabase's configured mailer in one atomic call.
-    // The user can only access protected routes after clicking the link.
+    // ── Step 2: create account (unconfirmed) ──────────────────────────────────
+    // Use admin createUser WITHOUT email_confirm so the account is created but
+    // the email is NOT confirmed yet. We then trigger the verification email via
+    // Supabase's /auth/v1/resend endpoint (the public endpoint that actually
+    // sends the mail — generateLink only returns the link without sending it).
     const host       = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'www.aarem.net';
     const proto      = host.startsWith('localhost') || host.startsWith('127.') ? 'http' : 'https';
     const redirectTo = `${proto}://${host}/auth/callback?for=student`;
 
-    const { data: linkData, error: createErr } = await admin.auth.admin.generateLink({
-      type:     'signup',
-      email:    lowerEmail,
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email:         lowerEmail,
       password,
-      options:  {
-        data: {
-          full_name:           name.trim(),
-          role:                'student',
-          age:                 age.toString().trim(),
-          grade:               grade || null,
-          onboarding_complete: true,
-        },
-        redirectTo,
+      email_confirm: false,
+      user_metadata: {
+        full_name:           name.trim(),
+        role:                'student',
+        age:                 age.toString().trim(),
+        grade:               grade || null,
+        onboarding_complete: true,
       },
     });
 
     if (createErr) {
       const msg = createErr.message ?? '';
-      if (
-        msg.includes('already registered') ||
-        msg.includes('already been registered') ||
-        msg.includes('already confirmed') ||
-        msg.includes('email address is already registered')
-      ) {
+      if (msg.includes('already registered') || msg.includes('already been registered')) {
         return NextResponse.json({ error: 'هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول' }, { status: 409 });
       }
-      console.error('[register] generateLink error:', msg);
+      console.error('[register] createUser error:', msg);
       return NextResponse.json({ error: 'حدث خطأ أثناء إنشاء الحساب — يرجى المحاولة مجدداً أو التواصل مع إدارة الأكاديمية' }, { status: 500 });
     }
 
-    const userId = linkData?.user?.id;
+    const userId = created?.user?.id;
+
+    // ── Step 2b: trigger verification email via Supabase's resend endpoint ────
+    // generateLink only RETURNS the link — it never sends it. The resend endpoint
+    // is the correct mechanism to have Supabase mail the confirmation link.
+    await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/resend`, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey':       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        type:                 'signup',
+        email:                lowerEmail,
+        gotrue_meta_security: {},
+        redirect_to:          redirectTo,
+      }),
+    }).catch(() => {
+      // If the send fails (rate limit / SMTP error), the user can still
+      // request a resend via the button on /auth/verify-email.
+    });
 
     // ── Step 3: consume code atomically ──────────────────────────────────────
     const { data: consumed } = await admin
