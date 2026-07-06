@@ -4,6 +4,9 @@ const ASSESSMENT_URL = 'https://arabic-assessment.vercel.app';
 const nextConfig = {
   images: {
     remotePatterns: [],
+    // Next.js يضغط الصور تلقائياً عند تقديمها عبر <Image />
+    formats: ['image/webp'],
+    minimumCacheTTL: 86400,
   },
   async rewrites() {
     return [

@@ -1,8 +1,13 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '../../lib/supabase-server';
+import { createAdminClient } from '../../lib/supabase-admin';
 import Navbar from '../../components/Navbar';
 import ParentPanel from '../../components/ParentPanel';
+
+// كل طلب يجلب بيانات طازجة — لا كاش أبداً
+export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const supabase = createClient();
@@ -14,7 +19,9 @@ export default async function DashboardPage() {
 
   if (role === 'admin') redirect('/admin');
 
-  const [{ data: assessments }, { data: rawSessions }] = await Promise.all([
+  const adminSupabase = createAdminClient();
+
+  const [{ data: assessments }, { data: rawSessions }, { data: lexiconWords }] = await Promise.all([
     supabase
       .from('assessments')
       .select('id, level, score, completed_at, student_name')
@@ -26,7 +33,17 @@ export default async function DashboardPage() {
       .select('id, session_date, attended, status')
       .eq('student_email', user.email)
       .neq('status', 'cancelled'),
+    adminSupabase
+      .from('lexicon_words')
+      .select('id, word, word_type, sentence, syllables, topic, has_image, has_audio')
+      .order('created_at', { ascending: true }),
   ]);
+
+  // كلمة اليوم — اختيار حتمي بناءً على التاريخ (نفس الكلمة لكل المستخدمين)
+  const epochDays  = Math.floor(Date.now() / 86400000);
+  const wordOfDay  = lexiconWords?.length
+    ? lexiconWords[epochDays % lexiconWords.length]
+    : null;
 
   // حساب الحضور الصحيح
   const todayStr = new Date().toISOString().split('T')[0];
@@ -129,6 +146,48 @@ export default async function DashboardPage() {
                       </span>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* كلمة اليوم */}
+          {wordOfDay && (
+            <div className="dash-section">
+              <div className="dash-section-title">✨ كلمة اليوم</div>
+              <div className="card" style={{ padding: '24px', display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                {wordOfDay.has_image && (
+                  <div style={{ flexShrink: 0 }}>
+                    <Image
+                      src={`/api/word-image/${wordOfDay.id}`}
+                      alt={wordOfDay.word}
+                      width={120}
+                      height={120}
+                      style={{ borderRadius: 12, objectFit: 'cover' }}
+                    />
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>
+                    {wordOfDay.word}
+                  </div>
+                  <div style={{ fontSize: '.85rem', color: 'var(--muted)', marginTop: 4 }}>
+                    {wordOfDay.word_type}
+                    {wordOfDay.topic && ` · ${wordOfDay.topic}`}
+                  </div>
+                  {wordOfDay.syllables && (
+                    <div style={{ marginTop: 8, fontSize: '1rem', color: '#1565c0', fontWeight: 600, letterSpacing: 2 }}>
+                      {wordOfDay.syllables}
+                    </div>
+                  )}
+                  {wordOfDay.sentence && (
+                    <div style={{
+                      marginTop: 12, padding: '10px 14px', background: 'var(--bg)',
+                      borderRadius: 8, fontSize: '.95rem', color: 'var(--text)', fontStyle: 'italic',
+                    }}>
+                      "{wordOfDay.sentence}"
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
