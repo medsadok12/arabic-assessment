@@ -16,7 +16,7 @@ export async function GET() {
       .order('id', { ascending: true });
 
     if (error || !data?.length) {
-      return NextResponse.json({ word: null }, { headers: { 'Cache-Control': 'public, s-maxage=60' } });
+      return NextResponse.json({ word: null }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
     // Deterministic rotation: index = whole days since epoch, modulo the word count.
@@ -25,9 +25,9 @@ export async function GET() {
 
     return NextResponse.json(
       { word: pick, date: new Date().toISOString().slice(0, 10) },
-      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } }
+      { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch {
-    return NextResponse.json({ word: null }, { headers: { 'Cache-Control': 'public, s-maxage=60' } });
+    return NextResponse.json({ word: null }, { headers: { 'Cache-Control': 'no-store' } });
   }
 }

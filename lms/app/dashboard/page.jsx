@@ -3,6 +3,8 @@ import { createClient } from '../../lib/supabase-server';
 import { createAdminClient } from '../../lib/supabase-admin';
 import DashboardContent from '../../components/DashboardContent';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage() {
   let user;
   const supabase = createClient();
@@ -66,9 +68,10 @@ export default async function DashboardPage() {
       .then(r => r.error ? { data: [] } : r),
     admin
       .from('sessions')
-      .select('id, attended')
+      .select('id, session_date, attended')
       .eq('student_email', email)
-      .not('attended', 'is', null)
+      .neq('status', 'cancelled')
+      .lte('session_date', today)
       .limit(100)
       .then(r => r.error ? { data: [] } : r),
     admin
