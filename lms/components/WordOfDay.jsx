@@ -1,30 +1,47 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 /* «كلمة اليوم» — a light daily habit on the student dashboard: one word from the
    lexicon, the same for everyone each day, spoken in Fahim's voice, worth a small
    point the first time the child listens (server dedups by daily_word:DATE). */
 export default function WordOfDay() {
+  const router = useRouter();
   const [word,    setWord]    = useState(null);
   const [date,    setDate]    = useState('');
   const [playing, setPlaying] = useState(false);
   const [earned,  setEarned]  = useState(false);
   const [justGot, setJustGot] = useState(false);
-  const audioRef = useRef(null);
+  const audioRef       = useRef(null);
+  const dateRef        = useRef('');
+  const lastRefreshRef = useRef(0);
 
   useEffect(() => {
     let alive = true;
 
+    // تنظيف وقائي: أي مفاتيح تخزين محلي قديمة خاصة بكلمة اليوم تُمسح نهائياً —
+    // الحالة الوحيدة المسموح بها هي ما يُجلب حيّاً من الخادم الآن.
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('wod') || k.startsWith('word-of-day') || k.startsWith('daily_word'))
+        .forEach(k => localStorage.removeItem(k));
+    } catch {}
+
     // قراءة حيّة دائماً: ?t=... عنوان فريد لكل طلب → لا يجد الـCDN نسخة محفوظة
-    // فيقرأ من قاعدة البيانات مباشرة في كل مرة.
+    // فيقرأ من قاعدة البيانات مباشرة في كل مرة. الحالة تُستبدل بالكامل من
+    // الخادم في كل جلب — لا شيء "يلتصق" من جلب سابق.
     const load = () => {
       fetch(`/api/word-of-day?t=${Date.now()}`, { cache: 'no-store' })
         .then(r => r.json())
         .then(d => {
           if (!alive) return;
+          const freshDate = d.word ? (d.date || new Date().toISOString().slice(0, 10)) : '';
+          // تغيّر اليوم → تصفير حالة "النقطة المكتسبة" لبدء يوم جديد نظيف
+          if (freshDate && dateRef.current && freshDate !== dateRef.current) setEarned(false);
+          dateRef.current = freshDate;
           // d.word === null → الكلمة حُذفت من الإدارة → تختفي البطاقة فوراً
           setWord(d.word ?? null);
-          if (d.word) setDate(d.date || new Date().toISOString().slice(0, 10));
+          setDate(freshDate);
         })
         .catch(() => {});
     };
@@ -35,20 +52,33 @@ export default function WordOfDay() {
     // لوحة الإدارة يظهر فور العودة للتبويب، أو خلال دقيقة على الأكثر —
     // دون الحاجة لإعادة تحميل الصفحة يدوياً.
     const onWake = () => { if (document.visibilityState !== 'hidden') load(); };
-    document.addEventListener('visibilitychange', onWake);
-    window.addEventListener('focus', onWake);
-    window.addEventListener('pageshow', onWake); // يشمل الاستعادة من ذاكرة الرجوع (BFCache)
+
+    // عند العودة للتبويب: تحديث كامل لبيانات الصفحة أيضاً (يمسح كاش راوتر
+    // Next.js الداخلي ويعيد جلب مكوّنات الخادم) — بحد أقصى مرة كل 60 ثانية.
+    const onFocusRefresh = () => {
+      if (document.visibilityState === 'hidden') return;
+      load();
+      const now = Date.now();
+      if (now - lastRefreshRef.current > 60_000) {
+        lastRefreshRef.current = now;
+        try { router.refresh(); } catch {}
+      }
+    };
+
+    document.addEventListener('visibilitychange', onFocusRefresh);
+    window.addEventListener('focus', onFocusRefresh);
+    window.addEventListener('pageshow', onFocusRefresh); // يشمل الاستعادة من ذاكرة الرجوع (BFCache)
     const iv = setInterval(onWake, 60_000);
 
     return () => {
       alive = false;
       clearInterval(iv);
-      document.removeEventListener('visibilitychange', onWake);
-      window.removeEventListener('focus', onWake);
-      window.removeEventListener('pageshow', onWake);
+      document.removeEventListener('visibilitychange', onFocusRefresh);
+      window.removeEventListener('focus', onFocusRefresh);
+      window.removeEventListener('pageshow', onFocusRefresh);
       audioRef.current?.pause();
     };
-  }, []);
+  }, [router]);
 
   function listen() {
     if (!word) return;
@@ -108,7 +138,7 @@ export default function WordOfDay() {
       {word.has_image && (
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
           <img
-            src={`/api/word-image/${word.id}`}
+            src={`/api/word-image/${word.id}?d=${date}`}
             alt={word.word}
             width={140}
             height={140}

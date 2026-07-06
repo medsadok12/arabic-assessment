@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 
-export const runtime = 'edge';
+// Node runtime عمداً (لا edge): دوال edge تنفَّذ في أقرب نقطة جغرافية للزائر،
+// ورُصد فعلياً أن بعض هذه النقاط أعادت قراءات قديمة من قاعدة البيانات بينما
+// مسار Node (منطقة واحدة ثابتة) بقي طازجاً طوال الوقت. لا تعيدوه edge.
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const NO_CACHE = { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' };
 
 /* GET /api/word-of-day
    Returns ONE deterministic word for today — the same word for every child all day,
@@ -17,7 +22,7 @@ export async function GET() {
       .order('id', { ascending: true });
 
     if (error || !data?.length) {
-      return NextResponse.json({ word: null }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' } });
+      return NextResponse.json({ word: null }, { headers: NO_CACHE });
     }
 
     // Deterministic rotation: index = whole days since epoch, modulo the word count.
@@ -25,10 +30,11 @@ export async function GET() {
     const pick      = data[dayNumber % data.length];
 
     return NextResponse.json(
-      { word: pick, date: new Date().toISOString().slice(0, 10) },
-      { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' } }
+      // count يُكشف عمداً: يسمح بتشخيص فوري لأي قراءة قديمة (عدد الكلمات لا يطابق الإدارة)
+      { word: pick, date: new Date().toISOString().slice(0, 10), count: data.length },
+      { headers: NO_CACHE }
     );
   } catch {
-    return NextResponse.json({ word: null }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' } });
+    return NextResponse.json({ word: null }, { headers: NO_CACHE });
   }
 }

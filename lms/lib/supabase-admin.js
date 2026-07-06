@@ -4,7 +4,12 @@ export function createAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY,
-    { auth: { autoRefreshToken: false, persistSession: false } }
+    {
+      auth: { autoRefreshToken: false, persistSession: false },
+      // no-store إجباري على كل نداء REST داخلي: يمنع أي طبقة fetch وسيطة
+      // (Next data cache أو غيرها) من إرجاع قراءة قديمة لبيانات الإدارة
+      global: { fetch: (url, options = {}) => fetch(url, { ...options, cache: 'no-store' }) },
+    }
   );
 }
 
