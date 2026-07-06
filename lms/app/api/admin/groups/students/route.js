@@ -1,5 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
+import { createClient as createServerClient } from '../../../../../lib/supabase-server';
 export const dynamic = 'force-dynamic';
+
+const ADMIN_ROLES = new Set(['admin', 'super_admin']);
+
+async function requireAdmin() {
+  const supabase = createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || !ADMIN_ROLES.has(user.user_metadata?.role)) return null;
+  return user;
+}
 
 function getClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -8,6 +18,8 @@ function getClient() {
 }
 
 export async function POST() {
+  if (!await requireAdmin()) return Response.json({ error: 'غير مخول' }, { status: 403 });
+
   const supabase = getClient();
 
   const [{ data: assessments }, { data: assignments }] = await Promise.all([
@@ -20,7 +32,6 @@ export async function POST() {
       .select('user_id, group_id'),
   ]);
 
-  // طلاب فريدون (بدون تكرار)
   const seen = new Set();
   const students = [];
   for (const a of (assessments ?? [])) {

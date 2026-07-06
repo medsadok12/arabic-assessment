@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 
+// GET /api/word-image/[id]
+// يقدّم صورة الكلمة كملف ثنائي (لا base64 داخل JSON) بنوع MIME الصحيح.
 export async function GET(_req, { params }) {
   const { id } = params;
 
@@ -16,7 +18,7 @@ export async function GET(_req, { params }) {
   }
 
   const raw = word.image_base64;
-  let mimeType = 'image/jpeg';
+  let mimeType   = 'image/jpeg';
   let base64Data = raw;
 
   if (raw.startsWith('data:')) {
@@ -31,8 +33,8 @@ export async function GET(_req, { params }) {
   return new NextResponse(buffer, {
     headers: {
       'Content-Type': mimeType,
-      // مخزّنة في الـ edge لمدة يوم — تتجدد تلقائياً عند تغيير الصورة
-      'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600',
+      // قراءة حيّة دائماً: أي تغيير أو حذف للصورة من لوحة الإدارة ينعكس فوراً بلا كاش عالق
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
     },
   });
 }

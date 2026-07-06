@@ -15,7 +15,7 @@ function Initials({ name, size = 80 }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%',
-      background: 'linear-gradient(135deg, #185FA5, #1e88e5)',
+      background: 'linear-gradient(135deg, #1A2B4A, #2d4373)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.35, fontWeight: 800, color: '#fff',
       flexShrink: 0,
@@ -25,13 +25,6 @@ function Initials({ name, size = 80 }) {
   );
 }
 
-const PW_ERRORS = {
-  'New password should be different from the old password': 'يجب أن تكون كلمة المرور الجديدة مختلفة عن كلمة المرور الحالية',
-  'Password should be at least 6 characters.': 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
-  'Auth session missing!': 'انتهت الجلسة، يرجى إعادة تسجيل الدخول',
-  'For security purposes, you can only request this once every 60 seconds': 'لأسباب أمنية، يمكنك المحاولة مرة واحدة كل دقيقة',
-};
-function translatePwError(msg) { return PW_ERRORS[msg] ?? msg; }
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -56,7 +49,7 @@ export default function ProfilePage() {
         <div className="container" style={{ maxWidth: 600 }}>
           <h1 className="dash-welcome" style={{ marginBottom: 24 }}>الملف الشخصي</h1>
           <AvatarCard user={user} onUserUpdate={setUser} />
-          <PasswordCard />
+          <PasswordCard user={user} />
         </div>
       </main>
     </>
@@ -174,12 +167,12 @@ function AvatarCard({ user, onUserUpdate }) {
         >
           {avatarURL
             ? <img src={avatarURL} alt="صورة شخصية"
-                style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '3px solid #185FA5' }} />
+                style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '3px solid #1A2B4A' }} />
             : <Initials name={fullName} />
           }
           <div style={{
             position: 'absolute', bottom: 0, right: 0,
-            background: '#185FA5', borderRadius: '50%',
+            background: '#1A2B4A', borderRadius: '50%',
             width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 13, color: '#fff', border: '2px solid #fff',
           }}>
@@ -302,53 +295,95 @@ function AvatarCard({ user, onUserUpdate }) {
 }
 
 /* ── بطاقة كلمة المرور — معزولة تماماً ── */
-function PasswordCard() {
-  const [pwForm,    setPwForm]    = useState({ next: '', confirm: '' });
-  const [pwMsg,     setPwMsg]     = useState('');
-  const [pwLoading, setPwLoading] = useState(false);
-  // يتتبع إذا قام المستخدم فعلاً بالكتابة (يمنع autofill من تفعيل الإرسال)
-  const [userTyped, setUserTyped] = useState(false);
+function PasswordCard({ user }) {
+  const [phase,   setPhase]   = useState('form'); // 'form' | 'otp'
+  const [current, setCurrent] = useState('');
+  const [next,    setNext]    = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [otp,     setOtp]     = useState('');
+  const [pwMsg,   setPwMsg]   = useState('');
+  const [loading, setLoading] = useState(false);
 
-  function handleFieldChange(key, value) {
-    setPwForm(p => ({ ...p, [key]: value }));
-    setUserTyped(true);
-  }
-
-  async function handlePasswordChange(e) {
+  /* المرحلة 1 — التحقق من كلمة المرور الحالية وإرسال OTP */
+  async function handleSendOtp(e) {
     e.preventDefault();
     setPwMsg('');
+    if (!current)               { setPwMsg('❌ الرجاء إدخال كلمة المرور الحالية'); return; }
+    if (!next)                  { setPwMsg('❌ الرجاء إدخال كلمة المرور الجديدة'); return; }
+    if (next.length < 6)        { setPwMsg('❌ كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; }
+    if (next !== confirm)       { setPwMsg('❌ كلمتا المرور غير متطابقتين'); return; }
 
-    // لا تفعل شيئاً إذا لم يكتب المستخدم شيئاً بنفسه
-    if (!userTyped || (!pwForm.next && !pwForm.confirm)) return;
-
-    if (pwForm.next !== pwForm.confirm) {
-      setPwMsg('❌ كلمتا المرور غير متطابقتين');
-      return;
+    setLoading(true);
+    try {
+      const res  = await fetch('/api/auth/send-password-otp', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ currentPassword: current }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPwMsg('❌ ' + (data.error ?? 'حدث خطأ'));
+      } else {
+        setPhase('otp');
+      }
+    } catch {
+      setPwMsg('❌ حدث خطأ في الاتصال، يرجى المحاولة مجدداً');
     }
-    if (pwForm.next.length < 6) {
-      setPwMsg('❌ كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-      return;
-    }
-
-    setPwLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password: pwForm.next });
-
-    if (error) {
-      setPwMsg('❌ ' + translatePwError(error.message));
-    } else {
-      setPwMsg('✅ تم تغيير كلمة المرور بنجاح');
-      setPwForm({ next: '', confirm: '' });
-      setUserTyped(false);
-    }
-    setPwLoading(false);
+    setLoading(false);
   }
+
+  /* المرحلة 2 — التحقق من كود البريد وتغيير كلمة المرور */
+  async function handleConfirmOtp(e) {
+    e.preventDefault();
+    setPwMsg('');
+    if (!otp || otp.length < 6) { setPwMsg('❌ الرجاء إدخال الكود المكوّن من 6 أرقام'); return; }
+
+    setLoading(true);
+    try {
+      const res  = await fetch('/api/auth/update-password', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ mode: 'change', newPassword: next, currentPassword: current, otp }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPwMsg('❌ ' + (data.error ?? 'حدث خطأ أثناء تغيير كلمة المرور'));
+      } else {
+        setPwMsg('✅ تم تغيير كلمة المرور بنجاح');
+        setPhase('form');
+        setCurrent(''); setNext(''); setConfirm(''); setOtp('');
+      }
+    } catch {
+      setPwMsg('❌ حدث خطأ في الاتصال، يرجى المحاولة مجدداً');
+    }
+    setLoading(false);
+  }
+
+  const isGoogleUser = (() => {
+    const providers = user?.app_metadata?.providers ?? [];
+    const provider  = user?.app_metadata?.provider  ?? '';
+    return providers.includes('google') || provider === 'google';
+  })();
 
   return (
     <div className="card" style={{ padding: '28px 24px' }}>
       <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1a237e', marginBottom: 18 }}>
         🔑 تغيير كلمة المرور
       </h2>
+
+      {isGoogleUser ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          background: '#f0f9ff', border: '1px solid #bae6fd',
+          borderRadius: 10, padding: '14px 16px',
+        }}>
+          <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>🔐</span>
+          <p style={{ margin: 0, color: '#0369a1', fontSize: '.9rem', fontWeight: 600, lineHeight: 1.5 }}>
+            حسابك مرتبط ومؤمَّن بواسطة Google
+          </p>
+        </div>
+      ) : (
+        <>
       {pwMsg && (
         <div
           className={`alert ${pwMsg.startsWith('✅') ? 'alert-success' : 'alert-error'}`}
@@ -357,40 +392,103 @@ function PasswordCard() {
           {pwMsg}
         </div>
       )}
-      <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">كلمة المرور الجديدة</label>
-          <input
-            className="form-input"
-            type="password"
-            value={pwForm.next}
-            onChange={e => handleFieldChange('next', e.target.value)}
-            placeholder="6 أحرف على الأقل"
-            autoComplete="new-password"
-            dir="ltr"
-          />
-        </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">تأكيد كلمة المرور الجديدة</label>
-          <input
-            className="form-input"
-            type="password"
-            value={pwForm.confirm}
-            onChange={e => handleFieldChange('confirm', e.target.value)}
-            placeholder="أعد كتابة كلمة المرور"
-            autoComplete="new-password"
-            dir="ltr"
-          />
-        </div>
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={pwLoading}
-          style={{ marginTop: 4 }}
-        >
-          {pwLoading ? <span className="spinner" /> : 'حفظ'}
-        </button>
-      </form>
+
+      {phase === 'form' ? (
+        <form onSubmit={handleSendOtp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">كلمة المرور الحالية</label>
+            <input
+              className="form-input"
+              type="password"
+              value={current}
+              onChange={e => { setCurrent(e.target.value); setPwMsg(''); }}
+              placeholder="أدخل كلمة مرورك الحالية"
+              autoComplete="current-password"
+              dir="ltr"
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">كلمة المرور الجديدة</label>
+            <input
+              className="form-input"
+              type="password"
+              value={next}
+              onChange={e => { setNext(e.target.value); setPwMsg(''); }}
+              placeholder="6 أحرف على الأقل"
+              autoComplete="new-password"
+              dir="ltr"
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">تأكيد كلمة المرور الجديدة</label>
+            <input
+              className="form-input"
+              type="password"
+              value={confirm}
+              onChange={e => { setConfirm(e.target.value); setPwMsg(''); }}
+              placeholder="أعد كتابة كلمة المرور"
+              autoComplete="new-password"
+              dir="ltr"
+            />
+          </div>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={loading}
+            style={{ marginTop: 4 }}
+          >
+            {loading ? <span className="spinner" /> : 'إرسال كود التحقق'}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleConfirmOtp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{
+            background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10,
+            padding: '10px 14px', fontSize: '.85rem', color: '#92400e',
+            display: 'flex', alignItems: 'flex-start', gap: 8,
+          }}>
+            <span style={{ flexShrink: 0 }}>📧</span>
+            <span>تم إرسال كود التحقق إلى بريدك الإلكتروني. أدخله أدناه لتأكيد تغيير كلمة المرور.</span>
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">كود التحقق (6 أرقام)</label>
+            <input
+              className="form-input"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={otp}
+              onChange={e => { setOtp(e.target.value.replace(/\D/g, '')); setPwMsg(''); }}
+              placeholder="أدخل الكود"
+              autoComplete="one-time-code"
+              dir="ltr"
+              style={{ textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.2rem' }}
+              autoFocus
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={loading}
+              style={{ flex: 1 }}
+            >
+              {loading ? <span className="spinner" /> : 'تأكيد التغيير'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => { setPhase('form'); setOtp(''); setPwMsg(''); }}
+              disabled={loading}
+            >
+              رجوع
+            </button>
+          </div>
+        </form>
+      )}
+        </>
+      )}
     </div>
   );
 }

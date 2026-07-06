@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { notify }        from '../../../../lib/notify';
 export const dynamic = 'force-dynamic';
 
 const CORS = {
@@ -56,6 +57,8 @@ export async function POST(request) {
     .from('assessment_codes')
     .update({ is_used: true, used_at: new Date().toISOString(), used_by_name: name })
     .eq('id', data.id);
+
+  await notify('assessment', '📝 طالب بدأ تقييماً', name ? `الطالب: ${name}` : null, { code, name });
 
   return Response.json({ valid: true }, { status: 200, headers: CORS });
 }

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#5b21b6" />
+  <title>آيات — تعلّم الحساب باللعب</title>
+
+  <!-- PWA: قابل للتثبيت على الشاشة الرئيسية ويعمل أوفلاين -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="آيات" />
+  <link rel="apple-touch-icon" href="icon-180.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- شريط علوي -->
+    <header class="topbar" id="topbar">
+      <button class="icon-btn" id="btn-home" title="الرئيسية" aria-label="الرئيسية">🏠</button>
+      <div class="brand">
+        <span class="brand-emoji">🧮</span>
+        <span class="brand-name">آيات</span>
+      </div>
+      <div class="topbar-right">
+        <div class="xp-chip" id="xp-chip"><span class="xp-star">⭐</span><span id="xp-val">0</span></div>
+        <button class="icon-btn" id="btn-sound" title="الصوت" aria-label="الصوت">🔊</button>
+      </div>
+    </header>
+
+    <main class="stage">
+
+      <!-- ====== الرئيسية: أربع خانات ====== -->
+      <section class="screen" id="screen-home">
+        <div class="mascot-big" id="home-mascot">🦉</div>
+        <h1 class="home-title">آيات</h1>
+        <p class="home-sub" id="home-sub">اختر ما تريد تعلّمه</p>
+
+        <div class="role-switch">
+          <button data-role="student" class="active">🧒 الطالب</button>
+          <button data-role="admin">🛠️ الإدارة</button>
+        </div>
+
+        <div class="level-card" id="level-card"><!-- المستوى والنقاط تُبنى بـ JS --></div>
+        <div class="streak-chip" id="streak-chip"></div>
+
+        <div class="op-grid" id="op-grid"><!-- 4 خانات تُبنى بـ JS --></div>
+
+        <div class="activity-grid">
+          <button class="activity-tile pat" id="tile-patterns" data-action="patterns">
+            <span class="act-ic">🔢</span><b>أكمل النمط</b>
+            <span class="act-stars" id="patterns-stars"></span>
+          </button>
+          <button class="activity-tile puz" id="tile-puzzles" data-action="puzzles">
+            <span class="act-ic">❓</span><b>العدد الغامض</b>
+            <span class="act-stars" id="puzzles-stars"></span>
+          </button>
+          <button class="activity-tile tbl" id="tile-table" data-action="table">
+            <span class="act-ic">📊</span><b>جدول الضرب</b>
+            <span class="act-stars" id="table-stars"></span>
+          </button>
+        </div>
+
+        <button class="magic-banner" id="magic-banner" data-action="magic"><!-- يُبنى بـ JS --></button>
+
+        <div class="home-foot">
+          <button class="ghost-btn" data-action="settings">⚙️ الإعدادات</button>
+        </div>
+      </section>
+
+      <!-- ====== جدول الضرب ====== -->
+      <section class="screen" id="screen-table" hidden>
+        <h2 class="screen-title">📊 جدول الضرب</h2>
+        <p class="screen-hint">اختر المرحلة واملأ الخانات — من السهل إلى الصعب!</p>
+        <div class="table-wrap" id="table-card"><!-- يُبنى بـ JS --></div>
+      </section>
+
+      <!-- ====== الأحجية السحرية ====== -->
+      <section class="screen" id="screen-magic" hidden>
+        <h2 class="screen-title">🧩 الأحجية السحرية</h2>
+        <p class="screen-hint">العب أي لعبة واجمع النقاط ⭐ لتكشف الصورة المخفية قطعةً قطعة!</p>
+        <div class="magic-card" id="magic-card"><!-- يُبنى بـ JS --></div>
+      </section>
+
+      <!-- ====== لوحة الإدارة ====== -->
+      <section class="screen" id="screen-admin" hidden>
+        <div class="role-switch">
+          <button data-role="student">🧒 الطالب</button>
+          <button data-role="admin" class="active">🛠️ الإدارة</button>
+        </div>
+        <h2 class="screen-title">🛠️ لوحة الإدارة</h2>
+        <p class="screen-hint">تحكّم في الأنشطة والإعدادات، وتابع تقدّم الطالب.</p>
+        <div id="admin-body"><!-- يُبنى بـ JS --></div>
+      </section>
+
+      <!-- ====== قائمة العملية (الأوضاع) ====== -->
+      <section class="screen" id="screen-ops" hidden>
+        <div class="op-hero" id="op-hero">
+          <span class="op-hero-ic" id="op-hero-ic">×</span>
+          <h2 class="op-hero-name" id="op-hero-name">الضرب</h2>
+        </div>
+        <div class="home-chips" id="ops-chips"></div>
+
+        <div class="mode-buttons">
+          <button class="mode-btn mode-adventure" data-action="worlds">
+            <span class="mode-ic">🗺️</span>
+            <span class="mode-tx"><b>المغامرة</b><small>خانة بعد خانة، واجمع النجوم</small></span>
+          </button>
+          <button class="mode-btn mode-smart" data-action="smart">
+            <span class="mode-ic">🧠</span>
+            <span class="mode-tx"><b>تدريب ذكي</b><small>يركّز على ما تحتاج تدريبه</small></span>
+          </button>
+          <button class="mode-btn mode-time" data-action="time">
+            <span class="mode-ic">⚡</span>
+            <span class="mode-tx"><b>تحدّي الزمن</b><small>كم إجابة في ٦٠ ثانية؟</small></span>
+          </button>
+        </div>
+
+        <div class="home-foot">
+          <button class="ghost-btn" data-action="mastery">📊 خريطة الإتقان</button>
+        </div>
+      </section>
+
+      <!-- ====== اختيار الخانة (المغامرة) ====== -->
+      <section class="screen" id="screen-worlds" hidden>
+        <h2 class="screen-title">🗺️ اختر خانة</h2>
+        <p class="screen-hint">أكمِل الخانة لتفتح التي تليها ⭐</p>
+        <div class="worlds-grid" id="worlds-grid"></div>
+      </section>
+
+      <!-- ====== اللعب ====== -->
+      <section class="screen" id="screen-game" hidden>
+        <div class="game-top">
+          <div class="streak" id="streak" hidden>🔥 <span id="streak-n">0</span></div>
+          <div class="game-progress" id="game-progress"></div>
+          <div class="timer" id="timer" hidden>⏱️ <span id="timer-n">60</span></div>
+        </div>
+
+        <div class="mascot" id="mascot">🦉</div>
+
+        <div class="problem-card">
+          <div class="problem" id="problem" dir="ltr">1 × 1 = <b class="ans">?</b></div>
+          <div class="feedback" id="feedback">&nbsp;</div>
+        </div>
+
+        <div class="hint-area" id="hint-area" hidden></div>
+
+        <div class="pad" id="pad"><!-- لوحة الأرقام تُبنى بـ JS --></div>
+
+        <button class="hint-toggle" id="hint-toggle">💡 ساعدني أفهم</button>
+      </section>
+
+      <!-- ====== الملخّص ====== -->
+      <section class="screen" id="screen-summary" hidden>
+        <div id="summary-content"></div>
+      </section>
+
+      <!-- ====== خريطة الإتقان ====== -->
+      <section class="screen" id="screen-mastery" hidden>
+        <h2 class="screen-title" id="mastery-title">📊 خريطة الإتقان</h2>
+        <p class="screen-hint">كل مربّع = مسألة. الأخضر = مُتقَن، الأصفر = قيد التعلّم، الأحمر = يحتاج تدريباً.</p>
+        <div class="mastery-wrap">
+          <div class="mastery-grid" id="mastery-grid"></div>
+        </div>
+        <div class="mastery-stats" id="mastery-stats"></div>
+        <div class="legend">
+          <span><i class="sw sw-new"></i> جديد</span>
+          <span><i class="sw sw-weak"></i> ضعيف</span>
+          <span><i class="sw sw-learn"></i> قيد التعلّم</span>
+          <span><i class="sw sw-master"></i> مُتقَن</span>
+        </div>
+      </section>
+
+      <!-- ====== الإعدادات ====== -->
+      <section class="screen" id="screen-settings" hidden>
+        <h2 class="screen-title">⚙️ الإعدادات</h2>
+
+        <div class="setting-row">
+          <span>🔊 الأصوات</span>
+          <button class="switch" id="set-sound" aria-pressed="true"><span class="knob"></span></button>
+        </div>
+
+        <div class="how-to">
+          <h3>كيف تلعب؟</h3>
+          <ul>
+            <li>🧮 اختر العملية: <b>ضرب · قسمة · جمع · طرح</b>.</li>
+            <li>🗺️ <b>المغامرة:</b> ابدأ بالخانات السهلة، وأكمِلها لتفتح الأصعب.</li>
+            <li>🧠 <b>تدريب ذكي:</b> النظام يتذكّر أخطاءك ويعيدها حتى تُتقنها.</li>
+            <li>⚡ <b>تحدّي الزمن:</b> أجب أكبر عدد في ٦٠ ثانية.</li>
+            <li>🔢 <b>أكمل النمط:</b> اكتشف القاعدة وأكمِل المتتالية — يقوّي التفكير.</li>
+            <li>❓ <b>العدد الغامض:</b> ألغاز عددية («⬜ + ٤ = ١١» و«أنا عددٌ…») — تنمّي الاستدلال.</li>
+            <li>🧩 <b>الأحجية السحرية:</b> كل ٢٠ نقطة تكشف قطعة من صورة مخفية حتى تكتمل!</li>
+            <li>⭐ <b>النقاط والمستوى:</b> كل إجابة صحيحة تكسبك نقاطاً، وكل ١٠٠ نقطة = مستوى جديد.</li>
+            <li>✅ <b>لا تنتقل</b> للسؤال التالي إلا بعد حلّه؛ أخطأتَ؟ حاوِل مرة أخرى.</li>
+            <li>💡 إن لم تعرف الإجابة، اضغط «ساعدني أفهم» لترى المسألة بالصور (أو القاعدة).</li>
+          </ul>
+        </div>
+
+        <button class="danger-btn" id="set-reset">🗑️ مسح كل التقدّم والبدء من جديد</button>
+        <p class="academy-note">من إنتاج «أكاديمية عارم» — نتعلّم باللعب 💜</p>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- طبقة الاحتفال -->
+  <div id="confetti" aria-hidden="true"></div>
+
+  <script src="game.js" defer></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function () {});
+      });
+    }
+  </script>
+</body>
+</html>

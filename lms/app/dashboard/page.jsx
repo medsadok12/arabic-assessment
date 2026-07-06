@@ -1,279 +1,207 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import Image from 'next/image';
 import { createClient } from '../../lib/supabase-server';
 import { createAdminClient } from '../../lib/supabase-admin';
-import Navbar from '../../components/Navbar';
-import ParentPanel from '../../components/ParentPanel';
+import DashboardContent from '../../components/DashboardContent';
 
-// كل طلب يجلب بيانات طازجة — لا كاش أبداً
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
+  let user;
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/auth/login');
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) redirect('/auth/login');
+    user = data.user;
+  } catch {
+    redirect('/auth/login');
+  }
 
   const role      = user.user_metadata?.role ?? 'student';
   const isStudent = role === 'student';
 
-  if (role === 'admin') redirect('/admin');
+  if (role === 'admin' || role === 'super_admin') redirect('/bogga');
+  if (role === 'teacher') redirect('/teacher');
+  if (role === 'supervisor') redirect('/supervisor');
 
-  const adminSupabase = createAdminClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const admin = createAdminClient();
+  const email = (user.email ?? '').toLowerCase();
 
-  const [{ data: assessments }, { data: rawSessions }, { data: lexiconWords }] = await Promise.all([
+  // جولة شبكة واحدة — 9 استعلامات مستقلة تعمل بالتوازي
+  const [
+    { data: sessionsRaw },
+    { data: supportLinks },
+    { data: assessments },
+    { data: fcProgress },
+    { data: pastRaw },
+    { data: notedRaw },
+    { data: hwRaw },
+    { data: logsRaw },
+    { data: heroConfigRow },
+  ] = await Promise.all([
+    admin
+      .from('sessions')
+      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, meet_link, status, attended')
+      .eq('student_email', email)
+      .in('status', ['scheduled', 'active'])
+      .gte('session_date', today)
+      .order('session_date', { ascending: true })
+      .order('start_time',   { ascending: true })
+      .limit(5)
+      .then(r => r.error?.code === '42P01' ? { data: [] } : r),
+    admin
+      .from('session_support_students')
+      .select('session_id')
+      .eq('student_email', email)
+      .then(r => r.error ? { data: [] } : r),
     supabase
       .from('assessments')
       .select('id, level, score, completed_at, student_name')
       .eq('user_id', user.id)
       .order('completed_at', { ascending: false })
-      .limit(50),
-    supabase
+      .limit(50)
+      .then(r => r.error ? { data: [] } : r),
+    admin
+      .from('flashcard_progress')
+      .select('level')
+      .eq('user_id', user.id)
+      .then(r => r.error ? { data: [] } : r),
+    admin
       .from('sessions')
-      .select('id, session_date, attended, status')
-      .eq('student_email', user.email)
-      .neq('status', 'cancelled'),
-    adminSupabase
-      .from('lexicon_words')
-      .select('id, word, word_type, sentence, syllables, topic, has_image, has_audio')
-      .order('created_at', { ascending: true }),
+      .select('id, session_date, attended')
+      .eq('student_email', email)
+      .neq('status', 'cancelled')
+      .lte('session_date', today)
+      .limit(100)
+      .then(r => r.error ? { data: [] } : r),
+    admin
+      .from('sessions')
+      .select('id, teacher_name, session_date, subject, notes')
+      .eq('student_email', email)
+      .not('notes', 'is', null)
+      .neq('notes', '')
+      .order('session_date', { ascending: false })
+      .limit(10)
+      .then(r => r.error ? { data: [] } : r),
+    admin
+      .from('homework')
+      .select('id, teacher_name, title, description, due_date, status, created_at')
+      .eq('student_email', email)
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .limit(20)
+      .then(r => r.error ? { data: [] } : r),
+    admin
+      .from('daily_logs')
+      .select('log_date')
+      .eq('user_id', user.id)
+      .order('log_date', { ascending: false })
+      .limit(365)
+      .then(r => r.error?.code === '42P01' ? { data: [] } : r),
+    admin
+      .from('hero_config')
+      .select('avatar_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(r => r.error ? { data: null } : r),
   ]);
 
-  // كلمة اليوم — اختيار حتمي بناءً على التاريخ (نفس الكلمة لكل المستخدمين)
-  const epochDays  = Math.floor(Date.now() / 86400000);
-  const wordOfDay  = lexiconWords?.length
-    ? lexiconWords[epochDays % lexiconWords.length]
-    : null;
+  // supportSessions تعتمد على supportLinks — تبقى بعد Promise.all
+  let supportSessions = [];
+  const supportIds = (supportLinks ?? []).map(r => r.session_id).filter(Boolean);
+  if (supportIds.length > 0) {
+    const { data: supRaw } = await admin
+      .from('sessions')
+      .select('id, teacher_name, session_date, start_time, duration_minutes, subject, meet_link, status, attended')
+      .in('id', supportIds)
+      .in('status', ['scheduled', 'active'])
+      .gte('session_date', today);
+    // attended على الحصة يخص الطالب الأساسي — لا نمرره للطالب الإضافي
+    supportSessions = (supRaw ?? []).map(s => ({ ...s, is_support: true, attended: null }));
+  }
 
-  // حساب الحضور الصحيح
-  const todayStr = new Date().toISOString().split('T')[0];
-  const countedSessions = (rawSessions ?? []).filter(s =>
-    s.attended !== null || s.session_date <= todayStr
-  );
-  const attendedCount  = countedSessions.filter(s => s.attended === true).length;
-  const totalSessions  = countedSessions.length;
-  const absentCount    = totalSessions - attendedCount;
-  const attendanceRate = totalSessions > 0
-    ? Math.round((attendedCount / totalSessions) * 100)
-    : null;
+  const masteredCount = (fcProgress ?? []).filter(p => p.level >= 5).length;
+  const studiedCount  = (fcProgress ?? []).length;
 
-  const avgScore = assessments?.length
-    ? Math.round(assessments.reduce((s, a) => s + (a.score ?? 0), 0) / assessments.length)
-    : null;
+  const attendanceRecords = pastRaw ?? [];
+  const attendedCount     = attendanceRecords.filter(s => s.attended === true).length;
+  const attendancePct     = attendanceRecords.length > 0 ? Math.round((attendedCount / attendanceRecords.length) * 100) : null;
 
-  const stats = isStudent
-    ? [
-        { icon: '📊', val: assessments?.length ?? 0, lbl: 'عدد تقييماتي' },
-        { icon: '✅', val: assessments?.length ? 'مكتمل' : '—', lbl: 'حالة التقييم' },
-      ]
-    : [
-        { icon: '📊', val: assessments?.length ?? 0,          lbl: 'عدد تقييماتي' },
-        { icon: '⭐', val: avgScore != null ? avgScore + '%' : '—', lbl: 'متوسط نتائجي' },
-        { icon: '🏅', val: assessments?.[0]?.level ? `المستوى ${assessments[0].level}` : '—', lbl: 'آخر مستوى' },
-      ];
+  const sessionNotes = notedRaw ?? [];
+  const homework     = hwRaw ?? [];
 
-  const actions = [
-    { icon: '📚', title: 'المكتبة التعليمية', desc: 'تصفح المناهج والدروس المتاحة لك',                    href: '/library'  },
-    { icon: '📈', title: 'تقارير التقدم',      desc: 'شاهد نتيجة تقييمك التشخيصي ومستوى تقدمك', href: '/admin'    },
-  ];
+  const mainIds = new Set((sessionsRaw ?? []).map(s => s.id));
+  const nowMs   = Date.now();
+  const merged  = [
+    ...(sessionsRaw ?? []),
+    ...supportSessions.filter(s => !mainIds.has(s.id)),
+  ]
+  .sort((a, b) => a.session_date.localeCompare(b.session_date) || a.start_time.localeCompare(b.start_time))
+  .filter(s => {
+    const startMs = new Date(`${s.session_date}T${s.start_time}`).getTime();
+    const endMs   = startMs + (s.duration_minutes ?? 60) * 60000;
+    return nowMs < endMs;
+  })
+  .slice(0, 5);
 
-  const displayName = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'طالب';
+  const upcomingSessions = merged;
+
+  /* ── Streak ── */
+  const logDates = (logsRaw || []).map(r => r.log_date);
+  const dateSet  = new Set(logDates);
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  function calcStreak(dates) {
+    if (!dates.length) return 0;
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (dates[0] !== todayStr && dates[0] !== yesterday) return 0;
+    let streak = 0, expected = dates[0];
+    for (const d of dates) {
+      if (d === expected) {
+        streak++;
+        const dt = new Date(expected); dt.setDate(dt.getDate() - 1);
+        expected = dt.toISOString().slice(0, 10);
+      } else break;
+    }
+    return streak;
+  }
+
+  const streakCount = calcStreak(logDates);
+  const loggedToday = dateSet.has(todayStr);
+  const last7Days   = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() + i);
+    const ds = d.toISOString().slice(0, 10);
+    return {
+      date:     ds,
+      active:   i === 0 && dateSet.has(ds),
+      day:      d.getDate(),
+      isToday:  i === 0,
+      isFuture: i > 0,
+    };
+  });
+
+  const displayName   = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '';
+  const studentGender = user.user_metadata?.gender === 'female' ? 'female' : 'male';
+  const hasHero       = isStudent ? !!(heroConfigRow?.avatar_id) : true;
 
   return (
-    <>
-      <Navbar user={user} />
-      <main className="page-wrap">
-        <div className="container">
-          <h1 className="dash-welcome">مرحباً، {displayName} 👋</h1>
-
-          {/* زر لوحة الإدارة — للمعلمين فقط */}
-          {role === 'teacher' && (
-            <div style={{ marginBottom: 24 }}>
-              <Link href="/admin" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                ⚙️ الانتقال للوحة الإدارة
-              </Link>
-            </div>
-          )}
-
-          {/* Stats */}
-          <div className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-            {stats.map(s => (
-              <div key={s.lbl} className="stat-card">
-                <span className="stat-icon">{s.icon}</span>
-                <div>
-                  <div className="stat-val">{s.val}</div>
-                  <div className="stat-lbl">{s.lbl}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Attendance */}
-          {totalSessions > 0 && (
-            <div className="dash-section">
-              <div className="dash-section-title">نسبة الحضور 📅</div>
-              <div className="card" style={{ padding: '20px 24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-                  {/* النسبة المئوية */}
-                  <div style={{ textAlign: 'center', minWidth: 80 }}>
-                    <div style={{
-                      fontSize: '2.2rem', fontWeight: 800,
-                      color: attendanceRate >= 75 ? '#2e7d32' : attendanceRate >= 50 ? '#e65100' : '#c62828',
-                    }}>
-                      {attendanceRate}%
-                    </div>
-                    <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginTop: 2 }}>نسبة الحضور</div>
-                  </div>
-
-                  {/* شريط التقدم */}
-                  <div style={{ flex: 1, minWidth: 160 }}>
-                    <div style={{ background: '#e0e0e0', borderRadius: 8, height: 10, overflow: 'hidden' }}>
-                      <div style={{
-                        width: `${attendanceRate}%`, height: '100%', borderRadius: 8,
-                        background: attendanceRate >= 75 ? '#4caf50' : attendanceRate >= 50 ? '#ff9800' : '#f44336',
-                        transition: 'width .4s',
-                      }} />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, gap: 12, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '.82rem', color: '#2e7d32', fontWeight: 600 }}>
-                        ✅ حضر: {attendedCount}
-                      </span>
-                      <span style={{ fontSize: '.82rem', color: '#c62828', fontWeight: 600 }}>
-                        ❌ غاب: {absentCount}
-                      </span>
-                      <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>
-                        إجمالي الحصص المنقضية: {totalSessions}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* كلمة اليوم */}
-          {wordOfDay && (
-            <div className="dash-section">
-              <div className="dash-section-title">✨ كلمة اليوم</div>
-              <div className="card" style={{ padding: '24px', display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                {wordOfDay.has_image && (
-                  <div style={{ flexShrink: 0 }}>
-                    <Image
-                      src={`/api/word-image/${wordOfDay.id}`}
-                      alt={wordOfDay.word}
-                      width={120}
-                      height={120}
-                      style={{ borderRadius: 12, objectFit: 'cover' }}
-                    />
-                  </div>
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>
-                    {wordOfDay.word}
-                  </div>
-                  <div style={{ fontSize: '.85rem', color: 'var(--muted)', marginTop: 4 }}>
-                    {wordOfDay.word_type}
-                    {wordOfDay.topic && ` · ${wordOfDay.topic}`}
-                  </div>
-                  {wordOfDay.syllables && (
-                    <div style={{ marginTop: 8, fontSize: '1rem', color: '#1565c0', fontWeight: 600, letterSpacing: 2 }}>
-                      {wordOfDay.syllables}
-                    </div>
-                  )}
-                  {wordOfDay.sentence && (
-                    <div style={{
-                      marginTop: 12, padding: '10px 14px', background: 'var(--bg)',
-                      borderRadius: 8, fontSize: '.95rem', color: 'var(--text)', fontStyle: 'italic',
-                    }}>
-                      "{wordOfDay.sentence}"
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Quick Actions */}
-          <div className="dash-section">
-            <div className="dash-section-title">إجراءات سريعة</div>
-            <div className="card-grid">
-              {actions.map(a => (
-                <Link key={a.href} href={a.href} className="dash-action-card">
-                  <span className="dash-action-icon">{a.icon}</span>
-                  <div className="dash-action-title">{a.title}</div>
-                  <div className="dash-action-desc">{a.desc}</div>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* Parent Panel — teachers/admins only */}
-          {!isStudent && <ParentPanel assessments={assessments ?? []} />}
-
-          {/* Recent Assessments */}
-          <div className="dash-section">
-            <div className="dash-section-title">آخر تقييماتي</div>
-            {assessments && assessments.length > 0 ? (
-              isStudent ? (
-                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>المستوى</th>
-                        <th>الحالة</th>
-                        <th>التاريخ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {assessments.slice(0, 5).map(a => (
-                        <tr key={a.id}>
-                          <td><span className="badge badge-blue">المستوى {a.level}</span></td>
-                          <td><span className="badge badge-green">تم الإرسال ✓</span></td>
-                          <td style={{ direction: 'ltr', textAlign: 'right' }}>
-                            {a.completed_at ? new Date(a.completed_at).toLocaleDateString('ar-SA') : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>المستوى</th>
-                        <th>النتيجة</th>
-                        <th>التاريخ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {assessments.slice(0, 5).map(a => (
-                        <tr key={a.id}>
-                          <td><span className="badge badge-blue">المستوى {a.level}</span></td>
-                          <td>
-                            <span className={`badge ${(a.score ?? 0) >= 70 ? 'badge-green' : 'badge-orange'}`}>
-                              {a.score ?? 0}%
-                            </span>
-                          </td>
-                          <td style={{ direction: 'ltr', textAlign: 'right' }}>
-                            {a.completed_at ? new Date(a.completed_at).toLocaleDateString('ar-SA') : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )
-            ) : (
-              <div className="empty-state card">
-                <span className="empty-icon">📋</span>
-                <p>لا توجد تقييمات بعد</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
-    </>
+    <DashboardContent
+      user={user}
+      assessments={assessments ?? []}
+      isStudent={isStudent}
+      upcomingSessions={upcomingSessions}
+      displayName={displayName}
+      studentGender={studentGender}
+      attendancePct={attendancePct}
+      attendedCount={attendedCount}
+      attendanceTotal={attendanceRecords.length}
+      homework={homework}
+      sessionNotes={sessionNotes}
+      streakCount={streakCount}
+      loggedToday={loggedToday}
+      last7Days={last7Days}
+      masteredCount={masteredCount}
+      studiedCount={studiedCount}
+      hasHero={hasHero}
+    />
   );
 }

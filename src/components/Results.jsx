@@ -10,7 +10,7 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, on
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, '1');
 
-    // Save result in background
+    // Save to Google Sheets + anonymous Supabase record
     fetch('/api/save-result', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -23,6 +23,21 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, on
         finalLevel:   finalLevel,
         levelPath:    levelPath.join(' ← '),
         bySkill:      scores.bySkill,
+      }),
+    }).catch(() => {});
+
+    // Save to LMS dashboard (links result to student account by email)
+    fetch(`${import.meta.env.VITE_LMS_URL ?? 'https://www.aarem.net'}/api/save-assessment`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':      'application/json',
+        'x-webhook-secret':  import.meta.env.VITE_ASSESSMENT_WEBHOOK_SECRET ?? '',
+      },
+      body:    JSON.stringify({
+        email:        studentInfo.email,
+        studentName:  studentInfo.name,
+        overallScore: scores.overall,
+        finalLevel:   finalLevel,
       }),
     }).catch(() => {});
 
