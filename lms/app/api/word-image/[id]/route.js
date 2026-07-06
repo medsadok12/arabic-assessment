@@ -33,8 +33,8 @@ export async function GET(_req, { params }) {
   return new NextResponse(buffer, {
     headers: {
       'Content-Type': mimeType,
-      // تحديث سريع تلقائي: تُعتبر طازجة لدقيقة، فأي تغيير للصورة يظهر خلال ثوانٍ
-      'Cache-Control': 'public, max-age=60, stale-while-revalidate=86400',
+      // قراءة حيّة دائماً: أي تغيير أو حذف للصورة من لوحة الإدارة ينعكس فوراً بلا كاش عالق
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
     },
   });
 }

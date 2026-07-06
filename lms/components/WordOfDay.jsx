@@ -14,7 +14,8 @@ export default function WordOfDay() {
 
   useEffect(() => {
     let alive = true;
-    fetch('/api/word-of-day', { cache: 'no-store' })
+    // ?t=... عنوان فريد لكل تحميل → لا يجد الـCDN نسخة محفوظة فيقرأ حيّاً من قاعدة البيانات
+    fetch(`/api/word-of-day?t=${Date.now()}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
         if (!alive || !d.word) return;
