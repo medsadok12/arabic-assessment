@@ -12,7 +12,7 @@ export async function GET() {
     const admin = createAdminClient();
     const { data, error } = await admin
       .from('lexicon_words')
-      .select('id, word, word_type, topic, sentence')
+      .select('id, word, word_type, topic, sentence, syllables, has_image')
       .order('id', { ascending: true });
 
     if (error || !data?.length) {

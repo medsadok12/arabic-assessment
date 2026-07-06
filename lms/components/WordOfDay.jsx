@@ -14,7 +14,7 @@ export default function WordOfDay() {
 
   useEffect(() => {
     let alive = true;
-    fetch('/api/word-of-day')
+    fetch('/api/word-of-day', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
         if (!alive || !d.word) return;
@@ -80,12 +80,36 @@ export default function WordOfDay() {
         )}
       </div>
 
+      {word.has_image && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+          <img
+            src={`/api/word-image/${word.id}`}
+            alt={word.word}
+            width={140}
+            height={140}
+            style={{
+              width: 140, height: 140, objectFit: 'cover',
+              borderRadius: 18, border: '3px solid #fff',
+              boxShadow: '0 4px 14px rgba(26,43,74,.12)',
+            }}
+          />
+        </div>
+      )}
+
       <div style={{ textAlign: 'center', marginBottom: meta ? 4 : 14 }}>
         <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#1A2B4A', lineHeight: 1.3 }}>
           {word.word}
         </div>
+        {word.syllables && (
+          <div style={{
+            fontSize: '1.15rem', fontWeight: 800, color: '#1A2B4A', opacity: .7,
+            letterSpacing: 3, marginTop: 6, direction: 'rtl',
+          }}>
+            {word.syllables}
+          </div>
+        )}
         {meta && (
-          <div style={{ fontSize: '.82rem', color: '#8a94a6', marginTop: 2 }}>{meta}</div>
+          <div style={{ fontSize: '.82rem', color: '#8a94a6', marginTop: 4 }}>{meta}</div>
         )}
       </div>
 
