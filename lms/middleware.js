@@ -54,6 +54,16 @@ export async function middleware(request) {
       return NextResponse.redirect(url);
     }
 
+    // Manual email/password registrant who hasn't verified yet → send to verify-email.
+    // Google OAuth users always have email_confirmed_at set by Supabase — exempt automatically.
+    const isGoogleUser  = user?.app_metadata?.provider === 'google';
+    const emailVerified = !!user?.email_confirmed_at;
+    if (user && !isGoogleUser && !emailVerified && isProtected) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/auth/verify-email';
+      return NextResponse.redirect(url);
+    }
+
     // New Google OAuth user (no role yet) accessing a protected route → force onboarding
     if (user && !hasRole && isProtected) {
       const url = request.nextUrl.clone();

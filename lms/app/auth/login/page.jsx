@@ -75,6 +75,11 @@ function LoginForm() {
         await supabase.auth.signInWithPassword({ email, password });
 
       if (authError) {
+        const msg = authError.message?.toLowerCase() ?? '';
+        if (msg.includes('email not confirmed') || msg.includes('confirmation') || authError.code === 'email_not_confirmed') {
+          router.push(`/auth/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`);
+          return;
+        }
         setError(resolveError('invalid_credentials'));
         return;
       }

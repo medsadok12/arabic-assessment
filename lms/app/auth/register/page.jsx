@@ -51,19 +51,11 @@ function BannerDecor() {
 }
 
 export default function RegisterPage() {
-  const [form, setForm]     = useState({ name: '', email: '', password: '', confirm: '', code: '', grade: '', age: '' });
+  const [form, setForm]       = useState({ name: '', email: '', password: '', confirm: '', code: '', grade: '', age: '' });
   const [error,   setError]   = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [gLoading, setGLoading] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    if (success) {
-      const t = setTimeout(() => router.replace('/dashboard'), 1800);
-      return () => clearTimeout(t);
-    }
-  }, [success]);
 
   useEffect(() => {
     function onPageShow(e) { if (e.persisted) { setGLoading(false); setLoading(false); } }
@@ -119,22 +111,15 @@ export default function RegisterPage() {
     });
     const data = await res.json();
 
+    setLoading(false);
+
     if (!res.ok) {
       setError(data.error ?? 'حدث خطأ غير متوقع — يرجى المحاولة مجدداً');
-      setLoading(false);
       return;
     }
 
-    // تسجيل الدخول تلقائياً بعد إنشاء الحساب
-    const supabase = createClient();
-    const { error: loginErr } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
-
-    setLoading(false);
-    if (loginErr) {
-      setError('تم إنشاء حسابك بنجاح، لكن تعذّر تسجيل الدخول تلقائياً — يرجى تسجيل الدخول يدوياً.');
-      return;
-    }
-    setSuccess('تم إنشاء حسابك بنجاح! 🎉 مرحباً بك في رحلتك مع أكاديمية عارم');
+    // أرسلنا رابط التحقق — لا نُسجِّل دخوله تلقائياً قبل تأكيد البريد
+    router.replace(`/auth/verify-email?email=${encodeURIComponent(form.email.trim().toLowerCase())}`);
   }
 
   return (
@@ -180,7 +165,7 @@ export default function RegisterPage() {
 
           {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
 
-          {!success && (
+          {(
             <>
               {/* ── زر Google ── */}
               <button
@@ -212,7 +197,7 @@ export default function RegisterPage() {
             </>
           )}
 
-          {!success && (
+          {(
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label className="form-label">الاسم الكامل</label>
@@ -297,27 +282,6 @@ export default function RegisterPage() {
             </form>
           )}
 
-          {success && (
-            <div style={{ textAlign: 'center', padding: '8px 0' }}>
-              <div style={{
-                width: 64, height: 64, margin: '0 auto 18px', borderRadius: '50%',
-                background: '#2ABB7A', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '2rem', color: '#fff', boxShadow: '0 6px 18px rgba(42,187,122,.4)',
-              }}>✓</div>
-              <p style={{ color: '#1A2B4A', fontSize: '1rem', fontWeight: 700, marginBottom: 22, lineHeight: 1.7 }}>
-                {success}
-              </p>
-              <Link href="/dashboard"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center',
-                  width: '100%', padding: '14px 0', borderRadius: 10,
-                  background: '#1A2B4A', color: '#E8B84B', fontWeight: 800, fontSize: '1rem',
-                  textDecoration: 'none', boxShadow: '0 3px 12px rgba(26,43,74,.3)',
-                }}>
-                الذهاب للوحتي ←
-              </Link>
-            </div>
-          )}
         </div>
       </div>
     </div>
