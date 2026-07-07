@@ -27,13 +27,8 @@ const SECURITY_HEADERS = [
       "img-src 'self' data: blob: https:",
       // Fonts self-hosted via next/font
       "font-src 'self' data:",
-      // API connections: Supabase, Gemini, Azure TTS, Google TTS proxy, 3D models
+      // API connections: Supabase + 3D models only — AI/TTS keys are server-side, never called from the browser
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co " +
-        "https://generativelanguage.googleapis.com " +
-        "https://*.api.cognitive.microsoft.com " +
-        "https://*.tts.speech.microsoft.com " +
-        "https://translate.googleapis.com " +
-        "https://api.anthropic.com " +
         "https://modelviewer.dev " +
         "https://raw.githubusercontent.com " +
         "https://threejs.org " +
