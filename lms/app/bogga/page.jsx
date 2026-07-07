@@ -710,16 +710,12 @@ export default function BoggarAdminPage() {
   }, [permPopover]);
 
   async function loadStats() {
-    const [
-      { count: ac }, { count: pc }, { data: scores }, appsRes,
-    ] = await Promise.all([
-      supabase.from('assessments').select('id', { count: 'exact', head: true }),
-      supabase.from('assessments').select('id', { count: 'exact', head: true }).gte('score', 70),
-      supabase.from('assessments').select('score'),
+    const [statsRes, appsRes] = await Promise.all([
+      fetch('/api/bogga/results?page=1').then(r => r.json()).catch(() => ({ stats: {} })),
       fetch('/api/bogga/recruitment').then(r => r.json()).catch(() => ({ applications: [] })),
     ]);
-    const avg = scores?.length ? Math.round(scores.reduce((s, a) => s + (a.score ?? 0), 0) / scores.length) : 0;
-    setStats({ assessments: ac ?? 0, pass: pc ?? 0, avg, applications: appsRes.applications?.length ?? 0 });
+    const s = statsRes.stats ?? {};
+    setStats({ assessments: s.total ?? 0, pass: s.passed ?? 0, avg: s.avg ?? 0, applications: appsRes.applications?.length ?? 0 });
   }
 
   async function loadApps() {
