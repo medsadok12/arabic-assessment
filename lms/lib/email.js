@@ -282,6 +282,34 @@ export async function sendMissingRecordingAlert({ teacherName, teacherEmail, stu
   if (error) throw new Error(error.message);
 }
 
+export async function sendVerificationEmail({ to, name, link }) {
+  const html = baseHtml(`
+    <div class="card">
+      <div class="hdr">
+        <h1>🎓 أكاديمية عارم للتعليم</h1>
+        <p>تفعيل حسابك في المنصة</p>
+      </div>
+      <div class="body">
+        <p>أهلاً وسهلاً <strong>${name}</strong>!</p>
+        <p>يسعدنا انضمامك إلى أكاديمية عارم. خطوة واحدة فقط تفصلك عن بدء رحلتك التعليمية — اضغط على الزر أدناه لتفعيل حسابك:</p>
+        <div class="actions">
+          <a href="${link}" class="btn btn-green">✅ &nbsp; تفعيل حسابي الآن</a>
+        </div>
+        <p class="note">هذا الرابط صالح لمدة 24 ساعة فقط. إن انتهت مدته، يمكنك طلب رابط جديد من صفحة التحقق.<br>إذا لم تطلب هذا الحساب، تجاهل هذه الرسالة بأمان.</p>
+      </div>
+      <div class="ftr">أكاديمية عارم للتعليم — جميع الحقوق محفوظة</div>
+    </div>
+  `);
+
+  const { error } = await resend().emails.send({
+    from:    FROM,
+    to,
+    subject: '🎓 فعّل حسابك في أكاديمية عارم',
+    html,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function sendWelcomeEmail({ to, name, password }) {
   const html = baseHtml(`
     <div class="card">

@@ -1,14 +1,17 @@
 import { NextResponse }       from 'next/server';
-import { createClient }       from '@supabase/supabase-js';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { sendVerificationEmail } from '../../../../lib/email';
 
 /**
  * POST /api/auth/register
  *
  * Atomic student self-registration with email verification:
  *   1. Validate academy code (read-only) — fail fast, no account created
- *   2. Create user + send verification email via public signUp() (guaranteed to send mail)
+ *   2. Create user via admin.generateLink({ type:'signup' }) — always unconfirmed
+ *      regardless of Supabase project autoconfirm setting
  *   3. Consume academy code atomically — if race-condition, delete user and fail
+ *   4. Send verification email via Resend (not Supabase SMTP)
+ *      — if send fails, rollback user + code
  *
  * Body: { name, email, password, code, age, grade? }
  * Response: { ok: true } — client must redirect to /auth/verify-email, NOT auto-login
@@ -43,23 +46,17 @@ export async function POST(req) {
       );
     }
 
-    // ── Step 2: create user + send verification email ─────────────────────────
-    // We use the public anon-key signUp() — it creates the user AND automatically
-    // sends the confirmation email in one atomic call. The admin createUser API
-    // does NOT send the email; the separate /auth/v1/resend endpoint is unreliable
-    // server-side. signUp() is the only guaranteed path to email delivery.
+    // ── Step 2: create user + generate verification link ─────────────────────
+    // generateLink({ type:'signup' }) always creates the user as UNCONFIRMED,
+    // bypassing the project-level autoconfirm setting. This is the only reliable
+    // way to get an action_link when Supabase autoconfirm is ON.
     const host       = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'www.aarem.net';
     const proto      = host.startsWith('localhost') || host.startsWith('127.') ? 'http' : 'https';
     const redirectTo = `${proto}://${host}/auth/callback?for=student`;
 
-    const anonClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-
-    const { data: signupData, error: signupError } = await anonClient.auth.signUp({
-      email:    lowerEmail,
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+      type:  'signup',
+      email: lowerEmail,
       password,
       options: {
         data: {
@@ -69,29 +66,24 @@ export async function POST(req) {
           grade:               grade || null,
           onboarding_complete: true,
         },
-        emailRedirectTo: redirectTo,
+        redirectTo,
       },
     });
 
-    if (signupError) {
-      const msg = signupError.message ?? '';
-      if (msg.includes('already registered') || msg.includes('User already registered')) {
+    if (linkError) {
+      const msg = linkError.message ?? '';
+      if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already been registered')) {
         return NextResponse.json({ error: 'هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول' }, { status: 409 });
       }
-      console.error('[register] signUp error:', msg);
+      console.error('[register] generateLink error:', msg);
       return NextResponse.json({ error: 'حدث خطأ أثناء إنشاء الحساب — يرجى المحاولة مجدداً أو التواصل مع إدارة الأكاديمية' }, { status: 500 });
     }
 
-    const userId    = signupData?.user?.id;
-    const identities = signupData?.user?.identities ?? [];
+    const userId     = linkData?.user?.id;
+    const actionLink = linkData?.properties?.action_link;
 
-    // Supabase returns an empty identities array (no error) when the email is
-    // already confirmed — to avoid leaking whether an email is registered.
-    if (!userId) {
+    if (!userId || !actionLink) {
       return NextResponse.json({ error: 'حدث خطأ أثناء إنشاء الحساب — يرجى المحاولة مجدداً' }, { status: 500 });
-    }
-    if (identities.length === 0) {
-      return NextResponse.json({ error: 'هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول' }, { status: 409 });
     }
 
     // ── Step 3: consume code atomically ──────────────────────────────────────
@@ -110,10 +102,27 @@ export async function POST(req) {
 
     if (!consumed) {
       // Race condition: another request consumed this code between steps 1 and 3
-      if (userId) await admin.auth.admin.deleteUser(userId);
+      await admin.auth.admin.deleteUser(userId);
       return NextResponse.json(
         { error: 'كود الأكاديمية غير صحيح أو غير مفعّل — تواصل مع إدارة الأكاديمية' },
         { status: 400 }
+      );
+    }
+
+    // ── Step 4: send verification email via Resend ────────────────────────────
+    try {
+      await sendVerificationEmail({ to: lowerEmail, name: name.trim(), link: actionLink });
+    } catch (emailErr) {
+      console.error('[register] sendVerificationEmail failed:', emailErr.message);
+      // Rollback: delete user + free the invitation code so student can retry
+      await admin.auth.admin.deleteUser(userId);
+      await admin
+        .from('student_invitation_codes')
+        .update({ is_used: false, used_at: null, used_by_name: null, used_by_email: null })
+        .eq('code', normalized);
+      return NextResponse.json(
+        { error: 'تعذّر إرسال بريد التحقق — يرجى المحاولة مجدداً أو التواصل مع إدارة الأكاديمية' },
+        { status: 500 }
       );
     }
 

@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { createClient } from '../../../lib/supabase';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -12,22 +11,22 @@ function VerifyEmailContent() {
   const [message, setMessage] = useState('');
 
   async function resend() {
-    if (status === 'sending') return;
+    if (status === 'sending' || status === 'sent') return;
     setStatus('sending');
     setMessage('');
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.resend({
-        type:    'signup',
-        email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback?for=student` },
+      const res  = await fetch('/api/auth/resend-verification', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email }),
       });
-      if (error) {
+      const body = await res.json();
+      if (!res.ok) {
         setStatus('error');
-        setMessage('تعذَّر إعادة إرسال الرسالة — يرجى المحاولة مجدداً أو التواصل مع إدارة الأكاديمية.');
+        setMessage(body.error ?? 'تعذَّر إعادة إرسال الرسالة — يرجى المحاولة مجدداً أو التواصل مع إدارة الأكاديمية.');
       } else {
         setStatus('sent');
-        setMessage('تم إعادة إرسال رابط التحقق! تحقق من صندوق الوارد.');
+        setMessage('تم إعادة إرسال رابط التحقق! تحقق من صندوق الوارد وملف البريد المزعج (Spam).');
       }
     } catch {
       setStatus('error');
