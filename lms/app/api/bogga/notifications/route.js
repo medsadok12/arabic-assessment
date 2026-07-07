@@ -8,8 +8,8 @@ import { cookies }           from 'next/headers';
 async function getRole() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  // app_metadata أولاً (آمن) ثم user_metadata احتياطياً — إغلاق ثغرة رفع الصلاحيات
-  const role = user?.app_metadata?.role ?? user?.user_metadata?.role ?? '';
+  // app_metadata حصراً — لا يستطيع المستخدم التلاعب به (إغلاق ثغرة رفع الصلاحيات)
+  const role = user?.app_metadata?.role ?? '';
   return { user, role };
 }
 

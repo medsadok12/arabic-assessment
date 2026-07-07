@@ -50,7 +50,6 @@ export async function POST(req) {
     // app_metadata.display_name: مصدر الحقيقة للاسم — Google لا يستطيع الكتابة عليه
     await admin.auth.admin.updateUserById(user.id, {
       user_metadata: {
-        role:                'student',
         full_name:           displayName,
         age:                 age.toString().trim(),
         grade:               grade || null,

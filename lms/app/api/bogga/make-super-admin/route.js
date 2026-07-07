@@ -27,10 +27,9 @@ export async function POST() {
     return NextResponse.json({ error: 'يوجد مدير مطلق بالفعل في النظام' }, { status: 409 });
   }
 
-  // Promote current user to super_admin
+  // Promote current user to super_admin — الدور في app_metadata حصراً (آمن)
   const { error } = await admin.auth.admin.updateUserById(user.id, {
-    user_metadata: { ...user.user_metadata, role: 'super_admin' },
-    app_metadata:  { role: 'super_admin' },
+    app_metadata: { role: 'super_admin' },
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

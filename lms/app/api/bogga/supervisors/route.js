@@ -57,7 +57,7 @@ export async function POST(req) {
     email:         email.trim(),
     password:      tempPassword,
     email_confirm: true,
-    user_metadata: { full_name: name.trim(), role: 'supervisor', status: 'active' },
+    user_metadata: { full_name: name.trim(), status: 'active' },
     app_metadata:  { temp_password: tempPassword, role: 'supervisor' },
   });
 

@@ -70,7 +70,6 @@ export async function POST(req) {
       options: {
         data: {
           full_name:           name.trim(),
-          role:                'student',
           age:                 age.toString().trim(),
           grade:               grade || null,
           onboarding_complete: true,
@@ -124,13 +123,23 @@ export async function POST(req) {
       );
     }
 
-    // ── الدور في app_metadata (مصدر الحقيقة الآمن — لا يستطيع المستخدم تعديله) ──
-    // كتابة مزدوجة مؤقتة مع user_metadata؛ best-effort لأن الدالة بمصدرين تغطي أي إخفاق.
-    // generateLink لا يقبل app_metadata، لذا تُضبط بنداء تابع بعد إنشاء المستخدم.
-    try {
-      await admin.auth.admin.updateUserById(userId, { app_metadata: { role: 'student' } });
-    } catch (metaErr) {
-      console.error('[register] app_metadata role write failed (non-fatal):', metaErr.message);
+    // ── الدور في app_metadata حصراً (مصدر الحقيقة الآمن — لا يستطيع المستخدم تعديله) ──
+    // generateLink لا يقبل app_metadata، فيُضبط بنداء تابع. حرجة: إن أخفقت نتراجع
+    // (نحذف المستخدم + نحرّر الكود) حتى لا يُنشأ حساب بلا دور.
+    const { error: roleErr } = await admin.auth.admin.updateUserById(userId, {
+      app_metadata: { role: 'student' },
+    });
+    if (roleErr) {
+      console.error('[register] app_metadata role write failed:', roleErr.message);
+      await admin.auth.admin.deleteUser(userId);
+      await admin
+        .from('student_invitation_codes')
+        .update({ is_used: false, used_at: null, used_by_name: null, used_by_email: null })
+        .eq('code', normalized);
+      return NextResponse.json(
+        { error: 'حدث خطأ أثناء إنشاء الحساب — يرجى المحاولة مجدداً أو التواصل مع إدارة الأكاديمية' },
+        { status: 500 }
+      );
     }
 
     // ── Step 4: send verification email via Resend ────────────────────────────
