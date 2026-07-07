@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createAdminClient, fetchAllUsers } from '../../../lib/supabase-admin';
+import { getRole } from '../../../lib/auth-role';
 
 function destForRole(role) {
   if (role === 'super_admin' || role === 'admin') return '/bogga';
@@ -42,7 +43,7 @@ export async function GET(request) {
         return NextResponse.redirect(`${origin}${next}`);
       }
 
-      const role         = user.user_metadata?.role;
+      const role         = getRole(user);
       const isStaff      = STAFF_ROLES.has(role);
       const isTeacherCtx = forCtx === 'teacher';
 
@@ -83,11 +84,11 @@ export async function GET(request) {
         const existing = all.find(u =>
           u.email === user.email &&
           u.id    !== user.id   &&
-          u.user_metadata?.role
+          getRole(u)
         );
 
         if (existing) {
-          const existingRole  = existing.user_metadata.role;
+          const existingRole  = getRole(existing);
           const existingStaff = STAFF_ROLES.has(existingRole);
 
           // تحقق من تطابق السياق

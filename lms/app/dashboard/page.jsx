@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase-server';
 import { createAdminClient } from '../../lib/supabase-admin';
 import DashboardContent from '../../components/DashboardContent';
+import { getRole } from '../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ export default async function DashboardPage() {
     redirect('/auth/login');
   }
 
-  const role      = user.user_metadata?.role ?? 'student';
+  const role      = getRole(user) ?? 'student';
   const isStudent = role === 'student';
 
   if (role === 'admin' || role === 'super_admin') redirect('/bogga');

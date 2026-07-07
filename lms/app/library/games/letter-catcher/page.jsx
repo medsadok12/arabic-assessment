@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { getRole } from '../../../../lib/auth-role';
 
 /* teacher-only panel loads only when the teacher opens it — not in students' bundle */
 const SettingsPanel = dynamic(() => import('./_teacher-panel'), { ssr: false, loading: () => null });
@@ -172,7 +173,7 @@ export default function LetterCatcherGame() {
     import('../../../../lib/supabase').then(({ createClient }) => {
       const supabase = createClient();
       supabase.auth.getUser().then(({ data: { user } }) => {
-        const role = user?.user_metadata?.role ?? '';
+        const role = getRole(user) ?? '';
         setIsTeacher(['super_admin', 'admin', 'teacher'].includes(role));
         if (user) {
           setCurrentUser(user);

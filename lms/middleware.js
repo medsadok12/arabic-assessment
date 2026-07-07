@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
+import { getRole } from './lib/auth-role';
 
 // Routes that require a logged-in user
 const PROTECTED = [
@@ -45,7 +46,7 @@ export async function middleware(request) {
     const isUpdatePwdRoute  = pathname === UPDATE_PASSWORD_ROUTE;
     const isOnboardingRoute = pathname === ONBOARDING_ROUTE;
     const hasTempPwd        = !!user?.app_metadata?.temp_password;
-    const hasRole           = !!user?.user_metadata?.role;
+    const hasRole           = !!getRole(user);
 
     // Not logged in → send to login
     if (!user && isProtected) {
@@ -80,7 +81,7 @@ export async function middleware(request) {
 
     // Logged-in user with no temp_password trying to reach update-password → send to dashboard
     if (user && !hasTempPwd && isUpdatePwdRoute) {
-      const role = user.user_metadata?.role;
+      const role = getRole(user);
       const url  = request.nextUrl.clone();
       url.pathname =
         role === 'admin' || role === 'super_admin' ? '/bogga'
@@ -92,7 +93,7 @@ export async function middleware(request) {
 
     // Completed user visiting onboarding → send to their dashboard
     if (user && hasRole && isOnboardingRoute) {
-      const role = user.user_metadata?.role;
+      const role = getRole(user);
       const url  = request.nextUrl.clone();
       url.pathname =
         role === 'admin' || role === 'super_admin' ? '/bogga'
@@ -104,7 +105,7 @@ export async function middleware(request) {
 
     // Already logged in → no need to see login/register again
     if (user && isRedirectIfLogIn) {
-      const role = user.user_metadata?.role;
+      const role = getRole(user);
       const url  = request.nextUrl.clone();
       url.pathname =
         role === 'admin' || role === 'super_admin' ? '/bogga'

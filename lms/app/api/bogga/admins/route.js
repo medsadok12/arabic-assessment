@@ -2,6 +2,7 @@ import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient, fetchAllUsers } from '../../../../lib/supabase-admin';
 import { sendWelcomeEmail }  from '../../../../lib/email';
+import { getRole } from '../../../../lib/auth-role';
 
 const MAX_ADMINS = 2;
 
@@ -16,7 +17,7 @@ function generateTempPassword() {
 export async function GET() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'super_admin') {
+  if (!user || getRole(user) !== 'super_admin') {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
   }
 
@@ -26,7 +27,7 @@ export async function GET() {
   catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 
   const admins = users
-    .filter(u => u.user_metadata?.role === 'admin')
+    .filter(u => getRole(u) === 'admin')
     .map(u => ({
       id:         u.id,
       name:       u.user_metadata?.full_name ?? '—',
@@ -42,7 +43,7 @@ export async function GET() {
 export async function POST(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'super_admin') {
+  if (!user || getRole(user) !== 'super_admin') {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
   }
 
@@ -55,7 +56,7 @@ export async function POST(req) {
 
   // Enforce max 2 admins
   const allUsers = await fetchAllUsers(admin).catch(() => []);
-  const currentAdmins = allUsers.filter(u => u.user_metadata?.role === 'admin');
+  const currentAdmins = allUsers.filter(u => getRole(u) === 'admin');
   if (currentAdmins.length >= MAX_ADMINS) {
     return NextResponse.json({
       error: `الحد الأقصى للمشرفين المساعدين هو ${MAX_ADMINS} حسابات فقط. احذف مشرفاً حالياً أولاً.`,

@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient }      from '../../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
+import { getRole } from '../../../../../lib/auth-role';
 
 // DELETE — remove an admin account
 export async function DELETE(req, { params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'super_admin') {
+  if (!user || getRole(user) !== 'super_admin') {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
   }
 
@@ -23,7 +24,7 @@ export async function DELETE(req, { params }) {
   // Verify target is actually an admin (not super_admin or student)
   const { data: { user: target }, error: fetchErr } = await admin.auth.admin.getUserById(id);
   if (fetchErr || !target) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
-  if (target.user_metadata?.role !== 'admin') {
+  if (getRole(target) !== 'admin') {
     return NextResponse.json({ error: 'لا يمكن حذف هذا الحساب' }, { status: 400 });
   }
 
@@ -37,7 +38,7 @@ export async function DELETE(req, { params }) {
 export async function PATCH(req, { params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'super_admin') {
+  if (!user || getRole(user) !== 'super_admin') {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
   }
 
@@ -54,7 +55,7 @@ export async function PATCH(req, { params }) {
 
   const { data: { user: target }, error: fetchErr } = await admin.auth.admin.getUserById(id);
   if (fetchErr || !target) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
-  if (target.user_metadata?.role !== 'admin') {
+  if (getRole(target) !== 'admin') {
     return NextResponse.json({ error: 'لا يمكن تعديل هذا الحساب' }, { status: 400 });
   }
 

@@ -1,6 +1,7 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { getRole } from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,7 @@ export async function DELETE(req, { params }) {
   if (!post) return NextResponse.json({ error: 'المنشور غير موجود' }, { status: 404 });
 
   const isOwner = post.author_id === user.id;
-  const isAdmin = ADMIN_ROLES.includes(user.user_metadata?.role);
+  const isAdmin = ADMIN_ROLES.includes(getRole(user));
   if (!isOwner && !isAdmin)
     return NextResponse.json({ error: 'لا تملك صلاحية الحذف' }, { status: 403 });
 

@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient }      from '../../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
+import { getRole } from '../../../../../lib/auth-role';
 
 // GET — return CV data for a single application (super_admin only)
 export async function GET(req, { params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'super_admin') {
+  if (!user || getRole(user) !== 'super_admin') {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
   }
 

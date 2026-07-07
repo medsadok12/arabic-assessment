@@ -16,6 +16,7 @@ import LifeSceneSimulator              from '../../components/LifeSceneSimulator
 import PricingAdmin                    from '../../components/PricingAdmin';
 import TeamAdmin                        from '../../components/TeamAdmin';
 import { useLanguage }                  from '../../contexts/LanguageContext';
+import { getRole } from '../../lib/auth-role';
 
 // ── Time slots 00:00 → 23:55, 5-min increments (288 slots) ─────────────────
 const TIME_SLOTS = Array.from({ length: 288 }, (_, i) => {
@@ -558,7 +559,7 @@ export default function BoggarAdminPage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       if (!u) { router.push('/auth/login'); return; }
-      const r = u.user_metadata?.role ?? '';
+      const r = getRole(u) ?? '';
       if (r !== 'admin' && r !== 'super_admin') {
         router.push(r === 'supervisor' ? '/supervisor' : r === 'teacher' ? '/teacher' : '/dashboard');
         return;

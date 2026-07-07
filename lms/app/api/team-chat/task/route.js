@@ -1,5 +1,6 @@
 import { createClient } from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { getRole } from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +10,7 @@ export async function PATCH(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
-  if (!ALLOWED.includes(user.user_metadata?.role)) return Response.json({ error: 'غير مصرح' }, { status: 403 });
+  if (!ALLOWED.includes(getRole(user))) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
   const { messageId, type } = await request.json();
   if (!messageId || !type) return Response.json({ error: 'بيانات ناقصة' }, { status: 400 });

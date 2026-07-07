@@ -3,6 +3,7 @@ import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { sendSessionEmail }  from '../../../../lib/email';
 import { createMeetSession } from '../../../../lib/google-meet';
+import { getRole } from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,7 @@ async function checkAdmin() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const role = user.user_metadata?.role;
+  const role = getRole(user);
   if (role !== 'admin' && role !== 'super_admin') return null;
   return user;
 }

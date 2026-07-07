@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
 import { createClient }      from '../../../../../lib/supabase-server';
+import { getRole } from '../../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
 const MAX_SIZE_MB = 4;
 
 function guard(user) {
-  const role = user?.user_metadata?.role;
+  const role = getRole(user);
   return !user || (role !== 'super_admin' && role !== 'admin');
 }
 

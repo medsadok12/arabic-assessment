@@ -1,6 +1,7 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../../lib/supabase-server';
 import { createAdminClient, fetchAllUsers } from '../../../../../lib/supabase-admin';
+import { getRole } from '../../../../../lib/auth-role';
 
 function generateTempPassword() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
@@ -13,7 +14,7 @@ function generateTempPassword() {
 export async function POST() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'super_admin')
+  if (!user || getRole(user) !== 'super_admin')
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
 
   const admin = createAdminClient();
@@ -23,7 +24,7 @@ export async function POST() {
 
   // Only users without a stored temp_password (and not super_admin)
   const targets = users.filter(u =>
-    u.user_metadata?.role !== 'super_admin' &&
+    getRole(u) !== 'super_admin' &&
     !u.app_metadata?.temp_password
   );
 

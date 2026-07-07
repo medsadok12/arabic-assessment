@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { getRole } from '../../../../lib/auth-role';
 
 /* ─── helpers ─── */
 function speak(text) {
@@ -564,7 +565,7 @@ export default function WordSmashGame() {
     import('../../../../lib/supabase').then(({ createClient }) => {
       const sb = createClient();
       sb.auth.getUser().then(({ data: { user } }) => {
-        const role = user?.user_metadata?.role ?? '';
+        const role = getRole(user) ?? '';
         setIsTeacher(['super_admin', 'admin', 'teacher'].includes(role));
       }).catch(() => {});
     }).catch(() => {});

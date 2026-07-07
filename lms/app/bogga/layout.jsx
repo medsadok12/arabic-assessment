@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase-server';
+import { getRole } from '../../lib/auth-role';
 
 export default async function BruteLayout({ children }) {
   try {
@@ -8,7 +9,7 @@ export default async function BruteLayout({ children }) {
 
     if (error || !user) redirect('/auth/login');
 
-    const role = user.user_metadata?.role;
+    const role = getRole(user);
     if (role !== 'admin' && role !== 'super_admin') redirect('/dashboard');
 
     return <>{children}</>;

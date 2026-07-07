@@ -7,6 +7,7 @@ import TeacherSpace from './TeacherSpace';
 import NotificationBell from './NotificationBell';
 import { createClient } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getRole } from '../lib/auth-role';
 
 const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
                    'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -86,7 +87,7 @@ export default function SupervisorContent({ user, assessments, displayName }) {
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <NotificationBell userId={user?.id} role={user?.user_metadata?.role} lang={lang} />
+            <NotificationBell userId={user?.id} role={getRole(user)} lang={lang} />
             <span style={{
               background: '#f0f6ff', color: '#185FA5', border: '1.5px solid #bfdbfe',
               borderRadius: 20, padding: '4px 14px', fontSize: '.82rem', fontWeight: 600,

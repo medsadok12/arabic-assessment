@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase-server';
 import { createAdminClient } from '../../lib/supabase-admin';
 import SupervisorContent from '../../components/SupervisorContent';
+import { getRole } from '../../lib/auth-role';
 
 export default async function SupervisorPage() {
   let user;
@@ -14,7 +15,7 @@ export default async function SupervisorPage() {
     redirect('/auth/login');
   }
 
-  const role = user.user_metadata?.role ?? '';
+  const role = getRole(user) ?? '';
   if (role !== 'supervisor') {
     redirect(
       role === 'admin' || role === 'super_admin' ? '/bogga'

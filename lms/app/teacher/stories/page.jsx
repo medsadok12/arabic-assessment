@@ -3,6 +3,7 @@ import { createClient }      from '../../../lib/supabase-server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import Navbar        from '../../../components/Navbar';
 import StoryManager  from './StoryManager';
+import { getRole } from '../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ export default async function TeacherStoriesPage() {
     redirect('/auth/login');
   }
 
-  const role = user?.user_metadata?.role ?? '';
+  const role = getRole(user) ?? '';
   if (!['super_admin', 'admin', 'teacher'].includes(role)) redirect('/library');
 
   const admin = createAdminClient();

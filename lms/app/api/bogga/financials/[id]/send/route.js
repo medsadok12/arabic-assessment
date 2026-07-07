@@ -1,12 +1,13 @@
 import { createClient as createServerClient } from '../../../../../../lib/supabase-server';
 import { createAdminClient }   from '../../../../../../lib/supabase-admin';
 import { sendInvoiceEmail }    from '../../../../../../lib/invoiceEmail';
+import { getRole } from '../../../../../../lib/auth-role';
 
 async function requireAdmin() {
   const supabase = createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const role = user.user_metadata?.role ?? '';
+  const role = getRole(user) ?? '';
   return (role === 'super_admin' || role === 'admin') ? user : null;
 }
 

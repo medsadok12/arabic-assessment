@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../lib/supabase';
 import Navbar from '../../components/Navbar';
+import { getRole } from '../../lib/auth-role';
 
 function Initials({ name, size = 80 }) {
   const letters = (name ?? '?')
@@ -75,7 +76,7 @@ function AvatarCard({ user, onUserUpdate }) {
   const fileRef = useRef();
 
   const fullName    = user.user_metadata?.full_name ?? '—';
-  const role        = user.user_metadata?.role ?? 'student';
+  const role        = getRole(user) ?? 'student';
   const canEdit     = role === 'admin' || role === 'teacher';
 
   async function handleAvatarUpload(e) {

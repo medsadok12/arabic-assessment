@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
+import { getRole } from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,7 @@ export async function POST(req) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !isTeacherOrAdmin(user.user_metadata?.role))
+    if (!user || !isTeacherOrAdmin(getRole(user)))
       return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
     const body = await req.json();

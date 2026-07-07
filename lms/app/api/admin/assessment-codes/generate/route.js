@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '../../../../../lib/supabase-server';
+import { getRole } from '../../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +9,7 @@ const ADMIN_ROLES = new Set(['admin', 'super_admin']);
 async function requireAdmin() {
   const supabase = createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !ADMIN_ROLES.has(user.user_metadata?.role)) return null;
+  if (!user || !ADMIN_ROLES.has(getRole(user))) return null;
   return user;
 }
 

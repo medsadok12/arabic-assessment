@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Navbar from '../../../components/Navbar';
 import { createClient } from '../../../lib/supabase';
+import { getRole } from '../../../lib/auth-role';
 
 const WORD_TYPES = ['اسم', 'فعل', 'صفة', 'ظرف', 'حرف', 'ضمير'];
 const TOPICS     = ['الحيوانات', 'الطبيعة', 'الأسرة', 'المدرسة', 'الطعام', 'الجسم', 'الألوان', 'الأعداد', 'المهن', 'الزمن', 'أخرى'];
@@ -48,7 +49,7 @@ export default function LexiconAdminPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
-      if (u) { setUser(u); setRole(u.user_metadata?.role ?? ''); }
+      if (u) { setUser(u); setRole(getRole(u) ?? ''); }
     });
     loadWords();
   }, []);

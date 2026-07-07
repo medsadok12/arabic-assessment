@@ -1,5 +1,6 @@
 import { createClient } from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { getRole } from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +9,7 @@ export async function PATCH(request, { params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
-  const role = user.user_metadata?.role ?? '';
+  const role = getRole(user) ?? '';
   if (!['teacher','super_admin','admin'].includes(role)) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
   const body = await request.json();
@@ -50,7 +51,7 @@ export async function DELETE(request, { params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
-  const delRole = user.user_metadata?.role ?? '';
+  const delRole = getRole(user) ?? '';
   if (!['teacher','super_admin','admin'].includes(delRole)) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
   const admin = createAdminClient();

@@ -7,6 +7,7 @@ import TeacherSpace from '../../components/TeacherSpace';
 import LifeSceneSimulator from '../../components/LifeSceneSimulator';
 import NotificationBell from '../../components/NotificationBell';
 import StudentProfilePanel from '../../components/StudentProfilePanel';
+import { getRole } from '../../lib/auth-role';
 
 const TIME_SLOTS = Array.from({ length: 288 }, (_, i) => {
   const mins = i * 5;
@@ -205,7 +206,7 @@ export default function TeacherPage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       if (!u) { router.push('/auth/login'); return; }
-      if (u.user_metadata?.role !== 'teacher') { router.push('/dashboard'); return; }
+      if (getRole(u) !== 'teacher') { router.push('/dashboard'); return; }
       setUser(u);
       setPersonalMeetLink(u.user_metadata?.meet_link ?? '');
     });
@@ -532,7 +533,7 @@ export default function TeacherPage() {
             <p style={{ color:'var(--muted)', fontSize:'.88rem' }}>مرحباً {displayName}</p>
           </div>
           <div style={{ marginRight:'auto', display:'flex', alignItems:'center', gap:10 }}>
-            <NotificationBell userId={user?.id} role={user?.user_metadata?.role} lang="ar" />
+            <NotificationBell userId={user?.id} role={getRole(user)} lang="ar" />
             <button onClick={openCreate} className="btn btn-primary">
               + جدولة حصة جديدة
             </button>

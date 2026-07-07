@@ -3,11 +3,12 @@ export const dynamic = 'force-dynamic';
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { getRole } from '../../../../lib/auth-role';
 
 const SESSION_GAP_MS = 10 * 60 * 1000; // 10-minute gap = new session
 
 function isAllowed(user) {
-  const r = user?.user_metadata?.role;
+  const r = getRole(user);
   return r === 'admin' || r === 'super_admin';
 }
 
@@ -59,7 +60,7 @@ export async function POST() {
 export async function GET(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'super_admin') {
+  if (!user || getRole(user) !== 'super_admin') {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
   }
 

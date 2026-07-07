@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { getRole } from '../lib/auth-role';
 
 // ── Role metadata ────────────────────────────────────────────────────────────
 const ROLE = {
@@ -231,7 +232,7 @@ export default function TeacherSpace({ currentUser }) {
   }
 
   const canDelete = useCallback((post) => {
-    const role = currentUser?.user_metadata?.role;
+    const role = getRole(currentUser);
     return post.author_id === uid || role === 'admin' || role === 'super_admin';
   }, [uid, currentUser]);
 
@@ -248,7 +249,7 @@ export default function TeacherSpace({ currentUser }) {
       }}>
         {/* Author row */}
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 12 }}>
-          <Avatar name={currentUser?.user_metadata?.full_name} role={currentUser?.user_metadata?.role} />
+          <Avatar name={currentUser?.user_metadata?.full_name} role={getRole(currentUser)} />
           <textarea
             value={text}
             onChange={e => setText(e.target.value)}
@@ -556,7 +557,7 @@ export default function TeacherSpace({ currentUser }) {
 
                 {/* Add comment */}
                 <div style={{ padding: '10px 18px', display: 'flex', gap: 9, alignItems: 'flex-end', borderTop: comments.length > 0 ? '1px solid #e2e8f0' : 'none' }}>
-                  <Avatar name={currentUser?.user_metadata?.full_name} role={currentUser?.user_metadata?.role} size={30} />
+                  <Avatar name={currentUser?.user_metadata?.full_name} role={getRole(currentUser)} size={30} />
                   <div style={{ flex: 1, display: 'flex', gap: 7 }}>
                     <input
                       value={myComment}

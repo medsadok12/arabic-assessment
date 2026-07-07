@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '../../../../../lib/supabase';
+import { getRole } from '../../../../../lib/auth-role';
 
 const ALL_ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي'];
 const TIME_OPTIONS = [60, 75, 90, 120];
@@ -70,7 +71,7 @@ export default function WordWheelSettingsPage() {
     supabase.auth.getUser().then(({ data }) => {
       if (!data?.user) { setLoading(false); return; }
       setUser(data.user);
-      const r = data.user.user_metadata?.role || null;
+      const r = getRole(data.user) || null;
       setRole(r);
       if (['teacher','admin','super_admin'].includes(r)) fetchCustomConfigs();
       else setLoading(false);

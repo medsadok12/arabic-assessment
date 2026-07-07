@@ -1,6 +1,7 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../lib/supabase-server';
 import { createAdminClient } from '../../../lib/supabase-admin';
+import { getRole } from '../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,11 +12,11 @@ const ADMIN_ROLES = ['admin', 'super_admin'];
 export async function GET() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !ALLOWED.includes(user.user_metadata?.role))
+  if (!user || !ALLOWED.includes(getRole(user)))
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const admin    = createAdminClient();
-  const isAdmin  = ADMIN_ROLES.includes(user.user_metadata?.role);
+  const isAdmin  = ADMIN_ROLES.includes(getRole(user));
 
   // Admins see both global (recipient_id IS NULL) + personal
   const filter = isAdmin
@@ -43,12 +44,12 @@ export async function GET() {
 export async function PATCH(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !ALLOWED.includes(user.user_metadata?.role))
+  if (!user || !ALLOWED.includes(getRole(user)))
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
   const admin   = createAdminClient();
-  const isAdmin = ADMIN_ROLES.includes(user.user_metadata?.role);
+  const isAdmin = ADMIN_ROLES.includes(getRole(user));
 
   if (body.id) {
     const filter = isAdmin

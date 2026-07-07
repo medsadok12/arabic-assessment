@@ -3,6 +3,7 @@ import { createClient }      from '../../lib/supabase-server';
 import { createAdminClient } from '../../lib/supabase-admin';
 import Navbar       from '../../components/Navbar';
 import LibraryGrid  from './LibraryGrid';
+import { getRole } from '../../lib/auth-role';
 
 export default async function LibraryPage() {
   let user;
@@ -15,7 +16,7 @@ export default async function LibraryPage() {
     redirect('/auth/login');
   }
 
-  const role      = user?.user_metadata?.role ?? '';
+  const role      = getRole(user) ?? '';
   const isTeacher = ['super_admin', 'admin', 'teacher'].includes(role);
 
   const admin = createAdminClient();

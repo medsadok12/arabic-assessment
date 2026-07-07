@@ -2,6 +2,7 @@ import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../lib/supabase-server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { notifyByRole }      from '../../../lib/notify';
+import { getRole } from '../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,7 @@ const ALLOWED = ['teacher', 'supervisor', 'admin', 'super_admin'];
 export async function GET() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !ALLOWED.includes(user.user_metadata?.role))
+  if (!user || !ALLOWED.includes(getRole(user)))
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const admin = createAdminClient();
@@ -31,7 +32,7 @@ export async function GET() {
 export async function POST(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !ALLOWED.includes(user.user_metadata?.role))
+  if (!user || !ALLOWED.includes(getRole(user)))
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const body = await req.json();
@@ -49,7 +50,7 @@ export async function POST(req) {
     .insert({
       author_id:   user.id,
       author_name: user.user_metadata?.full_name ?? user.email,
-      author_role: user.user_metadata?.role,
+      author_role: getRole(user),
       content:     content?.trim() || null,
       media_type:  media_type || null,
       media_data:  media_data || null,

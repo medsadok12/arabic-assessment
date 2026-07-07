@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
+import { getRole } from '../../../../lib/auth-role';
 
 const TABLE = 'word_image_matches';
 const ROLES = ['super_admin', 'admin', 'teacher'];
@@ -11,7 +12,7 @@ async function getUser() {
   return user;
 }
 function isAuthorized(user) {
-  return ROLES.includes(user?.user_metadata?.role ?? '');
+  return ROLES.includes(getRole(user) ?? '');
 }
 
 // GET — public, optional ?topic= &grade=

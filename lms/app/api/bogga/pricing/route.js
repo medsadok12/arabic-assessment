@@ -1,11 +1,12 @@
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { getRole } from '../../../../lib/auth-role';
 
 async function requireSuperAdmin() {
   const supabase = createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) return null;
-  const role = user.user_metadata?.role;
+  const role = getRole(user);
   if (role !== 'super_admin' && role !== 'admin') return null;
   return user;
 }

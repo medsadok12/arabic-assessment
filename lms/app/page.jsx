@@ -11,6 +11,7 @@ import PricingSection from '../components/PricingSection';
 import { Target, FileBarChart, Globe, Smartphone, Lock, Zap } from 'lucide-react';
 import { createClient } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getRole } from '../lib/auth-role';
 
 const WHATSAPP_HREF = 'https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0';
 const FEATURE_ICONS = [Target, FileBarChart, Globe, Smartphone, Lock, Zap];
@@ -23,7 +24,7 @@ export default function LandingPage() {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
-      const role = user.user_metadata?.role;
+      const role = getRole(user);
       if (role === 'super_admin' || role === 'admin') router.replace('/bogga');
       else if (role === 'teacher') router.replace('/teacher');
       else if (role === 'supervisor') router.replace('/supervisor');

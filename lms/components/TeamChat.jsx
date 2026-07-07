@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { createClient } from '../lib/supabase';
+import { getRole } from '../lib/auth-role';
 
 const ALLOWED  = ['teacher', 'admin', 'super_admin'];
 const ROLE_AR  = { teacher: 'معلم', admin: 'مشرف', super_admin: 'مرشد', system: 'بوت' };
@@ -262,7 +263,7 @@ export default function TeamChat({ user }) {
   chatRef.current = chat;
 
   /* derived values — safe with null user via optional chaining */
-  const role     = user?.user_metadata?.role;
+  const role     = getRole(user);
   const myId     = user?.id;
   const myName   = user?.user_metadata?.full_name ?? user?.email ?? '';
   const myAvatar = user?.user_metadata?.avatar_url ?? null;

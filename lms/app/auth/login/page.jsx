@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '../../../lib/supabase';
 import { useLanguage } from '../../../contexts/LanguageContext';
+import { getRole } from '../../../lib/auth-role';
 
 /* ── icon input helper ── */
 function IconInput({ icon, children }) {
@@ -84,7 +85,7 @@ function LoginForm() {
         return;
       }
 
-      const role          = user?.user_metadata?.role;
+      const role          = getRole(user);
       const isTeacherRole = ['teacher', 'admin', 'super_admin', 'supervisor'].includes(role);
 
       if (forTeacher && !isTeacherRole) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
 import { createClient }      from '../../../../../lib/supabase-server';
+import { getRole } from '../../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,7 @@ export async function PUT(req, { params }) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !isTeacherOrAdmin(user.user_metadata?.role))
+    if (!user || !isTeacherOrAdmin(getRole(user)))
       return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
     const body = await req.json();
@@ -21,7 +22,7 @@ export async function PUT(req, { params }) {
     const admin = createAdminClient();
 
     // Teachers may edit only their own wheels; admins/super_admins may edit any.
-    if (user.user_metadata?.role === 'teacher') {
+    if (getRole(user) === 'teacher') {
       const { data: owned } = await admin
         .from('word_wheel_configs').select('created_by').eq('id', params.id).maybeSingle();
       if (!owned) return NextResponse.json({ error: 'العجلة غير موجودة' }, { status: 404 });
@@ -55,13 +56,13 @@ export async function DELETE(req, { params }) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !isTeacherOrAdmin(user.user_metadata?.role))
+    if (!user || !isTeacherOrAdmin(getRole(user)))
       return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
     const admin = createAdminClient();
 
     // Teachers may delete only their own wheels; admins/super_admins may delete any.
-    if (user.user_metadata?.role === 'teacher') {
+    if (getRole(user) === 'teacher') {
       const { data: owned } = await admin
         .from('word_wheel_configs').select('created_by').eq('id', params.id).maybeSingle();
       if (!owned) return NextResponse.json({ error: 'العجلة غير موجودة' }, { status: 404 });

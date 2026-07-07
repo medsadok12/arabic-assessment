@@ -1,6 +1,7 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { getRole } from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,7 @@ const ALLOWED_ROLES = ['admin', 'super_admin', 'supervisor'];
 export async function GET(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const role = user?.user_metadata?.role;
+  const role = getRole(user);
   if (!user || !ALLOWED_ROLES.includes(role))
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 

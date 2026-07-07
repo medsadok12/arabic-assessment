@@ -3,6 +3,7 @@ import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import Navbar     from '../../../../components/Navbar';
 import StoryReader from './StoryReader';
+import { getRole } from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +54,7 @@ export default async function StoryPage({ params }) {
 
   if (!story) notFound();
 
-  const role = user?.user_metadata?.role ?? '';
+  const role = getRole(user) ?? '';
   const isTeacher = ['super_admin', 'admin', 'teacher'].includes(role);
 
   // Students can only see published stories

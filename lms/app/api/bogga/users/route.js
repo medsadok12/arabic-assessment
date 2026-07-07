@@ -1,12 +1,13 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient, fetchAllUsers } from '../../../../lib/supabase-admin';
+import { getRole } from '../../../../lib/auth-role';
 
 // GET — list all users (students, teachers, supervisors)
 export async function GET() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'super_admin') {
+  if (!user || getRole(user) !== 'super_admin') {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
   }
 
@@ -16,7 +17,7 @@ export async function GET() {
   catch (e) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 
   const list = users
-    .filter(u => u.user_metadata?.role !== 'super_admin')
+    .filter(u => getRole(u) !== 'super_admin')
     // Only show email-verified accounts — unconfirmed self-registrations are
     // hidden until the student clicks the verification link.
     // Admin-created accounts (teachers, supervisors) always have email_confirmed_at set.
@@ -25,7 +26,7 @@ export async function GET() {
       id:           u.id,
       name:         u.user_metadata?.full_name ?? '—',
       email:        u.email ?? '',
-      role:         u.user_metadata?.role ?? 'student',
+      role:         getRole(u) ?? 'student',
       status:       u.user_metadata?.status ?? 'active',
       avatar_url:   u.user_metadata?.avatar_url ?? null,
       created_at:   u.created_at,
@@ -43,7 +44,7 @@ export async function GET() {
 export async function PATCH(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'super_admin') {
+  if (!user || getRole(user) !== 'super_admin') {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
   }
 
@@ -55,7 +56,7 @@ export async function PATCH(req) {
   const admin  = createAdminClient();
   const { data: { user: target }, error: fetchErr } = await admin.auth.admin.getUserById(id);
   if (fetchErr || !target) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
-  if (target.user_metadata?.role === 'super_admin') {
+  if (getRole(target) === 'super_admin') {
     return NextResponse.json({ error: 'لا يمكن تعديل حساب المدير' }, { status: 403 });
   }
 

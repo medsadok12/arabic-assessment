@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient }      from '../../../lib/supabase-server';
+import { getRole } from '../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
 async function getUser() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const role = user?.user_metadata?.role ?? '';
+  const role = getRole(user) ?? '';
   const isTeacher = ['super_admin', 'admin', 'teacher'].includes(role);
   return { user, isTeacher };
 }

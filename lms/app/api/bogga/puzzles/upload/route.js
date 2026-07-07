@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
 import { createClient }      from '../../../../../lib/supabase-server';
+import { getRole } from '../../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,7 @@ export async function POST(request) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.user_metadata?.role !== 'super_admin') {
+    if (!user || getRole(user) !== 'super_admin') {
       return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
     }
 

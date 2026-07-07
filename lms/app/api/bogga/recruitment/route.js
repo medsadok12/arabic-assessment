@@ -4,14 +4,15 @@ import { NextResponse }       from 'next/server';
 import { createClient }       from '../../../../lib/supabase-server';
 import { createAdminClient }  from '../../../../lib/supabase-admin';
 import { sendRejectionEmail } from '../../../../lib/email';
+import { getRole } from '../../../../lib/auth-role';
 
 function guard(user) {
-  const role = user?.user_metadata?.role;
+  const role = getRole(user);
   return !user || (role !== 'super_admin' && role !== 'admin');
 }
 
 function isSuperAdmin(user) {
-  return user?.user_metadata?.role === 'super_admin';
+  return getRole(user) === 'super_admin';
 }
 
 // GET — list applications; super_admin sees all, admin sees only visible ones

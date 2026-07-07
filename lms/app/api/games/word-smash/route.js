@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
+import { getRole } from '../../../../lib/auth-role';
 
 async function checkAuth() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const role = user?.user_metadata?.role ?? '';
+  const role = getRole(user) ?? '';
   return { user, role, allowed: ['super_admin', 'admin', 'teacher'].includes(role) };
 }
 

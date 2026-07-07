@@ -1,5 +1,6 @@
 import { createClient } from '../../../lib/supabase-server';
 import { createAdminClient } from '../../../lib/supabase-admin';
+import { getRole } from '../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,7 +86,7 @@ export async function GET(request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
 
-  const role  = user.user_metadata?.role ?? '';
+  const role  = getRole(user) ?? '';
   const admin = createAdminClient();
 
   // super_admin / admin: see ALL scenes from all teachers
@@ -125,7 +126,7 @@ export async function POST(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
-  if (!EDITOR_ROLES.includes(user.user_metadata?.role)) return Response.json({ error: 'للمعلمين والإدارة فقط' }, { status: 403 });
+  if (!EDITOR_ROLES.includes(getRole(user))) return Response.json({ error: 'للمعلمين والإدارة فقط' }, { status: 403 });
 
   const { situation, grade, skill } = await request.json();
   if (!situation?.trim() || !grade?.trim() || !skill?.trim()) {

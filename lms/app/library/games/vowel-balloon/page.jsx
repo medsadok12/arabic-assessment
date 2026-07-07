@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '../../../../lib/supabase';
 import Navbar from '../../../../components/Navbar';
+import { getRole } from '../../../../lib/auth-role';
 
 /* ─── balloon colors by position ─── */
 const BALLOON_COLORS = [
@@ -147,7 +148,7 @@ function Balloon({ label, colorIdx, floatVariant, state, onClick }) {
    WORD MANAGER (admin panel)
 ═══════════════════════════════════════════════════════ */
 function WordManager({ user }) {
-  const role    = user?.user_metadata?.role ?? '';
+  const role    = getRole(user) ?? '';
   const allowed = ['super_admin','admin','teacher'].includes(role);
 
   const [items,         setItems]         = useState([]);
@@ -513,7 +514,7 @@ export default function VowelBalloonPage() {
     setShowConf(false); setDone(false); setLetterAnim('idle');
   }
 
-  const isAdmin = ['super_admin','admin','teacher'].includes(user?.user_metadata?.role ?? '');
+  const isAdmin = ['super_admin','admin','teacher'].includes(getRole(user) ?? '');
   const q       = queue[cur];
   const total   = queue.length;
 

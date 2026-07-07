@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
+import { getRole } from '../../../../lib/auth-role';
 
 const DIACRITICS = /[ً-ٰٟ]/g;
 const TABLE      = 'word_scramble_words';
@@ -12,7 +13,7 @@ async function getUser() {
   return user;
 }
 function isAuthorized(user) {
-  return ROLES.includes(user?.user_metadata?.role ?? '');
+  return ROLES.includes(getRole(user) ?? '');
 }
 
 // GET — public, with optional filters

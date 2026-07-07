@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies }           from 'next/headers';
 import { NextResponse }      from 'next/server';
+import { getRole } from '../../../lib/auth-role';
 
 /**
  * GET /auth/confirm?token_hash=xxx&type=signup|magiclink
@@ -50,7 +51,7 @@ export async function GET(request) {
   }
 
   // Redirect to appropriate dashboard based on role
-  const role = user.user_metadata?.role;
+  const role = getRole(user);
   if (role === 'super_admin' || role === 'admin') return NextResponse.redirect(`${origin}/bogga`);
   if (role === 'teacher')    return NextResponse.redirect(`${origin}/teacher`);
   if (role === 'supervisor') return NextResponse.redirect(`${origin}/supervisor`);

@@ -3,6 +3,7 @@ import { createClient }      from '../../lib/supabase-server';
 import { createAdminClient } from '../../lib/supabase-admin';
 import Navbar                from '../../components/Navbar';
 import ProgressDashboard     from './ProgressDashboard';
+import { getRole } from '../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +31,7 @@ export default async function ProgressPage() {
     redirect('/auth/login');
   }
 
-  const role = user?.user_metadata?.role ?? '';
+  const role = getRole(user) ?? '';
   if (['super_admin', 'admin', 'teacher'].includes(role)) redirect('/teacher');
 
   const admin = createAdminClient();

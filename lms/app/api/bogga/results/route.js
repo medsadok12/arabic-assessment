@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { getRole } from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +9,7 @@ async function guard() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const role = user.user_metadata?.role;
+  const role = getRole(user);
   if (role !== 'super_admin' && role !== 'admin') return null;
   return { user, role };
 }

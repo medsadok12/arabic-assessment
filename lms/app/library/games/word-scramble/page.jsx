@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
+import { getRole } from '../../../../lib/auth-role';
 
 /* ────────────────────────── helpers ────────────────────────── */
 
@@ -424,7 +425,7 @@ export default function WordScrambleGame() {
     import('../../../../lib/supabase').then(({ createClient }) => {
       const supabase = createClient();
       supabase.auth.getUser().then(({ data: { user } }) => {
-        const role = user?.user_metadata?.role ?? '';
+        const role = getRole(user) ?? '';
         setIsTeacher(['super_admin', 'admin', 'teacher'].includes(role));
       }).catch(() => {});
     }).catch(() => {});

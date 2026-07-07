@@ -1,5 +1,6 @@
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { getRole } from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ export async function GET(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
-  if (!ALLOWED.includes(user.user_metadata?.role)) return Response.json({ error: 'غير مصرح' }, { status: 403 });
+  if (!ALLOWED.includes(getRole(user))) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const otherId = searchParams.get('with');
@@ -36,7 +37,7 @@ export async function POST(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
-  if (!ALLOWED.includes(user.user_metadata?.role)) return Response.json({ error: 'غير مصرح' }, { status: 403 });
+  if (!ALLOWED.includes(getRole(user))) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
   const { content, to, is_task = false, reply_to_id = null, reply_to_content = null, reply_to_sender = null } = await request.json();
   if (!content?.trim()) return Response.json({ error: 'الرسالة فارغة' }, { status: 400 });
@@ -50,7 +51,7 @@ export async function POST(request) {
       conv_key:        ck,
       sender_id:       user.id,
       sender_name:     user.user_metadata?.full_name ?? user.email,
-      sender_role:     user.user_metadata?.role,
+      sender_role:     getRole(user),
       sender_avatar:   user.user_metadata?.avatar_url ?? null,
       content:         content.trim(),
       is_task:         Boolean(is_task),
@@ -69,7 +70,7 @@ export async function DELETE(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'غير مصرح' }, { status: 401 });
-  if (!ALLOWED.includes(user.user_metadata?.role)) return Response.json({ error: 'غير مصرح' }, { status: 403 });
+  if (!ALLOWED.includes(getRole(user))) return Response.json({ error: 'غير مصرح' }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const otherId = searchParams.get('with');

@@ -7,6 +7,7 @@ import { createClient } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import TeamChat        from './TeamChat';
 import PointsBadge     from './PointsBadge';
+import { getRole } from '../lib/auth-role';
 
 /* ── Global style injected once on mount (avoids SSR mismatch) ── */
 function useNavStyle() {
@@ -375,7 +376,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
   }, []);
 
   useEffect(() => {
-    const isStud = user?.user_metadata?.role === 'student';
+    const isStud = getRole(user) === 'student';
     if (!isStud || !user?.id) return;
     const key = `arem_glow_${user.id}`;
     try {
@@ -387,7 +388,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
       setGlowLevel(idx);
       try { sessionStorage.setItem(key, String(idx)); } catch {}
     }).catch(() => {});
-  }, [user?.id, user?.user_metadata?.role]);
+  }, [user?.id, getRole(user)]);
 
   async function handleLogout() {
     setDropOpen(false);
@@ -395,7 +396,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
     window.location.href = '/api/auth/signout';
   }
 
-  const role      = user?.user_metadata?.role ?? 'student';
+  const role      = getRole(user) ?? 'student';
   const fullName  = user?.user_metadata?.full_name ?? '';
   const avatarURL = user?.user_metadata?.avatar_url ?? null;
   const destPath  = dashboardPath(role);

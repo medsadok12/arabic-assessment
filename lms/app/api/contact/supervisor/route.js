@@ -2,6 +2,7 @@ import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { notifyByRole }      from '../../../../lib/notify';
+import { getRole } from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,7 +52,7 @@ export async function POST(req) {
 export async function GET() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !ALLOWED_READ.includes(user.user_metadata?.role))
+  if (!user || !ALLOWED_READ.includes(getRole(user)))
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const admin = createAdminClient();
@@ -71,7 +72,7 @@ export async function GET() {
 export async function PATCH(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !ALLOWED_READ.includes(user.user_metadata?.role))
+  if (!user || !ALLOWED_READ.includes(getRole(user)))
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const { id } = await req.json();
@@ -91,7 +92,7 @@ export async function PATCH(req) {
 export async function DELETE(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !ALLOWED_READ.includes(user.user_metadata?.role))
+  if (!user || !ALLOWED_READ.includes(getRole(user)))
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const { id } = await req.json();

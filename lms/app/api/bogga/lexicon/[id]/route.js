@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient }      from '../../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
+import { getRole } from '../../../../../lib/auth-role';
 
 async function getUser() {
   const supabase = createClient();
@@ -11,7 +12,7 @@ async function getUser() {
 // GET — full word including media base64 (used by edit form)
 export async function GET(req, { params }) {
   const user = await getUser();
-  const role = user?.user_metadata?.role;
+  const role = getRole(user);
   if (role !== 'admin' && role !== 'super_admin') {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
   }
@@ -30,7 +31,7 @@ export async function GET(req, { params }) {
 // PATCH — update word (super_admin only)
 export async function PATCH(req, { params }) {
   const user = await getUser();
-  if (user?.user_metadata?.role !== 'super_admin') {
+  if (getRole(user) !== 'super_admin') {
     return NextResponse.json({ error: 'لا تملك صلاحية التعديل' }, { status: 403 });
   }
 
@@ -72,7 +73,7 @@ export async function PATCH(req, { params }) {
 // DELETE — delete word (super_admin only)
 export async function DELETE(req, { params }) {
   const user = await getUser();
-  if (user?.user_metadata?.role !== 'super_admin') {
+  if (getRole(user) !== 'super_admin') {
     return NextResponse.json({ error: 'لا تملك صلاحية الحذف' }, { status: 403 });
   }
 

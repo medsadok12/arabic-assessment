@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '../../../lib/supabase';
 import Navbar from '../../../components/Navbar';
+import { getRole } from '../../../lib/auth-role';
 
 const STATUS_MAP = {
   planned:   { label: 'مخطط له',      color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe', icon: '📋' },
@@ -58,7 +59,7 @@ export default function LogbookPage() {
     });
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       if (!u) { router.push('/auth/login'); return; }
-      if (u.user_metadata?.role !== 'teacher') { router.push('/dashboard'); return; }
+      if (getRole(u) !== 'teacher') { router.push('/dashboard'); return; }
       setUser(u);
       loadLogs();
     });

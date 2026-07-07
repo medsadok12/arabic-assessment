@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
+import { getRole } from '../../../../lib/auth-role';
 
 export const runtime   = 'edge';
 export const revalidate = 3600;
@@ -89,7 +90,7 @@ export async function POST(request) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const role = user?.user_metadata?.role ?? '';
+    const role = getRole(user) ?? '';
     if (!user || !['super_admin', 'admin', 'teacher'].includes(role)) {
       return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
     }
@@ -131,7 +132,7 @@ export async function DELETE(request) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const role = user?.user_metadata?.role ?? '';
+    const role = getRole(user) ?? '';
     if (!user || !['super_admin', 'admin', 'teacher'].includes(role)) {
       return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
     }

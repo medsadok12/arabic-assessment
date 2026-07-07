@@ -2,6 +2,7 @@ import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { sendTeacherInviteEmail, sendTeacherDeclineEmail } from '../../../../lib/email';
+import { getRole } from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ async function getUser() {
 // GET — invites for the current teacher (pending + accepted)
 export async function GET() {
   const user = await getUser();
-  if (!user || user.user_metadata?.role !== 'teacher')
+  if (!user || getRole(user) !== 'teacher')
     return NextResponse.json({ invites: [] });
 
   const admin = createAdminClient();
@@ -43,7 +44,7 @@ export async function GET() {
 // POST — send invite from session owner to a colleague teacher
 export async function POST(req) {
   const user = await getUser();
-  if (!user || user.user_metadata?.role !== 'teacher')
+  if (!user || getRole(user) !== 'teacher')
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const { session_id, teacher_id } = await req.json();
@@ -97,7 +98,7 @@ export async function POST(req) {
 // PATCH — respond to an invite (accept / decline)
 export async function PATCH(req) {
   const user = await getUser();
-  if (!user || user.user_metadata?.role !== 'teacher')
+  if (!user || getRole(user) !== 'teacher')
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const { id, status } = await req.json();

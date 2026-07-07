@@ -4,13 +4,14 @@ import { createAdminClient } from '../../../../lib/supabase-admin';
 import { notify }           from '../../../../lib/notify';
 import { sendSessionEmail, sendTeacherInviteEmail, sendMissingRecordingAlert } from '../../../../lib/email';
 import { createMeetSession, deleteMeetEvent } from '../../../../lib/google-meet';
+import { getRole } from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
 async function getTeacher() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'teacher') return null;
+  if (!user || getRole(user) !== 'teacher') return null;
   return user;
 }
 
@@ -125,7 +126,7 @@ export async function POST(req) {
   if (anchorId && invitedTeacher?.id) {
     try {
       const { data: { user: verifiedTeacher } } = await admin.auth.admin.getUserById(invitedTeacher.id);
-      if (verifiedTeacher && verifiedTeacher.user_metadata?.role === 'teacher' && verifiedTeacher.email) {
+      if (verifiedTeacher && getRole(verifiedTeacher) === 'teacher' && verifiedTeacher.email) {
         await admin.from('session_teacher_invites').insert({
           session_id:    anchorId,
           teacher_id:    verifiedTeacher.id,

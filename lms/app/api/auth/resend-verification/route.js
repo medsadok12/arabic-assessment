@@ -2,6 +2,7 @@ import { NextResponse }       from 'next/server';
 import { createAdminClient, fetchAllUsers } from '../../../../lib/supabase-admin';
 import { sendVerificationEmail } from '../../../../lib/email';
 import { getClientIP, ipRateCheck } from '../../../../lib/ip-rate-check';
+import { getRole } from '../../../../lib/auth-role';
 
 /**
  * POST /api/auth/resend-verification
@@ -44,7 +45,7 @@ export async function POST(req) {
     if (!target) return NextResponse.json({ ok: true });
 
     // Only resend for unconfirmed students — silently ignore others
-    if (target.user_metadata?.role !== 'student' || !!target.email_confirmed_at) {
+    if (getRole(target) !== 'student' || !!target.email_confirmed_at) {
       return NextResponse.json({ ok: true });
     }
 

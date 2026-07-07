@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient } from '../../../../lib/supabase-server';
+import { getRole } from '../../../../lib/auth-role';
 
 /* ── helpers ── */
 function calcStreak(logDates) {
@@ -34,7 +35,7 @@ export default async function StudentViewPage({ params }) {
   /* layout.jsx already guards admin access — double-check role here */
   const supabase = createClient();
   const { data: { user: viewer } } = await supabase.auth.getUser();
-  const viewerRole = viewer?.user_metadata?.role;
+  const viewerRole = getRole(viewer);
   if (viewerRole !== 'super_admin' && viewerRole !== 'admin') redirect('/bogga');
 
   const admin = createAdminClient();
@@ -43,7 +44,7 @@ export default async function StudentViewPage({ params }) {
   const { data: { user: student }, error: stuErr } =
     await admin.auth.admin.getUserById(userId);
   if (stuErr || !student) redirect('/bogga');
-  if (student.user_metadata?.role !== 'student') redirect('/bogga');
+  if (getRole(student) !== 'student') redirect('/bogga');
 
   const email       = student.email ?? '';
   const displayName = student.user_metadata?.full_name ?? email.split('@')[0] ?? '—';

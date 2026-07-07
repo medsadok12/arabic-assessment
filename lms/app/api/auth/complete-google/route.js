@@ -1,6 +1,7 @@
 import { NextResponse }       from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { getRole } from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ export async function POST(req) {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
-    if (user.user_metadata?.role) return NextResponse.json({ error: 'الحساب مكتمل بالفعل' }, { status: 409 });
+    if (getRole(user)) return NextResponse.json({ error: 'الحساب مكتمل بالفعل' }, { status: 409 });
 
     const admin      = createAdminClient();
     const normalized = code.trim().toUpperCase();

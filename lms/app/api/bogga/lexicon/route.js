@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { getRole } from '../../../../lib/auth-role';
 
 function allowed(user) {
-  const r = user?.user_metadata?.role;
+  const r = getRole(user);
   return r === 'admin' || r === 'super_admin';
 }
 

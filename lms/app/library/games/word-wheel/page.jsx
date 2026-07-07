@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '../../../../lib/supabase';
+import { getRole } from '../../../../lib/auth-role';
 
 /* ─── Constants ─────────────────────────────────────────────────────────── */
 const STRIP_RE = /[ً-ْٰـ]/g;
@@ -167,7 +168,7 @@ export default function WordWheelGame() {
       .then(j=>setCustomConfigs(j.configs||[]))
       .catch(()=>{});
     createClient().auth.getUser()
-      .then(({data})=>setUserRole(data?.user?.user_metadata?.role||null))
+      .then(({data})=>setUserRole(data?.getRole(user)||null))
       .catch(()=>{});
     fetch('/api/points').then(r=>r.json()).then(j=>setTotalPoints(j.points??0)).catch(()=>{});
   }, []);
