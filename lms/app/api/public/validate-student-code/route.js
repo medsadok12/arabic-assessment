@@ -1,5 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
-import { notify }        from '../../../../lib/notify';
+import { createClient }          from '@supabase/supabase-js';
+import { notify }                from '../../../../lib/notify';
+import { getClientIP, ipRateCheck } from '../../../../lib/ip-rate-check';
 export const dynamic = 'force-dynamic';
 
 const CORS = {
@@ -19,6 +20,14 @@ export async function OPTIONS() {
 }
 
 export async function POST(request) {
+  const ip = getClientIP(request);
+  if (!await ipRateCheck(ip, 'rl:code-validate', 10, 50)) {
+    return Response.json(
+      { valid: false, error: 'عدد المحاولات تجاوز الحد المسموح. يرجى الانتظار دقيقة قبل المحاولة مجدداً.' },
+      { status: 429, headers: { ...CORS, 'Retry-After': '60' } }
+    );
+  }
+
   let body;
   try { body = await request.json(); } catch {
     return Response.json({ valid: false, error: 'طلب غير صالح' }, { status: 400, headers: CORS });

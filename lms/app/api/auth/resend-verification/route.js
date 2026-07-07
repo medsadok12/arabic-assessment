@@ -1,6 +1,7 @@
 import { NextResponse }       from 'next/server';
 import { createAdminClient, fetchAllUsers } from '../../../../lib/supabase-admin';
 import { sendVerificationEmail } from '../../../../lib/email';
+import { getClientIP, ipRateCheck } from '../../../../lib/ip-rate-check';
 
 /**
  * POST /api/auth/resend-verification
@@ -15,6 +16,14 @@ import { sendVerificationEmail } from '../../../../lib/email';
  */
 export async function POST(req) {
   try {
+    const ip = getClientIP(req);
+    if (!await ipRateCheck(ip, 'rl:resend-verify', 3, 5)) {
+      return NextResponse.json(
+        { error: 'عدد الطلبات تجاوز الحد المسموح. يرجى المحاولة بعد دقيقة.' },
+        { status: 429, headers: { 'Retry-After': '60' } }
+      );
+    }
+
     const { email } = await req.json();
     if (!email?.trim()) return NextResponse.json({ error: 'البريد الإلكتروني مطلوب' }, { status: 400 });
 

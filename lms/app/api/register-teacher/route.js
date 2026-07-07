@@ -1,7 +1,16 @@
-import { createAdminClient } from '../../../lib/supabase-admin';
-import { notify }            from '../../../lib/notify';
+import { createAdminClient }      from '../../../lib/supabase-admin';
+import { notify }                from '../../../lib/notify';
+import { getClientIP, ipRateCheck } from '../../../lib/ip-rate-check';
 
 export async function POST(request) {
+  const ip = getClientIP(request);
+  if (!await ipRateCheck(ip, 'rl:register-teacher', 3, 5)) {
+    return Response.json(
+      { error: 'عدد الطلبات تجاوز الحد المسموح. يرجى المحاولة بعد دقيقة.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
   let body;
   try { body = await request.json(); }
   catch { return Response.json({ error: 'طلب غير صالح' }, { status: 400 }); }

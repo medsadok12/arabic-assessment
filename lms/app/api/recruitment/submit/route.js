@@ -2,9 +2,18 @@ import { NextResponse }                      from 'next/server';
 import { createAdminClient }               from '../../../../lib/supabase-admin';
 import { notify }                          from '../../../../lib/notify';
 import { sendApplicationConfirmationEmail } from '../../../../lib/email';
+import { getClientIP, ipRateCheck }        from '../../../../lib/ip-rate-check';
 
 export async function POST(req) {
   try {
+    const ip = getClientIP(req);
+    if (!await ipRateCheck(ip, 'rl:recruit', 3, 5)) {
+      return NextResponse.json(
+        { error: 'عدد الطلبات تجاوز الحد المسموح. يرجى المحاولة بعد دقيقة.' },
+        { status: 429, headers: { 'Retry-After': '60' } }
+      );
+    }
+
     const {
       name, email, phone, experience, specialty, notes,
       cvBase64, cvFilename,
