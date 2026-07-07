@@ -69,7 +69,7 @@ export async function POST(req) {
     password:      tempPassword,
     email_confirm: true,
     user_metadata: { full_name: name.trim(), role: 'admin', status: 'active' },
-    app_metadata:  { temp_password: tempPassword },
+    app_metadata:  { temp_password: tempPassword, role: 'admin' },
   });
   if (error) {
     const msg = error.message.includes('already registered') || error.message.includes('already been registered')

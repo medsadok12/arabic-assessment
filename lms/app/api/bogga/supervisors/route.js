@@ -57,7 +57,7 @@ export async function POST(req) {
     password:      tempPassword,
     email_confirm: true,
     user_metadata: { full_name: name.trim(), role: 'supervisor', status: 'active' },
-    app_metadata:  { temp_password: tempPassword },
+    app_metadata:  { temp_password: tempPassword, role: 'supervisor' },
   });
 
   if (error) {

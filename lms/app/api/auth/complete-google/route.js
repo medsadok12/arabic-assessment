@@ -55,7 +55,7 @@ export async function POST(req) {
         grade:               grade || null,
         onboarding_complete: true,
       },
-      app_metadata: { display_name: displayName },
+      app_metadata: { display_name: displayName, role: 'student' },
     });
 
     return NextResponse.json({ ok: true });

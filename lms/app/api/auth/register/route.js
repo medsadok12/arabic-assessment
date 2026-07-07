@@ -124,6 +124,15 @@ export async function POST(req) {
       );
     }
 
+    // ── الدور في app_metadata (مصدر الحقيقة الآمن — لا يستطيع المستخدم تعديله) ──
+    // كتابة مزدوجة مؤقتة مع user_metadata؛ best-effort لأن الدالة بمصدرين تغطي أي إخفاق.
+    // generateLink لا يقبل app_metadata، لذا تُضبط بنداء تابع بعد إنشاء المستخدم.
+    try {
+      await admin.auth.admin.updateUserById(userId, { app_metadata: { role: 'student' } });
+    } catch (metaErr) {
+      console.error('[register] app_metadata role write failed (non-fatal):', metaErr.message);
+    }
+
     // ── Step 4: send verification email via Resend ────────────────────────────
     try {
       await sendVerificationEmail({ to: lowerEmail, name: name.trim(), link: confirmUrl });

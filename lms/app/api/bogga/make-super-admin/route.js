@@ -29,6 +29,7 @@ export async function POST() {
   // Promote current user to super_admin
   const { error } = await admin.auth.admin.updateUserById(user.id, {
     user_metadata: { ...user.user_metadata, role: 'super_admin' },
+    app_metadata:  { role: 'super_admin' },
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
