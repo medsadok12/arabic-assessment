@@ -51,15 +51,16 @@ export async function POST(req) {
       options: { redirectTo },
     });
 
-    if (linkError || !linkData?.properties?.action_link) {
+    if (linkError || !linkData?.properties?.hashed_token) {
       console.error('[resend-verification] generateLink error:', linkError?.message);
       return NextResponse.json({ error: 'تعذّر إعادة إرسال البريد — يرجى المحاولة مجدداً' }, { status: 500 });
     }
 
-    const name       = target.user_metadata?.full_name ?? '';
-    const actionLink = linkData.properties.action_link;
+    const name        = target.user_metadata?.full_name ?? '';
+    const hashedToken = linkData.properties.hashed_token;
+    const confirmUrl  = `${proto}://${host}/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}&type=magiclink`;
 
-    await sendVerificationEmail({ to: lowerEmail, name, link: actionLink });
+    await sendVerificationEmail({ to: lowerEmail, name, link: confirmUrl });
 
     return NextResponse.json({ ok: true });
   } catch (e) {

@@ -79,12 +79,18 @@ export async function POST(req) {
       return NextResponse.json({ error: 'حدث خطأ أثناء إنشاء الحساب — يرجى المحاولة مجدداً أو التواصل مع إدارة الأكاديمية' }, { status: 500 });
     }
 
-    const userId     = linkData?.user?.id;
-    const actionLink = linkData?.properties?.action_link;
+    const userId      = linkData?.user?.id;
+    const hashedToken = linkData?.properties?.hashed_token;
 
-    if (!userId || !actionLink) {
+    if (!userId || !hashedToken) {
       return NextResponse.json({ error: 'حدث خطأ أثناء إنشاء الحساب — يرجى المحاولة مجدداً' }, { status: 500 });
     }
+
+    // Build a custom confirmation URL that goes through our server-side /auth/confirm
+    // route (which calls verifyOtp) instead of using GoTrue's action_link directly.
+    // GoTrue's action_link redirects with hash tokens (#access_token=...) which
+    // a server-side callback route cannot read — this is why it was failing.
+    const confirmUrl = `${proto}://${host}/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}&type=signup`;
 
     // ── Step 3: consume code atomically ──────────────────────────────────────
     const { data: consumed } = await admin
@@ -111,7 +117,7 @@ export async function POST(req) {
 
     // ── Step 4: send verification email via Resend ────────────────────────────
     try {
-      await sendVerificationEmail({ to: lowerEmail, name: name.trim(), link: actionLink });
+      await sendVerificationEmail({ to: lowerEmail, name: name.trim(), link: confirmUrl });
     } catch (emailErr) {
       console.error('[register] sendVerificationEmail failed:', emailErr.message);
       // Rollback: delete user + free the invitation code so student can retry
