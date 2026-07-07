@@ -59,14 +59,16 @@ export async function GET(request) {
           return NextResponse.redirect(`${origin}/auth/login?error=teachers_blocked`);
         }
 
-        // استعادة الاسم المحفوظ إن أعاد Google الكتابة فوقه
-        const savedName = user.app_metadata?.display_name;
-        if (savedName && user.user_metadata?.full_name !== savedName) {
+        // استعادة البيانات المحفوظة إن أعاد Google الكتابة فوقها
+        const savedName   = user.app_metadata?.display_name;
+        const savedAvatar = user.app_metadata?.custom_avatar_url;
+        const metaFix = {};
+        if (savedName   && user.user_metadata?.full_name   !== savedName)   metaFix.full_name   = savedName;
+        if (savedAvatar && user.user_metadata?.avatar_url  !== savedAvatar) metaFix.avatar_url  = savedAvatar;
+        if (Object.keys(metaFix).length) {
           try {
             const admin = createAdminClient();
-            await admin.auth.admin.updateUserById(user.id, {
-              user_metadata: { full_name: savedName },
-            });
+            await admin.auth.admin.updateUserById(user.id, { user_metadata: metaFix });
           } catch (_) {}
         }
 

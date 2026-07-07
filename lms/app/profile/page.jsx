@@ -113,6 +113,15 @@ function AvatarCard({ user, onUserUpdate }) {
       return;
     }
 
+    // حفظ الرابط في app_metadata لحمايته من إعادة كتابة Google عند تسجيل الدخول
+    try {
+      await fetch('/api/profile/save-avatar', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ url: publicUrl }),
+      });
+    } catch (_) {}
+
     // تحديث الجلسة برمجياً بعد التعديل — لا حاجة لتسجيل خروج أو مسح كوكيز
     const { data: { user: refreshed } } = await supabase.auth.refreshSession();
     if (refreshed) onUserUpdate(refreshed);
@@ -167,6 +176,7 @@ function AvatarCard({ user, onUserUpdate }) {
         >
           {avatarURL
             ? <img src={avatarURL} alt="صورة شخصية"
+                onError={() => setAvatarURL(null)}
                 style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '3px solid #1A2B4A' }} />
             : <Initials name={fullName} />
           }
