@@ -17,6 +17,10 @@ export async function GET() {
 
   const list = users
     .filter(u => u.user_metadata?.role !== 'super_admin')
+    // Only show email-verified accounts — unconfirmed self-registrations are
+    // hidden until the student clicks the verification link.
+    // Admin-created accounts (teachers, supervisors) always have email_confirmed_at set.
+    .filter(u => !!u.email_confirmed_at)
     .map(u => ({
       id:           u.id,
       name:         u.user_metadata?.full_name ?? '—',

@@ -1,4 +1,5 @@
 import { NextResponse }       from 'next/server';
+import { createClient }       from '@supabase/supabase-js';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 
 /**
@@ -6,7 +7,7 @@ import { createAdminClient } from '../../../../lib/supabase-admin';
  *
  * Atomic student self-registration with email verification:
  *   1. Validate academy code (read-only) — fail fast, no account created
- *   2. Create user + send verification email via admin generateLink (email NOT pre-confirmed)
+ *   2. Create user + send verification email via public signUp() (guaranteed to send mail)
  *   3. Consume academy code atomically — if race-condition, delete user and fail
  *
  * Body: { name, email, password, code, age, grade? }
@@ -42,58 +43,56 @@ export async function POST(req) {
       );
     }
 
-    // ── Step 2: create account (unconfirmed) ──────────────────────────────────
-    // Use admin createUser WITHOUT email_confirm so the account is created but
-    // the email is NOT confirmed yet. We then trigger the verification email via
-    // Supabase's /auth/v1/resend endpoint (the public endpoint that actually
-    // sends the mail — generateLink only returns the link without sending it).
+    // ── Step 2: create user + send verification email ─────────────────────────
+    // We use the public anon-key signUp() — it creates the user AND automatically
+    // sends the confirmation email in one atomic call. The admin createUser API
+    // does NOT send the email; the separate /auth/v1/resend endpoint is unreliable
+    // server-side. signUp() is the only guaranteed path to email delivery.
     const host       = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'www.aarem.net';
     const proto      = host.startsWith('localhost') || host.startsWith('127.') ? 'http' : 'https';
     const redirectTo = `${proto}://${host}/auth/callback?for=student`;
 
-    const { data: created, error: createErr } = await admin.auth.admin.createUser({
-      email:         lowerEmail,
+    const anonClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    const { data: signupData, error: signupError } = await anonClient.auth.signUp({
+      email:    lowerEmail,
       password,
-      email_confirm: false,
-      user_metadata: {
-        full_name:           name.trim(),
-        role:                'student',
-        age:                 age.toString().trim(),
-        grade:               grade || null,
-        onboarding_complete: true,
+      options: {
+        data: {
+          full_name:           name.trim(),
+          role:                'student',
+          age:                 age.toString().trim(),
+          grade:               grade || null,
+          onboarding_complete: true,
+        },
+        emailRedirectTo: redirectTo,
       },
     });
 
-    if (createErr) {
-      const msg = createErr.message ?? '';
-      if (msg.includes('already registered') || msg.includes('already been registered')) {
+    if (signupError) {
+      const msg = signupError.message ?? '';
+      if (msg.includes('already registered') || msg.includes('User already registered')) {
         return NextResponse.json({ error: 'هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول' }, { status: 409 });
       }
-      console.error('[register] createUser error:', msg);
+      console.error('[register] signUp error:', msg);
       return NextResponse.json({ error: 'حدث خطأ أثناء إنشاء الحساب — يرجى المحاولة مجدداً أو التواصل مع إدارة الأكاديمية' }, { status: 500 });
     }
 
-    const userId = created?.user?.id;
+    const userId    = signupData?.user?.id;
+    const identities = signupData?.user?.identities ?? [];
 
-    // ── Step 2b: trigger verification email via Supabase's resend endpoint ────
-    // generateLink only RETURNS the link — it never sends it. The resend endpoint
-    // is the correct mechanism to have Supabase mail the confirmation link.
-    await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/resend`, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey':       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({
-        type:                 'signup',
-        email:                lowerEmail,
-        gotrue_meta_security: {},
-        redirect_to:          redirectTo,
-      }),
-    }).catch(() => {
-      // If the send fails (rate limit / SMTP error), the user can still
-      // request a resend via the button on /auth/verify-email.
-    });
+    // Supabase returns an empty identities array (no error) when the email is
+    // already confirmed — to avoid leaking whether an email is registered.
+    if (!userId) {
+      return NextResponse.json({ error: 'حدث خطأ أثناء إنشاء الحساب — يرجى المحاولة مجدداً' }, { status: 500 });
+    }
+    if (identities.length === 0) {
+      return NextResponse.json({ error: 'هذا البريد مسجل مسبقاً — استخدم صفحة تسجيل الدخول' }, { status: 409 });
+    }
 
     // ── Step 3: consume code atomically ──────────────────────────────────────
     const { data: consumed } = await admin
