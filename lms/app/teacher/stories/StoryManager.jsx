@@ -66,6 +66,7 @@ const EDITOR_COLORS = [
 function PageEditor({ html, onChange }) {
   const taRef   = useRef(null);
   const szRef   = useRef(null);
+  const lhRef   = useRef(null);
   const pending = useRef(null);
 
   /* استعادة موضع المؤشر بعد كل render (useLayoutEffect = قبل الرسم) */
@@ -149,6 +150,37 @@ function PageEditor({ html, onChange }) {
           <option value="1.28rem">متوسط</option>
           <option value="1.55rem">كبير</option>
           <option value="1.9rem">عنوان</option>
+          <option value="2.5rem">عنوان كبير</option>
+          <option value="3.2rem">ضخم</option>
+          <option value="4rem">ضخم جداً</option>
+          <option value="5rem">عملاق</option>
+          <option value="6.5rem">عملاق جداً</option>
+        </select>
+
+        {/* ── تباعد الأسطر ── */}
+        <select
+          ref={lhRef}
+          defaultValue=""
+          title="تباعد الأسطر"
+          onChange={() => {
+            const v = lhRef.current?.value;
+            if (!v) return;
+            wrap(`<p style="line-height:${v}">`, '</p>');
+            requestAnimationFrame(() => { if (lhRef.current) lhRef.current.value = ''; });
+          }}
+          style={{
+            border: '1.5px solid #e2e8f0', borderRadius: 8,
+            padding: '4px 8px', fontSize: '.78rem', fontWeight: 700,
+            cursor: 'pointer', background: '#fff', color: '#374151',
+            direction: 'rtl', fontFamily: "'Cairo','Tajawal',sans-serif",
+          }}
+        >
+          <option value="">تباعد ▾</option>
+          <option value="1.3">ضيق</option>
+          <option value="1.8">عادي</option>
+          <option value="2.4">واسع</option>
+          <option value="3.2">أوسع</option>
+          <option value="4.2">فضفاض</option>
         </select>
 
         <Sep />
