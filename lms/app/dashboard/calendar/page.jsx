@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '../../../lib/supabase';
 import Navbar from '../../../components/Navbar';
 
+// البيانات تُجلب عبر /api/calendar (service_role) بدل استعلام مباشر محجوب بـ RLS
+
 const DAYS_AR   = ['أح', 'إث', 'ثل', 'أر', 'خم', 'جم', 'سب'];
 const DAYS_FULL = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -34,15 +36,10 @@ export default function CalendarPage() {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       if (!u) { router.push('/auth/login'); return; }
       setUser(u);
-      // جلب جميع الحصص (ماضية وقادمة) لعرضها في التقويم
-      supabase
-        .from('sessions')
-        .select('id, teacher_name, session_date, start_time, duration_minutes, subject, status, meet_link, room_name')
-        .eq('student_email', u.email?.toLowerCase())
-        .in('status', ['scheduled', 'completed'])
-        .order('session_date', { ascending: true })
-        .order('start_time',   { ascending: true })
-        .then(({ data }) => { setSessions(data ?? []); setLoading(false); });
+      // جلب الحصص عبر مسار خادمي (service_role) لتجاوز سياسات RLS
+      fetch('/api/calendar')
+        .then(r => r.ok ? r.json() : { sessions: [] })
+        .then(({ sessions }) => { setSessions(sessions ?? []); setLoading(false); });
     });
   }, []);
 
