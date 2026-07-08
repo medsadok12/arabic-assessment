@@ -231,7 +231,9 @@ export default function App() {
 
   const answered       = allAnswers.length + (page === PAGES.ASSESSMENT ? questionIdx : 0);
   const totalPossible  = allAnswers.length + (levelData?.questions?.length || 60);
-  const globalProgress = Math.min(Math.round((answered / totalPossible) * 100), 100);
+  const globalProgress = page === PAGES.RESULTS
+    ? 100
+    : Math.min(Math.round((answered / totalPossible) * 100), 100);
 
   return (
     <Fragment>
