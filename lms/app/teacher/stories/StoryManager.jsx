@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import Link from 'next/link';
 
 const ACCENTS = [
@@ -43,6 +43,161 @@ function pagesToContent(pages) {
       return imgTag + (imgTag && p.html ? '\n' : '') + p.html;
     })
     .join('\n<!-- PAGE -->\n');
+}
+
+/* ══════════════════════════════════════════════════════
+   ألوان شريط أدوات المحرر
+══════════════════════════════════════════════════════ */
+const EDITOR_COLORS = [
+  { hex: '#1e293b', name: 'أسود'    },
+  { hex: '#ef4444', name: 'أحمر'    },
+  { hex: '#f97316', name: 'برتقالي' },
+  { hex: '#d97706', name: 'أصفر'    },
+  { hex: '#059669', name: 'أخضر'    },
+  { hex: '#0284c7', name: 'أزرق'    },
+  { hex: '#6366f1', name: 'بنفسجي'  },
+  { hex: '#db2777', name: 'وردي'    },
+];
+
+/* ══════════════════════════════════════════════════════
+   محرر صفحة واحدة — شريط أدوات + textarea
+   الأزرار تلتف النص المحدد بوسوم HTML مناسبة
+══════════════════════════════════════════════════════ */
+function PageEditor({ html, onChange }) {
+  const taRef   = useRef(null);
+  const szRef   = useRef(null);
+  const pending = useRef(null);
+
+  /* استعادة موضع المؤشر بعد كل render (useLayoutEffect = قبل الرسم) */
+  useLayoutEffect(() => {
+    if (pending.current === null || !taRef.current) return;
+    taRef.current.setSelectionRange(pending.current.s, pending.current.e);
+    pending.current = null;
+  });
+
+  /* تغليف النص المحدد بوسوم HTML */
+  const wrap = (before, after) => {
+    const ta = taRef.current;
+    if (!ta) return;
+    const s = ta.selectionStart;
+    const e = ta.selectionEnd;
+    const next = html.slice(0, s) + before + html.slice(s, e) + after + html.slice(e);
+    pending.current = { s: s + before.length, e: s + before.length + (e - s) };
+    onChange(next);
+  };
+
+  const TB = {
+    type: 'button',
+    style: {
+      border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '4px 9px',
+      fontSize: '.78rem', fontWeight: 800, cursor: 'pointer',
+      background: '#fff', color: '#374151',
+      fontFamily: "'Cairo','Tajawal',sans-serif",
+      transition: 'background .12s',
+    },
+  };
+
+  const Sep = () => (
+    <span style={{ width: 1, background: '#e2e8f0', alignSelf: 'stretch', flexShrink: 0, margin: '0 2px' }} />
+  );
+
+  return (
+    <div style={{ borderTop: '1px solid #f3f4f6' }}>
+
+      {/* ── شريط الأدوات ── */}
+      <div style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 12px', background:'#f8fafc', flexWrap:'wrap', borderBottom:'1px solid #f0f0f0' }}>
+
+        {/* ── الخط العريض ── */}
+        <button {...TB} onClick={() => wrap('<strong>', '</strong>')} title="خط عريض (Gras)">
+          <strong>ع</strong>
+        </button>
+
+        {/* ── مائل / تمييز ── */}
+        <button {...TB} onClick={() => wrap('<em>', '</em>')} title="مائل / تمييز">
+          <em style={{ fontFamily: 'serif' }}>ع</em>
+        </button>
+
+        {/* ── خط تحتي ── */}
+        <button {...TB} onClick={() => wrap('<u>', '</u>')} title="خط تحتي">
+          <u>ع</u>
+        </button>
+
+        <Sep />
+
+        {/* ── حجم الخط ── */}
+        <select
+          ref={szRef}
+          defaultValue=""
+          title="حجم الخط"
+          onChange={() => {
+            const v = szRef.current?.value;
+            if (!v) return;
+            wrap(`<span style="font-size:${v}">`, '</span>');
+            requestAnimationFrame(() => { if (szRef.current) szRef.current.value = ''; });
+          }}
+          style={{
+            border: '1.5px solid #e2e8f0', borderRadius: 8,
+            padding: '4px 8px', fontSize: '.78rem', fontWeight: 700,
+            cursor: 'pointer', background: '#fff', color: '#374151',
+            direction: 'rtl', fontFamily: "'Cairo','Tajawal',sans-serif",
+          }}
+        >
+          <option value="">حجم الخط ▾</option>
+          <option value=".8rem">صغير جداً</option>
+          <option value=".92rem">صغير</option>
+          <option value="1.08rem">عادي</option>
+          <option value="1.28rem">متوسط</option>
+          <option value="1.55rem">كبير</option>
+          <option value="1.9rem">عنوان</option>
+        </select>
+
+        <Sep />
+
+        {/* ── محاذاة ── */}
+        <button {...TB} onClick={() => wrap('<p style="text-align:right">', '</p>')} title="محاذاة يمين (افتراضي عربي)">
+          يمين
+        </button>
+        <button {...TB} onClick={() => wrap('<p style="text-align:center">', '</p>')} title="توسيط">
+          وسط
+        </button>
+        <button {...TB} onClick={() => wrap('<p style="text-align:left">', '</p>')} title="محاذاة يسار">
+          يسار
+        </button>
+
+        <Sep />
+
+        {/* ── الألوان ── */}
+        {EDITOR_COLORS.map(c => (
+          <button
+            key={c.hex}
+            type="button"
+            onClick={() => wrap(`<span style="color:${c.hex}">`, '</span>')}
+            title={c.name}
+            style={{
+              width: 22, height: 22, padding: 0, flexShrink: 0,
+              borderRadius: '50%', background: c.hex,
+              border: '2px solid rgba(0,0,0,.18)',
+              cursor: 'pointer',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* ── منطقة الكتابة ── */}
+      <textarea
+        ref={taRef}
+        className="sm-textarea"
+        value={html}
+        onChange={e => onChange(e.target.value)}
+        placeholder="<p>كان يا ما كان في قديم الزمان...</p>"
+        style={{
+          borderRadius: 0, border: 'none', minHeight: 140,
+          display: 'block', width: '100%', boxSizing: 'border-box',
+          background: '#fff',
+        }}
+      />
+    </div>
+  );
 }
 
 function StatusBadge({ status }) {
@@ -573,20 +728,17 @@ export default function StoryManager({ initialStories }) {
                           )}
                         </div>
 
-                        {/* محتوى HTML */}
-                        <textarea
-                          className="sm-textarea"
-                          value={page.html}
-                          onChange={e => updatePage(i, 'html', e.target.value)}
-                          placeholder="<p>كان يا ما كان في قديم الزمان...</p>"
-                          style={{ borderRadius:0, border:'none', minHeight:130, display:'block', width:'100%', boxSizing:'border-box', background:'#fff', borderTop:'1px solid #f3f4f6' }}
+                        {/* محرر المحتوى مع شريط الأدوات */}
+                        <PageEditor
+                          html={page.html}
+                          onChange={v => updatePage(i, 'html', v)}
                         />
                       </div>
                     ))}
                   </div>
 
                   <p style={{ color:'#94a3b8', fontSize:'.72rem', margin:'10px 0 0', fontWeight:600 }}>
-                    💡 يدعم HTML: &lt;p&gt; للفقرات · &lt;strong&gt; للخط العريض · &lt;em&gt; لتمييز المفردات الجديدة
+                    💡 حدّد النص أولاً ثم اضغط أي زر في شريط الأدوات لتطبيق التنسيق عليه · يمكنك أيضاً كتابة HTML مباشرة
                   </p>
                 </div>
               </>
