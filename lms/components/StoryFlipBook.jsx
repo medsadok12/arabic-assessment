@@ -50,6 +50,25 @@ const BTN = {
   fontFamily: 'inherit', transition: 'opacity .15s, transform .12s',
 };
 
+const FONT_STEPS = ['.78rem', '.9rem', '1.0rem', '1.12rem', '1.28rem', '1.44rem'];
+
+const FONT_BTN_DARK = {
+  border: '1.5px solid rgba(255,255,255,.45)',
+  background: 'rgba(0,0,0,.46)',
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
+  borderRadius: 16, padding: '5px 10px',
+  color: '#fff', fontSize: '.72rem', fontWeight: 900,
+  cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit',
+};
+
+const FONT_BTN_LIGHT = {
+  border: '1.5px solid #e2e8f0', background: '#f8fafc',
+  borderRadius: 10, padding: '5px 10px',
+  color: '#475569', fontSize: '.76rem', fontWeight: 900,
+  cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit',
+};
+
 /* حساب الأبعاد — يُستدعى فقط من جانب العميل */
 function calcDims(mode) {
   const vw = window.innerWidth;
@@ -82,6 +101,7 @@ export default function StoryFlipBook({
   */
   const [dims, setDims] = useState(null);
   const [hoverSide, setHoverSide] = useState(null); // 'left' | 'right'
+  const [fontIdx, setFontIdx] = useState(2); // index into FONT_STEPS, default 1.0rem
 
   const totalPages = pages.length;
   const isLastPage = current >= totalPages - 1;
@@ -100,11 +120,26 @@ export default function StoryFlipBook({
     return () => { window.removeEventListener('resize', onResize); clearTimeout(timer); };
   }, [mode]);
 
-  const fontSize = !dims ? '1rem'
-    : dims.w < 280 ? '.82rem'
-    : dims.w < 360 ? '.9rem'
-    : dims.w < 460 ? '1rem'
-    : '1.08rem';
+  /* تهيئة حجم الخط المحفوظ */
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('aarem-story-font');
+      if (saved !== null) {
+        const idx = parseInt(saved, 10);
+        if (idx >= 0 && idx < FONT_STEPS.length) setFontIdx(idx);
+      }
+    } catch {}
+  }, []);
+
+  const changeFontSize = useCallback((dir) => {
+    setFontIdx(prev => {
+      const next = Math.max(0, Math.min(FONT_STEPS.length - 1, prev + dir));
+      try { localStorage.setItem('aarem-story-font', String(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const fontSize = FONT_STEPS[fontIdx];
 
   /* ── flip آمن ── */
   const safeFlip = useCallback((dir) => {
@@ -168,6 +203,22 @@ export default function StoryFlipBook({
           color: '#fff', fontSize: '.72rem', fontWeight: 900,
           textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
         }}>→ رجوع</Link>
+
+        {/* أزرار حجم الخط — الجهة اليسرى (مقابل زر الرجوع) */}
+        <div style={{ position: 'absolute', top: 14, left: 14, zIndex: 30, display: 'flex', gap: 6 }}>
+          <button
+            onClick={() => changeFontSize(-1)}
+            disabled={fontIdx === 0}
+            style={{ ...FONT_BTN_DARK, opacity: fontIdx === 0 ? .3 : 1 }}
+            aria-label="تصغير الخط"
+          >أ−</button>
+          <button
+            onClick={() => changeFontSize(+1)}
+            disabled={fontIdx === FONT_STEPS.length - 1}
+            style={{ ...FONT_BTN_DARK, opacity: fontIdx === FONT_STEPS.length - 1 ? .3 : 1 }}
+            aria-label="تكبير الخط"
+          >أ+</button>
+        </div>
 
         {/* نقاط التقدم — مقلوبة لتبدأ من اليمين (اتجاه القراءة العربي) */}
         <div style={{
@@ -322,9 +373,23 @@ export default function StoryFlipBook({
             ▶ السابق
           </button>
 
-          <span style={{ color: '#94a3b8', fontSize: '.85rem', fontWeight: 700, direction: 'ltr' }}>
-            {totalPages}{' / '}
-            {current + 1}{current + 1 < totalPages ? `‒${Math.min(current + 2, totalPages)}` : ''}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => changeFontSize(-1)}
+              disabled={fontIdx === 0}
+              style={{ ...FONT_BTN_LIGHT, opacity: fontIdx === 0 ? .3 : 1 }}
+              aria-label="تصغير الخط" title="تصغير الخط"
+            >أ−</button>
+            <span style={{ color: '#94a3b8', fontSize: '.85rem', fontWeight: 700, direction: 'ltr' }}>
+              {totalPages}{' / '}
+              {current + 1}{current + 1 < totalPages ? `‒${Math.min(current + 2, totalPages)}` : ''}
+            </span>
+            <button
+              onClick={() => changeFontSize(+1)}
+              disabled={fontIdx === FONT_STEPS.length - 1}
+              style={{ ...FONT_BTN_LIGHT, opacity: fontIdx === FONT_STEPS.length - 1 ? .3 : 1 }}
+              aria-label="تكبير الخط" title="تكبير الخط"
+            >أ+</button>
           </span>
 
           {isLastPage ? (
@@ -403,7 +468,21 @@ export default function StoryFlipBook({
           <button onClick={() => safeFlip('prev')} disabled={current === 0} style={{
             ...BTN, background: '#f1f5f9', color: '#64748b', opacity: current === 0 ? .25 : 1,
           }}>▶ السابق</button>
-          <span style={{ color: '#94a3b8', fontSize: '.8rem', fontWeight: 700, direction: 'ltr' }}>{totalPages} / {current+1}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={() => changeFontSize(-1)}
+              disabled={fontIdx === 0}
+              style={{ ...FONT_BTN_LIGHT, padding: '4px 8px', opacity: fontIdx === 0 ? .3 : 1 }}
+              aria-label="تصغير الخط"
+            >أ−</button>
+            <span style={{ color: '#94a3b8', fontSize: '.8rem', fontWeight: 700, direction: 'ltr' }}>{totalPages} / {current+1}</span>
+            <button
+              onClick={() => changeFontSize(+1)}
+              disabled={fontIdx === FONT_STEPS.length - 1}
+              style={{ ...FONT_BTN_LIGHT, padding: '4px 8px', opacity: fontIdx === FONT_STEPS.length - 1 ? .3 : 1 }}
+              aria-label="تكبير الخط"
+            >أ+</button>
+          </span>
           {isLastPage ? (!isTeacher && (read ? (
             <div style={{ ...BTN, background: '#d1fae5', color: '#065f46', border: '1.5px solid #86efac', cursor: 'default' }}>✅ أنهيت</div>
           ) : (
