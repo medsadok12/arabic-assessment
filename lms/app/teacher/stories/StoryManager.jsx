@@ -466,7 +466,33 @@ export default function StoryManager({ initialStories }) {
         /* نموذج إنشاء/تعديل */
         .sm-form { background:#fff; border-radius:22px; padding:28px 24px; box-shadow:0 4px 24px rgba(0,0,0,.07); border:2px solid #f1f5f9; }
         .sm-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-        @media (max-width:600px) { .sm-form-grid { grid-template-columns:1fr; } .sm-actions { flex-direction:column; } }
+        @media (max-width:640px) {
+          .sm-form-grid { grid-template-columns:1fr; }
+          .sm-story-row {
+            display:grid;
+            grid-template-columns:52px 1fr;
+            grid-template-areas:'icon info' 'acts acts';
+            gap:10px 12px;
+            align-items:start;
+          }
+          .sm-story-icon { grid-area:icon; }
+          .sm-story-info { grid-area:info; align-self:center; }
+          .sm-actions {
+            grid-area:acts;
+            flex-direction:row;
+            flex-wrap:wrap;
+            gap:6px;
+          }
+          .sm-action-btn {
+            flex:1; min-width:calc(50% - 6px);
+            text-align:center; padding:9px 6px; font-size:.78rem;
+          }
+          .sm-view-link {
+            flex:1; min-width:calc(50% - 6px);
+            text-align:center; padding:9px 6px; font-size:.78rem;
+            display:inline-flex; align-items:center; justify-content:center;
+          }
+        }
         .sm-field { display:flex; flex-direction:column; gap:6px; }
         .sm-label { font-size:.82rem; font-weight:800; color:#374151; }
         .sm-input, .sm-select, .sm-textarea {
