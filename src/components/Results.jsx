@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { generateAssessmentPDF } from '../utils/pdfGenerator.js';
 import { LEVELS } from '../data/questions.js';
 
-export default function Results({ studentInfo, finalLevel, scores, levelPath, onRestart }) {
+export default function Results({ studentInfo, finalLevel, scores, levelPath, allAnswers, onRestart }) {
   const [emailStatus, setEmailStatus] = useState('idle'); // idle | sending | success | error
 
   useEffect(() => {
@@ -51,7 +51,7 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, on
     if (emailStatus === 'sending') return;
     setEmailStatus('sending');
     try {
-      const pdfBase64 = await generateAssessmentPDF(studentInfo, scores, finalLevel);
+      const pdfBase64 = await generateAssessmentPDF(studentInfo, scores, finalLevel, allAnswers ?? []);
       const res = await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

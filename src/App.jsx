@@ -329,6 +329,7 @@ export default function App() {
             finalLevel={finalLevel}
             scores={finalScores}
             levelPath={levelPath}
+            allAnswers={allAnswers}
             onRestart={handleRestart}
           />
         )}
