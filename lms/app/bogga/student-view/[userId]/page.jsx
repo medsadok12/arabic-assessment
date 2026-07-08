@@ -78,7 +78,7 @@ export default async function StudentViewPage({ params }) {
 
     admin.from('sessions')
       .select('id,teacher_name,session_date,start_time,duration_minutes,subject,meet_link,status,attended,notes')
-      .ilike('student_email', email)
+      .eq('student_email', email?.toLowerCase())
       .order('session_date', { ascending: false })
       .limit(50)
       .then(r => r.error ? { data: [] } : r),
@@ -90,14 +90,14 @@ export default async function StudentViewPage({ params }) {
 
     admin.from('homework')
       .select('id,teacher_name,title,description,due_date,status,created_at')
-      .ilike('student_email', email)
+      .eq('student_email', email?.toLowerCase())
       .order('due_date', { ascending: true })
       .limit(30)
       .then(r => r.error ? { data: [] } : r),
 
     admin.from('sessions')
       .select('id,teacher_name,session_date,subject,notes')
-      .ilike('student_email', email)
+      .eq('student_email', email?.toLowerCase())
       .not('notes', 'is', null).neq('notes', '')
       .order('session_date', { ascending: false })
       .limit(10)

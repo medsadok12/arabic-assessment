@@ -38,7 +38,7 @@ export default function CalendarPage() {
       supabase
         .from('sessions')
         .select('id, teacher_name, session_date, start_time, duration_minutes, subject, status, meet_link, room_name')
-        .ilike('student_email', u.email)
+        .eq('student_email', u.email?.toLowerCase())
         .in('status', ['scheduled', 'completed'])
         .order('session_date', { ascending: true })
         .order('start_time',   { ascending: true })
