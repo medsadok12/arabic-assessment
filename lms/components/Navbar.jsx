@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -520,7 +521,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
                       : 'none',
                   }}>
                     {avatarURL
-                      ? <img src={avatarURL} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,.5)', display: 'block' }} />
+                      ? <Image src={avatarURL} alt="" width={34} height={34} style={{ borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,.5)', display: 'block' }} />
                       : <Initials name={fullName} />
                     }
                   </div>

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 /* ── DiceBear URL params ─────────────────────────────────────────────────── */
 /* Circle avatar (adventurer) — happy face + hair, for dashboard button */
@@ -352,7 +353,7 @@ export function AvatarWithAccessory({ name, avatarURL, equipped = {}, equippedId
         boxShadow:`0 3px 14px rgba(26,43,74,.28)`,
       }}>
         {avatarURL ? (
-          <img src={avatarURL} alt="" style={{ width:size, height:size, objectFit:'cover', display:'block' }}/>
+          <Image src={avatarURL} alt="" width={size} height={size} style={{ objectFit:'cover', display:'block' }}/>
         ) : (
           <img
             src={url}

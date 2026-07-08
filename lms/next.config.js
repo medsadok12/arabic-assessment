@@ -57,6 +57,8 @@ const nextConfig = {
       // Allow images from Supabase storage
       { protocol: 'https', hostname: '*.supabase.co' },
       { protocol: 'https', hostname: '*.supabase.in' },
+      // Google OAuth profile pictures
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
     ],
   },
 

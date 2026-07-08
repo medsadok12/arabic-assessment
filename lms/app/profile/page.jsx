@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { createClient } from '../../lib/supabase';
 import Navbar from '../../components/Navbar';
 import { getRole } from '../../lib/auth-role';
@@ -176,9 +177,9 @@ function AvatarCard({ user, onUserUpdate }) {
           title="انقر لتغيير الصورة"
         >
           {avatarURL
-            ? <img src={avatarURL} alt="صورة شخصية"
+            ? <Image src={avatarURL} alt="صورة شخصية" width={80} height={80}
                 onError={() => setAvatarURL(null)}
-                style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '3px solid #1A2B4A' }} />
+                style={{ borderRadius: '50%', objectFit: 'cover', border: '3px solid #1A2B4A' }} />
             : <Initials name={fullName} />
           }
           <div style={{

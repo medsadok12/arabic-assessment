@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import Image from 'next/image';
 import { createClient } from '../lib/supabase';
 import { getRole } from '../lib/auth-role';
 
@@ -23,7 +24,7 @@ function mergeDedup(a = [], b = []) {
 
 function Avatar({ name, url, role, size = 34 }) {
   const init = (name ?? '?').split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
-  if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid #e2e8f0' }} />;
+  if (url) return <Image src={url} alt={name ?? ''} width={size} height={size} style={{ borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid #e2e8f0' }} />;
   return <div style={{ width: size, height: size, borderRadius: '50%', background: ROLE_BG[role] ?? '#f1f5f9', color: ROLE_CLR[role] ?? '#475569', fontWeight: 700, fontSize: size * 0.33, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{init}</div>;
 }
 
@@ -692,7 +693,7 @@ export default function TeamChat({ user }) {
           {/* header */}
           <div style={{ background: 'linear-gradient(135deg,#1a7c40 0%,#0f5c2e 100%)', padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
             {view === 'chat' && (
-              <button onClick={goBack} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.4rem', padding: '2px 0', lineHeight: 1, opacity: .85, flexShrink: 0 }}>‹</button>
+              <button onClick={goBack} aria-label="العودة للمحادثات" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.4rem', padding: '2px 0', lineHeight: 1, opacity: .85, flexShrink: 0 }}>‹</button>
             )}
 
             {view === 'list' && <>
@@ -728,7 +729,7 @@ export default function TeamChat({ user }) {
             </>}
 
             {view === 'chat' && !confirmClear && (
-              <button onClick={() => setConfirmClear(true)} title="محو الرسائل" style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.6)', cursor: 'pointer', padding: '4px 6px', borderRadius: 8, lineHeight: 1, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+              <button onClick={() => setConfirmClear(true)} title="محو الرسائل" aria-label="محو الرسائل" style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.6)', cursor: 'pointer', padding: '4px 6px', borderRadius: 8, lineHeight: 1, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
               </button>
             )}
@@ -739,7 +740,7 @@ export default function TeamChat({ user }) {
                 <button onClick={() => setConfirmClear(false)} style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '.7rem', padding: '3px 8px', borderRadius: 6, lineHeight: 1.4 }}>لا</button>
               </div>
             )}
-            <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.7)', cursor: 'pointer', fontSize: '.95rem', padding: '4px 6px', borderRadius: 8, lineHeight: 1, flexShrink: 0 }}>✕</button>
+            <button onClick={() => setOpen(false)} aria-label="إغلاق نافذة الدردشة" style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.7)', cursor: 'pointer', fontSize: '.95rem', padding: '4px 6px', borderRadius: 8, lineHeight: 1, flexShrink: 0 }}>✕</button>
           </div>
 
           {/* CONVERSATIONS LIST */}
@@ -825,13 +826,13 @@ export default function TeamChat({ user }) {
                       <div style={{ fontSize: '.65rem', fontWeight: 800, color: '#1a7c40' }}>↩ رداً على: {replyTo.senderName?.split(' ')[0]}</div>
                       <div style={{ fontSize: '.74rem', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{replyTo.content.slice(0, 60)}{replyTo.content.length > 60 ? '…' : ''}</div>
                     </div>
-                    <button onClick={() => setReplyTo(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1rem', padding: '2px 4px', flexShrink: 0 }}>✕</button>
+                    <button onClick={() => setReplyTo(null)} aria-label="إلغاء الرد" style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1rem', padding: '2px 4px', flexShrink: 0 }}>✕</button>
                   </div>
                 )}
                 {taskMode && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', fontSize: '.72rem', fontWeight: 700, color: '#b45309' }}>
                     🛠️ وضع المهمة — ستُرسل هذه الرسالة كمهمة قابلة للإنجاز
-                    <button onClick={() => setTaskMode(false)} style={{ marginRight: 'auto', background: 'none', border: 'none', color: '#b45309', cursor: 'pointer', fontSize: '.8rem', padding: 0 }}>✕</button>
+                    <button onClick={() => setTaskMode(false)} aria-label="إلغاء وضع المهمة" style={{ marginRight: 'auto', background: 'none', border: 'none', color: '#b45309', cursor: 'pointer', fontSize: '.8rem', padding: 0 }}>✕</button>
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 7, alignItems: 'flex-end', direction: 'rtl' }}>

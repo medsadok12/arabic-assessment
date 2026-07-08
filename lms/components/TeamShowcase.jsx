@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 export default function TeamShowcase() {
   const [members, setMembers] = useState([]);
@@ -69,9 +70,9 @@ export default function TeamShowcase() {
         }}>
           {members.map(m => (
             <div key={m.id} className="team-card">
-              <div className="team-photo">
+              <div className="team-photo" style={{ position: 'relative' }}>
                 {m.image_url
-                  ? <img src={m.image_url} alt={m.name} />
+                  ? <Image src={m.image_url} alt={m.name} fill style={{ objectFit: 'cover' }} sizes="120px" />
                   : <span style={{ fontSize: '2.6rem' }}>👤</span>
                 }
               </div>
