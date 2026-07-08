@@ -68,6 +68,21 @@ function PageEditor({ html, onChange }) {
   const szRef   = useRef(null);
   const lhRef   = useRef(null);
   const pending = useRef(null);
+  const history = useRef([]);
+  const [canUndo, setCanUndo] = useState(false);
+
+  const pushHistory = (val) => {
+    history.current.push(val);
+    if (history.current.length > 60) history.current.shift();
+    setCanUndo(true);
+  };
+
+  const undo = () => {
+    if (!history.current.length) return;
+    const prev = history.current.pop();
+    setCanUndo(history.current.length > 0);
+    onChange(prev);
+  };
 
   /* استعادة موضع المؤشر بعد كل render (useLayoutEffect = قبل الرسم) */
   useLayoutEffect(() => {
@@ -82,6 +97,7 @@ function PageEditor({ html, onChange }) {
     if (!ta) return;
     const s = ta.selectionStart;
     const e = ta.selectionEnd;
+    pushHistory(html);
     const next = html.slice(0, s) + before + html.slice(s, e) + after + html.slice(e);
     pending.current = { s: s + before.length, e: s + before.length + (e - s) };
     onChange(next);
@@ -213,6 +229,25 @@ function PageEditor({ html, onChange }) {
             }}
           />
         ))}
+
+        <Sep />
+
+        {/* ── تراجع ── */}
+        <button
+          type="button"
+          onClick={undo}
+          disabled={!canUndo}
+          title="تراجع عن آخر تنسيق"
+          style={{
+            ...TB.style,
+            opacity: canUndo ? 1 : 0.32,
+            cursor: canUndo ? 'pointer' : 'default',
+            fontSize: '.88rem',
+            padding: '3px 8px',
+          }}
+        >
+          ↩
+        </button>
       </div>
 
       {/* ── منطقة الكتابة ── */}
