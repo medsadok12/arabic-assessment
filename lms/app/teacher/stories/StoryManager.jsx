@@ -21,6 +21,30 @@ const EMPTY_FORM = {
   accent: '#10b981', bg: '#ecfdf5', border_color: '#6ee7b7',
 };
 
+/* ── تحويل content ↔ مصفوفة صفحات ── */
+function parseToPages(content) {
+  const blocks = (content || '').split('<!-- PAGE -->').map(b => b.trim()).filter(Boolean);
+  if (!blocks.length) return [{ html: '', imgUrl: '' }];
+  return blocks.map(block => {
+    const m = block.match(/^<img\s+class="sp-img"\s+src="([^"]*)"[^>]*>/i);
+    return m
+      ? { imgUrl: m[1], html: block.slice(m[0].length).trim() }
+      : { imgUrl: '', html: block };
+  });
+}
+
+function pagesToContent(pages) {
+  return pages
+    .filter(p => p.html.trim() || p.imgUrl)
+    .map(p => {
+      const imgTag = p.imgUrl
+        ? `<img class="sp-img" src="${p.imgUrl}" alt="" style="width:100%;max-height:260px;object-fit:cover;border-radius:14px;margin-bottom:18px;display:block;">`
+        : '';
+      return imgTag + (imgTag && p.html ? '\n' : '') + p.html;
+    })
+    .join('\n<!-- PAGE -->\n');
+}
+
 function StatusBadge({ status }) {
   return status === 'published'
     ? <span style={{ background:'#d1fae5', color:'#065f46', borderRadius:20, padding:'2px 10px', fontSize:'.68rem', fontWeight:900, border:'1.5px solid #86efac' }}>✅ منشورة</span>
@@ -47,10 +71,38 @@ export default function StoryManager({ initialStories }) {
   const [deleting,  setDeleting]  = useState(null);
   const [msg,       setMsg]       = useState(null);
   const [preview,   setPreview]   = useState(false);
+  const [pages,     setPages]     = useState([{ html: '', imgUrl: '' }]);
+  const [uploading, setUploading] = useState(null); // index of page being uploaded
 
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  const openCreate = () => { setForm(EMPTY_FORM); setEditId(null); setMsg(null); setPreview(false); setView('create'); };
+  /* ── صفحات ── */
+  const updatePage  = (i, key, val) => setPages(p => p.map((pg, idx) => idx === i ? { ...pg, [key]: val } : pg));
+  const addPage     = () => setPages(p => [...p, { html: '', imgUrl: '' }]);
+  const deletePage  = (i) => setPages(p => p.filter((_, idx) => idx !== i));
+  const movePage    = (i, dir) => setPages(p => {
+    const arr = [...p];
+    [arr[i + dir], arr[i]] = [arr[i], arr[i + dir]];
+    return arr;
+  });
+  const uploadPageImg = async (i, file) => {
+    setUploading(i);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res  = await fetch('/api/stories/upload', { method: 'POST', body: fd });
+      const json = await res.json();
+      if (json.url) updatePage(i, 'imgUrl', json.url);
+      else setMsg({ ok: false, text: `❌ فشل رفع الصورة: ${json.error || ''}` });
+    } catch { setMsg({ ok: false, text: '❌ خطأ في رفع الصورة' }); }
+    setUploading(null);
+  };
+
+  const openCreate = () => {
+    setForm(EMPTY_FORM);
+    setPages([{ html: '', imgUrl: '' }]);
+    setEditId(null); setMsg(null); setPreview(false); setView('create');
+  };
   const openEdit   = (s) => {
     setForm({
       title:        s.title,
@@ -64,6 +116,7 @@ export default function StoryManager({ initialStories }) {
       bg:           s.bg || '#ecfdf5',
       border_color: s.border_color || '#6ee7b7',
     });
+    setPages(parseToPages(s.content));
     setEditId(s.id);
     setMsg(null);
     setPreview(false);
@@ -75,12 +128,13 @@ export default function StoryManager({ initialStories }) {
     if (!form.title.trim()) { setMsg({ ok: false, text: 'العنوان مطلوب' }); return; }
     setSaving(true); setMsg(null);
     try {
-      const method = view === 'edit' ? 'PUT' : 'POST';
-      const url    = view === 'edit' ? `/api/stories/${editId}` : '/api/stories';
+      const method  = view === 'edit' ? 'PUT' : 'POST';
+      const url     = view === 'edit' ? `/api/stories/${editId}` : '/api/stories';
+      const content = pagesToContent(pages);
       const res  = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, content }),
       });
       const json = await res.json();
       if (!res.ok || json.error) throw new Error(json.error || 'فشل الحفظ');
@@ -444,22 +498,97 @@ export default function StoryManager({ initialStories }) {
                   </div>
                 </div>
 
-                {/* محتوى القصة */}
-                <div className="sm-field" style={{ marginBottom:6 }}>
-                  <label className="sm-label">
-                    محتوى القصة
-                    <span style={{ fontSize:'.7rem', color:'#94a3b8', fontWeight:600, marginRight:8 }}>يدعم HTML (بتاغات: &lt;p&gt; &lt;strong&gt; &lt;em&gt; &lt;h2&gt; &lt;h3&gt;)</span>
-                  </label>
-                  <textarea
-                    className="sm-textarea"
-                    value={form.content}
-                    onChange={e => f('content', e.target.value)}
-                    placeholder={`<p>كان يا ما كان في قديم الزمان...</p>\n<p>قصة جميلة تحكي عن...</p>`}
-                  />
+                {/* ── محرر الصفحات ── */}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                    <span className="sm-label" style={{ margin:0 }}>
+                      صفحات القصة
+                      <span style={{ fontSize:'.7rem', color:'#94a3b8', fontWeight:600, marginRight:8 }}>({pages.length} صفحة)</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={addPage}
+                      style={{ background:'#eef2ff', color:'#4f46e5', border:'1.5px solid #c7d2fe', borderRadius:10, padding:'6px 16px', fontSize:'.8rem', fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}
+                    >
+                      + إضافة صفحة
+                    </button>
+                  </div>
+
+                  <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                    {pages.map((page, i) => (
+                      <div key={i} style={{ border:'2px solid #e5e7eb', borderRadius:16, overflow:'hidden', background:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,.04)' }}>
+
+                        {/* رأس الصفحة */}
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#f8fafc', borderBottom:'1px solid #e5e7eb' }}>
+                          <span style={{ fontWeight:800, fontSize:'.83rem', color:'#374151' }}>📄 الصفحة {i + 1}</span>
+                          <div style={{ display:'flex', gap:5 }}>
+                            {i > 0 && (
+                              <button type="button" onClick={() => movePage(i, -1)}
+                                style={{ background:'#f1f5f9', color:'#475569', border:'none', borderRadius:7, padding:'3px 10px', fontSize:'.75rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>⬆</button>
+                            )}
+                            {i < pages.length - 1 && (
+                              <button type="button" onClick={() => movePage(i, 1)}
+                                style={{ background:'#f1f5f9', color:'#475569', border:'none', borderRadius:7, padding:'3px 10px', fontSize:'.75rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>⬇</button>
+                            )}
+                            {pages.length > 1 && (
+                              <button type="button" onClick={() => deletePage(i)}
+                                style={{ background:'#fee2e2', color:'#b91c1c', border:'none', borderRadius:7, padding:'3px 10px', fontSize:'.75rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>🗑 حذف</button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* منطقة الصورة */}
+                        <div style={{ padding:'12px 14px', borderBottom:'1px solid #f3f4f6', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+                          {page.imgUrl ? (
+                            <div style={{ position:'relative', flexShrink:0 }}>
+                              <img src={page.imgUrl} alt="" style={{ height:90, width:140, objectFit:'cover', borderRadius:10, display:'block', border:'1.5px solid #e2e8f0' }} />
+                              <button
+                                type="button"
+                                onClick={() => updatePage(i, 'imgUrl', '')}
+                                style={{ position:'absolute', top:4, right:4, background:'rgba(0,0,0,.55)', color:'#fff', border:'none', borderRadius:6, padding:'1px 6px', fontSize:'.72rem', cursor:'pointer' }}
+                              >✕</button>
+                            </div>
+                          ) : null}
+
+                          <label style={{
+                            display:'inline-flex', alignItems:'center', gap:7,
+                            background: uploading === i ? '#f8fafc' : '#f0fdf4',
+                            border:`1.5px dashed ${uploading === i ? '#cbd5e1' : '#86efac'}`,
+                            borderRadius:10, padding:'9px 16px',
+                            cursor: uploading === i ? 'wait' : 'pointer',
+                            fontSize:'.8rem', color: uploading === i ? '#94a3b8' : '#166534',
+                            fontWeight:700, transition:'all .15s',
+                          }}>
+                            {uploading === i ? '⏳ جارٍ الرفع...' : page.imgUrl ? '🔄 تغيير الصورة' : '🖼 رفع صورة للصفحة'}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display:'none' }}
+                              disabled={uploading === i}
+                              onChange={e => { if (e.target.files[0]) uploadPageImg(i, e.target.files[0]); e.target.value = ''; }}
+                            />
+                          </label>
+                          {!page.imgUrl && (
+                            <span style={{ fontSize:'.7rem', color:'#94a3b8' }}>اختيارية — تظهر في أعلى الصفحة للطالب</span>
+                          )}
+                        </div>
+
+                        {/* محتوى HTML */}
+                        <textarea
+                          className="sm-textarea"
+                          value={page.html}
+                          onChange={e => updatePage(i, 'html', e.target.value)}
+                          placeholder="<p>كان يا ما كان في قديم الزمان...</p>"
+                          style={{ borderRadius:0, border:'none', minHeight:130, display:'block', width:'100%', boxSizing:'border-box', background:'#fff', borderTop:'1px solid #f3f4f6' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <p style={{ color:'#94a3b8', fontSize:'.72rem', margin:'10px 0 0', fontWeight:600 }}>
+                    💡 يدعم HTML: &lt;p&gt; للفقرات · &lt;strong&gt; للخط العريض · &lt;em&gt; لتمييز المفردات الجديدة
+                  </p>
                 </div>
-                <p style={{ color:'#94a3b8', fontSize:'.72rem', margin:'0 0 16px', fontWeight:600 }}>
-                  💡 تلميح: استخدم &lt;p&gt; للفقرات، &lt;strong&gt; للخط العريض، &lt;em&gt; لتمييز المفردات الجديدة
-                </p>
               </>
             )}
 
