@@ -30,9 +30,16 @@ function buildQMap() {
 }
 
 // Decide what to show in the student-answer and correct-answer columns.
-// Only fill / correction / word-order supply real text — everything else
-// shows '—' because MCQ options are shuffled at runtime and not stored.
+// Every question component captures answerText/correctText at answer time;
+// the branches below are a fallback for sessions saved before those fields existed.
 function getAnswerDisplay(answerObj, qData) {
+  if (answerObj.answerText != null || answerObj.correctText != null) {
+    return {
+      student: sanitize(answerObj.answerText || '—'),
+      correct: sanitize(answerObj.correctText || '—'),
+    };
+  }
+
   if (!qData) return { student: '—', correct: '—' };
 
   const type = qData.type;
@@ -41,31 +48,30 @@ function getAnswerDisplay(answerObj, qData) {
   if (type === 'fill') {
     return {
       student: sanitize(raw) || '—',
-      correct: answerObj.isCorrect ? '✅ صحيح' : sanitize((qData.answers || [])[0] || '—'),
+      correct: sanitize((qData.answers || [])[0] || '—'),
     };
   }
 
   if (type === 'correction') {
     return {
       student: sanitize(raw) || '—',
-      correct: answerObj.isCorrect ? '✅ صحيح' : sanitize(qData.correctAnswer || '—'),
+      correct: sanitize(qData.correctAnswer || '—'),
     };
   }
 
   if (type === 'word-order') {
-    const sArr = Array.isArray(raw) ? raw : [];
     return {
-      student: sanitize(sArr.join(' ')) || '—',
-      correct: answerObj.isCorrect ? '✅ صحيح' : sanitize((qData.answer || []).join(' ')),
+      student: sanitize(Array.isArray(raw) ? raw.join(' ') : raw) || '—',
+      correct: sanitize((qData.answer || []).join(' ')),
     };
   }
 
-  // Regular MCQ: options are shuffled at runtime; only isCorrect is reliable
+  // Regular MCQ stored as an index into shuffled options
   if (Array.isArray(qData.options)) {
     const correctOpt = qData.options.find(o => o.correct);
     return {
       student: '—',
-      correct: answerObj.isCorrect ? '✅ صحيح' : sanitize(correctOpt?.text || '—'),
+      correct: sanitize(correctOpt?.text || '—'),
     };
   }
 

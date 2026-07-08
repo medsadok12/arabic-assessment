@@ -145,6 +145,8 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
           skill:      question.skill,
           answer:     0,
           isCorrect:  true,
+          answerText:  'تسجيل صوتي مُرسل للمعلم',
+          correctText: 'يُقيَّم من المعلم',
         }), 2000);
       } catch (err) {
         setUploadError(err.message || 'تعذّر الاتصال بالخادم');
@@ -229,7 +231,7 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
           </button>
           {retryCount >= 2 && (
             <button
-              onClick={() => onAnswer({ questionId: question.id, skill: question.skill, answer: 0, isCorrect: true })}
+              onClick={() => onAnswer({ questionId: question.id, skill: question.skill, answer: 0, isCorrect: true, answerText: 'تخطّى التسجيل الصوتي', correctText: 'يُقيَّم من المعلم' })}
               style={{ marginTop: 8, width: '100%', padding: '10px', background: 'transparent', border: '1px solid #aaa', borderRadius: 8, color: '#666', cursor: 'pointer', fontSize: 14 }}
             >
               تخطي هذا السؤال ←

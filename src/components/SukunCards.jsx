@@ -33,6 +33,8 @@ export default function SukunCards({ question, onAnswer }) {
       skill:      question.skill ?? 'reading',
       answer:     checked.size,
       isCorrect:  checked.size >= 4,
+      answerText:  `قرأ ${checked.size} من ${TOTAL} مقاطع`,
+      correctText: `قراءة ${TOTAL} مقاطع (النجاح من 4)`,
     });
   }
 

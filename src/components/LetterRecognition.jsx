@@ -30,6 +30,8 @@ export default function LetterRecognition({ question, onAnswer }) {
       answer:     correct.size,
       isCorrect:  correct.size >= 20,
       meta:       { correctLetters: correct.size, total: LETTERS.length },
+      answerText:  `قرأ ${correct.size} من ${LETTERS.length} حرفاً`,
+      correctText: `قراءة ${LETTERS.length} حرفاً (النجاح من 20)`,
     });
   }
 
