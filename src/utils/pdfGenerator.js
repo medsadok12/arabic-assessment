@@ -81,7 +81,17 @@ function getAnswerDisplay(answerObj, qData) {
 
 // Build the full per-question detail section (grouped by skill)
 function buildQuestionsSection(allAnswers, qMap) {
-  if (!allAnswers?.length) return '';
+  // Explicit empty state: absence of answer data must be visible in the
+  // report, never silent — it signals a stale client build or a legacy session
+  if (!allAnswers?.length) {
+    return `
+    <div style="background:#f0f4f8;padding:28px 44px 36px;">
+      <div style="background:#1A2B4A;color:white;padding:18px 28px;border-radius:10px;">
+        <div style="font-size:16px;font-weight:900;margin-bottom:4px;">تفاصيل إجابات الطالب</div>
+        <div style="font-size:12px;opacity:0.85;">لا تتوفر تفاصيل الإجابات لهذه الجلسة — أعد التقييم من جلسة جديدة</div>
+      </div>
+    </div>`;
+  }
 
   const SKILL_NAMES = {
     ...Object.fromEntries(SKILLS.map(s => [s.id, s.name])),
@@ -162,7 +172,7 @@ function buildQuestionsSection(allAnswers, qMap) {
     <div style="background:#f0f4f8;padding:28px 44px 36px;">
       <div style="background:#1A2B4A;color:white;padding:18px 28px;border-radius:10px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;">
         <div>
-          <div style="font-size:16px;font-weight:900;margin-bottom:4px;">تفاصيل الإجابات</div>
+          <div style="font-size:16px;font-weight:900;margin-bottom:4px;">تفاصيل إجابات الطالب</div>
           <div style="font-size:12px;opacity:0.85;">عرض كامل لكل سؤال وإجاباته</div>
         </div>
         <div style="text-align:center;">
