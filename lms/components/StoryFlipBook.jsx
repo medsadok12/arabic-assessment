@@ -5,7 +5,7 @@ import HTMLFlipBook from 'react-pageflip';
 import DOMPurify from 'isomorphic-dompurify';
 
 /* ── صفحة واحدة ── */
-const StoryPage = forwardRef(function StoryPage({ html, fontSize, pageNum, total, isRight, mirrorX }, ref) {
+const StoryPage = forwardRef(function StoryPage({ html, pageNum, total, isRight, mirrorX }, ref) {
   return (
     <div ref={ref} style={{ overflow: 'hidden', background: 'transparent' }}>
       <div style={{
@@ -16,7 +16,7 @@ const StoryPage = forwardRef(function StoryPage({ html, fontSize, pageNum, total
         display: 'flex', flexDirection: 'column',
         position: 'relative',
         fontFamily: "'Cairo','Tajawal',sans-serif",
-        fontSize, lineHeight: 1.95, color: '#2d1f0e',
+        fontSize: 'var(--sp-font, 1.0rem)', lineHeight: 1.95, color: '#2d1f0e',
         direction: 'rtl',
         userSelect: 'none', WebkitUserSelect: 'none',
         /* نعكس المحتوى مرة ثانية ليُقرأ بشكل صحيح بعد عكس الحاوية */
@@ -193,7 +193,7 @@ export default function StoryFlipBook({
   if (mode === 'fullscreen') {
     if (!dims) return null;
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, direction: 'rtl', background: '#fffdf5' }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, direction: 'rtl', background: '#fffdf5', '--sp-font': fontSize }}>
 
         <Link href="/library" style={{
           position: 'absolute', top: 14, right: 14, zIndex: 30,
@@ -292,7 +292,7 @@ export default function StoryFlipBook({
         : 'pointer';
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: 0, '--sp-font': fontSize }}>
 
         {/* نقاط التقدم */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
@@ -350,8 +350,7 @@ export default function StoryFlipBook({
             >
               {pages.map((html, i) => (
                 <StoryPage
-                  key={i} html={html} fontSize={fontSize}
-                  pageNum={i+1} total={totalPages}
+                  key={i} html={html} pageNum={i+1} total={totalPages}
                   isRight={i % 2 === 0}
                   mirrorX={true}
                 />
@@ -428,7 +427,7 @@ export default function StoryFlipBook({
      ③ الوضع الافتراضي — صفحة واحدة (موبايل غير fullscreen)
   ════════════════════════════════════════ */
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', '--sp-font': fontSize }}>
       <div style={{ display: 'flex', gap: 7, marginBottom: 14 }}>
         {pages.map((_, i) => (
           <div key={i} style={{
