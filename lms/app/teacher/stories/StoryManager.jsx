@@ -435,6 +435,7 @@ export default function StoryManager({ initialStories }) {
           transition:box-shadow .18s;
         }
         .sm-story-row:hover { box-shadow:0 6px 24px rgba(0,0,0,.1); }
+        .sm-story-main { display:flex; align-items:center; gap:14px; flex:1; min-width:0; }
         .sm-story-icon {
           width:52px; height:52px; border-radius:14px;
           display:flex; align-items:center; justify-content:center;
@@ -468,38 +469,33 @@ export default function StoryManager({ initialStories }) {
         .sm-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
         @media (max-width:640px) {
           .sm-form-grid { grid-template-columns:1fr; }
+          /* بطاقة القصة تصبح عمودية بالكامل على الجوال: صف المعلومات فوق، صف الأزرار تحت */
           .sm-story-row {
-            flex-wrap:wrap;
-            align-items:flex-start;
-            gap:10px;
+            flex-direction:column;
+            align-items:stretch;
+            gap:0;
             padding:14px;
           }
-          .sm-story-icon {
-            flex-shrink:0;
-            width:48px; height:48px; font-size:1.7rem;
-          }
-          .sm-story-info {
-            flex:1;
-            min-width:0;
-          }
-          .sm-story-name { font-size:.88rem; white-space:normal; word-break:break-word; }
+          .sm-story-main { width:100%; }
+          .sm-story-icon { width:48px; height:48px; font-size:1.7rem; }
+          .sm-story-name { font-size:.9rem; white-space:normal; word-break:break-word; }
           .sm-story-meta { gap:6px; }
           .sm-actions {
-            flex-basis:100%;
-            flex-shrink:0;
+            width:100%;
+            margin-top:14px;
             flex-wrap:wrap;
-            gap:6px;
+            gap:8px;
           }
           .sm-action-btn {
             flex:1 1 calc(50% - 4px);
             max-width:calc(50% - 4px);
-            text-align:center; padding:9px 4px; font-size:.75rem;
+            text-align:center; padding:9px 6px; font-size:.78rem;
             box-sizing:border-box;
           }
           .sm-view-link {
             flex:1 1 calc(50% - 4px);
             max-width:calc(50% - 4px);
-            text-align:center; padding:9px 4px; font-size:.75rem;
+            text-align:center; padding:9px 6px; font-size:.78rem;
             display:inline-flex; align-items:center; justify-content:center;
             box-sizing:border-box;
           }
@@ -631,16 +627,18 @@ export default function StoryManager({ initialStories }) {
               <div className="sm-story-list">
                 {stories.map(s => (
                   <div key={s.id} className="sm-story-row">
-                    <div className="sm-story-icon" style={{ background: s.bg || '#ecfdf5', border: `2px solid ${s.border_color || '#6ee7b7'}` }}>
-                      {s.icon || '📖'}
-                    </div>
-                    <div className="sm-story-info">
-                      <p className="sm-story-name">{s.title}</p>
-                      <div className="sm-story-meta">
-                        <StatusBadge status={s.status} />
-                        <span className="sm-meta-chip">مستوى {s.level || 1}</span>
-                        <span className="sm-meta-chip">⏱ {s.length || 'قصيرة'}</span>
-                        <span className="sm-meta-chip">⭐ {s.points || 10} نقطة</span>
+                    <div className="sm-story-main">
+                      <div className="sm-story-icon" style={{ background: s.bg || '#ecfdf5', border: `2px solid ${s.border_color || '#6ee7b7'}` }}>
+                        {s.icon || '📖'}
+                      </div>
+                      <div className="sm-story-info">
+                        <p className="sm-story-name">{s.title}</p>
+                        <div className="sm-story-meta">
+                          <StatusBadge status={s.status} />
+                          <span className="sm-meta-chip">مستوى {s.level || 1}</span>
+                          <span className="sm-meta-chip">⏱ {s.length || 'قصيرة'}</span>
+                          <span className="sm-meta-chip">⭐ {s.points || 10} نقطة</span>
+                        </div>
                       </div>
                     </div>
                     <div className="sm-actions">
