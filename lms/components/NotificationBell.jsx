@@ -136,11 +136,24 @@ export default function NotificationBell({ userId, role, lang = 'ar' }) {
           0%   { transform: rotate(-8deg); }
           100% { transform: rotate(8deg); }
         }
+        /* على الجوال: تثبيت لوحة الإشعارات في منتصف الشاشة بعرض مناسب حتى لا تخرج عن الحواف ويُقصّ النص */
+        @media (max-width: 640px) {
+          .notif-dropdown {
+            position: fixed !important;
+            top: 70px !important;
+            left: 50% !important;
+            right: auto !important;
+            transform: translateX(-50%);
+            width: calc(100vw - 24px) !important;
+            max-width: 360px !important;
+            max-height: calc(100vh - 100px) !important;
+          }
+        }
       `}</style>
 
       {/* Dropdown */}
       {open && (
-        <div style={{
+        <div className="notif-dropdown" style={{
           position: 'absolute', top: 46, left: 0,
           width: 320, maxHeight: 440, overflowY: 'auto',
           background: '#fff', borderRadius: 14,
