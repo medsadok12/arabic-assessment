@@ -8,7 +8,7 @@ function loadMvScript() {
   if (document.querySelector('script[data-mv]')) return;
   const s = document.createElement('script');
   s.type = 'module';
-  s.src = 'https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js';
+  s.src = '/vendor/model-viewer.min.js'; // مستضاف ذاتياً — لا اعتماد على CDN خارجي
   s.dataset.mv = '1';
   document.head.appendChild(s);
 }

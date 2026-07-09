@@ -48,7 +48,8 @@ function useModelViewerScript() {
     if (document.querySelector('script[data-mv]')) return;
     const s = document.createElement('script');
     s.type = 'module';
-    s.src = 'https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js';
+    // مستضاف ذاتياً من public/vendor — لا اعتماد على CDN خارجي (كان ajax.googleapis.com)
+    s.src = '/vendor/model-viewer.min.js';
     s.dataset.mv = '1';
     document.head.appendChild(s);
   }, []);
@@ -62,7 +63,7 @@ const HEROES = [
     color: '#8B5CF6',
     price: 0,
     desc: 'بطلك المجاني — يتحرك ويتفاعل',
-    glb:  'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
+    glb:  '/models/RobotExpressive.glb',
     anim: 'Idle',
   },
   {
@@ -72,7 +73,7 @@ const HEROES = [
     color: '#F59E0B',
     price: 0,
     desc: 'روبوت آلي مميز يتحرك باحترافية',
-    glb:  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/BrainStem/glTF-Binary/BrainStem.glb',
+    glb:  '/models/BrainStem.glb',
     anim: null,
   },
   {
@@ -82,7 +83,7 @@ const HEROES = [
     color: '#3B82F6',
     price: 1000,
     desc: 'يجوب النجوم بشجاعة',
-    glb:  'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    glb:  '/models/Astronaut.glb',
     anim: null,
   },
   {
@@ -92,7 +93,7 @@ const HEROES = [
     color: '#F97316',
     price: 1000,
     desc: 'ماكر وسريع كالريح',
-    glb:  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Fox/glTF-Binary/Fox.glb',
+    glb:  '/models/Fox.glb',
     anim: 'Survey',
   },
   {
@@ -102,7 +103,7 @@ const HEROES = [
     color: '#CA8A04',
     price: 1000,
     desc: 'طريفة ومحبوبة بالجميع',
-    glb:  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Duck/glTF-Binary/Duck.glb',
+    glb:  '/models/Duck.glb',
     anim: null,
   },
   {
@@ -112,7 +113,7 @@ const HEROES = [
     color: '#16A34A',
     price: 1000,
     desc: 'طائر ذكي بألوان مبهجة',
-    glb:  'https://threejs.org/examples/models/gltf/Parrot.glb',
+    glb:  '/models/Parrot.glb',
     anim: null,
   },
   {
@@ -122,7 +123,7 @@ const HEROES = [
     color: '#EC4899',
     price: 1000,
     desc: 'أنيقة وجميلة كالحلم',
-    glb:  'https://threejs.org/examples/models/gltf/Flamingo.glb',
+    glb:  '/models/Flamingo.glb',
     anim: null,
   },
   {
@@ -132,7 +133,7 @@ const HEROES = [
     color: '#22C55E',
     price: 1000,
     desc: 'يستكشف الآفاق بلا حدود',
-    glb:  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMan/glTF-Binary/CesiumMan.glb',
+    glb:  '/models/CesiumMan.glb',
     anim: 'Walk',
   },
   {
@@ -142,7 +143,7 @@ const HEROES = [
     color: '#EF4444',
     price: 1000,
     desc: 'دروع مستقبلية وقوة هائلة',
-    glb:  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/BrainStem/glTF-Binary/BrainStem.glb',
+    glb:  '/models/BrainStem.glb',
     anim: null,
   },
   {
@@ -152,7 +153,7 @@ const HEROES = [
     color: '#EAB308',
     price: 1000,
     desc: 'فارس الساحات والبطولات',
-    glb:  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/RiggedFigure/glTF-Binary/RiggedFigure.glb',
+    glb:  '/models/RiggedFigure.glb',
     anim: null,
   },
   {
