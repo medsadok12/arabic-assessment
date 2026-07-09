@@ -513,6 +513,8 @@ body {
 }
 .data-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
 .data-table tr:hover td { background: var(--bg); }
+/* غلاف تمرير أفقي للجداول العريضة — يمنع قصّها على الجوال ويتيح السحب بالإصبع */
+.table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .badge {
   display: inline-block;
   padding: 2px 10px;
@@ -1004,6 +1006,8 @@ body {
   .data-table { font-size: .82rem; }
   .data-table th,
   .data-table td { padding: 8px 10px; }
+  /* الجدول داخل غلاف التمرير يبقى بعرض قابل للقراءة ويُسحب أفقياً بدل أن يُقصّ */
+  .table-scroll .data-table { min-width: 620px; }
 
   /* Buttons */
   .btn-lg { padding: 12px 20px; font-size: 1rem; }
