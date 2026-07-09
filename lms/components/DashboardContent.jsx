@@ -1,16 +1,22 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import Navbar from './Navbar';
-import ParentPanel from './ParentPanel';
-import FaheemWidget from './FaheemWidget';
-import LifeSceneSimulator from './LifeSceneSimulator';
 import { useLanguage } from '../contexts/LanguageContext';
 import { createClient } from '../lib/supabase';
-import AvatarShop from './AvatarShop';
-import DashboardHero3D from './DashboardHero3D';
 import WordOfDay from './WordOfDay';
 import StreakFreeze from './StreakFreeze';
+
+/* المكوّنات الثقيلة تُقسَّم لحزم منفصلة تُحمَّل عند الحاجة فقط (SSR يبقى
+   مفعّلاً فلا يتغير أول رسم إطلاقاً). الفائدة المزدوجة: حزمة أول تحميل
+   أصغر للجميع، والطالب لا يحمّل كود لوحة الولي (والعكس) لأن chunk
+   المكوّن غير المعروض لا يُطلب أصلاً. */
+const ParentPanel        = dynamic(() => import('./ParentPanel'));
+const FaheemWidget       = dynamic(() => import('./FaheemWidget'));
+const LifeSceneSimulator = dynamic(() => import('./LifeSceneSimulator'));
+const AvatarShop         = dynamic(() => import('./AvatarShop'));
+const DashboardHero3D    = dynamic(() => import('./DashboardHero3D'));
 
 function HwToggle({ id, status }) {
   const [st, setSt] = useState(status);
