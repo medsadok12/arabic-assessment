@@ -258,7 +258,7 @@ export default function StudentLexiconPage() {
 
           ) : (
             /* ── Table view ── */
-            <div style={{ overflowX: 'auto' }}>
+            <div className="table-scroll-wrapper">
               <table className="data-table">
                 <thead>
                   <tr>

@@ -72,7 +72,7 @@ export default function OverviewTab({ lang, tr, stats, isSuperAdmin, myPermissio
                     {lang === 'ar' ? 'لا توجد تقييمات بعد' : 'No assessments yet'}
                   </p>
                 ) : (
-                  <div className="table-scroll" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <div className="table-scroll-wrapper">
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
                       <thead>
                         <tr style={{ borderBottom: '1px solid #e5e7eb' }}>

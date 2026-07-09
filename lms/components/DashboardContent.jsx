@@ -934,7 +934,7 @@ export default function DashboardContent({
           {assessments && assessments.length > 0 && (
             <div className="db-sec">
               <div className="db-sec-h">📊 سجل تقييماتي</div>
-              <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid var(--border)', overflow: 'hidden' }}>
+              <div className="table-scroll-wrapper" style={{ background: '#fff', borderRadius: 14, border: '1.5px solid var(--border)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.88rem' }}>
                   <thead>
                     <tr style={{ background: 'var(--primary)' }}>

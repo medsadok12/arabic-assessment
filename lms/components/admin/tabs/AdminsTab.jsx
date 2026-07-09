@@ -51,7 +51,7 @@ export default function AdminsTab({
               ) : admins.length === 0 ? (
                 <div className="empty-state card"><span className="empty-icon">👥</span><p>{lang === 'ar' ? 'لا يوجد مشرفون مساعدون بعد' : 'No assistant admins yet'}</p></div>
               ) : (
-                <div className="card table-scroll" style={{ padding: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <div className="card table-scroll-wrapper" style={{ padding: 0 }}>
                   <table className="data-table">
                     <thead><tr><th>{lang === 'ar' ? 'الاسم' : 'Name'}</th><th>{lang === 'ar' ? 'البريد الإلكتروني' : 'Email'}</th><th>{lang === 'ar' ? 'حالة الحساب' : 'Account Status'}</th><th>{lang === 'ar' ? 'آخر نشاط' : 'Last Seen'}</th><th>{lang === 'ar' ? 'تاريخ الإنشاء' : 'Created'}</th><th>{lang === 'ar' ? 'إجراءات' : 'Actions'}</th></tr></thead>
                     <tbody>
@@ -200,7 +200,7 @@ export default function AdminsTab({
                 ) : supervisors.length === 0 ? (
                   <div className="empty-state card"><span className="empty-icon">🧑‍💼</span><p>{lang === 'ar' ? 'لا يوجد مرشدون تربويون بعد' : 'No supervisors yet'}</p></div>
                 ) : (
-                  <div className="card table-scroll" style={{ padding: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <div className="card table-scroll-wrapper" style={{ padding: 0 }}>
                     <table className="data-table">
                       <thead>
                         <tr>

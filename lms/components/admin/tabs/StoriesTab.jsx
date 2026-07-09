@@ -47,15 +47,7 @@ export default function StoriesTab({ lang }) {
 
   return (
     <div style={{ direction:'rtl', fontFamily:'Cairo,Tajawal,sans-serif' }}>
-      <style>{`
-        @media (max-width:640px) {
-          /* بطاقة القصة تصبح عمودية على الجوال: المعلومات فوق، الأزرار في صف كامل تحتها */
-          .bst-row     { flex-direction:column; align-items:stretch !important; gap:0 !important; }
-          .bst-main    { width:100%; }
-          .bst-actions { width:100%; margin-top:14px; flex-wrap:wrap; }
-          .bst-act     { flex:1 1 calc(50% - 4px); max-width:calc(50% - 4px); box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; }
-        }
-      `}</style>
+      {/* تراص البطاقات على الجوال يأتي من كلاسات mobile-stack العامة في globals.css */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
         <div>
           <h2 style={{ fontWeight:800, color:'var(--primary)', margin:'0 0 4px' }}>📚 إدارة القصص</h2>
@@ -81,12 +73,12 @@ export default function StoriesTab({ lang }) {
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           {stories.map(s => (
-            <div key={s.id} className="bst-row" style={{
+            <div key={s.id} className="mobile-stack" style={{
               display:'flex', alignItems:'center', gap:14,
               background:'#fff', borderRadius:16, padding:'14px 18px',
               border:'1.5px solid #f1f5f9', boxShadow:'0 2px 10px rgba(0,0,0,.05)',
             }}>
-              <div className="bst-main" style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:0 }}>
+              <div className="mobile-stack-main" style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:0 }}>
                 <div style={{ width:48, height:48, borderRadius:12, background: s.bg || '#ecfdf5', border:`2px solid ${s.border_color || '#6ee7b7'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.7rem', flexShrink:0 }}>
                   {s.icon || '📖'}
                 </div>
@@ -102,14 +94,14 @@ export default function StoriesTab({ lang }) {
                   </div>
                 </div>
               </div>
-              <div className="bst-actions" style={{ display:'flex', gap:8, flexShrink:0 }}>
+              <div className="mobile-stack-actions" style={{ display:'flex', gap:8, flexShrink:0 }}>
                 {s.status === 'published' && (
-                  <a className="bst-act" href={`/library/stories/${s.slug}`} target="_blank" style={{ background:'#ecfdf5', color:'#065f46', border:'1.5px solid #86efac', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:700, textDecoration:'none' }}>
+                  <a className="mobile-stack-act" href={`/library/stories/${s.slug}`} target="_blank" style={{ background:'#ecfdf5', color:'#065f46', border:'1.5px solid #86efac', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:700, textDecoration:'none' }}>
                     👁 عرض
                   </a>
                 )}
                 <button
-                  className="bst-act"
+                  className="mobile-stack-act"
                   onClick={() => handleToggle(s)}
                   disabled={toggling === s.id}
                   style={{ background: s.status==='published'?'#fef3c7':'#d1fae5', color: s.status==='published'?'#78350f':'#065f46', border:'none', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:700, cursor:'pointer' }}
@@ -117,7 +109,7 @@ export default function StoriesTab({ lang }) {
                   {toggling === s.id ? '...' : s.status==='published' ? '⬇️ إلغاء النشر' : '🚀 نشر'}
                 </button>
                 <button
-                  className="bst-act"
+                  className="mobile-stack-act"
                   onClick={() => handleDelete(s.id)}
                   disabled={deleting === s.id}
                   style={{ background:'#fee2e2', color:'#b91c1c', border:'none', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:700, cursor:'pointer' }}

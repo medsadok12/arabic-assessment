@@ -241,7 +241,7 @@ export default function LexiconAdmin() {
                 لا توجد كلمات — أضف كلمة أو اضغط «زرع الكلمات الافتراضية»
               </div>
             ) : (
-              <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e2e8f0', overflow:'hidden' }}>
+              <div className="table-scroll-wrapper" style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e2e8f0' }}>
                 <table className="lex-table">
                   <thead>
                     <tr>

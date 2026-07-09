@@ -87,7 +87,7 @@ function CurrencyPriceEditor({ prices, checkoutUrls, onChange, isSchool }) {
   }
 
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <div className="table-scroll-wrapper">
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.82rem', direction: 'ltr' }}>
         <thead>
           <tr style={{ background: '#f1f5f9' }}>

@@ -579,7 +579,7 @@ export default function FinancialsTab({ lang = 'ar' }) {
         </div>
       ) : (
         <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid var(--border)', overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-scroll-wrapper">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
               <thead>
                 <tr style={{ background: '#f8faff', borderBottom: '2px solid #dbeafe' }}>

@@ -218,7 +218,7 @@ ALTER TABLE assessment_codes DISABLE ROW LEVEL SECURITY;`}</pre>
           <p>{codes.length === 0 ? cfg.emptyNoCodes : 'لا توجد أكواد متاحة — جميع الأكواد مستعملة'}</p>
         </div>
       ) : (
-        <div className="card table-scroll" style={{ padding: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div className="card table-scroll-wrapper" style={{ padding: 0 }}>
           <table className="data-table">
             <thead>
               <tr>

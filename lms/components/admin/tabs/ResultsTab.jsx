@@ -128,7 +128,7 @@ export default function ResultsTab({
 
               {/* Table */}
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div className="table-scroll" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <div className="table-scroll-wrapper">
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
                     <thead>
                       <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>

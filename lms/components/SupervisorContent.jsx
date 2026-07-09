@@ -168,7 +168,7 @@ export default function SupervisorContent({ user, assessments, displayName }) {
               {t('supervisor.noActivity')}
             </p>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
+            <div className="table-scroll-wrapper">
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
                 <thead>
                   <tr style={{ background: '#f8fafc' }}>

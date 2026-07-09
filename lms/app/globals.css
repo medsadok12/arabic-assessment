@@ -513,8 +513,12 @@ body {
 }
 .data-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
 .data-table tr:hover td { background: var(--bg); }
-/* غلاف تمرير أفقي للجداول العريضة — يمنع قصّها على الجوال ويتيح السحب بالإصبع */
-.table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* ═══ نظام التنسيق المتجاوب الموحّد ═══════════════════════════════════════
+   كلاسان عامّان يحلّان مشاكل الجوال في كل المنصة بدل الحلول الفردية المتكررة:
+   1) .table-scroll-wrapper — غلاف كل جدول: تمرير أفقي سلس بدل القصّ
+   2) .mobile-stack — بطاقة تتراص عمودياً على الجوال (محتوى فوق، أزرار تحت)
+   قواعد الجوال كلها داخل @media (max-width:640px) — الديسكتوب لا يتأثر إطلاقاً */
+.table-scroll-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .badge {
   display: inline-block;
   padding: 2px 10px;
@@ -1006,8 +1010,26 @@ body {
   .data-table { font-size: .82rem; }
   .data-table th,
   .data-table td { padding: 8px 10px; }
-  /* الجدول داخل غلاف التمرير يبقى بعرض قابل للقراءة ويُسحب أفقياً بدل أن يُقصّ */
-  .table-scroll .data-table { min-width: 620px; }
+  /* ═══ نظام التنسيق المتجاوب الموحّد — قواعد الجوال ═══ */
+  /* غلاف الجداول: تمرير أفقي بالإصبع بدل قصّ الأعمدة */
+  .table-scroll-wrapper {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* الجدول داخل الغلاف يبقى بعرض قابل للقراءة ويُسحب أفقياً بدل أن يُقصّ */
+  .table-scroll-wrapper .data-table { min-width: 620px; }
+
+  /* بطاقة تتراص عمودياً على الجوال: المحتوى (mobile-stack-main) فوق،
+     والأزرار (mobile-stack-actions) صف كامل تحته، كل زر (mobile-stack-act) نصف السطر */
+  .mobile-stack         { flex-direction: column !important; align-items: stretch !important; gap: 0 !important; }
+  .mobile-stack-main    { width: 100%; }
+  .mobile-stack-actions { width: 100%; margin-top: 14px; flex-wrap: wrap; }
+  .mobile-stack-act {
+    flex: 1 1 calc(50% - 4px); max-width: calc(50% - 4px); box-sizing: border-box;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
 
   /* Buttons */
   .btn-lg { padding: 12px 20px; font-size: 1rem; }

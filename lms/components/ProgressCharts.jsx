@@ -122,7 +122,7 @@ export default function ProgressCharts({ assessments, pastSessions: initialSessi
       {assessments.length > 0 && (
         <div className="dash-section">
           <div className="dash-section-title">📋 سجل التقييمات</div>
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="card table-scroll-wrapper" style={{ padding: 0 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
               <thead>
                 <tr>

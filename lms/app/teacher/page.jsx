@@ -982,7 +982,7 @@ export default function TeacherPage() {
                     <div style={{ padding:'12px 16px', background:'#f8fafc', borderBottom:'1px solid #e2e8f0', fontWeight:800, fontSize:'.88rem', color:'#334155' }}>
                       🏆 ترتيب الطلاب حسب النشاط
                     </div>
-                    <div style={{ overflowX:'auto' }}>
+                    <div className="table-scroll-wrapper">
                       <table className="stu-table" style={{ minWidth:640 }}>
                         <thead>
                           <tr>

@@ -469,36 +469,14 @@ export default function StoryManager({ initialStories }) {
         .sm-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
         @media (max-width:640px) {
           .sm-form-grid { grid-template-columns:1fr; }
-          /* بطاقة القصة تصبح عمودية بالكامل على الجوال: صف المعلومات فوق، صف الأزرار تحت */
-          .sm-story-row {
-            flex-direction:column;
-            align-items:stretch;
-            gap:0;
-            padding:14px;
-          }
-          .sm-story-main { width:100%; }
+          /* التراص العمودي للبطاقة يأتي من كلاسات mobile-stack العامة في globals.css —
+             هنا فقط الضبط الخاص بهذا المكوّن */
+          .sm-story-row  { padding:14px; }
           .sm-story-icon { width:48px; height:48px; font-size:1.7rem; }
           .sm-story-name { font-size:.9rem; white-space:normal; word-break:break-word; }
           .sm-story-meta { gap:6px; }
-          .sm-actions {
-            width:100%;
-            margin-top:14px;
-            flex-wrap:wrap;
-            gap:8px;
-          }
-          .sm-action-btn {
-            flex:1 1 calc(50% - 4px);
-            max-width:calc(50% - 4px);
-            text-align:center; padding:9px 6px; font-size:.78rem;
-            box-sizing:border-box;
-          }
-          .sm-view-link {
-            flex:1 1 calc(50% - 4px);
-            max-width:calc(50% - 4px);
-            text-align:center; padding:9px 6px; font-size:.78rem;
-            display:inline-flex; align-items:center; justify-content:center;
-            box-sizing:border-box;
-          }
+          .sm-actions    { gap:8px; }
+          .sm-action-btn, .sm-view-link { text-align:center; padding:9px 6px; font-size:.78rem; }
         }
         .sm-field { display:flex; flex-direction:column; gap:6px; }
         .sm-label { font-size:.82rem; font-weight:800; color:#374151; }
@@ -626,8 +604,8 @@ export default function StoryManager({ initialStories }) {
             ) : (
               <div className="sm-story-list">
                 {stories.map(s => (
-                  <div key={s.id} className="sm-story-row">
-                    <div className="sm-story-main">
+                  <div key={s.id} className="sm-story-row mobile-stack">
+                    <div className="sm-story-main mobile-stack-main">
                       <div className="sm-story-icon" style={{ background: s.bg || '#ecfdf5', border: `2px solid ${s.border_color || '#6ee7b7'}` }}>
                         {s.icon || '📖'}
                       </div>
@@ -641,25 +619,25 @@ export default function StoryManager({ initialStories }) {
                         </div>
                       </div>
                     </div>
-                    <div className="sm-actions">
+                    <div className="sm-actions mobile-stack-actions">
                       {s.status === 'published' && (
                         <Link
                           href={`/library/stories/${s.slug}`}
-                          className="sm-view-link"
+                          className="sm-view-link mobile-stack-act"
                           target="_blank"
                         >
                           👁 عرض
                         </Link>
                       )}
                       <button
-                        className={`sm-action-btn ${s.status === 'published' ? 'unpub' : 'pub'}`}
+                        className={`sm-action-btn mobile-stack-act ${s.status === 'published' ? 'unpub' : 'pub'}`}
                         onClick={() => handleToggleStatus(s)}
                       >
                         {s.status === 'published' ? '⬇️ إلغاء النشر' : '🚀 نشر'}
                       </button>
-                      <button className="sm-action-btn edit" onClick={() => openEdit(s)}>✏️ تعديل</button>
+                      <button className="sm-action-btn mobile-stack-act edit" onClick={() => openEdit(s)}>✏️ تعديل</button>
                       <button
-                        className="sm-action-btn del"
+                        className="sm-action-btn mobile-stack-act del"
                         onClick={() => handleDelete(s.id)}
                         disabled={deleting === s.id}
                       >

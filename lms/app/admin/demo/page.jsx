@@ -215,6 +215,7 @@ export default function DemoPage() {
                   لا توجد كلمات بعد — أضف كلمة من النموذج أعلاه
                 </div>
               ) : (
+                <div className="table-scroll-wrapper">
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.8rem' }}>
                   <thead>
                     <tr style={{ background: '#f1f5f9' }}>
@@ -269,6 +270,7 @@ export default function DemoPage() {
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
 
