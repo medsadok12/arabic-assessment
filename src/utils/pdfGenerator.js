@@ -86,7 +86,7 @@ function buildQuestionsSection(allAnswers, qMap) {
   if (!allAnswers?.length) {
     return `
     <div style="background:#f0f4f8;padding:28px 44px 36px;">
-      <div style="background:#1A2B4A;color:white;padding:18px 28px;border-radius:10px;">
+      <div data-atom style="background:#1A2B4A;color:white;padding:18px 28px;border-radius:10px;">
         <div style="font-size:16px;font-weight:900;margin-bottom:4px;">تفاصيل إجابات الطالب</div>
         <div style="font-size:12px;opacity:0.85;">لا تتوفر تفاصيل الإجابات لهذه الجلسة — أعد التقييم من جلسة جديدة</div>
       </div>
@@ -136,7 +136,7 @@ function buildQuestionsSection(allAnswers, qMap) {
         : '<span style="color:#e53e3e;font-size:14px;font-weight:900;">❌</span>';
 
       return `
-        <tr style="background:${bg};">
+        <tr data-atom style="background:${bg};">
           <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;font-size:11px;color:#888;font-weight:700;">${i + 1}</td>
           <td style="padding:7px 10px;border-bottom:1px solid #e5e5e5;font-size:12px;line-height:1.65;">${qText}</td>
           <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;">${ind}</td>
@@ -147,13 +147,13 @@ function buildQuestionsSection(allAnswers, qMap) {
 
     tablesHTML += `
       <div style="margin-bottom:24px;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.07);">
-        <div style="background:#1A2B4A;color:white;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;">
+        <div data-atom data-keep-next style="background:#1A2B4A;color:white;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;">
           <span style="font-weight:700;font-size:13px;">${skillName}</span>
           <span style="color:#E8B84B;font-size:12px;font-weight:700;">${skCorrect}/${answers.length} — ${skPct}%</span>
         </div>
         <table style="width:100%;border-collapse:collapse;direction:rtl;font-family:'Tajawal',Arial,sans-serif;">
           <thead>
-            <tr style="background:#f0f4f8;">
+            <tr data-atom data-keep-next style="background:#f0f4f8;">
               <th style="padding:8px 10px;text-align:center;font-size:11px;border-bottom:2px solid #1A2B4A;color:#1A2B4A;width:34px;">#</th>
               <th style="padding:8px 10px;text-align:right;font-size:11px;border-bottom:2px solid #1A2B4A;color:#1A2B4A;">السؤال</th>
               <th style="padding:8px 10px;text-align:center;font-size:11px;border-bottom:2px solid #1A2B4A;color:#1A2B4A;width:50px;">نتيجة</th>
@@ -170,7 +170,7 @@ function buildQuestionsSection(allAnswers, qMap) {
 
   return `
     <div style="background:#f0f4f8;padding:28px 44px 36px;">
-      <div style="background:#1A2B4A;color:white;padding:18px 28px;border-radius:10px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;">
+      <div data-atom data-keep-next style="background:#1A2B4A;color:white;padding:18px 28px;border-radius:10px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;">
         <div>
           <div style="font-size:16px;font-weight:900;margin-bottom:4px;">تفاصيل إجابات الطالب</div>
           <div style="font-size:12px;opacity:0.85;">عرض كامل لكل سؤال وإجاباته</div>
@@ -182,6 +182,39 @@ function buildQuestionsSection(allAnswers, qMap) {
       </div>
       ${tablesHTML}
     </div>`;
+}
+
+// Pure pagination over measured atom boundaries (canvas px).
+// Never cuts inside an atom (a table row / content block); breaks land between
+// atoms only. An atom flagged keepNext (section header, thead) is never left
+// alone at the bottom of a page — the break moves above it so it travels to
+// the next page together with what follows it.
+// Page 1 stays flush at the top (report banner); later pages get a top margin,
+// and every page keeps a bottom margin.
+export function computePageSlices(atoms, totalHeightPx, pxPerMm, marginMm = 8) {
+  const sorted = [...atoms].sort((a, b) => a.top - b.top);
+  const pages  = [];
+  let y = 0;
+  while (y < totalHeightPx - 1) {
+    const first  = pages.length === 0;
+    const usable = (297 - (first ? 0 : marginMm) - marginMm) * pxPerMm;
+    const limit  = y + usable;
+    let  cut     = Math.min(limit, totalHeightPx);
+    if (limit < totalHeightPx) {
+      let best = 0;
+      for (const a of sorted) {
+        if (a.bottom > y + 1 && a.bottom <= limit && !a.keepNext && a.bottom > best) {
+          best = a.bottom;
+        }
+      }
+      // Fall back to a hard cut only if no boundary gives reasonable progress
+      // (would only happen if a single atom were taller than a page)
+      if (best > y + usable * 0.35) cut = best;
+    }
+    pages.push({ from: y, to: cut, topMm: first ? 0 : marginMm });
+    y = cut;
+  }
+  return pages;
 }
 
 export async function generateAssessmentPDF(studentInfo, scores, finalLevel, allAnswers = []) {
@@ -197,7 +230,7 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel, all
     const pct   = Math.round(s.score);
     const color = pct >= 80 ? '#2e7d32' : pct >= 60 ? '#e65100' : '#c62828';
     return `
-      <div style="margin-bottom:14px;">
+      <div data-atom style="margin-bottom:14px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
           <span style="font-weight:700;font-size:13px;">${skill.name}</span>
           <span style="font-weight:800;color:${color};font-size:13px;">${pct}% &nbsp;(${s.correct}/${s.total})</span>
@@ -224,7 +257,7 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel, all
   });
 
   el.innerHTML = `
-    <div style="background:linear-gradient(135deg,#1a1052 0%,#2d1b69 100%);color:white;padding:36px 44px;text-align:center;">
+    <div data-atom style="background:linear-gradient(135deg,#1a1052 0%,#2d1b69 100%);color:white;padding:36px 44px;text-align:center;">
       <div style="font-size:50px;margin-bottom:10px;color:#d4952a;font-family:serif;">ع</div>
       <h1 style="margin:0 0 6px;font-size:26px;font-weight:900;">عارم أكاديمي — تقرير التقييم</h1>
       <p style="margin:0;opacity:0.9;font-size:15px;">AREM ACADEMY | تعليم اللغة العربية</p>
@@ -232,7 +265,7 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel, all
 
     <div style="padding:32px 44px;background:white;">
 
-      <div style="display:flex;gap:20px;margin-bottom:28px;">
+      <div data-atom style="display:flex;gap:20px;margin-bottom:28px;">
         <div style="flex:1.5;background:#f5f7fa;padding:22px;border-radius:12px;">
           <h3 style="color:#1a1052;margin:0 0 14px;font-size:15px;padding-bottom:8px;border-bottom:2px solid #e0e0e0;">
             معلومات الطالب
@@ -253,13 +286,13 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel, all
       </div>
 
       <div style="margin-bottom:26px;">
-        <h3 style="color:#1a1052;margin:0 0 16px;font-size:15px;padding-bottom:8px;border-bottom:2px solid #e0e0e0;">
+        <h3 data-atom data-keep-next style="color:#1a1052;margin:0 0 16px;font-size:15px;padding-bottom:8px;border-bottom:2px solid #e0e0e0;">
           تفاصيل المهارات
         </h3>
         ${skillsHTML}
       </div>
 
-      <div style="background:#e8f5e9;border-right:4px solid #2e7d32;padding:16px 20px;border-radius:10px;">
+      <div data-atom style="background:#e8f5e9;border-right:4px solid #2e7d32;padding:16px 20px;border-radius:10px;">
         <h3 style="color:#2e7d32;margin:0 0 8px;font-size:14px;">التوصيات</h3>
         <p style="margin:0;font-size:13px;line-height:1.8;color:#333;">${buildRecommendation(scores, levelInfo?.name)}</p>
       </div>
@@ -268,7 +301,7 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel, all
 
     ${buildQuestionsSection(allAnswers, qMap)}
 
-    <div style="background:#f5f7fa;padding:16px 44px;text-align:center;border-top:1px solid #e0e0e0;">
+    <div data-atom style="background:#f5f7fa;padding:16px 44px;text-align:center;border-top:1px solid #e0e0e0;">
       <p style="margin:0;color:#9e9e9e;font-size:11px;">
         أكاديمية عارم — gandouzimohamed9@gmail.com — ${dateStr}
       </p>
@@ -278,25 +311,42 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel, all
   document.body.appendChild(el);
   await new Promise(r => setTimeout(r, 400));
 
-  const canvas  = await html2canvas(el, {
+  const canvas = await html2canvas(el, {
     scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff',
+  });
+
+  // Measure atom boundaries (rows/blocks) while el is still in the DOM,
+  // mapped from CSS px to canvas px
+  const elRect   = el.getBoundingClientRect();
+  const cnvScale = canvas.width / elRect.width;
+  const atoms    = Array.from(el.querySelectorAll('[data-atom]')).map(a => {
+    const r = a.getBoundingClientRect();
+    return {
+      top:      (r.top    - elRect.top) * cnvScale,
+      bottom:   (r.bottom - elRect.top) * cnvScale,
+      keepNext: a.hasAttribute('data-keep-next'),
+    };
   });
 
   document.body.removeChild(el);
 
   const pdf     = new jsPDF('p', 'mm', 'a4');
-  const imgData = canvas.toDataURL('image/jpeg', 0.7);
   const imgW    = 210;
-  const imgH    = (canvas.height / canvas.width) * imgW;
+  const pxPerMm = canvas.width / imgW;
+  const slices  = computePageSlices(atoms, canvas.height, pxPerMm);
 
-  pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH);
-
-  let remaining = imgH - 297;
-  while (remaining > 0) {
-    pdf.addPage();
-    pdf.addImage(imgData, 'JPEG', 0, -(imgH - remaining), imgW, imgH);
-    remaining -= 297;
-  }
+  slices.forEach((p, i) => {
+    if (i > 0) pdf.addPage();
+    const sliceH = Math.max(1, Math.round(p.to - p.from));
+    const c = document.createElement('canvas');
+    c.width  = canvas.width;
+    c.height = sliceH;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(canvas, 0, p.from, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+    pdf.addImage(c.toDataURL('image/jpeg', 0.72), 'JPEG', 0, p.topMm, imgW, sliceH / pxPerMm);
+  });
 
   return pdf.output('datauristring');
 }
