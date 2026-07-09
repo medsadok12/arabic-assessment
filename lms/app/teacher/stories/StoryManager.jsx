@@ -469,28 +469,39 @@ export default function StoryManager({ initialStories }) {
         @media (max-width:640px) {
           .sm-form-grid { grid-template-columns:1fr; }
           .sm-story-row {
-            display:grid;
-            grid-template-columns:52px 1fr;
-            grid-template-areas:'icon info' 'acts acts';
-            gap:10px 12px;
-            align-items:start;
+            flex-wrap:wrap;
+            align-items:flex-start;
+            gap:10px;
+            padding:14px;
           }
-          .sm-story-icon { grid-area:icon; }
-          .sm-story-info { grid-area:info; align-self:center; }
+          .sm-story-icon {
+            flex-shrink:0;
+            width:48px; height:48px; font-size:1.7rem;
+          }
+          .sm-story-info {
+            flex:1;
+            min-width:0;
+          }
+          .sm-story-name { font-size:.88rem; white-space:normal; word-break:break-word; }
+          .sm-story-meta { gap:6px; }
           .sm-actions {
-            grid-area:acts;
-            flex-direction:row;
+            flex-basis:100%;
+            flex-shrink:0;
             flex-wrap:wrap;
             gap:6px;
           }
           .sm-action-btn {
-            flex:1; min-width:calc(50% - 6px);
-            text-align:center; padding:9px 6px; font-size:.78rem;
+            flex:1 1 calc(50% - 4px);
+            max-width:calc(50% - 4px);
+            text-align:center; padding:9px 4px; font-size:.75rem;
+            box-sizing:border-box;
           }
           .sm-view-link {
-            flex:1; min-width:calc(50% - 6px);
-            text-align:center; padding:9px 6px; font-size:.78rem;
+            flex:1 1 calc(50% - 4px);
+            max-width:calc(50% - 4px);
+            text-align:center; padding:9px 4px; font-size:.75rem;
             display:inline-flex; align-items:center; justify-content:center;
+            box-sizing:border-box;
           }
         }
         .sm-field { display:flex; flex-direction:column; gap:6px; }
