@@ -119,7 +119,7 @@ export default function TeacherCodes() {
           <p>{codes.length === 0 ? 'لا توجد أكواد — اضغط "توليد كود جديد"' : 'لا توجد أكواد متاحة — جميع الأكواد مستعملة'}</p>
         </div>
       ) : (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="card table-scroll" style={{ padding: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table className="data-table">
             <thead>
               <tr>

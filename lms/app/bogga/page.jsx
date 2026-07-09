@@ -1601,7 +1601,7 @@ export default function BoggarAdminPage() {
                     {lang === 'ar' ? 'لا توجد تقييمات بعد' : 'No assessments yet'}
                   </p>
                 ) : (
-                  <div style={{ overflowX: 'auto' }}>
+                  <div className="table-scroll" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
                       <thead>
                         <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
@@ -2539,7 +2539,7 @@ export default function BoggarAdminPage() {
 
               {/* Table */}
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ overflowX: 'auto' }}>
+                <div className="table-scroll" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
                     <thead>
                       <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>

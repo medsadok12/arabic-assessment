@@ -410,7 +410,7 @@ export default function LexiconAdminPage() {
                   <p>لا توجد كلمات — أضف كلمة من النموذج</p>
                 </div>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
+                <div className="table-scroll" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                   <table className="data-table">
                     <thead>
                       <tr>
