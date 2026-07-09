@@ -220,7 +220,7 @@ export function computePageSlices(atoms, totalHeightPx, pxPerMm, marginMm = 8) {
 export async function generateAssessmentPDF(studentInfo, scores, finalLevel, allAnswers = []) {
   const levelInfo = LEVELS.find(l => l.id === finalLevel);
   const grade     = getGradeInfo(scores.overall);
-  const dateStr   = new Date().toLocaleDateString('ar-SA', {
+  const dateStr   = new Date().toLocaleDateString('ar-SA-u-nu-latn', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
 

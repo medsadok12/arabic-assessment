@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     const base64Data = pdfBase64.includes(',') ? pdfBase64.split(',')[1] : pdfBase64;
     const pdfBuffer = Buffer.from(base64Data, 'base64');
 
-    const dateStr = new Date().toLocaleDateString('ar-SA', {
+    const dateStr = new Date().toLocaleDateString('ar-SA-u-nu-latn', {
       year: 'numeric', month: 'long', day: 'numeric',
     });
 

@@ -1604,7 +1604,7 @@ export default function BoggarAdminPage() {
                             <td style={{ padding: '8px 10px', fontWeight: 600 }}>{r.student_name ?? '—'}</td>
                             <td style={{ padding: '8px 10px', textAlign: 'center' }}>{lang === 'ar' ? `المستوى ${r.level}` : `Level ${r.level}`}</td>
                             <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: (r.score ?? 0) >= 70 ? '#16a34a' : '#dc2626' }}>{r.score ?? 0}%</td>
-                            <td style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--muted)', fontSize: '.8rem' }}>{r.completed_at ? new Date(r.completed_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-GB') : '—'}</td>
+                            <td style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--muted)', fontSize: '.8rem' }}>{r.completed_at ? new Date(r.completed_at).toLocaleDateString(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-GB') : '—'}</td>
                           </tr>
                         ))}
                       </tbody>

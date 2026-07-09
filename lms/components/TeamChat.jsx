@@ -28,13 +28,13 @@ function Avatar({ name, url, role, size = 34 }) {
   return <div style={{ width: size, height: size, borderRadius: '50%', background: ROLE_BG[role] ?? '#f1f5f9', color: ROLE_CLR[role] ?? '#475569', fontWeight: 700, fontSize: size * 0.33, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{init}</div>;
 }
 
-function fmtTime(iso) { return new Date(iso).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }); }
+function fmtTime(iso) { return new Date(iso).toLocaleTimeString('ar-EG-u-nu-latn', { hour: '2-digit', minute: '2-digit' }); }
 function fmtDay(iso) {
   const d = new Date(iso), now = new Date(), y = new Date(now);
   y.setDate(now.getDate() - 1);
   if (d.toDateString() === now.toDateString()) return 'اليوم';
   if (d.toDateString() === y.toDateString())   return 'أمس';
-  return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
+  return d.toLocaleDateString('ar-EG-u-nu-latn', { day: 'numeric', month: 'long' });
 }
 
 /* ── Audio — static WAV files, independent of OS language settings ── */

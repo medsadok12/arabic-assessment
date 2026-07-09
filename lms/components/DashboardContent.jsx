@@ -656,7 +656,7 @@ export default function DashboardContent({
                 <div className="prog-lbl">آخر تقييم</div>
                 {assessments?.[0] ? (
                   <div className="prog-sub">
-                    {new Date(assessments[0].completed_at).toLocaleDateString('ar', { day:'numeric', month:'short' })}
+                    {new Date(assessments[0].completed_at).toLocaleDateString('ar-u-nu-latn', { day:'numeric', month:'short' })}
                   </div>
                 ) : (
                   <div className="prog-sub">لا تقييمات بعد</div>

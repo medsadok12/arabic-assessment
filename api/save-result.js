@@ -100,7 +100,7 @@ export default async function handler(req, res) {
     }
 
     await appendRow(token, process.env.SHEETS_ID, [
-      new Date().toLocaleDateString('ar-SA'),
+      new Date().toLocaleDateString('ar-SA-u-nu-latn'),
       d.studentName || '',
       d.age         || '',
       d.learnerType || '',

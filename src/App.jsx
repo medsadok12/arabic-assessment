@@ -371,7 +371,7 @@ export default function App() {
                 <strong>المستوى:</strong> المستوى {resumeData.currentLevel ?? 1}
               </div>
               <div>
-                <strong>آخر حفظ:</strong> {new Date(resumeData._savedAt).toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}
+                <strong>آخر حفظ:</strong> {new Date(resumeData._savedAt).toLocaleDateString('ar-SA-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' })}
               </div>
             </div>
             <p style={{ color: '#64748b', fontSize: '.88rem', textAlign: 'center', marginBottom: 20 }}>
