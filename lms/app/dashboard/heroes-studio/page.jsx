@@ -228,12 +228,30 @@ export default function HeroesStudio() {
     if (!mv) return;
     setReady(false);
     setLoadError(false);
-    const onLoad  = () => setReady(true);
-    const onError = () => { setReady(true); setLoadError(true); };
-    mv.addEventListener('load', onLoad);
-    mv.addEventListener('error', onError);
-    return () => { mv.removeEventListener('load', onLoad); mv.removeEventListener('error', onError); };
-  }, [hero.glb]);
+
+    let timer;
+    const finishOk   = () => { clearTimeout(timer); setReady(true); setLoadError(false); };
+    const finishFail = () => { clearTimeout(timer); setReady(true); setLoadError(true); };
+
+    mv.addEventListener('load',  finishOk);
+    mv.addEventListener('error', finishFail);
+
+    // مسار سريع: المجسم مُحمَّل مسبقاً قبل ربط المستمعين (كاش)، أو نفس ملف الـGLB
+    // مُعاد استخدامه عند التبديل بين بطلين (حدث load لا يتكرر لمصدر لم يتغيّر).
+    if (mv.loaded) {
+      finishOk();
+    } else {
+      // شبكة أمان: لا تعليق للأبد. إن لم يُطلَق load ولا error (بطء/تعذّر تحميل من مصدر
+      // خارجي، أو عامل معطّل…)، أوقف دوران التحميل واعرض رمز البطل بدل تجميد الشاشة.
+      timer = setTimeout(finishFail, 12000);
+    }
+
+    return () => {
+      mv.removeEventListener('load',  finishOk);
+      mv.removeEventListener('error', finishFail);
+      clearTimeout(timer);
+    };
+  }, [hero.id]);
 
   useEffect(() => {
     if (!ready || loadError) return;
