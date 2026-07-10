@@ -63,7 +63,15 @@ export default function LandingPage() {
       </section>
 
       <footer style={{ background: '#0e3d70', color: 'rgba(255,255,255,.6)', textAlign: 'center', padding: '20px', fontSize: '.88rem' }}>
-        © 2026 أكاديمية عارم — جميع الحقوق محفوظة
+        <p>© 2026 أكاديمية عارم — جميع الحقوق محفوظة</p>
+        <p style={{ marginTop: 6 }}>
+          للمعلمين:&nbsp;
+          <Link href="/auth/login"    style={{ color: 'rgba(255,255,255,.75)', textDecoration: 'underline' }}>دخول المعلم 🔑</Link>
+          &nbsp;·&nbsp;
+          <Link href="/auth/register" style={{ color: 'rgba(255,255,255,.75)', textDecoration: 'underline' }}>تسجيل حساب معلم 👤</Link>
+          &nbsp;·&nbsp;
+          <Link href="/auth/register" style={{ color: 'rgba(255,255,255,.75)', textDecoration: 'underline' }}>سجل ترشحك كمعلم</Link>
+        </p>
       </footer>
     </>
   );
