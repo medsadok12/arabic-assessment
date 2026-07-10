@@ -1,4 +1,4 @@
-import { createAdminClient } from '../../../lib/supabase-admin';
+import { createAdminClient, fetchAllUsers } from '../../../lib/supabase-admin';
 
 const CORS = {
   'Access-Control-Allow-Origin':  'https://arabic-assessment.vercel.app',
@@ -24,17 +24,24 @@ export async function POST(request) {
       return Response.json({ ok: false }, { status: 400, headers: CORS });
 
     const supabase = createAdminClient();
+    const emailLc  = String(email).trim().toLowerCase();
 
-    // Find the LMS user by email
-    const { data: { user }, error: lookupErr } = await supabase.auth.admin.getUserByEmail(email);
-    if (lookupErr || !user)
-      return Response.json({ ok: false, reason: 'user_not_found' }, { headers: CORS });
+    // Best-effort: link the result to a registered LMS account if one exists.
+    // The insert is NEVER gated on this — most assessment-takers are not yet
+    // registered LMS users, and their results (with email) must still be saved.
+    let matchedUser = null;
+    try {
+      const users = await fetchAllUsers(supabase);
+      matchedUser = users.find(u => u.email?.toLowerCase() === emailLc) || null;
+    } catch (e) {
+      console.error('[save-assessment] user lookup failed (non-fatal):', e.message);
+    }
 
-    // Save to assessments table
+    // Save to assessments table — email is always stored
     const { error } = await supabase.from('assessments').insert({
-      user_id:       user.id,
-      student_name:  studentName || user.user_metadata?.full_name || 'غير معروف',
-      student_email: email,
+      user_id:       matchedUser?.id ?? null,
+      student_name:  studentName || matchedUser?.user_metadata?.full_name || 'غير معروف',
+      student_email: emailLc,
       level:         finalLevel,
       score:         Math.round((overallScore ?? 0) * 10) / 10,
       completed_at:  new Date().toISOString(),
@@ -43,7 +50,7 @@ export async function POST(request) {
     if (error)
       return Response.json({ ok: false, error: error.message }, { status: 500, headers: CORS });
 
-    return Response.json({ ok: true }, { headers: CORS });
+    return Response.json({ ok: true, linked: Boolean(matchedUser) }, { headers: CORS });
   } catch (err) {
     return Response.json({ ok: false, error: err.message }, { status: 500, headers: CORS });
   }
