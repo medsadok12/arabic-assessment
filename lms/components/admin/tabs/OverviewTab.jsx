@@ -58,44 +58,6 @@ export default function OverviewTab({ lang, tr, stats, isSuperAdmin, myPermissio
                   </ul>
                 )}
               </div>
-
-              {/* ── آخر التقييمات ── */}
-              <div className="card" style={{ marginTop: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-                  <h3 style={{ fontWeight: 700, fontSize: '.95rem', margin: 0 }}>🏆 {lang === 'ar' ? 'آخر التقييمات' : 'Recent Assessments'}</h3>
-                  <button onClick={() => setTab('results')} style={{ fontSize: '.82rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: '4px 10px', borderRadius: 7, textDecoration: 'underline' }}>
-                    {lang === 'ar' ? '← عرض الكل' : 'View All →'}
-                  </button>
-                </div>
-                {recentAssessments.length === 0 ? (
-                  <p style={{ color: 'var(--muted)', fontSize: '.88rem', textAlign: 'center', padding: '16px 0', margin: 0 }}>
-                    {lang === 'ar' ? 'لا توجد تقييمات بعد' : 'No assessments yet'}
-                  </p>
-                ) : (
-                  <div className="table-scroll-wrapper">
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <th style={{ padding: '6px 10px', textAlign: lang === 'ar' ? 'right' : 'left', color: 'var(--muted)', fontWeight: 600 }}>{lang === 'ar' ? 'الطالب' : 'Student'}</th>
-                          <th style={{ padding: '6px 10px', textAlign: 'center', color: 'var(--muted)', fontWeight: 600 }}>{lang === 'ar' ? 'المستوى' : 'Level'}</th>
-                          <th style={{ padding: '6px 10px', textAlign: 'center', color: 'var(--muted)', fontWeight: 600 }}>{lang === 'ar' ? 'النتيجة' : 'Score'}</th>
-                          <th style={{ padding: '6px 10px', textAlign: 'center', color: 'var(--muted)', fontWeight: 600 }}>{lang === 'ar' ? 'التاريخ' : 'Date'}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recentAssessments.map((r, i) => (
-                          <tr key={r.id ?? i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '8px 10px', fontWeight: 600 }}>{r.student_name ?? '—'}</td>
-                            <td style={{ padding: '8px 10px', textAlign: 'center' }}>{lang === 'ar' ? `المستوى ${r.level}` : `Level ${r.level}`}</td>
-                            <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: (r.score ?? 0) >= 70 ? '#16a34a' : '#dc2626' }}>{r.score ?? 0}%</td>
-                            <td style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--muted)', fontSize: '.8rem' }}>{r.completed_at ? new Date(r.completed_at).toLocaleDateString(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-GB') : '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
             </div>
   );
 }

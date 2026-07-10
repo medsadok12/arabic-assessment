@@ -136,7 +136,7 @@ const t = {
         codes: '🔑 الأكواد',
         groups: '👥 إدارة الطلاب',
         sessions: '📅 الحصص',
-        results: '🏆 نتائج الطلاب',
+        results: '🏆 التقييمات المجانية',
         lexicon: '📖 بنك الكلمات',
         recruitment: '📋 طلبات التوظيف',
         simulator: '🎭 مسرح التعبير',
