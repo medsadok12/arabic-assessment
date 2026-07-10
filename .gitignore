@@ -26,3 +26,4 @@ dist-ssr
 !.claude/settings.json
 .mcp.json
 .vercel
+.next/
