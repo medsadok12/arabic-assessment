@@ -293,11 +293,12 @@ export default function BoggarAdminPage() {
     if (resultsMax)    params.set('maxScore', resultsMax);
     const data = await fetch(`/api/bogga/results?${params}`).then(r => r.json()).catch(() => ({}));
     const rows = data.results ?? [];
-    const headers = [lang === 'ar' ? 'اسم الطالب' : 'Student', lang === 'ar' ? 'المستوى' : 'Level', lang === 'ar' ? 'الدرجة' : 'Score', lang === 'ar' ? 'الحالة' : 'Status', lang === 'ar' ? 'التاريخ' : 'Date', lang === 'ar' ? 'ملاحظات' : 'Notes'];
+    const headers = [lang === 'ar' ? 'اسم الطالب' : 'Student', lang === 'ar' ? 'البريد الإلكتروني' : 'Email', lang === 'ar' ? 'المستوى' : 'Level', lang === 'ar' ? 'الدرجة' : 'Score', lang === 'ar' ? 'الحالة' : 'Status', lang === 'ar' ? 'التاريخ' : 'Date', lang === 'ar' ? 'ملاحظات' : 'Notes'];
     const csv = [
       headers.join(','),
       ...rows.map(r => [
         `"${(r.student_name ?? '').replace(/"/g, '""')}"`,
+        `"${(r.student_email ?? '').replace(/"/g, '""')}"`,
         r.level ?? '',
         r.score ?? '',
         (r.score ?? 0) >= 70 ? (lang === 'ar' ? 'ناجح' : 'Passed') : (lang === 'ar' ? 'دون المعدل' : 'Below average'),
