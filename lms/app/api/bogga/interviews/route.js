@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse }       from 'next/server';
 import { createClient }       from '../../../../lib/supabase-server';
 import { createAdminClient }  from '../../../../lib/supabase-admin';
-import { sendInterviewEmail } from '../../../../lib/email';
+import { sendInterviewEmail, sendInterviewerBriefEmail } from '../../../../lib/email';
 import { getRole } from '../../../../lib/auth-role';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aarem-lms.vercel.app';
@@ -53,7 +53,7 @@ export async function POST(req) {
   try { body = await req.json(); }
   catch { return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 }); }
 
-  const { application_id, interviewer_name, interview_date, start_time } = body;
+  const { application_id, interviewer_name, interviewer_email, interview_date, start_time } = body;
   if (!application_id || !interviewer_name || !interview_date || !start_time) {
     return NextResponse.json({ error: 'جميع الحقول مطلوبة' }, { status: 400 });
   }
@@ -76,10 +76,10 @@ export async function POST(req) {
     );
   }
 
-  // Fetch candidate name + email
+  // Fetch candidate details
   const { data: app, error: appErr } = await admin
     .from('recruitment_applications')
-    .select('name, email')
+    .select('name, email, phone, experience, specialty')
     .eq('id', application_id)
     .single();
 
@@ -115,10 +115,30 @@ export async function POST(req) {
     });
     emailSent = true;
   } catch (e) {
-    console.error('[interviews] email failed:', e.message);
+    console.error('[interviews] candidate email failed:', e.message);
   }
 
-  return NextResponse.json({ interview: iv, emailSent }, { status: 201 });
+  let briefSent = false;
+  if (interviewer_email) {
+    try {
+      await sendInterviewerBriefEmail({
+        to:             interviewer_email,
+        candidateName:  app.name,
+        candidateEmail: app.email,
+        candidatePhone: app.phone   ?? '',
+        specialty:      app.specialty  ?? '',
+        experience:     app.experience ?? '',
+        interviewerName: interviewer_name,
+        dateStr:        fmtDate(interview_date),
+        startTime:      timeLabel,
+      });
+      briefSent = true;
+    } catch (e) {
+      console.error('[interviews] interviewer brief email failed:', e.message);
+    }
+  }
+
+  return NextResponse.json({ interview: iv, emailSent, briefSent }, { status: 201 });
 }
 
 // DELETE — cancel / remove an interview

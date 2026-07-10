@@ -310,6 +310,41 @@ export async function sendVerificationEmail({ to, name, link }) {
   if (error) throw new Error(error.message);
 }
 
+export async function sendInterviewerBriefEmail({
+  to, candidateName, candidateEmail, candidatePhone, specialty, experience,
+  interviewerName, dateStr, startTime,
+}) {
+  const html = baseHtml(`
+    <div class="card">
+      <div class="hdr">
+        <h1>🎓 أكاديمية عارم للتعليم</h1>
+        <p>ملف مترشح — مقابلة وظيفية</p>
+      </div>
+      <div class="body">
+        <p>السلام عليكم ورحمة الله وبركاته،</p>
+        <p>يا <strong>${interviewerName}</strong>، إليك ملف المترشح الذي ستجري معه مقابلة بتاريخ <strong>${dateStr}</strong> الساعة <strong>${startTime}</strong>:</p>
+        <div class="info">
+          <div class="info-row"><span class="info-lbl">👤 الاسم</span><span>${candidateName}</span></div>
+          ${specialty ? `<div class="info-row"><span class="info-lbl">📚 التخصص</span><span>${specialty}</span></div>` : ''}
+          ${experience ? `<div class="info-row"><span class="info-lbl">⏳ الخبرة</span><span>${experience}</span></div>` : ''}
+          ${candidatePhone ? `<div class="info-row"><span class="info-lbl">📞 التواصل</span><span dir="ltr">${candidatePhone}</span></div>` : ''}
+          ${candidateEmail ? `<div class="info-row"><span class="info-lbl">📧 البريد</span><span dir="ltr">${candidateEmail}</span></div>` : ''}
+        </div>
+        <p class="note">هذا البريد تلقائي من نظام إدارة التوظيف في أكاديمية عارم. للاستفسار تواصل مع الإدارة مباشرةً.</p>
+      </div>
+      <div class="ftr">أكاديمية عارم للتعليم — جميع الحقوق محفوظة</div>
+    </div>
+  `);
+
+  const { error } = await resend().emails.send({
+    from:    FROM,
+    to,
+    subject: `📋 ملف مترشح: ${candidateName} — مقابلة ${dateStr} الساعة ${startTime}`,
+    html,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function sendWelcomeEmail({ to, name, password }) {
   const html = baseHtml(`
     <div class="card">

@@ -59,8 +59,9 @@ export default function BoggarAdminPage() {
   const [interviewsMap,       setInterviewsMap]       = useState({});
   const [schedModal,          setSchedModal]           = useState(null);
   const [schedDate,           setSchedDate]            = useState('');
-  const [schedInterviewer,    setSchedInterviewer]     = useState('');
-  const [schedTime,           setSchedTime]            = useState('');
+  const [schedInterviewer,      setSchedInterviewer]       = useState('');
+  const [schedInterviewerEmail, setSchedInterviewerEmail]  = useState('');
+  const [schedTime,             setSchedTime]              = useState('');
   const [bookedSlots,         setBookedSlots]          = useState([]);
   const [slotsLoading,        setSlotsLoading]         = useState(false);
   const [schedulingBusy,      setSchedulingBusy]       = useState(false);
@@ -470,6 +471,7 @@ export default function BoggarAdminPage() {
     setSchedModal(app);
     setSchedDate(existing?.interview_date ?? '');
     setSchedInterviewer(user?.user_metadata?.full_name || user?.email || 'المدير المطلق');
+    setSchedInterviewerEmail('');
     setSchedTime(''); setBookedSlots([]); setSchedMsg(null);
   }
 
@@ -480,6 +482,7 @@ export default function BoggarAdminPage() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         application_id: schedModal.id, interviewer_name: schedInterviewer.trim(),
+        interviewer_email: schedInterviewerEmail.trim() || null,
         interview_date: schedDate, start_time: schedTime,
       }),
     });
@@ -1642,6 +1645,12 @@ export default function BoggarAdminPage() {
             </div>
 
             <div className="form-group">
+              <label className="form-label">📧 {lang === 'ar' ? 'بريد المقابِل' : 'Interviewer Email'} <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: '.8rem' }}>({lang === 'ar' ? 'اختياري' : 'optional'})</span></label>
+              <input className="form-input" type="email" value={schedInterviewerEmail} onChange={e => setSchedInterviewerEmail(e.target.value)} placeholder={lang === 'ar' ? 'interviewer@example.com — لإرسال ملف المترشح له' : 'interviewer@example.com — to send candidate brief'} disabled={schedulingBusy} dir="ltr" />
+              <p className="form-help">{lang === 'ar' ? 'إذا أُدخل، سيصله بريد بتفاصيل المترشح (الاختصاص، الخبرة، رقم التواصل)' : 'If provided, the interviewer will receive a candidate brief email'}</p>
+            </div>
+
+            <div className="form-group">
               <label className="form-label">📆 {lang === 'ar' ? 'تاريخ المقابلة' : 'Interview Date'}</label>
               <input className="form-input" type="date" value={schedDate} min={new Date().toISOString().split('T')[0]} onChange={e => { setSchedDate(e.target.value); setSchedTime(''); }} disabled={schedulingBusy} dir="ltr" />
             </div>
@@ -1693,8 +1702,8 @@ export default function BoggarAdminPage() {
             {schedTime && (
               <div style={{ marginTop: 12, background: '#eef5ff', borderRadius: 9, padding: '10px 14px', fontSize: '.83rem', color: '#1a2d4a' }}>
                 {lang === 'ar'
-                  ? <>📋 سيُرسَل بريد إلى <strong>{schedModal.email}</strong> بموعد {fmtDate(schedDate, lang)} الساعة {schedTime} مع المقابِل <strong>{schedInterviewer}</strong></>
-                  : <>📋 An email will be sent to <strong>{schedModal.email}</strong> for {fmtDate(schedDate, lang)} at {schedTime} with <strong>{schedInterviewer}</strong></>}
+                  ? <>📋 سيُرسَل بريد إلى <strong>{schedModal.email}</strong> بموعد {fmtDate(schedDate, lang)} الساعة {schedTime} مع المقابِل <strong>{schedInterviewer}</strong>{schedInterviewerEmail.trim() && <> · ونسخة لملف المترشح إلى <strong>{schedInterviewerEmail.trim()}</strong></>}</>
+                  : <>📋 An email will be sent to <strong>{schedModal.email}</strong> for {fmtDate(schedDate, lang)} at {schedTime} with <strong>{schedInterviewer}</strong>{schedInterviewerEmail.trim() && <> · candidate brief copied to <strong>{schedInterviewerEmail.trim()}</strong></>}</>}
               </div>
             )}
           </div>
