@@ -32,11 +32,12 @@ export async function POST(request) {
 
     // Save to assessments table
     const { error } = await supabase.from('assessments').insert({
-      user_id:      user.id,
-      student_name: studentName || user.user_metadata?.full_name || 'غير معروف',
-      level:        finalLevel,
-      score:        Math.round((overallScore ?? 0) * 10) / 10,
-      completed_at: new Date().toISOString(),
+      user_id:       user.id,
+      student_name:  studentName || user.user_metadata?.full_name || 'غير معروف',
+      student_email: email,
+      level:         finalLevel,
+      score:         Math.round((overallScore ?? 0) * 10) / 10,
+      completed_at:  new Date().toISOString(),
     });
 
     if (error)
