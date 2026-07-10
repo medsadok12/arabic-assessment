@@ -54,62 +54,87 @@ function toIsoRange(sessionDate, startTime, durationMinutes, timeZone) {
 }
 
 /**
- * يُنشئ حدث تقويم + رابط Google Meet.
- * @returns {Promise<{ meetLink: string, eventId: string } | null>}
- *          null عند غياب الإعداد أو فشل الاتصال (يتكفّل المُستدعي بالبديل).
+ * الدالة العامة (Generic) — تُنشئ أي حدث في Google Calendar مع رابط Meet.
+ *
+ * @param {object}   opts
+ * @param {string}   opts.summary      — عنوان الحدث
+ * @param {string}  [opts.description] — وصف الحدث
+ * @param {string}   opts.startTime    — وقت البداية كـ ISO datetime بدون إزاحة (مثال: "2026-07-21T16:50:00")
+ * @param {string}   opts.endTime      — وقت النهاية بنفس الصيغة
+ * @param {string[]} [opts.attendees]  — قائمة بريد الحضور
+ * @param {string}  [opts.timeZone]    — منطقة زمنية IANA (الافتراضي: 'Asia/Riyadh')
+ * @returns {Promise<{ hangoutLink: string, eventId: string } | null>}
  */
-export async function createMeetSession({
-  summary, description, attendeeEmail,
-  sessionDate, startTime, durationMinutes = 60,
-  timeZone = 'Asia/Riyadh', autoRecord = true,
+export async function createCalendarEvent({
+  summary, description, startTime, endTime,
+  attendees = [], timeZone = 'Asia/Riyadh',
 }) {
   if (!googleMeetConfigured()) return null;
 
   try {
     const accessToken = await getAccessToken();
     const calendarId  = process.env.GOOGLE_CALENDAR_ACCOUNT || 'primary';
-    const { startStr, endStr } = toIsoRange(sessionDate, startTime, durationMinutes, timeZone);
 
     const event = {
-      summary:     summary || 'حصة — أكاديمية عارم',
+      summary:     summary || 'اجتماع — أكاديمية عارم',
       description: description || '',
-      start: { dateTime: startStr, timeZone },
-      end:   { dateTime: endStr,   timeZone },
+      start: { dateTime: startTime, timeZone },
+      end:   { dateTime: endTime,   timeZone },
       conferenceData: {
         createRequest: {
           requestId: `aarem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           conferenceSolutionKey: { type: 'hangoutsMeet' },
         },
       },
-      ...(attendeeEmail ? { attendees: [{ email: attendeeEmail }] } : {}),
+      ...(attendees.length ? { attendees: attendees.map(email => ({ email })) } : {}),
     };
 
     const res = await fetch(
       `${CAL_BASE}/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1&sendUpdates=none`,
       {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(event),
+        method:  'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body:    JSON.stringify(event),
       }
     );
 
     if (!res.ok) throw new Error(`Google Calendar error: ${res.status} ${await res.text()}`);
     const data = await res.json();
 
-    const meetLink =
+    const hangoutLink =
       data.hangoutLink ||
       data.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri ||
       null;
 
-    if (!meetLink) return null;
-    return { meetLink, eventId: data.id };
+    if (!hangoutLink) return null;
+    return { hangoutLink, eventId: data.id };
   } catch (err) {
-    console.error('createMeetSession failed:', err.message);
-    return null; // المُستدعي يرجع إلى Jitsi
+    console.error('[calendar] createCalendarEvent failed:', err.message);
+    return null;
   }
+}
+
+/**
+ * مُغلِّف مخصص للحصص — يحوّل تاريخ/وقت/مدة إلى ISO ثم يستدعي createCalendarEvent.
+ * @returns {Promise<{ meetLink: string, eventId: string } | null>}
+ */
+export async function createMeetSession({
+  summary, description, attendeeEmail,
+  sessionDate, startTime, durationMinutes = 60,
+  timeZone = 'Asia/Riyadh',
+}) {
+  const { startStr, endStr } = toIsoRange(sessionDate, startTime, durationMinutes, timeZone);
+  const result = await createCalendarEvent({
+    summary:     summary || 'حصة — أكاديمية عارم',
+    description: description || '',
+    startTime:   startStr,
+    endTime:     endStr,
+    attendees:   attendeeEmail ? [attendeeEmail] : [],
+    timeZone,
+  });
+  if (!result) return null;
+  // الكود القديم يتوقع meetLink لا hangoutLink — نُعيد بالاسمين معاً
+  return { meetLink: result.hangoutLink, hangoutLink: result.hangoutLink, eventId: result.eventId };
 }
 
 /** يحذف حدث التقويم عند إلغاء الحصة (best-effort) */

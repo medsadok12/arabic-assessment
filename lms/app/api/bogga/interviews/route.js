@@ -4,6 +4,7 @@ import { NextResponse }       from 'next/server';
 import { createClient }       from '../../../../lib/supabase-server';
 import { createAdminClient }  from '../../../../lib/supabase-admin';
 import { sendInterviewEmail, sendInterviewerBriefEmail } from '../../../../lib/email';
+import { createCalendarEvent } from '../../../../lib/calendar';
 import { getRole } from '../../../../lib/auth-role';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aarem-lms.vercel.app';
@@ -32,7 +33,7 @@ export async function GET(req) {
   const admin = createAdminClient();
   let q = admin
     .from('interviews')
-    .select('id, application_id, interviewer_name, interview_date, start_time, candidate_response, reschedule_reason, created_at')
+    .select('id, application_id, interviewer_name, interview_date, start_time, candidate_response, reschedule_reason, meet_link, calendar_event_id, created_at')
     .order('created_at', { ascending: false });
 
   if (date)        q = q.eq('interview_date', date);
@@ -94,6 +95,36 @@ export async function POST(req) {
 
   if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 });
 
+  // Create Google Meet event (best-effort — does not block the response)
+  const hhmm  = start_time.slice(0, 5);
+  const [H, M] = hhmm.split(':').map(Number);
+  const pad    = n => String(n).padStart(2, '0');
+  const endMin = H * 60 + M + 30;
+  const startIso = `${interview_date}T${hhmm}:00`;
+  const endIso   = `${interview_date}T${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}:00`;
+
+  const calResult = await createCalendarEvent({
+    summary:     `مقابلة توظيف — ${app.name}`,
+    description: [
+      `المتقدم: ${app.name}`,
+      app.specialty  ? `التخصص: ${app.specialty}`  : '',
+      app.experience ? `الخبرة: ${app.experience}`  : '',
+      `المقابِل: ${interviewer_name}`,
+    ].filter(Boolean).join('\n'),
+    startTime: startIso,
+    endTime:   endIso,
+    attendees: [app.email, ...(interviewer_email ? [interviewer_email] : [])],
+  });
+
+  let meetLink = null;
+  if (calResult) {
+    meetLink = calResult.hangoutLink;
+    await admin
+      .from('interviews')
+      .update({ meet_link: meetLink, calendar_event_id: calResult.eventId })
+      .eq('id', iv.id);
+  }
+
   // Send invitation email
   const token       = iv.response_token;
   const confirmUrl  = `${APP_URL}/api/interview/respond?token=${token}&action=confirm`;
@@ -138,7 +169,7 @@ export async function POST(req) {
     }
   }
 
-  return NextResponse.json({ interview: iv, emailSent, briefSent }, { status: 201 });
+  return NextResponse.json({ interview: { ...iv, meet_link: meetLink }, emailSent, briefSent, meetLink }, { status: 201 });
 }
 
 // DELETE — cancel / remove an interview
