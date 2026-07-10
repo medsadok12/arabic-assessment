@@ -62,6 +62,7 @@ export default function BoggarAdminPage() {
   const [schedInterviewer,      setSchedInterviewer]       = useState('');
   const [schedInterviewerEmail, setSchedInterviewerEmail]  = useState('');
   const [schedTime,             setSchedTime]              = useState('');
+  const [showInterviewerDrop,  setShowInterviewerDrop]  = useState(false);
   const [bookedSlots,         setBookedSlots]          = useState([]);
   const [slotsLoading,        setSlotsLoading]         = useState(false);
   const [schedulingBusy,      setSchedulingBusy]       = useState(false);
@@ -473,6 +474,12 @@ export default function BoggarAdminPage() {
     setSchedInterviewer(user?.user_metadata?.full_name || user?.email || 'المدير المطلق');
     setSchedInterviewerEmail('');
     setSchedTime(''); setBookedSlots([]); setSchedMsg(null);
+    setShowInterviewerDrop(false);
+    if (adminTeacherList.length === 0) {
+      fetch('/api/bogga/users').then(r => r.json()).then(res => {
+        setAdminTeacherList((res.users ?? []).filter(u => u.role === 'teacher'));
+      }).catch(() => {});
+    }
   }
 
   async function handleSchedule() {
@@ -1638,9 +1645,46 @@ export default function BoggarAdminPage() {
 
             {schedMsg && <div className={`alert alert-${schedMsg.type === 'error' ? 'error' : 'success'}`} style={{ marginBottom: 16 }}>{schedMsg.text}</div>}
 
-            <div className="form-group">
+            <div className="form-group" style={{ position: 'relative' }}>
               <label className="form-label">👤 {lang === 'ar' ? 'المقابِل' : 'Interviewer'}</label>
-              <input className="form-input" value={schedInterviewer} onChange={e => setSchedInterviewer(e.target.value)} placeholder={lang === 'ar' ? 'اسم من سيجري المقابلة' : 'Name of the interviewer'} disabled={schedulingBusy} />
+              <input
+                className="form-input"
+                value={schedInterviewer}
+                onChange={e => { setSchedInterviewer(e.target.value); setShowInterviewerDrop(true); }}
+                onFocus={() => setShowInterviewerDrop(true)}
+                onBlur={() => setTimeout(() => setShowInterviewerDrop(false), 180)}
+                placeholder={lang === 'ar' ? 'ابحث باسم المعلم أو اكتب اسماً جديداً' : 'Search teacher or type a new name'}
+                disabled={schedulingBusy}
+                autoComplete="off"
+              />
+              {showInterviewerDrop && adminTeacherList.length > 0 && (() => {
+                const q = schedInterviewer.trim().toLowerCase();
+                const hits = q
+                  ? adminTeacherList.filter(t => t.name?.toLowerCase().includes(q) || t.email?.toLowerCase().includes(q))
+                  : adminTeacherList;
+                if (!hits.length) return null;
+                return (
+                  <div style={{ position: 'absolute', top: '100%', right: 0, left: 0, background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.14)', zIndex: 20, maxHeight: 200, overflowY: 'auto', marginTop: 4 }}>
+                    {hits.map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onMouseDown={() => {
+                          setSchedInterviewer(t.name);
+                          setSchedInterviewerEmail(t.email ?? '');
+                          setShowInterviewerDrop(false);
+                        }}
+                        style={{ display: 'block', width: '100%', textAlign: 'right', padding: '9px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontSize: '.9rem', color: 'var(--text)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                      >
+                        <span style={{ fontWeight: 700 }}>{t.name}</span>
+                        <span style={{ color: 'var(--muted)', fontSize: '.78rem', marginRight: 8, direction: 'ltr', display: 'inline-block' }}>{t.email}</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
               <p className="form-help">{lang === 'ar' ? 'سيظهر هذا الاسم في بريد الدعوة المرسل للمترشح' : 'This name will appear in the invitation email sent to the candidate'}</p>
             </div>
 
