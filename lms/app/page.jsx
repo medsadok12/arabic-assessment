@@ -203,9 +203,9 @@ export default function LandingPage() {
             {t('landing.ctaRegister')}
           </Link>
           ·
-          <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className="footer-tlink">
+          <Link href="/apply" className="footer-tlink">
             {t('landing.ctaApplyLink')}
-          </a>
+          </Link>
         </p>
       </footer>
     </>
