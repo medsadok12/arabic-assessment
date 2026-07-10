@@ -20,18 +20,17 @@ const SECURITY_HEADERS = [
     value: [
       "default-src 'self'",
       // Next.js requires unsafe-inline + unsafe-eval for hydration scripts
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://ajax.googleapis.com",
+      // (model-viewer صار مستضافاً ذاتياً في public/vendor — لا حاجة لأي CDN خارجي)
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       // Inline styles are used extensively throughout the app
       "style-src 'self' 'unsafe-inline'",
       // Images from Supabase storage, data URIs, blobs (canvas games), and any HTTPS
       "img-src 'self' data: blob: https:",
       // Fonts self-hosted via next/font
       "font-src 'self' data:",
-      // API connections: Supabase + 3D models only — AI/TTS keys are server-side, never called from the browser
+      // API connections: Supabase + Spline only — AI/TTS keys are server-side, never called from the browser
+      // (مجسمات GLB صارت تُخدم من نفس الدومين 'self' — أُزيلت modelviewer.dev وthreejs.org وraw.githubusercontent.com)
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co " +
-        "https://modelviewer.dev " +
-        "https://raw.githubusercontent.com " +
-        "https://threejs.org " +
         "https://*.spline.design https://prod.spline.design",
       // model-viewer uses Web Workers for GLB; Spline uses workers from its CDN
       "worker-src blob: 'self' https://*.spline.design",
