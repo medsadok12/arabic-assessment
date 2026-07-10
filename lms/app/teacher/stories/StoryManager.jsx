@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import Link from 'next/link';
+import StoryPageEditor from '../../../components/StoryPageEditor';
 
 const ACCENTS = [
   { label: 'أخضر',   accent: '#10b981', bg: '#ecfdf5', border: '#6ee7b7' },
@@ -733,93 +734,21 @@ export default function StoryManager({ initialStories }) {
                   </div>
                 </div>
 
-                {/* ── محرر الصفحات ── */}
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-                    <span className="sm-label" style={{ margin:0 }}>
-                      صفحات القصة
-                      <span style={{ fontSize:'.7rem', color:'#94a3b8', fontWeight:600, marginRight:8 }}>({pages.length} صفحة)</span>
+                {/* محرر صفحات القصة */}
+                <div className="sm-field" style={{ marginBottom:6 }}>
+                  <label className="sm-label" style={{ marginBottom:12, display:'block' }}>
+                    صفحات القصة
+                    <span style={{ fontSize:'.7rem', color:'#94a3b8', fontWeight:600, marginRight:8 }}>
+                      — أضف صفحات وحدّد تخطيط كل صفحة واجعلها بالصور والنصوص التي تريد
                     </span>
-                    <button
-                      type="button"
-                      onClick={addPage}
-                      style={{ background:'#eef2ff', color:'#4f46e5', border:'1.5px solid #c7d2fe', borderRadius:10, padding:'6px 16px', fontSize:'.8rem', fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}
-                    >
-                      + إضافة صفحة
-                    </button>
+                  </label>
+                  <div style={{ border:'1.5px solid #e5e7eb', borderRadius:16, padding:'20px 18px', background:'#fafbff' }}>
+                    <StoryPageEditor
+                      key={editId || 'new'}
+                      value={form.content}
+                      onChange={v => f('content', v)}
+                    />
                   </div>
-
-                  <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                    {pages.map((page, i) => (
-                      <div key={i} style={{ border:'2px solid #e5e7eb', borderRadius:16, overflow:'hidden', background:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,.04)' }}>
-
-                        {/* رأس الصفحة */}
-                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#f8fafc', borderBottom:'1px solid #e5e7eb' }}>
-                          <span style={{ fontWeight:800, fontSize:'.83rem', color:'#374151' }}>📄 الصفحة {i + 1}</span>
-                          <div style={{ display:'flex', gap:5 }}>
-                            {i > 0 && (
-                              <button type="button" onClick={() => movePage(i, -1)}
-                                style={{ background:'#f1f5f9', color:'#475569', border:'none', borderRadius:7, padding:'3px 10px', fontSize:'.75rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>⬆</button>
-                            )}
-                            {i < pages.length - 1 && (
-                              <button type="button" onClick={() => movePage(i, 1)}
-                                style={{ background:'#f1f5f9', color:'#475569', border:'none', borderRadius:7, padding:'3px 10px', fontSize:'.75rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>⬇</button>
-                            )}
-                            {pages.length > 1 && (
-                              <button type="button" onClick={() => deletePage(i)}
-                                style={{ background:'#fee2e2', color:'#b91c1c', border:'none', borderRadius:7, padding:'3px 10px', fontSize:'.75rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>🗑 حذف</button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* منطقة الصورة */}
-                        <div style={{ padding:'12px 14px', borderBottom:'1px solid #f3f4f6', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-                          {page.imgUrl ? (
-                            <div style={{ position:'relative', flexShrink:0 }}>
-                              <img src={page.imgUrl} alt="" style={{ height:90, width:140, objectFit:'cover', borderRadius:10, display:'block', border:'1.5px solid #e2e8f0' }} />
-                              <button
-                                type="button"
-                                onClick={() => updatePage(i, 'imgUrl', '')}
-                                style={{ position:'absolute', top:4, right:4, background:'rgba(0,0,0,.55)', color:'#fff', border:'none', borderRadius:6, padding:'1px 6px', fontSize:'.72rem', cursor:'pointer' }}
-                              >✕</button>
-                            </div>
-                          ) : null}
-
-                          <label style={{
-                            display:'inline-flex', alignItems:'center', gap:7,
-                            background: uploading === i ? '#f8fafc' : '#f0fdf4',
-                            border:`1.5px dashed ${uploading === i ? '#cbd5e1' : '#86efac'}`,
-                            borderRadius:10, padding:'9px 16px',
-                            cursor: uploading === i ? 'wait' : 'pointer',
-                            fontSize:'.8rem', color: uploading === i ? '#94a3b8' : '#166534',
-                            fontWeight:700, transition:'all .15s',
-                          }}>
-                            {uploading === i ? '⏳ جارٍ الرفع...' : page.imgUrl ? '🔄 تغيير الصورة' : '🖼 رفع صورة للصفحة'}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              style={{ display:'none' }}
-                              disabled={uploading === i}
-                              onChange={e => { if (e.target.files[0]) uploadPageImg(i, e.target.files[0]); e.target.value = ''; }}
-                            />
-                          </label>
-                          {!page.imgUrl && (
-                            <span style={{ fontSize:'.7rem', color:'#94a3b8' }}>اختيارية — تظهر في أعلى الصفحة للطالب</span>
-                          )}
-                        </div>
-
-                        {/* محرر المحتوى مع شريط الأدوات */}
-                        <PageEditor
-                          html={page.html}
-                          onChange={v => updatePage(i, 'html', v)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  <p style={{ color:'#94a3b8', fontSize:'.72rem', margin:'10px 0 0', fontWeight:600 }}>
-                    💡 حدّد النص أولاً ثم اضغط أي زر في شريط الأدوات لتطبيق التنسيق عليه · يمكنك أيضاً كتابة HTML مباشرة
-                  </p>
                 </div>
               </>
             )}

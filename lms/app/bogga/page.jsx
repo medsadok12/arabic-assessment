@@ -172,9 +172,6 @@ export default function BoggarAdminPage() {
   const [resultsMax,     setResultsMax]     = useState('');
   const [resultsExporting, setResultsExporting] = useState(false);
   const [recentAssessments, setRecentAssessments] = useState([]);
-  const [editingNoteId,    setEditingNoteId]    = useState(null);
-  const [editNoteText,     setEditNoteText]     = useState('');
-  const [noteSaving,       setNoteSaving]       = useState(false);
 
   // Admin Sessions
   const [adminSessions,     setAdminSessions]     = useState([]);
@@ -293,7 +290,7 @@ export default function BoggarAdminPage() {
     if (resultsMax)    params.set('maxScore', resultsMax);
     const data = await fetch(`/api/bogga/results?${params}`).then(r => r.json()).catch(() => ({}));
     const rows = data.results ?? [];
-    const headers = [lang === 'ar' ? 'اسم الطالب' : 'Student', lang === 'ar' ? 'البريد الإلكتروني' : 'Email', lang === 'ar' ? 'المستوى' : 'Level', lang === 'ar' ? 'الدرجة' : 'Score', lang === 'ar' ? 'الحالة' : 'Status', lang === 'ar' ? 'التاريخ' : 'Date', lang === 'ar' ? 'ملاحظات' : 'Notes'];
+    const headers = [lang === 'ar' ? 'اسم الطالب' : 'Student', lang === 'ar' ? 'المستوى' : 'Level', lang === 'ar' ? 'الدرجة' : 'Score', lang === 'ar' ? 'الحالة' : 'Status', lang === 'ar' ? 'التاريخ' : 'Date', lang === 'ar' ? 'حالة التسجيل' : 'Registration'];
     const csv = [
       headers.join(','),
       ...rows.map(r => [
@@ -303,7 +300,7 @@ export default function BoggarAdminPage() {
         r.score ?? '',
         (r.score ?? 0) >= 70 ? (lang === 'ar' ? 'ناجح' : 'Passed') : (lang === 'ar' ? 'دون المعدل' : 'Below average'),
         r.completed_at ? new Date(r.completed_at).toLocaleDateString('en-GB') : '',
-        `"${(r.notes ?? '').replace(/"/g, '""')}"`,
+        r.user_id ? (lang === 'ar' ? 'مسجل' : 'Registered') : (lang === 'ar' ? 'لم يسجل' : 'Not Registered'),
       ].join(','))
     ].join('\
 ');
@@ -317,17 +314,6 @@ export default function BoggarAdminPage() {
     setResultsExporting(false);
   }
 
-  async function saveNote(id, notes) {
-    setNoteSaving(true);
-    await fetch(`/api/bogga/results/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes }),
-    }).catch(() => {});
-    setResults(prev => prev.map(r => r.id === id ? { ...r, notes } : r));
-    setEditingNoteId(null);
-    setNoteSaving(false);
-  }
 
   // Booked slots (modal) — reload on date/interviewer change
   useEffect(() => {
@@ -1256,8 +1242,7 @@ export default function BoggarAdminPage() {
               setShowAddSupervisor={setShowAddSupervisor}
               handleSuspendSupervisor={handleSuspendSupervisor} suspendingSupervisorId={suspendingSupervisorId}
               handleDeleteSupervisor={handleDeleteSupervisor} deletingSupervisorId={deletingSupervisorId}
-            />
-          )}
+            />          )}
 
           {/* ══ Results ═══════════════════════════════════════════ */}
           {activeTab === 'results' && (
@@ -1271,11 +1256,7 @@ export default function BoggarAdminPage() {
               resultsMax={resultsMax} setResultsMax={setResultsMax}
               loadResults={loadResults} exportCsv={exportCsv} resultsExporting={resultsExporting}
               sheetsUrl={sheetsUrl}
-              editingNoteId={editingNoteId} setEditingNoteId={setEditingNoteId}
-              editNoteText={editNoteText} setEditNoteText={setEditNoteText}
-              saveNote={saveNote} noteSaving={noteSaving}
-            />
-          )}
+            />          )}
 
           {/* ══ Users Directory ══════════════════════════════════ */}
           {/* ══ Teachers & Staff Management ══════════════════════════════════ */}
@@ -1306,7 +1287,6 @@ export default function BoggarAdminPage() {
               handleDeleteUser={handleDeleteUser} deletingUserId={deletingUserId}
             />
           )}
-
           {/* ══ Visitor Q&A — فهيم الزوار ══════════════════════ */}
           {activeTab === 'visitor_qa' && isSuperAdmin && (
             <VisitorQATab

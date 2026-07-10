@@ -11,9 +11,6 @@ export default function ResultsTab({
   resultsMax, setResultsMax,
   loadResults, exportCsv, resultsExporting,
   sheetsUrl,
-  editingNoteId, setEditingNoteId,
-  editNoteText, setEditNoteText,
-  saveNote, noteSaving,
 }) {
   return (
             <div>
@@ -132,7 +129,7 @@ export default function ResultsTab({
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
                     <thead>
                       <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
-                        {['#', lang === 'ar' ? 'اسم الطالب' : 'Student', lang === 'ar' ? 'المستوى' : 'Level', lang === 'ar' ? 'الدرجة' : 'Score', lang === 'ar' ? 'الحالة' : 'Status', lang === 'ar' ? 'التاريخ' : 'Date', lang === 'ar' ? 'ملاحظات' : 'Notes'].map(h => (
+                        {['#', lang === 'ar' ? 'اسم الطالب' : 'Student', lang === 'ar' ? 'المستوى' : 'Level', lang === 'ar' ? 'الدرجة' : 'Score', lang === 'ar' ? 'الحالة' : 'Status', lang === 'ar' ? 'التاريخ' : 'Date', lang === 'ar' ? 'حالة الطالب' : 'Registration'].map(h => (
                           <th key={h} style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: 'var(--muted)', fontSize: '.82rem' }}>{h}</th>
                         ))}
                       </tr>
@@ -150,10 +147,7 @@ export default function ResultsTab({
                             onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                             onMouseLeave={e => e.currentTarget.style.background = ''}>
                             <td style={{ padding: '11px 16px', color: 'var(--muted)', fontSize: '.82rem' }}>{rowNum}</td>
-                            <td style={{ padding: '11px 16px', fontWeight: 600 }}>
-                              <div>{r.student_name ?? '—'}</div>
-                              <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 2, direction: r.student_email ? 'ltr' : 'rtl' }}>{r.student_email || 'لم يحفظ الايميل'}</div>
-                            </td>
+                            <td style={{ padding: '11px 16px', fontWeight: 600 }}>{r.student_name ?? '—'}</td>
                             <td style={{ padding: '11px 16px' }}>
                               <span style={{ background: 'var(--primary-lt)', color: 'var(--primary)', borderRadius: 6, padding: '2px 10px', fontSize: '.82rem', fontWeight: 700 }}>
                                 {lang === 'ar' ? 'المستوى' : 'Level'} {r.level ?? '—'}
@@ -174,30 +168,23 @@ export default function ResultsTab({
                             <td style={{ padding: '11px 16px', color: 'var(--muted)', fontSize: '.85rem' }}>
                               {r.completed_at ? new Date(r.completed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                             </td>
-                            <td style={{ padding: '8px 16px', minWidth: 160 }}>
-                              {editingNoteId === r.id ? (
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                  <input
-                                    autoFocus
-                                    className="form-input"
-                                    style={{ margin: 0, fontSize: '.82rem', padding: '4px 8px' }}
-                                    value={editNoteText}
-                                    onChange={e => setEditNoteText(e.target.value)}
-                                    onKeyDown={e => { if (e.key === 'Enter') saveNote(r.id, editNoteText); if (e.key === 'Escape') setEditingNoteId(null); }}
-                                  />
-                                  <button className="btn btn-primary btn-sm" style={{ padding: '4px 10px', fontSize: '.78rem' }}
-                                    onClick={() => saveNote(r.id, editNoteText)} disabled={noteSaving}>
-                                    {noteSaving ? '...' : '✓'}
-                                  </button>
-                                </div>
+                            <td style={{ padding: '11px 16px' }}>
+                              {r.user_id ? (
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                                  borderRadius: 20, padding: '4px 12px', fontSize: '.8rem', fontWeight: 700,
+                                  background: '#dcfce7', color: '#15803d',
+                                }}>
+                                  ✅ {lang === 'ar' ? 'مسجّل' : 'Registered'}
+                                </span>
                               ) : (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-                                  onClick={() => { setEditingNoteId(r.id); setEditNoteText(r.notes ?? ''); }}>
-                                  <span style={{ fontSize: '.82rem', color: r.notes ? '#374151' : 'var(--muted)', flex: 1 }}>
-                                    {r.notes || (lang === 'ar' ? '+ إضافة ملاحظة' : '+ Add note')}
-                                  </span>
-                                  <span style={{ fontSize: '.75rem', color: 'var(--muted)', opacity: 0.6 }}>✏️</span>
-                                </div>
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                                  borderRadius: 20, padding: '4px 12px', fontSize: '.8rem', fontWeight: 700,
+                                  background: '#fef3c7', color: '#92400e',
+                                }}>
+                                  ⏳ {lang === 'ar' ? 'لم يسجّل' : 'Not Registered'}
+                                </span>
                               )}
                             </td>
                           </tr>

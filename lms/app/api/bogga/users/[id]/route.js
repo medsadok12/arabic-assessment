@@ -1,7 +1,8 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
-import { getRole } from '../../../../../lib/auth-role';
+import { getRole }           from '../../../../../lib/auth-role';
+import { cleanupUserData }   from '../../../../../lib/cleanup-user';
 
 function generateTempPassword() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
@@ -28,6 +29,7 @@ export async function DELETE(req, { params }) {
     return NextResponse.json({ error: 'لا يمكن حذف حساب المدير المطلق' }, { status: 400 });
   }
 
+  await cleanupUserData(id, target.email, admin);
   const { error } = await admin.auth.admin.deleteUser(id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });

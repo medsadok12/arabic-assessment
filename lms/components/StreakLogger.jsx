@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 const ORDINALS = ['','الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر'];
 function ordinal(n) {
@@ -12,6 +13,7 @@ export default function StreakLogger() {
   const [streak, setStreak] = useState(null);
   const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     fetch('/api/streak', { method: 'POST' })
@@ -24,6 +26,8 @@ export default function StreakLogger() {
 
           setStreak(d.streak);
           setVisible(true);
+          // أعد تحميل بيانات Server Component ليعكس اليوم المسجَّل للتو
+          router.refresh();
           // بعد 7 ثوانٍ تبدأ رسوم الخروج
           const t1 = setTimeout(() => setLeaving(true), 7000);
           // بعد 7.5 ثانية تختفي كلياً

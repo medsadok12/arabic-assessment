@@ -69,6 +69,13 @@ export async function POST() {
     const admin = createAdminClient();
     const today = new Date().toISOString().slice(0, 10);
 
+    // SEC-1: حذف temp_password بمجرد دخول المستخدم داشبورده (بشكل غير محظور)
+    if (user.app_metadata?.temp_password) {
+      admin.auth.admin.updateUserById(user.id, {
+        app_metadata: { ...user.app_metadata, temp_password: null },
+      }).catch(() => {});
+    }
+
     await admin
       .from('daily_logs')
       .upsert({ user_id: user.id, log_date: today },

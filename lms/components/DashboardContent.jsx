@@ -7,6 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { createClient } from '../lib/supabase';
 import WordOfDay from './WordOfDay';
 import StreakFreeze from './StreakFreeze';
+import FlashcardReminderToast from './FlashcardReminderToast';
 
 /* المكوّنات الثقيلة تُقسَّم لحزم منفصلة تُحمَّل عند الحاجة فقط (SSR يبقى
    مفعّلاً فلا يتغير أول رسم إطلاقاً). الفائدة المزدوجة: حزمة أول تحميل
@@ -973,6 +974,8 @@ export default function DashboardContent({
 
         </div>
       </main>
+
+      {isStudent && <FlashcardReminderToast />}
     </>
   );
 }

@@ -1,6 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '../../../../lib/supabase-server';
-import { getRole } from '../../../../lib/auth-role';
+import { createAdminClient } from '../../../../lib/supabase-admin';
+import { cleanupUserData }   from '../../../../lib/cleanup-user';
+import { getRole }           from '../../../../lib/auth-role';
+
 export const dynamic = 'force-dynamic';
 
 const ADMIN_ROLES = new Set(['admin', 'super_admin']);
@@ -12,12 +14,6 @@ async function requireAdmin() {
   return user;
 }
 
-function getClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-}
-
 export async function POST(request) {
   if (!await requireAdmin()) return Response.json({ error: 'غير مخول' }, { status: 403 });
 
@@ -27,12 +23,14 @@ export async function POST(request) {
   const { userId } = body;
   if (!userId) return Response.json({ error: 'userId مطلوب' }, { status: 400 });
 
-  const supabase = getClient();
+  const admin = createAdminClient();
 
-  await supabase.from('assessments').delete().eq('user_id', userId);
-  await supabase.from('student_group_assignments').delete().eq('user_id', userId);
+  const { data: { user: target }, error: fetchErr } = await admin.auth.admin.getUserById(userId);
+  if (fetchErr || !target) return Response.json({ error: 'المستخدم غير موجود' }, { status: 404 });
 
-  const { error } = await supabase.auth.admin.deleteUser(userId);
+  await cleanupUserData(userId, target.email, admin);
+
+  const { error } = await admin.auth.admin.deleteUser(userId);
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
   return Response.json({ success: true });

@@ -1,7 +1,8 @@
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
-import { getRole } from '../../../../../lib/auth-role';
+import { getRole }           from '../../../../../lib/auth-role';
+import { cleanupUserData }   from '../../../../../lib/cleanup-user';
 
 // DELETE — remove a supervisor account
 export async function DELETE(req, { params }) {
@@ -21,6 +22,7 @@ export async function DELETE(req, { params }) {
     return NextResponse.json({ error: 'لا يمكن حذف هذا الحساب' }, { status: 400 });
   }
 
+  await cleanupUserData(id, target.email, admin);
   const { error } = await admin.auth.admin.deleteUser(id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
