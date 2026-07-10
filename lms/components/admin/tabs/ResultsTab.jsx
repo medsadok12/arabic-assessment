@@ -152,7 +152,7 @@ export default function ResultsTab({
                             <td style={{ padding: '11px 16px', color: 'var(--muted)', fontSize: '.82rem' }}>{rowNum}</td>
                             <td style={{ padding: '11px 16px', fontWeight: 600 }}>
                               <div>{r.student_name ?? '—'}</div>
-                              {r.student_email && <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 2, direction: 'ltr' }}>{r.student_email}</div>}
+                              <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 2, direction: r.student_email ? 'ltr' : 'rtl' }}>{r.student_email || 'لم يحفظ الايميل'}</div>
                             </td>
                             <td style={{ padding: '11px 16px' }}>
                               <span style={{ background: 'var(--primary-lt)', color: 'var(--primary)', borderRadius: 6, padding: '2px 10px', fontSize: '.82rem', fontWeight: 700 }}>
