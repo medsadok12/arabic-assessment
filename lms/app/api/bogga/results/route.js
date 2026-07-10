@@ -31,7 +31,7 @@ export async function GET(req) {
 
   let query = admin
     .from('assessments')
-    .select('id, student_name, level, score, completed_at, user_id, notes', { count: 'exact' })
+    .select('id, student_name, level, score, completed_at, user_id', { count: 'exact' })
     .order('completed_at', { ascending: false });
 
   if (!exportAll) query = query.range(offset, offset + limit - 1);
