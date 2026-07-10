@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse }       from 'next/server';
 import { createClient }       from '../../../../lib/supabase-server';
 import { createAdminClient }  from '../../../../lib/supabase-admin';
-import { sendRejectionEmail } from '../../../../lib/email';
+import { sendRejectionEmail, sendAcceptanceEmail } from '../../../../lib/email';
 import { getRole } from '../../../../lib/auth-role';
 
 function guard(user) {
@@ -77,6 +77,30 @@ export async function PATCH(req) {
   const admin = createAdminClient();
 
   // If rejecting, check current status to avoid duplicate emails
+  if (status === 'accepted') {
+    const { data: current } = await admin
+      .from('recruitment_applications')
+      .select('status, name, email')
+      .eq('id', id)
+      .single();
+
+    if (current && current.status !== 'accepted') {
+      const { error: updErr } = await admin
+        .from('recruitment_applications')
+        .update({ status })
+        .eq('id', id);
+      if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+
+      try {
+        await sendAcceptanceEmail({ to: current.email, candidateName: current.name });
+      } catch (e) {
+        console.error('[recruitment] acceptance email failed:', e.message);
+        return NextResponse.json({ success: true, emailSent: false });
+      }
+      return NextResponse.json({ success: true, emailSent: true });
+    }
+  }
+
   if (status === 'rejected') {
     const { data: current } = await admin
       .from('recruitment_applications')

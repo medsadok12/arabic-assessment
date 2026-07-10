@@ -310,6 +310,37 @@ export async function sendVerificationEmail({ to, name, link }) {
   if (error) throw new Error(error.message);
 }
 
+export async function sendAcceptanceEmail({ to, candidateName }) {
+  const html = baseHtml(`
+    <div class="card">
+      <div class="hdr" style="background:linear-gradient(135deg,#14532d 0%,#16a34a 100%)">
+        <h1>🎓 أكاديمية عارم للتعليم</h1>
+        <p>🎉 تهانينا — لقد تم قبولك!</p>
+      </div>
+      <div class="body">
+        <p>السلام عليكم ورحمة الله وبركاته،</p>
+        <p>يسعدنا بكل فخر وسرور أن نُبشّرك، <strong>${candidateName}</strong>، بأن فريق <strong>أكاديمية عارم</strong> قد اختارك لتكون جزءاً من مسيرتنا التعليمية المتميزة.</p>
+        <p>لقد أبهرنا كفاءتك وتميّزك خلال مراحل التقديم والمقابلة، ونحن متحمسون لما ستضيفه إلى فريقنا وطلابنا.</p>
+        <div class="info">
+          <div class="info-row"><span class="info-lbl">📌 الحالة</span><span style="color:#16a34a;font-weight:800">مقبول ✓</span></div>
+          <div class="info-row"><span class="info-lbl">📍 الخطوة التالية</span><span>سيتواصل معك فريقنا قريباً لترتيب تفاصيل الانضمام</span></div>
+        </div>
+        <p>أهلاً وسهلاً بك في عائلة أكاديمية عارم — معاً نبني جيلاً متمكناً من لغته وهويته.</p>
+        <p class="note">للاستفسار يمكنك التواصل معنا عبر <a href="https://api.whatsapp.com/send/?phone=447400755914" style="color:#16a34a;font-weight:700">واتساب الأكاديمية</a>.</p>
+      </div>
+      <div class="ftr">أكاديمية عارم للتعليم — جميع الحقوق محفوظة</div>
+    </div>
+  `);
+
+  const { error } = await resend().emails.send({
+    from:    FROM,
+    to,
+    subject: '🎉 تهانينا! تم قبولك في أكاديمية عارم',
+    html,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function sendInterviewerBriefEmail({
   to, candidateName, candidateEmail, candidatePhone, specialty, experience,
   interviewerName, dateStr, startTime,
