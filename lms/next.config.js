@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const ASSESSMENT_URL = 'https://arabic-assessment.vercel.app';
+const ASSESSMENT_URL = 'https://assessment.aarem.net';
 
 const SECURITY_HEADERS = [
   // Force HTTPS for 2 years
@@ -36,8 +36,8 @@ const SECURITY_HEADERS = [
       "worker-src blob: 'self' https://*.spline.design",
       // Audio/video from Supabase storage and blobs (Web Audio API)
       "media-src 'self' blob: https:",
-      // Allow iframes only from same origin (Google Meet opens in new tab, not iframe)
-      "frame-src 'self'",
+      // Allow iframes from same origin + the assessment app (embedded in /assessment)
+      "frame-src 'self' https://assessment.aarem.net",
       // Prevent this page from being embedded elsewhere
       "frame-ancestors 'self'",
       "base-uri 'self'",

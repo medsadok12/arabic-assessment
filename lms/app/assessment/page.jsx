@@ -30,7 +30,7 @@ export default function AssessmentPage() {
         </a>
       </div>
       <iframe
-        src="https://arabic-assessment.vercel.app"
+        src="https://assessment.aarem.net"
         style={{ width: '100%', height: 'calc(100% - 48px)', border: 'none', display: 'block' }}
         title="التقييم التشخيصي"
         allow="microphone; camera"

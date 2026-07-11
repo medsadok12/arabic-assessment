@@ -20,7 +20,7 @@ const FAQ_ITEMS = [
   },
 ];
 
-const ASSESSMENT_URL = 'https://arabic-assessment.vercel.app';
+const ASSESSMENT_URL = 'https://assessment.aarem.net';
 
 export default function SmartFAQ() {
   const [openIdx, setOpenIdx]   = useState(null);

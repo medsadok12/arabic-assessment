@@ -52,9 +52,13 @@ export async function GET(req) {
     hwQuery,
   ]);
 
-  // Assessments — resolve via auth if email provided
+  // Assessments — resolve via auth only if email provided AND the student is
+  // confirmed to belong to this teacher (evidenced by a sessions/homework row
+  // already scoped to teacher_id above). Without this, any teacher could pass
+  // an arbitrary email and read another teacher's student's scores — IDOR.
   let assessments = [];
-  if (email) {
+  const belongsToTeacher = (sessions?.length ?? 0) > 0 || (homework?.length ?? 0) > 0;
+  if (email && belongsToTeacher) {
     try {
       const { data: { user: found }, error: lookupErr } = await admin.auth.admin.getUserByEmail(email);
       if (!lookupErr && found) {

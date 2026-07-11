@@ -4,7 +4,7 @@ import { getClientIP, ipRateCheck } from '../../../../lib/ip-rate-check';
 export const dynamic = 'force-dynamic';
 
 const CORS = {
-  'Access-Control-Allow-Origin':  'https://arabic-assessment.vercel.app',
+  'Access-Control-Allow-Origin':  'https://assessment.aarem.net',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
