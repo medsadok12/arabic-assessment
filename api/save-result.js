@@ -12,9 +12,10 @@ async function saveToSupabase(d) {
         'Prefer': 'return=minimal',
       },
       body: JSON.stringify({
-        student_name: d.studentName || 'غير معروف',
-        level:        d.finalLevel  || 1,
-        score:        Math.round((d.overallScore ?? 0) * 10) / 10,
+        student_name:  d.studentName || 'غير معروف',
+        student_email: d.email ? String(d.email).trim().toLowerCase() : null,
+        level:         d.finalLevel  || 1,
+        score:         Math.round((d.overallScore ?? 0) * 10) / 10,
       }),
     });
   } catch (_) {}
