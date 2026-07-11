@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse }      from 'next/server';
 import { createClient }      from '../../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
-import { getRole } from '../../../../../lib/auth-role';
+import { getRole, isSuspended } from '../../../../../lib/auth-role';
 
 // GET — returns the current assistant admin's own tab permissions
 // Result: { permissions: { overview: bool, codes: bool, ... } }
@@ -16,7 +16,7 @@ export async function GET() {
   if (getRole(user) !== 'admin') {
     return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
   }
-  if (user.user_metadata?.status === 'suspended') {
+  if (isSuspended(user)) {
     return NextResponse.json({ error: 'حسابك معطل مؤقتاً', suspended: true }, { status: 403 });
   }
 

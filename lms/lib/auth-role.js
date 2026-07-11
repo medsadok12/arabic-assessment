@@ -28,3 +28,12 @@ export function isSuperAdmin(user) {
 export function isStaff(user) {
   return STAFF_ROLES.has(getRole(user));
 }
+
+/**
+ * هل الحساب معلَّق؟ — تُقرأ الحالة من app_metadata حصراً (لا يكتبه إلا service_role).
+ * بهذا لا يستطيع المستخدم إعادة تفعيل نفسه عبر supabase.auth.updateUser بالمفتاح العام —
+ * نفس المبدأ الأمني المطبَّق على الدور تماماً.
+ */
+export function isSuspended(user) {
+  return user?.app_metadata?.status === 'suspended';
+}

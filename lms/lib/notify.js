@@ -1,5 +1,5 @@
 import { createAdminClient, fetchAllUsers } from './supabase-admin';
-import { getRole } from './auth-role';
+import { getRole, isSuspended } from './auth-role';
 
 // Global notification (admin/super_admin only, recipient_id = NULL)
 export async function notify(type, title, body = null, meta = null) {
@@ -16,7 +16,7 @@ export async function notifyByRole(roles, type, title, body = null, link = null,
     const users = await fetchAllUsers(admin);
     const targets = users.filter(u =>
       roles.includes(getRole(u)) &&
-      u.user_metadata?.status !== 'suspended' &&
+      !isSuspended(u) &&
       (!excludeId || u.id !== excludeId)
     );
     if (targets.length === 0) return;

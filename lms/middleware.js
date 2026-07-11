@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
-import { getRole } from './lib/auth-role';
+import { getRole, isSuspended } from './lib/auth-role';
 
 // Routes that require a logged-in user
 const PROTECTED = [
@@ -47,11 +47,23 @@ export async function middleware(request) {
     const isOnboardingRoute = pathname === ONBOARDING_ROUTE;
     const hasTempPwd        = !!user?.app_metadata?.temp_password;
     const hasRole           = !!getRole(user);
+    const suspended         = isSuspended(user); // من app_metadata حصراً — لا يتلاعب به المستخدم
 
     // Not logged in → send to login
     if (!user && isProtected) {
       const url = request.nextUrl.clone();
       url.pathname = '/auth/login';
+      return NextResponse.redirect(url);
+    }
+
+    // Suspended account (student/teacher/supervisor/admin) → blocked from every
+    // protected route. الحالة من app_metadata فقط، فلا يمكن للمستخدم فكّ تعليقه بنفسه.
+    // نُوجّهه لصفحة الدخول برسالة واضحة بدل تركه يصل أي محتوى.
+    if (user && suspended && isProtected) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/auth/login';
+      url.search   = '';
+      url.searchParams.set('error', 'suspended');
       return NextResponse.redirect(url);
     }
 
@@ -103,8 +115,10 @@ export async function middleware(request) {
       return NextResponse.redirect(url);
     }
 
-    // Already logged in → no need to see login/register again
-    if (user && isRedirectIfLogIn) {
+    // Already logged in → no need to see login/register again.
+    // استثناء المعلَّق: يجب أن يبقى على صفحة الدخول ليرى رسالة التعليق، وإلا نشأت
+    // حلقة لا نهائية (لوحته محميّة → يُعاد للدخول → يُعاد للوحته…).
+    if (user && !suspended && isRedirectIfLogIn) {
       const role = getRole(user);
       const url  = request.nextUrl.clone();
       url.pathname =

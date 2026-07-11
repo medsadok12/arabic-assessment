@@ -27,7 +27,7 @@ export async function GET() {
       name:         u.user_metadata?.full_name ?? '—',
       email:        u.email ?? '',
       role:         getRole(u) ?? 'student',
-      status:       u.user_metadata?.status ?? 'active',
+      status:       u.app_metadata?.status ?? 'active',
       avatar_url:   u.user_metadata?.avatar_url ?? null,
       created_at:   u.created_at,
       last_sign_in: u.last_sign_in_at ?? null,
@@ -62,7 +62,7 @@ export async function PATCH(req) {
 
   const newStatus = action === 'suspend' ? 'suspended' : 'active';
   const { error: updateErr } = await admin.auth.admin.updateUserById(id, {
-    user_metadata: { ...target.user_metadata, status: newStatus },
+    app_metadata: { ...target.app_metadata, status: newStatus },
   });
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
 

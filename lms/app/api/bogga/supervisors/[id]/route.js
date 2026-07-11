@@ -54,7 +54,7 @@ export async function PATCH(req, { params }) {
 
   const newStatus = action === 'suspend' ? 'suspended' : 'active';
   const { error } = await admin.auth.admin.updateUserById(id, {
-    user_metadata: { ...target.user_metadata, status: newStatus },
+    app_metadata: { ...target.app_metadata, status: newStatus },
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -4,7 +4,7 @@ import { NextResponse }       from 'next/server';
 import { createClient }       from '../../../../lib/supabase-server';
 import { createAdminClient }  from '../../../../lib/supabase-admin';
 import { sendRejectionEmail, sendAcceptanceEmail } from '../../../../lib/email';
-import { getRole } from '../../../../lib/auth-role';
+import { getRole, isSuspended } from '../../../../lib/auth-role';
 
 function guard(user) {
   const role = getRole(user);
@@ -20,7 +20,7 @@ export async function GET(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (guard(user)) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
-  if (user.user_metadata?.status === 'suspended') return NextResponse.json({ error: 'حسابك معطل' }, { status: 403 });
+  if (isSuspended(user)) return NextResponse.json({ error: 'حسابك معطل' }, { status: 403 });
 
   const admin = createAdminClient();
   let q = admin

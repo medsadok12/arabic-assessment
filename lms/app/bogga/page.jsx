@@ -12,7 +12,7 @@ import LifeSceneSimulator              from '../../components/LifeSceneSimulator
 import PricingAdmin                    from '../../components/PricingAdmin';
 import TeamAdmin                        from '../../components/TeamAdmin';
 import { useLanguage }                  from '../../contexts/LanguageContext';
-import { getRole } from '../../lib/auth-role';
+import { getRole, isSuspended } from '../../lib/auth-role';
 import {
   TIME_SLOTS, CONTROLLABLE, TAB_NAMES, TAB_NAMES_EN,
   fmtDate, ToggleSwitch, EMPTY_ADMIN_FORM, SETUP_SQL,
@@ -202,7 +202,7 @@ export default function BoggarAdminPage() {
         router.push(r === 'supervisor' ? '/supervisor' : r === 'teacher' ? '/teacher' : '/dashboard');
         return;
       }
-      if (r === 'admin' && u.user_metadata?.status === 'suspended') { setSuspended(true); setUser(u); setRole(r); return; }
+      if (r === 'admin' && isSuspended(u)) { setSuspended(true); setUser(u); setRole(r); return; }
       setUser(u); setRole(r);
     });
   }, []);

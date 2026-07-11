@@ -31,7 +31,7 @@ export async function GET() {
       name:       u.user_metadata?.full_name ?? '—',
       email:      u.email,
       created_at: u.created_at,
-      status:     u.user_metadata?.status ?? 'active',
+      status:     u.app_metadata?.status ?? 'active',
     }));
 
   return NextResponse.json({ supervisors });
@@ -57,8 +57,8 @@ export async function POST(req) {
     email:         email.trim(),
     password:      tempPassword,
     email_confirm: true,
-    user_metadata: { full_name: name.trim(), status: 'active' },
-    app_metadata:  { temp_password: tempPassword, role: 'supervisor' },
+    user_metadata: { full_name: name.trim() },
+    app_metadata:  { temp_password: tempPassword, role: 'supervisor', status: 'active' },
   });
 
   if (error) {
