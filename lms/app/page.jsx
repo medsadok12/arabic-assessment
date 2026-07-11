@@ -67,7 +67,7 @@ export default function LandingPage() {
                 ))}
               </p>
               <div className="hero-btns">
-                <a href="https://arabic-assessment.vercel.app"
+                <a href="https://assessment.aarem.net"
                   className="btn btn-accent btn-lg"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   {t('landing.heroCta')}

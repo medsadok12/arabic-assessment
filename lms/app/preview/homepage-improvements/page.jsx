@@ -781,7 +781,7 @@ export default function PreviewPage() {
               منصتكم التعليمية لتقييم وتطوير مهارات الطلاب<br/>
               في اللغة العربية بأساليب ذكية وتفاعلية.
             </p>
-            <a href="/auth/register" style={{
+            <a href="https://assessment.aarem.net" style={{
               display:'inline-flex', alignItems:'center', gap:8, background:C.accent,
               color:'#fff', fontWeight:800, fontSize:'1rem', padding:'13px 26px',
               borderRadius:12, textDecoration:'none', border:'2px solid rgba(0,0,0,.08)',
