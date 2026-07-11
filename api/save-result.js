@@ -1,26 +1,5 @@
 import { createSign } from 'crypto';
 
-async function saveToSupabase(d) {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return;
-  try {
-    await fetch(`${process.env.SUPABASE_URL}/rest/v1/assessments`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        'Prefer': 'return=minimal',
-      },
-      body: JSON.stringify({
-        student_name:  d.studentName || 'غير معروف',
-        student_email: d.email ? String(d.email).trim().toLowerCase() : null,
-        level:         d.finalLevel  || 1,
-        score:         Math.round((d.overallScore ?? 0) * 10) / 10,
-      }),
-    });
-  } catch (_) {}
-}
-
 async function getToken() {
   let creds;
   try { creds = JSON.parse(process.env.GOOGLE_SA_KEY); }
@@ -73,8 +52,9 @@ export default async function handler(req, res) {
 
   const d = req.body;
 
-  // حفظ في Supabase دائماً
-  await saveToSupabase(d);
+  // ملاحظة: إدراج نتيجة التقييم في جدول Supabase يتم حصراً عبر مسار
+  // LMS ‏save-assessment (المصدر الوحيد لتفادي تكرار الصفوف). هذا المسار
+  // مسؤول فقط عن التصدير إلى Google Sheets — لا يكتب في قاعدة البيانات.
 
   // إذا لم يُضبط SHEETS_ID بعد نتجاهل بصمت
   if (!process.env.SHEETS_ID || !process.env.GOOGLE_SA_KEY)
