@@ -1,12 +1,13 @@
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
+import { getRole }           from '../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const role = user?.user_metadata?.role ?? '';
+  const role = getRole(user) ?? '';
   if (!user || !['super_admin', 'admin', 'teacher'].includes(role)) {
     return Response.json({ error: 'غير مخول' }, { status: 403 });
   }
