@@ -42,7 +42,7 @@ export default function LandingPage() {
       <FloatingSidebar />
 
       {/* ── Hero ── */}
-      <section className="hero">
+      <section className="hero" id="register-section">
 
         {/* Contact strip — integrated inside hero */}
         <div className="hero-topbar">

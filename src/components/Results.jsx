@@ -4,6 +4,12 @@ import { LEVELS } from '../data/questions.js';
 
 export default function Results({ studentInfo, finalLevel, scores, levelPath, allAnswers, onRestart }) {
   const [emailStatus, setEmailStatus] = useState('idle'); // idle | sending | success | error
+  const [showPromoModal, setShowPromoModal] = useState(false);
+
+  // Show the registration promo only after the teacher report is confirmed sent
+  useEffect(() => {
+    if (emailStatus === 'success') setShowPromoModal(true);
+  }, [emailStatus]);
 
   useEffect(() => {
     const key = `sheets_saved_${studentInfo.name}_${Math.round(scores.overall)}`;
@@ -111,6 +117,35 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, al
       <div className="result-actions">
         <button className="btn-primary" onClick={onRestart}>🔄 تقييم جديد</button>
       </div>
+
+      {showPromoModal && (
+        <div className="modal-overlay">
+          <div className="modal-box" role="dialog" aria-modal="true" dir="rtl" style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '2.6rem', marginBottom: 10 }}>🌟</div>
+            <h2 className="modal-title" style={{ fontSize: '1.35rem' }}>
+              خطوة واحدة تفصل طفلك عن التميز!
+            </h2>
+            <p style={{ fontSize: '.97rem', lineHeight: 1.9, color: '#2a2a2a', margin: '10px 0 24px' }}>
+              لقد أتم بطلنا التقييم بنجاح وحصل على نتيجته. لا تدع هذا الحماس يتوقف!
+              سجّل الآن في «أكاديمية عارم» ليحصل على خطة دراسية مخصصة، أوراق عمل تفاعلية،
+              ومتابعة دقيقة تضمن تفوقه المستمر.
+            </p>
+            <a
+              href="https://www.aarem.net/auth/register"
+              className="btn-primary"
+              style={{ display: 'block', boxSizing: 'border-box', textAlign: 'center', textDecoration: 'none' }}
+            >
+              🚀 تسجيل الطالب الآن (تأمين مقعده)
+            </a>
+            <a
+              href="https://www.aarem.net/#register-section"
+              style={{ display: 'block', marginTop: 16, fontSize: '.78rem', color: '#9a9a9a', textDecoration: 'underline' }}
+            >
+              سأقوم بالتسجيل لاحقاً (العودة للرئيسية)
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
