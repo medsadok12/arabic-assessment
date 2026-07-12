@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import { fmtDate } from '../shared';
 
 /* هذا المكوّن استُخرج حرفياً من lms/app/bogga/page.jsx (تفكيك الملف الأحادي).
@@ -9,10 +10,13 @@ export default function SessionsTab({
   adminSessTab, setAdminSessTab,
   adminWeekOffset, setAdminWeekOffset,
   adminTeacherFilter, setAdminTeacherFilter,
+  adminSessShowAll,
   loadAdminSessions, openAdminSchedModal,
   setAdminCompleteFor, setAdminRecordingUrl,
   handleAdminCancel, adminCancellingId,
 }) {
+  const [pastSearch,      setPastSearch]      = useState('');
+  const [cancelledSearch, setCancelledSearch] = useState('');
             const today      = new Date().toISOString().slice(0, 10);
             const nextWeekDt = new Date(); nextWeekDt.setDate(nextWeekDt.getDate() + 7);
             const nextWeek   = nextWeekDt.toISOString().slice(0, 10);
@@ -52,17 +56,29 @@ export default function SessionsTab({
                   ))}
                 </div>
 
-                {/* Filter + Refresh + Schedule */}
+                {/* Filter + Refresh + All toggle + Schedule */}
                 <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
                   <input className="form-input" style={{ flex: '1 1 200px', margin: 0 }}
                     placeholder={lang === 'ar' ? '🔍 فلتر حسب المعلم أو الطالب...' : '🔍 Filter by teacher or student...'}
                     value={adminTeacherFilter}
                     onChange={e => setAdminTeacherFilter(e.target.value)} />
-                  <button onClick={loadAdminSessions} className="btn btn-outline btn-sm" style={{ whiteSpace: 'nowrap' }}>🔄 {lang === 'ar' ? 'تحديث' : 'Refresh'}</button>
+                  <button onClick={() => loadAdminSessions(adminSessShowAll)} className="btn btn-outline btn-sm" style={{ whiteSpace: 'nowrap' }}>🔄 {lang === 'ar' ? 'تحديث' : 'Refresh'}</button>
+                  <button
+                    onClick={() => loadAdminSessions(!adminSessShowAll)}
+                    className="btn btn-outline btn-sm"
+                    style={{ whiteSpace: 'nowrap', color: adminSessShowAll ? 'var(--primary)' : 'var(--muted)', borderColor: adminSessShowAll ? 'var(--primary)' : 'var(--border)' }}
+                  >
+                    {adminSessShowAll ? (lang === 'ar' ? '📅 الشهر الحالي' : '📅 This month') : (lang === 'ar' ? '📂 كل الحصص' : '📂 All sessions')}
+                  </button>
                   <button onClick={openAdminSchedModal} className="btn btn-primary btn-sm" style={{ whiteSpace: 'nowrap' }}>
                     📅 {lang === 'ar' ? '+ جدولة حصة' : '+ Schedule'}
                   </button>
                 </div>
+                {!adminSessShowAll && (
+                  <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginBottom: 12, marginTop: -10 }}>
+                    {lang === 'ar' ? '⚡ يُعرض الشهر الحالي فقط — اضغط «كل الحصص» لعرض الأرشيف الكامل.' : '⚡ Showing current month only — click «All sessions» to load the full archive.'}
+                  </div>
+                )}
 
                 {/* Sub-tabs */}
                 <div style={{ display: 'flex', gap: 4, background: '#f0f4f8', borderRadius: 10, padding: 4, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -169,12 +185,26 @@ export default function SessionsTab({
 
                     {/* Past */}
                     {adminSessTab === 'past' && (() => {
-                      const attendedCount = past.filter(s => s.attended === true).length;
-                      const markedCount   = past.filter(s => s.attended !== null && s.attended !== undefined).length;
+                      const pastFiltered  = pastSearch
+                        ? past.filter(s =>
+                            s.teacher_name?.includes(pastSearch) ||
+                            s.student_name?.includes(pastSearch) ||
+                            s.subject?.includes(pastSearch) ||
+                            s.session_date?.includes(pastSearch))
+                        : past;
+                      const attendedCount = pastFiltered.filter(s => s.attended === true).length;
+                      const markedCount   = pastFiltered.filter(s => s.attended !== null && s.attended !== undefined).length;
                       return past.length === 0 ? (
                         <div className="empty-state card"><span className="empty-icon">📭</span><p>{lang === 'ar' ? 'لا توجد حصص منتهية' : 'No past sessions'}</p></div>
                       ) : (
                         <>
+                          <input
+                            className="form-input"
+                            style={{ margin: '0 0 14px', width: '100%', boxSizing: 'border-box' }}
+                            placeholder={lang === 'ar' ? '🔍 ابحث في الحصص المنتهية (معلم، طالب، مادة، تاريخ)...' : '🔍 Search past sessions...'}
+                            value={pastSearch}
+                            onChange={e => setPastSearch(e.target.value)}
+                          />
                           {markedCount > 0 && (
                             <div style={{ background: '#f0fdf4', border: '1.5px solid #6ee7b7', borderRadius: 12, padding: '10px 16px', marginBottom: 14, display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
                               <span style={{ fontWeight: 800, fontSize: '.88rem', color: '#065f46' }}>📊 إحصائيات الحضور</span>
@@ -183,8 +213,11 @@ export default function SessionsTab({
                               <span style={{ fontSize: '.85rem', color: '#64748b' }}>نسبة الحضور: <strong>{Math.round((attendedCount / markedCount) * 100)}%</strong></span>
                             </div>
                           )}
+                          {pastFiltered.length === 0 && pastSearch && (
+                            <div className="empty-state card"><span className="empty-icon">🔍</span><p>{lang === 'ar' ? 'لا نتائج لهذا البحث' : 'No results found'}</p></div>
+                          )}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {past.slice(0, 30).map(s => (
+                            {pastFiltered.slice(0, 30).map(s => (
                               <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: `1.5px solid ${s.attended === true ? '#6ee7b7' : s.attended === false ? '#fca5a5' : 'var(--border)'}`, padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
                                 <div style={{ fontSize: '1.6rem', paddingTop: 2 }}>{s.attended === true ? '✅' : s.attended === false ? '❌' : '📋'}</div>
                                 <div style={{ flex: 1, minWidth: 180 }}>
@@ -229,29 +262,48 @@ export default function SessionsTab({
                     })()}
 
                     {/* Cancelled */}
-                    {adminSessTab === 'cancelled' && (
-                      cancelled.length === 0 ? (
+                    {adminSessTab === 'cancelled' && (() => {
+                      const cancelledFiltered = cancelledSearch
+                        ? cancelled.filter(s =>
+                            s.teacher_name?.includes(cancelledSearch) ||
+                            s.student_name?.includes(cancelledSearch) ||
+                            s.subject?.includes(cancelledSearch) ||
+                            s.session_date?.includes(cancelledSearch))
+                        : cancelled;
+                      return cancelled.length === 0 ? (
                         <div className="empty-state card"><span className="empty-icon">📭</span><p>{lang === 'ar' ? 'لا توجد حصص ملغاة' : 'No cancelled sessions'}</p></div>
                       ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          {cancelled.slice(0, 30).map(s => (
-                            <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: '1.5px solid var(--border)', padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', opacity: .7 }}>
-                              <div style={{ fontSize: '1.6rem', paddingTop: 2 }}>❌</div>
-                              <div style={{ flex: 1, minWidth: 180 }}>
-                                <div style={{ fontWeight: 800, fontSize: '.95rem', marginBottom: 3 }}>{s.subject || (lang === 'ar' ? 'حصة عامة' : 'General session')}</div>
-                                <div style={{ fontSize: '.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                                  <span>👨‍🏫 {s.teacher_name}</span>
-                                  <span>👤 {s.student_name}</span>
-                                  <span>📅 {fmtDate(s.session_date, lang)}</span>
-                                  <span>⏰ {s.start_time?.slice(0, 5)}</span>
-                                  <span style={{ color: '#e53e3e', fontWeight: 700 }}>{lang === 'ar' ? 'ملغاة' : 'Cancelled'}</span>
+                        <>
+                          <input
+                            className="form-input"
+                            style={{ margin: '0 0 14px', width: '100%', boxSizing: 'border-box' }}
+                            placeholder={lang === 'ar' ? '🔍 ابحث في الحصص الملغاة (معلم، طالب، مادة، تاريخ)...' : '🔍 Search cancelled sessions...'}
+                            value={cancelledSearch}
+                            onChange={e => setCancelledSearch(e.target.value)}
+                          />
+                          {cancelledFiltered.length === 0 && cancelledSearch && (
+                            <div className="empty-state card"><span className="empty-icon">🔍</span><p>{lang === 'ar' ? 'لا نتائج لهذا البحث' : 'No results found'}</p></div>
+                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {cancelledFiltered.slice(0, 30).map(s => (
+                              <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: '1.5px solid var(--border)', padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', opacity: .7 }}>
+                                <div style={{ fontSize: '1.6rem', paddingTop: 2 }}>❌</div>
+                                <div style={{ flex: 1, minWidth: 180 }}>
+                                  <div style={{ fontWeight: 800, fontSize: '.95rem', marginBottom: 3 }}>{s.subject || (lang === 'ar' ? 'حصة عامة' : 'General session')}</div>
+                                  <div style={{ fontSize: '.83rem', color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                                    <span>👨‍🏫 {s.teacher_name}</span>
+                                    <span>👤 {s.student_name}</span>
+                                    <span>📅 {fmtDate(s.session_date, lang)}</span>
+                                    <span>⏰ {s.start_time?.slice(0, 5)}</span>
+                                    <span style={{ color: '#e53e3e', fontWeight: 700 }}>{lang === 'ar' ? 'ملغاة' : 'Cancelled'}</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    )}
+                            ))}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </>
                 )}
               </div>

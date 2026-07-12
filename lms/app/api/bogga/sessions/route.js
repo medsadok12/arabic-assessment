@@ -16,20 +16,37 @@ async function checkAdmin() {
   return user;
 }
 
-// GET — all sessions (admin view)
-export async function GET() {
+// GET — sessions (admin view); defaults to current month, pass ?all=1 for full history
+export async function GET(request) {
   const user = await checkAdmin();
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
+  const { searchParams } = new URL(request.url);
+  const showAll = searchParams.get('all') === '1';
+
+  // Qatar timezone (UTC+3) for month boundary calculation
+  function qatarNow() { return new Date(Date.now() + 3 * 60 * 60 * 1000); }
+  const qNow  = qatarNow();
+  const year  = qNow.getUTCFullYear();
+  const month = qNow.getUTCMonth() + 1;
+  const dateFrom = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastDay  = new Date(year, month, 0).getDate();
+  const dateTo   = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
   const admin = createAdminClient();
-  const { data, error } = await admin
+  let q = admin
     .from('sessions')
     .select('id, teacher_id, teacher_name, student_name, student_email, session_date, start_time, duration_minutes, subject, status, meet_link, room_name, notes, recording_url, reminder_sent, attended, created_at')
     .order('session_date', { ascending: false })
     .order('start_time',   { ascending: true });
 
+  if (!showAll) {
+    q = q.gte('session_date', dateFrom).lte('session_date', dateTo);
+  }
+
+  const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ sessions: data ?? [] });
+  return NextResponse.json({ sessions: data ?? [], isFiltered: !showAll });
 }
 
 // POST — create a session (admin-scheduled)

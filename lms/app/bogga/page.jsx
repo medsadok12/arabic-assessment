@@ -183,6 +183,7 @@ export default function BoggarAdminPage() {
   const [adminCancellingId, setAdminCancellingId] = useState(null);
   const [adminWeekOffset,   setAdminWeekOffset]   = useState(0);
   const [adminTeacherFilter,setAdminTeacherFilter]= useState('');
+  const [adminSessShowAll,  setAdminSessShowAll]  = useState(false);
   // Admin session scheduling modal
   const EMPTY_SCHED = { teacherName:'', teacherId:'', teacherEmail:'', studentName:'', studentEmail:'', sessionDate:'', startTime:'', durationMinutes:'60', subject:'' };
   const [adminSchedModal,   setAdminSchedModal]   = useState(false);
@@ -859,10 +860,12 @@ export default function BoggarAdminPage() {
   }
 
   // ── Admin Sessions ────────────────────────────────────────────────────────
-  async function loadAdminSessions() {
+  async function loadAdminSessions(showAll = false) {
     setAdminSessLoading(true);
-    const data = await fetch('/api/bogga/sessions').then(r => r.json()).catch(() => ({}));
+    const url = showAll ? '/api/bogga/sessions?all=1' : '/api/bogga/sessions';
+    const data = await fetch(url).then(r => r.json()).catch(() => ({}));
     setAdminSessions(data.sessions ?? []);
+    setAdminSessShowAll(showAll);
     setAdminSessLoading(false);
   }
 
@@ -1172,6 +1175,7 @@ export default function BoggarAdminPage() {
               adminSessTab={adminSessTab} setAdminSessTab={setAdminSessTab}
               adminWeekOffset={adminWeekOffset} setAdminWeekOffset={setAdminWeekOffset}
               adminTeacherFilter={adminTeacherFilter} setAdminTeacherFilter={setAdminTeacherFilter}
+              adminSessShowAll={adminSessShowAll}
               loadAdminSessions={loadAdminSessions} openAdminSchedModal={openAdminSchedModal}
               setAdminCompleteFor={setAdminCompleteFor} setAdminRecordingUrl={setAdminRecordingUrl}
               handleAdminCancel={handleAdminCancel} adminCancellingId={adminCancellingId}
