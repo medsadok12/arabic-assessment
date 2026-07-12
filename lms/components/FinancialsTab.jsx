@@ -20,8 +20,14 @@ function fmtAmount(n) {
   return Number(n ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// عدد الحصص عادة صحيح — لا نُظهر "8.00" مضلِّلة، لكن نسمح بعرض كسر إن أدخله الأدمن فعلاً.
+function fmtCount(n) {
+  const v = Number(n ?? 0);
+  return Number.isInteger(v) ? String(v) : v.toFixed(2);
+}
+
 // ── Editable cell (locked when invoice is sent — financial lock) ─────────────
-function EditableCell({ value, onSave, prefix = '', suffix = '', locked = false }) {
+function EditableCell({ value, onSave, prefix = '', suffix = '', locked = false, step = '0.01', formatter = fmtAmount }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal]         = useState(value);
   const inputRef              = useRef(null);
@@ -46,7 +52,7 @@ function EditableCell({ value, onSave, prefix = '', suffix = '', locked = false 
         display: 'inline-block', minWidth: 70, textAlign: 'center',
         background: '#f8fafc', cursor: 'not-allowed',
       }}>
-        🔒 {prefix}{fmtAmount(value)}{suffix}
+        🔒 {prefix}{formatter(value)}{suffix}
       </span>
     );
   }
@@ -55,7 +61,7 @@ function EditableCell({ value, onSave, prefix = '', suffix = '', locked = false 
     return (
       <input
         ref={inputRef}
-        type="number" min="0" step="0.01"
+        type="number" min="0" step={step}
         value={val}
         onChange={e => setVal(e.target.value)}
         onBlur={commit}
@@ -82,7 +88,7 @@ function EditableCell({ value, onSave, prefix = '', suffix = '', locked = false 
       onMouseOver={e => { e.currentTarget.style.borderColor = '#185FA5'; e.currentTarget.style.background = '#f0f6ff'; }}
       onMouseOut={e => { e.currentTarget.style.borderColor = '#c4cdd8'; e.currentTarget.style.background = 'transparent'; }}
     >
-      {prefix}{fmtAmount(value)}{suffix}
+      {prefix}{formatter(value)}{suffix}
     </span>
   );
 }
@@ -187,9 +193,9 @@ function InvoiceRow({ invoice, onUpdate, onSend, sending, lang }) {
         <td style={{ padding: '12px 14px', textAlign: 'center', color: '#475569', fontSize: '.88rem' }}>
           {invoice.sessions_count}
         </td>
-        {/* Hours — editable, locked when sent */}
+        {/* Billed sessions — editable, locked when sent (1 حصة = وحدة فوترة كاملة) */}
         <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-          <EditableCell value={Number(invoice.total_hours)} onSave={val => update('total_hours', val)} suffix=" س" locked={isSent} />
+          <EditableCell value={Number(invoice.total_hours)} onSave={val => update('total_hours', val)} suffix=" حصة" step="1" formatter={fmtCount} locked={isSent} />
         </td>
         {/* Rate — editable, locked when sent */}
         <td style={{ padding: '12px 14px', textAlign: 'center' }}>
@@ -234,6 +240,21 @@ function InvoiceRow({ invoice, onUpdate, onSend, sending, lang }) {
         </td>
         {/* Actions */}
         <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {/* معاينة/تنزيل — للمسودات فقط، قبل أي إرسال فعلي */}
+          {!isSent && (
+            <button
+              onClick={() => window.open(`/api/bogga/financials/${invoice.id}/preview`, '_blank', 'noopener,noreferrer')}
+              title="معاينة الفاتورة وطباعتها أو حفظها كـPDF قبل الإرسال"
+              style={{
+                background: '#fff', color: '#185FA5', border: '1.5px solid #c4dcf7',
+                borderRadius: 9, padding: '7px 12px', fontSize: '.8rem', fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+              }}
+            >
+              🖨️ معاينة
+            </button>
+          )}
           {isSent && invoice.email_delivery_status === 'success' ? (
             <span style={{ fontSize: '.75rem', color: '#94a3b8' }}>
               {invoice.sent_at ? new Date(invoice.sent_at).toLocaleDateString('en-GB') : '—'}
@@ -271,6 +292,7 @@ function InvoiceRow({ invoice, onUpdate, onSend, sending, lang }) {
               ) : invoice.email_delivery_status === 'failed' ? '🔄 إعادة الإرسال' : '📨 اعتماد وإرسال'}
             </button>
           )}
+          </div>
         </td>
       </tr>
 
@@ -287,7 +309,7 @@ function InvoiceRow({ invoice, onUpdate, onSend, sending, lang }) {
                       {invoice.type === 'teacher_payout' ? 'الطالب' : 'المعلم'}
                     </th>
                     <th style={{ padding: '7px 12px', textAlign: 'right', color: '#185FA5', fontWeight: 700 }}>المادة</th>
-                    <th style={{ padding: '7px 12px', textAlign: 'center', color: '#185FA5', fontWeight: 700 }}>المدة</th>
+                    <th style={{ padding: '7px 12px', textAlign: 'center', color: '#185FA5', fontWeight: 700 }}>مدة الحصة</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -583,7 +605,7 @@ export default function FinancialsTab({ lang = 'ar' }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
               <thead>
                 <tr style={{ background: '#f8faff', borderBottom: '2px solid #dbeafe' }}>
-                  {['الاسم', 'الحصص', 'الساعات ✎', 'السعر/س ✎', 'المبلغ', 'الحالة', 'إجراء'].map(h => (
+                  {['الاسم', 'الحصص المكتشفة', 'حصص الفوترة ✎', 'السعر/حصة ✎', 'المبلغ', 'الحالة', 'إجراء'].map(h => (
                     <th key={h} style={{
                       padding: '11px 14px', textAlign: h === 'الاسم' ? 'right' : 'center',
                       fontSize: '.8rem', fontWeight: 800, color: '#185FA5',
@@ -623,7 +645,9 @@ export default function FinancialsTab({ lang = 'ar' }) {
 
       {/* ── Note ── */}
       <p style={{ fontSize: '.78rem', color: '#94a3b8', marginTop: 14, lineHeight: 1.7 }}>
-        ✎ انقر على خلية الساعات أو السعر لتعديلها مباشرة. المبلغ يُحسب تلقائياً.
+        ✎ كل حصة مكتملة = وحدة فوترة كاملة (1 حصة)، بصرف النظر عن مدتها الفعلية.
+        انقر على خلية "حصص الفوترة" أو "السعر" لتعديلها مباشرة. المبلغ = الحصص × السعر ويُحسب تلقائياً.
+        🖨️ استخدم زر "معاينة" لتنزيل/طباعة نسخة من الفاتورة كمرجع قبل اعتمادها وإرسالها فعلياً.
         🔒 الخلايا تُقفل نهائياً بعد الإرسال الناجح لحماية السجلات التاريخية.
         {subTab === 'teacher_payout' && ' لإرسال مستحقات معلم، يجب أن يكون لديه بريد مسجّل في النظام.'}
         {' '}⚠️ إذا ظهرت علامة "فشل الإرسال" اضغط "إعادة الإرسال" مباشرة.

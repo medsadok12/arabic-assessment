@@ -15,16 +15,36 @@ function fmtAmount(n) {
   return Number(n ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function invoiceHtml(invoice) {
+// عرض عدد الحصص كعدد صحيح متى أمكن (بلا "8.00" مضلِّلة) — القيمة المخزَّنة تبقى رقمية عادية.
+function fmtCount(n) {
+  const v = Number(n ?? 0);
+  return Number.isInteger(v) ? String(v) : v.toFixed(2);
+}
+
+// أي نص مصدره مُدخَل من مستخدم (اسم معلم/طالب عبر user_metadata، ملاحظة أدمن، مادة حصة)
+// يُدرَج هنا مباشرة داخل HTML خام — يجب تنقيته دائماً، سواء استُخدم هذا القالب لبريد
+// إلكتروني أو عُرض حياً في متصفح الأدمن عبر مسار المعاينة.
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+export function invoiceHtml(invoice, { withPrintButton = false } = {}) {
   const isTeacher = invoice.type === 'teacher_payout';
   const items = Array.isArray(invoice.items) ? invoice.items : [];
+  // قاعدة الفوترة: كل حصة = وحدة فوترة كاملة واحدة، بصرف النظر عن مدتها الفعلية. مبلغ كل
+  // سطر يُشتَق من amount/عدد الأسطر (لا من rate_per_hour مباشرة) كي يطابق مجموع الأسطر
+  // إجمالي الفاتورة دائماً، حتى لو اختلف عدد الحصص المفوترة عن عدد الحصص المكتشفة تلقائياً
+  // (مثال: أدمن استبعد حصة غياب من "حصص الفوترة" دون حذفها من السجل التفصيلي items).
+  const rowAmt = items.length > 0
+    ? (Number(invoice.amount) / items.length).toFixed(2)
+    : Number(invoice.rate_per_hour).toFixed(2);
   const tableRows = items.map(it => {
-    const hrs = (it.minutes / 60).toFixed(2);
-    const rowAmt = (parseFloat(hrs) * Number(invoice.rate_per_hour)).toFixed(2);
     return `<tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #eef2f8;font-size:.88rem;color:#334155">${it.date ?? ''}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #eef2f8;font-size:.88rem;color:#334155">${isTeacher ? (it.student ?? '') : (it.teacher ?? '')}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #eef2f8;font-size:.88rem;color:#334155">${it.subject ?? '—'}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eef2f8;font-size:.88rem;color:#334155">${escapeHtml(it.date)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eef2f8;font-size:.88rem;color:#334155">${isTeacher ? escapeHtml(it.student) : escapeHtml(it.teacher)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eef2f8;font-size:.88rem;color:#334155">${it.subject ? escapeHtml(it.subject) : '—'}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eef2f8;font-size:.88rem;color:#334155;text-align:center">${it.minutes ?? 60} د</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eef2f8;font-size:.88rem;color:#1a7c40;text-align:center;font-weight:700">${fmtAmount(rowAmt)}</td>
     </tr>`;
@@ -35,6 +55,7 @@ function invoiceHtml(invoice) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${isTeacher ? 'كشف مستحقات' : 'فاتورة'} — ${escapeHtml(invoice.user_name)}</title>
   <style>
     body{margin:0;padding:0;background:#f0f4f9;font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl}
     .wrap{max-width:640px;margin:0 auto;padding:28px 16px}
@@ -57,10 +78,17 @@ function invoiceHtml(invoice) {
     .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:700}
     .badge-green{background:#dcfce7;color:#166534}
     .badge-blue{background:#dbeafe;color:#1e40af}
+    ${withPrintButton ? `
+    .print-bar{max-width:640px;margin:0 auto;padding:0 16px 14px;display:flex;justify-content:flex-end}
+    .print-btn{background:#185FA5;color:#fff;border:none;border-radius:9px;padding:9px 18px;font-size:.85rem;font-weight:700;font-family:inherit;cursor:pointer}
+    .draft-note{max-width:640px;margin:14px auto 0;padding:10px 16px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:10px;color:#92400e;font-size:.82rem;text-align:center}
+    @media print{.print-bar,.draft-note{display:none}body{background:#fff}.wrap{padding:0}.card{box-shadow:none;border-radius:0}}
+    ` : ''}
     @media(max-width:500px){.meta-grid{grid-template-columns:1fr}.body{padding:20px 18px}.hdr{padding:22px 18px}}
   </style>
 </head>
 <body>
+${withPrintButton ? `<div class="print-bar"><button class="print-btn" onclick="window.print()">🖨️ طباعة / حفظ كـPDF</button></div>` : ''}
 <div class="wrap">
   <div class="card">
     <div class="hdr">
@@ -71,22 +99,22 @@ function invoiceHtml(invoice) {
       <div class="meta-grid">
         <div class="meta-box">
           <div class="meta-lbl">الاسم</div>
-          <div class="meta-val">${invoice.user_name}</div>
+          <div class="meta-val">${escapeHtml(invoice.user_name)}</div>
         </div>
         <div class="meta-box">
           <div class="meta-lbl">الفترة</div>
           <div class="meta-val">${periodLabel(invoice.billing_period)}</div>
         </div>
         <div class="meta-box">
-          <div class="meta-lbl">عدد الحصص</div>
+          <div class="meta-lbl">الحصص المكتشفة تلقائياً</div>
           <div class="meta-val">${invoice.sessions_count}</div>
         </div>
         <div class="meta-box">
-          <div class="meta-lbl">إجمالي الساعات</div>
-          <div class="meta-val">${Number(invoice.total_hours).toFixed(2)} ساعة</div>
+          <div class="meta-lbl">الحصص المفوترة</div>
+          <div class="meta-val">${fmtCount(invoice.total_hours)} حصة</div>
         </div>
         <div class="meta-box">
-          <div class="meta-lbl">السعر / الساعة</div>
+          <div class="meta-lbl">السعر / الحصة</div>
           <div class="meta-val">${fmtAmount(invoice.rate_per_hour)} ر.ق</div>
         </div>
         <div class="meta-box" style="background:#f0fdf4;border-right-color:#1a7c40">
@@ -103,7 +131,7 @@ function invoiceHtml(invoice) {
               <th>التاريخ</th>
               <th>${isTeacher ? 'الطالب' : 'المعلم'}</th>
               <th>المادة</th>
-              <th style="text-align:center">المدة</th>
+              <th style="text-align:center">مدة الحصة</th>
               <th style="text-align:center">المبلغ</th>
             </tr>
           </thead>
@@ -118,13 +146,15 @@ function invoiceHtml(invoice) {
           </tfoot>
         </table>
       </div>
+      <p style="font-size:.72rem;color:#94a3b8;margin:8px 2px 0">مدة الحصة معلومة مرجعية فقط — الفوترة بالحصة الكاملة بصرف النظر عن مدتها.</p>
       ` : ''}
 
-      ${invoice.notes ? `<p style="background:#fffbeb;border-right:3px solid #f59e0b;padding:12px 16px;border-radius:8px;font-size:.9rem;color:#78350f;margin:0">${invoice.notes}</p>` : ''}
+      ${invoice.notes ? `<p style="background:#fffbeb;border-right:3px solid #f59e0b;padding:12px 16px;border-radius:8px;font-size:.9rem;color:#78350f;margin:0">${escapeHtml(invoice.notes)}</p>` : ''}
     </div>
     <div class="ftr">أكاديمية عارم للتعليم — aarem.net<br>هذا إشعار تلقائي، يُرجى عدم الرد عليه</div>
   </div>
 </div>
+${withPrintButton && invoice.status !== 'sent' ? `<div class="draft-note">📝 هذه معاينة لفاتورة بحالة "مسودة" — لم تُرسَل بعد، ولا تشكّل إشعاراً رسمياً حتى يتم اعتمادها وإرسالها من لوحة الإدارة.</div>` : ''}
 </body>
 </html>`;
 }

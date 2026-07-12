@@ -97,12 +97,10 @@ export async function POST(request) {
         user_name:  type === 'teacher_payout' ? s.teacher_name : s.student_name,
         user_email: type === 'teacher_payout' ? (s.teacher_name + '@teacher') : (s.student_email ?? ''),
         items: [],
-        totalMinutes: 0,
         sessions_count: 0,
       };
     }
     const g = groups[key];
-    g.totalMinutes   += (s.duration_minutes ?? 60);
     g.sessions_count += 1;
     g.items.push({
       session_id: s.id,
@@ -151,7 +149,7 @@ export async function POST(request) {
   // Fetch already-existing invoices for this period to avoid overwriting admin edits
   const { data: existing } = await admin
     .from('invoices')
-    .select('id, user_email, rate_per_hour, amount, status, items')
+    .select('id, user_email, rate_per_hour, amount, status, items, total_hours, sessions_count')
     .eq('billing_period', period)
     .eq('type', type);
   const existingMap = {};
@@ -166,15 +164,21 @@ export async function POST(request) {
       console.warn(`[financials] Skipping teacher "${g.user_name}" — no valid email resolved. Fix their account data manually.`);
       continue;
     }
-    const hours = parseFloat((g.totalMinutes / 60).toFixed(2));
-    const ex    = existingMap[g.user_email];
+    // قاعدة الفوترة: كل حصة = وحدة فوترة كاملة واحدة (1 حصة = 1 "ساعة" في عمود total_hours)،
+    // بصرف النظر عن duration_minutes الفعلية للحصة — الأخيرة تبقى معروضة كمعلومة فقط في items.
+    const sessionUnits = g.sessions_count;
+    const ex = existingMap[g.user_email];
     if (ex) {
-      // Invoice already exists — preserve admin-set rate/amount/status/items
-      // Only refresh sessions_count and total_hours if no rate has been set yet
-      if (Number(ex.rate_per_hour) === 0) {
-        toUpdate.push({ id: ex.id, total_hours: hours, sessions_count: g.sessions_count, items: g.items, updated_at: nowISO });
+      // Invoice already exists — preserve admin-set rate/amount/status/items.
+      // Refresh sessions_count/total_hours only if the invoice is still fully
+      // "pristine": no rate set yet AND the admin hasn't manually diverged
+      // total_hours away from the auto-detected sessions_count (e.g. to
+      // exclude a no-show). Either signal alone means "admin has touched this
+      // invoice" → treat as a locked snapshot and skip the silent overwrite.
+      const untouched = Number(ex.rate_per_hour) === 0 && Number(ex.total_hours) === Number(ex.sessions_count);
+      if (untouched) {
+        toUpdate.push({ id: ex.id, total_hours: sessionUnits, sessions_count: g.sessions_count, items: g.items, updated_at: nowISO });
       }
-      // If rate > 0: admin has edited → treat as locked snapshot, skip
     } else {
       toInsert.push({
         user_id:        g.user_id,
@@ -182,7 +186,7 @@ export async function POST(request) {
         user_email:     g.user_email,
         type,
         billing_period: period,
-        total_hours:    hours,
+        total_hours:    sessionUnits,
         sessions_count: g.sessions_count,
         rate_per_hour:  0,
         amount:         0,
