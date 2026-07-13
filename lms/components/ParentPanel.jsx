@@ -73,7 +73,7 @@ export default function ParentPanel({ assessments }) {
   const latestScore = sorted[sorted.length - 1]?.score ?? 0;
 
   const chartData = sorted.map(a => ({
-    date:  a.completed_at ? new Date(a.completed_at).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' }) : '—',
+    date:  a.completed_at ? new Date(a.completed_at).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }) : '—',
     score: a.score ?? 0,
   }));
 

@@ -54,7 +54,14 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
     setTimeout(() => {
       setSelected(null);
       setShowFeedback(false);
-      onAnswer({ questionId: question.id, skill: question.skill, answer: selected, isCorrect });
+      onAnswer({
+        questionId: question.id,
+        skill:      question.skill,
+        answer:     selected,
+        isCorrect,
+        answerText:  shuffledOptions[selected]?.text ?? '',
+        correctText: shuffledOptions.find(o => o.correct)?.text ?? '',
+      });
     }, 600);
   }
 

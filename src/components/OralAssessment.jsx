@@ -48,6 +48,8 @@ export default function OralAssessment({ question, onAnswer }) {
         skill:      question.skill ?? 'speaking',
         answer:     updated,
         isCorrect:  correctCount / items.length >= 0.5,
+        answerText:  `نطق صحيحاً ${correctCount} من ${items.length} كلمة`,
+        correctText: `نطق ${items.length} كلمة بشكل صحيح`,
       });
     }
   }

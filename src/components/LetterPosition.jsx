@@ -69,11 +69,14 @@ export default function LetterPosition({ question, onAnswer }) {
 
   function handleConfirm() {
     const isCorrect = WORDS.every(w => slots[w.id] === w.correct);
+    const formLabel = id => FORMS.find(f => f.id === id)?.label ?? '—';
     onAnswer({
       questionId: question.id,
       skill:      question.skill ?? 'reading',
       answer:     slots,
       isCorrect,
+      answerText:  WORDS.map(w => `${w.label}: ${formLabel(slots[w.id])}`).join('، '),
+      correctText: WORDS.map(w => `${w.label}: ${formLabel(w.correct)}`).join('، '),
     });
   }
 

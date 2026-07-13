@@ -30,7 +30,7 @@ export default async function handler(req, res) {
         </div>
         <div style="padding:24px;background:#fff;font-size:1rem;line-height:1.8;color:#222;white-space:pre-wrap">${safe}</div>
         <div style="background:#f5f5f0;padding:12px 24px;font-size:0.8rem;color:#888">
-          أُرسلت عبر فقاعة التواصل في arabic-assessment.vercel.app
+          أُرسلت عبر فقاعة التواصل في assessment.aarem.net
         </div>
       </div>`,
   });
