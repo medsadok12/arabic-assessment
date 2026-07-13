@@ -231,7 +231,7 @@ function AvatarCard({ user, onUserUpdate }) {
                 />
                 {nameDirty && (
                   <button
-                    className="btn btn-primary"
+                    className="btn btn-accent"
                     onClick={handleNameSave}
                     disabled={nameSaving}
                     style={{ flexShrink: 0, padding: '0 16px' }}
@@ -276,7 +276,7 @@ function AvatarCard({ user, onUserUpdate }) {
                 />
                 {emailDirty && (
                   <button
-                    className="btn btn-primary"
+                    className="btn btn-accent"
                     onClick={handleEmailSave}
                     disabled={emailSaving}
                     style={{ flexShrink: 0, padding: '0 16px' }}
@@ -445,7 +445,7 @@ function PasswordCard({ user }) {
           </div>
           <button
             type="submit"
-            className="btn btn-primary"
+            className="btn btn-accent"
             disabled={loading}
             style={{ marginTop: 4 }}
           >
@@ -482,7 +482,7 @@ function PasswordCard({ user }) {
           <div style={{ display: 'flex', gap: 10 }}>
             <button
               type="submit"
-              className="btn btn-primary"
+              className="btn btn-accent"
               disabled={loading}
               style={{ flex: 1 }}
             >

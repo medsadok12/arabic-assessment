@@ -30,7 +30,10 @@ async function loadQuestions(gameType) {
   const admin = createAdminClient();
 
   if (gameType === 'vowel-balloon') {
-    const { data } = await admin.from('vowel_balloon_games').select('*');
+    const { data } = await admin
+      .from('vowel_balloon_games')
+      .select('id, target_text, correct_option, wrong_option_1, wrong_option_2')
+      .limit(80);
     const valid = (data || []).filter(r => r.target_text && r.correct_option);
     const pool = valid.length >= 6 ? valid : FALLBACK_VB;
     return shuffle(pool).slice(0, 10).map(r => ({
@@ -43,7 +46,10 @@ async function loadQuestions(gameType) {
   }
 
   if (gameType === 'word-smash') {
-    const { data } = await admin.from('syllable_games').select('*');
+    const { data } = await admin
+      .from('syllable_games')
+      .select('id, word_text, correct_segments, wrong_options')
+      .limit(80);
     const valid = (data || []).filter(
       r => r.word_text && r.correct_segments?.length && r.wrong_options?.length >= 2
     );
@@ -58,7 +64,10 @@ async function loadQuestions(gameType) {
   }
 
   if (gameType === 'letter-catcher') {
-    const { data } = await admin.from('letter_catcher_words').select('*');
+    const { data } = await admin
+      .from('letter_catcher_words')
+      .select('id, word, missing_letter, options')
+      .limit(80);
     const valid = (data || []).filter(r => r.word && r.missing_letter && r.options?.length >= 3);
     if (valid.length < 3) return null;
     return shuffle(valid).slice(0, 10).map(r => {
@@ -77,7 +86,10 @@ async function loadQuestions(gameType) {
   }
 
   if (gameType === 'word-image-match') {
-    const { data } = await admin.from('word_image_matches').select('*');
+    const { data } = await admin
+      .from('word_image_matches')
+      .select('id, word_text, image_url')
+      .limit(80);
     const valid = (data || []).filter(r => r.word_text && r.image_url);
     if (valid.length < 3) return null;
     const pool = shuffle(valid).slice(0, 10);

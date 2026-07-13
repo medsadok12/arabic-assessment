@@ -56,7 +56,7 @@ export default function SetupTab({
                       {sheetsUrl && (
                         <a href={sheetsUrl} target="_blank" rel="noopener noreferrer"
                           className="btn btn-sm"
-                          style={{ background: '#1a7c40', color: '#fff', textDecoration: 'none' }}>
+                          style={{ background: 'var(--accent)', color: 'var(--primary)', fontWeight: 800, textDecoration: 'none' }}>
                           {lang === 'ar' ? 'فتح' : 'Open'}
                         </a>
                       )}
@@ -72,7 +72,7 @@ export default function SetupTab({
                       {SETUP_SQL}
                     </pre>
                     <button onClick={copySetupSql} className="btn btn-sm"
-                      style={{ position: 'absolute', top: 12, left: 12, background: copied ? '#1a7c40' : 'rgba(255,255,255,.15)', color: '#fff', border: 'none' }}>
+                      style={{ position: 'absolute', top: 12, left: 12, background: copied ? 'var(--success)' : 'rgba(255,255,255,.15)', color: '#fff', border: 'none' }}>
                       {copied ? tr('admin.setup.copied') : tr('admin.setup.copy')}
                     </button>
                   </div>

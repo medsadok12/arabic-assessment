@@ -31,7 +31,10 @@ export async function GET(request) {
     if (error || !data) return NextResponse.json({ pairs: [], source: 'error' });
 
     const valid = data.filter(p => p.word_text?.trim() && p.image_url);
-    return NextResponse.json({ pairs: valid, source: 'database' });
+    return NextResponse.json(
+      { pairs: valid, source: 'database' },
+      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } }
+    );
   } catch {
     return NextResponse.json({ pairs: [], source: 'error' });
   }

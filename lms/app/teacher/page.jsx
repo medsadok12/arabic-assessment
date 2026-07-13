@@ -534,7 +534,7 @@ export default function TeacherPage() {
           </div>
           <div style={{ marginRight:'auto', display:'flex', alignItems:'center', gap:10 }}>
             <NotificationBell userId={user?.id} role={getRole(user)} lang="ar" />
-            <button onClick={openCreate} className="btn btn-primary">
+            <button onClick={openCreate} className="btn btn-accent">
               + جدولة حصة جديدة
             </button>
           </div>
@@ -810,7 +810,7 @@ export default function TeacherPage() {
                                 <input className="form-input" type="email" placeholder="البريد *"
                                   value={inviteForm.studentEmail} onChange={setInv('studentEmail')}
                                   dir="ltr" style={{ fontSize:'.85rem', padding:'7px 10px' }} required />
-                                <button type="submit" className="btn btn-primary btn-sm" disabled={inviteSaving}>
+                                <button type="submit" className="btn btn-accent btn-sm" disabled={inviteSaving}>
                                   {inviteSaving ? '...' : 'إرسال'}
                                 </button>
                                 <button type="button" className="btn btn-outline btn-sm" onClick={() => setInviteFor(null)}>×</button>
@@ -851,7 +851,7 @@ export default function TeacherPage() {
                           ) : (
                             <button onClick={() => startSession(s)}
                               disabled={startingId === s.id}
-                              className="btn btn-primary btn-sm"
+                              className="btn btn-accent btn-sm"
                               style={{ opacity: startingId === s.id ? .7 : 1, cursor: startingId === s.id ? 'wait' : 'pointer' }}>
                               {startingId === s.id ? '⏳ جارٍ...' : 'ابدأ الحصة 🎥'}
                             </button>
@@ -1150,7 +1150,7 @@ export default function TeacherPage() {
                               style={{ fontSize:'.88rem', resize:'vertical', marginBottom:8 }}
                             />
                             <div style={{ display:'flex', gap:8 }}>
-                              <button onClick={saveNotes} className="btn btn-primary btn-sm" disabled={notesSaving}>
+                              <button onClick={saveNotes} className="btn btn-accent btn-sm" disabled={notesSaving}>
                                 {notesSaving ? '...' : '💾 حفظ'}
                               </button>
                               <button onClick={() => setNotesFor(null)} className="btn btn-outline btn-sm">إلغاء</button>
@@ -1268,7 +1268,7 @@ export default function TeacherPage() {
                       </select>
                     </div>
                     {rosterMsg && <div style={{ fontSize:'.85rem', fontWeight:700, color: rosterMsg.ok ? '#16a34a' : '#dc2626', marginBottom:8 }}>{rosterMsg.text}</div>}
-                    <button type="submit" disabled={rosterSaving} className="btn btn-primary" style={{ alignSelf:'flex-start' }}>
+                    <button type="submit" disabled={rosterSaving} className="btn btn-accent" style={{ alignSelf:'flex-start' }}>
                       {rosterSaving ? '...' : '➕ إضافة'}
                     </button>
                   </form>
@@ -1340,7 +1340,7 @@ export default function TeacherPage() {
                     <button
                       onClick={saveMeetLink}
                       disabled={meetLinkSaving}
-                      className="btn btn-primary"
+                      className="btn btn-accent"
                       style={{ whiteSpace:'nowrap', flexShrink:0 }}>
                       {meetLinkSaving ? '...' : '💾 حفظ'}
                     </button>
@@ -1401,7 +1401,7 @@ export default function TeacherPage() {
                       <textarea className="form-input" rows={2} placeholder="تفاصيل إضافية أو تعليمات..." value={hwForm.description} onChange={e => setHwForm(p => ({ ...p, description: e.target.value }))} style={{ resize:'vertical' }}/>
                     </div>
                     {hwMsg && <div style={{ fontSize:'.85rem', fontWeight:700, color: hwMsg.ok ? '#16a34a' : '#dc2626' }}>{hwMsg.text}</div>}
-                    <button type="submit" disabled={hwSaving} className="btn btn-primary" style={{ alignSelf:'flex-start' }}>
+                    <button type="submit" disabled={hwSaving} className="btn btn-accent" style={{ alignSelf:'flex-start' }}>
                       {hwSaving ? '⏳ جارٍ الإرسال...' : '📤 إرسال الواجب'}
                     </button>
                   </form>
@@ -1485,8 +1485,7 @@ export default function TeacherPage() {
                               <button
                                 onClick={() => respond(inv.id, 'accepted')}
                                 disabled={inviteResponding === inv.id}
-                                className="btn btn-primary btn-sm"
-                                style={{ background:'#1a7c40', borderColor:'#1a7c40' }}>
+                                className="btn btn-accent btn-sm">
                                 {inviteResponding === inv.id ? '...' : '✅ قبول'}
                               </button>
                               <button
@@ -1525,7 +1524,7 @@ export default function TeacherPage() {
                               </div>
                               {link && (
                                 <button onClick={() => window.open(link, '_blank', 'noopener')}
-                                  className="btn btn-primary btn-sm">
+                                  className="btn btn-accent btn-sm">
                                   ابدأ الحصة 🎥
                                 </button>
                               )}
@@ -1607,7 +1606,7 @@ export default function TeacherPage() {
 
             <div style={{ display:'flex', gap:10, marginTop:20 }}>
               <button onClick={handleComplete} disabled={completeSaving}
-                className="btn btn-primary" style={{ flex:1, justifyContent:'center', background:'#1a7c40', borderColor:'#1a7c40' }}>
+                className="btn btn-accent" style={{ flex:1, justifyContent:'center' }}>
                 {completeSaving ? 'جارٍ الحفظ...' : '✅ تأكيد الإنهاء'}
               </button>
               <button onClick={() => setCompleteFor(null)} className="btn btn-outline">إلغاء</button>
@@ -1842,7 +1841,7 @@ export default function TeacherPage() {
               </div>
               {msg?.type === 'error' && <div className="alert alert-error" style={{ marginBottom:14 }}>{msg.text}</div>}
               <div style={{ display:'flex', gap:10, marginTop:8 }}>
-                <button type="submit" className="btn btn-primary" disabled={saving} style={{ flex:1, justifyContent:'center' }}>
+                <button type="submit" className="btn btn-accent" disabled={saving} style={{ flex:1, justifyContent:'center' }}>
                   {saving ? 'جارٍ الحفظ...' : editSession ? '✅ حفظ التعديلات' : '✅ جدولة الحصة'}
                 </button>
                 <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>إلغاء</button>

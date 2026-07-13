@@ -851,25 +851,25 @@ body {
 .fsr-wa:hover .fsr-icon  { background: #1a7c40; color: #fff; }
 .fsr-wa:hover .fsr-label { color: #1a7c40; }
 
-/* ── Primary CTA item — amber accent ── */
-.fsr-cta .fsr-icon  { background: #fef3dc; color: #b56a00; }
-.fsr-cta .fsr-label { color: #b56a00; }
-.fsr-cta:hover .fsr-icon  { background: var(--accent); color: #5a2d00; }
-.fsr-cta:hover .fsr-label { color: #b56a00; }
+/* ── Primary CTA item — brand gold accent ── */
+.fsr-cta .fsr-icon  { background: #fbf0d9; color: #8a6a1f; }
+.fsr-cta .fsr-label { color: #8a6a1f; }
+.fsr-cta:hover .fsr-icon  { background: var(--accent); color: var(--primary); }
+.fsr-cta:hover .fsr-label { color: #8a6a1f; }
 
-/* ── Student-specific items ── */
-.fsr-reg .fsr-icon   { background: #e8f0fb; color: #185FA5; }
-.fsr-reg .fsr-label  { color: #185FA5; }
-.fsr-reg:hover .fsr-icon  { background: #185FA5; color: #fff; }
-.fsr-login .fsr-icon  { background: #f0f4f8; color: #475569; }
-.fsr-login .fsr-label { color: #475569; }
-.fsr-login:hover .fsr-icon { background: #475569; color: #fff; }
+/* ── Student-specific items — brand primary blue / neutral muted ── */
+.fsr-reg .fsr-icon   { background: var(--primary-lt); color: var(--primary); }
+.fsr-reg .fsr-label  { color: var(--primary); }
+.fsr-reg:hover .fsr-icon  { background: var(--primary); color: #fff; }
+.fsr-login .fsr-icon  { background: #eef0f2; color: var(--muted); }
+.fsr-login .fsr-label { color: var(--muted); }
+.fsr-login:hover .fsr-icon { background: var(--muted); color: #fff; }
 
-/* ── Supervisor contact item — violet accent ── */
-.fsr-sup .fsr-icon  { background: #f3f0ff; color: #7c3aed; }
-.fsr-sup .fsr-label { color: #7c3aed; }
-.fsr-sup:hover .fsr-icon  { background: #7c3aed; color: #fff; }
-.fsr-sup:hover .fsr-label { color: #7c3aed; }
+/* ── Supervisor contact item — Faheem purple (#7C5CD9), exclusive to Faheem-linked elements ── */
+.fsr-sup .fsr-icon  { background: #f1edfc; color: #7C5CD9; }
+.fsr-sup .fsr-label { color: #7C5CD9; }
+.fsr-sup:hover .fsr-icon  { background: #7C5CD9; color: #fff; }
+.fsr-sup:hover .fsr-label { color: #7C5CD9; }
 
 /* ── Contact Modal ── */
 .fsr-modal-overlay {
@@ -894,7 +894,7 @@ body {
   display: flex; align-items: flex-start; gap: 12px;
   justify-content: space-between; margin-bottom: 20px;
 }
-.fsr-modal-title { font-size: 1.15rem; font-weight: 800; color: #7c3aed; margin: 0; }
+.fsr-modal-title { font-size: 1.15rem; font-weight: 800; color: #7C5CD9; margin: 0; }
 .fsr-modal-sub   { font-size: .82rem; color: #64748b; margin: 4px 0 0; }
 .fsr-modal-close {
   background: #f1f5f9; border: none; border-radius: 8px;
@@ -907,7 +907,7 @@ body {
 .fsr-modal-form { display: flex; flex-direction: column; gap: 14px; }
 .fsr-field { display: flex; flex-direction: column; gap: 5px; }
 .fsr-label-txt { font-size: .85rem; font-weight: 700; color: #334155; }
-.fsr-req { color: #e53e3e; }
+.fsr-req { color: var(--danger); }
 .fsr-input {
   border: 1.5px solid #e2e8f0; border-radius: 10px;
   padding: 10px 13px; font-size: .9rem; font-family: inherit;
@@ -915,17 +915,17 @@ body {
   transition: border-color .15s, box-shadow .15s;
   outline: none; width: 100%; box-sizing: border-box;
 }
-.fsr-input:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.1); }
+.fsr-input:focus { border-color: #7C5CD9; box-shadow: 0 0 0 3px rgba(124,92,217,.1); }
 .fsr-textarea { resize: vertical; min-height: 100px; }
 .fsr-char-count { font-size: .73rem; color: #64748b; text-align: left; margin-top: 3px; }
-.fsr-err { font-size: .83rem; color: #dc2626; background: #fef2f2; border-radius: 8px; padding: 8px 12px; font-weight: 600; }
+.fsr-err { font-size: .83rem; color: var(--danger); background: #fdecea; border-radius: 8px; padding: 8px 12px; font-weight: 600; }
 .fsr-modal-actions { display: flex; gap: 10px; margin-top: 4px; }
 .fsr-btn-primary {
-  flex: 1; background: #7c3aed; color: #fff; border: none; border-radius: 10px;
+  flex: 1; background: #7C5CD9; color: #fff; border: none; border-radius: 10px;
   padding: 11px 16px; font-size: .92rem; font-weight: 700; font-family: inherit;
   cursor: pointer; transition: background .15s;
 }
-.fsr-btn-primary:hover:not(:disabled) { background: #6d28d9; }
+.fsr-btn-primary:hover:not(:disabled) { background: #6b4bc4; }
 .fsr-btn-primary:disabled { opacity: .6; cursor: not-allowed; }
 .fsr-btn-outline {
   background: #fff; color: #64748b; border: 1.5px solid #e2e8f0; border-radius: 10px;
@@ -938,7 +938,7 @@ body {
   display: flex; flex-direction: column; align-items: center; gap: 10px;
 }
 .fsr-done-icon { font-size: 3rem; }
-.fsr-done-title { font-size: 1.1rem; font-weight: 800; color: #1a7c40; margin: 0; }
+.fsr-done-title { font-size: 1.1rem; font-weight: 800; color: var(--success); margin: 0; }
 .fsr-done-sub { font-size: .88rem; color: #64748b; margin: 0; }
 .fsr-modal-done .fsr-btn-primary { width: 140px; margin-top: 10px; flex: none; }
 

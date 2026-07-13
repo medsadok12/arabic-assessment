@@ -108,14 +108,14 @@ export default function ResultsTab({
                   >
                     {lang === 'ar' ? 'مسح' : 'Clear'}
                   </button>
-                  <button className="btn btn-sm" style={{ background: '#166534', color: '#fff' }}
+                  <button className="btn btn-sm" style={{ background: 'var(--accent)', color: 'var(--primary)', fontWeight: 800 }}
                     onClick={exportCsv} disabled={resultsExporting}>
                     {resultsExporting ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : `⬇ ${lang === 'ar' ? 'تصدير CSV' : 'Export CSV'}`}
                   </button>
                   {sheetsUrl && (
                     <a href={sheetsUrl} target="_blank" rel="noopener noreferrer"
                       className="btn btn-sm"
-                      style={{ background: '#1a7c40', color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      style={{ background: 'var(--accent)', color: 'var(--primary)', fontWeight: 800, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
                       {lang === 'ar' ? 'فتح Google Sheet' : 'Open Google Sheet'}
                     </a>
@@ -156,7 +156,7 @@ export default function ResultsTab({
                                 {lang === 'ar' ? 'المستوى' : 'Level'} {r.level ?? '—'}
                               </span>
                             </td>
-                            <td style={{ padding: '11px 16px', fontWeight: 800, fontSize: '1rem', color: passed ? '#1a7c40' : '#b91c1c' }}>
+                            <td style={{ padding: '11px 16px', fontWeight: 800, fontSize: '1rem', color: passed ? 'var(--success)' : 'var(--danger)' }}>
                               {r.score ?? 0}%
                             </td>
                             <td style={{ padding: '11px 16px' }}>

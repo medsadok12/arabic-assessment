@@ -41,7 +41,10 @@ export async function GET(request) {
       return true;
     });
 
-    return NextResponse.json({ words: valid, source: 'database' });
+    return NextResponse.json(
+      { words: valid, source: 'database' },
+      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } }
+    );
   } catch {
     return NextResponse.json({ words: [], source: 'error' });
   }

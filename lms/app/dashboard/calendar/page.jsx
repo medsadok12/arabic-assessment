@@ -197,7 +197,7 @@ export default function CalendarPage() {
                     </div>
                     {!isPast(s) && joinUrl(s) && (
                       <a href={joinUrl(s)} target="_blank" rel="noopener noreferrer"
-                        className="btn btn-primary btn-sm" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        className="btn btn-accent btn-sm" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
                         انضم 🎥
                       </a>
                     )}

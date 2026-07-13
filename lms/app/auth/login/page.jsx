@@ -324,7 +324,7 @@ function LoginForm() {
                     disabled={anyLoading} style={{ paddingRight: 38 }} />
                 </IconInput>
               </div>
-              <button type="submit" className="btn btn-primary"
+              <button type="submit" className="btn btn-accent"
                 style={{ width: '100%', marginTop: 8 }} disabled={anyLoading}>
                 {loading ? <span className="spinner" /> : t('login.signIn')}
               </button>

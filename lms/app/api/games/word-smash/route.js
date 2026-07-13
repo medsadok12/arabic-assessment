@@ -34,7 +34,10 @@ export async function GET(request) {
     const { data, error } = await query;
     if (error || !data) return NextResponse.json({ words: [], source: 'error' });
 
-    return NextResponse.json({ words: data.filter(isValid), source: 'database' });
+    return NextResponse.json(
+      { words: data.filter(isValid), source: 'database' },
+      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } }
+    );
   } catch {
     return NextResponse.json({ words: [], source: 'error' });
   }

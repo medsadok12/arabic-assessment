@@ -209,7 +209,7 @@ export default function ProfilePage() {
 
               <button
                 type="submit"
-                className="btn btn-primary"
+                className="btn btn-accent"
                 disabled={nameLoading}
                 style={{ minWidth: 140 }}
               >
@@ -296,7 +296,7 @@ export default function ProfilePage() {
 
                 <button
                   type="submit"
-                  className="btn btn-primary"
+                  className="btn btn-accent"
                   disabled={passLoading}
                   style={{ minWidth: 180 }}
                 >
@@ -337,7 +337,7 @@ export default function ProfilePage() {
                 <div style={{ display: 'flex', gap: 12 }}>
                   <button
                     type="submit"
-                    className="btn btn-primary"
+                    className="btn btn-accent"
                     disabled={passLoading}
                     style={{ minWidth: 160 }}
                   >

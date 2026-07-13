@@ -366,7 +366,7 @@ export default function LexiconAdminPage() {
 
                   {/* Save / Cancel */}
                   <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                    <button type="submit" className="btn btn-primary" disabled={saving} style={{ flex: 1 }}>
+                    <button type="submit" className="btn btn-accent" disabled={saving} style={{ flex: 1 }}>
                       {saving
                         ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />جارٍ الحفظ</>
                         : (editId ? '💾 حفظ التعديل' : '✅ إضافة')}

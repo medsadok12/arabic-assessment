@@ -2,36 +2,40 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter }                    from 'next/navigation';
 import Link                             from 'next/link';
+import dynamic                          from 'next/dynamic';
 import { createClient }                 from '../../lib/supabase';
 import Navbar                           from '../../components/Navbar';
-import GroupsManager                    from '../../components/GroupsManager';
-import TeacherSpace                    from '../../components/TeacherSpace';
-import NotificationBell                from '../../components/NotificationBell';
-import FinancialsTab                   from '../../components/FinancialsTab';
-import LifeSceneSimulator              from '../../components/LifeSceneSimulator';
-import PricingAdmin                    from '../../components/PricingAdmin';
-import TeamAdmin                        from '../../components/TeamAdmin';
 import { useLanguage }                  from '../../contexts/LanguageContext';
 import { getRole, isSuspended } from '../../lib/auth-role';
 import {
   TIME_SLOTS, CONTROLLABLE, TAB_NAMES, TAB_NAMES_EN,
   fmtDate, ToggleSwitch, EMPTY_ADMIN_FORM, SETUP_SQL,
 } from '../../components/admin/shared';
+// OverviewTab renders on first paint (default tab) — kept as a static import.
+// Every other tab/panel loads only when its tab is opened, via next/dynamic
+// (same pattern as DashboardContent.jsx — see CLAUDE.md §12.4).
 import OverviewTab      from '../../components/admin/tabs/OverviewTab';
-import CodesTab         from '../../components/admin/tabs/CodesTab';
-import SessionsTab      from '../../components/admin/tabs/SessionsTab';
-import LexiconTab       from '../../components/admin/tabs/LexiconTab';
-import RecruitmentTab   from '../../components/admin/tabs/RecruitmentTab';
-import LogbookTab       from '../../components/admin/tabs/LogbookTab';
-import StoriesTab       from '../../components/admin/tabs/StoriesTab';
-import MessagesTab      from '../../components/admin/tabs/MessagesTab';
-import AdminsTab        from '../../components/admin/tabs/AdminsTab';
-import ResultsTab       from '../../components/admin/tabs/ResultsTab';
-import TeachersMgmtTab  from '../../components/admin/tabs/TeachersMgmtTab';
-import StudentsMgmtTab  from '../../components/admin/tabs/StudentsMgmtTab';
-import VisitorQATab     from '../../components/admin/tabs/VisitorQATab';
-import PuzzlesTab       from '../../components/admin/tabs/PuzzlesTab';
-import SetupTab         from '../../components/admin/tabs/SetupTab';
+const GroupsManager     = dynamic(() => import('../../components/GroupsManager'));
+const TeacherSpace      = dynamic(() => import('../../components/TeacherSpace'));
+const NotificationBell  = dynamic(() => import('../../components/NotificationBell'));
+const FinancialsTab     = dynamic(() => import('../../components/FinancialsTab'));
+const LifeSceneSimulator = dynamic(() => import('../../components/LifeSceneSimulator'));
+const PricingAdmin      = dynamic(() => import('../../components/PricingAdmin'));
+const TeamAdmin         = dynamic(() => import('../../components/TeamAdmin'));
+const CodesTab          = dynamic(() => import('../../components/admin/tabs/CodesTab'));
+const SessionsTab       = dynamic(() => import('../../components/admin/tabs/SessionsTab'));
+const LexiconTab        = dynamic(() => import('../../components/admin/tabs/LexiconTab'));
+const RecruitmentTab    = dynamic(() => import('../../components/admin/tabs/RecruitmentTab'));
+const LogbookTab        = dynamic(() => import('../../components/admin/tabs/LogbookTab'));
+const StoriesTab        = dynamic(() => import('../../components/admin/tabs/StoriesTab'));
+const MessagesTab       = dynamic(() => import('../../components/admin/tabs/MessagesTab'));
+const AdminsTab         = dynamic(() => import('../../components/admin/tabs/AdminsTab'));
+const ResultsTab        = dynamic(() => import('../../components/admin/tabs/ResultsTab'));
+const TeachersMgmtTab   = dynamic(() => import('../../components/admin/tabs/TeachersMgmtTab'));
+const StudentsMgmtTab   = dynamic(() => import('../../components/admin/tabs/StudentsMgmtTab'));
+const VisitorQATab      = dynamic(() => import('../../components/admin/tabs/VisitorQATab'));
+const PuzzlesTab        = dynamic(() => import('../../components/admin/tabs/PuzzlesTab'));
+const SetupTab          = dynamic(() => import('../../components/admin/tabs/SetupTab'));
 
 // ════════════════════════════════════════════════════════════════════════════
 export default function BoggarAdminPage() {
@@ -1362,7 +1366,7 @@ export default function BoggarAdminPage() {
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button onClick={handleAdminComplete} disabled={adminCompleteSav}
-                className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', background: '#1a7c40', borderColor: '#1a7c40' }}>
+                className="btn btn-accent" style={{ flex: 1, justifyContent: 'center' }}>
                 {adminCompleteSav ? tr('admin.sessions.saving') : tr('admin.sessions.confirmComplete')}
               </button>
               <button onClick={() => setAdminCompleteFor(null)} className="btn btn-outline">{tr('cancel')}</button>
@@ -1604,7 +1608,7 @@ export default function BoggarAdminPage() {
               )}
 
               <div style={{ display:'flex', gap:10, marginTop:8 }}>
-                <button type="submit" disabled={adminSchedSaving} className="btn btn-primary" style={{ flex:1, justifyContent:'center' }}>
+                <button type="submit" disabled={adminSchedSaving} className="btn btn-accent" style={{ flex:1, justifyContent:'center' }}>
                   {adminSchedSaving ? 'جارٍ الجدولة...' : '📅 جدولة الحصة'}
                 </button>
                 <button type="button" onClick={() => setAdminSchedModal(false)} className="btn btn-outline">إلغاء</button>
@@ -1719,7 +1723,7 @@ export default function BoggarAdminPage() {
             </div>
 
             <div style={{ marginTop: 22, display: 'flex', gap: 10 }}>
-              <button onClick={handleSchedule} disabled={!schedDate || !schedInterviewer.trim() || !schedTime || schedulingBusy} className="btn btn-primary"
+              <button onClick={handleSchedule} disabled={!schedDate || !schedInterviewer.trim() || !schedTime || schedulingBusy} className="btn btn-accent"
                 style={{ flex: 1, justifyContent: 'center', gap: 8, opacity: (!schedDate || !schedInterviewer.trim() || !schedTime) ? .55 : 1 }}>
                 {schedulingBusy
                   ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />{lang === 'ar' ? 'جارٍ الحجز وإرسال الدعوة...' : 'Booking and sending invitation...'}</>
@@ -1801,7 +1805,7 @@ export default function BoggarAdminPage() {
               </div>
 
               <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-                <button type="submit" className="btn btn-primary" disabled={qaSaving} style={{ flex: 1, justifyContent: 'center', gap: 8 }}>
+                <button type="submit" className="btn btn-accent" disabled={qaSaving} style={{ flex: 1, justifyContent: 'center', gap: 8 }}>
                   {qaSaving
                     ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />{lang === 'ar' ? 'جارٍ الحفظ...' : 'Saving...'}</>
                     : qaEditing ? (lang === 'ar' ? '✅ حفظ التعديلات' : '✅ Save Changes') : (lang === 'ar' ? '✅ إضافة السؤال' : '✅ Add Question')}
@@ -1833,7 +1837,7 @@ export default function BoggarAdminPage() {
                 🔑 {lang === 'ar' ? 'ستُنشأ كلمة مرور مؤقتة تلقائياً وتُرسل للمشرف عبر بريده الإلكتروني.' : 'A temporary password will be auto-generated and sent to the admin via email.'}
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-                <button type="submit" className="btn btn-primary" disabled={addingAdmin} style={{ flex: 1, justifyContent: 'center', gap: 8 }}>
+                <button type="submit" className="btn btn-accent" disabled={addingAdmin} style={{ flex: 1, justifyContent: 'center', gap: 8 }}>
                   {addingAdmin ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />{lang === 'ar' ? 'جارٍ الإنشاء...' : 'Creating...'}</> : (lang === 'ar' ? '✅ إنشاء الحساب' : '✅ Create Account')}
                 </button>
                 <button type="button" className="btn btn-ghost" onClick={() => { setShowAddModal(false); setAdminMsg(null); }}>{tr('cancel')}</button>
@@ -1863,7 +1867,7 @@ export default function BoggarAdminPage() {
                 🔑 {lang === 'ar' ? 'ستُنشأ كلمة مرور مؤقتة تلقائياً وتُرسل للمرشد عبر بريده الإلكتروني.' : 'A temporary password will be auto-generated and sent to the supervisor via email.'}
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-                <button type="submit" className="btn btn-primary" disabled={addingSupervisor} style={{ flex: 1, justifyContent: 'center', gap: 8, background: '#7c3aed' }}>
+                <button type="submit" className="btn btn-accent" disabled={addingSupervisor} style={{ flex: 1, justifyContent: 'center', gap: 8 }}>
                   {addingSupervisor ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />{lang === 'ar' ? 'جارٍ الإنشاء...' : 'Creating...'}</> : (lang === 'ar' ? '✅ إنشاء الحساب' : '✅ Create Account')}
                 </button>
                 <button type="button" className="btn btn-ghost" onClick={() => { setShowAddSupervisor(false); setSupervisorMsg(null); }}>{tr('cancel')}</button>
