@@ -28,8 +28,14 @@ export async function POST(request) {
         { status: 413 }
       );
     }
+    if (!file.type?.startsWith('image/')) {
+      return NextResponse.json({ error: 'يجب أن يكون الملف صورة' }, { status: 400 });
+    }
 
-    const ext  = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const ext  = file.type === 'image/png'  ? 'png'
+               : file.type === 'image/gif'  ? 'gif'
+               : file.type === 'image/webp' ? 'webp'
+               : 'jpg';
     const path = `word-image-match/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
     const admin = createAdminClient();

@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse }      from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
+import { getClientIP, ipRateCheck } from '../../../lib/ip-rate-check';
 
 const BASE_SYSTEM_PROMPT = `أنت "فهيم"، مساعد خدمة الزوار لأكاديمية عارم، أكاديمية أونلاين لتعليم اللغة العربية للأطفال (5-14 سنة). تتميز بنظام تقييم تشخيصي مجاني وحصص تفاعلية مع معلمين متخصصين.
 أجب بجملتين أو ثلاث جمل كاملة بلغة عربية واضحة. استخدم المعلومات المُزوَّدة إن وجدت. أنهِ دائماً بدعوة للتواصل عبر واتساب أو تجربة التقييم المجاني. لا تستخدم نقاطاً أو قوائم.`;
@@ -34,6 +35,14 @@ async function fetchContext() {
 }
 
 export async function POST(req) {
+  const ip = getClientIP(req);
+  if (!await ipRateCheck(ip, 'rl:visitor-faq', 8, 60)) {
+    return NextResponse.json(
+      { error: 'عدد الطلبات تجاوز الحد المسموح. يرجى المحاولة بعد دقيقة.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
   let body;
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });

@@ -19,8 +19,12 @@ export async function POST(request) {
     const file = formData.get('file');
     if (!file || typeof file === 'string') return NextResponse.json({ error: 'الملف مطلوب' }, { status: 400 });
     if (file.size > MAX_MB * 1024 * 1024) return NextResponse.json({ error: `الصورة تتجاوز ${MAX_MB}MB` }, { status: 413 });
+    if (!file.type?.startsWith('image/')) return NextResponse.json({ error: 'يجب أن يكون الملف صورة' }, { status: 400 });
 
-    const ext  = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const ext  = file.type === 'image/png'  ? 'png'
+               : file.type === 'image/gif'  ? 'gif'
+               : file.type === 'image/webp' ? 'webp'
+               : 'jpg';
     const path = `puzzles/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const admin = createAdminClient();
 

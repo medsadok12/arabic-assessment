@@ -144,7 +144,7 @@ export default async function handler(req, res) {
       `;
     }
 
-    await transporter.sendMail({
+    const parentMail = {
       from: `أكاديمية عارم 🎓 <${process.env.GMAIL_USER}>`,
       to: parentEmail,
       subject: `تقرير تقييم اللغة العربية — ${studentName}`,
@@ -154,9 +154,9 @@ export default async function handler(req, res) {
         content: pdfBuffer,
         contentType: 'application/pdf',
       }],
-    });
+    };
 
-    await transporter.sendMail({
+    const adminMail = {
       from: `أكاديمية عارم 🎓 <${process.env.GMAIL_USER}>`,
       to: 'gandouzimohamed9@gmail.com',
       subject: `[إدارة] تقييم جديد — ${studentName} — ${Math.round(overallScore)}%`,
@@ -166,12 +166,38 @@ export default async function handler(req, res) {
         content: pdfBuffer,
         contentType: 'application/pdf',
       }],
-    });
+    };
 
-    return res.status(200).json({ success: true });
+    // كل نسخة تُرسَل باستقلالية عن الأخرى — فشل نسخة المعلم يجب ألا يُظهر
+    // للأهل أن التقرير لم يصلهم، ونسخة المعلم تستحق محاولة إعادة واحدة قبل
+    // اعتبارها فاشلة نهائياً (بريد داخلي، لا ضرر من محاولة إضافية سريعة).
+    const [parentResult, adminResult] = await Promise.allSettled([
+      transporter.sendMail(parentMail),
+      transporter.sendMail(adminMail),
+    ]);
+
+    let parentSent = parentResult.status === 'fulfilled';
+    let adminSent  = adminResult.status === 'fulfilled';
+
+    if (!parentSent) console.error('Email error (parent):', parentResult.reason);
+    if (!adminSent) {
+      console.error('Email error (admin), retrying once:', adminResult.reason);
+      try {
+        await transporter.sendMail(adminMail);
+        adminSent = true;
+      } catch (retryErr) {
+        console.error('Email error (admin retry failed):', retryErr);
+      }
+    }
+
+    return res.status(parentSent ? 200 : 500).json({
+      success: parentSent,
+      parentSent,
+      adminSent,
+    });
 
   } catch (error) {
     console.error('Email error:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, parentSent: false, adminSent: false, error: error.message });
   }
 }

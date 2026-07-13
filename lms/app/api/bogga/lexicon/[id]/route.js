@@ -47,7 +47,9 @@ export async function PATCH(req, { params }) {
     updated_at: new Date().toISOString(),
   };
 
-  // Media: only update if explicitly changed or cleared
+  // Media: only update if explicitly changed or cleared.
+  // image_data/audio_data روابط Storage الآن (عبر api/bogga/lexicon/upload)،
+  // لا base64 — راجع الملاحظة المطابقة في route.js (POST).
   let mediaPayload = {};
   if (image_data)    { mediaPayload.image_base64 = image_data;  mediaPayload.has_image = true;  }
   else if (clear_image) { mediaPayload.image_base64 = null;      mediaPayload.has_image = false; }

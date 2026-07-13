@@ -88,29 +88,43 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, al
       </div>
 
       <div className="thankyou-card">
-        <div className="thankyou-icon">✅</div>
-        <p className="thankyou-title">تم إرسال إجاباتك بنجاح إلى معلمك</p>
-        <p className="thankyou-sub">
-          سيطلع المعلم على نتيجتك ويُعدّ لك خطة دراسية مناسبة
-        </p>
-
-        {emailStatus === 'sending' && (
-          <div className="email-sending" style={{ marginTop: 16 }}>
-            <div className="spinner" />
-            <span>جاري إرسال التقرير...</span>
-          </div>
+        {(emailStatus === 'idle' || emailStatus === 'sending') && (
+          <>
+            <div className="email-sending">
+              <div className="spinner" />
+              <span>جارٍ إرسال تقريرك إلى معلمك...</span>
+            </div>
+          </>
         )}
 
         {emailStatus === 'success' && (
-          <div className="email-success" style={{ marginTop: 16 }}>
-            📧 تم إرسال التقرير إلى المعلم
-          </div>
+          <>
+            <div className="thankyou-icon">✅</div>
+            <p className="thankyou-title">تم إرسال إجاباتك بنجاح إلى معلمك</p>
+            <p className="thankyou-sub">
+              سيطلع المعلم على نتيجتك ويُعدّ لك خطة دراسية مناسبة
+            </p>
+          </>
         )}
 
         {emailStatus === 'error' && (
-          <div className="email-error" style={{ marginTop: 16 }}>
-            ⚠️ لم يتم إرسال التقرير — يرجى التواصل مع المعلم
-          </div>
+          <>
+            <div className="thankyou-icon">💪</div>
+            <p className="thankyou-title">يبدو أن هناك مشكلة بسيطة في إرسال التقرير</p>
+            <p className="thankyou-sub">
+              نتيجتك محفوظة بأمان، لكن لم نتمكن من إرسال نسخة التقرير تلقائياً الآن
+            </p>
+            <div className="email-error" style={{ marginTop: 16 }}>
+              ⚠️ جرّب إعادة الإرسال، أو تواصل مباشرة مع معلمك
+            </div>
+            <button
+              className="btn-primary"
+              style={{ marginTop: 14 }}
+              onClick={sendReport}
+            >
+              🔄 إعادة إرسال التقرير
+            </button>
+          </>
         )}
       </div>
 

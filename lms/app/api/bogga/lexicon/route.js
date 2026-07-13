@@ -55,7 +55,11 @@ export async function POST(req) {
     created_at: now, updated_at: now,
   };
 
-  // Try inserting with media columns
+  // Try inserting with media columns.
+  // ملاحظة: image_data/audio_data القادمة من الواجهة أصبحت روابط Supabase
+  // Storage (عبر api/bogga/lexicon/upload)، لا base64 خام كما كان سابقاً —
+  // الاسمان image_base64/audio_base64 أصبحا مضلِّلين، أُبقيا لتفادي ALTER
+  // TABLE غير ضروري؛ القيمة المخزَّنة رابط قصير في الحالتين.
   let mediaSkipped = false;
   let full = { ...base };
   if (image_data) { full.image_base64 = image_data; full.has_image = true; }
