@@ -35,6 +35,7 @@ export async function POST(req) {
       .from('student_invitation_codes')
       .update({
         is_used:       true,
+        used_by:       user.id,
         used_at:       new Date().toISOString(),
         used_by_name:  displayName,
         used_by_email: user.email,

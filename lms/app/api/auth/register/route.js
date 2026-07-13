@@ -105,6 +105,7 @@ export async function POST(req) {
       .from('student_invitation_codes')
       .update({
         is_used:       true,
+        used_by:       userId,
         used_at:       new Date().toISOString(),
         used_by_name:  name.trim(),
         used_by_email: lowerEmail,
@@ -134,7 +135,7 @@ export async function POST(req) {
       await admin.auth.admin.deleteUser(userId);
       await admin
         .from('student_invitation_codes')
-        .update({ is_used: false, used_at: null, used_by_name: null, used_by_email: null })
+        .update({ is_used: false, used_by: null, used_at: null, used_by_name: null, used_by_email: null })
         .eq('code', normalized);
       return NextResponse.json(
         { error: 'حدث خطأ أثناء إنشاء الحساب — يرجى المحاولة مجدداً أو التواصل مع إدارة الأكاديمية' },
@@ -151,7 +152,7 @@ export async function POST(req) {
       await admin.auth.admin.deleteUser(userId);
       await admin
         .from('student_invitation_codes')
-        .update({ is_used: false, used_at: null, used_by_name: null, used_by_email: null })
+        .update({ is_used: false, used_by: null, used_at: null, used_by_name: null, used_by_email: null })
         .eq('code', normalized);
       return NextResponse.json(
         { error: 'تعذّر إرسال بريد التحقق — يرجى المحاولة مجدداً أو التواصل مع إدارة الأكاديمية' },
