@@ -1,14 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { getRole } from '../../../lib/auth-role';
 
 export default function UpdatePasswordPage() {
   const [newPassword,     setNewPassword]     = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error,           setError]           = useState('');
   const [loading,         setLoading]         = useState(false);
-  const router = useRouter();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -40,10 +39,22 @@ export default function UpdatePasswordPage() {
 
       // Refresh session so middleware sees cleared temp_password
       const { createClient } = await import('../../../lib/supabase');
-      await createClient().auth.refreshSession();
+      const { data: { user } } = await createClient().auth.refreshSession();
 
-      router.replace('/dashboard');
-      router.refresh();
+      // التوجيه حسب الدور الفعلي — كان ثابتاً إلى /dashboard بغضّ النظر عن
+      // الدور، فيُرسل المعلم/الأدمن/المشرف لبوابة الطالب خطأً (نفس المنطق
+      // المستخدم في auth/login/page.jsx وmiddleware.js).
+      const role = getRole(user);
+      const destination =
+        role === 'admin' || role === 'super_admin' ? '/bogga'
+        : role === 'teacher'                        ? '/teacher'
+        : role === 'supervisor'                     ? '/supervisor'
+        : '/dashboard';
+
+      // تنقّل كامل (لا router.replace) لضمان وصول الكوكيز المُحدَّثة فعلياً
+      // للخادم في الطلب التالي — تجنّباً لأي حالة سباق بين تحديث الجلسة على
+      // العميل ومنتصف middleware الذي يقرأ الكوكي مباشرة.
+      window.location.href = destination;
     } catch {
       setError('حدث خطأ في الاتصال، يرجى المحاولة مجدداً');
       setLoading(false);
