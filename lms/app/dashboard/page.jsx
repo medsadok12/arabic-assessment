@@ -6,7 +6,7 @@ import { getRole } from '../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }) {
   let user;
   const supabase = createClient();
   try {
@@ -28,7 +28,32 @@ export default async function DashboardPage() {
   const admin = createAdminClient();
   const email = (user.email ?? '').toLowerCase();
 
-  // جولة شبكة واحدة — 9 استعلامات مستقلة تعمل بالتوازي
+  // ── مبدّل الأطفال: إن طُلب عرض طفل آخر عبر ?child=، تحقّق من الملكية
+  //    أولاً (parent_user_id = الحساب الحقيقي المسجَّل دخوله) قبل أي ثقة
+  //    بالمعرّف القادم من العميل — بدون هذا التحقق يصبح أي مستخدم قادراً
+  //    على عرض بيانات طفل عائلة أخرى بمجرد تخمين رقم.
+  let effectiveEmail  = email;
+  let effectiveUserId = user.id;
+  let viewingChild    = null;
+  const requestedChildId = searchParams?.child;
+  if (requestedChildId) {
+    const { data: childRow } = await admin
+      .from('students')
+      .select('id, full_name, age, grade')
+      .eq('id', requestedChildId)
+      .eq('parent_user_id', user.id)
+      .maybeSingle();
+    if (childRow) {
+      const { data: childAuth } = await admin.auth.admin.getUserById(childRow.id);
+      if (childAuth?.user?.email) {
+        effectiveEmail  = childAuth.user.email.toLowerCase();
+        effectiveUserId = childRow.id;
+        viewingChild    = childRow;
+      }
+    }
+  }
+
+  // جولة شبكة واحدة — 10 استعلامات مستقلة تعمل بالتوازي
   const [
     { data: sessionsRaw },
     { data: supportLinks },
@@ -39,11 +64,12 @@ export default async function DashboardPage() {
     { data: hwRaw },
     { data: logsRaw },
     { data: heroConfigRow },
+    { data: myChildrenRaw },
   ] = await Promise.all([
     admin
       .from('sessions')
       .select('id, teacher_name, session_date, start_time, duration_minutes, subject, meet_link, status, attended')
-      .eq('student_email', email)
+      .eq('student_email', effectiveEmail)
       .in('status', ['scheduled', 'active'])
       .gte('session_date', today)
       .order('session_date', { ascending: true })
@@ -53,24 +79,24 @@ export default async function DashboardPage() {
     admin
       .from('session_support_students')
       .select('session_id')
-      .eq('student_email', email)
+      .eq('student_email', effectiveEmail)
       .then(r => r.error ? { data: [] } : r),
     supabase
       .from('assessments')
       .select('id, level, score, completed_at, student_name')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .order('completed_at', { ascending: false })
       .limit(50)
       .then(r => r.error ? { data: [] } : r),
     admin
       .from('flashcard_progress')
       .select('level')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .then(r => r.error ? { data: [] } : r),
     admin
       .from('sessions')
       .select('id, session_date, attended')
-      .eq('student_email', email)
+      .eq('student_email', effectiveEmail)
       .neq('status', 'cancelled')
       .lte('session_date', today)
       .limit(100)
@@ -78,7 +104,7 @@ export default async function DashboardPage() {
     admin
       .from('sessions')
       .select('id, teacher_name, session_date, subject, notes')
-      .eq('student_email', email)
+      .eq('student_email', effectiveEmail)
       .not('notes', 'is', null)
       .neq('notes', '')
       .order('session_date', { ascending: false })
@@ -87,23 +113,29 @@ export default async function DashboardPage() {
     admin
       .from('homework')
       .select('id, teacher_name, title, description, due_date, status, created_at')
-      .eq('student_email', email)
+      .eq('student_email', effectiveEmail)
       .order('due_date', { ascending: true, nullsFirst: false })
       .limit(20)
       .then(r => r.error ? { data: [] } : r),
     admin
       .from('daily_logs')
       .select('log_date')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .order('log_date', { ascending: false })
       .limit(365)
       .then(r => r.error?.code === '42P01' ? { data: [] } : r),
     admin
       .from('hero_config')
       .select('avatar_id')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .maybeSingle()
       .then(r => r.error ? { data: null } : r),
+    admin
+      .from('students')
+      .select('id, full_name, age, grade')
+      .eq('parent_user_id', user.id)
+      .order('created_at', { ascending: true })
+      .then(r => r.error?.code === '42P01' ? { data: [] } : r),
   ]);
 
   // supportSessions تعتمد على supportLinks — تبقى بعد Promise.all
@@ -180,7 +212,8 @@ export default async function DashboardPage() {
     };
   });
 
-  const displayName   = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '';
+  const rootName      = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '';
+  const displayName   = viewingChild?.full_name ?? rootName;
   const studentGender = user.user_metadata?.gender === 'female' ? 'female' : 'male';
   const hasHero       = isStudent ? !!(heroConfigRow?.avatar_id) : true;
 
@@ -203,6 +236,9 @@ export default async function DashboardPage() {
       masteredCount={masteredCount}
       studiedCount={studiedCount}
       hasHero={hasHero}
+      myChildren={myChildrenRaw ?? []}
+      viewingChildId={viewingChild?.id ?? null}
+      rootName={rootName}
     />
   );
 }

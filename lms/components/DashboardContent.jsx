@@ -8,6 +8,7 @@ import { createClient } from '../lib/supabase';
 import WordOfDay from './WordOfDay';
 import StreakFreeze from './StreakFreeze';
 import FlashcardReminderToast from './FlashcardReminderToast';
+import FamilySwitcher from './FamilySwitcher';
 
 /* المكوّنات الثقيلة تُقسَّم لحزم منفصلة تُحمَّل عند الحاجة فقط (SSR يبقى
    مفعّلاً فلا يتغير أول رسم إطلاقاً). الفائدة المزدوجة: حزمة أول تحميل
@@ -58,6 +59,7 @@ export default function DashboardContent({
   streakCount = 0, loggedToday = false, last7Days = [],
   masteredCount = 0, studiedCount = 0,
   hasHero = false,
+  myChildren = [], viewingChildId = null, rootName = '',
 }) {
   const { t, lang } = useLanguage();
   const locale = 'en-GB';
@@ -456,6 +458,11 @@ export default function DashboardContent({
       <Navbar user={user} />
       <main className="page-wrap db-page">
         <div className="db-wrap">
+
+          {/* ── Family switcher — يظهر فقط لحسابات الطلاب ── */}
+          {isStudent && (
+            <FamilySwitcher children={myChildren} viewingChildId={viewingChildId} rootName={rootName} />
+          )}
 
           {/* ── Header ── */}
           <div style={{ marginBottom:8 }}>
