@@ -19,6 +19,12 @@ export async function cleanupUserData(userId, userEmail, admin) {
     safe(admin.from('student_group_assignments').delete().eq('user_id',userId)),
     safe(admin.from('attendance_logs').delete().eq('student_id',       userId)),
     safe(admin.from('notifications').delete().eq('recipient_id',       userId)),
+    // حساب طفل عائلي (api/family/add-child): students.id مطابق عمداً لهذا
+    // الـuserId نفسه — حذفه هنا يُسقط تلقائياً (ON DELETE CASCADE) أي صف
+    // family_links مرتبط به، ويُصفّر (ON DELETE SET NULL) أي student_id في
+    // sessions/assessments/session_support_students يشير إليه، بلا أي أثر
+    // جانبي على الحساب الجذر (parent_user_id) نفسه.
+    safe(admin.from('students').delete().eq('id',                      userId)),
   ]);
 
   // ── جداول مرتبطة بالبريد الإلكتروني ──────────────────────────────────
