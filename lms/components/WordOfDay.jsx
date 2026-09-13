@@ -1,20 +1,17 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 
 /* «كلمة اليوم» — a light daily habit on the student dashboard: one word from the
    lexicon, the same for everyone each day, spoken in Fahim's voice, worth a small
    point the first time the child listens (server dedups by daily_word:DATE). */
 export default function WordOfDay() {
-  const router = useRouter();
   const [word,    setWord]    = useState(null);
   const [date,    setDate]    = useState('');
   const [playing, setPlaying] = useState(false);
   const [earned,  setEarned]  = useState(false);
   const [justGot, setJustGot] = useState(false);
-  const audioRef       = useRef(null);
-  const dateRef        = useRef('');
-  const lastRefreshRef = useRef(0);
+  const audioRef = useRef(null);
+  const dateRef  = useRef('');
 
   useEffect(() => {
     let alive = true;
@@ -51,24 +48,24 @@ export default function WordOfDay() {
     // تصحيح ذاتي للتبويبات المفتوحة منذ وقت طويل: أي إضافة/حذف/تعديل من
     // لوحة الإدارة يظهر فور العودة للتبويب، أو خلال دقيقة على الأكثر —
     // دون الحاجة لإعادة تحميل الصفحة يدوياً.
-    const onWake = () => { if (document.visibilityState !== 'hidden') load(); };
-
-    // عند العودة للتبويب: تحديث كامل لبيانات الصفحة أيضاً (يمسح كاش راوتر
-    // Next.js الداخلي ويعيد جلب مكوّنات الخادم) — بحد أقصى مرة كل 60 ثانية.
+    //
+    // ⚠️ لا تستدعِ router.refresh() هنا: كان يُستدعى سابقاً عند العودة
+    // للتبويب لتحديث بقية مكوّنات الخادم أيضاً، لكن إعادة عرض الصفحة
+    // بالكامل قد تُعيد تركيب هذا المكوّن نفسه — وأي حارس زمني محلي
+    // (useRef) يُصفَّر عند إعادة التركيب، فيُخدَع الحارس ويظن أن وقت
+    // التحديث التالي حان فوراً، فيستدعي router.refresh() من جديد
+    // فيُعاد التركيب من جديد... حلقة ذاتية التغذية سبّبت وميضاً مستمراً
+    // في كامل لوحة الطالب لا يتوقف إلا بإغلاق التبويب. جلب بيانات هذا
+    // الودجت وحده (load()) كافٍ تماماً — لا حاجة لتحديث الصفحة كلها.
     const onFocusRefresh = () => {
       if (document.visibilityState === 'hidden') return;
       load();
-      const now = Date.now();
-      if (now - lastRefreshRef.current > 60_000) {
-        lastRefreshRef.current = now;
-        try { router.refresh(); } catch {}
-      }
     };
 
     document.addEventListener('visibilitychange', onFocusRefresh);
     window.addEventListener('focus', onFocusRefresh);
     window.addEventListener('pageshow', onFocusRefresh); // يشمل الاستعادة من ذاكرة الرجوع (BFCache)
-    const iv = setInterval(onWake, 60_000);
+    const iv = setInterval(load, 60_000);
 
     return () => {
       alive = false;
@@ -78,7 +75,7 @@ export default function WordOfDay() {
       window.removeEventListener('pageshow', onFocusRefresh);
       audioRef.current?.pause();
     };
-  }, [router]);
+  }, []);
 
   function listen() {
     if (!word) return;
