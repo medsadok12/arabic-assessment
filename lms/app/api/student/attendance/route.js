@@ -3,6 +3,7 @@ import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { notifyUser }        from '../../../../lib/notify';
 import { awardPoints }       from '../../../../lib/points';
+import { resolveActiveIdentity } from '../../../../lib/active-child';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,13 +17,14 @@ export async function POST(req) {
   if (!session_id) return NextResponse.json({ error: 'session_id مطلوب' }, { status: 400 });
 
   const admin = createAdminClient();
+  const { effectiveUserId, effectiveEmail, viewingChild } = await resolveActiveIdentity(user, admin, req);
 
   // محاولة 1: الطالب الأساسي (student_email يطابق البريد)
   const { data: primarySession } = await admin
     .from('sessions')
     .select('id, student_email, student_name, session_date, start_time, attended, status, meet_link, teacher_id, subject')
     .eq('id', session_id)
-    .eq('student_email', (user.email ?? '').toLowerCase())
+    .eq('student_email', effectiveEmail)
     .single();
 
   let session   = primarySession;
@@ -34,7 +36,7 @@ export async function POST(req) {
       .from('session_support_students')
       .select('session_id')
       .eq('session_id', session_id)
-      .eq('student_email', (user.email ?? '').toLowerCase())
+      .eq('student_email', effectiveEmail)
       .maybeSingle()
       .then(r => r.error ? { data: null } : r);
 
@@ -59,7 +61,7 @@ export async function POST(req) {
         .from('attendance_logs')
         .select('id')
         .eq('session_id', session_id)
-        .eq('student_email', (user.email ?? '').toLowerCase())
+        .eq('student_email', effectiveEmail)
         .maybeSingle()
         .then(r => !!r.data)
     // الطالب الأساسي → sessions.attended
@@ -77,25 +79,25 @@ export async function POST(req) {
     await admin.from('sessions')
       .update({ attended: true })
       .eq('id', session_id)
-      .eq('student_email', (user.email ?? '').toLowerCase());
+      .eq('student_email', effectiveEmail);
   }
 
   // جميع الطلاب: تسجيل في attendance_logs (best-effort — لا يُوقف العملية)
   const { error: logErr } = await admin.from('attendance_logs').insert({
     session_id,
-    student_id:    user.id,
-    student_email: user.email,
-    student_name:  session.student_name || user.user_metadata?.full_name || '',
+    student_id:    effectiveUserId,
+    student_email: effectiveEmail,
+    student_name:  session.student_name || viewingChild?.full_name || user.user_metadata?.full_name || '',
     session_date:  session.session_date,
   });
   if (logErr) console.error('[attendance_logs] insert failed:', logErr.message);
 
   // منح 20 نقطة لأول حضور (مرة واحدة لكل حصة)
-  awardPoints(user.id, 20, `session_attend:${session_id}`).catch(() => {});
+  awardPoints(effectiveUserId, 20, `session_attend:${session_id}`).catch(() => {});
 
   // إشعار فوري للمعلم (best-effort)
   const teacherId   = session.teacher_id;
-  const studentName = session.student_name || user.user_metadata?.full_name || user.email;
+  const studentName = session.student_name || viewingChild?.full_name || user.user_metadata?.full_name || user.email;
   const subject     = session.subject || 'حصة عامة';
   if (teacherId) {
     notifyUser(teacherId, 'attendance',
@@ -144,13 +146,14 @@ export async function GET(req) {
   if (!session_id) return NextResponse.json({ logged: false });
 
   const admin = createAdminClient();
+  const { effectiveEmail } = await resolveActiveIdentity(user, admin, req);
 
   // الطالب الأساسي: sessions.attended
   const { data: sessionData } = await admin
     .from('sessions')
     .select('attended')
     .eq('id', session_id)
-    .eq('student_email', (user.email ?? '').toLowerCase())
+    .eq('student_email', effectiveEmail)
     .maybeSingle();
 
   if (sessionData?.attended === true) return NextResponse.json({ logged: true });
@@ -160,7 +163,7 @@ export async function GET(req) {
     .from('attendance_logs')
     .select('id')
     .eq('session_id', session_id)
-    .eq('student_email', (user.email ?? '').toLowerCase())
+    .eq('student_email', effectiveEmail)
     .maybeSingle()
     .then(r => r.error ? { data: null } : r);
 

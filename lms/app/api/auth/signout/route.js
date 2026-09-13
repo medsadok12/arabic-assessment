@@ -33,6 +33,7 @@ export async function GET(request) {
   }
 
   await supabase.auth.signOut();
+  cookieStore.delete('active_child');
 
   return NextResponse.redirect(new URL('/', request.url));
 }

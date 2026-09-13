@@ -1,6 +1,7 @@
 import { NextResponse }     from 'next/server';
 import { createClient }    from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { resolveActiveIdentity } from '../../../../lib/active-child';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,8 +10,8 @@ export async function GET(req) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
-  const email = user.email;
   const admin = createAdminClient();
+  const { effectiveEmail } = await resolveActiveIdentity(user, admin, req);
   const today = new Date().toISOString().slice(0, 10);
 
   const { searchParams } = new URL(req.url);
@@ -19,7 +20,7 @@ export async function GET(req) {
   let query = admin
     .from('sessions')
     .select('id, teacher_name, session_date, start_time, duration_minutes, subject, room_name, status, notes, rating, attended, meet_link')
-    .eq('student_email', email);
+    .eq('student_email', effectiveEmail);
 
   if (type === 'past') {
     query = query.or(`status.in.(completed,cancelled),and(status.eq.scheduled,session_date.lt.${today})`)
@@ -54,10 +55,11 @@ export async function PATCH(req) {
     return NextResponse.json({ error: 'التقييم يجب أن يكون بين 1 و 5' }, { status: 400 });
 
   const admin = createAdminClient();
+  const { effectiveEmail } = await resolveActiveIdentity(user, admin, req);
 
   // Verify session belongs to this student — DB-level check avoids case-sensitivity issues
   const { data: session } = await admin
-    .from('sessions').select('id').eq('id', id).eq('student_email', user.email.toLowerCase()).maybeSingle();
+    .from('sessions').select('id').eq('id', id).eq('student_email', effectiveEmail).maybeSingle();
   if (!session)
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 

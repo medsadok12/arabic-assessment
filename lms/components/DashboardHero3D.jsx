@@ -41,7 +41,7 @@ const GREETINGS = [
   'رفيقك الأمين في كل خطوة.',
 ];
 
-export default function DashboardHero3D({ displayName, pendingHw, nextSession, isStudent }) {
+export default function DashboardHero3D({ displayName, pendingHw, nextSession, isStudent, viewingChildId = null }) {
   const [cfg,      setCfg]      = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const [greeting, setGreeting] = useState('');
@@ -59,14 +59,16 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
 
   useEffect(() => {
     if (!isStudent) { setCfg({}); return; }
-    fetch('/api/hero-config')
+    // ?child= صريح يمنع سباق التزامن مع كوكي الطفل النشط عند أول تحميل الصفحة
+    const url = viewingChildId ? `/api/hero-config?child=${viewingChildId}` : '/api/hero-config';
+    fetch(url)
       .then(r => r.json())
       .then(d => {
         setCfg(d);
         if (d.avatar_url?.endsWith('.glb')) loadMvScript();
       })
       .catch(() => setCfg({}));
-  }, [isStudent]);
+  }, [isStudent, viewingChildId]);
 
   /* Apply saved tint colour after GLB loads */
   useEffect(() => {

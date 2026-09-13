@@ -1,27 +1,33 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient }      from '../../../lib/supabase-server';
+import { resolveActiveIdentity } from '../../../lib/active-child';
 
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 // GET — returns today's flashcard session filtered by student's grade
-export async function GET() {
+export async function GET(req) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ cards: [], error: 'غير مسجّل' }, { status: 401 });
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
     const today = new Date().toISOString().slice(0, 10);
 
-    // Student's grade from auth metadata
-    const grade = user.user_metadata?.grade ? Number(user.user_metadata.grade) : null;
+    // Student's grade from auth metadata — من الحساب الفعّال (الطفل المعروض
+    // إن وُجد)، لا من حساب الوالد المسجَّل دخوله دائماً
+    const gradeSource = effectiveUserId === user.id
+      ? user.user_metadata
+      : (await admin.auth.admin.getUserById(effectiveUserId)).data?.user?.user_metadata;
+    const grade = gradeSource?.grade ? Number(gradeSource.grade) : null;
 
     // ── 1. Due cards (next_review <= today, not yet mastered) ──────────────
     const { data: progress } = await admin
       .from('flashcard_progress')
       .select('word_id, level, next_review')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .lte('next_review', today)
       .lt('level', 5)
       .order('next_review')
@@ -53,7 +59,7 @@ export async function GET() {
     const { data: allProgress } = await admin
       .from('flashcard_progress')
       .select('word_id, level')
-      .eq('user_id', user.id);
+      .eq('user_id', effectiveUserId);
 
     const knownIds   = (allProgress || []).map(p => p.word_id);
     const mastered   = (allProgress || []).filter(p => p.level >= 5).length;

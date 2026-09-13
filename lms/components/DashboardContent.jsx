@@ -71,6 +71,20 @@ export default function DashboardContent({
   const [today, setToday] = useState('');
   useEffect(() => { setToday(new Date().toISOString().slice(0, 10)); }, []);
 
+  // ── مزامنة "الطفل النشط" مع الخادم عبر كوكي — بدونها، أي صفحة لا تحمل
+  //    ?child= في رابطها (كل الألعاب والودجات الأخرى) تعود تلقائياً لحساب
+  //    الوالد الحقيقي بدل الطفل المعروض هنا، فتتسرّب النقاط/التقدم بينهما.
+  //    يعمل مهما كانت طريقة الوصول لهذه الصفحة (تبويب المبدّل، رابط محفوظ،
+  //    زر الرجوع) لأن الاعتماد هنا على viewingChildId المُتحقَّق من الخادم
+  //    نفسه (dashboard/page.jsx)، لا على أي حالة عميل سابقة.
+  useEffect(() => {
+    fetch('/api/family/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ childId: viewingChildId }),
+    }).catch(() => {});
+  }, [viewingChildId]);
+
   // ── Live session status — polls Supabase every 15 s to detect teacher "active" ──
   const [liveStatus, setLiveStatus] = useState(nextSession?.status ?? 'scheduled');
   const announcedActiveRef = useRef(false);
@@ -455,7 +469,7 @@ export default function DashboardContent({
         }
       `}</style>
 
-      <Navbar user={user} />
+      <Navbar user={user} viewingChildId={viewingChildId} />
       <main className="page-wrap db-page">
         <div className="db-wrap">
 
@@ -484,7 +498,7 @@ export default function DashboardContent({
               top: 242,
               zIndex: 48,
             }}>
-              <AvatarShop user={user} displayName={displayName} />
+              <AvatarShop user={user} displayName={displayName} viewingChildId={viewingChildId} />
             </div>
           )}
           <DashboardHero3D
@@ -492,6 +506,7 @@ export default function DashboardContent({
             pendingHw={pendingHw}
             nextSession={nextSession}
             isStudent={isStudent}
+            viewingChildId={viewingChildId}
           />
 
           {/* ── Hero discovery card — يختفي بمجرد اختيار الطالب بطله ── */}

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient } from '../../../lib/supabase-server';
+import { resolveActiveIdentity } from '../../../lib/active-child';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,10 +16,11 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const wantNext = searchParams.get('next') === '1';
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
 
     const [{ data: pointsRow }, { data: allProgress }] = await Promise.all([
-      admin.from('user_points').select('total').eq('user_id', user.id).single(),
-      admin.from('puzzle_progress').select('id, puzzle_id, unlocked, completed_at, badge_given, created_at').eq('user_id', user.id).order('created_at', { ascending: false }),
+      admin.from('user_points').select('total').eq('user_id', effectiveUserId).single(),
+      admin.from('puzzle_progress').select('id, puzzle_id, unlocked, completed_at, badge_given, created_at').eq('user_id', effectiveUserId).order('created_at', { ascending: false }),
     ]);
 
     const points = pointsRow?.total ?? 0;
@@ -44,7 +46,7 @@ export async function GET(req) {
 
       if (nextPuzzle) {
         const { data: newProg } = await admin.from('puzzle_progress')
-          .insert({ user_id: user.id, puzzle_id: nextPuzzle.id, unlocked: [] })
+          .insert({ user_id: effectiveUserId, puzzle_id: nextPuzzle.id, unlocked: [] })
           .select().single();
         activePuzzle = nextPuzzle;
         activeProg = newProg;
@@ -67,10 +69,11 @@ export async function POST(req) {
     if (body.action !== 'unlock') return NextResponse.json({ error: 'إجراء غير صالح' }, { status: 400 });
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
 
     const [{ data: pointsRow }, { data: prog }] = await Promise.all([
-      admin.from('user_points').select('total').eq('user_id', user.id).single(),
-      admin.from('puzzle_progress').select('id, puzzle_id, unlocked, puzzles(cols, rows, badge_name, badge_icon)').eq('user_id', user.id).is('completed_at', null).order('created_at', { ascending: false }).limit(1).single(),
+      admin.from('user_points').select('total').eq('user_id', effectiveUserId).single(),
+      admin.from('puzzle_progress').select('id, puzzle_id, unlocked, puzzles(cols, rows, badge_name, badge_icon)').eq('user_id', effectiveUserId).is('completed_at', null).order('created_at', { ascending: false }).limit(1).single(),
     ]);
 
     const currentPoints = pointsRow?.total ?? 0;
@@ -91,9 +94,9 @@ export async function POST(req) {
     const finalPoints = currentPoints - PIECE_COST + (isCompleted ? COMPLETION_BONUS : 0);
 
     await Promise.all([
-      admin.from('user_points').upsert({ user_id: user.id, total: finalPoints, updated_at: now }, { onConflict: 'user_id' }),
-      admin.from('points_log').insert({ user_id: user.id, delta: -PIECE_COST, reason: 'puzzle_unlock' }),
-      ...(isCompleted ? [admin.from('points_log').insert({ user_id: user.id, delta: COMPLETION_BONUS, reason: `puzzle_complete_${prog.id}` })] : []),
+      admin.from('user_points').upsert({ user_id: effectiveUserId, total: finalPoints, updated_at: now }, { onConflict: 'user_id' }),
+      admin.from('points_log').insert({ user_id: effectiveUserId, delta: -PIECE_COST, reason: 'puzzle_unlock' }),
+      ...(isCompleted ? [admin.from('points_log').insert({ user_id: effectiveUserId, delta: COMPLETION_BONUS, reason: `puzzle_complete_${prog.id}` })] : []),
       admin.from('puzzle_progress').update({
         unlocked: newUnlocked,
         ...(isCompleted ? { completed_at: now, badge_given: true } : {}),

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient as createServerClient } from '../../../../lib/supabase-server';
+import { resolveActiveIdentity } from '../../../../lib/active-child';
 
 const WIN_SCORE = 5;
 
@@ -118,7 +119,6 @@ export async function POST(request) {
     if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
 
     const { game_type = 'vowel-balloon', player1_name } = await request.json();
-    const player1_id = user.id;
     if (!player1_name?.trim())
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
 
@@ -127,6 +127,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'لا توجد أسئلة كافية' }, { status: 400 });
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, request);
+    const player1_id = effectiveUserId;
 
     let room = null;
     for (let i = 0; i < 6; i++) {
@@ -160,11 +162,12 @@ export async function PATCH(request) {
     if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
 
     const { room_code, player2_name } = await request.json();
-    const player2_id = user.id;
     if (!room_code?.trim() || !player2_name?.trim())
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, request);
+    const player2_id = effectiveUserId;
     const { data: existing } = await admin
       .from('challenge_rooms')
       .select('*')

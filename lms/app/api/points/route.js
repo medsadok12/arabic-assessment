@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient } from '../../../lib/supabase-server';
+import { resolveActiveIdentity } from '../../../lib/active-child';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,15 +40,16 @@ const DEDUP_PREFIXES = new Set([
   'daily_login', 'story', 'session_attend', 'homework_done', 'daily_word',
 ]);
 
-export async function GET() {
+export async function GET(req) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ points: 0, earned: 0 });
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
     const [{ data: balRow }, { data: logRows }] = await Promise.all([
-      admin.from('user_points').select('total').eq('user_id', user.id).maybeSingle(),
-      admin.from('points_log').select('delta').eq('user_id', user.id).gt('delta', 0),
+      admin.from('user_points').select('total').eq('user_id', effectiveUserId).maybeSingle(),
+      admin.from('points_log').select('delta').eq('user_id', effectiveUserId).gt('delta', 0),
     ]);
     const points = balRow?.total ?? 0;
     const earned = (logRows ?? []).reduce((s, r) => s + (r.delta || 0), 0);
@@ -75,24 +77,25 @@ export async function POST(req) {
     }
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
 
     // Dedup check for unique events
     if (DEDUP_PREFIXES.has(prefix)) {
       const { data: dup } = await admin
         .from('points_log')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .eq('reason', reason)
         .maybeSingle();
       if (dup) {
         const { data: balRow } = await admin
-          .from('user_points').select('total').eq('user_id', user.id).maybeSingle();
+          .from('user_points').select('total').eq('user_id', effectiveUserId).maybeSingle();
         return NextResponse.json({ skipped: true, points: balRow?.total ?? 0 });
       }
     }
 
     const { data: current } = await admin
-      .from('user_points').select('total').eq('user_id', user.id).maybeSingle();
+      .from('user_points').select('total').eq('user_id', effectiveUserId).maybeSingle();
     const prevTotal = current?.total ?? 0;
     const newTotal  = prevTotal + amount;
 
@@ -101,7 +104,7 @@ export async function POST(req) {
       const { data: updated } = await admin
         .from('user_points')
         .update({ total: newTotal, updated_at: new Date().toISOString() })
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .eq('total', prevTotal)
         .select('total')
         .maybeSingle();
@@ -109,11 +112,11 @@ export async function POST(req) {
         return NextResponse.json({ error: 'تعارض في العملية، يرجى المحاولة مجدداً' }, { status: 409 });
     } else {
       await admin.from('user_points').insert(
-        { user_id: user.id, total: newTotal, updated_at: new Date().toISOString() }
+        { user_id: effectiveUserId, total: newTotal, updated_at: new Date().toISOString() }
       );
     }
 
-    await admin.from('points_log').insert({ user_id: user.id, delta: amount, reason });
+    await admin.from('points_log').insert({ user_id: effectiveUserId, delta: amount, reason });
 
     return NextResponse.json({ success: true, points: newTotal });
   } catch (e) {

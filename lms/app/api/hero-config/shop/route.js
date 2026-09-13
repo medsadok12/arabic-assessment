@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { resolveActiveIdentity } from '../../../../lib/active-child';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,12 +35,13 @@ export async function POST(req) {
     if (price === undefined) return NextResponse.json({ error: 'عنصر غير موجود' }, { status: 404 });
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
 
     /* Claim ownership FIRST, atomically. The composite unique (user_id,item_id) means a
        concurrent duplicate purchase raises 23505 → already owned, so we never double-charge. */
     const { error: claimErr } = await admin
       .from('avatar_items')
-      .insert({ user_id: user.id, item_id, equipped: false });
+      .insert({ user_id: effectiveUserId, item_id, equipped: false });
     if (claimErr) {
       if (claimErr.code === '23505') return NextResponse.json({ error: 'العنصر مملوك بالفعل' }, { status: 409 });
       return NextResponse.json({ error: claimErr.message }, { status: 500 });
@@ -50,29 +52,29 @@ export async function POST(req) {
     let newBalance = null;
     if (price > 0) {
       const { data: balRow } = await admin
-        .from('user_points').select('total').eq('user_id', user.id).maybeSingle();
+        .from('user_points').select('total').eq('user_id', effectiveUserId).maybeSingle();
       const balance = balRow?.total ?? 0;
 
       if (balance < price) {
-        await admin.from('avatar_items').delete().eq('user_id', user.id).eq('item_id', item_id);
+        await admin.from('avatar_items').delete().eq('user_id', effectiveUserId).eq('item_id', item_id);
         return NextResponse.json({ error: `نقاط غير كافية — رصيدك ${balance}، السعر ${price}` }, { status: 400 });
       }
 
       const { data: deducted } = await admin
         .from('user_points')
         .update({ total: balance - price, updated_at: new Date().toISOString() })
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .eq('total', balance)   // optimistic lock — matches only if balance unchanged since read
         .select('total')
         .maybeSingle();
 
       if (!deducted) {
-        await admin.from('avatar_items').delete().eq('user_id', user.id).eq('item_id', item_id);
+        await admin.from('avatar_items').delete().eq('user_id', effectiveUserId).eq('item_id', item_id);
         return NextResponse.json({ error: 'تعارض في العملية، يرجى المحاولة مجدداً' }, { status: 409 });
       }
       newBalance = deducted.total;
 
-      await admin.from('points_log').insert({ user_id: user.id, delta: -price, reason: `avatar_buy_${item_id}` });
+      await admin.from('points_log').insert({ user_id: effectiveUserId, delta: -price, reason: `avatar_buy_${item_id}` });
     }
 
     return NextResponse.json({ success: true, price_charged: price, newBalance });

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { resolveActiveIdentity } from '../../../../lib/active-child';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,27 +9,29 @@ const FREEZE_PRICE = 100;
 const FREEZE_CAP   = 2;
 
 // GET — current freeze balance + pricing
-export async function GET() {
+export async function GET(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ balance: 0, price: FREEZE_PRICE, cap: FREEZE_CAP });
 
   const admin = createAdminClient();
+  const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
   const { data } = await admin
-    .from('streak_freezes').select('balance').eq('user_id', user.id).maybeSingle();
+    .from('streak_freezes').select('balance').eq('user_id', effectiveUserId).maybeSingle();
 
   return NextResponse.json({ balance: data?.balance ?? 0, price: FREEZE_PRICE, cap: FREEZE_CAP });
 }
 
 // POST — buy one freeze (atomic, race-proof, handled entirely inside buy_streak_freeze)
-export async function POST() {
+export async function POST(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
 
   const admin = createAdminClient();
+  const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
   const { data, error } = await admin.rpc('buy_streak_freeze', {
-    p_user: user.id, p_price: FREEZE_PRICE, p_cap: FREEZE_CAP,
+    p_user: effectiveUserId, p_price: FREEZE_PRICE, p_cap: FREEZE_CAP,
   });
 
   if (error) return NextResponse.json({ error: 'تعذّر إتمام العملية، يرجى المحاولة مجدداً' }, { status: 500 });

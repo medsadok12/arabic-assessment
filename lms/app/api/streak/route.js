@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient }      from '../../../lib/supabase-server';
 import { awardPoints }       from '../../../lib/points';
+import { resolveActiveIdentity } from '../../../lib/active-child';
 
 function calcStreak(dates) {
   if (!dates.length) return 0;
@@ -25,17 +26,18 @@ function calcStreak(dates) {
 }
 
 // GET — return streak info for current user
-export async function GET() {
+export async function GET(req) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ streak: 0, logged_today: false, last_7: [] });
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
     const { data } = await admin
       .from('daily_logs')
       .select('log_date')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .order('log_date', { ascending: false })
       .limit(365);
 
@@ -60,16 +62,18 @@ export async function GET() {
 }
 
 // POST — log today's activity (idempotent)
-export async function POST() {
+export async function POST(req) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ ok: false });
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
     const today = new Date().toISOString().slice(0, 10);
 
     // SEC-1: حذف temp_password بمجرد دخول المستخدم داشبورده (بشكل غير محظور)
+    // — يخص حساب تسجيل الدخول الحقيقي دائماً، لا الطفل المعروض
     if (user.app_metadata?.temp_password) {
       admin.auth.admin.updateUserById(user.id, {
         app_metadata: { ...user.app_metadata, temp_password: null },
@@ -78,13 +82,13 @@ export async function POST() {
 
     await admin
       .from('daily_logs')
-      .upsert({ user_id: user.id, log_date: today },
+      .upsert({ user_id: effectiveUserId, log_date: today },
                { onConflict: 'user_id,log_date', ignoreDuplicates: true });
 
     const { data } = await admin
       .from('daily_logs')
       .select('log_date')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .order('log_date', { ascending: false })
       .limit(365);
 
@@ -106,15 +110,15 @@ export async function POST() {
 
       if (missed.length > 0) {
         const { data: fz } = await admin
-          .from('streak_freezes').select('balance').eq('user_id', user.id).maybeSingle();
+          .from('streak_freezes').select('balance').eq('user_id', effectiveUserId).maybeSingle();
         const balance = fz?.balance ?? 0;
         if (balance >= missed.length) {
           await admin.from('daily_logs').upsert(
-            missed.map(d => ({ user_id: user.id, log_date: d })),
+            missed.map(d => ({ user_id: effectiveUserId, log_date: d })),
             { onConflict: 'user_id,log_date', ignoreDuplicates: true }
           );
           await admin.from('streak_freezes')
-            .update({ balance: balance - missed.length }).eq('user_id', user.id);
+            .update({ balance: balance - missed.length }).eq('user_id', effectiveUserId);
           dates.push(...missed);
           dates.sort((a, b) => b.localeCompare(a));   // keep descending for calcStreak
         }
@@ -123,7 +127,7 @@ export async function POST() {
 
     const streak = calcStreak(dates);
 
-    awardPoints(user.id, 10, `daily_login:${today}`).catch(() => {});
+    awardPoints(effectiveUserId, 10, `daily_login:${today}`).catch(() => {});
 
     return NextResponse.json({ ok: true, streak });
   } catch (e) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient } from '../../../lib/supabase-server';
+import { resolveActiveIdentity } from '../../../lib/active-child';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,10 +17,11 @@ export async function GET(req) {
     if (!gameId) return NextResponse.json({ results: [] });
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
     const { data } = await admin
       .from('game_results')
       .select('category, correct, wrong, total, played_at')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .eq('game_id', gameId)
       .order('played_at', { ascending: false });
 
@@ -51,8 +53,9 @@ export async function POST(req) {
     }
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
     await admin.from('game_results').insert({
-      user_id: user.id,
+      user_id: effectiveUserId,
       game_id,
       category,
       correct: correct ?? 0,

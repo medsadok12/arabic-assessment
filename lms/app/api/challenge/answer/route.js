@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient as createServerClient } from '../../../../lib/supabase-server';
+import { resolveActiveIdentity } from '../../../../lib/active-child';
 
 // POST — atomic round win claim
 export async function POST(request) {
@@ -10,11 +11,12 @@ export async function POST(request) {
     if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
 
     const { room_id, q_index, picked_option } = await request.json();
-    const player_id = user.id;
     if (!room_id || q_index === undefined || !picked_option)
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, request);
+    const player_id = effectiveUserId;
 
     // Fetch room to validate answer and determine player role
     const { data: room } = await admin

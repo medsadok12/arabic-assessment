@@ -168,7 +168,7 @@ function getPtsLvl(earned) {
 }
 
 /* ── Points tab for the bottom nav (students, mobile only) ── */
-function PointsBottomItem() {
+function PointsBottomItem({ viewingChildId = null }) {
   const [pts,    setPts]    = useState(0);
   const [earned, setEarned] = useState(0);
   const [open,   setOpen]   = useState(false);
@@ -176,7 +176,9 @@ function PointsBottomItem() {
   useEffect(() => {
     async function load() {
       try {
-        const r = await fetch('/api/points');
+        // ?child= صريح يمنع سباق التزامن مع كوكي الطفل النشط عند أول تحميل
+        const url = viewingChildId ? `/api/points?child=${viewingChildId}` : '/api/points';
+        const r = await fetch(url);
         const j = await r.json();
         setPts(j.points ?? 0);
         setEarned(j.earned ?? 0);
@@ -185,7 +187,7 @@ function PointsBottomItem() {
     load();
     const id = setInterval(load, 20000);
     return () => clearInterval(id);
-  }, []);
+  }, [viewingChildId]);
 
   const lvl      = getPtsLvl(earned);
   const inLevel  = earned - lvl.idx * PTS_PER_LVL;
@@ -308,7 +310,7 @@ function PointsBottomItem() {
   );
 }
 
-function BottomNav({ navLinks, pathname, role }) {
+function BottomNav({ navLinks, pathname, role, viewingChildId }) {
   const isStudent = role === 'student';
   return (
     <div className="nav-bottom-bar">
@@ -331,7 +333,7 @@ function BottomNav({ navLinks, pathname, role }) {
           <span className="nav-bottom-label">استوديو</span>
         </Link>
       )}
-      {isStudent && <PointsBottomItem />}
+      {isStudent && <PointsBottomItem viewingChildId={viewingChildId} />}
     </div>
   );
 }
@@ -343,7 +345,7 @@ function dashboardPath(role) {
   return '/dashboard';
 }
 
-export default function Navbar({ user: initialUser, sessionCountdown = null }) {
+export default function Navbar({ user: initialUser, sessionCountdown = null, viewingChildId = null }) {
   useNavStyle();
   const pathname  = usePathname();
   const router    = useRouter();
@@ -379,17 +381,23 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
   useEffect(() => {
     const isStud = getRole(user) === 'student';
     if (!isStud || !user?.id) return;
-    const key = `arem_glow_${user.id}`;
+    // المفتاح يشمل الطفل المعروض حالياً — بدونه تُقرأ قيمة مخزَّنة لطفل آخر
+    // (كلاهما تحت نفس user.id الحقيقي لتسجيل دخول الوالد) عند التبديل بينهما
+    // في نفس تبويب المتصفح.
+    const key = `arem_glow_${user.id}_${viewingChildId || 'self'}`;
     try {
       const cached = sessionStorage.getItem(key);
       if (cached !== null) { setGlowLevel(parseInt(cached, 10)); return; }
     } catch {}
-    fetch('/api/points').then(r => r.json()).then(j => {
+    // ?child= صريح يمنع أي سباق تزامن مع كوكي الطفل النشط الذي قد لا يكون
+    // قد كُتب بعد على نفس تحميل الصفحة (انظر DashboardContent.jsx)
+    const url = viewingChildId ? `/api/points?child=${viewingChildId}` : '/api/points';
+    fetch(url).then(r => r.json()).then(j => {
       const idx = Math.min(4, Math.floor((j.earned ?? 0) / 1000));
       setGlowLevel(idx);
       try { sessionStorage.setItem(key, String(idx)); } catch {}
     }).catch(() => {});
-  }, [user?.id, getRole(user)]);
+  }, [user?.id, viewingChildId, getRole(user)]);
 
   async function handleLogout() {
     setDropOpen(false);
@@ -568,7 +576,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null }) {
 
     </nav>
     <TeamChat user={user} />
-    {user && <BottomNav navLinks={navLinks} pathname={pathname} role={role} />}
+    {user && <BottomNav navLinks={navLinks} pathname={pathname} role={role} viewingChildId={viewingChildId} />}
     {user && role === 'student' && <PointsBadge />}
     </>
   );

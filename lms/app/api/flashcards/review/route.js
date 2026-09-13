@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
+import { resolveActiveIdentity } from '../../../../lib/active-child';
 
 // Days until next review by level (0-5)
 const INTERVALS = [1, 1, 3, 7, 14, 30];
@@ -23,12 +24,13 @@ export async function POST(request) {
     }
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, request);
     const today = new Date().toISOString().slice(0, 10);
 
     const { data: existing } = await admin
       .from('flashcard_progress')
       .select('level')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .eq('word_id', word_id)
       .maybeSingle();
 
@@ -53,7 +55,7 @@ export async function POST(request) {
     await admin
       .from('flashcard_progress')
       .upsert({
-        user_id:       user.id,
+        user_id:       effectiveUserId,
         word_id,
         level:         newLevel,
         next_review:   nextReview,

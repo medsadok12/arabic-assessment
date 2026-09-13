@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient } from '../../../../lib/supabase-server';
+import { resolveActiveIdentity } from '../../../../lib/active-child';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,7 @@ export async function POST(req) {
     }
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
 
     /* Check and deduct balance only when price > 0.
        Optimistic-lock pattern: read current total, then UPDATE WHERE total = <read value>.
@@ -46,7 +48,7 @@ export async function POST(req) {
       const { data: balRow } = await admin
         .from('user_points')
         .select('total')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .maybeSingle();
 
       const balance = balRow?.total ?? 0;
@@ -56,7 +58,7 @@ export async function POST(req) {
       const { data: deducted } = await admin
         .from('user_points')
         .update({ total: balance - price, updated_at: new Date().toISOString() })
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .eq('total', balance)   // optimistic lock — matches only if balance unchanged
         .select('total')
         .maybeSingle();
@@ -67,7 +69,7 @@ export async function POST(req) {
       newBalance = deducted.total;
 
       await admin.from('points_log').insert({
-        user_id: user.id,
+        user_id: effectiveUserId,
         delta:   -price,
         reason:  `avatar_buy_${itemId}`,
       });
@@ -77,7 +79,7 @@ export async function POST(req) {
     await admin
       .from('avatar_items')
       .upsert(
-        { user_id: user.id, item_id: itemId, equipped: false },
+        { user_id: effectiveUserId, item_id: itemId, equipped: false },
         { onConflict: 'user_id,item_id', ignoreDuplicates: true }
       );
 

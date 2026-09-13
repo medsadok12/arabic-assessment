@@ -1,24 +1,26 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase-server';
 import { createAdminClient } from '../../../lib/supabase-admin';
+import { resolveActiveIdentity } from '../../../lib/active-child';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ base_seed: null, equipped: {}, owned: [], points: 0 });
 
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
     const [{ data: cfg }, { data: items }, { data: pts }] = await Promise.all([
-      admin.from('hero_config').select('*').eq('user_id', user.id).maybeSingle(),
-      admin.from('avatar_items').select('item_id').eq('user_id', user.id),
-      admin.from('user_points').select('total').eq('user_id', user.id).maybeSingle(),
+      admin.from('hero_config').select('*').eq('user_id', effectiveUserId).maybeSingle(),
+      admin.from('avatar_items').select('item_id').eq('user_id', effectiveUserId),
+      admin.from('user_points').select('total').eq('user_id', effectiveUserId).maybeSingle(),
     ]);
 
     return NextResponse.json({
-      base_seed:   cfg?.base_seed   ?? user.id,
+      base_seed:   cfg?.base_seed   ?? effectiveUserId,
       avatar_url:  cfg?.avatar_url  ?? null,
       preview_url: cfg?.preview_url ?? null,
       avatar_id:   cfg?.avatar_id   ?? null,
@@ -47,6 +49,7 @@ export async function PATCH(req) {
 
     const body  = await req.json();
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
     const up    = { updated_at: new Date().toISOString() };
 
     if ('base_seed'   in body) up.base_seed           = body.base_seed;
@@ -62,7 +65,7 @@ export async function PATCH(req) {
     if ('background'  in body) up.equipped_background = body.background;
 
     await admin.from('hero_config').upsert(
-      { user_id: user.id, ...up },
+      { user_id: effectiveUserId, ...up },
       { onConflict: 'user_id' }
     );
     return NextResponse.json({ success: true });

@@ -389,18 +389,20 @@ function loadMvScript() {
    model-viewer here because DashboardHero3D already renders the full 3D hero.
    Otherwise: falls back to DiceBear 2D avatar.
 ══════════════════════════════════════════════════════════════════════════ */
-export default function AvatarShop({ user, displayName }) {
+export default function AvatarShop({ user, displayName, viewingChildId = null }) {
   const [cfg, setCfg] = useState(null);
 
   const userId    = user?.id ?? null;
   const userAvURL = user?.user_metadata?.avatar_url ?? null;
 
   useEffect(() => {
-    fetch('/api/hero-config')
+    // ?child= صريح يمنع سباق التزامن مع كوكي الطفل النشط عند أول تحميل الصفحة
+    const url = viewingChildId ? `/api/hero-config?child=${viewingChildId}` : '/api/hero-config';
+    fetch(url)
       .then(r => r.json())
       .then(d => setCfg(d))
       .catch(() => {});
-  }, []);
+  }, [viewingChildId]);
 
   const previewUrl = cfg?.preview_url ?? null;
   const equipped   = cfg?.equipped    ?? {};

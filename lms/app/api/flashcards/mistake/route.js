@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
+import { resolveActiveIdentity } from '../../../../lib/active-child';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,7 @@ export async function POST(req) {
 
     const word = word_text.trim();
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
     const grade = grade_level ?? user.user_metadata?.grade ?? 1;
 
     // 1. Find or create the word in lexicon_words
@@ -48,14 +50,14 @@ export async function POST(req) {
     const { data: progress } = await admin
       .from('flashcard_progress')
       .select('id, level')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .eq('word_id', wordId)
       .maybeSingle();
 
     if (!progress) {
       // New word for this student — add at level 0, due today
       await admin.from('flashcard_progress').insert({
-        user_id: user.id,
+        user_id: effectiveUserId,
         word_id: wordId,
         level: 0,
         next_review: new Date().toISOString().slice(0, 10),

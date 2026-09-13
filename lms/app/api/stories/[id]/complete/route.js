@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
 import { createClient }      from '../../../../../lib/supabase-server';
+import { resolveActiveIdentity } from '../../../../../lib/active-child';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,7 @@ export async function POST(req, { params }) {
 
     const { id } = params;
     const admin = createAdminClient();
+    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
 
     // Fetch story to get points value
     const { data: story, error: storyErr } = await admin
@@ -28,7 +30,7 @@ export async function POST(req, { params }) {
     const { data: existing } = await admin
       .from('story_reads')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .eq('story_id', id)
       .maybeSingle();
 
@@ -36,7 +38,7 @@ export async function POST(req, { params }) {
       const { data: balRow } = await admin
         .from('user_points')
         .select('total')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .maybeSingle();
       return NextResponse.json({ skipped: true, points: balRow?.total ?? 0 });
     }
@@ -48,22 +50,22 @@ export async function POST(req, { params }) {
     const { data: balRow } = await admin
       .from('user_points')
       .select('total')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .maybeSingle();
     const newTotal = (balRow?.total ?? 0) + pts;
 
     // Award points (always works even if story_reads table missing)
     await Promise.all([
       admin.from('user_points').upsert(
-        { user_id: user.id, total: newTotal, updated_at: new Date().toISOString() },
+        { user_id: effectiveUserId, total: newTotal, updated_at: new Date().toISOString() },
         { onConflict: 'user_id' }
       ),
-      admin.from('points_log').insert({ user_id: user.id, delta: pts, reason }),
+      admin.from('points_log').insert({ user_id: effectiveUserId, delta: pts, reason }),
     ]);
 
     // Mark as read — silently skip if table doesn't exist yet
     const { error: readErr } = await admin.from('story_reads').insert({
-      user_id:  user.id,
+      user_id:  effectiveUserId,
       story_id: id,
       read_at:  new Date().toISOString(),
     });
