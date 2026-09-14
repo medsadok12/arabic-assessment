@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import DOMPurify from 'isomorphic-dompurify';
 import StoryFlipBook from '../../../../components/StoryFlipBook';
+import { childFetch } from '../../../../lib/child-fetch';
 
 const LEVEL_LABELS = { 1: 'مستوى 1', 2: 'مستوى 2', 3: 'مستوى 3' };
 const SR_FONT_STEPS = ['.78rem', '.9rem', '1.0rem', '1.12rem', '1.28rem', '1.44rem'];
@@ -68,7 +69,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
     if (read || loading || isTeacher) return;
     setLoading(true);
     try {
-      const res  = await fetch(`/api/stories/${story.id}/complete`, { method: 'POST' });
+      const res  = await childFetch(`/api/stories/${story.id}/complete`, { method: 'POST' });
       const json = await res.json();
       if (json.success || json.skipped) {
         setRead(true);

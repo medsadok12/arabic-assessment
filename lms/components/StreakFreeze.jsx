@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { childFetch } from '../lib/child-fetch';
 
 /* Streak-freeze store on the dashboard: the child spends points to hold up to `cap`
    freezes that automatically protect their streak on a day they miss. Purchase is
@@ -13,7 +14,7 @@ export default function StreakFreeze() {
 
   useEffect(() => {
     let alive = true;
-    fetch('/api/streak/freeze')
+    childFetch('/api/streak/freeze')
       .then(r => r.json())
       .then(d => {
         if (!alive) return;
@@ -27,7 +28,7 @@ export default function StreakFreeze() {
     if (busy || balance >= cap) return;
     setBusy(true); setMsg(null);
     try {
-      const res = await fetch('/api/streak/freeze', { method: 'POST' });
+      const res = await childFetch('/api/streak/freeze', { method: 'POST' });
       const j = await res.json();
       if (res.ok && j.ok) {
         setBalance(j.balance);

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { getRole } from '../../../../lib/auth-role';
+import { childFetch } from '../../../../lib/child-fetch';
 
 /* teacher-only panel loads only when the teacher opens it — not in students' bundle */
 const SettingsPanel = dynamic(() => import('./_teacher-panel'), { ssr: false, loading: () => null });
@@ -169,7 +170,7 @@ export default function LetterCatcherGame() {
 
   /* ── detect teacher/admin role + load user + load past results ── */
   useEffect(() => {
-    fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
+    childFetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
     import('../../../../lib/supabase').then(({ createClient }) => {
       const supabase = createClient();
       supabase.auth.getUser().then(({ data: { user } }) => {
@@ -177,7 +178,7 @@ export default function LetterCatcherGame() {
         setIsTeacher(['super_admin', 'admin', 'teacher'].includes(role));
         if (user) {
           setCurrentUser(user);
-          fetch('/api/game-results?game=letter_catcher')
+          childFetch('/api/game-results?game=letter_catcher')
             .then(r => r.json())
             .then(j => {
               const map = {};
@@ -246,7 +247,7 @@ export default function LetterCatcherGame() {
     savedResultRef.current = true;
     const wrong    = queue.length - score;
     const catKey   = selectedCategory ?? '__all__';
-    fetch('/api/game-results', {
+    childFetch('/api/game-results', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -257,7 +258,7 @@ export default function LetterCatcherGame() {
         total:    queue.length,
       }),
     })
-      .then(() => fetch('/api/game-results?game=letter_catcher'))
+      .then(() => childFetch('/api/game-results?game=letter_catcher'))
       .then(r  => r.json())
       .then(j  => {
         const map = {};
@@ -311,12 +312,12 @@ export default function LetterCatcherGame() {
       setPtPopupKey(k => k + 1);
       setPtPopupActive(true);
       setTimeout(() => setPtPopupActive(false), 1200);
-      fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'letter_catcher' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
+      childFetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'letter_catcher' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
       if (w.audio_url) { try { new Audio(w.audio_url).play(); } catch {} }
       else speak(w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word);
     } else {
       const fullWord = w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word;
-      fetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: fullWord, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
+      childFetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: fullWord, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
     }
   }, [chosen, cur, queue]);
 

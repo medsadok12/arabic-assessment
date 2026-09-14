@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, Suspense, lazy, Component } from 'react';
+import { childFetch } from '../../../lib/child-fetch';
 const Spline = lazy(() =>
   import('@splinetool/react-spline').then(m => ({ default: m.default ?? m }))
 );
@@ -214,7 +215,7 @@ export default function HeroesStudio() {
   useEffect(() => { setIsMobile(window.innerWidth < 700); }, []);
 
   useEffect(() => {
-    fetch('/api/hero-config').then(r => r.json()).then(d => {
+    childFetch('/api/hero-config').then(r => r.json()).then(d => {
       setCfg(d);
       setOwned(d.owned ?? []);
       if (d.avatar_id) {
@@ -275,7 +276,7 @@ export default function HeroesStudio() {
     if (buying || isOwned(h) || (!h.glb && !h.splineUrl) || h.comingSoon) return;
     setBuying(h.id);
     try {
-      const res = await fetch('/api/hero-config/shop', {
+      const res = await childFetch('/api/hero-config/shop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ item_id: h.id }),
@@ -304,7 +305,7 @@ export default function HeroesStudio() {
         <text y="70" x="50" text-anchor="middle" font-size="54">${hero.emoji}</text>
       </svg>`;
       const previewUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(previewSvg)))}`;
-      const res = await fetch('/api/hero-config', {
+      const res = await childFetch('/api/hero-config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

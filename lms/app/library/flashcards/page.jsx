@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '../../../lib/supabase';
+import { childFetch } from '../../../lib/child-fetch';
 import Navbar from '../../../components/Navbar';
 
 const TOPIC_COLORS = {
@@ -356,7 +357,7 @@ export default function FlashcardsPage() {
   const [stats,        setStats]        = useState(null);
 
   useEffect(() => {
-    fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
+    childFetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -366,7 +367,7 @@ export default function FlashcardsPage() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/flashcards')
+    childFetch('/api/flashcards')
       .then(r => r.json())
       .then(d => {
         if (!d.cards?.length) { setPhase('empty'); return; }
@@ -379,7 +380,7 @@ export default function FlashcardsPage() {
   }, []);
 
   const callReview = useCallback((wordId, difficulty) => {
-    fetch('/api/flashcards/review', {
+    childFetch('/api/flashcards/review', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ word_id: wordId, difficulty }),
@@ -394,7 +395,7 @@ export default function FlashcardsPage() {
     setPtPopupKey(k => k + 1);
     setPtPopupActive(true);
     setTimeout(() => setPtPopupActive(false), 1200);
-    fetch('/api/points', {
+    childFetch('/api/points', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason: `fc:${card.id}` }),

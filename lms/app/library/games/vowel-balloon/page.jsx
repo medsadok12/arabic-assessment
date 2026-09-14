@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '../../../../lib/supabase';
 import Navbar from '../../../../components/Navbar';
 import { getRole } from '../../../../lib/auth-role';
+import { childFetch } from '../../../../lib/child-fetch';
 
 /* ─── balloon colors by position ─── */
 const BALLOON_COLORS = [
@@ -439,7 +440,7 @@ export default function VowelBalloonPage() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
+    childFetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
   }, []);
 
   /* fetch + build queue */
@@ -484,14 +485,14 @@ export default function VowelBalloonPage() {
       setPtPopupKey(k => k + 1);
       setPtPopupActive(true);
       setTimeout(() => setPtPopupActive(false), 1200);
-      fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'vowel_balloon' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
+      childFetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'vowel_balloon' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
       setConfKey(k => k + 1); setShowConf(true);
       if (q.audio_url) new Audio(q.audio_url).play().catch(() => {});
       setTimeout(() => {
         setShowConf(false); setLetterAnim('idle');
         setBalloonStates(['idle','idle','idle']);
         setChosen(null); setIsRight(null); setShowRule(false); setWrongFeedback(false);
-        if (cur + 1 >= queue.length) { setDone(true); fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'vowel_balloon', category: 'عام', correct: score + 1, wrong: (cur + 1) - (score + 1), total: queue.length }) }).catch(() => {}); return; }
+        if (cur + 1 >= queue.length) { setDone(true); childFetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'vowel_balloon', category: 'عام', correct: score + 1, wrong: (cur + 1) - (score + 1), total: queue.length }) }).catch(() => {}); return; }
         setCur(c => c + 1);
       }, 1200);
     } else {

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '../../../../lib/supabase';
+import { childFetch } from '../../../../lib/child-fetch';
 import Navbar from '../../../../components/Navbar';
 
 const OPTION_PRESETS = ['فتحة','ضمة','كسرة','سكون','مد بالألف','مد بالواو','مد بالياء'];
@@ -119,7 +120,7 @@ export default function ChallengePage() {
     const amount = myWon ? 15 : tied ? 10 : 5;
     const tag    = myWon ? 'win' : tied ? 'draw' : 'loss';
     setEarnedPts(amount);
-    fetch('/api/points', {
+    childFetch('/api/points', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason: `challenge_${tag}:${room.id}` }),
@@ -157,7 +158,7 @@ export default function ChallengePage() {
           setRoundState(wonByMe ? 'won_me' : 'won_other');
           if (advanceTimer.current) clearTimeout(advanceTimer.current);
           advanceTimer.current = setTimeout(async () => {
-            await fetch('/api/challenge/advance', {
+            await childFetch('/api/challenge/advance', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ room_id: updated.id, from_q_index: updated.cur_q_index }),
@@ -178,7 +179,7 @@ export default function ChallengePage() {
     if (!name.trim()) { setErr('أدخل اسمك أولاً'); return; }
     setBusy(true); setErr('');
     try {
-      const r = await fetch('/api/challenge/room', {
+      const r = await childFetch('/api/challenge/room', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ game_type: gameType, player1_id: playerIdRef.current, player1_name: name.trim() }),
@@ -196,7 +197,7 @@ export default function ChallengePage() {
     if (!joinCode.trim()) { setErr('أدخل كود الغرفة'); return; }
     setBusy(true); setErr('');
     try {
-      const r = await fetch('/api/challenge/room', {
+      const r = await childFetch('/api/challenge/room', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ room_code: joinCode.trim().toUpperCase(), player2_id: playerIdRef.current, player2_name: name.trim() }),
@@ -227,7 +228,7 @@ export default function ChallengePage() {
     }
 
     /* correct — try to claim the round */
-    const res = await fetch('/api/challenge/answer', {
+    const res = await childFetch('/api/challenge/answer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

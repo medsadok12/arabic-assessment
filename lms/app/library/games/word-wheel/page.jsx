@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '../../../../lib/supabase';
 import { getRole } from '../../../../lib/auth-role';
+import { childFetch } from '../../../../lib/child-fetch';
 
 /* ─── Constants ─────────────────────────────────────────────────────────── */
 const STRIP_RE = /[ً-ْٰـ]/g;
@@ -170,7 +171,7 @@ export default function WordWheelGame() {
     createClient().auth.getUser()
       .then(({data})=>setUserRole(data?.getRole(user)||null))
       .catch(()=>{});
-    fetch('/api/points').then(r=>r.json()).then(j=>setTotalPoints(j.points??0)).catch(()=>{});
+    childFetch('/api/points').then(r=>r.json()).then(j=>setTotalPoints(j.points??0)).catch(()=>{});
   }, []);
 
   /* ── Save progress when game finishes ─────────────────────────────────── */
@@ -279,7 +280,7 @@ export default function WordWheelGame() {
     setTimeout(()=>{ setFlashing(false); setFlyWord(null); },900);
     speak(word);
     showFeedback(`+${pts} نقطة — ممتاز! ✨`,'success');
-    fetch('/api/points',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:'word_wheel'})}).then(r=>r.json()).then(j=>{if(j.points)setTotalPoints(j.points);}).catch(()=>{});
+    childFetch('/api/points',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:'word_wheel'})}).then(r=>r.json()).then(j=>{if(j.points)setTotalPoints(j.points);}).catch(()=>{});
     setSelected([]); setInputText('');
     if(customConfig){
       const entry=(customConfig.valid_words||[]).find(vw=>vw.word===word);
@@ -312,7 +313,7 @@ export default function WordWheelGame() {
       const done=getTotalDone(prog);
       setAllDoneNew(done>=20);
       setPhase('allDone');
-      fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_wheel', category: 'عام', correct: done, wrong: 0, total: done }) }).catch(() => {});
+      childFetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_wheel', category: 'عام', correct: done, wrong: 0, total: done }) }).catch(() => {});
     }
   }
   function handleRetryWheel() {

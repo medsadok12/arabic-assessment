@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Navbar from '../../../components/Navbar';
 import { createClient } from '../../../lib/supabase';
+import { childFetch } from '../../../lib/child-fetch';
 
 const PALETTE = [
   { main: '#185FA5', light: '#dbeafe' },
@@ -238,7 +239,7 @@ export default function HuroofPage() {
 
     if (isNew && user && !pointsGivenRef.current.has(i)) {
       pointsGivenRef.current.add(i);
-      fetch('/api/points', {
+      childFetch('/api/points', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: `huroof_letter:${i}` }),
@@ -246,7 +247,7 @@ export default function HuroofPage() {
 
       if (seen.size + 1 === LETTERS.length && !completionBonusRef.current) {
         completionBonusRef.current = true;
-        fetch('/api/points', {
+        childFetch('/api/points', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reason: 'huroof_all_complete' }),

@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { childFetch } from '../lib/child-fetch';
 
 const LEVELS = [
   { min: 0,    color: '#D97706', icon: '🌱', name: 'مبتدئ'  },
@@ -70,7 +71,7 @@ function PointsBadgeDesktop() {
 
   const load = useCallback(async () => {
     try {
-      const r = await fetch('/api/points');
+      const r = await childFetch('/api/points');
       const j = await r.json();
       const newPts    = j.points ?? 0;
       const newEarned = j.earned ?? 0;

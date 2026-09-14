@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { childFetch } from '../lib/child-fetch';
 
 const PIECE_COST = 50;
 
@@ -101,7 +102,7 @@ export default function PuzzleWidget() {
   const load = useCallback(async (next = false) => {
     setLoading(true);
     try {
-      const r = await fetch(`/api/puzzle${next ? '?next=1' : ''}`);
+      const r = await childFetch(`/api/puzzle${next ? '?next=1' : ''}`);
       const j = await r.json();
       setPuzzle(j.puzzle ?? null);
       setProgress(j.progress ?? null);
@@ -142,7 +143,7 @@ export default function PuzzleWidget() {
 
     setUnlocking(true);
     try {
-      const r = await fetch('/api/puzzle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'unlock' }) });
+      const r = await childFetch('/api/puzzle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'unlock' }) });
       const j = await r.json();
       if (j.success) {
         setPoints(j.newPoints);

@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { childFetch } from '../lib/child-fetch';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -38,7 +39,7 @@ export default function ProgressCharts({ assessments, pastSessions: initialSessi
   const [ratingMsg, setRatingMsg] = useState({});
 
   async function handleRate(sessionId, rating) {
-    const res = await fetch('/api/student/sessions', {
+    const res = await childFetch('/api/student/sessions', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: sessionId, rating }),

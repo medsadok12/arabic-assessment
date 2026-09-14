@@ -9,6 +9,7 @@ import WordOfDay from './WordOfDay';
 import StreakFreeze from './StreakFreeze';
 import FlashcardReminderToast from './FlashcardReminderToast';
 import FamilySwitcher from './FamilySwitcher';
+import { setActiveChildTab, childFetch } from '../lib/child-fetch';
 
 /* المكوّنات الثقيلة تُقسَّم لحزم منفصلة تُحمَّل عند الحاجة فقط (SSR يبقى
    مفعّلاً فلا يتغير أول رسم إطلاقاً). الفائدة المزدوجة: حزمة أول تحميل
@@ -26,7 +27,7 @@ function HwToggle({ id, status }) {
     <button
       onClick={async () => {
         const next = st === 'done' ? 'pending' : 'done';
-        await fetch('/api/student/homework', {
+        await childFetch('/api/student/homework', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id, status: next }),
@@ -78,6 +79,12 @@ export default function DashboardContent({
   //    زر الرجوع) لأن الاعتماد هنا على viewingChildId المُتحقَّق من الخادم
   //    نفسه (dashboard/page.jsx)، لا على أي حالة عميل سابقة.
   useEffect(() => {
+    // مصدر حقيقة معزول لكل تبويب — يجعل كل طلبات هذا التبويب (بما فيها الألعاب
+    // التي لا تحمل ?child= في روابطها) تُنسب للطفل الصحيح عبر childFetch، بلا
+    // اعتماد على الكوكي العام المشترك بين التبويبات.
+    setActiveChildTab(viewingChildId);
+    // الكوكي يبقى fallback للطلبات التي لا تمر عبر childFetch (أو تبويب فُتح
+    // مباشرة على صفحة داخلية قبل تحميل اللوحة).
     fetch('/api/family/switch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -253,7 +260,7 @@ export default function DashboardContent({
   // تُجلب حالة الحضور فقط بعد أن يبدأ المعلم الحصة (liveStatus === 'active')
   useEffect(() => {
     if (!nextSession || liveStatus !== 'active') return;
-    fetch(`/api/student/attendance?session_id=${nextSession.id}`)
+    childFetch(`/api/student/attendance?session_id=${nextSession.id}`)
       .then(r => r.json())
       .then(d => { if (d.logged) setAttendanceLogged(true); })
       .catch(() => {});
@@ -264,7 +271,7 @@ export default function DashboardContent({
     setAttLoading(true);
     setAttError(null);
     try {
-      const res  = await fetch('/api/student/attendance', {
+      const res  = await childFetch('/api/student/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: nextSession.id }),

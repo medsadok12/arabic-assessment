@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { childFetch } from '../lib/child-fetch';
 
 const ORDINALS = ['','الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر'];
 function ordinal(n) {
@@ -16,7 +17,7 @@ export default function StreakLogger() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/streak', { method: 'POST' })
+    childFetch('/api/streak', { method: 'POST' })
       .then(r => r.json())
       .then(d => {
         if (d.ok && d.streak > 0) {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { getRole } from '../../../../lib/auth-role';
+import { childFetch } from '../../../../lib/child-fetch';
 
 /* ────────────────────────── helpers ────────────────────────── */
 
@@ -421,7 +422,7 @@ export default function WordScrambleGame() {
 
   // Detect teacher/admin role
   useEffect(() => {
-    fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
+    childFetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
     import('../../../../lib/supabase').then(({ createClient }) => {
       const supabase = createClient();
       supabase.auth.getUser().then(({ data: { user } }) => {
@@ -522,11 +523,11 @@ export default function WordScrambleGame() {
         setPtPopupKey(k => k + 1);
         setPtPopupActive(true);
         setTimeout(() => setPtPopupActive(false), 1200);
-        fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'word_scramble' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
+        childFetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'word_scramble' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
         setTimeout(() => speak(w.word), 200);
         if (w.audio_url) { try { new Audio(w.audio_url).play().catch(() => {}); } catch {} }
       } else {
-        fetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: w.word, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
+        childFetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: w.word, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
       }
     }
   }, [answer, available, result, queue, cur]);
@@ -560,12 +561,12 @@ export default function WordScrambleGame() {
       if (currentTopic) {
         setCompletedTopics(prev => new Set([...prev, currentTopic]));
         setTopicTotals(prev => ({ right: prev.right + score, total: prev.total + queue.length }));
-        fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_scramble', category: currentTopic, correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
+        childFetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_scramble', category: currentTopic, correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
         setCurrentTopic(null);
         setPhase('topics');
       } else {
         setPhase('finished');
-        fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_scramble', category: 'عام', correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
+        childFetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_scramble', category: 'عام', correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
       }
       return;
     }

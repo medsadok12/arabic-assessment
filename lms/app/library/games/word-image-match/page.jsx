@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { getRole } from '../../../../lib/auth-role';
+import { childFetch } from '../../../../lib/child-fetch';
 
 /* ─────────────── helpers ─────────────── */
 function shuffle(arr) {
@@ -458,7 +459,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
   useEffect(() => {
     if (allDone && !completionPostedRef.current) {
       completionPostedRef.current = true;
-      fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_image_match', category: 'عام', correct: completedTopics.size, wrong: 0, total: topicList.length }) }).catch(() => {});
+      childFetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_image_match', category: 'عام', correct: completedTopics.size, wrong: 0, total: topicList.length }) }).catch(() => {});
     }
   }, [allDone]);
 
@@ -486,7 +487,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
       setPtPopupKey(k => k + 1);
       setPtPopupActive(true);
       setTimeout(() => setPtPopupActive(false), 1200);
-      fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'word_image_match' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
+      childFetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'word_image_match' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
       const pair = pairMap[wordId];
       if (pair) setTimeout(() => playAudio(pair.audio_url, pair.word_text), 150);
       setBursting(prev => new Set([...prev, wordId]));
@@ -502,7 +503,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
         setShaking(null);
       }, 650);
       const pair = pairMap[wordId];
-      if (pair?.word_text) fetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: pair.word_text, topic: pair.topic, grade_level: pair.grade_level }) }).catch(() => {});
+      if (pair?.word_text) childFetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: pair.word_text, topic: pair.topic, grade_level: pair.grade_level }) }).catch(() => {});
     }
     setSelectedWord(null);
     dragWordIdRef.current = null;
@@ -964,7 +965,7 @@ export default function WordImageMatchPage() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
+    childFetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
   }, []);
 
   const loadAllPairs = useCallback(async () => {

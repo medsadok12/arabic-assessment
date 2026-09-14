@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../lib/supabase';
+import { childFetch } from '../../../lib/child-fetch';
 import Navbar from '../../../components/Navbar';
 
 // البيانات تُجلب عبر /api/calendar (service_role) بدل استعلام مباشر محجوب بـ RLS
@@ -37,7 +38,7 @@ export default function CalendarPage() {
       if (!u) { router.push('/auth/login'); return; }
       setUser(u);
       // جلب الحصص عبر مسار خادمي (service_role) لتجاوز سياسات RLS
-      fetch('/api/calendar')
+      childFetch('/api/calendar')
         .then(r => r.ok ? r.json() : { sessions: [] })
         .then(({ sessions }) => { setSessions(sessions ?? []); setLoading(false); });
     });

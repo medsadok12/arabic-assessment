@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { childFetch } from '../lib/child-fetch';
 
 const CHECK_INTERVAL = 10 * 60 * 1000; // 10 minutes
 
@@ -12,7 +13,7 @@ export default function FlashcardReminder() {
 
   async function check() {
     try {
-      const r = await fetch('/api/flashcards');
+      const r = await childFetch('/api/flashcards');
       if (!r.ok) return;
       const data = await r.json();
       const count = (data.deck ?? []).length;

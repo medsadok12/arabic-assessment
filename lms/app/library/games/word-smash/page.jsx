@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { getRole } from '../../../../lib/auth-role';
+import { childFetch } from '../../../../lib/child-fetch';
 
 /* ─── helpers ─── */
 function speak(text) {
@@ -569,7 +570,7 @@ export default function WordSmashGame() {
         setIsTeacher(['super_admin', 'admin', 'teacher'].includes(role));
       }).catch(() => {});
     }).catch(() => {});
-    fetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
+    childFetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
   }, []);
 
   /* load all words (teacher only, for manager) */
@@ -656,13 +657,13 @@ export default function WordSmashGame() {
       setPtPopupKey(k => k + 1);
       setPtPopupActive(true);
       setTimeout(() => setPtPopupActive(false), 1200);
-      fetch('/api/points', {
+      childFetch('/api/points', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: 'word_smash' }),
       }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
     } else {
-      fetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: w.word_text, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
+      childFetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: w.word_text, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
     }
   }, [chosen, cur, queue]);
 
@@ -672,12 +673,12 @@ export default function WordSmashGame() {
       if (currentTopic) {
         setCompletedTopics(prev => new Set([...prev, currentTopic]));
         setWormTotals(prev => ({ right: prev.right + score, total: prev.total + queue.length }));
-        fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_smash', category: currentTopic, correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
+        childFetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_smash', category: currentTopic, correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
         setCurrentTopic('');
         setPhase('worm');
       } else {
         setPhase('finished');
-        fetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_smash', category: 'عام', correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
+        childFetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_smash', category: 'عام', correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
       }
     } else {
       setCur(n); setChosen(null); setIsRight(null); setCharAnim('idle'); setWordAnim('idle');

@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { childFetch } from '../lib/child-fetch';
 
 /* «كلمة اليوم» — a light daily habit on the student dashboard: one word from the
    lexicon, the same for everyone each day, spoken in Fahim's voice, worth a small
@@ -92,7 +93,7 @@ export default function WordOfDay() {
 
     // Award the daily point on the first listen (server dedups by daily_word:DATE).
     if (!earned) {
-      fetch('/api/points', {
+      childFetch('/api/points', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: `daily_word:${date}` }),
