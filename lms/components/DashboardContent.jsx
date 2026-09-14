@@ -9,6 +9,7 @@ import WordOfDay from './WordOfDay';
 import StreakFreeze from './StreakFreeze';
 import FlashcardReminderToast from './FlashcardReminderToast';
 import FamilySwitcher from './FamilySwitcher';
+import ProfileVerifyModal from './ProfileVerifyModal';
 import { setActiveChildTab, childFetch } from '../lib/child-fetch';
 
 /* المكوّنات الثقيلة تُقسَّم لحزم منفصلة تُحمَّل عند الحاجة فقط (SSR يبقى
@@ -91,6 +92,36 @@ export default function DashboardContent({
       body: JSON.stringify({ childId: viewingChildId }),
     }).catch(() => {});
   }, [viewingChildId]);
+
+  // ── بوابة الدخول الأولى: شاشة اختيار الملف بالتحقق بالاسم ──
+  //    تظهر عند وجود أكثر من ملف (طفل مُضاف واحد على الأقل)، مرة واحدة لكل
+  //    ملف في كل تبويب (sessionStorage)، فلا يدخل طفل حساب شقيقه دون كتابة
+  //    اسمه. الحساب بلا أطفال مُضافين لا بوابة له. حماية استشارية (UX) —
+  //    العزل الأمني الفعلي يبقى على الخادم عبر resolveActiveIdentity.
+  const [gateOk, setGateOk]     = useState(true);
+  const [gatePick, setGatePick] = useState(null);
+
+  useEffect(() => {
+    if (!isStudent || (myChildren?.length ?? 0) === 0) { setGateOk(true); return; }
+    const currentId = viewingChildId || 'self';
+    try { setGateOk(sessionStorage.getItem('aa_gate_' + currentId) === '1'); }
+    catch { setGateOk(true); }
+  }, [isStudent, viewingChildId, myChildren]);
+
+  function passGate(profileId, href) {
+    const id = profileId || 'self';
+    try { sessionStorage.setItem('aa_gate_' + id, '1'); } catch {}
+    // نفس الملف المحمَّل → اكشف اللوحة؛ ملف آخر → انتقل إليه (تحميل كامل)
+    if (id === (viewingChildId || 'self')) { setGatePick(null); setGateOk(true); }
+    else window.location.href = href;
+  }
+
+  const gateProfiles = [
+    { id: 'self', name: rootName || 'أنا', emoji: '👤', href: '/dashboard' },
+    ...(myChildren || []).map(c => ({
+      id: c.id, name: c.full_name, emoji: '🧒', href: `/dashboard?child=${c.id}`,
+    })),
+  ];
 
   // ── Live session status — polls Supabase every 15 s to detect teacher "active" ──
   const [liveStatus, setLiveStatus] = useState(nextSession?.status ?? 'scheduled');
@@ -311,6 +342,46 @@ export default function DashboardContent({
 
   return (
     <>
+      {/* ── بوابة الدخول الأولى: اختيار الملف + تحقق بالاسم (تغطي اللوحة حتى التحقق) ── */}
+      {!gateOk && (
+        <div className="aa-gate">
+          <style>{`
+            .aa-gate { position:fixed; inset:0; z-index:1100; background:linear-gradient(160deg,#F4EFE6,#EDE5D8);
+                       display:flex; flex-direction:column; align-items:center; justify-content:center;
+                       padding:24px; direction:rtl; font-family:'Cairo','Tajawal',sans-serif; overflow:auto; }
+            .aa-gate-title { font-size:1.5rem; font-weight:900; color:#1A2B4A; margin-bottom:6px; text-align:center; }
+            .aa-gate-hint { font-size:.9rem; color:#7C5CD9; font-weight:700; margin-bottom:26px; text-align:center; }
+            .aa-gate-cards { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; max-width:520px; }
+            .aa-gate-card { display:flex; flex-direction:column; align-items:center; gap:10px; cursor:pointer;
+                            background:#fff; border:2px solid #EDE5D8; border-radius:20px; padding:22px 18px;
+                            width:130px; transition:.15s; font-family:inherit; }
+            .aa-gate-card:hover { border-color:#E8B84B; transform:translateY(-3px);
+                                  box-shadow:0 10px 26px rgba(26,43,74,.12); }
+            .aa-gate-emoji { width:64px; height:64px; border-radius:50%; background:#FAF7F2;
+                             display:flex; align-items:center; justify-content:center; font-size:2rem;
+                             border:2px solid #EDE5D8; }
+            .aa-gate-name { font-size:1rem; font-weight:800; color:#1A2B4A; text-align:center; word-break:break-word; }
+          `}</style>
+          <div className="aa-gate-title">من يتعلّم الآن؟ 🌟</div>
+          <div className="aa-gate-hint">اختر حسابك ثم اكتب اسمك للدخول</div>
+          <div className="aa-gate-cards">
+            {gateProfiles.map(p => (
+              <button key={p.id} type="button" className="aa-gate-card" onClick={() => setGatePick(p)}>
+                <span className="aa-gate-emoji">{p.emoji}</span>
+                <span className="aa-gate-name">{p.name}</span>
+              </button>
+            ))}
+          </div>
+          {gatePick && (
+            <ProfileVerifyModal
+              targetName={gatePick.name}
+              onSuccess={() => passGate(gatePick.id, gatePick.href)}
+              onCancel={() => setGatePick(null)}
+            />
+          )}
+        </div>
+      )}
+
       <style>{`
         .db-wrap { max-width:820px; margin:0 auto; padding:28px 18px 60px; direction:rtl; }
         .db-hello { font-size:1.55rem; font-weight:900; color:var(--primary); margin-bottom:6px; }
