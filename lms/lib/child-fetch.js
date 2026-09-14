@@ -16,11 +16,13 @@
 export const ACTIVE_CHILD_SS_KEY = 'aa_active_child';
 
 // يُسجّل أي طفل يعرضه هذا التبويب الآن. تُستدعى من DashboardContent عند كل
-// تحميل/تبديل. قيمة فارغة (عرض حساب الوالد الجذر) تمسح المفتاح.
+// تحميل/تبديل. عرض الحساب الجذر يخزّن السنتينل 'self' (لا يمسح المفتاح) —
+// حتى ترسل الألعاب/الودجات المنتقَل إليها من الجذر ?child=self صراحةً فتتجاوز
+// أي كوكي عالق على طفل سابق، بدل السقوط للكوكي (الذي كان يعرض رصيد الطفل
+// على الجذر خطأً).
 export function setActiveChildTab(childId) {
   try {
-    if (childId) sessionStorage.setItem(ACTIVE_CHILD_SS_KEY, childId);
-    else sessionStorage.removeItem(ACTIVE_CHILD_SS_KEY);
+    sessionStorage.setItem(ACTIVE_CHILD_SS_KEY, childId || 'self');
   } catch {}
 }
 

@@ -28,7 +28,7 @@ const ANIM_CSS = `
   @keyframes pfNum    { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
 `;
 
-export default function PointsBadge() {
+export default function PointsBadge({ viewingChildId }) {
   const [isMobile, setIsMobile] = useState(false);
   const [mounted,  setMounted]  = useState(false);
 
@@ -46,10 +46,10 @@ export default function PointsBadge() {
   // On mobile the bottom nav shows points — no floating badge needed
   if (isMobile) return null;
 
-  return <PointsBadgeDesktop />;
+  return <PointsBadgeDesktop viewingChildId={viewingChildId} />;
 }
 
-function PointsBadgeDesktop() {
+function PointsBadgeDesktop({ viewingChildId }) {
   const [pts,    setPts]    = useState(0);
   const [earned, setEarned] = useState(0);
   const [shownE, setShownE] = useState(0);
@@ -71,7 +71,13 @@ function PointsBadgeDesktop() {
 
   const load = useCallback(async () => {
     try {
-      const r = await childFetch('/api/points');
+      // على اللوحة viewingChildId معرَّف → ?child= صريح (self للجذر، يتجاوز أي
+      // كوكي عالق فلا يظهر رصيد طفل سابق على الجذر)؛ على بقية الصفحات undefined
+      // → childFetch (sessionStorage المعزول لكل تبويب).
+      const explicit = viewingChildId !== undefined;
+      const r = explicit
+        ? await fetch(`/api/points?child=${viewingChildId || 'self'}`)
+        : await childFetch('/api/points');
       const j = await r.json();
       const newPts    = j.points ?? 0;
       const newEarned = j.earned ?? 0;
@@ -105,7 +111,7 @@ function PointsBadgeDesktop() {
       prevEarned.current = newEarned;
       setEarned(newEarned);
     } catch {}
-  }, []);
+  }, [viewingChildId]);
 
   useEffect(() => {
     load();

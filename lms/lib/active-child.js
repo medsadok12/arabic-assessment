@@ -25,15 +25,28 @@ export async function resolveActiveIdentity(user, admin, req = null) {
   // عنصر عميل يعرف الطفل النشط فعلياً (Navbar, AvatarShop, DashboardHero3D...)
   // يمرّره صراحة كـ?child= لتفادي أي سباق تزامن مع كوكي لم يُكتب بعد على نفس
   // تحميل الصفحة — أولوية على الكوكي متى وُجد ومتحقَّق من ملكيته.
+  //
+  // ⚠️ حاسم: عرض الحساب الجذر (الوالد نفسه) لا يملك ?child=، فكان يعتمد على
+  // «غياب» السياق — لكن الكوكي/التخزين قد يبقى عالقاً على طفل سابق فيُعرَض
+  // رصيده على الجذر خطأً (البلاغ الميداني: نقاط الطفل تظهر للأخ الآخر).
+  // لذا العميل يرسل ?child=self صراحةً عند عرض الجذر، وهو إشارة قاطعة:
+  // «استخدم حساب الدخول الحقيقي وتجاهل الكوكي تماماً» — فلا يُخدَع بأي بقايا.
   let childId = null;
+  let fromParam = false;
   try {
-    if (req) childId = new URL(req.url).searchParams.get('child') || null;
-  } catch { childId = null; }
+    if (req) {
+      const p = new URL(req.url).searchParams.get('child');
+      if (p) { childId = p; fromParam = true; }
+    }
+  } catch { childId = null; fromParam = false; }
+
+  // إشارة self الصريحة من العميل → الحساب الحقيقي، وتتجاوز الكوكي بالكامل
+  if (fromParam && childId === 'self') return self;
 
   if (!childId) {
     try { childId = cookies().get(ACTIVE_CHILD_COOKIE)?.value || null; } catch { childId = null; }
   }
-  if (!childId) return self;
+  if (!childId || childId === 'self') return self;
 
   const { data: childRow } = await admin
     .from('students')

@@ -396,8 +396,9 @@ export default function AvatarShop({ user, displayName, viewingChildId = null })
   const userAvURL = user?.user_metadata?.avatar_url ?? null;
 
   useEffect(() => {
-    // ?child= صريح يمنع سباق التزامن مع كوكي الطفل النشط عند أول تحميل الصفحة
-    const url = viewingChildId ? `/api/hero-config?child=${viewingChildId}` : '/api/hero-config';
+    // ?child= صريح دائماً (self للجذر) — يتجاوز أي كوكي عالق على طفل سابق فلا
+    // يظهر بطل/رصيد طفل آخر على حساب الوالد الجذر.
+    const url = `/api/hero-config?child=${viewingChildId || 'self'}`;
     fetch(url)
       .then(r => r.json())
       .then(d => setCfg(d))

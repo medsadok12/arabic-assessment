@@ -59,8 +59,8 @@ export default function DashboardHero3D({ displayName, pendingHw, nextSession, i
 
   useEffect(() => {
     if (!isStudent) { setCfg({}); return; }
-    // ?child= صريح يمنع سباق التزامن مع كوكي الطفل النشط عند أول تحميل الصفحة
-    const url = viewingChildId ? `/api/hero-config?child=${viewingChildId}` : '/api/hero-config';
+    // ?child= صريح دائماً (self للجذر) — يتجاوز أي كوكي عالق على طفل سابق
+    const url = `/api/hero-config?child=${viewingChildId || 'self'}`;
     fetch(url)
       .then(r => r.json())
       .then(d => {

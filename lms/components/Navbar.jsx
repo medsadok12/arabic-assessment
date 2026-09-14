@@ -9,6 +9,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import TeamChat        from './TeamChat';
 import PointsBadge     from './PointsBadge';
 import { getRole } from '../lib/auth-role';
+import { childFetch } from '../lib/child-fetch';
 
 /* ── Global style injected once on mount (avoids SSR mismatch) ── */
 function useNavStyle() {
@@ -176,9 +177,12 @@ function PointsBottomItem({ viewingChildId = null }) {
   useEffect(() => {
     async function load() {
       try {
-        // ?child= صريح يمنع سباق التزامن مع كوكي الطفل النشط عند أول تحميل
-        const url = viewingChildId ? `/api/points?child=${viewingChildId}` : '/api/points';
-        const r = await fetch(url);
+        // على اللوحة viewingChildId معرَّف → ?child= صريح (self للجذر)؛ على بقية
+        // الصفحات undefined → childFetch (sessionStorage المعزول لكل تبويب).
+        const explicit = viewingChildId !== undefined;
+        const r = explicit
+          ? await fetch(`/api/points?child=${viewingChildId || 'self'}`)
+          : await childFetch('/api/points');
         const j = await r.json();
         setPts(j.points ?? 0);
         setEarned(j.earned ?? 0);
@@ -384,15 +388,20 @@ export default function Navbar({ user: initialUser, sessionCountdown = null, vie
     // المفتاح يشمل الطفل المعروض حالياً — بدونه تُقرأ قيمة مخزَّنة لطفل آخر
     // (كلاهما تحت نفس user.id الحقيقي لتسجيل دخول الوالد) عند التبديل بينهما
     // في نفس تبويب المتصفح.
-    const key = `arem_glow_${user.id}_${viewingChildId || 'self'}`;
+    // على لوحة الطالب viewingChildId معرَّف (id أو null للجذر) → نرسل ?child=
+    // صريحاً (self للجذر) لتفادي أي سباق تزامن مع كوكي عالق. على بقية الصفحات
+    // (ألعاب/مكتبة) prop غير مُمرَّر (undefined) → نستخدم childFetch الذي يقرأ
+    // الطفل النشط من sessionStorage المعزول لكل تبويب.
+    const explicit = viewingChildId !== undefined;
+    const key = `arem_glow_${user.id}_${explicit ? (viewingChildId || 'self') : 'amb'}`;
     try {
       const cached = sessionStorage.getItem(key);
       if (cached !== null) { setGlowLevel(parseInt(cached, 10)); return; }
     } catch {}
-    // ?child= صريح يمنع أي سباق تزامن مع كوكي الطفل النشط الذي قد لا يكون
-    // قد كُتب بعد على نفس تحميل الصفحة (انظر DashboardContent.jsx)
-    const url = viewingChildId ? `/api/points?child=${viewingChildId}` : '/api/points';
-    fetch(url).then(r => r.json()).then(j => {
+    const req = explicit
+      ? fetch(`/api/points?child=${viewingChildId || 'self'}`)
+      : childFetch('/api/points');
+    req.then(r => r.json()).then(j => {
       const idx = Math.min(4, Math.floor((j.earned ?? 0) / 1000));
       setGlowLevel(idx);
       try { sessionStorage.setItem(key, String(idx)); } catch {}
@@ -577,7 +586,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null, vie
     </nav>
     <TeamChat user={user} />
     {user && <BottomNav navLinks={navLinks} pathname={pathname} role={role} viewingChildId={viewingChildId} />}
-    {user && role === 'student' && <PointsBadge />}
+    {user && role === 'student' && <PointsBadge viewingChildId={viewingChildId} />}
     </>
   );
 }
