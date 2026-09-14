@@ -72,6 +72,8 @@ export default function ListenChoose({ question, onAnswer }) {
       skill:      question.skill ?? 'listening',
       answer:     rankOrder,
       isCorrect:  rankOrder[0] === question.correct,
+      answerText:  rankOrder.map(i => opts[i]).join('، '),
+      correctText: opts[question.correct],
     });
   }
 

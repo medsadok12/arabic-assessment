@@ -96,12 +96,15 @@ export default function VowelLong({ question, onAnswer }) {
 
   /* إرسال خريطة التصنيف كاملة — isCorrect محسوب صامتاً للسجل */
   function handleSubmit() {
-    const isCorrect = BASE.every(s => placement[s.id] === s.medd);
+    const isCorrect     = BASE.every(s => placement[s.id] === s.medd);
+    const correctPlaced = BASE.filter(s => placement[s.id] === s.medd).length;
     onAnswer({
       questionId: question.id,
       skill:      question.skill ?? 'reading',
       answer:     placement,
       isCorrect,
+      answerText:  `صنّف ${correctPlaced} من ${BASE.length} مقاطع بشكل صحيح`,
+      correctText: `تصنيف ${BASE.length} مقاطع المدّ كلها`,
     });
   }
 

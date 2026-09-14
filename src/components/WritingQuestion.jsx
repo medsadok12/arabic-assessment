@@ -59,7 +59,11 @@ export default function WritingQuestion({ question, studentInfo, onAnswer }) {
 
       setUploading(false);
       setUploaded(true);
-      setTimeout(() => onAnswer({ questionId: question.id, skill: question.skill, answer: 0, isCorrect: true }), 2000);
+      setTimeout(() => onAnswer({
+        questionId: question.id, skill: question.skill, answer: 0, isCorrect: true,
+        answerText:  'صورة الكتابة مُرسلة للمعلم',
+        correctText: 'تُقيَّم من المعلم',
+      }), 2000);
     } catch (err) {
       setUploadError(err.message || 'تعذّر الاتصال بالخادم');
       setUploading(false);
@@ -104,7 +108,7 @@ export default function WritingQuestion({ question, studentInfo, onAnswer }) {
           </button>
           {retryCount >= 2 && (
             <button
-              onClick={() => onAnswer({ questionId: question.id, skill: question.skill, answer: 0, isCorrect: true })}
+              onClick={() => onAnswer({ questionId: question.id, skill: question.skill, answer: 0, isCorrect: true, answerText: 'تخطّى سؤال الكتابة', correctText: 'تُقيَّم من المعلم' })}
               style={{ marginTop: 8, width: '100%', padding: '10px', background: 'transparent', border: '1px solid #aaa', borderRadius: 8, color: '#666', cursor: 'pointer', fontSize: 14 }}
             >
               تخطي هذا السؤال ←

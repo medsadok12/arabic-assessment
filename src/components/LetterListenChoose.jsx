@@ -52,6 +52,8 @@ export default function LetterListenChoose({ question, onAnswer }) {
           skill:      question.skill ?? 'listening',
           answer:     updated,
           isCorrect:  correctCount / items.length >= 0.5,
+          answerText:  updated.map(a => `${a.chosen}${a.isCorrect ? ' ✓' : ' ✗'}`).join('، '),
+          correctText: items.map(i => i.letter).join('، '),
         });
       }
     }, 900);

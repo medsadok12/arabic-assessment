@@ -119,6 +119,8 @@ export default function WordConstruct({ question, onAnswer }) {
       skill:      question.skill ?? 'reading',
       answer,
       isCorrect,
+      answerText:  WORDS.map(w => slots[w.id].map(idx => (idx !== null ? w.letters[idx] : '_')).join('')).join('، '),
+      correctText: WORDS.map(w => w.label).join('، '),
     });
   }
 

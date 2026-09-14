@@ -92,6 +92,8 @@ export default function ListenSpeak({ question, onAnswer }) {
         skill:      question.skill ?? 'speaking',
         answer:     updated,
         isCorrect:  correctCount / items.length >= 0.5,
+        answerText:  `أجاب صحيحاً عن ${correctCount} من ${items.length} أسئلة شفهية`,
+        correctText: `${items.length} إجابات شفهية صحيحة`,
       });
     }
   }

@@ -40,12 +40,15 @@ export default function MatchingQuestion({ question, onAnswer }) {
 
   function handleCheck() {
     const isCorrect = question.pairs.every(p => connections[p.id] === p.id);
+    const nameOf    = id => question.pairs.find(x => x.id === id)?.name ?? '—';
     setChecked(true);
     setTimeout(() => onAnswer({
       questionId: question.id,
       skill:      question.skill,
       answer:     0,
       isCorrect,
+      answerText:  question.pairs.map(p => `${p.emoji} ← ${nameOf(connections[p.id])}`).join('، '),
+      correctText: question.pairs.map(p => `${p.emoji} ← ${p.name}`).join('، '),
     }), 1400);
   }
 

@@ -48,6 +48,8 @@ export default function TanweenCards({ question, onAnswer }) {
       skill:      question.skill ?? 'reading',
       answer:     correct.size,
       isCorrect:  correct.size >= 14,
+      answerText:  `أتقن ${correct.size} من ${TOTAL} صوتاً`,
+      correctText: `إتقان ${TOTAL} صوتاً (النجاح من 14)`,
     });
   }
 

@@ -53,6 +53,8 @@ export default function SyllableOrder({ question, onAnswer }) {
       skill:      question.skill ?? 'reading',
       answer:     arranged.join(''),
       isCorrect:  slots.every((sylIdx, slotIdx) => sylIdx === slotIdx),
+      answerText:  arranged.join(''),
+      correctText: question.word || syllables.join(''),
     });
   }
 
