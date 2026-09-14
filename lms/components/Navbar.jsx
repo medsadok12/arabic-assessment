@@ -349,7 +349,7 @@ function dashboardPath(role) {
   return '/dashboard';
 }
 
-export default function Navbar({ user: initialUser, sessionCountdown = null, viewingChildId = null }) {
+export default function Navbar({ user: initialUser, sessionCountdown = null, viewingChildId = null, displayName = null }) {
   useNavStyle();
   const pathname  = usePathname();
   const router    = useRouter();
@@ -416,6 +416,10 @@ export default function Navbar({ user: initialUser, sessionCountdown = null, vie
 
   const role      = getRole(user) ?? 'student';
   const fullName  = user?.user_metadata?.full_name ?? '';
+  // عند عرض لوحة طفل مُضاف، تعرض القائمة العلوية اسم الطفل المعروض لا اسم
+  // حساب الدخول الجذر (displayName يمرَّر من DashboardContent). صورة الأفاتار
+  // تبقى من حساب الدخول (الطفل alias بلا صورة → تُعرض أوائل اسمه).
+  const shownName = displayName || fullName;
   const avatarURL = user?.user_metadata?.avatar_url ?? null;
   const destPath  = dashboardPath(role);
 
@@ -537,9 +541,9 @@ export default function Navbar({ user: initialUser, sessionCountdown = null, vie
                       ? `0 0 0 2.5px ${PTS_LEVELS[glowLevel].color}, 0 0 12px ${PTS_LEVELS[glowLevel].color}80`
                       : 'none',
                   }}>
-                    {avatarURL
+                    {avatarURL && !displayName
                       ? <Image src={avatarURL} alt="" width={34} height={34} style={{ borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,.5)', display: 'block' }} />
-                      : <Initials name={fullName} />
+                      : <Initials name={shownName} />
                     }
                   </div>
                   {glowLevel >= 1 && (
@@ -555,14 +559,14 @@ export default function Navbar({ user: initialUser, sessionCountdown = null, vie
                     </div>
                   )}
                 </div>
-                <span className="nav-username">{fullName}</span>
+                <span className="nav-username">{shownName}</span>
                 <span style={{ fontSize: 10, opacity: .65, marginRight: 2 }}>▾</span>
               </button>
 
               {dropOpen && (
                 <div className="nav-dropdown-menu">
                   <div className="nav-dropdown-header">
-                    <div style={{ fontWeight: 700, fontSize: '.92rem' }}>{fullName}</div>
+                    <div style={{ fontWeight: 700, fontSize: '.92rem' }}>{shownName}</div>
                     <div style={{ fontSize: '.78rem', opacity: .65 }}>{ROLE_LABELS[role] ?? t('nav.roleStudent')}</div>
                   </div>
                   <Link href="/profile" className="nav-dropdown-item" onClick={() => setDropOpen(false)}>

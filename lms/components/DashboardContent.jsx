@@ -476,7 +476,7 @@ export default function DashboardContent({
         }
       `}</style>
 
-      <Navbar user={user} viewingChildId={viewingChildId} />
+      <Navbar user={user} viewingChildId={viewingChildId} displayName={isStudent && viewingChildId ? displayName : null} />
       <main className="page-wrap db-page">
         <div className="db-wrap">
 
