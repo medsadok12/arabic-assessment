@@ -7,6 +7,7 @@
 
 ### 1. نشر التطبيق
 - **Vercel (الرئيسي):** https://arabic-assessment.vercel.app ✅
+- **النطاق الفرعي المخصص:** https://assessment.aarem.net (مربوط بـ Vercel — يُستخدم كواجهة رسمية للتقييم تحت نطاق الأكاديمية)
 - **GitHub Pages (احتياطي):** https://medsadok12.github.io/arabic-assessment/ ✅
 - المستودع: `medsadok12/arabic-assessment`
 - فرع Vercel الإنتاجي: `claude/review-external-context-pbGN7`
