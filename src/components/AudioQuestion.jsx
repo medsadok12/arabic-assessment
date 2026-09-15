@@ -2,6 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 
 const MAX_SECS = 60;
 
+const RESPONSES = [
+  { id: 'correct', icon: '✅', label: 'أجاد' },
+  { id: 'partial', icon: '⚠️', label: 'تردّد' },
+  { id: 'wrong',   icon: '❌', label: 'أخطأ' },
+];
+
 export default function AudioQuestion({ question, studentInfo, onAnswer }) {
   const [ttsState,    setTtsState]    = useState('idle');   // idle | playing
   const [playCount,   setPlayCount]   = useState(0);        // 1..3 أثناء التشغيل
@@ -140,12 +146,6 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
         setSaving(false);
         setSaved(true);
         setSavedUrl(data.url);
-        setTimeout(() => onAnswer({
-          questionId: question.id,
-          skill:      question.skill,
-          answer:     0,
-          isCorrect:  true,
-        }), 2000);
       } catch (err) {
         setUploadError(err.message || 'تعذّر الاتصال بالخادم');
         setSaving(false);
@@ -155,6 +155,15 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
       setUploadError('تعذّر قراءة ملف التسجيل');
       setSaving(false);
     };
+  }
+
+  function handleResponse(responseId) {
+    onAnswer({
+      questionId: question.id,
+      skill:      question.skill,
+      answer:     responseId,
+      isCorrect:  responseId === 'correct',
+    });
   }
 
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -244,6 +253,24 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
           <p style={{ margin: 0, color: '#2e7d32', fontWeight: 'bold', fontSize: 14 }}>
             ✅ تم حفظ التسجيل بنجاح
           </p>
+        </div>
+      )}
+
+      {saved && (
+        <div className="oa-parent-controls">
+          <p className="oa-controls-label">— للولي فقط: اضغط على التقييم المناسب لإجابة طفلك —</p>
+          <div className="oa-buttons">
+            {RESPONSES.map(r => (
+              <button
+                key={r.id}
+                className={`oa-btn oa-btn-${r.id}`}
+                onClick={() => handleResponse(r.id)}
+              >
+                <span className="oa-btn-icon">{r.icon}</span>
+                <span className="oa-btn-label">{r.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

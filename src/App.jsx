@@ -70,7 +70,7 @@ function buildLevelData(levelId) {
 
   /* المستوى الأول: تدريبات ج1 أولاً ثم التدريبات التشخيصية */
   if (levelId === 1) {
-    return { questions: [...llChoose, ...sylReading, ...imgMatching, ...listenSpeak, ...letterRec, ...vowelCards, ...vowelLong, ...sukunCards, ...tanweenCards, ...listenChoose, ...syllableOrder, ...letterPos, ...wordConstruct, ...oralAssessment], answers: [] };
+    return { questions: [...llChoose, ...sylReading, ...imgMatching, ...listenSpeak, ...letterRec, ...vowelCards, ...vowelLong, ...sukunCards, ...tanweenCards, ...listenChoose, ...syllableOrder, ...letterPos, ...wordConstruct, ...oralAssessment, ...speaking, ...photoWr, ...newTypes], answers: [] };
   }
 
   return { questions: [...letterRec, ...vowelCards, ...vowelLong, ...sukunCards, ...tanweenCards, ...listenChoose, ...syllableOrder, ...letterPos, ...wordConstruct, ...oralAssessment, ...matching, ...speaking, ...photoWr, ...newTypes, ...regular], answers: [] };

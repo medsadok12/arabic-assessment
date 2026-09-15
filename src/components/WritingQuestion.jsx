@@ -1,5 +1,11 @@
 import { useState, useRef } from 'react';
 
+const RESPONSES = [
+  { id: 'correct', icon: '✅', label: 'أجاد' },
+  { id: 'partial', icon: '⚠️', label: 'تردّد' },
+  { id: 'wrong',   icon: '❌', label: 'أخطأ' },
+];
+
 export default function WritingQuestion({ question, studentInfo, onAnswer }) {
   const [imgFile,      setImgFile]      = useState(null);
   const [previewUrl,   setPreviewUrl]   = useState(null);
@@ -59,11 +65,19 @@ export default function WritingQuestion({ question, studentInfo, onAnswer }) {
 
       setUploading(false);
       setUploaded(true);
-      setTimeout(() => onAnswer({ questionId: question.id, skill: question.skill, answer: 0, isCorrect: true }), 2000);
     } catch (err) {
       setUploadError(err.message || 'تعذّر الاتصال بالخادم');
       setUploading(false);
     }
+  }
+
+  function handleResponse(responseId) {
+    onAnswer({
+      questionId: question.id,
+      skill:      question.skill,
+      answer:     responseId,
+      isCorrect:  responseId === 'correct',
+    });
   }
 
   return (
@@ -118,6 +132,24 @@ export default function WritingQuestion({ question, studentInfo, onAnswer }) {
           <p style={{ margin: 0, color: '#2e7d32', fontWeight: 'bold', fontSize: 14 }}>
             ✅ تم حفظ الإجابة الكتابية بنجاح
           </p>
+        </div>
+      )}
+
+      {uploaded && (
+        <div className="oa-parent-controls">
+          <p className="oa-controls-label">— للولي فقط: اضغط على التقييم المناسب لكتابة طفلك —</p>
+          <div className="oa-buttons">
+            {RESPONSES.map(r => (
+              <button
+                key={r.id}
+                className={`oa-btn oa-btn-${r.id}`}
+                onClick={() => handleResponse(r.id)}
+              >
+                <span className="oa-btn-icon">{r.icon}</span>
+                <span className="oa-btn-label">{r.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

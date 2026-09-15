@@ -15,7 +15,7 @@ export default function CorrectionQuestion({ question, onAnswer }) {
   const [correct, setCorrect] = useState(false);
 
   function handleCheck() {
-    const isCorrect = normalizeAr(value) === normalizeAr(question.correctAnswer);
+    const isCorrect = question.correctAnswers.some(a => normalizeAr(a) === normalizeAr(value));
     setChecked(true);
     setCorrect(isCorrect);
     setTimeout(() => onAnswer({ questionId: question.id, skill: question.skill, answer: value, isCorrect }), 1400);
@@ -47,7 +47,7 @@ export default function CorrectionQuestion({ question, onAnswer }) {
 
       {checked && (
         <div className={`wo-result ${correct ? 'wo-correct' : 'wo-wrong'}`}>
-          {correct ? '✅ إجابة صحيحة!' : `❌ الإجابة الصحيحة: ${question.correctAnswer}`}
+          {correct ? '✅ إجابة صحيحة!' : `❌ الإجابة الصحيحة: ${question.correctAnswers[0]}`}
         </div>
       )}
 
