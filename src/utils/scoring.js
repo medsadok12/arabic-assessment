@@ -16,8 +16,8 @@ export function calculateLevelScore(answers) {
     }
   }
 
-  let overall = 0;
   const bySkill = {};
+  const presentSkills = []; // المهارات التي لها أسئلة فعلية في هذا المستوى (total > 0)
 
   for (const skill of SKILLS) {
     const total   = skillCounts[skill.id];
@@ -30,8 +30,19 @@ export function calculateLevelScore(answers) {
       correct,
       total,
     };
-    overall += pct * skill.weight;
+    if (total > 0) presentSkills.push({ weight: skill.weight, pct });
   }
+
+  // وزن ديناميكي: أي مهارة بلا أسئلة في هذا المستوى (total = 0) لا تُحتسب
+  // صفراً ضمن المجموع — بل يُعاد توزيع وزنها على المهارات الحاضرة فعلياً،
+  // بنسبة أوزانها الأصلية النسبية. هذا يضمن أن 100% تبقى قابلة للتحقيق
+  // رياضياً مهما اختلفت تغطية المهارات بين المستويات (كان المستوى الأول
+  // سابقاً محدوداً بحد أقصى ~40% لخلوّه من أسئلة مفردات/نحو/كتابة، فتصبح
+  // عتبة الترقية JUMP_THRESHOLD غير قابلة للتحقيق إطلاقاً لأي مبتدئ).
+  const weightSum = presentSkills.reduce((sum, s) => sum + s.weight, 0);
+  const overall = weightSum > 0
+    ? presentSkills.reduce((sum, s) => sum + s.pct * (s.weight / weightSum), 0)
+    : 0;
 
   return { overall, bySkill };
 }

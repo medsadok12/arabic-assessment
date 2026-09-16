@@ -1,11 +1,21 @@
 // 60 سؤال للتقييم الشامل - أكاديمية عارم
 
 export const SKILLS = [
-  { id: 'listening',  name: 'الاستماع والفهم السمعي', weight: 0.20 },
-  { id: 'vocabulary', name: 'المفردات والمعاني',       weight: 0.20 },
-  { id: 'reading',    name: 'القراءة والفهم',          weight: 0.20 },
-  { id: 'grammar',    name: 'القواعد النحوية',         weight: 0.20 },
-  { id: 'writing',    name: 'الكتابة والتعبير',        weight: 0.20 },
+  { id: 'listening',  name: 'الاستماع والفهم السمعي', weight: 1 / 6 },
+  { id: 'vocabulary', name: 'المفردات والمعاني',       weight: 1 / 6 },
+  { id: 'reading',    name: 'القراءة والفهم',          weight: 1 / 6 },
+  { id: 'grammar',    name: 'القواعد النحوية',         weight: 1 / 6 },
+  { id: 'writing',    name: 'الكتابة والتعبير',        weight: 1 / 6 },
+  // كانت أسئلة النطق الشفهي (listen-speak, oral-assessment) مُصنَّفة في
+  // بياناتها الأصلية skill:'speaking'، لكن `getLevelQuestions` أدناه
+  // يفرض `skill` كل سؤال ليطابق اسم المصفوفة التي يقع تحتها (listening/
+  // reading/...) — فكانت هذه الأسئلة تُحتسب فعلياً ضمن الاستماع أو
+  // القراءة (بحسب مكانها)، لا تُستبعَد ولا تُحتسب كنطق مستقل، رغم أن
+  // بياناتها الأصلية توثّق نيّة واضحة بأنها "speaking". أُدرجت المهارة
+  // رسمياً هنا، **ونُقلت الأسئلة نفسها إلى مصفوفة `speaking` مستقلة أدناه**
+  // ليتطابق مكانها مع الوسم الذي كُتب لها أصلاً — الإدراج في القائمة وحده
+  // لا يكفي دون هذا النقل.
+  { id: 'speaking',   name: 'النطق والتعبير الشفهي',   weight: 1 / 6 },
 ];
 
 export const LEVELS = [
@@ -34,13 +44,8 @@ export const questionsBank = {
           { letter: 'خ', choices: ['ح', 'خ', 'ج'] },
         ],
       },
-      {
-        id:        'L1_EX2',
-        type:      'syllable-reading',
-        text:      'اقْرَأِ المَقَاطِعَ التَّالِيَة',
-        skill:     'reading',
-        syllables: ['غَ', 'عُ', 'قُ', 'طِ', 'ظُ', 'صَ'],
-      },
+    ],
+    vocabulary: [
       {
         id:   'L1_EX3',
         type: 'image-matching',
@@ -56,21 +61,28 @@ export const questionsBank = {
         ],
       },
       {
-        id:    'L1_EX4',
-        type:  'listen-speak',
-        text:  'اسْتَمِعْ وَأَجِبْ شَفَهِيًّا',
-        skill: 'speaking',
-        items: [
-          { text: 'مَا اسْمُك؟' },
-          { text: 'كَمْ عُمْرُك؟' },
-          { text: 'أَيْنَ تَسْكُن؟' },
-          { text: 'فِي أَيِّ صَفٍّ تَدْرُس؟' },
-          { text: 'كَيْفَ حَالُك؟' },
-          { text: 'مَاذَا تُحِبّ؟' },
+        id:   'L1_VOC1',
+        type: 'image-matching',
+        text: 'اِرْبِطِ صُورَةَ الْحَيَوَانِ بِاسْمِهِ',
+        skill: 'vocabulary',
+        pairs: [
+          { id: 'qitta',  emoji: '🐱', name: 'قِطَّة'    },
+          { id: 'kalb',   emoji: '🐶', name: 'كَلْب'     },
+          { id: 'asad',   emoji: '🦁', name: 'أَسَد'     },
+          { id: 'arnab',  emoji: '🐰', name: 'أَرْنَب'   },
+          { id: 'samaka', emoji: '🐟', name: 'سَمَكَة'   },
+          { id: 'usfour', emoji: '🐦', name: 'عُصْفُور'  },
         ],
       },
     ],
     reading: [
+      {
+        id:        'L1_EX2',
+        type:      'syllable-reading',
+        text:      'اقْرَأِ المَقَاطِعَ التَّالِيَة',
+        skill:     'reading',
+        syllables: ['غَ', 'عُ', 'قُ', 'طِ', 'ظُ', 'صَ'],
+      },
       {
         id:   'L1_LR',
         type: 'letter-recognition',
@@ -123,6 +135,65 @@ export const questionsBank = {
         type:  'word-construct',
         text:  'رَكِّبِ الكَلِمَةَ',
         skill: 'reading',
+      },
+    ],
+    grammar: [
+      {
+        id:    'L1_GR1',
+        skill: 'grammar',
+        text:  '👦 هَذَا وَلَدٌ. مَا الْكَلِمَةُ الصَّحِيحَة؟ ___ وَلَدٌ.',
+        options: [
+          { text: 'هَذَا',  correct: true  },
+          { text: 'هَذِهِ', correct: false },
+        ],
+      },
+      {
+        id:    'L1_GR2',
+        skill: 'grammar',
+        text:  '👧 هَذِهِ بِنْتٌ. مَا الْكَلِمَةُ الصَّحِيحَة؟ ___ بِنْتٌ.',
+        options: [
+          { text: 'هَذِهِ', correct: true  },
+          { text: 'هَذَا',  correct: false },
+        ],
+      },
+      {
+        id:    'L1_GR3',
+        skill: 'grammar',
+        text:  '👩 هِيَ مُعَلِّمَة. مَاذَا نَقُولُ عَنِ الْوَلَدِ؟ ___ طَالِبٌ.',
+        options: [
+          { text: 'هُوَ', correct: true  },
+          { text: 'هِيَ', correct: false },
+        ],
+      },
+    ],
+    writing: [
+      {
+        id:    'L1_WR1',
+        type:  'photo-writing',
+        skill: 'writing',
+        text:  '✍️ انْظُرْ إِلَى الصُّورَةِ، ثُمَّ اكْتُبِ اسْمَهَا عَلَى وَرَقَةٍ وَصَوِّرْهَا: 🐱',
+      },
+      {
+        id:    'L1_WR2',
+        type:  'photo-writing',
+        skill: 'writing',
+        text:  '✍️ انْظُرْ إِلَى الصُّورَةِ، ثُمَّ اكْتُبِ اسْمَهَا عَلَى وَرَقَةٍ وَصَوِّرْهَا: ☀️',
+      },
+    ],
+    speaking: [
+      {
+        id:    'L1_EX4',
+        type:  'listen-speak',
+        text:  'اسْتَمِعْ وَأَجِبْ شَفَهِيًّا',
+        skill: 'speaking',
+        items: [
+          { text: 'مَا اسْمُك؟' },
+          { text: 'كَمْ عُمْرُك؟' },
+          { text: 'أَيْنَ تَسْكُن؟' },
+          { text: 'فِي أَيِّ صَفٍّ تَدْرُس؟' },
+          { text: 'كَيْفَ حَالُك؟' },
+          { text: 'مَاذَا تُحِبّ؟' },
+        ],
       },
       {
         id:    'L1_OA',
