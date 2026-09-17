@@ -20,6 +20,7 @@ import LetterListenChoose   from './LetterListenChoose.jsx';
 import SyllableReading      from './SyllableReading.jsx';
 import ImageWordMatching    from './ImageWordMatching.jsx';
 import ListenSpeak          from './ListenSpeak.jsx';
+import ListeningComprehension from './ListeningComprehension.jsx';
 
 export default function Assessment({ questions, currentLevel, questionIndex, studentInfo, onAnswer }) {
   const [selected, setSelected] = useState(null);
@@ -67,7 +68,7 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
 
   if (!question) return null;
 
-  const SPECIAL_TYPES = ['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'letter-position', 'word-construct', 'oral-assessment', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill', 'letter-listen-choose', 'syllable-reading', 'image-matching', 'listen-speak'];
+  const SPECIAL_TYPES = ['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'letter-position', 'word-construct', 'oral-assessment', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill', 'letter-listen-choose', 'syllable-reading', 'image-matching', 'listen-speak', 'listening-comprehension'];
 
   if (SPECIAL_TYPES.includes(question.type)) {
     const Inner =
@@ -90,6 +91,7 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
       question.type === 'syllable-reading'     ? <SyllableReading    question={question} onAnswer={onAnswer} /> :
       question.type === 'image-matching'       ? <ImageWordMatching  question={question} onAnswer={onAnswer} /> :
       question.type === 'listen-speak'         ? <ListenSpeak        question={question} onAnswer={onAnswer} /> :
+      question.type === 'listening-comprehension' ? <ListeningComprehension question={question} onAnswer={onAnswer} /> :
                                                  <FillQuestion       question={question} onAnswer={onAnswer} />;
     return (
       <div className="page-content">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createTTSPlayer } from '../utils/ttsPlayer.js';
 
 const RESPONSES = [
   { id: 'correct',  icon: '✅', label: 'أجاب بشكل صحيح' },
@@ -11,37 +12,38 @@ export default function ListenSpeak({ question, onAnswer }) {
   const [idx, setIdx]           = useState(0);
   const [answers, setAnswers]   = useState([]);
   const [playing, setPlaying]   = useState(false);
+  const [audioError, setAudioError] = useState(false);
   const [recording, setRecording] = useState(false);
   const [audioURL, setAudioURL]   = useState(null);
   const [micError, setMicError]   = useState(false);
 
   const mediaRef    = useRef(null);
   const chunksRef   = useRef([]);
+  const [player]    = useState(() => createTTSPlayer());
 
   useEffect(() => {
     setAudioURL(null);
     setRecording(false);
     setMicError(false);
+    setAudioError(false);
   }, [idx]);
 
   useEffect(() => () => {
-    window.speechSynthesis?.cancel();
+    player.stop();
     stopRecording();
-  }, []);
+  }, [player]);
 
-  function playQuestion() {
-    const synth = window.speechSynthesis;
-    if (!synth || playing) return;
-    synth.cancel();
+  async function playQuestion() {
+    if (playing) return;
     setPlaying(true);
-    const u = new SpeechSynthesisUtterance(items[idx].text);
-    u.lang = 'ar-SA';
-    u.rate = 0.85;
-    u.pitch = 1;
-    u.onend  = () => setPlaying(false);
-    u.onerror = () => setPlaying(false);
-    const go = () => synth.speak(u);
-    if (synth.getVoices().length > 0) go(); else synth.onvoiceschanged = go;
+    setAudioError(false);
+    try {
+      await player.playOnce(items[idx].text);
+    } catch {
+      setAudioError(true);
+    } finally {
+      setPlaying(false);
+    }
   }
 
   async function startRecording() {
@@ -78,7 +80,7 @@ export default function ListenSpeak({ question, onAnswer }) {
   }
 
   function handleResponse(responseId) {
-    window.speechSynthesis?.cancel();
+    player.stop();
     setPlaying(false);
     stopRecording();
     const updated = [...answers, { text: items[idx].text, response: responseId }];
@@ -136,6 +138,11 @@ export default function ListenSpeak({ question, onAnswer }) {
         }}>
           {items[idx].text}
         </p>
+        {audioError && (
+          <p style={{ color: '#c62828', fontSize: 12, fontFamily: 'Tajawal, sans-serif', marginTop: 6 }}>
+            ⚠️ تعذّر تشغيل الصوت، جرّب مرة أخرى
+          </p>
+        )}
       </div>
 
       {/* منطقة التسجيل الصوتي للطالب */}

@@ -1,37 +1,37 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { createTTSPlayer } from '../utils/ttsPlayer.js';
 
 export default function LetterListenChoose({ question, onAnswer }) {
   const items = question.items;
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [playing, setPlaying] = useState(false);
+  const [audioError, setAudioError] = useState(false);
   const [selected, setSelected] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
-  const synthRef = useRef(null);
+  const [player] = useState(() => createTTSPlayer());
 
   useEffect(() => {
     setSelected(null);
     setShowFeedback(false);
+    setAudioError(false);
   }, [idx]);
 
-  useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
+  useEffect(() => () => { player.stop(); }, [player]);
 
   const item = items[idx];
 
-  function playLetter() {
-    const synth = window.speechSynthesis;
-    if (!synth || playing) return;
-    synth.cancel();
+  async function playLetter() {
+    if (playing) return;
     setPlaying(true);
-    const u = new SpeechSynthesisUtterance(item.letter);
-    u.lang = 'ar-SA';
-    u.rate = 0.6;
-    u.pitch = 1;
-    u.onend = () => setPlaying(false);
-    u.onerror = () => setPlaying(false);
-    synthRef.current = u;
-    const go = () => synth.speak(u);
-    if (synth.getVoices().length > 0) go(); else synth.onvoiceschanged = go;
+    setAudioError(false);
+    try {
+      await player.playOnce(item.letter);
+    } catch {
+      setAudioError(true);
+    } finally {
+      setPlaying(false);
+    }
   }
 
   function handleSelect(choiceIdx) {
@@ -92,6 +92,11 @@ export default function LetterListenChoose({ question, onAnswer }) {
         <p style={{ marginTop: 8, color: '#666', fontSize: 13, fontFamily: 'Tajawal, sans-serif' }}>
           اضغط للاستماع
         </p>
+        {audioError && (
+          <p style={{ marginTop: 4, color: '#c62828', fontSize: 12, fontFamily: 'Tajawal, sans-serif' }}>
+            ⚠️ تعذّر تشغيل الصوت، جرّب الضغط على الزر مرة أخرى
+          </p>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 16, justifyContent: 'center', direction: 'rtl' }}>

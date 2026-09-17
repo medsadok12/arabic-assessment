@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { createTTSPlayer } from '../utils/ttsPlayer.js';
 
 const MAX_PLAYS = 3;
 
@@ -27,28 +28,26 @@ export default function ListenChoose({ question, onAnswer }) {
 
   const [playCounts, setPlayCounts] = useState(() => Array(n).fill(0));
   const [playing,    setPlaying]    = useState(null);
+  const [audioError, setAudioError] = useState(false);
   const [rankOrder,  setRankOrder]  = useState([]); // فهارس الكلمات بترتيب الاختيار
 
-  const ttsRef = useRef(null);
+  const [player] = useState(() => createTTSPlayer());
 
-  useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
+  useEffect(() => () => { player.stop(); }, [player]);
 
-  function handlePlay(btnIdx) {
+  async function handlePlay(btnIdx) {
     if (playCounts[btnIdx] >= MAX_PLAYS) return;
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    synth.cancel();
-    if (ttsRef.current) ttsRef.current.onend = null;
+    setAudioError(false);
     setPlaying(btnIdx);
-    const wordIdx = buttonOrder[btnIdx];
-    const u = new SpeechSynthesisUtterance(opts[wordIdx]);
-    u.lang = 'ar-SA'; u.rate = 0.88; u.pitch = 1; u.volume = 1;
-    u.onend = () => setPlaying(null);
-    u.onerror = () => setPlaying(null);
-    ttsRef.current = u;
     setPlayCounts(prev => prev.map((c, i) => i === btnIdx ? c + 1 : c));
-    const go = () => synth.speak(u);
-    if (synth.getVoices().length > 0) { go(); } else { synth.onvoiceschanged = go; }
+    const wordIdx = buttonOrder[btnIdx];
+    try {
+      await player.playOnce(opts[wordIdx]);
+    } catch {
+      setAudioError(true);
+    } finally {
+      setPlaying(null);
+    }
   }
 
   /* ضغطة على كلمة: إضافة إن لم تكن مختارة، إلغاء إن كانت */
@@ -60,8 +59,9 @@ export default function ListenChoose({ question, onAnswer }) {
   }
 
   function handleReset() {
-    window.speechSynthesis?.cancel();
+    player.stop();
     setPlaying(null);
+    setAudioError(false);
     setPlayCounts(Array(n).fill(0));
     setRankOrder([]);
   }
@@ -93,6 +93,11 @@ export default function ListenChoose({ question, onAnswer }) {
       {/* ── أزرار الصوت ── */}
       <div className="lc-audio-zone">
         <p className="lc-zone-label">أزرار الاستماع</p>
+        {audioError && (
+          <p style={{ color: '#c62828', fontSize: 12, fontFamily: 'Tajawal, sans-serif', margin: '2px 0 8px' }}>
+            ⚠️ تعذّر تشغيل الصوت، جرّب مرة أخرى
+          </p>
+        )}
         <div className="lc-audio-btns">
           {Array.from({ length: n }, (_, i) => {
             const isPlaying = playing === i;

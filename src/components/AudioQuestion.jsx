@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
+import { createTTSPlayer } from '../utils/ttsPlayer.js';
 
 const MAX_SECS = 60;
 
 export default function AudioQuestion({ question, studentInfo, onAnswer }) {
   const [ttsState,    setTtsState]    = useState('idle');   // idle | playing
   const [playCount,   setPlayCount]   = useState(0);        // 1..3 أثناء التشغيل
+  const [ttsError,    setTtsError]    = useState(false);
   const [recState,    setRecState]    = useState('idle');   // idle | recording | done
   const [recTime,     setRecTime]     = useState(0);
   const [saving,      setSaving]      = useState(false);
@@ -20,54 +22,25 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
   const chunksRef    = useRef([]);
   const timerRef     = useRef(null);
   const blobRef      = useRef(null);
-  const ttsTimeoutRef = useRef(null);
-  const playCountRef  = useRef(0);
+  const [player]     = useState(() => createTTSPlayer());
 
   useEffect(() => () => {
     clearInterval(timerRef.current);
-    clearTimeout(ttsTimeoutRef.current);
-    window.speechSynthesis?.cancel();
+    player.stop();
     if (audioUrl) URL.revokeObjectURL(audioUrl);
   }, []);
 
-  function playTTS() {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    synth.cancel();
-    clearTimeout(ttsTimeoutRef.current);
-
-    playCountRef.current = 1;
-    setPlayCount(1);
+  async function playTTS() {
     setTtsState('playing');
-
-    const doSpeak = () => {
-      const u = new SpeechSynthesisUtterance(question.audioText);
-      u.lang   = 'ar-SA';
-      u.rate   = 1.0;
-      u.pitch  = 1;
-      u.volume = 1;
-
-      u.onend = () => {
-        if (playCountRef.current < 3) {
-          playCountRef.current += 1;
-          setPlayCount(playCountRef.current);
-          ttsTimeoutRef.current = setTimeout(doSpeak, 700);
-        } else {
-          setTtsState('idle');
-          setPlayCount(0);
-        }
-      };
-      u.onerror = () => { setTtsState('idle'); setPlayCount(0); };
-
-      const voices  = synth.getVoices();
-      const arVoice = voices.find(v => v.lang.startsWith('ar'));
-      if (arVoice) u.voice = arVoice;
-      synth.speak(u);
-    };
-
-    const voices = synth.getVoices();
-    if (voices.length > 0) { doSpeak(); }
-    else { synth.onvoiceschanged = doSpeak; }
+    setTtsError(false);
+    try {
+      await player.playRepeated(question.audioText, 3, 700, setPlayCount);
+    } catch {
+      setTtsError(true);
+    } finally {
+      setTtsState('idle');
+      setPlayCount(0);
+    }
   }
 
   async function startRec() {
@@ -182,6 +155,9 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
             ? `جاري التشغيل... (${playCount}/3)`
             : 'استمع للنص ×3'}
         </button>
+        {ttsError && (
+          <p className="aq-error" style={{ marginTop: 6 }}>⚠️ تعذّر تشغيل الصوت، جرّب مرة أخرى</p>
+        )}
       </div>
 
       {/* ── منطقة التسجيل ── */}
