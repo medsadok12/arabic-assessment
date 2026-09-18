@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse }      from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { getClientIP, ipRateCheck } from '../../../lib/ip-rate-check';
+import { getAssessmentMeta } from '../../../lib/assessment-meta';
 
 const BASE_SYSTEM_PROMPT = `أنت "فهيم"، مساعد خدمة الزوار لأكاديمية عارم، أكاديمية أونلاين لتعليم اللغة العربية للأطفال (5-14 سنة). تتميز بنظام تقييم تشخيصي مجاني وحصص تفاعلية مع معلمين متخصصين.
 أجب بجملتين أو ثلاث جمل كاملة بلغة عربية واضحة. استخدم المعلومات المُزوَّدة إن وجدت. أنهِ دائماً بدعوة للتواصل عبر واتساب أو تجربة التقييم المجاني. لا تستخدم نقاطاً أو قوائم.`;
@@ -61,6 +62,14 @@ export async function POST(req) {
       .map(item => `سؤال: ${item.question}\nإجابة: ${item.answer}`)
       .join('\n\n');
     systemPrompt += `\n\nفيما يلي معلومات وإجابات رسمية من إدارة الأكاديمية — استخدمها بدقة عند الإجابة:\n\n${knowledgeBlock}`;
+  }
+
+  // حقن ديناميكي وقت الإقلاع: يقرأ إجمالي عدد أسئلة التقييم ونقطة التحقق
+  // برمجياً من مشروع arabic-assessment (لا رقماً ثابتاً في هذا النص) — أي
+  // تعديل مستقبلي على بنك الأسئلة ينعكس هنا تلقائياً بلا أي تدخل يدوي.
+  const { totalQuestions, checkpointQuestion } = await getAssessmentMeta();
+  if (totalQuestions && checkpointQuestion) {
+    systemPrompt += `\n\nمعلومة محدَّثة تلقائياً عن نظام التقييم — اعتمد عليها حصراً لأي رقم يخص عدد الأسئلة، وتجاهل أي رقم مختلف قد يظهر في مصادر أخرى أعلاه: "يتكون التقييم من مستويات متدرجة تصل إلى ${totalQuestions} تمريناً، ولكن نظامنا التكيفي يحلل أداء طفلك بذكاء بعد أول ${checkpointQuestion} أسئلة؛ لتحديد مستواه بدقة دون إرهاقه!"`;
   }
 
   const geminiKey    = process.env.GEMINI_API_KEY;

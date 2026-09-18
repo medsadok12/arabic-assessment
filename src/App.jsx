@@ -3,7 +3,7 @@ import StudentInfo     from './components/StudentInfo.jsx';
 import Assessment      from './components/Assessment.jsx';
 import LevelTransition from './components/LevelTransition.jsx';
 import Results         from './components/Results.jsx';
-import { getLevelQuestions, shuffle } from './data/questions.js';
+import { getLevelQuestions, shuffle, CHECKPOINT_QUESTION } from './data/questions.js';
 import { calculateLevelScore, applyJumpLogic, saveToLocalStorage } from './utils/scoring.js';
 import './App.css';
 
@@ -165,10 +165,10 @@ export default function App() {
 
       // نقطة تحقق منتصف الطريق — تُفحَص مرة واحدة فقط لكل مستوى (عند
       // السؤال العاشر بالضبط)، بمعزل عن نظام الاحتساب المرجّح الكامل: نسبة
-      // خام بسيطة تعكس بدقة الأداء الفعلي في أول 10 أسئلة فقط.
-      if (nextIdx === 10) {
+      // خام بسيطة تعكس بدقة الأداء الفعلي في أول CHECKPOINT_QUESTION أسئلة.
+      if (nextIdx === CHECKPOINT_QUESTION) {
         const correctCount = newAnswers.filter((a) => a.isCorrect).length;
-        const rate = correctCount / 10;
+        const rate = correctCount / CHECKPOINT_QUESTION;
         const accumulated = [...allAnswers, ...newAnswers];
         if (rate > 0.9 && currentLevel < 3) {
           setEarlyJumpOffer({ accumulated });

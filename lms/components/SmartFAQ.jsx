@@ -1,24 +1,37 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 
-const FAQ_ITEMS = [
-  {
-    q: 'ما هي أسعار الاشتراك في الأكاديمية؟',
-    a: 'نقدّم حصصاً فردية ومجموعات بأسعار تنافسية مناسبة لجميع الأسر. تواصل معنا عبر واتساب للحصول على باقة تناسب طفلك وجدولك.',
-  },
-  {
-    q: 'ما الأعمار المناسبة لبرامج عارم؟',
-    a: 'تستقبل أكاديمية عارم الأطفال من سن 5 إلى 14 سنة، سواءً كانوا ناطقين باللغة العربية أو غير ناطقين، مع مناهج مُصمَّمة لكل مرحلة.',
-  },
-  {
-    q: 'كيف يعمل نظام التقييم الذكي؟',
-    a: 'نظام التقييم التشخيصي يقيس مستوى طفلك في القراءة والكتابة والاستماع والتحدث عبر 10 تدريبات تفاعلية، ثم يُرسل تقريراً تفصيلياً فورياً لولي الأمر — مجاناً وبدون تسجيل.',
-  },
-  {
-    q: 'هل يوجد نادٍ صيفي أو برامج موسمية؟',
-    a: 'نعم! نُنظّم برامج صيفية مكثفة وممتعة تجمع بين تعلم اللغة والأنشطة الإبداعية. تابع صفحاتنا أو تواصل معنا لمعرفة مواعيد البرنامج القادم.',
-  },
-];
+// إجابة "نظام التقييم الذكي" تُبنى ديناميكياً من /api/assessment-meta (ترجع
+// مستوى بروكسي بنفس الأصل لمشروع arabic-assessment المنفصل) — لا رقماً
+// ثابتاً هنا يُنسى تحديثه كلما تغيّر بنك الأسئلة. صياغة عامة بلا رقم تُستخدم
+// حتى تصل البيانات الحيّة (أو إن تعذّر الوصول إليها) بدل الجمود على رقم قديم.
+function buildAssessmentAnswer(meta) {
+  if (meta?.totalQuestions && meta?.checkpointQuestion) {
+    return `نظام التقييم التشخيصي يقيس مستوى طفلك في القراءة والكتابة والاستماع والتحدث عبر مستويات متدرجة تصل إلى ${meta.totalQuestions} تمريناً تفاعلياً، مع تحليل ذكي لأدائه بعد أول ${meta.checkpointQuestion} أسئلة لتحديد مستواه بدقة دون إرهاقه، ثم يُرسل تقريراً تفصيلياً فورياً لولي الأمر — مجاناً وبدون تسجيل.`;
+  }
+  return 'نظام التقييم التشخيصي يقيس مستوى طفلك في القراءة والكتابة والاستماع والتحدث عبر تدريبات تفاعلية متدرجة، ثم يُرسل تقريراً تفصيلياً فورياً لولي الأمر — مجاناً وبدون تسجيل.';
+}
+
+function buildFaqItems(meta) {
+  return [
+    {
+      q: 'ما هي أسعار الاشتراك في الأكاديمية؟',
+      a: 'نقدّم حصصاً فردية ومجموعات بأسعار تنافسية مناسبة لجميع الأسر. تواصل معنا عبر واتساب للحصول على باقة تناسب طفلك وجدولك.',
+    },
+    {
+      q: 'ما الأعمار المناسبة لبرامج عارم؟',
+      a: 'تستقبل أكاديمية عارم الأطفال من سن 5 إلى 14 سنة، سواءً كانوا ناطقين باللغة العربية أو غير ناطقين، مع مناهج مُصمَّمة لكل مرحلة.',
+    },
+    {
+      q: 'كيف يعمل نظام التقييم الذكي؟',
+      a: buildAssessmentAnswer(meta),
+    },
+    {
+      q: 'هل يوجد نادٍ صيفي أو برامج موسمية؟',
+      a: 'نعم! نُنظّم برامج صيفية مكثفة وممتعة تجمع بين تعلم اللغة والأنشطة الإبداعية. تابع صفحاتنا أو تواصل معنا لمعرفة مواعيد البرنامج القادم.',
+    },
+  ];
+}
 
 const ASSESSMENT_URL = 'https://assessment.aarem.net';
 
@@ -28,8 +41,21 @@ export default function SmartFAQ() {
   const [answer, setAnswer]     = useState('');
   const [loading, setLoading]   = useState(false);
   const [displayed, setDisplayed] = useState('');
+  const [assessmentMeta, setAssessmentMeta] = useState(null);
   const inputRef  = useRef(null);
   const timerRef  = useRef(null);
+
+  const faqItems = buildFaqItems(assessmentMeta);
+
+  // بيانات حيّة لعدد أسئلة التقييم — تفشل بصمت لصياغة عامة إن تعذّر الوصول
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/assessment-meta')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (!cancelled) setAssessmentMeta(data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // Typing effect
   useEffect(() => {
@@ -95,7 +121,7 @@ export default function SmartFAQ() {
 
           {/* ── Right: Classic Accordion ── */}
           <div style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            {FAQ_ITEMS.map((item, idx) => (
+            {faqItems.map((item, idx) => (
               <div key={idx} style={{
                 background: '#fff',
                 borderRadius: 14,

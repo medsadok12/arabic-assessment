@@ -27,6 +27,11 @@ export const LEVELS = [
 export const JUMP_THRESHOLD      = 85;
 export const REGRESSION_THRESHOLD = 70;
 
+// نقطة تحقق منتصف الطريق (القسم 13 — الترقية/الإنزال المبكر في App.jsx):
+// مصدر الحقيقة الوحيد لرقم السؤال العاشر، يستورده أيضاً api/assessment-meta.js
+// لتغذية المساعد الذكي "فهيم" بمعلومة دقيقة بدل رقم ثابت قديم في نصّه.
+export const CHECKPOINT_QUESTION = 10;
+
 export const questionsBank = {
   level1: {
     listening: [
