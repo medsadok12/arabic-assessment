@@ -1,37 +1,25 @@
 import { useState, useEffect } from 'react';
-import { createTTSPlayer } from '../utils/ttsPlayer.js';
+import { useTTSPlayer } from '../hooks/useTTSPlayer.js';
 
 export default function LetterListenChoose({ question, onAnswer }) {
   const items = question.items;
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState([]);
-  const [playing, setPlaying] = useState(false);
-  const [audioError, setAudioError] = useState(false);
   const [selected, setSelected] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [player] = useState(() => createTTSPlayer());
+  const { playing, audioError, playOnce, resetError } = useTTSPlayer();
 
   useEffect(() => {
     setSelected(null);
     setShowFeedback(false);
-    setAudioError(false);
-  }, [idx]);
-
-  useEffect(() => () => { player.stop(); }, [player]);
+    resetError();
+  }, [idx, resetError]);
 
   const item = items[idx];
 
-  async function playLetter() {
+  function playLetter() {
     if (playing) return;
-    setPlaying(true);
-    setAudioError(false);
-    try {
-      await player.playOnce(item.letter);
-    } catch {
-      setAudioError(true);
-    } finally {
-      setPlaying(false);
-    }
+    playOnce(item.letter);
   }
 
   function handleSelect(choiceIdx) {

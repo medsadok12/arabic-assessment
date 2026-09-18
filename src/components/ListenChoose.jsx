@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { createTTSPlayer } from '../utils/ttsPlayer.js';
+import { useState } from 'react';
+import { useTTSPlayer } from '../hooks/useTTSPlayer.js';
+import { shuffle } from '../data/questions.js';
 
 const MAX_PLAYS = 3;
 
@@ -10,44 +11,26 @@ const RANK_STYLES = [
   { bg: '#e8f5e9', border: '#388e3c', badge: '#388e3c' }, // 3 — أخضر
 ];
 
-function doShuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 export default function ListenChoose({ question, onAnswer }) {
   const opts = question.options || [];
   const n    = opts.length;
 
   /* buttonOrder[i] = فهرس الكلمة التي يشغّلها الزر i — مخفي عن الطفل */
-  const [buttonOrder] = useState(() => doShuffle(opts.map((_, i) => i)));
+  const [buttonOrder] = useState(() => shuffle(opts.map((_, i) => i)));
 
   const [playCounts, setPlayCounts] = useState(() => Array(n).fill(0));
-  const [playing,    setPlaying]    = useState(null);
-  const [audioError, setAudioError] = useState(false);
+  const [playing,    setPlaying]    = useState(null); // فهرس الزر الذي يُشغَّل حالياً
   const [rankOrder,  setRankOrder]  = useState([]); // فهارس الكلمات بترتيب الاختيار
 
-  const [player] = useState(() => createTTSPlayer());
-
-  useEffect(() => () => { player.stop(); }, [player]);
+  const { audioError, playOnce, stop, resetError } = useTTSPlayer();
 
   async function handlePlay(btnIdx) {
     if (playCounts[btnIdx] >= MAX_PLAYS) return;
-    setAudioError(false);
     setPlaying(btnIdx);
     setPlayCounts(prev => prev.map((c, i) => i === btnIdx ? c + 1 : c));
     const wordIdx = buttonOrder[btnIdx];
-    try {
-      await player.playOnce(opts[wordIdx]);
-    } catch {
-      setAudioError(true);
-    } finally {
-      setPlaying(null);
-    }
+    await playOnce(opts[wordIdx]);
+    setPlaying(null);
   }
 
   /* ضغطة على كلمة: إضافة إن لم تكن مختارة، إلغاء إن كانت */
@@ -59,9 +42,9 @@ export default function ListenChoose({ question, onAnswer }) {
   }
 
   function handleReset() {
-    player.stop();
+    stop();
     setPlaying(null);
-    setAudioError(false);
+    resetError();
     setPlayCounts(Array(n).fill(0));
     setRankOrder([]);
   }

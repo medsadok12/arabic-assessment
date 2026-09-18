@@ -53,6 +53,24 @@ export function applyJumpLogic(score, currentLevel) {
   return currentLevel;
 }
 
+// نقطة تحقق منتصف الطريق (القسم 13 من CLAUDE.md — الترقية/الإنزال المبكر).
+// مستخرجة من App.jsx كدالة نقية قابلة للاختبار بمعزل عن حالة React — نفس
+// المبدأ المُطبَّق أصلاً على calculateLevelScore/applyJumpLogic أعلاه.
+export const EARLY_JUMP_RATE = 0.9;
+export const EARLY_DROP_RATE = 0.2;
+
+/**
+ * يقرر بناءً على نسبة النجاح الخام في أول عشرة أسئلة من المستوى الحالي:
+ * 'jump' — أداء متفوق (>90%) ويمكن الانتقال لمستوى أعلى (currentLevel < 3).
+ * 'drop' — أداء ضعيف جداً (<20%) في المستويين 2 أو 3 تحديداً (لا مستوى أدنى من 1).
+ * null   — لا إجراء مبكر، تُكمَل بقية أسئلة المستوى بشكل طبيعي.
+ */
+export function evaluateCheckpoint(rate, currentLevel) {
+  if (rate > EARLY_JUMP_RATE && currentLevel < 3) return 'jump';
+  if (rate < EARLY_DROP_RATE && (currentLevel === 2 || currentLevel === 3)) return 'drop';
+  return null;
+}
+
 export function getGradeInfo(score) {
   if (score >= 90) return { label: 'ممتاز جداً',     stars: 5, color: '#1b5e20' };
   if (score >= 80) return { label: 'ممتاز',          stars: 4, color: '#2e7d32' };

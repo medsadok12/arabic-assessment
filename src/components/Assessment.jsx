@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { SKILLS, LEVELS } from '../data/questions.js';
+import { SKILLS, LEVELS, shuffle } from '../data/questions.js';
 import MatchingQuestion      from './MatchingQuestion.jsx';
 import AudioQuestion         from './AudioQuestion.jsx';
 import WritingQuestion       from './WritingQuestion.jsx';
@@ -42,11 +42,7 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
   const [shuffledOptions] = useState(() => {
     if (!question?.options) return [];
     const arr = question.options.map((opt, i) => ({ ...opt, origIdx: i }));
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
+    return shuffle(arr);
   });
   const total         = questions.length;
   const progress      = ((questionIndex + 1) / total) * 100;

@@ -1,13 +1,5 @@
 import { useState } from 'react';
-
-function doShuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+import { shuffle } from '../data/questions.js';
 
 const WORDS = [
   { id: 'bab',   emoji: '🚪', label: 'بَابٌ',  letters: ['بَـ', 'ا', 'بٌ']     },
@@ -19,7 +11,7 @@ export default function WordConstruct({ question, onAnswer }) {
   /* pool[wordId] = مصفوفة فهارس الحروف المتبقية في البنك */
   const [pools, setPools] = useState(() => {
     const init = {};
-    WORDS.forEach(w => { init[w.id] = doShuffle(w.letters.map((_, i) => i)); });
+    WORDS.forEach(w => { init[w.id] = shuffle(w.letters.map((_, i) => i)); });
     return init;
   });
   /* slots[wordId][slotIdx] = فهرس الحرف الموضوع (null = فارغ) */
@@ -95,7 +87,7 @@ export default function WordConstruct({ question, onAnswer }) {
   function handleReset() {
     setPools(() => {
       const init = {};
-      WORDS.forEach(w => { init[w.id] = doShuffle(w.letters.map((_, i) => i)); });
+      WORDS.forEach(w => { init[w.id] = shuffle(w.letters.map((_, i) => i)); });
       return init;
     });
     setSlots(() => {

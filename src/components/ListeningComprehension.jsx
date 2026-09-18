@@ -1,16 +1,8 @@
-import { useState, useEffect } from 'react';
-import { createTTSPlayer } from '../utils/ttsPlayer.js';
+import { useState } from 'react';
+import { useTTSPlayer } from '../hooks/useTTSPlayer.js';
+import { shuffle } from '../data/questions.js';
 
 const MAX_PLAYS = 3;
-
-function doShuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 /**
  * استماع حقيقي للمستويين 2 و3: تُشغَّل الفقرة (question.audioText) صوتياً
@@ -20,30 +12,18 @@ function doShuffle(arr) {
 export default function ListeningComprehension({ question, onAnswer }) {
   const [options] = useState(() => {
     const arr = question.options.map((opt, i) => ({ ...opt, origIdx: i }));
-    return doShuffle(arr);
+    return shuffle(arr);
   });
   const [playCount,    setPlayCount]    = useState(0);
-  const [playing,      setPlaying]      = useState(false);
-  const [audioError,   setAudioError]   = useState(false);
   const [selected,     setSelected]     = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
 
-  const [player] = useState(() => createTTSPlayer());
-
-  useEffect(() => () => { player.stop(); }, [player]);
+  const { playing, audioError, playOnce } = useTTSPlayer();
 
   async function handlePlay() {
     if (playing || playCount >= MAX_PLAYS) return;
-    setPlaying(true);
-    setAudioError(false);
-    try {
-      await player.playOnce(question.audioText);
-      setPlayCount((c) => c + 1);
-    } catch {
-      setAudioError(true);
-    } finally {
-      setPlaying(false);
-    }
+    const success = await playOnce(question.audioText);
+    if (success) setPlayCount((c) => c + 1);
   }
 
   function handleSelect(idx) {

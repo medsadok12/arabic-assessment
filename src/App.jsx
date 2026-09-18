@@ -4,7 +4,7 @@ import Assessment      from './components/Assessment.jsx';
 import LevelTransition from './components/LevelTransition.jsx';
 import Results         from './components/Results.jsx';
 import { getLevelQuestions, shuffle, CHECKPOINT_QUESTION } from './data/questions.js';
-import { calculateLevelScore, applyJumpLogic, saveToLocalStorage } from './utils/scoring.js';
+import { calculateLevelScore, applyJumpLogic, evaluateCheckpoint, saveToLocalStorage } from './utils/scoring.js';
 import './App.css';
 
 const PAGES       = { INFO: 'info', WELCOME: 'welcome', ASSESSMENT: 'assessment', TRANSITION: 'transition', RESULTS: 'results' };
@@ -170,11 +170,9 @@ export default function App() {
         const correctCount = newAnswers.filter((a) => a.isCorrect).length;
         const rate = correctCount / CHECKPOINT_QUESTION;
         const accumulated = [...allAnswers, ...newAnswers];
-        if (rate > 0.9 && currentLevel < 3) {
-          setEarlyJumpOffer({ accumulated });
-        } else if (rate < 0.2 && (currentLevel === 2 || currentLevel === 3)) {
-          setEarlyDropInfo({ accumulated });
-        }
+        const decision = evaluateCheckpoint(rate, currentLevel);
+        if (decision === 'jump') setEarlyJumpOffer({ accumulated });
+        else if (decision === 'drop') setEarlyDropInfo({ accumulated });
       }
       return;
     }

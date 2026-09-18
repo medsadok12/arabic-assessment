@@ -1,13 +1,5 @@
 import { useState } from 'react';
-
-function doShuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+import { shuffle } from '../data/questions.js';
 
 const moveBtnStyle = {
   width: 32,
@@ -31,7 +23,7 @@ export default function DialogueOrder({ question, onAnswer }) {
   const correctOrder = question.lines.map((l) => l.id);
   const lineById = Object.fromEntries(question.lines.map((l) => [l.id, l]));
 
-  const [order, setOrder] = useState(() => doShuffle(question.lines).map((l) => l.id));
+  const [order, setOrder] = useState(() => shuffle(question.lines).map((l) => l.id));
   const [showFeedback, setShowFeedback] = useState(false);
 
   function moveUp(idx) {

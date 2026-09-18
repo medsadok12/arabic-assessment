@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { createTTSPlayer } from '../utils/ttsPlayer.js';
+import { useTTSPlayer } from '../hooks/useTTSPlayer.js';
 
 const RESPONSES = [
   { id: 'correct',  icon: '✅', label: 'أجاب بشكل صحيح' },
@@ -11,39 +11,26 @@ export default function ListenSpeak({ question, onAnswer }) {
   const items = question.items;
   const [idx, setIdx]           = useState(0);
   const [answers, setAnswers]   = useState([]);
-  const [playing, setPlaying]   = useState(false);
-  const [audioError, setAudioError] = useState(false);
   const [recording, setRecording] = useState(false);
   const [audioURL, setAudioURL]   = useState(null);
   const [micError, setMicError]   = useState(false);
 
   const mediaRef    = useRef(null);
   const chunksRef   = useRef([]);
-  const [player]    = useState(() => createTTSPlayer());
+  const { playing, audioError, playOnce, stop, resetError } = useTTSPlayer();
 
   useEffect(() => {
     setAudioURL(null);
     setRecording(false);
     setMicError(false);
-    setAudioError(false);
-  }, [idx]);
+    resetError();
+  }, [idx, resetError]);
 
-  useEffect(() => () => {
-    player.stop();
-    stopRecording();
-  }, [player]);
+  useEffect(() => () => { stopRecording(); }, []);
 
-  async function playQuestion() {
+  function playQuestion() {
     if (playing) return;
-    setPlaying(true);
-    setAudioError(false);
-    try {
-      await player.playOnce(items[idx].text);
-    } catch {
-      setAudioError(true);
-    } finally {
-      setPlaying(false);
-    }
+    playOnce(items[idx].text);
   }
 
   async function startRecording() {
@@ -80,8 +67,7 @@ export default function ListenSpeak({ question, onAnswer }) {
   }
 
   function handleResponse(responseId) {
-    player.stop();
-    setPlaying(false);
+    stop();
     stopRecording();
     const updated = [...answers, { text: items[idx].text, response: responseId }];
     setAnswers(updated);

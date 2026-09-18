@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { shuffle } from '../data/questions.js';
 
 const FORMS = [
   { id: 'initial', text: 'بَـ',  label: 'في البداية' },
@@ -13,17 +14,8 @@ const WORDS = [
   { id: 'end',   emoji: '📚', before: 'كُتُـ', after: '',      correct: 'final',   label: 'كُتُبٌ' },
 ];
 
-function doShuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 export default function LetterPosition({ question, onAnswer }) {
-  const [forms]    = useState(() => doShuffle(FORMS));
+  const [forms]    = useState(() => shuffle(FORMS));
   const [slots,    setSlots]    = useState({ start: null, mid: null, end: null });
   const [selected, setSelected] = useState(null); // formId من البنك
   const [dragging, setDragging] = useState(null);

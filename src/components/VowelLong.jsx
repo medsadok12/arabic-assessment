@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { shuffle } from '../data/questions.js';
 
 const BALLOONS = [
   { id: 'alef', symbol: 'ـا', color: '#c0396a', bg: '#fce4ec', name: 'مدّ الألف' },
@@ -29,17 +30,8 @@ const BASE = [
 
 const TOTAL = BASE.length;
 
-function doShuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 export default function VowelLong({ question, onAnswer }) {
-  const [syllables] = useState(() => doShuffle(BASE));
+  const [syllables] = useState(() => shuffle(BASE));
 
   /* placement: { sylId → balloonId } — خريطة تصنيف الطالب كاملة */
   const [placement, setPlacement] = useState({});

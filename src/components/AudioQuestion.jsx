@@ -1,12 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { createTTSPlayer } from '../utils/ttsPlayer.js';
+import { useTTSPlayer } from '../hooks/useTTSPlayer.js';
 
 const MAX_SECS = 60;
 
 export default function AudioQuestion({ question, studentInfo, onAnswer }) {
-  const [ttsState,    setTtsState]    = useState('idle');   // idle | playing
   const [playCount,   setPlayCount]   = useState(0);        // 1..3 أثناء التشغيل
-  const [ttsError,    setTtsError]    = useState(false);
   const [recState,    setRecState]    = useState('idle');   // idle | recording | done
   const [recTime,     setRecTime]     = useState(0);
   const [saving,      setSaving]      = useState(false);
@@ -22,25 +20,16 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
   const chunksRef    = useRef([]);
   const timerRef     = useRef(null);
   const blobRef      = useRef(null);
-  const [player]     = useState(() => createTTSPlayer());
+  const { playing, audioError, playRepeated } = useTTSPlayer();
 
   useEffect(() => () => {
     clearInterval(timerRef.current);
-    player.stop();
     if (audioUrl) URL.revokeObjectURL(audioUrl);
   }, []);
 
   async function playTTS() {
-    setTtsState('playing');
-    setTtsError(false);
-    try {
-      await player.playRepeated(question.audioText, 3, 700, setPlayCount);
-    } catch {
-      setTtsError(true);
-    } finally {
-      setTtsState('idle');
-      setPlayCount(0);
-    }
+    await playRepeated(question.audioText, 3, 700, setPlayCount);
+    setPlayCount(0);
   }
 
   async function startRec() {
@@ -146,16 +135,16 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
           «&nbsp;{question.audioText}&nbsp;»
         </div>
         <button
-          className={`aq-play-btn${ttsState === 'playing' ? ' aq-playing' : ''}`}
+          className={`aq-play-btn${playing ? ' aq-playing' : ''}`}
           onClick={playTTS}
-          disabled={ttsState === 'playing'}
+          disabled={playing}
         >
-          <span className="aq-play-icon">{ttsState === 'playing' ? '🔊' : '▶'}</span>
-          {ttsState === 'playing'
+          <span className="aq-play-icon">{playing ? '🔊' : '▶'}</span>
+          {playing
             ? `جاري التشغيل... (${playCount}/3)`
             : 'استمع للنص ×3'}
         </button>
-        {ttsError && (
+        {audioError && (
           <p className="aq-error" style={{ marginTop: 6 }}>⚠️ تعذّر تشغيل الصوت، جرّب مرة أخرى</p>
         )}
       </div>
