@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.claude/
+!.claude/settings.json
+.mcp.json
+.vercel
+.next/

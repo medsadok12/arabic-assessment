@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./node_modules/**)",
+      "Read(./.next/**)",
+      "Read(./lms/.next/**)",
+      "Read(./lms/node_modules/**)",
+      "Read(./.git/**)",
+      "Read(/public/**)",
+      "Read(/lms/public/**)",
+      "Read(**/*.lock)",
+      "Read(**/package-lock.json)",
+      "Read(**/yarn.lock)",
+      "Read(**/*.min.js)",
+      "Read(**/*.map)"
+    ]
+  }
+}

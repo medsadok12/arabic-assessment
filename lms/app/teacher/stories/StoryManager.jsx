@@ -1,0 +1,767 @@
+'use client';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import Link from 'next/link';
+import StoryPageEditor from '../../../components/StoryPageEditor';
+
+const ACCENTS = [
+  { label: 'أخضر',   accent: '#10b981', bg: '#ecfdf5', border: '#6ee7b7' },
+  { label: 'ذهبي',   accent: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+  { label: 'بنفسجي', accent: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' },
+  { label: 'وردي',   accent: '#ec4899', bg: '#fdf2f8', border: '#fbcfe8' },
+  { label: 'أزرق',   accent: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' },
+  { label: 'برتقالي',accent: '#f97316', bg: '#fff7ed', border: '#fed7aa' },
+  { label: 'سماوي',  accent: '#22d3ee', bg: '#ecfeff', border: '#a5f3fc' },
+  { label: 'أحمر',   accent: '#ef4444', bg: '#fef2f2', border: '#fecaca' },
+];
+
+const LENGTHS = ['قصيرة', 'متوسطة', 'طويلة'];
+
+const EMPTY_FORM = {
+  title: '', icon: '📖', level: 1, length: 'قصيرة',
+  content: '', status: 'draft', points: 10,
+  accent: '#10b981', bg: '#ecfdf5', border_color: '#6ee7b7',
+};
+
+/* ── تحويل content ↔ مصفوفة صفحات ── */
+function parseToPages(content) {
+  const blocks = (content || '').split('<!-- PAGE -->').map(b => b.trim()).filter(Boolean);
+  if (!blocks.length) return [{ html: '', imgUrl: '' }];
+  return blocks.map(block => {
+    const m = block.match(/^<img\s+class="sp-img"\s+src="([^"]*)"[^>]*>/i);
+    return m
+      ? { imgUrl: m[1], html: block.slice(m[0].length).trim() }
+      : { imgUrl: '', html: block };
+  });
+}
+
+function pagesToContent(pages) {
+  return pages
+    .filter(p => p.html.trim() || p.imgUrl)
+    .map(p => {
+      const imgTag = p.imgUrl
+        ? `<img class="sp-img" src="${p.imgUrl}" alt="" style="width:100%;max-height:260px;object-fit:cover;border-radius:14px;margin-bottom:18px;display:block;">`
+        : '';
+      return imgTag + (imgTag && p.html ? '\n' : '') + p.html;
+    })
+    .join('\n<!-- PAGE -->\n');
+}
+
+/* ══════════════════════════════════════════════════════
+   ألوان شريط أدوات المحرر
+══════════════════════════════════════════════════════ */
+const EDITOR_COLORS = [
+  { hex: '#1e293b', name: 'أسود'    },
+  { hex: '#ef4444', name: 'أحمر'    },
+  { hex: '#f97316', name: 'برتقالي' },
+  { hex: '#d97706', name: 'أصفر'    },
+  { hex: '#059669', name: 'أخضر'    },
+  { hex: '#0284c7', name: 'أزرق'    },
+  { hex: '#6366f1', name: 'بنفسجي'  },
+  { hex: '#db2777', name: 'وردي'    },
+];
+
+/* ══════════════════════════════════════════════════════
+   محرر صفحة واحدة — شريط أدوات + textarea
+   الأزرار تلتف النص المحدد بوسوم HTML مناسبة
+══════════════════════════════════════════════════════ */
+function PageEditor({ html, onChange }) {
+  const taRef   = useRef(null);
+  const szRef   = useRef(null);
+  const lhRef   = useRef(null);
+  const pending = useRef(null);
+  const history = useRef([]);
+  const [canUndo, setCanUndo] = useState(false);
+
+  const pushHistory = (val) => {
+    history.current.push(val);
+    if (history.current.length > 60) history.current.shift();
+    setCanUndo(true);
+  };
+
+  const undo = () => {
+    if (!history.current.length) return;
+    const prev = history.current.pop();
+    setCanUndo(history.current.length > 0);
+    onChange(prev);
+  };
+
+  /* استعادة موضع المؤشر بعد كل render (useLayoutEffect = قبل الرسم) */
+  useLayoutEffect(() => {
+    if (pending.current === null || !taRef.current) return;
+    taRef.current.setSelectionRange(pending.current.s, pending.current.e);
+    pending.current = null;
+  });
+
+  /* تغليف النص المحدد بوسوم HTML */
+  const wrap = (before, after) => {
+    const ta = taRef.current;
+    if (!ta) return;
+    const s = ta.selectionStart;
+    const e = ta.selectionEnd;
+    pushHistory(html);
+    const next = html.slice(0, s) + before + html.slice(s, e) + after + html.slice(e);
+    pending.current = { s: s + before.length, e: s + before.length + (e - s) };
+    onChange(next);
+  };
+
+  const TB = {
+    type: 'button',
+    style: {
+      border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '4px 9px',
+      fontSize: '.78rem', fontWeight: 800, cursor: 'pointer',
+      background: '#fff', color: '#374151',
+      fontFamily: "'Cairo','Tajawal',sans-serif",
+      transition: 'background .12s',
+    },
+  };
+
+  const Sep = () => (
+    <span style={{ width: 1, background: '#e2e8f0', alignSelf: 'stretch', flexShrink: 0, margin: '0 2px' }} />
+  );
+
+  return (
+    <div style={{ borderTop: '1px solid #f3f4f6' }}>
+
+      {/* ── شريط الأدوات ── */}
+      <div style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 12px', background:'#f8fafc', flexWrap:'wrap', borderBottom:'1px solid #f0f0f0' }}>
+
+        {/* ── الخط العريض ── */}
+        <button {...TB} onClick={() => wrap('<strong>', '</strong>')} title="خط عريض (Gras)">
+          <strong>ع</strong>
+        </button>
+
+        {/* ── مائل / تمييز ── */}
+        <button {...TB} onClick={() => wrap('<em>', '</em>')} title="مائل / تمييز">
+          <em style={{ fontFamily: 'serif' }}>ع</em>
+        </button>
+
+        {/* ── خط تحتي ── */}
+        <button {...TB} onClick={() => wrap('<u>', '</u>')} title="خط تحتي">
+          <u>ع</u>
+        </button>
+
+        <Sep />
+
+        {/* ── حجم الخط ── */}
+        <select
+          ref={szRef}
+          defaultValue=""
+          title="حجم الخط"
+          onChange={() => {
+            const v = szRef.current?.value;
+            if (!v) return;
+            wrap(`<span style="font-size:${v}">`, '</span>');
+            requestAnimationFrame(() => { if (szRef.current) szRef.current.value = ''; });
+          }}
+          style={{
+            border: '1.5px solid #e2e8f0', borderRadius: 8,
+            padding: '4px 8px', fontSize: '.78rem', fontWeight: 700,
+            cursor: 'pointer', background: '#fff', color: '#374151',
+            direction: 'rtl', fontFamily: "'Cairo','Tajawal',sans-serif",
+          }}
+        >
+          <option value="">حجم الخط ▾</option>
+          <option value=".8rem">صغير جداً</option>
+          <option value=".92rem">صغير</option>
+          <option value="1.08rem">عادي</option>
+          <option value="1.28rem">متوسط</option>
+          <option value="1.55rem">كبير</option>
+          <option value="1.9rem">عنوان</option>
+          <option value="2.5rem">عنوان كبير</option>
+          <option value="3.2rem">ضخم</option>
+          <option value="4rem">ضخم جداً</option>
+          <option value="5rem">عملاق</option>
+          <option value="6.5rem">عملاق جداً</option>
+        </select>
+
+        {/* ── تباعد الأسطر ── */}
+        <select
+          ref={lhRef}
+          defaultValue=""
+          title="تباعد الأسطر"
+          onChange={() => {
+            const v = lhRef.current?.value;
+            if (!v) return;
+            wrap(`<p style="line-height:${v}">`, '</p>');
+            requestAnimationFrame(() => { if (lhRef.current) lhRef.current.value = ''; });
+          }}
+          style={{
+            border: '1.5px solid #e2e8f0', borderRadius: 8,
+            padding: '4px 8px', fontSize: '.78rem', fontWeight: 700,
+            cursor: 'pointer', background: '#fff', color: '#374151',
+            direction: 'rtl', fontFamily: "'Cairo','Tajawal',sans-serif",
+          }}
+        >
+          <option value="">تباعد ▾</option>
+          <option value="1.3">ضيق</option>
+          <option value="1.8">عادي</option>
+          <option value="2.4">واسع</option>
+          <option value="3.2">أوسع</option>
+          <option value="4.2">فضفاض</option>
+        </select>
+
+        <Sep />
+
+        {/* ── محاذاة ── */}
+        <button {...TB} onClick={() => wrap('<p style="text-align:right">', '</p>')} title="محاذاة يمين (افتراضي عربي)">
+          يمين
+        </button>
+        <button {...TB} onClick={() => wrap('<p style="text-align:center">', '</p>')} title="توسيط">
+          وسط
+        </button>
+        <button {...TB} onClick={() => wrap('<p style="text-align:left">', '</p>')} title="محاذاة يسار">
+          يسار
+        </button>
+
+        <Sep />
+
+        {/* ── الألوان ── */}
+        {EDITOR_COLORS.map(c => (
+          <button
+            key={c.hex}
+            type="button"
+            onClick={() => wrap(`<span style="color:${c.hex}">`, '</span>')}
+            title={c.name}
+            style={{
+              width: 22, height: 22, padding: 0, flexShrink: 0,
+              borderRadius: '50%', background: c.hex,
+              border: '2px solid rgba(0,0,0,.18)',
+              cursor: 'pointer',
+            }}
+          />
+        ))}
+
+        <Sep />
+
+        {/* ── تراجع ── */}
+        <button
+          type="button"
+          onClick={undo}
+          disabled={!canUndo}
+          title="تراجع عن آخر تنسيق"
+          style={{
+            ...TB.style,
+            opacity: canUndo ? 1 : 0.32,
+            cursor: canUndo ? 'pointer' : 'default',
+            fontSize: '.88rem',
+            padding: '3px 8px',
+          }}
+        >
+          ↩
+        </button>
+      </div>
+
+      {/* ── منطقة الكتابة ── */}
+      <textarea
+        ref={taRef}
+        className="sm-textarea"
+        value={html}
+        onChange={e => onChange(e.target.value)}
+        placeholder="<p>كان يا ما كان في قديم الزمان...</p>"
+        style={{
+          borderRadius: 0, border: 'none', minHeight: 140,
+          display: 'block', width: '100%', boxSizing: 'border-box',
+          background: '#fff',
+        }}
+      />
+    </div>
+  );
+}
+
+function StatusBadge({ status }) {
+  return status === 'published'
+    ? <span style={{ background:'#d1fae5', color:'#065f46', borderRadius:20, padding:'2px 10px', fontSize:'.68rem', fontWeight:900, border:'1.5px solid #86efac' }}>✅ منشورة</span>
+    : <span style={{ background:'#fef3c7', color:'#78350f', borderRadius:20, padding:'2px 10px', fontSize:'.68rem', fontWeight:900, border:'1.5px solid #fde68a' }}>✏️ مسودة</span>;
+}
+
+export default function StoryManager({ initialStories }) {
+  const [stories,   setStories]   = useState(initialStories ?? null);
+
+  useEffect(() => {
+    if (initialStories !== undefined) return;
+    fetch('/api/stories').then(r => r.json()).then(j => setStories(j.stories || [])).catch(() => setStories([]));
+  }, []);
+
+  if (stories === null) return (
+    <div style={{ textAlign:'center', padding:'60px 0', color:'#94a3b8', fontFamily:'Cairo,Tajawal,sans-serif', fontWeight:700 }}>
+      ⏳ جارٍ تحميل القصص...
+    </div>
+  );
+  const [view,      setView]      = useState('list');   // 'list' | 'create' | 'edit'
+  const [form,      setForm]      = useState(EMPTY_FORM);
+  const [editId,    setEditId]    = useState(null);
+  const [saving,    setSaving]    = useState(false);
+  const [deleting,  setDeleting]  = useState(null);
+  const [msg,       setMsg]       = useState(null);
+  const [preview,   setPreview]   = useState(false);
+  const [pages,     setPages]     = useState([{ html: '', imgUrl: '' }]);
+  const [uploading, setUploading] = useState(null); // index of page being uploaded
+
+  const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  /* ── صفحات ── */
+  const updatePage  = (i, key, val) => setPages(p => p.map((pg, idx) => idx === i ? { ...pg, [key]: val } : pg));
+  const addPage     = () => setPages(p => [...p, { html: '', imgUrl: '' }]);
+  const deletePage  = (i) => setPages(p => p.filter((_, idx) => idx !== i));
+  const movePage    = (i, dir) => setPages(p => {
+    const arr = [...p];
+    [arr[i + dir], arr[i]] = [arr[i], arr[i + dir]];
+    return arr;
+  });
+  const uploadPageImg = async (i, file) => {
+    setUploading(i);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res  = await fetch('/api/stories/upload', { method: 'POST', body: fd });
+      const json = await res.json();
+      if (json.url) updatePage(i, 'imgUrl', json.url);
+      else setMsg({ ok: false, text: `❌ فشل رفع الصورة: ${json.error || ''}` });
+    } catch { setMsg({ ok: false, text: '❌ خطأ في رفع الصورة' }); }
+    setUploading(null);
+  };
+
+  const openCreate = () => {
+    setForm(EMPTY_FORM);
+    setPages([{ html: '', imgUrl: '' }]);
+    setEditId(null); setMsg(null); setPreview(false); setView('create');
+  };
+  const openEdit   = (s) => {
+    setForm({
+      title:        s.title,
+      icon:         s.icon || '📖',
+      level:        s.level || 1,
+      length:       s.length || 'قصيرة',
+      content:      s.content || '',
+      status:       s.status || 'draft',
+      points:       s.points || 10,
+      accent:       s.accent || '#10b981',
+      bg:           s.bg || '#ecfdf5',
+      border_color: s.border_color || '#6ee7b7',
+    });
+    setPages(parseToPages(s.content));
+    setEditId(s.id);
+    setMsg(null);
+    setPreview(false);
+    setView('edit');
+  };
+  const backToList = () => { setView('list'); setMsg(null); };
+
+  const handleSave = async () => {
+    if (!form.title.trim()) { setMsg({ ok: false, text: 'العنوان مطلوب' }); return; }
+    setSaving(true); setMsg(null);
+    try {
+      const method  = view === 'edit' ? 'PUT' : 'POST';
+      const url     = view === 'edit' ? `/api/stories/${editId}` : '/api/stories';
+      const content = pagesToContent(pages);
+      const res  = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, content }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error || 'فشل الحفظ');
+      if (view === 'edit') {
+        setStories(p => p.map(s => s.id === editId ? json.story : s));
+        setMsg({ ok: true, text: '✅ تم الحفظ' });
+        setTimeout(backToList, 800);
+      } else {
+        setStories(p => [json.story, ...p]);
+        setMsg({ ok: true, text: '✅ تم إنشاء القصة' });
+        setTimeout(backToList, 800);
+      }
+    } catch (e) {
+      setMsg({ ok: false, text: `❌ ${e.message}` });
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('هل تريد حذف هذه القصة نهائياً؟')) return;
+    setDeleting(id);
+    try {
+      await fetch(`/api/stories/${id}`, { method: 'DELETE' });
+      setStories(p => p.filter(s => s.id !== id));
+    } catch {}
+    setDeleting(null);
+  };
+
+  const handleToggleStatus = async (s) => {
+    const newStatus = s.status === 'published' ? 'draft' : 'published';
+    try {
+      const res = await fetch(`/api/stories/${s.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const json = await res.json();
+      if (json.story) setStories(p => p.map(x => x.id === s.id ? json.story : x));
+    } catch {}
+  };
+
+  const selectedAccent = ACCENTS.find(a => a.accent === form.accent) || ACCENTS[0];
+
+  return (
+    <>
+      <style>{`
+        @keyframes smFadeIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+        .sm-wrap { direction:rtl; font-family:'Cairo','Tajawal',sans-serif; padding:20px 0 60px; animation:smFadeIn .35s ease both; }
+        .sm-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
+        .sm-title  { font-size:1.5rem; font-weight:900; color:#1e3a5f; margin:0; }
+        .sm-btn-primary {
+          background:linear-gradient(135deg,#10b981,#059669); color:#fff;
+          border:none; border-radius:12px; padding:10px 20px;
+          font-size:.88rem; font-weight:800; cursor:pointer;
+          font-family:'Cairo','Tajawal',sans-serif;
+          box-shadow:0 4px 14px rgba(16,185,129,.3);
+          transition:transform .18s, box-shadow .18s;
+        }
+        .sm-btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(16,185,129,.4); }
+        .sm-btn-secondary {
+          background:#f8fafc; color:#475569; border:1.5px solid #e2e8f0;
+          border-radius:12px; padding:9px 18px;
+          font-size:.85rem; font-weight:700; cursor:pointer;
+          font-family:'Cairo','Tajawal',sans-serif;
+          transition:all .18s;
+        }
+        .sm-btn-secondary:hover { border-color:#a5b4fc; color:#4f46e5; }
+
+        /* قائمة القصص */
+        .sm-story-list { display:flex; flex-direction:column; gap:14px; }
+        .sm-story-row {
+          display:flex; align-items:center; gap:14px;
+          background:#fff; border-radius:18px; padding:16px 18px;
+          border:2px solid #f1f5f9;
+          box-shadow:0 2px 12px rgba(0,0,0,.05);
+          transition:box-shadow .18s;
+        }
+        .sm-story-row:hover { box-shadow:0 6px 24px rgba(0,0,0,.1); }
+        .sm-story-main { display:flex; align-items:center; gap:14px; flex:1; min-width:0; }
+        .sm-story-icon {
+          width:52px; height:52px; border-radius:14px;
+          display:flex; align-items:center; justify-content:center;
+          font-size:2rem; flex-shrink:0;
+        }
+        .sm-story-info { flex:1; min-width:0; }
+        .sm-story-name { font-size:.95rem; font-weight:800; color:#1e293b; margin:0 0 5px; }
+        .sm-story-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .sm-meta-chip  { background:#f8fafc; color:#64748b; border-radius:20px; padding:2px 9px; font-size:.65rem; font-weight:700; border:1px solid #e2e8f0; }
+        .sm-actions    { display:flex; gap:8px; flex-shrink:0; flex-wrap:wrap; }
+        .sm-action-btn {
+          border:none; border-radius:10px; padding:7px 14px;
+          font-size:.78rem; font-weight:700; cursor:pointer;
+          font-family:'Cairo','Tajawal',sans-serif; transition:all .16s;
+        }
+        .sm-action-btn.edit   { background:#eef2ff; color:#4f46e5; }
+        .sm-action-btn.edit:hover { background:#e0e7ff; }
+        .sm-action-btn.pub    { background:#d1fae5; color:#065f46; }
+        .sm-action-btn.pub:hover { background:#a7f3d0; }
+        .sm-action-btn.unpub  { background:#fef3c7; color:#78350f; }
+        .sm-action-btn.unpub:hover { background:#fde68a; }
+        .sm-action-btn.del    { background:#fee2e2; color:#b91c1c; }
+        .sm-action-btn.del:hover { background:#fecaca; }
+        .sm-action-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+        .sm-view-link { background:#ecfdf5; color:#065f46; border:1.5px solid #86efac; border-radius:10px; padding:6px 13px; font-size:.75rem; font-weight:700; text-decoration:none; transition:all .16s; }
+        .sm-view-link:hover { background:#d1fae5; }
+
+        /* نموذج إنشاء/تعديل */
+        .sm-form { background:#fff; border-radius:22px; padding:28px 24px; box-shadow:0 4px 24px rgba(0,0,0,.07); border:2px solid #f1f5f9; }
+        .sm-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        @media (max-width:640px) {
+          .sm-form-grid { grid-template-columns:1fr; }
+          /* التراص العمودي للبطاقة يأتي من كلاسات mobile-stack العامة في globals.css —
+             هنا فقط الضبط الخاص بهذا المكوّن */
+          .sm-story-row  { padding:14px; }
+          .sm-story-icon { width:48px; height:48px; font-size:1.7rem; }
+          .sm-story-name { font-size:.9rem; white-space:normal; word-break:break-word; }
+          .sm-story-meta { gap:6px; }
+          .sm-actions    { gap:8px; }
+          .sm-action-btn, .sm-view-link { text-align:center; padding:9px 6px; font-size:.78rem; }
+        }
+        .sm-field { display:flex; flex-direction:column; gap:6px; }
+        .sm-label { font-size:.82rem; font-weight:800; color:#374151; }
+        .sm-input, .sm-select, .sm-textarea {
+          border:1.5px solid #e5e7eb; border-radius:12px; padding:9px 13px;
+          font-family:'Cairo','Tajawal',sans-serif; font-size:.9rem;
+          direction:rtl; outline:none; color:#1e293b;
+          transition:border-color .18s, box-shadow .18s;
+        }
+        .sm-input:focus, .sm-select:focus, .sm-textarea:focus {
+          border-color:#818cf8; box-shadow:0 0 0 3px rgba(129,140,248,.15);
+        }
+        .sm-textarea { resize:vertical; min-height:260px; line-height:1.8; }
+        .sm-form-footer { display:flex; gap:12px; margin-top:20px; flex-wrap:wrap; }
+        .sm-save-btn {
+          flex:1; border:none; border-radius:14px; padding:13px;
+          background:linear-gradient(135deg,#10b981,#059669); color:#fff;
+          font-size:.95rem; font-weight:900; cursor:pointer;
+          font-family:'Cairo','Tajawal',sans-serif;
+          box-shadow:0 5px 18px rgba(16,185,129,.3); transition:all .18s;
+        }
+        .sm-save-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 10px 28px rgba(16,185,129,.4); }
+        .sm-save-btn:disabled { opacity:.6; cursor:not-allowed; }
+        .sm-cancel-btn {
+          border:1.5px solid #e2e8f0; border-radius:14px; padding:12px 20px;
+          background:#f8fafc; color:#64748b;
+          font-size:.9rem; font-weight:700; cursor:pointer;
+          font-family:'Cairo','Tajawal',sans-serif; transition:all .18s;
+        }
+        .sm-cancel-btn:hover { border-color:#a5b4fc; color:#4f46e5; }
+
+        /* معاينة */
+        .sm-preview-card {
+          border-radius:18px; padding:20px 16px 16px;
+          display:flex; flex-direction:column; align-items:center;
+          text-align:center; gap:8px; border:2px solid; width:160px; margin:0 auto 20px;
+        }
+
+        /* شريط ألوان */
+        .sm-color-swatches { display:flex; gap:8px; flex-wrap:wrap; }
+        .sm-swatch {
+          width:28px; height:28px; border-radius:8px; cursor:pointer;
+          border:2.5px solid transparent; transition:all .15s;
+          display:flex; align-items:center; justify-content:center;
+          font-size:.6rem;
+        }
+        .sm-swatch.active { border-color:#1e293b; transform:scale(1.15); }
+
+        .sm-msg { padding:10px 14px; border-radius:10px; font-size:.85rem; font-weight:700; margin-bottom:14px; }
+        .sm-msg.ok  { background:#d4edda; color:#155724; }
+        .sm-msg.err { background:#f8d7da; color:#721c24; }
+
+        .sm-empty { text-align:center; padding:60px 20px; color:#94a3b8; font-weight:700; }
+        .sm-empty span { display:block; font-size:3.5rem; margin-bottom:12px; }
+
+        .sm-tabs { display:flex; gap:10px; margin-bottom:22px; }
+        .sm-tab {
+          border:none; border-radius:50px; padding:7px 18px;
+          font-size:.82rem; font-weight:700; cursor:pointer;
+          font-family:'Cairo','Tajawal',sans-serif; transition:all .16s;
+        }
+        .sm-tab.active { background:linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 4px 14px rgba(16,185,129,.3); }
+        .sm-tab:not(.active) { background:#f0fdf4; color:#065f46; border:1.5px solid #86efac; }
+      `}</style>
+
+      <div className="sm-wrap">
+
+        {/* رأس الصفحة */}
+        <div className="sm-header">
+          <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+            {view !== 'list' && (
+              <button className="sm-btn-secondary" onClick={backToList}>→ رجوع</button>
+            )}
+            <h1 className="sm-title">
+              {view === 'list'   ? '📚 إدارة القصص' :
+               view === 'create' ? '➕ قصة جديدة'  :
+                                   '✏️ تعديل القصة'}
+            </h1>
+          </div>
+          <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+            {view === 'list' && (
+              <>
+                <Link href="/teacher" className="sm-btn-secondary" style={{ textDecoration:'none', padding:'9px 18px', display:'inline-block', fontSize:'.85rem', fontWeight:700, color:'#475569', borderRadius:12, border:'1.5px solid #e2e8f0', background:'#f8fafc' }}>
+                  → لوحة المعلم
+                </Link>
+                <button className="sm-btn-primary" onClick={openCreate}>+ إضافة قصة</button>
+              </>
+            )}
+            {view !== 'list' && (
+              <button
+                style={{ background:preview?'#4f46e5':'#eef2ff', color:preview?'#fff':'#4f46e5', border:'none', borderRadius:12, padding:'9px 18px', fontSize:'.85rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}
+                onClick={() => setPreview(p => !p)}
+              >
+                {preview ? '✏️ محرر' : '👁 معاينة'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── قائمة القصص ── */}
+        {view === 'list' && (
+          <>
+            {/* فلترة سريعة */}
+            <div className="sm-tabs">
+              <span style={{ background:'#1e3a5f', color:'#fff', borderRadius:50, padding:'6px 16px', fontSize:'.8rem', fontWeight:800, display:'inline-flex', alignItems:'center', gap:6 }}>
+                الكل ({stories.length})
+              </span>
+              <span style={{ background:'#d1fae5', color:'#065f46', borderRadius:50, padding:'6px 16px', fontSize:'.8rem', fontWeight:800, border:'1.5px solid #86efac', display:'inline-flex', alignItems:'center', gap:6 }}>
+                منشورة ({stories.filter(s => s.status === 'published').length})
+              </span>
+              <span style={{ background:'#fef3c7', color:'#78350f', borderRadius:50, padding:'6px 16px', fontSize:'.8rem', fontWeight:800, border:'1.5px solid #fde68a', display:'inline-flex', alignItems:'center', gap:6 }}>
+                مسودة ({stories.filter(s => s.status === 'draft').length})
+              </span>
+            </div>
+
+            {stories.length === 0 ? (
+              <div className="sm-empty">
+                <span>📖</span>
+                لا توجد قصص بعد — ابدأ بإضافة أول قصة!
+                <br />
+                <button className="sm-btn-primary" onClick={openCreate} style={{ marginTop:20 }}>
+                  + أضف أول قصة
+                </button>
+              </div>
+            ) : (
+              <div className="sm-story-list">
+                {stories.map(s => (
+                  <div key={s.id} className="sm-story-row mobile-stack">
+                    <div className="sm-story-main mobile-stack-main">
+                      <div className="sm-story-icon" style={{ background: s.bg || '#ecfdf5', border: `2px solid ${s.border_color || '#6ee7b7'}` }}>
+                        {s.icon || '📖'}
+                      </div>
+                      <div className="sm-story-info">
+                        <p className="sm-story-name">{s.title}</p>
+                        <div className="sm-story-meta">
+                          <StatusBadge status={s.status} />
+                          <span className="sm-meta-chip">مستوى {s.level || 1}</span>
+                          <span className="sm-meta-chip">⏱ {s.length || 'قصيرة'}</span>
+                          <span className="sm-meta-chip">⭐ {s.points || 10} نقطة</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="sm-actions mobile-stack-actions">
+                      {s.status === 'published' && (
+                        <Link
+                          href={`/library/stories/${s.slug}`}
+                          className="sm-view-link mobile-stack-act"
+                          target="_blank"
+                        >
+                          👁 عرض
+                        </Link>
+                      )}
+                      <button
+                        className={`sm-action-btn mobile-stack-act ${s.status === 'published' ? 'unpub' : 'pub'}`}
+                        onClick={() => handleToggleStatus(s)}
+                      >
+                        {s.status === 'published' ? '⬇️ إلغاء النشر' : '🚀 نشر'}
+                      </button>
+                      <button className="sm-action-btn mobile-stack-act edit" onClick={() => openEdit(s)}>✏️ تعديل</button>
+                      <button
+                        className="sm-action-btn mobile-stack-act del"
+                        onClick={() => handleDelete(s.id)}
+                        disabled={deleting === s.id}
+                      >
+                        {deleting === s.id ? '...' : '🗑 حذف'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── نموذج إنشاء / تعديل ── */}
+        {(view === 'create' || view === 'edit') && (
+          <div className="sm-form">
+            {msg && (
+              <div className={`sm-msg ${msg.ok ? 'ok' : 'err'}`}>{msg.text}</div>
+            )}
+
+            {/* معاينة البطاقة */}
+            {preview && (
+              <div style={{ marginBottom:24 }}>
+                <p style={{ textAlign:'center', fontSize:'.8rem', color:'#64748b', fontWeight:700, marginBottom:14 }}>معاينة البطاقة في المكتبة</p>
+                <div className="sm-preview-card" style={{ background: form.bg, borderColor: form.border_color, boxShadow: `0 4px 18px ${form.accent}20` }}>
+                  <span style={{ fontSize:'2.8rem', lineHeight:1 }}>{form.icon || '📖'}</span>
+                  <span style={{ background: `${form.accent}20`, color: form.accent, borderRadius:20, padding:'2px 9px', fontSize:'.62rem', fontWeight:800 }}>مستوى {form.level}</span>
+                  <p style={{ fontSize:'.8rem', fontWeight:800, color:'#1e293b', margin:0 }}>{form.title || 'عنوان القصة'}</p>
+                  <span style={{ fontSize:'.65rem', color:'#64748b' }}>⏱ {form.length}</span>
+                  <span style={{ background:`linear-gradient(135deg,${form.accent},${form.accent}bb)`, color:'#fff', borderRadius:50, padding:'5px 14px', fontSize:'.7rem', fontWeight:800 }}>اقرأ الآن ←</span>
+                </div>
+              </div>
+            )}
+
+            {!preview && (
+              <>
+                <div className="sm-form-grid" style={{ marginBottom:16 }}>
+                  {/* عنوان + أيقونة */}
+                  <div className="sm-field" style={{ gridColumn:'1/-1' }}>
+                    <label className="sm-label">عنوان القصة *</label>
+                    <input className="sm-input" value={form.title} onChange={e => f('title', e.target.value)} placeholder="مثال: الأرنب الشجاع" />
+                  </div>
+
+                  <div className="sm-field">
+                    <label className="sm-label">الأيقونة (إيموجي)</label>
+                    <input className="sm-input" value={form.icon} onChange={e => f('icon', e.target.value)} placeholder="مثال: 🦁" maxLength={4} style={{ fontSize:'1.3rem', textAlign:'center' }} />
+                  </div>
+
+                  <div className="sm-field">
+                    <label className="sm-label">النقاط</label>
+                    <input className="sm-input" type="number" min={1} max={500} value={form.points} onChange={e => f('points', e.target.value)} />
+                  </div>
+
+                  <div className="sm-field">
+                    <label className="sm-label">المستوى</label>
+                    <select className="sm-select" value={form.level} onChange={e => f('level', e.target.value)}>
+                      <option value={1}>مستوى 1</option>
+                      <option value={2}>مستوى 2</option>
+                      <option value={3}>مستوى 3</option>
+                    </select>
+                  </div>
+
+                  <div className="sm-field">
+                    <label className="sm-label">طول القصة</label>
+                    <select className="sm-select" value={form.length} onChange={e => f('length', e.target.value)}>
+                      {LENGTHS.map(l => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="sm-field">
+                    <label className="sm-label">الحالة</label>
+                    <select className="sm-select" value={form.status} onChange={e => f('status', e.target.value)}>
+                      <option value="draft">مسودة (غير منشورة)</option>
+                      <option value="published">منشورة للطلاب</option>
+                    </select>
+                  </div>
+
+                  <div className="sm-field">
+                    <label className="sm-label">لون القصة</label>
+                    <div className="sm-color-swatches">
+                      {ACCENTS.map(a => (
+                        <div
+                          key={a.accent}
+                          className={`sm-swatch${form.accent === a.accent ? ' active' : ''}`}
+                          style={{ background: a.bg, border: `2.5px solid ${form.accent === a.accent ? a.accent : '#e2e8f0'}` }}
+                          title={a.label}
+                          onClick={() => setForm(p => ({ ...p, accent: a.accent, bg: a.bg, border_color: a.border }))}
+                        >
+                          <span style={{ width:14, height:14, borderRadius:'50%', background: a.accent, display:'block' }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* محرر صفحات القصة */}
+                <div className="sm-field" style={{ marginBottom:6 }}>
+                  <label className="sm-label" style={{ marginBottom:12, display:'block' }}>
+                    صفحات القصة
+                    <span style={{ fontSize:'.7rem', color:'#94a3b8', fontWeight:600, marginRight:8 }}>
+                      — أضف صفحات وحدّد تخطيط كل صفحة واجعلها بالصور والنصوص التي تريد
+                    </span>
+                  </label>
+                  <div style={{ border:'1.5px solid #e5e7eb', borderRadius:16, padding:'20px 18px', background:'#fafbff' }}>
+                    <StoryPageEditor
+                      key={editId || 'new'}
+                      value={form.content}
+                      onChange={v => f('content', v)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="sm-form-footer">
+              <button className="sm-cancel-btn" onClick={backToList}>إلغاء</button>
+              <button className="sm-save-btn" onClick={handleSave} disabled={saving}>
+                {saving ? 'جارٍ الحفظ...' : view === 'edit' ? '💾 حفظ التغييرات' : '✅ إنشاء القصة'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}

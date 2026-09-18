@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTTSPlayer } from '../hooks/useTTSPlayer.js';
 
 const MAX_SECS = 60;
 
 export default function AudioQuestion({ question, studentInfo, onAnswer }) {
-  const [ttsState,    setTtsState]    = useState('idle');   // idle | playing
   const [playCount,   setPlayCount]   = useState(0);        // 1..3 أثناء التشغيل
   const [recState,    setRecState]    = useState('idle');   // idle | recording | done
   const [recTime,     setRecTime]     = useState(0);
@@ -20,54 +20,16 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
   const chunksRef    = useRef([]);
   const timerRef     = useRef(null);
   const blobRef      = useRef(null);
-  const ttsTimeoutRef = useRef(null);
-  const playCountRef  = useRef(0);
+  const { playing, audioError, playRepeated } = useTTSPlayer();
 
   useEffect(() => () => {
     clearInterval(timerRef.current);
-    clearTimeout(ttsTimeoutRef.current);
-    window.speechSynthesis?.cancel();
     if (audioUrl) URL.revokeObjectURL(audioUrl);
   }, []);
 
-  function playTTS() {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    synth.cancel();
-    clearTimeout(ttsTimeoutRef.current);
-
-    playCountRef.current = 1;
-    setPlayCount(1);
-    setTtsState('playing');
-
-    const doSpeak = () => {
-      const u = new SpeechSynthesisUtterance(question.audioText);
-      u.lang   = 'ar-SA';
-      u.rate   = 1.0;
-      u.pitch  = 1;
-      u.volume = 1;
-
-      u.onend = () => {
-        if (playCountRef.current < 3) {
-          playCountRef.current += 1;
-          setPlayCount(playCountRef.current);
-          ttsTimeoutRef.current = setTimeout(doSpeak, 700);
-        } else {
-          setTtsState('idle');
-          setPlayCount(0);
-        }
-      };
-      u.onerror = () => { setTtsState('idle'); setPlayCount(0); };
-
-      const voices  = synth.getVoices();
-      const arVoice = voices.find(v => v.lang.startsWith('ar'));
-      if (arVoice) u.voice = arVoice;
-      synth.speak(u);
-    };
-
-    const voices = synth.getVoices();
-    if (voices.length > 0) { doSpeak(); }
-    else { synth.onvoiceschanged = doSpeak; }
+  async function playTTS() {
+    await playRepeated(question.audioText, 3, 700, setPlayCount);
+    setPlayCount(0);
   }
 
   async function startRec() {
@@ -145,6 +107,8 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
           skill:      question.skill,
           answer:     0,
           isCorrect:  true,
+          answerText:  'تسجيل صوتي مُرسل للمعلم',
+          correctText: 'يُقيَّم من المعلم',
         }), 2000);
       } catch (err) {
         setUploadError(err.message || 'تعذّر الاتصال بالخادم');
@@ -171,15 +135,18 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
           «&nbsp;{question.audioText}&nbsp;»
         </div>
         <button
-          className={`aq-play-btn${ttsState === 'playing' ? ' aq-playing' : ''}`}
+          className={`aq-play-btn${playing ? ' aq-playing' : ''}`}
           onClick={playTTS}
-          disabled={ttsState === 'playing'}
+          disabled={playing}
         >
-          <span className="aq-play-icon">{ttsState === 'playing' ? '🔊' : '▶'}</span>
-          {ttsState === 'playing'
+          <span className="aq-play-icon">{playing ? '🔊' : '▶'}</span>
+          {playing
             ? `جاري التشغيل... (${playCount}/3)`
             : 'استمع للنص ×3'}
         </button>
+        {audioError && (
+          <p className="aq-error" style={{ marginTop: 6 }}>⚠️ تعذّر تشغيل الصوت، جرّب مرة أخرى</p>
+        )}
       </div>
 
       {/* ── منطقة التسجيل ── */}
@@ -229,7 +196,7 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
           </button>
           {retryCount >= 2 && (
             <button
-              onClick={() => onAnswer({ questionId: question.id, skill: question.skill, answer: 0, isCorrect: true })}
+              onClick={() => onAnswer({ questionId: question.id, skill: question.skill, answer: 0, isCorrect: true, answerText: 'تخطّى التسجيل الصوتي', correctText: 'يُقيَّم من المعلم' })}
               style={{ marginTop: 8, width: '100%', padding: '10px', background: 'transparent', border: '1px solid #aaa', borderRadius: 8, color: '#666', cursor: 'pointer', fontSize: 14 }}
             >
               تخطي هذا السؤال ←

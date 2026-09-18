@@ -1,28 +1,36 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createServerClient } from '../../../../lib/supabase-server';
+import { createAdminClient } from '../../../../lib/supabase-admin';
+import { cleanupUserData }   from '../../../../lib/cleanup-user';
+import { getRole }           from '../../../../lib/auth-role';
+
 export const dynamic = 'force-dynamic';
 
-function getClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+const ADMIN_ROLES = new Set(['admin', 'super_admin']);
+
+async function requireAdmin() {
+  const supabase = createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || !ADMIN_ROLES.has(getRole(user))) return null;
+  return user;
 }
 
 export async function POST(request) {
+  if (!await requireAdmin()) return Response.json({ error: 'غير مخول' }, { status: 403 });
+
   let body;
   try { body = await request.json(); } catch { return Response.json({ error: 'طلب غير صالح' }, { status: 400 }); }
 
   const { userId } = body;
   if (!userId) return Response.json({ error: 'userId مطلوب' }, { status: 400 });
 
-  const supabase = getClient();
+  const admin = createAdminClient();
 
-  // Delete assessments records (may not have FK cascade)
-  await supabase.from('assessments').delete().eq('user_id', userId);
-  // Delete group assignment
-  await supabase.from('student_group_assignments').delete().eq('user_id', userId);
+  const { data: { user: target }, error: fetchErr } = await admin.auth.admin.getUserById(userId);
+  if (fetchErr || !target) return Response.json({ error: 'المستخدم غير موجود' }, { status: 404 });
 
-  // Delete auth user (requires service_role key)
-  const { error } = await supabase.auth.admin.deleteUser(userId);
+  await cleanupUserData(userId, target.email, admin);
+
+  const { error } = await admin.auth.admin.deleteUser(userId);
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
   return Response.json({ success: true });

@@ -1,8 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient }          from '@supabase/supabase-js';
+import { notify }                from '../../../../lib/notify';
+import { getClientIP, ipRateCheck } from '../../../../lib/ip-rate-check';
 export const dynamic = 'force-dynamic';
 
 const CORS = {
-  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Origin':  'https://assessment.aarem.net',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
@@ -18,6 +20,14 @@ export async function OPTIONS() {
 }
 
 export async function POST(request) {
+  const ip = getClientIP(request);
+  if (!await ipRateCheck(ip, 'rl:code-validate', 10, 50)) {
+    return Response.json(
+      { valid: false, error: 'عدد المحاولات تجاوز الحد المسموح. يرجى الانتظار دقيقة قبل المحاولة مجدداً.' },
+      { status: 429, headers: { ...CORS, 'Retry-After': '60' } }
+    );
+  }
+
   let body;
   try { body = await request.json(); } catch {
     return Response.json({ valid: false, error: 'طلب غير صالح' }, { status: 400, headers: CORS });
@@ -56,6 +66,8 @@ export async function POST(request) {
     .from('assessment_codes')
     .update({ is_used: true, used_at: new Date().toISOString(), used_by_name: name })
     .eq('id', data.id);
+
+  await notify('assessment', '📝 طالب بدأ تقييماً', name ? `الطالب: ${name}` : null, { code, name });
 
   return Response.json({ valid: true }, { status: 200, headers: CORS });
 }

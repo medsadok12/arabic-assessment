@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { SKILLS, LEVELS } from '../data/questions.js';
+import { useState, useEffect } from 'react';
+import { SKILLS, LEVELS, shuffle } from '../data/questions.js';
 import MatchingQuestion      from './MatchingQuestion.jsx';
 import AudioQuestion         from './AudioQuestion.jsx';
 import WritingQuestion       from './WritingQuestion.jsx';
@@ -20,21 +20,29 @@ import LetterListenChoose   from './LetterListenChoose.jsx';
 import SyllableReading      from './SyllableReading.jsx';
 import ImageWordMatching    from './ImageWordMatching.jsx';
 import ListenSpeak          from './ListenSpeak.jsx';
+import ListeningComprehension from './ListeningComprehension.jsx';
+import DialogueOrder        from './DialogueOrder.jsx';
 
-export default function Assessment({ questions, currentLevel, questionIndex, studentInfo, onAnswer }) {
+export default function Assessment({ questions, currentLevel, questionIndex, studentInfo, streak = 0, onAnswer }) {
   const [selected, setSelected] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  // يُظهَر مرة واحدة عند الوصول لكل مضاعف من 3 (Assessment يُعاد تركيبه بالكامل
+  // مع كل سؤال جديد عبر key={questionIndex} في App.jsx — فالقيمة الابتدائية هنا
+  // تعادل "عند بداية عرض السؤال الذي تحققت السلسلة قبله" بالضبط).
+  const [showStreakToast, setShowStreakToast] = useState(() => streak > 0 && streak % 3 === 0);
 
   const question = questions[questionIndex];
+
+  useEffect(() => {
+    if (!showStreakToast) return;
+    const t = setTimeout(() => setShowStreakToast(false), 2800);
+    return () => clearTimeout(t);
+  }, [showStreakToast]);
 
   const [shuffledOptions] = useState(() => {
     if (!question?.options) return [];
     const arr = question.options.map((opt, i) => ({ ...opt, origIdx: i }));
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
+    return shuffle(arr);
   });
   const total         = questions.length;
   const progress      = ((questionIndex + 1) / total) * 100;
@@ -54,13 +62,20 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
     setTimeout(() => {
       setSelected(null);
       setShowFeedback(false);
-      onAnswer({ questionId: question.id, skill: question.skill, answer: selected, isCorrect });
+      onAnswer({
+        questionId: question.id,
+        skill:      question.skill,
+        answer:     selected,
+        isCorrect,
+        answerText:  shuffledOptions[selected]?.text ?? '',
+        correctText: shuffledOptions.find(o => o.correct)?.text ?? '',
+      });
     }, 600);
   }
 
   if (!question) return null;
 
-  const SPECIAL_TYPES = ['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'letter-position', 'word-construct', 'oral-assessment', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill', 'letter-listen-choose', 'syllable-reading', 'image-matching', 'listen-speak'];
+  const SPECIAL_TYPES = ['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'letter-position', 'word-construct', 'oral-assessment', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill', 'letter-listen-choose', 'syllable-reading', 'image-matching', 'listen-speak', 'listening-comprehension', 'dialogue-order'];
 
   if (SPECIAL_TYPES.includes(question.type)) {
     const Inner =
@@ -83,13 +98,17 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
       question.type === 'syllable-reading'     ? <SyllableReading    question={question} onAnswer={onAnswer} /> :
       question.type === 'image-matching'       ? <ImageWordMatching  question={question} onAnswer={onAnswer} /> :
       question.type === 'listen-speak'         ? <ListenSpeak        question={question} onAnswer={onAnswer} /> :
+      question.type === 'listening-comprehension' ? <ListeningComprehension question={question} onAnswer={onAnswer} /> :
+      question.type === 'dialogue-order'       ? <DialogueOrder       question={question} onAnswer={onAnswer} /> :
                                                  <FillQuestion       question={question} onAnswer={onAnswer} />;
     return (
       <div className="page-content">
+        {showStreakToast && <StreakToast streak={streak} />}
         <div className="assessment-header">
           <div className="level-badge">
             {levelInfo?.icon} المستوى {currentLevel} — {levelInfo?.name}
           </div>
+          {streak > 0 && <StreakBadge streak={streak} />}
           <div className="question-counter">{questionIndex + 1} / {total}</div>
         </div>
         <div className="progress-bar">
@@ -105,10 +124,12 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
 
   return (
     <div className="page-content">
+      {showStreakToast && <StreakToast streak={streak} />}
       <div className="assessment-header">
         <div className="level-badge">
           {levelInfo?.icon} المستوى {currentLevel} — {levelInfo?.name}
         </div>
+        {streak > 0 && <StreakBadge streak={streak} />}
         <div className="question-counter">
           {questionIndex + 1} / {total}
         </div>
@@ -154,6 +175,71 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
       >
         {questionIndex + 1 === total ? 'إنهاء المستوى ✓' : 'السؤال التالي ←'}
       </button>
+    </div>
+  );
+}
+
+/** عداد السلسلة — يظهر في ترويسة الاختبار طالما استمرت الإجابات الصحيحة المتتالية. */
+function StreakBadge({ streak }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+        background: '#fff3e0',
+        border: '1.5px solid #ffb74d',
+        borderRadius: 20,
+        padding: '4px 12px',
+        fontWeight: 800,
+        fontSize: 14,
+        color: '#e65100',
+        fontFamily: 'Tajawal, sans-serif',
+      }}
+      aria-label={`سلسلة ${streak} إجابات صحيحة متتالية`}
+    >
+      🔥 {streak}
+    </div>
+  );
+}
+
+/** رسالة تشجيعية فورية عند كل مضاعف من 3 إجابات صحيحة متتالية. */
+function StreakToast({ streak }) {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 14,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 500,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        background: '#fff',
+        border: '2px solid #ffb74d',
+        borderRadius: 16,
+        padding: '8px 16px 8px 10px',
+        boxShadow: '0 6px 20px rgba(0,0,0,.15)',
+        maxWidth: '92vw',
+        animation: 'streak-toast-in .35s ease-out',
+      }}
+      role="status"
+    >
+      <img
+        src={`${import.meta.env.BASE_URL}boy-mascot.png`}
+        alt=""
+        style={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0 }}
+      />
+      <span style={{ fontFamily: 'Tajawal, sans-serif', fontWeight: 700, fontSize: 14, color: '#e65100' }}>
+        🔥 سلسلة من {streak} إجابات صحيحة متتالية! أنت رائع
+      </span>
+      <style>{`
+        @keyframes streak-toast-in {
+          from { opacity: 0; transform: translate(-50%, -12px); }
+          to   { opacity: 1; transform: translate(-50%, 0); }
+        }
+      `}</style>
     </div>
   );
 }

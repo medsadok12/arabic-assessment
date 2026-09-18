@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTTSPlayer } from '../hooks/useTTSPlayer.js';
 
 const RESPONSES = [
   { id: 'correct',  icon: '✅', label: 'أجاب بشكل صحيح' },
@@ -10,38 +11,26 @@ export default function ListenSpeak({ question, onAnswer }) {
   const items = question.items;
   const [idx, setIdx]           = useState(0);
   const [answers, setAnswers]   = useState([]);
-  const [playing, setPlaying]   = useState(false);
   const [recording, setRecording] = useState(false);
   const [audioURL, setAudioURL]   = useState(null);
   const [micError, setMicError]   = useState(false);
 
   const mediaRef    = useRef(null);
   const chunksRef   = useRef([]);
+  const { playing, audioError, playOnce, stop, resetError } = useTTSPlayer();
 
   useEffect(() => {
     setAudioURL(null);
     setRecording(false);
     setMicError(false);
-  }, [idx]);
+    resetError();
+  }, [idx, resetError]);
 
-  useEffect(() => () => {
-    window.speechSynthesis?.cancel();
-    stopRecording();
-  }, []);
+  useEffect(() => () => { stopRecording(); }, []);
 
   function playQuestion() {
-    const synth = window.speechSynthesis;
-    if (!synth || playing) return;
-    synth.cancel();
-    setPlaying(true);
-    const u = new SpeechSynthesisUtterance(items[idx].text);
-    u.lang = 'ar-SA';
-    u.rate = 0.85;
-    u.pitch = 1;
-    u.onend  = () => setPlaying(false);
-    u.onerror = () => setPlaying(false);
-    const go = () => synth.speak(u);
-    if (synth.getVoices().length > 0) go(); else synth.onvoiceschanged = go;
+    if (playing) return;
+    playOnce(items[idx].text);
   }
 
   async function startRecording() {
@@ -78,8 +67,7 @@ export default function ListenSpeak({ question, onAnswer }) {
   }
 
   function handleResponse(responseId) {
-    window.speechSynthesis?.cancel();
-    setPlaying(false);
+    stop();
     stopRecording();
     const updated = [...answers, { text: items[idx].text, response: responseId }];
     setAnswers(updated);
@@ -92,6 +80,8 @@ export default function ListenSpeak({ question, onAnswer }) {
         skill:      question.skill ?? 'speaking',
         answer:     updated,
         isCorrect:  correctCount / items.length >= 0.5,
+        answerText:  `أجاب صحيحاً عن ${correctCount} من ${items.length} أسئلة شفهية`,
+        correctText: `${items.length} إجابات شفهية صحيحة`,
       });
     }
   }
@@ -134,6 +124,11 @@ export default function ListenSpeak({ question, onAnswer }) {
         }}>
           {items[idx].text}
         </p>
+        {audioError && (
+          <p style={{ color: '#c62828', fontSize: 12, fontFamily: 'Tajawal, sans-serif', marginTop: 6 }}>
+            ⚠️ تعذّر تشغيل الصوت، جرّب مرة أخرى
+          </p>
+        )}
       </div>
 
       {/* منطقة التسجيل الصوتي للطالب */}
