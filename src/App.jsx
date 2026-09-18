@@ -107,6 +107,12 @@ export default function App() {
   const [questionIdx, setQuestionIdx] = useState(saved?.questionIdx ?? 0);
   const [allAnswers, setAllAnswers]   = useState(saved?.allAnswers ?? []);
   const [levelPath, setLevelPath]     = useState(saved?.levelPath ?? []);
+  const [streak, setStreak]           = useState(saved?.streak ?? 0);
+
+  // نقطة تحقق منتصف الطريق (بعد السؤال العاشر من كل مستوى، القسم 13 من CLAUDE.md
+  // — الترقية/الإنزال المبكر): earlyJumpOffer يعرض خياراً، earlyDropInfo تعديل تلقائي لطيف
+  const [earlyJumpOffer, setEarlyJumpOffer] = useState(null); // { accumulated } أو null
+  const [earlyDropInfo,  setEarlyDropInfo]  = useState(null); // { accumulated } أو null
 
   const [transitionFrom, setTransitionFrom]   = useState(saved?.transitionFrom ?? null);
   const [transitionTo, setTransitionTo]       = useState(saved?.transitionTo ?? null);
@@ -121,14 +127,14 @@ export default function App() {
     if (page === PAGES.INFO) { clearSession(); clearResume(); return; }
     const state = {
       page, studentInfo, currentLevel, levelData,
-      questionIdx, allAnswers, levelPath,
+      questionIdx, allAnswers, levelPath, streak,
       transitionFrom, transitionTo, transitionScore,
       finalScores, finalLevel,
     };
     saveSession(state);
     if (page !== PAGES.RESULTS) saveResume(state);
     else clearResume();
-  }, [page, studentInfo, currentLevel, levelData, questionIdx, allAnswers, levelPath,
+  }, [page, studentInfo, currentLevel, levelData, questionIdx, allAnswers, levelPath, streak,
       transitionFrom, transitionTo, transitionScore, finalScores, finalLevel]);
 
   function handleStart(info) {
@@ -139,6 +145,7 @@ export default function App() {
     setQuestionIdx(0);
     setAllAnswers([]);
     setLevelPath([1]);
+    setStreak(0);
     setPage(PAGES.WELCOME);
   }
 
@@ -150,9 +157,25 @@ export default function App() {
     const newAnswers = [...levelData.answers, answerObj];
     const nextIdx    = questionIdx + 1;
 
+    setStreak(answerObj.isCorrect ? streak + 1 : 0);
+
     if (nextIdx < levelData.questions.length) {
       setLevelData((prev) => ({ ...prev, answers: newAnswers }));
       setQuestionIdx(nextIdx);
+
+      // نقطة تحقق منتصف الطريق — تُفحَص مرة واحدة فقط لكل مستوى (عند
+      // السؤال العاشر بالضبط)، بمعزل عن نظام الاحتساب المرجّح الكامل: نسبة
+      // خام بسيطة تعكس بدقة الأداء الفعلي في أول 10 أسئلة فقط.
+      if (nextIdx === 10) {
+        const correctCount = newAnswers.filter((a) => a.isCorrect).length;
+        const rate = correctCount / 10;
+        const accumulated = [...allAnswers, ...newAnswers];
+        if (rate > 0.9 && currentLevel < 3) {
+          setEarlyJumpOffer({ accumulated });
+        } else if (rate < 0.2 && (currentLevel === 2 || currentLevel === 3)) {
+          setEarlyDropInfo({ accumulated });
+        }
+      }
       return;
     }
 
@@ -171,7 +194,28 @@ export default function App() {
     } else {
       finalize(accumulated, currentLevel, [...levelPath]);
     }
-  }, [levelData, questionIdx, allAnswers, currentLevel, levelPath]);
+  }, [levelData, questionIdx, allAnswers, currentLevel, levelPath, streak]);
+
+  function handleAcceptEarlyJump() {
+    const { accumulated } = earlyJumpOffer;
+    const scores = calculateLevelScore(accumulated);
+    setAllAnswers(accumulated);
+    setTransitionFrom(currentLevel);
+    setTransitionTo(currentLevel + 1);
+    setTransitionScore(scores.overall);
+    setEarlyJumpOffer(null);
+    setPage(PAGES.TRANSITION);
+  }
+
+  function handleDeclineEarlyJump() {
+    setEarlyJumpOffer(null);
+  }
+
+  function handleAcknowledgeEarlyDrop() {
+    const { accumulated } = earlyDropInfo;
+    setEarlyDropInfo(null);
+    finalize(accumulated, currentLevel, [...levelPath]);
+  }
 
   function handleTransitionContinue() {
     const newPath = [...levelPath, transitionTo];
@@ -202,6 +246,9 @@ export default function App() {
     setQuestionIdx(0);
     setAllAnswers([]);
     setLevelPath([]);
+    setStreak(0);
+    setEarlyJumpOffer(null);
+    setEarlyDropInfo(null);
     setFinalScores(null);
     setFinalLevel(1);
     setTransitionFrom(null);
@@ -218,6 +265,7 @@ export default function App() {
     setQuestionIdx(resumeData.questionIdx ?? 0);
     setAllAnswers(resumeData.allAnswers ?? []);
     setLevelPath(resumeData.levelPath ?? []);
+    setStreak(resumeData.streak ?? 0);
     setTransitionFrom(resumeData.transitionFrom ?? null);
     setTransitionTo(resumeData.transitionTo ?? null);
     setTransitionScore(resumeData.transitionScore ?? 0);
@@ -312,6 +360,7 @@ export default function App() {
             currentLevel={currentLevel}
             questionIndex={questionIdx}
             studentInfo={studentInfo}
+            streak={streak}
             onAnswer={handleAnswer}
           />
         )}
@@ -388,6 +437,44 @@ export default function App() {
                 بدء تقييم جديد
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {earlyJumpOffer && (
+        <div className="modal-overlay" onClick={handleDeclineEarlyJump}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" dir="rtl" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '2.6rem', marginBottom: 8 }}>🌟</div>
+            <h2 className="modal-title" style={{ fontSize: '1.15rem' }}>أداء رائع يا بطل!</h2>
+            <p style={{ color: '#64748b', fontSize: '.93rem', margin: '10px 0 20px', lineHeight: 1.8 }}>
+              إجاباتك ممتازة حتى الآن! هل تريد الانتقال مباشرة إلى المستوى الأعلى الآن بدل إكمال هذا المستوى؟
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
+              <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={handleAcceptEarlyJump}>
+                🚀 نعم، انتقل الآن ←
+              </button>
+              <button
+                style={{ background: 'none', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.9rem', color: '#64748b', fontWeight: 600 }}
+                onClick={handleDeclineEarlyJump}
+              >
+                لا، أكمل هذا المستوى
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {earlyDropInfo && (
+        <div className="modal-overlay">
+          <div className="modal-box" role="dialog" aria-modal="true" dir="rtl" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '2.6rem', marginBottom: 8 }}>💪</div>
+            <h2 className="modal-title" style={{ fontSize: '1.15rem' }}>لا بأس يا بطل!</h2>
+            <p style={{ color: '#64748b', fontSize: '.93rem', margin: '10px 0 20px', lineHeight: 1.8 }}>
+              كل شخص يتعلّم بسرعته الخاصة. سنُظهر لك نتيجتك الآن في المستوى الأنسب لك تماماً.
+            </p>
+            <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={handleAcknowledgeEarlyDrop}>
+              عرض نتيجتي ←
+            </button>
           </div>
         </div>
       )}

@@ -348,6 +348,17 @@ export const questionsBank = {
           { text: 'لأن الوقت متأخر',              correct: false },
         ],
       },
+      {
+        id:   'D2_1',
+        type: 'dialogue-order',
+        text: 'رتّب جمل هذا الحوار بين سارة ويوسف بالترتيب الصحيح',
+        lines: [
+          { id: 'a', speaker: 'سارة', text: 'مرحباً يا يوسف، كيف حالك؟' },
+          { id: 'b', speaker: 'يوسف', text: 'أنا بخير، شكراً! وأنتِ؟' },
+          { id: 'c', speaker: 'سارة', text: 'أنا بخير أيضاً. هل أنهيت واجبك؟' },
+          { id: 'd', speaker: 'يوسف', text: 'نعم، أنهيته قبل قليل.' },
+        ],
+      },
     ],
     grammar: [
       {
@@ -577,6 +588,17 @@ export const questionsBank = {
           { text: 'الثاني، لأن الحظ هو الأهم دائماً',                   correct: false },
           { text: 'كلاهما متساويان في القوة',                            correct: false },
           { text: 'لا يمكن تفضيل أحدهما',                                 correct: false },
+        ],
+      },
+      {
+        id:   'D3_1',
+        type: 'dialogue-order',
+        text: 'رتّب جمل هذا الحوار بين سارة ويوسف بالترتيب الصحيح',
+        lines: [
+          { id: 'a', speaker: 'سارة', text: 'يوسف، هل جهّزت أدواتك للمسابقة العلمية غداً؟' },
+          { id: 'b', speaker: 'يوسف', text: 'ليس بعد، سأجهّزها الليلة.' },
+          { id: 'c', speaker: 'سارة', text: 'لا تنسَ إحضار النموذج الذي صنعناه معاً.' },
+          { id: 'd', speaker: 'يوسف', text: 'بالتأكيد، شكراً لتذكيري!' },
         ],
       },
     ],
