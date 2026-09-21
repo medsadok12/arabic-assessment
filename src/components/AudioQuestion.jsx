@@ -1,31 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTTSPlayer } from '../hooks/useTTSPlayer.js';
+import { useAudioRecorder } from '../hooks/useAudioRecorder.js';
+import { uploadRecording } from '../utils/uploadRecording.js';
 
 const MAX_SECS = 60;
 
 export default function AudioQuestion({ question, studentInfo, onAnswer }) {
-  const [playCount,   setPlayCount]   = useState(0);        // 1..3 أثناء التشغيل
-  const [recState,    setRecState]    = useState('idle');   // idle | recording | done
+  const [playCount,   setPlayCount]   = useState(0);  // 1..3 أثناء التشغيل
   const [recTime,     setRecTime]     = useState(0);
   const [saving,      setSaving]      = useState(false);
   const [saved,       setSaved]       = useState(false);
-  const [savedUrl,    setSavedUrl]    = useState(null);
   const [uploadError, setUploadError] = useState(null);
   const [retryCount,  setRetryCount]  = useState(0);
-  const [micError,    setMicError]    = useState(false);
-  const [noSupport,   setNoSupport]   = useState(false);
-  const [audioUrl,    setAudioUrl]    = useState(null);
 
-  const recRef       = useRef(null);
-  const chunksRef    = useRef([]);
-  const timerRef     = useRef(null);
-  const blobRef      = useRef(null);
+  const timerRef = useRef(null);
   const { playing, audioError, playRepeated } = useTTSPlayer();
+  const { recording, audioUrl, micError, noSupport, start, stop, getBlob } = useAudioRecorder();
 
-  useEffect(() => () => {
-    clearInterval(timerRef.current);
-    if (audioUrl) URL.revokeObjectURL(audioUrl);
-  }, []);
+  const recState = recording ? 'recording' : audioUrl ? 'done' : 'idle';
+
+  useEffect(() => () => clearInterval(timerRef.current), []);
 
   async function playTTS() {
     await playRepeated(question.audioText, 3, 700, setPlayCount);
@@ -33,95 +27,56 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
   }
 
   async function startRec() {
-    setMicError(false);
     setUploadError(null);
     setSaved(false);
-    setSavedUrl(null);
-    if (!navigator.mediaDevices?.getUserMedia) { setNoSupport(true); return; }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      chunksRef.current = [];
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
-      const mr = new MediaRecorder(stream, { mimeType });
-      recRef.current = mr;
-
-      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: mimeType });
-        blobRef.current = blob;
-        setAudioUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob); });
-        stream.getTracks().forEach(t => t.stop());
-        setRecState('done');
-        clearInterval(timerRef.current);
-      };
-
-      mr.start(200);
-      setRecState('recording');
-      setRecTime(0);
-      timerRef.current = setInterval(() => {
-        setRecTime(t => {
-          if (t + 1 >= MAX_SECS) { mr.stop(); return MAX_SECS; }
-          return t + 1;
-        });
-      }, 1000);
-    } catch {
-      setMicError(true);
-    }
+    const started = await start();
+    if (!started) return;
+    setRecTime(0);
+    timerRef.current = setInterval(() => {
+      setRecTime((t) => {
+        if (t + 1 >= MAX_SECS) { stop(); return MAX_SECS; }
+        return t + 1;
+      });
+    }, 1000);
   }
 
   function stopRec() {
-    recRef.current?.stop();
+    stop();
     clearInterval(timerRef.current);
   }
 
   async function handleSubmit() {
-    if (!blobRef.current) return;
+    const blob = getBlob();
+    if (!blob) return;
     setSaving(true);
     setUploadError(null);
 
-    const reader = new FileReader();
-    reader.readAsDataURL(blobRef.current);
-    reader.onloadend = async () => {
-      try {
-        const res  = await fetch('/api/save-recording', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            audioBase64: reader.result,
-            studentName: studentInfo?.name || 'طالب',
-            questionId:  question.id,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          setUploadError(data.error || 'فشل رفع التسجيل');
-          setRetryCount(c => c + 1);
-          setSaving(false);
-          return;
-        }
-        setSaving(false);
-        setSaved(true);
-        setSavedUrl(data.url);
-        setTimeout(() => onAnswer({
-          questionId: question.id,
-          skill:      question.skill,
-          answer:     0,
-          isCorrect:  true,
-          answerText:  'تسجيل صوتي مُرسل للمعلم',
-          correctText: 'يُقيَّم من المعلم',
-        }), 2000);
-      } catch (err) {
-        setUploadError(err.message || 'تعذّر الاتصال بالخادم');
-        setSaving(false);
-      }
-    };
-    reader.onerror = () => {
-      setUploadError('تعذّر قراءة ملف التسجيل');
+    const result = await uploadRecording(blob, {
+      studentName: studentInfo?.name,
+      questionId:  question.id,
+    });
+
+    if (!result.success) {
+      setUploadError(result.error);
+      setRetryCount((c) => c + 1);
       setSaving(false);
-    };
+      return;
+    }
+
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => onAnswer({
+      questionId:  question.id,
+      skill:       question.skill,
+      answer:      0,
+      isCorrect:   true,
+      answerText:  'تسجيل صوتي مُرسل للمعلم',
+      correctText: 'يُقيَّم من المعلم',
+      audioUrl:    result.url,
+    }), 2000);
   }
 
-  const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   return (
     <div className="question-box">

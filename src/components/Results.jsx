@@ -16,6 +16,17 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, al
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, '1');
 
+    // روابط التسجيلات الصوتية المرفوعة فعلياً (Vercel Blob) — تُجمَّع من كل
+    // أسئلة النطق الثلاثة (speaking/listen-speak/oral-assessment) لتصل
+    // للمعلم عبر لوحة التحكم لاحقاً، لا أن تبقى محفوظة على المتصفح فقط.
+    const recordings = (allAnswers ?? [])
+      .filter((a) => a.audioUrl || a.recordingUrls?.length)
+      .map((a) => ({
+        questionId: a.questionId,
+        skill:      a.skill,
+        urls:       a.recordingUrls?.length ? a.recordingUrls : [a.audioUrl],
+      }));
+
     // Save to Google Sheets + anonymous Supabase record
     fetch('/api/save-result', {
       method:  'POST',
@@ -44,6 +55,7 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, al
         studentName:  studentInfo.name,
         overallScore: scores.overall,
         finalLevel:   finalLevel,
+        recordings,
       }),
     }).catch(() => {});
 

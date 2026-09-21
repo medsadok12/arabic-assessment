@@ -88,7 +88,7 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
       question.type === 'syllable-order'       ? <SyllableOrder      question={question} onAnswer={onAnswer} /> :
       question.type === 'letter-position'      ? <LetterPosition     question={question} onAnswer={onAnswer} /> :
       question.type === 'word-construct'       ? <WordConstruct      question={question} onAnswer={onAnswer} /> :
-      question.type === 'oral-assessment'      ? <OralAssessment     question={question} onAnswer={onAnswer} /> :
+      question.type === 'oral-assessment'      ? <OralAssessment     question={question} studentInfo={studentInfo} onAnswer={onAnswer} /> :
       question.type === 'matching'             ? <MatchingQuestion   question={question} onAnswer={onAnswer} /> :
       question.type === 'speaking'             ? <AudioQuestion      question={question} studentInfo={studentInfo} onAnswer={onAnswer} /> :
       question.type === 'photo-writing'        ? <WritingQuestion    question={question} studentInfo={studentInfo} onAnswer={onAnswer} /> :
@@ -97,7 +97,7 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
       question.type === 'letter-listen-choose' ? <LetterListenChoose question={question} onAnswer={onAnswer} /> :
       question.type === 'syllable-reading'     ? <SyllableReading    question={question} onAnswer={onAnswer} /> :
       question.type === 'image-matching'       ? <ImageWordMatching  question={question} onAnswer={onAnswer} /> :
-      question.type === 'listen-speak'         ? <ListenSpeak        question={question} onAnswer={onAnswer} /> :
+      question.type === 'listen-speak'         ? <ListenSpeak        question={question} studentInfo={studentInfo} onAnswer={onAnswer} /> :
       question.type === 'listening-comprehension' ? <ListeningComprehension question={question} onAnswer={onAnswer} /> :
       question.type === 'dialogue-order'       ? <DialogueOrder       question={question} onAnswer={onAnswer} /> :
                                                  <FillQuestion       question={question} onAnswer={onAnswer} />;

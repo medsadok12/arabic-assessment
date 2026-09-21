@@ -79,6 +79,16 @@ function getAnswerDisplay(answerObj, qData) {
   return { student: '—', correct: '—' };
 }
 
+// Marker(s) for any uploaded recording(s) tied to this answer — measured
+// after render (getBoundingClientRect) and turned into real clickable
+// pdf.link() annotations, since the PDF body itself is a rasterized image
+// (see generateAssessmentPDF) where plain HTML text is never clickable.
+function buildRecordingLinks(ans) {
+  const urls = ans.recordingUrls?.length ? ans.recordingUrls : (ans.audioUrl ? [ans.audioUrl] : []);
+  if (!urls.length) return '';
+  return urls.map((url, i) => `<span data-audio-link="${sanitize(url)}" style="display:inline-block;margin-inline-start:4px;color:#185FA5;font-size:11px;font-weight:700;text-decoration:underline;">🎙️${urls.length > 1 ? ` ${i + 1}` : ''}</span>`).join('');
+}
+
 // Build the full per-question detail section (grouped by skill)
 function buildQuestionsSection(allAnswers, qMap) {
   // Explicit empty state: absence of answer data must be visible in the
@@ -140,7 +150,7 @@ function buildQuestionsSection(allAnswers, qMap) {
           <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;font-size:11px;color:#888;font-weight:700;">${i + 1}</td>
           <td style="padding:7px 10px;border-bottom:1px solid #e5e5e5;font-size:12px;line-height:1.65;">${qText}</td>
           <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;">${ind}</td>
-          <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;font-size:12px;color:#444;">${student}</td>
+          <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;font-size:12px;color:#444;">${student}${buildRecordingLinks(ans)}</td>
           <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;font-size:12px;color:#444;">${correct}</td>
         </tr>`;
     }).join('');
@@ -317,6 +327,7 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel, all
 
   // Measure atom boundaries (rows/blocks) while el is still in the DOM,
   // mapped from CSS px to canvas px
+  const imgW     = 210;
   const elRect   = el.getBoundingClientRect();
   const cnvScale = canvas.width / elRect.width;
   const atoms    = Array.from(el.querySelectorAll('[data-atom]')).map(a => {
@@ -328,10 +339,23 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel, all
     };
   });
 
+  // Recording-link markers — measured the same way as atoms (each one is
+  // nested inside a `<tr data-atom>` row that is never split across pages,
+  // so it always lands fully within a single slice below).
+  const linkEls = Array.from(el.querySelectorAll('[data-audio-link]')).map(a => {
+    const r = a.getBoundingClientRect();
+    return {
+      top:    (r.top  - elRect.top)  * cnvScale,
+      bottom: (r.bottom - elRect.top) * cnvScale,
+      xMm:    (r.left - elRect.left) / elRect.width * imgW,
+      wMm:    r.width / elRect.width * imgW,
+      url:    a.getAttribute('data-audio-link'),
+    };
+  });
+
   document.body.removeChild(el);
 
   const pdf     = new jsPDF('p', 'mm', 'a4');
-  const imgW    = 210;
   const pxPerMm = canvas.width / imgW;
   const slices  = computePageSlices(atoms, canvas.height, pxPerMm);
 
@@ -346,6 +370,16 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel, all
     ctx.fillRect(0, 0, c.width, c.height);
     ctx.drawImage(canvas, 0, p.from, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
     pdf.addImage(c.toDataURL('image/jpeg', 0.72), 'JPEG', 0, p.topMm, imgW, sliceH / pxPerMm);
+
+    // Real clickable annotations over the rasterized recording markers that
+    // fall on this page — the URL text itself is baked into the image and
+    // is not clickable on its own.
+    for (const link of linkEls) {
+      if (link.bottom <= p.from || link.top >= p.to || !link.url) continue;
+      const topPx = Math.max(link.top, p.from) - p.from;
+      const hPx   = Math.min(link.bottom, p.to) - Math.max(link.top, p.from);
+      pdf.link(link.xMm, p.topMm + topPx / pxPerMm, link.wMm, hPx / pxPerMm, { url: link.url });
+    }
   });
 
   return pdf.output('datauristring');
