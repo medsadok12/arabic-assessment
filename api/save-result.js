@@ -1,26 +1,5 @@
 import { createSign } from 'crypto';
 
-async function saveToSupabase(d) {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return;
-  try {
-    await fetch(`${process.env.SUPABASE_URL}/rest/v1/assessments`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        'Prefer': 'return=minimal',
-      },
-      body: JSON.stringify({
-        student_name:  d.studentName || 'غير معروف',
-        student_email: d.email ? String(d.email).trim().toLowerCase() : null,
-        level:         d.finalLevel  || 1,
-        score:         Math.round((d.overallScore ?? 0) * 10) / 10,
-      }),
-    });
-  } catch (_) {}
-}
-
 async function getToken() {
   let creds;
   try { creds = JSON.parse(process.env.GOOGLE_SA_KEY); }
@@ -73,11 +52,11 @@ export default async function handler(req, res) {
 
   const d = req.body;
 
-  // تقييمات المستخدمين المسجَّلين في الـLMS (تحمل user_id) تُحفظ عبر مسار
-  // save-assessment هناك، فتُستثنى هنا لتفادي تكرار الصف. أي تقييم آخر (زائر
-  // مجهول على assessment.aarem.net، وهو الغالبية) يُدرَج مباشرة من هنا —
-  // هذا هو مسار الحفظ الوحيد الفعلي له، فلا يُحذف أو يُشرَط بأكثر من ذلك.
-  if (!d.user_id) await saveToSupabase(d);
+  // هذا المسار مخصَّص لـGoogle Sheets فقط — لم يعد يكتب إلى Supabase مباشرة.
+  // مصدر الحقيقة الوحيد لجدول assessments هو /api/save-assessment (LMS)،
+  // الذي يحفظ الصف الكامل (النتيجة + الإجابات + روابط التسجيل) دفعة واحدة.
+  // كان هذا المسار يكتب صفاً موازياً ناقصاً (بلا user_id/answers/recordings)
+  // لكل تقييم — نتيجتها صفّان لكل تقييم واحد في الجدول.
 
   // إذا لم يُضبط SHEETS_ID بعد نتجاهل بصمت
   if (!process.env.SHEETS_ID || !process.env.GOOGLE_SA_KEY)
