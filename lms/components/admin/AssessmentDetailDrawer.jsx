@@ -86,8 +86,11 @@ export default function AssessmentDetailDrawer({ resultId, lang = 'ar', onClose 
         .adr-ans    { display:flex; flex-wrap:wrap; gap:8px 20px; font-size:.84rem; }
         .adr-ans-lbl{ color:var(--muted); font-weight:600; }
 
-        .adr-audio-row { display:flex; align-items:center; gap:8px; margin-top:8px; background:#f8fafc;
-                         border-radius:8px; padding:6px 10px; }
+        .adr-audio-card  { margin-top:8px; background:#f8fafc; border:1.5px solid #e2e8f0;
+                           border-radius:10px; padding:8px 10px; }
+        .adr-audio-card + .adr-audio-card { margin-top:8px; }
+        .adr-audio-label{ font-size:.78rem; font-weight:700; color:var(--muted); margin-bottom:6px; }
+        .adr-audio-row { display:flex; align-items:center; gap:8px; }
       `}</style>
 
       <div className="adr-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -160,32 +163,42 @@ export default function AssessmentDetailDrawer({ resultId, lang = 'ar', onClose 
                           <span><span className="adr-ans-lbl">{lang === 'ar' ? 'إجابة الطالب: ' : 'Student answer: '}</span>{q.studentAnswer}</span>
                           <span><span className="adr-ans-lbl">{lang === 'ar' ? 'الإجابة الصحيحة: ' : 'Correct answer: '}</span>{q.correctAnswer}</span>
                         </div>
-                        {q.audioUrls?.map((url, j) => (
-                          <div key={j}>
-                            <div className="adr-audio-row">
-                              <span>🎵</span>
-                              <audio
-                                controls
-                                src={url}
-                                style={{ flex: 1, height: 36 }}
-                                onError={(e) => {
-                                  const err = e.currentTarget.error;
-                                  const detail = err ? `${MEDIA_ERROR_NAMES[err.code] || err.code} — ${err.message || ''}` : 'unknown';
-                                  console.error('[AssessmentDetailDrawer] audio load failed:', url, detail);
-                                  setAudioErrors((prev) => ({ ...prev, [url]: detail }));
-                                }}
-                              />
-                            </div>
-                            {audioErrors[url] && (
-                              <div style={{ fontSize: '.75rem', color: '#dc2626', marginTop: 2 }}>
-                                ⚠️ {lang === 'ar' ? 'تعذّر تحميل الصوت' : 'Failed to load audio'} ({audioErrors[url]}) —{' '}
-                                <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#dc2626', textDecoration: 'underline' }}>
-                                  {lang === 'ar' ? 'افتح الرابط مباشرة' : 'open link directly'}
-                                </a>
+                        {q.audioUrls?.map((entry, j) => {
+                          // توافق رجعي: تسجيلات قديمة (قبل هذه الدفعة) مخزَّنة
+                          // كروابط نصية خام بلا تسمية — تُطبَّع هنا لنفس الشكل.
+                          const item  = typeof entry === 'string' ? { url: entry, label: null } : entry;
+                          const label = item.label
+                            || (q.audioUrls.length > 1
+                              ? `${lang === 'ar' ? 'التسجيل' : 'Recording'} ${j + 1}`
+                              : (lang === 'ar' ? 'تسجيل الطالب' : 'Student recording'));
+                          return (
+                            <div key={j} className="adr-audio-card">
+                              <div className="adr-audio-label">🎙️ {label}</div>
+                              <div className="adr-audio-row">
+                                <span>🎵</span>
+                                <audio
+                                  controls
+                                  src={item.url}
+                                  style={{ flex: 1, height: 36 }}
+                                  onError={(e) => {
+                                    const err = e.currentTarget.error;
+                                    const detail = err ? `${MEDIA_ERROR_NAMES[err.code] || err.code} — ${err.message || ''}` : 'unknown';
+                                    console.error('[AssessmentDetailDrawer] audio load failed:', item.url, detail);
+                                    setAudioErrors((prev) => ({ ...prev, [item.url]: detail }));
+                                  }}
+                                />
                               </div>
-                            )}
-                          </div>
-                        ))}
+                              {audioErrors[item.url] && (
+                                <div style={{ fontSize: '.75rem', color: '#dc2626', marginTop: 6 }}>
+                                  ⚠️ {lang === 'ar' ? 'تعذّر تحميل الصوت' : 'Failed to load audio'} ({audioErrors[item.url]}) —{' '}
+                                  <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: '#dc2626', textDecoration: 'underline' }}>
+                                    {lang === 'ar' ? 'افتح الرابط مباشرة' : 'open link directly'}
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     ))}
                   </div>

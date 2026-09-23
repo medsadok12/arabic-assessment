@@ -99,7 +99,22 @@ export function buildAnswerReport(allAnswers) {
   return (allAnswers ?? []).map((ans) => {
     const qData = qMap[ans.questionId];
     const { student, correct } = getAnswerDisplay(ans, qData);
-    const audioUrls = ans.recordingUrls?.length ? ans.recordingUrls : (ans.audioUrl ? [ans.audioUrl] : []);
+
+    // تسمية كل تسجيل صوتي بنص سؤاله الفرعي الفعلي حين يتوفر (listen-speak
+    // يحمل `text` لكل عنصر في `answer`)، أو ترك label فارغاً فيسقط العرض
+    // لاحقاً لترقيم تسلسلي بسيط (oral-assessment: كلمات مصوَّرة بلا نص عربي
+    // مخزَّن في كائن الإجابة نفسه، فلا تسمية أدق متاحة هنا بأمان).
+    let audioUrls;
+    if (Array.isArray(ans.answer) && ans.answer.some((a) => a?.audioUrl)) {
+      audioUrls = ans.answer
+        .filter((a) => a?.audioUrl)
+        .map((a) => ({ url: a.audioUrl, label: a.text || null }));
+    } else if (ans.audioUrl) {
+      audioUrls = [{ url: ans.audioUrl, label: null }];
+    } else {
+      audioUrls = [];
+    }
+
     return {
       questionId:    ans.questionId,
       skill:         ans.skill || 'other',
