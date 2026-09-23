@@ -8,10 +8,23 @@ import { fmtDate } from './shared.jsx';
 // الكامل يصل فعلياً محفوظاً مسبقاً داخل answers[].skillName من buildAnswerReport.
 const SKILL_ORDER = ['listening', 'vocabulary', 'reading', 'grammar', 'writing', 'speaking', 'other'];
 
+// أسماء أكواد MediaError القياسية (MDN) — لعرض سبب فشل التحميل الحقيقي
+// بدل ترك الطالب "0:00" صامتة بلا أي تفسير.
+const MEDIA_ERROR_NAMES = {
+  1: 'MEDIA_ERR_ABORTED',
+  2: 'MEDIA_ERR_NETWORK',
+  3: 'MEDIA_ERR_DECODE',
+  4: 'MEDIA_ERR_SRC_NOT_SUPPORTED',
+};
+
 export default function AssessmentDetailDrawer({ resultId, lang = 'ar', onClose }) {
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
+  // تشخيص مؤقت: أي رابط تسجيل يفشل تحميله فعلياً في المتصفح (لا مجرد بيانات
+  // مفقودة) يُسجَّل هنا مع كود/رسالة الخطأ الحقيقيين من عنصر <audio> نفسه —
+  // يُعرَض بصرياً بدل الاكتفاء بـ0:00 صامتة، ليُعرف السبب الدقيق من أول تجربة.
+  const [audioErrors, setAudioErrors] = useState({});
 
   useEffect(() => {
     if (!resultId) return;
@@ -148,9 +161,29 @@ export default function AssessmentDetailDrawer({ resultId, lang = 'ar', onClose 
                           <span><span className="adr-ans-lbl">{lang === 'ar' ? 'الإجابة الصحيحة: ' : 'Correct answer: '}</span>{q.correctAnswer}</span>
                         </div>
                         {q.audioUrls?.map((url, j) => (
-                          <div key={j} className="adr-audio-row">
-                            <span>🎵</span>
-                            <audio controls src={url} style={{ flex: 1, height: 36 }} />
+                          <div key={j}>
+                            <div className="adr-audio-row">
+                              <span>🎵</span>
+                              <audio
+                                controls
+                                src={url}
+                                style={{ flex: 1, height: 36 }}
+                                onError={(e) => {
+                                  const err = e.currentTarget.error;
+                                  const detail = err ? `${MEDIA_ERROR_NAMES[err.code] || err.code} — ${err.message || ''}` : 'unknown';
+                                  console.error('[AssessmentDetailDrawer] audio load failed:', url, detail);
+                                  setAudioErrors((prev) => ({ ...prev, [url]: detail }));
+                                }}
+                              />
+                            </div>
+                            {audioErrors[url] && (
+                              <div style={{ fontSize: '.75rem', color: '#dc2626', marginTop: 2 }}>
+                                ⚠️ {lang === 'ar' ? 'تعذّر تحميل الصوت' : 'Failed to load audio'} ({audioErrors[url]}) —{' '}
+                                <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#dc2626', textDecoration: 'underline' }}>
+                                  {lang === 'ar' ? 'افتح الرابط مباشرة' : 'open link directly'}
+                                </a>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
