@@ -241,6 +241,23 @@ export default function BoggarAdminPage() {
     if (!allowed.includes(tab) && allowed.length > 0) setTab(allowed[0]);
   }, [myPermissions]);
 
+  // ── رابط مباشر قابل للمشاركة لكل تبويب: /bogga?tab=results مثلاً ──────────
+  // قراءة بسيطة عبر window.location بدل useSearchParams عمداً — هذا الأخير
+  // يتطلب لفّ الصفحة بـ<Suspense> عند استخدامه في مكوّن صفحة كامل، وهو تغيير
+  // بنيوي أوسع من المطلوب هنا. تُقرأ القيمة مرة واحدة فقط عند التحميل (فحص
+  // الصلاحيات في الأثر أعلاه يتكفّل برفض أي تبويب غير مسموح به لاحقاً)،
+  // وتُحدَّث شريط العنوان (بلا أي تنقّل فعلي) عند كل تبديل تبويب لاحق.
+  useEffect(() => {
+    const initial = new URLSearchParams(window.location.search).get('tab');
+    if (initial) setTab(initial);
+  }, []);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.replaceState({}, '', url);
+  }, [tab]);
+
   // ── Data loaders ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!user || myPermissions === null) return;
