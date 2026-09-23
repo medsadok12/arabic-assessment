@@ -28,10 +28,13 @@ const SECURITY_HEADERS = [
       "img-src 'self' data: blob: https:",
       // Fonts self-hosted via next/font
       "font-src 'self' data:",
-      // API connections: Supabase + Spline only — AI/TTS keys are server-side, never called from the browser
+      // API connections: Supabase + Spline + Vercel Blob (تسجيلات صوت النطق
+      // في التقييم — تُشغَّل داخل درج تفاصيل التقييم بلوحة bogga) — AI/TTS
+      // keys are server-side, never called from the browser
       // (مجسمات GLB صارت تُخدم من نفس الدومين 'self' — أُزيلت modelviewer.dev وthreejs.org وraw.githubusercontent.com)
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co " +
-        "https://*.spline.design https://prod.spline.design",
+        "https://*.spline.design https://prod.spline.design " +
+        "https://*.public.blob.vercel-storage.com",
       // model-viewer uses Web Workers for GLB; Spline uses workers from its CDN
       "worker-src blob: 'self' https://*.spline.design",
       // Audio/video from Supabase storage and blobs (Web Audio API)
