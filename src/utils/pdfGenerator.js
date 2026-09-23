@@ -32,11 +32,15 @@ function buildQMap() {
 // Decide what to show in the student-answer and correct-answer columns.
 // Every question component captures answerText/correctText at answer time;
 // the branches below are a fallback for sessions saved before those fields existed.
+// Returns RAW (unescaped) text — callers embedding it into HTML (the PDF)
+// must sanitize() at the point of interpolation; callers returning it as
+// plain data (buildAnswerReport, consumed later by React's own auto-escaping
+// text rendering) must NOT sanitize it, or entities would show up literally.
 function getAnswerDisplay(answerObj, qData) {
   if (answerObj.answerText != null || answerObj.correctText != null) {
     return {
-      student: sanitize(answerObj.answerText || '—'),
-      correct: sanitize(answerObj.correctText || '—'),
+      student: answerObj.answerText || '—',
+      correct: answerObj.correctText || '—',
     };
   }
 
@@ -47,22 +51,22 @@ function getAnswerDisplay(answerObj, qData) {
 
   if (type === 'fill') {
     return {
-      student: sanitize(raw) || '—',
-      correct: sanitize((qData.answers || [])[0] || '—'),
+      student: raw || '—',
+      correct: (qData.answers || [])[0] || '—',
     };
   }
 
   if (type === 'correction') {
     return {
-      student: sanitize(raw) || '—',
-      correct: sanitize(qData.correctAnswer || '—'),
+      student: raw || '—',
+      correct: qData.correctAnswer || '—',
     };
   }
 
   if (type === 'word-order') {
     return {
-      student: sanitize(Array.isArray(raw) ? raw.join(' ') : raw) || '—',
-      correct: sanitize((qData.answer || []).join(' ')),
+      student: (Array.isArray(raw) ? raw.join(' ') : raw) || '—',
+      correct: (qData.answer || []).join(' '),
     };
   }
 
@@ -71,12 +75,42 @@ function getAnswerDisplay(answerObj, qData) {
     const correctOpt = qData.options.find(o => o.correct);
     return {
       student: '—',
-      correct: sanitize(correctOpt?.text || '—'),
+      correct: correctOpt?.text || '—',
     };
   }
 
   // Complex types (matching, oral, letter-listen, image-matching, …)
   return { student: '—', correct: '—' };
+}
+
+const SKILL_NAMES = {
+  ...Object.fromEntries(SKILLS.map(s => [s.id, s.name])),
+  speaking: 'التحدث والكلام',
+  other:    'أخرى',
+};
+const SKILL_ORDER = [...SKILLS.map(s => s.id), 'speaking'];
+
+// نسخة "بيانات خام" من نفس منطق buildQuestionsSection أدناه — تُستخدم لإرسال
+// تفاصيل الإجابات إلى /api/save-assessment (لوحة bogga)، بدل بناء HTML.
+// مصدر وحيد للحقيقة: أي تعديل مستقبلي على طريقة عرض الإجابة يُطبَّق هنا مرة
+// واحدة وينعكس تلقائياً في كل من تقرير PDF ولوحة المعلم.
+export function buildAnswerReport(allAnswers) {
+  const qMap = buildQMap();
+  return (allAnswers ?? []).map((ans) => {
+    const qData = qMap[ans.questionId];
+    const { student, correct } = getAnswerDisplay(ans, qData);
+    const audioUrls = ans.recordingUrls?.length ? ans.recordingUrls : (ans.audioUrl ? [ans.audioUrl] : []);
+    return {
+      questionId:    ans.questionId,
+      skill:         ans.skill || 'other',
+      skillName:     SKILL_NAMES[ans.skill] || ans.skill || 'أخرى',
+      questionText:  qData?.text || ans.questionId,
+      studentAnswer: student,
+      correctAnswer: correct,
+      isCorrect:     Boolean(ans.isCorrect),
+      audioUrls,
+    };
+  });
 }
 
 // Marker(s) for any uploaded recording(s) tied to this answer — measured
@@ -103,13 +137,7 @@ function buildQuestionsSection(allAnswers, qMap) {
     </div>`;
   }
 
-  const SKILL_NAMES = {
-    ...Object.fromEntries(SKILLS.map(s => [s.id, s.name])),
-    speaking: 'التحدث والكلام',
-    other:    'أخرى',
-  };
-
-  const skillOrder = [...SKILLS.map(s => s.id), 'speaking'];
+  const skillOrder = SKILL_ORDER;
 
   // Group answers by skill
   const bySkill = {};
@@ -150,8 +178,8 @@ function buildQuestionsSection(allAnswers, qMap) {
           <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;font-size:11px;color:#888;font-weight:700;">${i + 1}</td>
           <td style="padding:7px 10px;border-bottom:1px solid #e5e5e5;font-size:12px;line-height:1.65;">${qText}</td>
           <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;">${ind}</td>
-          <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;font-size:12px;color:#444;">${student}${buildRecordingLinks(ans)}</td>
-          <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;font-size:12px;color:#444;">${correct}</td>
+          <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;font-size:12px;color:#444;">${sanitize(student)}${buildRecordingLinks(ans)}</td>
+          <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;font-size:12px;color:#444;">${sanitize(correct)}</td>
         </tr>`;
     }).join('');
 

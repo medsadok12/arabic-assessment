@@ -1,7 +1,12 @@
 'use client';
 
+import { useState } from 'react';
+import AssessmentDetailDrawer from '../AssessmentDetailDrawer.jsx';
+
 /* هذا المكوّن استُخرج حرفياً من lms/app/bogga/page.jsx (تفكيك الملف الأحادي).
-   الحالة والمعالجات بقيت في الصفحة الأم وتصل هنا كـprops — سلوك مطابق 100%. */
+   الحالة والمعالجات بقيت في الصفحة الأم وتصل هنا كـprops — سلوك مطابق 100%.
+   استثناء واحد مقصود: حالة فتح/إغلاق درج تفاصيل التقييم محلية هنا فقط، لأنها
+   لا تُشارَك مع أي تبويب آخر (خلافاً لبقية حالة الصفحة الموثَّقة في §12.3). */
 export default function ResultsTab({
   lang, tr,
   results, resultsTotal, resultsPage, resultsLoading, resultsStats,
@@ -12,6 +17,8 @@ export default function ResultsTab({
   loadResults, exportCsv, resultsExporting,
   sheetsUrl,
 }) {
+  const [openResultId, setOpenResultId] = useState(null);
+
   return (
             <div>
               {/* Stats */}
@@ -143,7 +150,8 @@ export default function ResultsTab({
                         const passed = (r.score ?? 0) >= 70;
                         const rowNum = (resultsPage - 1) * 50 + i + 1;
                         return (
-                          <tr key={r.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background .1s' }}
+                          <tr key={r.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background .1s', cursor: 'pointer' }}
+                            onClick={() => setOpenResultId(r.id)}
                             onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                             onMouseLeave={e => e.currentTarget.style.background = ''}>
                             <td style={{ padding: '11px 16px', color: 'var(--muted)', fontSize: '.82rem' }}>{rowNum}</td>
@@ -218,6 +226,14 @@ export default function ResultsTab({
                   </div>
                 )}
               </div>
+
+              {openResultId && (
+                <AssessmentDetailDrawer
+                  resultId={openResultId}
+                  lang={lang}
+                  onClose={() => setOpenResultId(null)}
+                />
+              )}
             </div>
   );
 }

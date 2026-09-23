@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { generateAssessmentPDF } from '../utils/pdfGenerator.js';
+import { generateAssessmentPDF, buildAnswerReport } from '../utils/pdfGenerator.js';
 import { LEVELS } from '../data/questions.js';
 
 export default function Results({ studentInfo, finalLevel, scores, levelPath, allAnswers, onRestart }) {
@@ -26,6 +26,11 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, al
         skill:      a.skill,
         urls:       a.recordingUrls?.length ? a.recordingUrls : [a.audioUrl],
       }));
+
+    // تفصيل كامل لكل سؤال (نص السؤال، إجابة الطالب، الإجابة الصحيحة، صواب/خطأ،
+    // وروابط أي تسجيل صوتي) — نفس المنطق المستخدم لبناء تقرير PDF، يصل الآن
+    // أيضاً للوحة bogga لعرضه كبديل تفاعلي كامل عن التقرير دون فتح ملف PDF.
+    const answers = buildAnswerReport(allAnswers ?? []);
 
     // Save to Google Sheets + anonymous Supabase record
     fetch('/api/save-result', {
@@ -56,6 +61,7 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, al
         overallScore: scores.overall,
         finalLevel:   finalLevel,
         recordings,
+        answers,
       }),
     }).catch(() => {});
 

@@ -18,7 +18,7 @@ export async function POST(request) {
       return Response.json({ ok: false }, { status: 401, headers: CORS });
     }
 
-    const { email, studentName, overallScore, finalLevel, recordings } = await request.json();
+    const { email, studentName, overallScore, finalLevel, recordings, answers } = await request.json();
 
     if (!email || !finalLevel)
       return Response.json({ ok: false }, { status: 400, headers: CORS });
@@ -46,6 +46,7 @@ export async function POST(request) {
       score:         Math.round((overallScore ?? 0) * 10) / 10,
       completed_at:  new Date().toISOString(),
       recordings:    Array.isArray(recordings) && recordings.length ? recordings : null,
+      answers:       Array.isArray(answers) && answers.length ? answers : null,
     });
 
     if (error)

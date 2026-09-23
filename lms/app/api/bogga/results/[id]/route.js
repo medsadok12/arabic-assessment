@@ -5,6 +5,24 @@ import { getRole } from '../../../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
 
+export async function GET(req, { params }) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const role = getRole(user);
+  if (!user || (role !== 'super_admin' && role !== 'admin'))
+    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('assessments')
+    .select()
+    .eq('id', params.id)
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 404 });
+  return NextResponse.json({ result: data });
+}
+
 export async function PATCH(req, { params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
