@@ -57,7 +57,8 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
     });
 
     if (!result.success) {
-      setUploadError(result.error);
+      console.error('[AudioQuestion] رفع التسجيل فشل:', result.error);
+      setUploadError(true);
       setRetryCount((c) => c + 1);
       setSaving(false);
       return;
@@ -145,7 +146,7 @@ export default function AudioQuestion({ question, studentInfo, onAnswer }) {
       {/* ── خطأ الرفع ── */}
       {uploadError && (
         <div style={{ marginTop: 10 }}>
-          <p className="aq-error">⚠️ {uploadError}</p>
+          <p className="aq-error">⚠️ عذراً، حدث خطأ أثناء الاتصال. يرجى المحاولة مرة أخرى</p>
           <button className="btn-primary" onClick={handleSubmit} style={{ marginTop: 6 }}>
             🔄 إعادة المحاولة
           </button>

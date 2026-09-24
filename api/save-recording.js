@@ -26,8 +26,10 @@ export default async function handler(req, res) {
     if (!audioBase64)
       return res.status(400).json({ error: 'No audio data' });
 
-    if (!process.env.BLOB_READ_WRITE_TOKEN)
-      return res.status(500).json({ error: 'BLOB_READ_WRITE_TOKEN not configured in Vercel' });
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      console.error('[save-recording] BLOB_READ_WRITE_TOKEN not configured in Vercel');
+      return res.status(500).json({ error: 'تعذّر حفظ التسجيل حالياً' });
+    }
 
     const studentName = sanitize(rawName || 'طالب');
     const uniqueId    = Date.now().toString(36).toUpperCase();
@@ -47,6 +49,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('Blob upload error:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: 'تعذّر حفظ التسجيل حالياً' });
   }
 }

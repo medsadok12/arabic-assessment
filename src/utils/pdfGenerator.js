@@ -1,5 +1,7 @@
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+// jsPDF وhtml2canvas (مكتبتان ثقيلتان، ~274KB مضغوطتان معاً) تُستوردان
+// ديناميكياً داخل generateAssessmentPDF نفسها بدل استيراد ثابت هنا — بهذا
+// لا تُحمَّلان إطلاقاً إلا عند إنشاء تقرير فعلي (نهاية التقييم)، لا ضمن
+// الحزمة الرئيسية التي يُحمِّلها كل طفل فور فتح التطبيق.
 import { LEVELS, SKILLS, questionsBank } from '../data/questions.js';
 import { getGradeInfo } from './scoring.js';
 
@@ -139,7 +141,10 @@ function buildRecordingLinks(ans) {
 }
 
 // Build the full per-question detail section (grouped by skill)
-function buildQuestionsSection(allAnswers, qMap) {
+// overallScore: نفس الرقم المعروض أعلى التقرير (scores.overall، الوزن
+// الديناميكي حسب المهارة من calculateLevelScore) — مصدر وحيد للحقيقة، بدل
+// حساب متوسط خام منفصل هنا كان يُنتج رقماً مختلفاً عن رأس الصفحة أحياناً.
+function buildQuestionsSection(allAnswers, qMap, overallScore) {
   // Explicit empty state: absence of answer data must be visible in the
   // report, never silent — it signals a stale client build or a legacy session
   if (!allAnswers?.length) {
@@ -219,7 +224,7 @@ function buildQuestionsSection(allAnswers, qMap) {
       </div>`;
   }
 
-  const overallPct = totalQ > 0 ? Math.round((totalCorrect / totalQ) * 100) : 0;
+  const overallPct = Math.round(overallScore ?? 0);
 
   return `
     <div style="background:#f0f4f8;padding:28px 44px 36px;">
@@ -271,6 +276,11 @@ export function computePageSlices(atoms, totalHeightPx, pxPerMm, marginMm = 8) {
 }
 
 export async function generateAssessmentPDF(studentInfo, scores, finalLevel, allAnswers = []) {
+  const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+    import('jspdf'),
+    import('html2canvas'),
+  ]);
+
   const levelInfo = LEVELS.find(l => l.id === finalLevel);
   const grade     = getGradeInfo(scores.overall);
   const dateStr   = new Date().toLocaleDateString('ar-SA-u-nu-latn', {
@@ -352,7 +362,7 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel, all
 
     </div>
 
-    ${buildQuestionsSection(allAnswers, qMap)}
+    ${buildQuestionsSection(allAnswers, qMap, scores.overall)}
 
     <div data-atom style="background:#f5f7fa;padding:16px 44px;text-align:center;border-top:1px solid #e0e0e0;">
       <p style="margin:0;color:#9e9e9e;font-size:11px;">

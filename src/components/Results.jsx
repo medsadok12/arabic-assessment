@@ -4,6 +4,7 @@ import { LEVELS } from '../data/questions.js';
 
 export default function Results({ studentInfo, finalLevel, scores, levelPath, allAnswers, onRestart }) {
   const [emailStatus, setEmailStatus] = useState('idle'); // idle | sending | success | error
+  const [syncStatus,  setSyncStatus]  = useState('idle'); // idle | sending | success | error — مزامنة لوحة المعلم (LMS)، منفصلة عن حالة البريد
   const [showPromoModal, setShowPromoModal] = useState(false);
 
   // Show the registration promo only after the teacher report is confirmed sent
@@ -11,28 +12,65 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, al
     if (emailStatus === 'success') setShowPromoModal(true);
   }, [emailStatus]);
 
-  useEffect(() => {
-    const key = `sheets_saved_${studentInfo.name}_${Math.round(scores.overall)}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, '1');
-
-    // روابط التسجيلات الصوتية المرفوعة فعلياً (Vercel Blob) — تُجمَّع من كل
-    // أسئلة النطق الثلاثة (speaking/listen-speak/oral-assessment) لتصل
-    // للمعلم عبر لوحة التحكم لاحقاً، لا أن تبقى محفوظة على المتصفح فقط.
-    const recordings = (allAnswers ?? [])
+  // روابط التسجيلات الصوتية المرفوعة فعلياً (Vercel Blob) — تُجمَّع من كل
+  // أسئلة النطق الثلاثة (speaking/listen-speak/oral-assessment) لتصل
+  // للمعلم عبر لوحة التحكم لاحقاً، لا أن تبقى محفوظة على المتصفح فقط.
+  function buildRecordings() {
+    return (allAnswers ?? [])
       .filter((a) => a.audioUrl || a.recordingUrls?.length)
       .map((a) => ({
         questionId: a.questionId,
         skill:      a.skill,
         urls:       a.recordingUrls?.length ? a.recordingUrls : [a.audioUrl],
       }));
+  }
 
-    // تفصيل كامل لكل سؤال (نص السؤال، إجابة الطالب، الإجابة الصحيحة، صواب/خطأ،
-    // وروابط أي تسجيل صوتي) — نفس المنطق المستخدم لبناء تقرير PDF، يصل الآن
-    // أيضاً للوحة bogga لعرضه كبديل تفاعلي كامل عن التقرير دون فتح ملف PDF.
-    const answers = buildAnswerReport(allAnswers ?? []);
+  // مزامنة لوحة المعلم (LMS) — المسار الذي يجعل النتيجة تظهر فعلياً في bogga.
+  // كان فشله (خطأ شبكة، أو حتى استجابة 401/500 غير مفحوصة) صامتاً تماماً —
+  // لا الطفل ولا الولي ولا المعلم يعرف أن النتيجة لم تصل. أصبح الآن يُحدِّث
+  // syncStatus بدقة (يفحص res.ok والحقل ok نفسه، لا الاكتفاء بعدم رمي استثناء)
+  // ليظهر تنبيه وزر "إعادة المحاولة" عند الفشل الفعلي.
+  async function syncToLMS() {
+    setSyncStatus('sending');
+    try {
+      const recordings = buildRecordings();
+      const answers    = buildAnswerReport(allAnswers ?? []);
+      const res  = await fetch(`${import.meta.env.VITE_LMS_URL ?? 'https://www.aarem.net'}/api/save-assessment`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':      'application/json',
+          'x-webhook-secret':  import.meta.env.VITE_ASSESSMENT_WEBHOOK_SECRET ?? '',
+        },
+        body:    JSON.stringify({
+          email:        studentInfo.email,
+          studentName:  studentInfo.name,
+          overallScore: scores.overall,
+          finalLevel:   finalLevel,
+          recordings,
+          answers,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        setSyncStatus('success');
+      } else {
+        console.error('[Results] فشل مزامنة اللوحة:', res.status, data);
+        setSyncStatus('error');
+      }
+    } catch (err) {
+      console.error('[Results] فشل مزامنة اللوحة:', err.message);
+      setSyncStatus('error');
+    }
+  }
 
-    // Save to Google Sheets + anonymous Supabase record
+  useEffect(() => {
+    const key = `sheets_saved_${studentInfo.name}_${Math.round(scores.overall)}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+
+    // سجلّ ثانوي (Google Sheets + نسخة Supabase مجهولة) — ليس المصدر الذي
+    // يظهر منه المعلم النتيجة (ذاك هو syncToLMS)، فيبقى فشله صامتاً بلا
+    // إزعاج الطفل/الولي بتنبيه لا يفهمانه، لكن مسجَّلاً في السجل للمراجعة.
     fetch('/api/save-result', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -46,24 +84,11 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, al
         levelPath:    levelPath.join(' ← '),
         bySkill:      scores.bySkill,
       }),
-    }).catch(() => {});
+    }).then((res) => {
+      if (!res.ok) console.error('[Results] فشل حفظ السجل الثانوي:', res.status);
+    }).catch((err) => console.error('[Results] فشل حفظ السجل الثانوي:', err.message));
 
-    // Save to LMS dashboard (links result to student account by email)
-    fetch(`${import.meta.env.VITE_LMS_URL ?? 'https://www.aarem.net'}/api/save-assessment`, {
-      method:  'POST',
-      headers: {
-        'Content-Type':      'application/json',
-        'x-webhook-secret':  import.meta.env.VITE_ASSESSMENT_WEBHOOK_SECRET ?? '',
-      },
-      body:    JSON.stringify({
-        email:        studentInfo.email,
-        studentName:  studentInfo.name,
-        overallScore: scores.overall,
-        finalLevel:   finalLevel,
-        recordings,
-        answers,
-      }),
-    }).catch(() => {});
+    syncToLMS();
 
     // Auto-send report to teacher/admin
     sendReport();
@@ -145,6 +170,23 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, al
           </>
         )}
       </div>
+
+      {syncStatus === 'error' && (
+        <div className="thankyou-card" style={{ marginTop: 14 }}>
+          <div className="thankyou-icon">💪</div>
+          <p className="thankyou-title">لم تصل نتيجتك للوحة معلمك بعد</p>
+          <p className="thankyou-sub">
+            لا تقلق، نتيجتك محفوظة بأمان! فقط اضغط الزر لإعادة المحاولة
+          </p>
+          <button
+            className="btn-primary"
+            style={{ marginTop: 14 }}
+            onClick={syncToLMS}
+          >
+            🔄 إعادة المحاولة
+          </button>
+        </div>
+      )}
 
       <div className="result-actions">
         <button className="btn-primary" onClick={onRestart}>🔄 تقييم جديد</button>
