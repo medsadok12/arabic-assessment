@@ -1,4 +1,5 @@
 import { put } from '@vercel/blob';
+import { getClientIP, ipRateCheck } from './_ip-rate-check.js';
 
 export const config = {
   api: { bodyParser: { sizeLimit: '10mb' } },
@@ -11,6 +12,13 @@ function sanitize(val, max = 80) {
 export default async function handler(req, res) {
   if (req.method !== 'POST')
     return res.status(405).json({ error: 'Method not allowed' });
+
+  // مسار عام بلا مصادقة (لا تسجيل دخول في تطبيق التقييم) يكتب فعلياً إلى
+  // تخزين مدفوع (Vercel Blob) — حد معدل لكل IP يمنع استنزافه بحلقة طلبات.
+  const ip = getClientIP(req);
+  if (!(await ipRateCheck(ip, 'rl:save-recording', 20, 200))) {
+    return res.status(429).json({ error: 'طلبات كثيرة جداً، حاول لاحقاً' });
+  }
 
   try {
     const { audioBase64, studentName: rawName, questionId } = req.body;

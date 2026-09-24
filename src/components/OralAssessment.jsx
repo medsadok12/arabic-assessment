@@ -29,6 +29,11 @@ export default function OralAssessment({ question, studentInfo, onAnswer }) {
   const [idx,        setIdx]       = useState(0);
   const [answers,    setAnswers]   = useState([]);
   const [uploading,  setUploading] = useState(false);
+  // حارس إعادة الدخول: يمنع تسجيل استجابتين لنفس العنصر إن ضُغط زران بسرعة
+  // أثناء انتظار رفع التسجيل (await pending) — بلا هذا الحارس كانت الضغطة
+  // الثانية تُعيد قراءة answers/idx القديمين وتُسقِط الأولى صامتاً، وقد
+  // تستدعي onAnswer مرتين إن وقعت على العنصر الأخير.
+  const [submitting, setSubmitting] = useState(false);
 
   const uploadPromiseRef = useRef(null);
   const idxRef = useRef(idx);
@@ -57,6 +62,7 @@ export default function OralAssessment({ question, studentInfo, onAnswer }) {
   useEffect(() => {
     resetRecording();
     setUploading(false);
+    setSubmitting(false);
     uploadPromiseRef.current = null;
   }, [idx, resetRecording]);
 
@@ -68,15 +74,18 @@ export default function OralAssessment({ question, studentInfo, onAnswer }) {
   }
 
   async function handleResponse(responseId) {
+    if (submitting) return;
+    setSubmitting(true);
     stopRecording();
     const pending = uploadPromiseRef.current;
     const uploadResult = pending ? await pending : null;
-    const updated = [...answers, {
+    const newAnswer = {
       item:     items[idx].id,
       response: responseId,
       audioUrl: uploadResult?.success ? uploadResult.url : null,
-    }];
-    setAnswers(updated);
+    };
+    const updated = [...answers, newAnswer];
+    setAnswers((prev) => [...prev, newAnswer]);
 
     if (idx + 1 < items.length) {
       setIdx(idx + 1);
@@ -178,6 +187,8 @@ export default function OralAssessment({ question, studentInfo, onAnswer }) {
               key={r.id}
               className={`oa-btn oa-btn-${r.id}`}
               onClick={() => handleResponse(r.id)}
+              disabled={submitting}
+              style={submitting ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
             >
               <span className="oa-btn-icon">{r.icon}</span>
               <span className="oa-btn-label">{r.label}</span>

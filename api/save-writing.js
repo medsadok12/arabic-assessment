@@ -1,3 +1,5 @@
+import { getClientIP, ipRateCheck } from './_ip-rate-check.js';
+
 export const config = {
   api: { bodyParser: { sizeLimit: '10mb' } },
 };
@@ -9,6 +11,13 @@ function sanitize(val, max = 80) {
 export default async function handler(req, res) {
   if (req.method !== 'POST')
     return res.status(405).json({ error: 'Method not allowed' });
+
+  // مسار عام بلا مصادقة يكتب إلى Google Drive عبر Apps Script — حد معدل
+  // لكل IP يمنع الاستنزاف/السبام (نفس نمط save-recording.js).
+  const ip = getClientIP(req);
+  if (!(await ipRateCheck(ip, 'rl:save-writing', 20, 200))) {
+    return res.status(429).json({ error: 'طلبات كثيرة جداً، حاول لاحقاً' });
+  }
 
   try {
     const { imageBase64, studentName: rawName, questionId, fileName: rawFileName } = req.body;
