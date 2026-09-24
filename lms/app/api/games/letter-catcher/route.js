@@ -127,6 +127,50 @@ export async function POST(request) {
   }
 }
 
+// PUT — update word in place (admin/teacher only)
+export async function PUT(request) {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const role = getRole(user) ?? '';
+    if (!user || !['super_admin', 'admin', 'teacher'].includes(role)) {
+      return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
+    }
+
+    const { id, word, missing_letter, emoji, image_url, audio_url, topic, grade_level, category } = await request.json();
+
+    if (!id) return NextResponse.json({ error: 'معرف الكلمة مطلوب' }, { status: 400 });
+    if (!word?.trim() || !missing_letter?.trim()) {
+      return NextResponse.json({ error: 'الكلمة والحرف الناقص مطلوبان' }, { status: 400 });
+    }
+
+    const options = buildOptions(missing_letter.trim());
+    const admin   = createAdminClient();
+
+    const { data, error } = await admin
+      .from('letter_catcher_words')
+      .update({
+        word: word.trim(),
+        missing_letter: missing_letter.trim(),
+        options,
+        emoji:       emoji?.trim()       || null,
+        image_url:   image_url           || null,
+        audio_url:   audio_url           || null,
+        topic:       topic?.trim()       || null,
+        grade_level: grade_level ? Number(grade_level) : null,
+        category:    category?.trim()    || null,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ word: data });
+  } catch (e) {
+    return NextResponse.json({ error: e.message || 'فشل التحديث' }, { status: 500 });
+  }
+}
+
 // DELETE — admin/teacher only
 export async function DELETE(request) {
   try {

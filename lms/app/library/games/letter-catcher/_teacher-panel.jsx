@@ -129,6 +129,11 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
   const [category,  setCategory]  = useState('');
   const [imgFile,   setImgFile]   = useState(null);
   const [imgPrev,   setImgPrev]   = useState(null);
+  // وضع التعديل: عند تفعيله، existingImageUrl يحمل رابط صورة الكلمة الحالي
+  // (يبقى محفوظاً كما هو إن لم يختر المعلم صورة جديدة)، وaudioUrl يُعبَّأ
+  // برابط التسجيل الحالي (يُستبدَل فقط إذا أعاد المعلم التسجيل فعلياً).
+  const [editingWordId,    setEditingWordId]    = useState(null);
+  const [existingImageUrl, setExistingImageUrl] = useState(null);
   const fileRef   = useRef();
   const catImgRef = useRef();
   const mediaRef  = useRef(null);
@@ -207,26 +212,56 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
     setRecording(false);
   };
 
+  const resetForm = () => {
+    setWord(''); setMissing(''); setCategory('');
+    setImgFile(null); setImgPrev(null); setAudioUrl(null);
+    setEditingWordId(null); setExistingImageUrl(null);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const startEditWord = (w) => {
+    setWord(w.word);
+    setMissing(w.missing_letter);
+    setCategory(w.category || '');
+    setAudioUrl(w.audio_url || null);
+    setExistingImageUrl(w.image_url || null);
+    setImgFile(null);
+    setImgPrev(w.image_url || null);
+    setEditingWordId(w.id);
+    setMsg(null);
+  };
+
+  const cancelEdit = () => resetForm();
+
   const handleAdd = async () => {
     if (!word.trim() || !missing.trim()) { setMsg({ ok: false, text: 'اكتب الكلمة والحرف الناقص أولاً' }); return; }
     if (!word.includes('_')) { setMsg({ ok: false, text: 'ضع رمز _ في مكان الحرف الناقص\nمثال: مَد_رَسة' }); return; }
     setSaving(true); setMsg(null);
     try {
-      let image_url = null;
+      // إن اختار المعلم صورة جديدة تُرفَع وتحلّ محل القديمة، وإلا تبقى صورة
+      // الكلمة الحالية كما هي (existingImageUrl لا تُملأ إلا في وضع التعديل).
+      let image_url = existingImageUrl;
       if (imgFile) {
         setMsg({ ok: true, text: '⏳ جارٍ رفع الصورة...' });
         image_url = await uploadWordImage(imgFile);
       }
+      const isEditing = !!editingWordId;
       const res = await fetch('/api/games/letter-catcher', {
-        method: 'POST',
+        method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word: word.trim(), missing_letter: missing.trim(), image_url, audio_url: audioUrl || null, topic: category.trim() || null, category: category.trim() || null }),
+        body: JSON.stringify({
+          ...(isEditing ? { id: editingWordId } : {}),
+          word: word.trim(), missing_letter: missing.trim(), image_url,
+          audio_url: audioUrl || null,
+          topic: category.trim() || null, category: category.trim() || null,
+        }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'فشل الحفظ');
-      setMsg({ ok: true, text: `✅ أُضيفت "${word.trim().replace('_', missing.trim())}" بنجاح` });
-      setWord(''); setMissing(''); setCategory(''); setImgFile(null); setImgPrev(null); setAudioUrl(null);
-      if (fileRef.current) fileRef.current.value = '';
+      if (!res.ok) throw new Error(json.error || (isEditing ? 'فشل التحديث' : 'فشل الحفظ'));
+      setMsg({ ok: true, text: isEditing
+        ? `✅ حُدِّثت "${word.trim().replace('_', missing.trim())}" بنجاح`
+        : `✅ أُضيفت "${word.trim().replace('_', missing.trim())}" بنجاح` });
+      resetForm();
       onRefresh();
     } catch (e) { setMsg({ ok: false, text: `❌ ${e.message}` }); }
     setSaving(false);
@@ -238,6 +273,7 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
     try {
       const res = await fetch(`/api/games/letter-catcher?id=${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error();
+      if (id === editingWordId) resetForm(); // الكلمة المحذوفة كانت قيد التعديل
       onRefresh();
     } catch { alert('فشل الحذف'); }
     setDeleting(null);
@@ -245,8 +281,18 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
 
   return (
     <div>
-      <div style={{ background:'#f5f3ff', borderRadius:14, padding:16, marginBottom:18, border:'1.5px dashed #7c3aed' }}>
-        <div style={{ fontWeight:800, color:'#7c3aed', marginBottom:12, fontSize:'.92rem' }}>➕ إضافة كلمة جديدة</div>
+      <div style={{ background: editingWordId ? '#fffbeb' : '#f5f3ff', borderRadius:14, padding:16, marginBottom:18, border: `1.5px dashed ${editingWordId ? '#f59e0b' : '#7c3aed'}` }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+          <div style={{ fontWeight:800, color: editingWordId ? '#d97706' : '#7c3aed', fontSize:'.92rem' }}>
+            {editingWordId ? '✏️ تعديل كلمة' : '➕ إضافة كلمة جديدة'}
+          </div>
+          {editingWordId && (
+            <button type="button" onClick={cancelEdit}
+              style={{ background:'#fef2f2', border:'none', borderRadius:6, padding:'3px 9px', cursor:'pointer', fontSize:'.75rem', fontWeight:700, color:'#ef4444' }}>
+              ✕ إلغاء التعديل
+            </button>
+          )}
+        </div>
 
         <input value={word} onChange={e => setWord(e.target.value)}
           placeholder="مثال: مَد_رَسة  (ضع _ مكان الحرف الناقص)"
@@ -331,8 +377,15 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
         )}
 
         <button onClick={handleAdd} disabled={saving || !word.trim() || !missing.trim()}
-          style={{ ...P.addBtn, opacity:(saving || !word.trim() || !missing.trim()) ? 0.6 : 1, cursor:(saving || !word.trim() || !missing.trim()) ? 'not-allowed' : 'pointer' }}>
-          {saving ? 'جارٍ الحفظ…' : '💾 حفظ في قاعدة البيانات'}
+          style={{
+            ...P.addBtn,
+            background: editingWordId ? 'linear-gradient(135deg,#f59e0b,#f97316)' : P.addBtn.background,
+            opacity:(saving || !word.trim() || !missing.trim()) ? 0.6 : 1,
+            cursor:(saving || !word.trim() || !missing.trim()) ? 'not-allowed' : 'pointer',
+          }}>
+          {saving
+            ? (editingWordId ? 'جارٍ التحديث…' : 'جارٍ الحفظ…')
+            : (editingWordId ? '💾 حفظ التعديل' : '💾 حفظ في قاعدة البيانات')}
         </button>
       </div>
 
@@ -408,13 +461,19 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
 
                   <div style={{ display:'flex', flexDirection:'column', gap:4, paddingRight:10 }}>
                     {words.map(w => (
-                      <div key={w.id} style={{ display:'flex', alignItems:'center', gap:7, background:'#f9fafb', borderRadius:8, padding:'6px 10px', border:'1px solid #e5e7eb' }}>
+                      <div key={w.id} style={{
+                        display:'flex', alignItems:'center', gap:7, borderRadius:8, padding:'6px 10px',
+                        background: editingWordId === w.id ? '#fffbeb' : '#f9fafb',
+                        border: `1px solid ${editingWordId === w.id ? '#f59e0b' : '#e5e7eb'}`,
+                      }}>
                         {w.image_url ? <img src={w.image_url} alt="" style={{ width:26, height:26, objectFit:'cover', borderRadius:5, flexShrink:0 }} /> : w.emoji ? <span style={{ fontSize:'1rem' }}>{w.emoji}</span> : null}
                         <span style={{ flex:1, fontWeight:700, color:'#1f2937', fontSize:'.88rem' }}>{w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word}</span>
                         <span style={{ background:'#ede9fe', color:'#7c3aed', borderRadius:20, padding:'1px 7px', fontSize:'.72rem', fontWeight:700 }}>{w.missing_letter}</span>
                         {w.audio_url && <span title="يحتوي على تسجيل" style={{ fontSize:'.7rem' }}>🎙️</span>}
                         <button onClick={() => w.audio_url ? new Audio(w.audio_url).play() : speak(w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word)}
                           title="استمع" style={{ background:'none', border:'none', cursor:'pointer', fontSize:'.9rem', padding:'2px 3px', lineHeight:1 }}>🔊</button>
+                        <button onClick={() => startEditWord(w)}
+                          title="تعديل" style={{ background:'none', border:'none', cursor:'pointer', fontSize:'.9rem', padding:'2px 3px', lineHeight:1 }}>✏️</button>
                         <button onClick={() => handleDelete(w.id, w.word)} disabled={deleting === w.id}
                           style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:'.9rem', padding:'2px 3px', lineHeight:1 }} title="حذف">
                           {deleting === w.id ? '…' : '🗑️'}
