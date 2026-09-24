@@ -25,9 +25,12 @@ export default function DialogueOrder({ question, onAnswer }) {
 
   const [order, setOrder] = useState(() => shuffle(question.lines).map((l) => l.id));
   const [showFeedback, setShowFeedback] = useState(false);
+  // يمنع تأكيد الترتيب العشوائي الابتدائي كما هو بلا أي تفاعل فعلي من الطالب.
+  const [touched, setTouched] = useState(false);
 
   function moveUp(idx) {
     if (idx === 0 || showFeedback) return;
+    setTouched(true);
     setOrder((prev) => {
       const next = [...prev];
       [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
@@ -37,6 +40,7 @@ export default function DialogueOrder({ question, onAnswer }) {
 
   function moveDown(idx) {
     if (idx === order.length - 1 || showFeedback) return;
+    setTouched(true);
     setOrder((prev) => {
       const next = [...prev];
       [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
@@ -109,7 +113,14 @@ export default function DialogueOrder({ question, onAnswer }) {
           {isCorrectNow ? '✅ ترتيب صحيح تماماً!' : '❌ ليس الترتيب الأنسب، حاول في المرة القادمة'}
         </p>
       ) : (
-        <button className="btn-primary" onClick={handleConfirm}>تأكيد الترتيب ←</button>
+        <button
+          className="btn-primary"
+          onClick={handleConfirm}
+          disabled={!touched}
+          style={{ opacity: touched ? 1 : 0.5 }}
+        >
+          تأكيد الترتيب ←
+        </button>
       )}
     </div>
   );

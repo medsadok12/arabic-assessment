@@ -116,7 +116,12 @@ export default function VowelCards({ question, onAnswer }) {
         </button>
       </div>
 
-      <button className="btn-primary" onClick={handleSubmit} style={{ marginTop: 14 }}>
+      <button
+        className="btn-primary"
+        onClick={handleSubmit}
+        disabled={correct.size === 0}
+        style={{ opacity: correct.size === 0 ? 0.5 : 1, marginTop: 14 }}
+      >
         تأكيد وإكمال التدريب ✓
       </button>
     </div>

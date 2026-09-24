@@ -190,7 +190,12 @@ export default function VowelLong({ question, onAnswer }) {
         <button className="lr-reset-btn" onClick={handleReset}>إعادة تعيين 🔄</button>
       </div>
 
-      <button className="btn-primary" onClick={handleSubmit} style={{ marginTop: 14 }}>
+      <button
+        className="btn-primary"
+        onClick={handleSubmit}
+        disabled={placedCount === 0}
+        style={{ opacity: placedCount === 0 ? 0.5 : 1, marginTop: 14 }}
+      >
         تأكيد وإكمال التدريب ✓
       </button>
     </div>
