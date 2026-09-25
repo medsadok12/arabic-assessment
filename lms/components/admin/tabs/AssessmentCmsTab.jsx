@@ -1,9 +1,12 @@
 'use client';
 import Link from 'next/link';
 
-/* بطاقة رابط بسيطة نحو الصفحة المستقلة /bogga/assessment-questions — نفس
-   نمط LexiconTab.jsx بالضبط (نظام إدارة كبير ومستقل بحالته الخاصة يستحق
-   صفحة قائمة بذاتها بدل حشره داخل حالة bogga/page.jsx المشتركة). */
+/* بطاقة رابط بسيطة نحو الصفحة المستقلة /assessment-cms — نفس نمط
+   LexiconTab.jsx بالضبط (نظام إدارة كبير ومستقل بحالته الخاصة يستحق صفحة
+   قائمة بذاتها بدل حشره داخل حالة bogga/page.jsx المشتركة). ليست تحت
+   /bogga/* عمداً — بوابتها الخاصة (assessment-cms/layout.jsx) تسمح أيضاً
+   لمعلّم مُخوَّل صراحةً بصلاحية assessment_cms، بمعزل عن بوابة /bogga/*
+   الأشمل التي تستبعد المعلمين من كل شيء آخر تحتها. */
 export default function AssessmentCmsTab({ lang }) {
   return (
     <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
@@ -16,7 +19,7 @@ export default function AssessmentCmsTab({ lang }) {
           ? 'تصفح الأسئلة حسب المستوى والمهارة، عدّل النصوص والخيارات، أعد الترتيب، فعّل أو عطّل، وعاين شكل السؤال قبل الحفظ.'
           : 'Browse questions by level and skill, edit text and options, reorder, enable/disable, and preview before saving.'}
       </p>
-      <Link href="/bogga/assessment-questions" className="btn btn-primary btn-lg">
+      <Link href="/assessment-cms" className="btn btn-primary btn-lg">
         {lang === 'ar' ? 'فتح لوحة إدارة التقييمات' : 'Open Assessment CMS'}
       </Link>
     </div>

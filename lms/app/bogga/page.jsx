@@ -26,6 +26,7 @@ const CodesTab          = dynamic(() => import('../../components/admin/tabs/Code
 const SessionsTab       = dynamic(() => import('../../components/admin/tabs/SessionsTab'));
 const LexiconTab        = dynamic(() => import('../../components/admin/tabs/LexiconTab'));
 const AssessmentCmsTab  = dynamic(() => import('../../components/admin/tabs/AssessmentCmsTab'));
+const TeacherPermissionsPanel = dynamic(() => import('../../components/admin/TeacherPermissionsPanel'));
 const RecruitmentTab    = dynamic(() => import('../../components/admin/tabs/RecruitmentTab'));
 const LogbookTab        = dynamic(() => import('../../components/admin/tabs/LogbookTab'));
 const StoriesTab        = dynamic(() => import('../../components/admin/tabs/StoriesTab'));
@@ -1272,7 +1273,9 @@ export default function BoggarAdminPage() {
               setShowAddSupervisor={setShowAddSupervisor}
               handleSuspendSupervisor={handleSuspendSupervisor} suspendingSupervisorId={suspendingSupervisorId}
               handleDeleteSupervisor={handleDeleteSupervisor} deletingSupervisorId={deletingSupervisorId}
-            />          )}
+            />
+          )}
+          {activeTab === 'admins' && isSuperAdmin && <TeacherPermissionsPanel />}
 
           {/* ══ Results ═══════════════════════════════════════════ */}
           {activeTab === 'results' && (

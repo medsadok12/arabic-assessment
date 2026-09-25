@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
-import { getRole } from '../../../../lib/auth-role';
+import { canManageAssessments } from '../../../../lib/teacher-permissions';
 
 export const dynamic = 'force-dynamic';
-
-const ALLOWED_ROLES = ['super_admin', 'admin'];
 
 async function guard() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !ALLOWED_ROLES.includes(getRole(user))) return null;
+  if (!user || !(await canManageAssessments(user))) return null;
   return user;
 }
 

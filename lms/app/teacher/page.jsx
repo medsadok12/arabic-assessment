@@ -47,6 +47,10 @@ export default function TeacherPage() {
   const router   = useRouter();
 
   const [user,         setUser]         = useState(null);
+  // صلاحيات فرعية مُفوَّضة صراحة من super_admin (راجع lib/teacher-permissions.js
+  // وTeacherPermissionsPanel.jsx) — تتحكم فقط بظهور روابط إضافية هنا؛ الحماية
+  // الفعلية على مستوى الخادم في assessment-cms/layout.jsx.
+  const [assessmentCmsAccess, setAssessmentCmsAccess] = useState(false);
   const [sessions,     setSessions]     = useState([]);
   const [students,     setStudents]     = useState([]);
   const [loading,      setLoading]      = useState(true);
@@ -211,6 +215,15 @@ export default function TeacherPage() {
       setPersonalMeetLink(u.user_metadata?.meet_link ?? '');
     });
   }, []);
+
+  // مستقل عمداً عن Promise.all بيانات اللوحة الرئيسية أدناه — فشله لا يجب
+  // أن يؤثر على تحميل الحصص/الطلاب الأساسية.
+  useEffect(() => {
+    if (!user) return;
+    fetch('/api/bogga/teacher-permissions/my').then(r => r.json())
+      .then(d => setAssessmentCmsAccess(!!d.tabKeys?.includes('assessment_cms')))
+      .catch(() => {});
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -723,6 +736,12 @@ export default function TeacherPage() {
               <span>📚</span>
               <span>إدارة القصص</span>
             </a>
+            {assessmentCmsAccess && (
+              <a href="/assessment-cms" className="side-link">
+                <span>📝</span>
+                <span>إدارة التقييمات</span>
+              </a>
+            )}
           </nav>
 
           {/* ── Content ── */}

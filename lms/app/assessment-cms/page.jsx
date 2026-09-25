@@ -1,16 +1,13 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import Navbar from '../../../components/Navbar';
-import { createClient } from '../../../lib/supabase';
-import { getRole } from '../../../lib/auth-role';
+import Navbar from '../../components/Navbar';
 import {
   SKILL_LABELS, TYPE_LABELS, CATEGORY_A_TYPES, CATEGORY_B_TYPES,
   FIELD_SCHEMAS, emptyPayloadFor,
-} from '../../../lib/assessment-question-types';
-import QuestionFieldEditor from '../../../components/admin/QuestionFieldEditor';
-import QuestionPreview     from '../../../components/admin/QuestionPreview';
+} from '../../lib/assessment-question-types';
+import QuestionFieldEditor from '../../components/admin/QuestionFieldEditor';
+import QuestionPreview     from '../../components/admin/QuestionPreview';
 
-const ALLOWED_ROLES = ['super_admin', 'admin'];
 const SKILL_ORDER = ['listening', 'vocabulary', 'reading', 'grammar', 'writing', 'speaking'];
 // نفس الدومين المستخدَم في كل أنحاء lms/ (SmartFAQ.jsx، app/page.jsx...) — لا رابط جديد.
 const ASSESSMENT_URL = 'https://assessment.aarem.net';
@@ -29,10 +26,11 @@ const btnPrimary = { background: '#E8B84B', color: '#1A2B4A', border: 'none', bo
 const btnGhost   = { background: '#F1F5F9', color: '#334155', border: 'none', borderRadius: 10, padding: '8px 16px', fontWeight: 700, cursor: 'pointer' };
 const iconBtn    = { background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: 4 };
 
-export default function AssessmentQuestionsPage() {
-  const supabase = createClient();
-  const [user, setUser]   = useState(null);
-  const [role, setRole]   = useState(null); // null = لم يُتحقَّق بعد
+// ملاحظة معمارية: صلاحية الوصول الحقيقية تُفرَض بالكامل من app/assessment-cms/
+// layout.jsx (Server Component يُنفَّذ قبل وصول أي طلب إلى هنا) — لا حاجة
+// لتكرار فحص الدور هنا؛ من وصل لهذا المكوّن فهو مخوَّل فعلياً (super_admin/
+// admin دائماً، أو معلّم مُنح صراحةً صلاحية assessment_cms).
+export default function AssessmentCmsPage() {
   const [loading, setLoading] = useState(true);
 
   const [questions, setQuestions] = useState([]);
@@ -47,17 +45,8 @@ export default function AssessmentQuestionsPage() {
   const [uploading, setUploading]   = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
-      setUser(u);
-      setRole(u ? (getRole(u) ?? '') : '');
-    });
-  }, []);
-
-  useEffect(() => {
-    if (role === null) return; // بانتظار نتيجة التحقق
-    if (!ALLOWED_ROLES.includes(role)) { setLoading(false); return; }
     loadAll();
-  }, [role]);
+  }, []);
 
   async function loadAll() {
     setLoading(true);
@@ -190,24 +179,11 @@ export default function AssessmentQuestionsPage() {
     }
   }
 
-  if (loading || role === null) {
+  if (loading) {
     return (
       <div>
         <Navbar />
         <div style={{ textAlign: 'center', padding: 60 }}><span className="spinner" /></div>
-      </div>
-    );
-  }
-
-  if (!ALLOWED_ROLES.includes(role)) {
-    return (
-      <div>
-        <Navbar />
-        <div style={{ maxWidth: 480, margin: '80px auto', textAlign: 'center', padding: 24 }}>
-          <div style={{ fontSize: '3rem', marginBottom: 12 }}>🔒</div>
-          <h2 style={{ color: '#1A2B4A', fontWeight: 800 }}>غير مصرح بالوصول</h2>
-          <p style={{ color: '#64748B' }}>هذه الصفحة مخصصة للمشرف/المدير المسؤول فقط.</p>
-        </div>
       </div>
     );
   }
