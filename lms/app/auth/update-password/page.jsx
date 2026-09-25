@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { getRole } from '../../../lib/auth-role';
 
 export default function UpdatePasswordPage() {
   const [newPassword,     setNewPassword]     = useState('');
@@ -37,19 +36,23 @@ export default function UpdatePasswordPage() {
         return;
       }
 
-      // Refresh session so middleware sees cleared temp_password
-      const { createClient } = await import('../../../lib/supabase');
-      const { data: { user } } = await createClient().auth.refreshSession();
-
-      // التوجيه حسب الدور الفعلي — كان ثابتاً إلى /dashboard بغضّ النظر عن
-      // الدور، فيُرسل المعلم/الأدمن/المشرف لبوابة الطالب خطأً (نفس المنطق
-      // المستخدم في auth/login/page.jsx وmiddleware.js).
-      const role = getRole(user);
+      // الوجهة تُحسَب من الدور الذي أرجعه الخادم مباشرة (مصدر موثوق ومؤكَّد
+      // النجاح فعلياً) — لا من refreshSession() وحدها، التي قد تُرجع جلسة لم
+      // تلتقط بعد app_metadata المُحدَّث للتوّ (سباق تحديث/قراءة). يبقى
+      // استدعاء refreshSession أدناه (بأفضل جهد) لمزامنة كوكي المتصفح نفسه،
+      // حتى لا يعيد middleware المستخدم لهذه الصفحة عند وصوله للوجهة.
       const destination =
-        role === 'admin' || role === 'super_admin' ? '/bogga'
-        : role === 'teacher'                        ? '/teacher'
-        : role === 'supervisor'                     ? '/supervisor'
+        data.role === 'admin' || data.role === 'super_admin' ? '/bogga'
+        : data.role === 'teacher'                             ? '/teacher'
+        : data.role === 'supervisor'                          ? '/supervisor'
         : '/dashboard';
+
+      try {
+        const { createClient } = await import('../../../lib/supabase');
+        await createClient().auth.refreshSession();
+      } catch (refreshErr) {
+        console.error('[update-password] فشل تحديث الجلسة محلياً (غير حرج):', refreshErr.message);
+      }
 
       // تنقّل كامل (لا router.replace) لضمان وصول الكوكيز المُحدَّثة فعلياً
       // للخادم في الطلب التالي — تجنّباً لأي حالة سباق بين تحديث الجلسة على

@@ -80,25 +80,31 @@ export async function POST(req) {
       }
     }
 
-    // ── Update password via admin client (bypasses JWT expiry edge-cases) ────
+    // ── Update password + clear temp_password في نداء واحد ذرّي ────────────────
+    // كانا سابقاً نداءين منفصلين (كلمة المرور، ثم app_metadata) — الثاني لم
+    // يكن يُفحَص خطؤه إطلاقاً، فكان يفشل بصمت أحياناً بينما يُرجَع للعميل
+    // {success:true}: كلمة المرور تتغيّر فعلياً، لكن temp_password يبقى عالقاً،
+    // فيستمر middleware بإعادة المستخدم إلى هذه الصفحة إلى الأبد رغم "نجاح"
+    // كل محاولة — هذا بالضبط ما حدث فعلياً (تأكَّد من سجلات Vercel: نداءان
+    // ناجحان 200 لنفس المستخدمة، وtemp_password ظل عالقاً في قاعدة البيانات).
+    // نداء واحد يزيل هذا الاحتمال بالكامل (لا حالة وسيطة "نجح جزئياً").
+    const currentMeta = user.app_metadata ?? {};
+    // eslint-disable-next-line no-unused-vars
+    const { temp_password, ...cleanMeta } = currentMeta;
+
     const { error: updateErr } = await admin.auth.admin.updateUserById(user.id, {
-      password: newPassword,
+      password:     newPassword,
+      app_metadata: cleanMeta,
     });
     if (updateErr) {
-      return NextResponse.json({ error: updateErr.message }, { status: 500 });
+      console.error('[update-password] فشل تحديث كلمة المرور/app_metadata:', updateErr.message);
+      return NextResponse.json(
+        { error: 'تعذّر حفظ كلمة المرور الآن. يرجى المحاولة مرة أخرى، أو التواصل مع الإدارة إن تكرر الخطأ.' },
+        { status: 500 }
+      );
     }
 
-    // ── Clear temp_password from app_metadata ─────────────────────────────────
-    const currentMeta = user.app_metadata ?? {};
-    if (currentMeta.temp_password) {
-      // eslint-disable-next-line no-unused-vars
-      const { temp_password, ...cleanMeta } = currentMeta;
-      await admin.auth.admin.updateUserById(user.id, {
-        app_metadata: cleanMeta,
-      });
-    }
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, role: cleanMeta.role ?? null });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
