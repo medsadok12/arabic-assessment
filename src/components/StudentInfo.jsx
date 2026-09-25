@@ -62,8 +62,11 @@ export default function StudentInfo({ onStart }) {
       return;
     }
 
-    setValidating(false);
-    onStart({ name: name.trim(), age: +age, email: email.trim(), type });
+    // يبقى الزر معطَّلاً (validating) حتى ينتهي onStart فعلياً — يجلب بيانات
+    // المستوى الأول (من قاعدة البيانات أو النسخة الاحتياطية، دائماً ينجح
+    // بأحدهما) قبل الانتقال لصفحة الترحيب؛ لا داعي لإعادة تعيينه بعد النجاح
+    // لأن هذا المكوّن يُستبدَل بالكامل فور الانتقال.
+    await onStart({ name: name.trim(), age: +age, email: email.trim(), type });
   }
 
   return (

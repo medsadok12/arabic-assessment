@@ -4,6 +4,7 @@ import Assessment      from './components/Assessment.jsx';
 import LevelTransition from './components/LevelTransition.jsx';
 import Results         from './components/Results.jsx';
 import { getLevelQuestions, shuffle, CHECKPOINT_QUESTION } from './data/questions.js';
+import { getQuestionData } from './data/fetchQuestions.js';
 import { calculateLevelScore, applyJumpLogic, evaluateCheckpoint, saveToLocalStorage } from './utils/scoring.js';
 import './App.css';
 
@@ -46,7 +47,22 @@ function clearResume() {
 
 const PINNED = new Set(['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'letter-position', 'word-construct', 'oral-assessment', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill', 'letter-listen-choose', 'syllable-reading', 'image-matching', 'listen-speak']);
 
-function buildLevelData(levelId) {
+/**
+ * يبني بيانات المستوى ديناميكياً من Supabase عند توفرها (بنية fixed/shuffled
+ * جاهزة من الخادم — راجع api/questions.js)، أو يعود تلقائياً وبصمت لبنك
+ * الأسئلة الثابت (buildLevelDataStatic) عند أي فشل — القرار على مستوى
+ * التقييم بأكمله (لا تبديل مصدر بين مستوياته، راجع src/data/fetchQuestions.js).
+ */
+async function buildLevelDataAsync(levelId) {
+  const data = await getQuestionData();
+  const bucket = data?.source === 'database' ? data.levels?.[levelId] : null;
+  if (bucket) {
+    return { questions: [...bucket.fixed, ...shuffle(bucket.shuffled)], answers: [] };
+  }
+  return buildLevelDataStatic(levelId);
+}
+
+function buildLevelDataStatic(levelId) {
   const all        = getLevelQuestions(levelId);
   const llChoose       = all.filter(q => q.type === 'letter-listen-choose');
   const sylReading     = all.filter(q => q.type === 'syllable-reading');
@@ -137,8 +153,8 @@ export default function App() {
   }, [page, studentInfo, currentLevel, levelData, questionIdx, allAnswers, levelPath, streak,
       transitionFrom, transitionTo, transitionScore, finalScores, finalLevel]);
 
-  function handleStart(info) {
-    const data = buildLevelData(1);
+  async function handleStart(info) {
+    const data = await buildLevelDataAsync(1);
     setStudentInfo(info);
     setCurrentLevel(1);
     setLevelData(data);
@@ -215,9 +231,9 @@ export default function App() {
     finalize(accumulated, currentLevel, [...levelPath]);
   }
 
-  function handleTransitionContinue() {
+  async function handleTransitionContinue() {
     const newPath = [...levelPath, transitionTo];
-    const data    = buildLevelData(transitionTo);
+    const data    = await buildLevelDataAsync(transitionTo);
     setCurrentLevel(transitionTo);
     setLevelData(data);
     setQuestionIdx(0);
