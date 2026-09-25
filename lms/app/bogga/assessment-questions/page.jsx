@@ -12,6 +12,8 @@ import QuestionPreview     from '../../../components/admin/QuestionPreview';
 
 const ALLOWED_ROLES = ['super_admin', 'admin'];
 const SKILL_ORDER = ['listening', 'vocabulary', 'reading', 'grammar', 'writing', 'speaking'];
+// نفس الدومين المستخدَم في كل أنحاء lms/ (SmartFAQ.jsx، app/page.jsx...) — لا رابط جديد.
+const ASSESSMENT_URL = 'https://assessment.aarem.net';
 
 async function uploadMedia(file, kind) {
   const body = new FormData();
@@ -247,7 +249,7 @@ export default function AssessmentQuestionsPage() {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           {[1, 2, 3].map(lv => (
             <button
               key={lv}
@@ -262,6 +264,28 @@ export default function AssessmentQuestionsPage() {
             </button>
           ))}
         </div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          {[1, 2, 3].map(lv => (
+            <a
+              key={lv}
+              href={`${ASSESSMENT_URL}/?admin_preview=true&level=${lv}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                flex: 1, padding: '8px 0', borderRadius: 10, textAlign: 'center', textDecoration: 'none',
+                background: '#EAFBF3', color: '#065F46', fontWeight: 700, fontSize: '.85rem',
+                border: '1px dashed #2ABB7A',
+              }}
+              title="يفتح التقييم فعلياً بلا نموذج تسجيل ولا حفظ نتيجة حقيقية"
+            >
+              🚀 تجربة المستوى {lv} فعلياً
+            </a>
+          ))}
+        </div>
+        <p style={{ color: '#94A3B8', fontSize: '.78rem', marginTop: -12, marginBottom: 20 }}>
+          يفتح تطبيق التقييم في تبويب جديد مباشرة على هذا المستوى — يتخطى بيانات الطالب وكود التقييم، ولا يُسجَّل أي نتيجة.
+        </p>
 
         {SKILL_ORDER.map(skillId => (
           <div key={skillId} style={card}>

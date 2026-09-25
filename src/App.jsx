@@ -6,9 +6,11 @@ import Results         from './components/Results.jsx';
 import { getLevelQuestions, shuffle, CHECKPOINT_QUESTION } from './data/questions.js';
 import { getQuestionData } from './data/fetchQuestions.js';
 import { calculateLevelScore, applyJumpLogic, evaluateCheckpoint, saveToLocalStorage } from './utils/scoring.js';
+import { getAdminPreviewLevel, ADMIN_PREVIEW_STUDENT_INFO } from './utils/adminPreview.js';
 import './App.css';
 
-const PAGES       = { INFO: 'info', WELCOME: 'welcome', ASSESSMENT: 'assessment', TRANSITION: 'transition', RESULTS: 'results' };
+const PAGES       = { INFO: 'info', WELCOME: 'welcome', ASSESSMENT: 'assessment', TRANSITION: 'transition', RESULTS: 'results', ADMIN_LOADING: 'admin-loading' };
+const adminPreviewLevel = getAdminPreviewLevel();
 const SESSION_KEY = 'areem_session';
 const RESUME_KEY  = 'areem_resume';
 
@@ -100,8 +102,10 @@ const BG_LETTERS = [
   { char: 'ب', style: { left: '10%', top: '80%', fontSize: '8rem',  opacity: 0.10, animationDuration: '18s', animationDelay: '2s' } },
 ];
 
-const saved      = loadSession();
-const resumeData = !saved ? loadResume() : null;
+// جلسة معاينة المشرف لا تُقرأ من/لا تُقحَم في جلسة طالب حقيقي محفوظة على
+// نفس المتصفح — تجاهل تام لأي استئناف، وبدء نظيف دائماً.
+const saved      = adminPreviewLevel ? null : loadSession();
+const resumeData = !saved && !adminPreviewLevel ? loadResume() : null;
 const hasResume  = !!resumeData && resumeData.page !== PAGES.INFO && resumeData.page !== PAGES.RESULTS;
 
 export default function App() {
@@ -116,7 +120,7 @@ export default function App() {
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
-  const [page, setPage]               = useState(saved?.page ?? PAGES.INFO);
+  const [page, setPage]               = useState(adminPreviewLevel ? PAGES.ADMIN_LOADING : (saved?.page ?? PAGES.INFO));
   const [studentInfo, setStudentInfo] = useState(saved?.studentInfo ?? null);
   const [currentLevel, setCurrentLevel] = useState(saved?.currentLevel ?? 1);
   const [levelData, setLevelData]     = useState(saved?.levelData ?? null);
@@ -138,8 +142,32 @@ export default function App() {
   const [finalLevel, setFinalLevel]   = useState(saved?.finalLevel ?? 1);
   const [showAbout, setShowAbout]     = useState(false);
 
-  // حفظ الجلسة عند كل تغيير في الحالة
+  // بناء بيانات المستوى المطلوب فوراً عند فتح رابط معاينة مشرف (?admin_preview=
+  // true&level=N من زر "🚀 تجربة التقييم" في bogga) — يتخطى بيانات الطالب
+  // وكود التقييم بالكامل، ويحقن بيانات وهمية بدلاً منهما.
   useEffect(() => {
+    if (!adminPreviewLevel) return;
+    let cancelled = false;
+    (async () => {
+      const data = await buildLevelDataAsync(adminPreviewLevel);
+      if (cancelled) return;
+      setStudentInfo(ADMIN_PREVIEW_STUDENT_INFO);
+      setCurrentLevel(adminPreviewLevel);
+      setLevelData(data);
+      setQuestionIdx(0);
+      setAllAnswers([]);
+      setLevelPath([adminPreviewLevel]);
+      setStreak(0);
+      setPage(PAGES.ASSESSMENT);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // حفظ الجلسة عند كل تغيير في الحالة — مُعطَّل بالكامل في وضع معاينة
+  // المشرف (لا يُكتَب شيء في sessionStorage/localStorage قد يظهر لاحقاً
+  // كـ"استئناف جلسة سابقة" لطالب حقيقي يستخدم نفس المتصفح).
+  useEffect(() => {
+    if (adminPreviewLevel) return;
     if (page === PAGES.INFO) { clearSession(); clearResume(); return; }
     const state = {
       page, studentInfo, currentLevel, levelData,
@@ -246,20 +274,14 @@ export default function App() {
     const determined = applyJumpLogic(scores.overall, level);
     setFinalScores(scores);
     setFinalLevel(determined);
-    saveToLocalStorage({ studentInfo, scores, finalLevel: determined, levelPath: path });
+    if (!adminPreviewLevel) saveToLocalStorage({ studentInfo, scores, finalLevel: determined, levelPath: path });
     setPage(PAGES.RESULTS);
   }
 
-  function handleRestart() {
+  async function handleRestart() {
     if (!window.confirm('هل تريد بدء تقييم جديد؟ سيتم مسح نتائج هذا التقييم.')) return;
-    clearSession();
-    setPage(PAGES.INFO);
-    setStudentInfo(null);
-    setCurrentLevel(1);
-    setLevelData(null);
     setQuestionIdx(0);
     setAllAnswers([]);
-    setLevelPath([]);
     setStreak(0);
     setEarlyJumpOffer(null);
     setEarlyDropInfo(null);
@@ -268,6 +290,24 @@ export default function App() {
     setTransitionFrom(null);
     setTransitionTo(null);
     setTransitionScore(0);
+
+    // في وضع معاينة المشرف: إعادة تجهيز نفس مستوى المعاينة مباشرة بدل
+    // العودة لشاشة بيانات طالب حقيقي — يحافظ الزر على معناه ("جرّب مجدداً").
+    if (adminPreviewLevel) {
+      setPage(PAGES.ADMIN_LOADING);
+      const data = await buildLevelDataAsync(adminPreviewLevel);
+      setLevelData(data);
+      setLevelPath([adminPreviewLevel]);
+      setPage(PAGES.ASSESSMENT);
+      return;
+    }
+
+    clearSession();
+    setPage(PAGES.INFO);
+    setStudentInfo(null);
+    setCurrentLevel(1);
+    setLevelData(null);
+    setLevelPath([]);
   }
 
   function handleResume() {
@@ -316,6 +356,11 @@ export default function App() {
           ⚠️ انقطع الاتصال بالإنترنت — لا تغلق الصفحة، سيتم استئناف التقييم عند العودة
         </div>
       )}
+      {adminPreviewLevel && (
+        <div style={{ background: '#E8B84B', color: '#1A2B4A', textAlign: 'center', padding: '8px', fontSize: 14, fontWeight: 'bold' }}>
+          🚀 وضع معاينة المشرف (المستوى {adminPreviewLevel}) — تجريبي بالكامل، لن يُحفَظ أو يُرسَل لأي نظام
+        </div>
+      )}
       <header className="app-header">
         <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="عارم أكاديمي" className="header-logo-img" />
         <div className="header-text">
@@ -340,6 +385,12 @@ export default function App() {
       )}
 
       <main className="app-main">
+        {page === PAGES.ADMIN_LOADING && (
+          <div className="page-content" style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <div className="spinner" style={{ margin: '0 auto 16px' }} />
+            <p>جارٍ تجهيز معاينة المستوى {adminPreviewLevel}...</p>
+          </div>
+        )}
         {page === PAGES.INFO && (
           <StudentInfo onStart={handleStart} />
         )}
@@ -394,6 +445,7 @@ export default function App() {
             levelPath={levelPath}
             allAnswers={allAnswers}
             onRestart={handleRestart}
+            isAdminPreview={!!adminPreviewLevel}
           />
         )}
       </main>

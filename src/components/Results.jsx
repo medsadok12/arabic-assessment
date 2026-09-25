@@ -2,15 +2,19 @@ import { useState, useEffect } from 'react';
 import { generateAssessmentPDF, buildAnswerReport } from '../utils/pdfGenerator.js';
 import { LEVELS } from '../data/questions.js';
 
-export default function Results({ studentInfo, finalLevel, scores, levelPath, allAnswers, onRestart }) {
-  const [emailStatus, setEmailStatus] = useState('idle'); // idle | sending | success | error
-  const [syncStatus,  setSyncStatus]  = useState('idle'); // idle | sending | success | error — مزامنة لوحة المعلم (LMS)، منفصلة عن حالة البريد
+export default function Results({ studentInfo, finalLevel, scores, levelPath, allAnswers, onRestart, isAdminPreview = false }) {
+  // في وضع معاينة المشرف: 'skipped' حالة إضافية تعني "تم تخطي هذا الإجراء
+  // عمداً"، تُعرَض للمشرف بوضوح بدل تحميل لا ينتهي أبداً (كان سيحدث لو بقي
+  // emailStatus/syncStatus على 'idle' إلى الأبد دون استدعاء الدوال الفعلية).
+  const [emailStatus, setEmailStatus] = useState('idle'); // idle | sending | success | error | skipped
+  const [syncStatus,  setSyncStatus]  = useState('idle'); // idle | sending | success | error | skipped — مزامنة لوحة المعلم (LMS)، منفصلة عن حالة البريد
   const [showPromoModal, setShowPromoModal] = useState(false);
 
   // Show the registration promo only after the teacher report is confirmed sent
+  // — لا تُعرَض إطلاقاً في وضع معاينة المشرف (لا معنى لدعوة "مشرف وهمي" للتسجيل)
   useEffect(() => {
-    if (emailStatus === 'success') setShowPromoModal(true);
-  }, [emailStatus]);
+    if (emailStatus === 'success' && !isAdminPreview) setShowPromoModal(true);
+  }, [emailStatus, isAdminPreview]);
 
   // روابط التسجيلات الصوتية المرفوعة فعلياً (Vercel Blob) — تُجمَّع من كل
   // أسئلة النطق الثلاثة (speaking/listen-speak/oral-assessment) لتصل
@@ -64,6 +68,20 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, al
   }
 
   useEffect(() => {
+    // نقطة حرجة: وضع معاينة المشرف لا يكتب أي نتيجة حقيقية إطلاقاً — لا في
+    // لوحة bogga (syncToLMS)، ولا في السجل الثانوي (save-result)، ولا بريد
+    // فعلي (sendReport) — فقط طباعة في console لتجربة تدفق الواجهة بأمان.
+    if (isAdminPreview) {
+      console.log('[معاينة المشرف] تم تخطي حفظ/إرسال النتيجة فعلياً. النتيجة المحسوبة:', {
+        studentInfo, finalLevel, scores, levelPath,
+        recordings: buildRecordings(),
+        answers:    buildAnswerReport(allAnswers ?? []),
+      });
+      setSyncStatus('skipped');
+      setEmailStatus('skipped');
+      return;
+    }
+
     const key = `sheets_saved_${studentInfo.name}_${Math.round(scores.overall)}`;
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, '1');
@@ -167,6 +185,14 @@ export default function Results({ studentInfo, finalLevel, scores, levelPath, al
             >
               🔄 إعادة إرسال التقرير
             </button>
+          </>
+        )}
+
+        {emailStatus === 'skipped' && (
+          <>
+            <div className="thankyou-icon">🚀</div>
+            <p className="thankyou-title">وضع معاينة المشرف — لم يُرسَل أي بريد فعلي</p>
+            <p className="thankyou-sub">النتيجة مطبوعة في console المتصفح للمراجعة فقط</p>
           </>
         )}
       </div>
