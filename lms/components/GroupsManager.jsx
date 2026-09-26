@@ -321,7 +321,7 @@ ALTER TABLE student_group_assignments DISABLE ROW LEVEL SECURITY;`}</pre>
           <p>{selectedGroup ? 'لا يوجد طلاب في هذه المجموعة' : 'لا يوجد طلاب مسجلون أجروا تقييماً بعد'}</p>
         </div>
       ) : (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="card table-scroll-wrapper" style={{ padding: 0 }}>
           <table className="data-table">
             <thead>
               <tr>

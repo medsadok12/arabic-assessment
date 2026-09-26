@@ -23,6 +23,8 @@ export default function SyllableReading({ question, onAnswer }) {
         skill:      question.skill ?? 'reading',
         answer:     updated,
         isCorrect:  correctCount / items.length >= 0.5,
+        answerText:  updated.map(a => `${a.syllable}${a.response === 'correct' ? ' ✓' : ' ✗'}`).join('، '),
+        correctText: items.join('، '),
       });
     }
   }

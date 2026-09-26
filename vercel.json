@@ -3,6 +3,9 @@
     "api/save-recording.js": { "maxDuration": 30 },
     "api/save-writing.js":   { "maxDuration": 30 },
     "api/send-email.js":     { "maxDuration": 30 },
-    "api/contact.js":        { "maxDuration": 15 }
+    "api/contact.js":        { "maxDuration": 15 },
+    "api/tts.js":            { "maxDuration": 15 },
+    "api/assessment-meta.js": { "maxDuration": 10 },
+    "api/questions.js":       { "maxDuration": 10 }
   }
 }

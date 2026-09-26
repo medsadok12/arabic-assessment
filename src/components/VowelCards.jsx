@@ -47,6 +47,8 @@ export default function VowelCards({ question, onAnswer }) {
       skill:      question.skill ?? 'reading',
       answer:     correct.size,
       isCorrect:  correct.size >= 14,
+      answerText:  `أتقن ${correct.size} من ${TOTAL} صوتاً`,
+      correctText: `إتقان ${TOTAL} صوتاً (النجاح من 14)`,
     });
   }
 
@@ -114,7 +116,12 @@ export default function VowelCards({ question, onAnswer }) {
         </button>
       </div>
 
-      <button className="btn-primary" onClick={handleSubmit} style={{ marginTop: 14 }}>
+      <button
+        className="btn-primary"
+        onClick={handleSubmit}
+        disabled={correct.size === 0}
+        style={{ opacity: correct.size === 0 ? 0.5 : 1, marginTop: 14 }}
+      >
         تأكيد وإكمال التدريب ✓
       </button>
     </div>

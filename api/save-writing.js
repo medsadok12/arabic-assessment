@@ -1,3 +1,5 @@
+import { getClientIP, ipRateCheck } from './_ip-rate-check.js';
+
 export const config = {
   api: { bodyParser: { sizeLimit: '10mb' } },
 };
@@ -10,14 +12,23 @@ export default async function handler(req, res) {
   if (req.method !== 'POST')
     return res.status(405).json({ error: 'Method not allowed' });
 
+  // مسار عام بلا مصادقة يكتب إلى Google Drive عبر Apps Script — حد معدل
+  // لكل IP يمنع الاستنزاف/السبام (نفس نمط save-recording.js).
+  const ip = getClientIP(req);
+  if (!(await ipRateCheck(ip, 'rl:save-writing', 20, 200))) {
+    return res.status(429).json({ error: 'طلبات كثيرة جداً، حاول لاحقاً' });
+  }
+
   try {
     const { imageBase64, studentName: rawName, questionId, fileName: rawFileName } = req.body;
 
     if (!imageBase64)
       return res.status(400).json({ error: 'No image data' });
 
-    if (!process.env.APPS_SCRIPT_URL)
-      return res.status(500).json({ error: 'APPS_SCRIPT_URL not configured in Vercel' });
+    if (!process.env.APPS_SCRIPT_URL) {
+      console.error('[save-writing] APPS_SCRIPT_URL not configured in Vercel');
+      return res.status(500).json({ error: 'تعذّر حفظ الصورة حالياً' });
+    }
 
     const studentName = sanitize(rawName || 'طالب');
     const uniqueId    = Date.now().toString(36).toUpperCase();
@@ -36,6 +47,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, url: data.url, fileName });
   } catch (error) {
     console.error('Drive image upload error:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: 'تعذّر حفظ الصورة حالياً' });
   }
 }

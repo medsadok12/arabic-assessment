@@ -1,14 +1,69 @@
 import './globals.css';
+import { Cairo, Tajawal } from 'next/font/google';
+import { LanguageProvider } from '../contexts/LanguageContext';
+import PWAInstall           from '../components/PWAInstall';
+import FlashcardReminder    from '../components/FlashcardReminder';
+import HeartbeatPing        from '../components/HeartbeatPing';
+
+const cairo = Cairo({
+  subsets:  ['arabic', 'latin'],
+  weight:   ['400', '500', '600', '700', '800'],
+  variable: '--font-cairo',
+  display:  'swap',
+  preload:  true,
+});
+
+const tajawal = Tajawal({
+  subsets:  ['arabic', 'latin'],
+  weight:   ['300', '400', '500', '700', '800'],
+  variable: '--font-tajawal',
+  display:  'swap',
+  preload:  false,
+});
 
 export const metadata = {
-  title: 'أكاديمية عارم — نظام التعلم الذكي',
-  description: 'منصة تعليمية متكاملة لتعليم اللغة العربية',
+  title:       'أكاديمية عارم',
+  description: 'منصة تعليمية عربية متكاملة لتقييم وتطوير مهارات اللغة العربية',
+  manifest:    '/manifest.json',
+  themeColor:  '#1A2B4A',
+  appleWebApp: {
+    capable:         true,
+    title:           'أكاديمية عارم',
+    statusBarStyle:  'black-translucent',
+  },
+  icons: {
+    icon:     '/logo.svg',
+    shortcut: '/logo.svg',
+    apple:    '/logo.svg',
+  },
+  other: {
+    'mobile-web-app-capable':          'yes',
+    'apple-mobile-web-app-capable':    'yes',
+    'application-name':                'عارم',
+    'apple-mobile-web-app-title':      'عارم',
+    'msapplication-TileColor':         '#1A2B4A',
+    'msapplication-tap-highlight':     'no',
+  },
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="ar" dir="rtl">
-      <body>{children}</body>
+    <html
+      lang="ar"
+      dir="rtl"
+      className={`${cairo.className} ${cairo.variable} ${tajawal.variable}`}
+    >
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+      </head>
+      <body style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
+        <LanguageProvider>
+          <main id="main-content" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>{children}</main>
+        </LanguageProvider>
+        <HeartbeatPing />
+        <PWAInstall />
+        <FlashcardReminder />
+      </body>
     </html>
   );
 }

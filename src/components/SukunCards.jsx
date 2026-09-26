@@ -33,6 +33,8 @@ export default function SukunCards({ question, onAnswer }) {
       skill:      question.skill ?? 'reading',
       answer:     checked.size,
       isCorrect:  checked.size >= 4,
+      answerText:  `قرأ ${checked.size} من ${TOTAL} مقاطع`,
+      correctText: `قراءة ${TOTAL} مقاطع (النجاح من 4)`,
     });
   }
 
@@ -88,7 +90,12 @@ export default function SukunCards({ question, onAnswer }) {
         <button className="lr-reset-btn" onClick={handleReset}>إعادة تعيين 🔄</button>
       </div>
 
-      <button className="btn-primary" onClick={handleSubmit} style={{ marginTop: 14 }}>
+      <button
+        className="btn-primary"
+        onClick={handleSubmit}
+        disabled={checked.size === 0}
+        style={{ opacity: checked.size === 0 ? 0.5 : 1, marginTop: 14 }}
+      >
         تأكيد وإكمال التدريب ✓
       </button>
     </div>
