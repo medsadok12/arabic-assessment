@@ -5,10 +5,14 @@ const COLORS = [
   '#e65100', '#880e4f', '#004d40',
 ];
 
-const ITEM_H = 68;
-const GAP    = 10;
-const ROW    = ITEM_H + GAP;
-const SVG_W  = 80;
+// حد أقصى 4 أزواج معتمد الآن من لوحة bogga (QuestionFieldEditor.jsx) — عناصر
+// أكبر بوضوح للطفل بدل ازدحام 6 أزواج في مساحة ضيقة. يبقى مسار n>4 كنسخة
+// احتياطية دفاعية فقط (بيانات قديمة لم تُرحَّل بعد أو تجاوز غير متوقَّع)،
+// وليس الحجم المعتاد المتوقَّع بعد اليوم.
+function sizesFor(n) {
+  if (n > 4) return { ITEM_H: 68, GAP: 10, SVG_W: 80, NAME_W: 100, NAME_FONT: 17, EMOJI_FONT: 32 };
+  return { ITEM_H: 104, GAP: 20, SVG_W: 110, NAME_W: 176, NAME_FONT: 28, EMOJI_FONT: 56 };
+}
 
 export default function ImageWordMatching({ question, onAnswer }) {
   const [selected,    setSelected]    = useState(null);
@@ -56,7 +60,9 @@ export default function ImageWordMatching({ question, onAnswer }) {
     }), 1400);
   }
 
-  const n    = question.pairs.length;
+  const n = question.pairs.length;
+  const { ITEM_H, GAP, SVG_W, NAME_W, NAME_FONT, EMOJI_FONT } = sizesFor(n);
+  const ROW  = ITEM_H + GAP;
   const svgH = n * ITEM_H + (n - 1) * GAP;
 
   return (
@@ -82,13 +88,13 @@ export default function ImageWordMatching({ question, onAnswer }) {
                   key={pair.id}
                   onClick={() => clickName(pair.id)}
                   style={{
-                    width: 100, height: ITEM_H, borderRadius: 12,
+                    width: NAME_W, height: ITEM_H, borderRadius: 14,
                     border: `3px solid ${color ?? (isTgt ? '#a5d6a7' : '#ddd')}`,
                     background: color ? color + '22' : (isTgt ? '#f1f8e9' : '#fafafa'),
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 17, fontWeight: 700, color: '#1a237e',
+                    fontSize: NAME_FONT, fontWeight: 700, color: '#1a237e',
                     direction: 'rtl', cursor: selected ? 'pointer' : 'default',
-                    transition: 'all 0.2s', userSelect: 'none',
+                    transition: 'all 0.2s', userSelect: 'none', paddingInline: 8,
                     fontFamily: 'Tajawal, sans-serif',
                   }}
                 >
@@ -137,11 +143,11 @@ export default function ImageWordMatching({ question, onAnswer }) {
                   key={pair.id}
                   onClick={() => clickEmoji(pair.id)}
                   style={{
-                    width: ITEM_H, height: ITEM_H, borderRadius: 12,
+                    width: ITEM_H, height: ITEM_H, borderRadius: 14,
                     border: `3px solid ${isSel ? '#1a237e' : color ?? '#ddd'}`,
                     background: isSel ? '#e8eaf6' : color ? color + '22' : '#fafafa',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 32, cursor: 'pointer',
+                    fontSize: EMOJI_FONT, cursor: 'pointer',
                     boxShadow: isSel ? '0 0 0 3px #a5d6a7' : 'none',
                     transition: 'all 0.2s', userSelect: 'none',
                   }}

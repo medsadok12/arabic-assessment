@@ -1,10 +1,15 @@
 import { useState } from 'react';
 
-const COLORS = ['#1b5e20', '#2e7d32', '#66bb6a'];
-const ITEM_H  = 80;
-const GAP     = 12;
-const ROW     = ITEM_H + GAP;
-const SVG_W   = 90;
+// وسِّعت من 3 إلى 4 ألوان: لوحة bogga تسمح الآن بحد أقصى 4 أزواج لأسئلة
+// المطابقة (كان النوع 'matching' يُستخدَم فعلياً بـ3 أزواج فقط دائماً، فلم
+// يكن اللون الرابع محتاجاً — لكن أي سؤال جديد بـ4 أزواج سيحتاجه).
+const COLORS = ['#1b5e20', '#2e7d32', '#66bb6a', '#0277bd'];
+
+// حد أقصى 4 أزواج معتمد الآن من لوحة bogga — عناصر أكبر بوضوح للطفل.
+function sizesFor(n) {
+  if (n > 4) return { ITEM_H: 80, GAP: 12, SVG_W: 90, NAME_W: 110, NAME_FONT: 20, EMOJI_FONT: 44 };
+  return { ITEM_H: 108, GAP: 20, SVG_W: 110, NAME_W: 180, NAME_FONT: 28, EMOJI_FONT: 56 };
+}
 
 export default function MatchingQuestion({ question, onAnswer }) {
   const [selected,    setSelected]    = useState(null);
@@ -52,7 +57,9 @@ export default function MatchingQuestion({ question, onAnswer }) {
     }), 1400);
   }
 
-  const n    = question.pairs.length;
+  const n = question.pairs.length;
+  const { ITEM_H, GAP, SVG_W, NAME_W, NAME_FONT, EMOJI_FONT } = sizesFor(n);
+  const ROW  = ITEM_H + GAP;
   const svgH = n * ITEM_H + (n - 1) * GAP;
 
   return (
@@ -85,11 +92,11 @@ export default function MatchingQuestion({ question, onAnswer }) {
                 key={pair.id}
                 onClick={() => clickName(pair.id)}
                 style={{
-                  width: 110, height: ITEM_H, borderRadius: 14,
+                  width: NAME_W, height: ITEM_H, borderRadius: 14,
                   border: `3px solid ${borderColor}`,
                   background: bg,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 20, fontWeight: 700, color: '#1a237e',
+                  fontSize: NAME_FONT, fontWeight: 700, color: '#1a237e',
                   direction: 'rtl', cursor: selected ? 'pointer' : 'default',
                   transition: 'all 0.2s', userSelect: 'none', paddingInline: 8,
                 }}
@@ -144,7 +151,7 @@ export default function MatchingQuestion({ question, onAnswer }) {
                   border: `3px solid ${isSel ? '#1a237e' : color ?? '#ddd'}`,
                   background: isSel ? '#e8eaf6' : color ? color + '22' : '#fafafa',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 44, cursor: 'pointer',
+                  fontSize: EMOJI_FONT, cursor: 'pointer',
                   boxShadow: isSel ? '0 0 0 3px #a5d6a7' : 'none',
                   transition: 'all 0.2s', userSelect: 'none',
                 }}

@@ -69,10 +69,16 @@ function OptionsMcq({ value = [], onChange }) {
   );
 }
 
+// حد أقصى 4 أزواج — أكثر من ذلك يزدحم الخط والصور في تطبيق التقييم على
+// شاشة الطفل (كان هذا سبب تصغير العناصر سابقاً عند 6 أزواج). سؤال يحتاج
+// أزواجاً أكثر يُقسَّم لسؤالين منفصلين بدل تكديسها في سؤال واحد.
+const MAX_PAIRS = 4;
+
 function Pairs({ value = [], onChange }) {
   const items = Array.isArray(value) ? value : [];
   const update = (i, patch) => onChange(items.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
   const remove = i => onChange(items.filter((_, idx) => idx !== i));
+  const atMax = items.length >= MAX_PAIRS;
   return (
     <div>
       {items.map((p, i) => (
@@ -82,7 +88,19 @@ function Pairs({ value = [], onChange }) {
           <button type="button" style={smallBtn} onClick={() => remove(i)}>✕</button>
         </div>
       ))}
-      <button type="button" style={addBtn} onClick={() => onChange([...items, { id: `p${Date.now()}_${items.length}`, emoji: '', name: '' }])}>+ زوج جديد</button>
+      <button
+        type="button"
+        style={{ ...addBtn, ...(atMax ? { opacity: .5, cursor: 'not-allowed' } : {}) }}
+        disabled={atMax}
+        onClick={() => !atMax && onChange([...items, { id: `p${Date.now()}_${items.length}`, emoji: '', name: '' }])}
+      >
+        + زوج جديد
+      </button>
+      <p style={{ color: atMax ? '#B45309' : '#94A3B8', fontSize: '.78rem', marginTop: 6 }}>
+        {atMax
+          ? '⚠️ وصلت للحد الأقصى (4 أزواج) — لضمان وضوح الخط والصور للطالب. لمزيد من الأزواج، أنشئ سؤال مطابقة إضافياً بدلاً من ذلك.'
+          : `الحد الأقصى 4 أزواج لكل سؤال (${items.length}/${MAX_PAIRS}).`}
+      </p>
     </div>
   );
 }

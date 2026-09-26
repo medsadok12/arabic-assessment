@@ -42,6 +42,11 @@ export async function POST(req) {
   if (!id?.trim()) return NextResponse.json({ error: 'معرف السؤال مطلوب' }, { status: 400 });
   if (![1, 2, 3].includes(Number(level))) return NextResponse.json({ error: 'مستوى غير صالح' }, { status: 400 });
   if (!skill) return NextResponse.json({ error: 'المهارة مطلوبة' }, { status: 400 });
+  // نفس حد الـ4 أزواج المفروض في واجهة التحرير (QuestionFieldEditor.jsx) —
+  // مُكرَّر هنا كطبقة حماية ثانية ضد أي نداء مباشر للـAPI يتجاوز الواجهة.
+  if ((type === 'matching' || type === 'image-matching') && Array.isArray(payload?.pairs) && payload.pairs.length > 4) {
+    return NextResponse.json({ error: 'الحد الأقصى 4 أزواج لكل سؤال مطابقة' }, { status: 400 });
+  }
 
   const admin = createAdminClient();
 

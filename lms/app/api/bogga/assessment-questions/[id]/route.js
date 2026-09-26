@@ -20,6 +20,13 @@ export async function PUT(req, { params }) {
 
   const { id } = params;
   const body = await req.json();
+
+  // نفس حد الـ4 أزواج المفروض في واجهة التحرير — لا حاجة لمعرفة type هنا:
+  // حقل pairs لا يظهر في payload إلا لأسئلة المطابقة أصلاً.
+  if (Array.isArray(body.payload?.pairs) && body.payload.pairs.length > 4) {
+    return NextResponse.json({ error: 'الحد الأقصى 4 أزواج لكل سؤال مطابقة' }, { status: 400 });
+  }
+
   const patch = {};
   if (body.skill !== undefined)   patch.skill   = body.skill;
   if (body.payload !== undefined) patch.payload = body.payload;
