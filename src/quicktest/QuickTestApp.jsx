@@ -1,45 +1,42 @@
 import { useState } from 'react';
 import '../App.css';
 import Assessment from '../components/Assessment.jsx';
-import { getQuickTestQuestions } from '../data/quickTestQuestions.js';
-import { calculateLevelScore } from '../utils/scoring.js';
-import { levelFromScore } from './levelLabel.js';
+import { resolveQuestionsByIds } from '../data/quickTestQuestions.js';
+import { pickTrack, scoreTrack, qualitativeLabel } from './tracks.js';
 import LeadGate from './LeadGate.jsx';
 
 const PAGES = { START: 'start', ASSESSMENT: 'assessment', GATE: 'gate', RESULT: 'result' };
 
 /**
  * تدفق مستقل تماماً عن App.jsx — قمع تسويقي عام بلا كود تقييم (راجع
- * quickTestMode.js)، اختبار مسطّح قصير (12 سؤالاً، بلا مستويات تصاعدية
- * ولا منطق ترقية/إنزال)، ثم بوابة تواصل ولي الأمر قبل عرض النتيجة.
- * يُعاد استخدام Assessment.jsx كما هو (يقبل أي مصفوفة أسئلة مسطّحة) —
- * لا تكرار لمنطق عرض الأسئلة/الأنواع الثلاثة والعشرين.
- *
- * قائمة الأسئلة تُحسَب فقط بعد إدخال عمر الطفل في handleStart (لا كثابت
- * وحدة) — راجع quickTestQuestions.js: مسار ثابت مختلف لكل فئة عمرية، لا
- * عشوائية إطلاقاً (طلب تربوي صريح: سحب عشوائي قد يُظهر سؤالاً متقدماً
- * لطفل مبتدئ فيُحبَط ويغادر قبل بوابة التواصل).
+ * quickTestMode.js)، ثلاثة مسارات ثابتة حسب عمر الطفل (tracks.js) بلا أي
+ * عشوائية، ثم بوابة تواصل ولي الأمر قبل عرض تقرير تقييمي (لا نسبة جافة
+ * فقط) يوصي ببرنامج محدد. يُعاد استخدام Assessment.jsx كما هو — لا تكرار
+ * لمنطق عرض الأسئلة/الأنواع الثلاثة والعشرين.
  */
 export default function QuickTestApp() {
   const [page, setPage]               = useState(PAGES.START);
   const [childName, setChildName]     = useState('');
   const [childAge, setChildAge]       = useState('');
   const [startError, setStartError]   = useState('');
+  const [track, setTrack]             = useState(null);
   const [questions, setQuestions]     = useState([]);
   const [questionIdx, setQuestionIdx] = useState(0);
-  const [scores, setScores]           = useState(null);
+  const [report, setReport]           = useState(null);
 
   function handleStart() {
     if (!childName.trim() || !childAge) {
       setStartError('يرجى إدخال اسم الطفل وعمره');
       return;
     }
-    if (+childAge < 5 || +childAge > 15) {
-      setStartError('هذا الاختبار مخصص لأعمار 5 إلى 15 سنة');
+    if (+childAge < 4 || +childAge > 15) {
+      setStartError('هذا الاختبار مخصص لأعمار 4 إلى 15 سنة');
       return;
     }
     setStartError('');
-    setQuestions(getQuickTestQuestions(+childAge));
+    const t = pickTrack(+childAge);
+    setTrack(t);
+    setQuestions(resolveQuestionsByIds(t.questions.map(q => q.id)));
     setQuestionIdx(0);
     setPage(PAGES.ASSESSMENT);
   }
@@ -47,8 +44,6 @@ export default function QuickTestApp() {
   const progressPct = page === PAGES.ASSESSMENT
     ? Math.round((questionIdx / questions.length) * 100)
     : (page === PAGES.START ? 0 : 100);
-
-  const lvl = scores ? levelFromScore(scores.overall) : null;
 
   return (
     <div className="app">
@@ -59,7 +54,7 @@ export default function QuickTestApp() {
             <h1 lang="ar">عارم أكاديمي</h1>
           </div>
           <span className="header-en">AREM ACADEMY</span>
-          <p>🎯 اختبار تحديد المستوى المجاني — 5 دقائق فقط</p>
+          <p>🎯 اختبار تحديد المستوى المجاني — بضع دقائق فقط</p>
         </div>
       </header>
 
@@ -80,7 +75,7 @@ export default function QuickTestApp() {
           <div className="page-content">
             <h2 className="page-title">اختبار تحديد المستوى المجاني</h2>
             <p className="page-subtitle">
-              12 سؤالاً بسيطاً (حوالي 5 دقائق) لمعرفة مستوى طفلك الحالي في اللغة العربية فوراً — بلا أي التزام.
+              أسئلة بسيطة وممتعة (3 إلى 5 دقائق حسب عمر طفلك) لمعرفة مستواه الحالي في اللغة العربية فوراً — بلا أي التزام.
             </p>
             <div className="form-group">
               <label>اسم الطفل *</label>
@@ -88,7 +83,7 @@ export default function QuickTestApp() {
             </div>
             <div className="form-group">
               <label>عمر الطفل *</label>
-              <input type="number" min="5" max="15" placeholder="مثال: 8" value={childAge} onChange={e => setChildAge(e.target.value)} />
+              <input type="number" min="4" max="15" placeholder="مثال: 6" value={childAge} onChange={e => setChildAge(e.target.value)} />
             </div>
             {startError && <div className="error-msg">⚠️ {startError}</div>}
             <button className="btn-primary" onClick={handleStart}>ابدأ الاختبار ←</button>
@@ -102,25 +97,25 @@ export default function QuickTestApp() {
             childAge={+childAge}
             questionIdx={questionIdx}
             onFinish={(finalAnswers) => {
-              setScores(calculateLevelScore(finalAnswers));
+              setReport(scoreTrack(track, finalAnswers));
               setPage(PAGES.GATE);
             }}
             onAdvance={() => setQuestionIdx(i => i + 1)}
           />
         )}
 
-        {page === PAGES.GATE && scores && (
+        {page === PAGES.GATE && report && (
           <LeadGate
             childName={childName}
             childAge={+childAge}
-            score={Math.round(scores.overall * 10) / 10}
-            levelLabel={lvl.label}
+            score={report.overall}
+            levelLabel={track.label}
             onDone={() => setPage(PAGES.RESULT)}
           />
         )}
 
-        {page === PAGES.RESULT && scores && (
-          <QuickTestResult childName={childName} scores={scores} lvl={lvl} />
+        {page === PAGES.RESULT && report && (
+          <QuickTestResult childName={childName} track={track} report={report} />
         )}
       </main>
     </div>
@@ -152,42 +147,54 @@ function QuestionRunner({ questions, childName, childAge, questionIdx, onAdvance
   );
 }
 
-function QuickTestResult({ childName, scores, lvl }) {
-  const overall = Math.round(scores.overall);
-  const skillRows = Object.values(scores.bySkill).filter(s => s.total > 0);
-  const waText = `مرحباً، أخذ ابني/ابنتي ${childName} اختبار تحديد المستوى المجاني وحصل على ${overall}% (${lvl.label})، أرغب بمعرفة المزيد عن حصص أكاديمية عارم.`;
+/**
+ * تقرير تقييمي، لا نسبة جافة فقط: بُعدان أو ثلاثة أبعاد مسمّاة حسب المسار
+ * (tracks.js) بتصنيف نوعي (ممتاز جداً 🟢/جيد جداً 🟡/بحاجة لتدريب 🔴)،
+ * ثم "المهارة المرشحة للتطوير" (أضعف بُعد) والتوصية ببرنامج محدد، وأخيراً
+ * زر واتساب بنص جاهز يذكر اسم الطفل والبرنامج الموصى به تحديداً.
+ */
+function QuickTestResult({ childName, track, report }) {
+  const { overall, dims, insight } = report;
+  const overallQ = qualitativeLabel(overall);
+  const waText = `مرحباً أستاذ، أكمل طفلي ${childName} التقييم وأود الاستفسار عن ${track.program}`;
 
   return (
     <div className="page-content">
       <div className="results-header">
-        <div className="results-icon">{lvl.icon}</div>
-        <h2>نتيجة {childName}</h2>
-        <p>مستوى {childName} الحالي في اللغة العربية</p>
+        <div className="results-icon">🌟</div>
+        <h2>تقرير تقييم مستوى {childName}</h2>
+        <p>{track.label} ({track.ageRange})</p>
       </div>
 
-      <div className="thankyou-card" style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '2.6rem', fontWeight: 900, color: 'var(--primary)' }}>{overall}%</div>
-        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--secondary)', margin: '4px 0 20px' }}>
-          المستوى: {lvl.label}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'right' }}>
-          {skillRows.map(s => (
-            <div key={s.name}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', fontWeight: 700, color: 'var(--primary)', marginBottom: 4 }}>
-                <span>{s.name}</span><span>{Math.round(s.score)}%</span>
+      <div className="thankyou-card">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {dims.map(d => {
+            const q = qualitativeLabel(d.pct);
+            return (
+              <div key={d.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '.92rem' }}>{d.label}</span>
+                <span style={{ fontWeight: 800, fontSize: '.9rem', whiteSpace: 'nowrap' }}>
+                  {q.text} ({d.pct}%) {q.emoji}
+                </span>
               </div>
-              <div style={{ height: 8, background: '#eee', borderRadius: 10, overflow: 'hidden' }}>
-                <div style={{ width: `${Math.round(s.score)}%`, height: '100%', background: 'linear-gradient(90deg, #d4952a, #e8b84a)' }} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+
+        {insight && (
+          <div style={{ background: '#fff8e8', border: '1px solid #f3d78a', borderRadius: 10, padding: '12px 16px', marginTop: 18, fontSize: '.9rem', color: '#7a5a10', textAlign: 'right' }}>
+            <strong>💡 المهارة المرشحة للتطوير:</strong> {insight}
+          </div>
+        )}
       </div>
 
       <div className="thankyou-card" style={{ marginTop: 14, textAlign: 'center' }}>
-        <div className="thankyou-icon">💬</div>
-        <p className="thankyou-title">هل تريد تقريراً تفصيلياً وخطة دراسية لـ{childName}؟</p>
-        <p className="thankyou-sub">تواصل معنا الآن عبر واتساب وسنرد عليك خلال دقائق</p>
+        <div className="thankyou-icon">🎯</div>
+        <p className="thankyou-title">التوصية التربوية من أكاديمية عارم</p>
+        <p className="thankyou-sub" style={{ fontWeight: 700, color: 'var(--primary)', margin: '6px 0' }}>
+          {track.program}
+        </p>
+        <p className="thankyou-sub">{track.programPitch}</p>
         <a
           href={`https://api.whatsapp.com/send/?phone=447400755914&text=${encodeURIComponent(waText)}&type=phone_number&app_absent=0`}
           target="_blank"
@@ -195,7 +202,7 @@ function QuickTestResult({ childName, scores, lvl }) {
           className="btn-primary"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, textDecoration: 'none', marginTop: 14 }}
         >
-          📱 تواصل معنا عبر واتساب
+          📱 تواصل مع الأستاذ عبر واتساب لمناقشة الخطة
         </a>
       </div>
     </div>

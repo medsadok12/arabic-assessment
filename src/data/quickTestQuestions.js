@@ -1,45 +1,14 @@
 import { getLevelQuestions } from './questions.js';
 
-// انتقاء يدوي وثابت (لا عشوائية إطلاقاً) من بنك الأسئلة الحقيقي — لا نسخ
-// محتوى، هذا يضمن بقاءه متزامناً مع أي تعديل مستقبلي على questions.js
-// ويحافظ على `skill` الصحيح المُلصَق فعلياً بواسطة getLevelQuestions.
-//
-// ملاحظة تربوية (طلب صريح من الأستاذ محمد): السحب العشوائي من كل
-// المستويات كان يُحبِط الطفل المبتدئ أو غير القارئ إن ظهر له سؤال قراءة/
-// نحو متقدم بلا سياق تدرّجي، فيغادر الصفحة قبل وصول ولي الأمر لبوابة
-// التواصل. الحل هنا مبني على مسارين ثابتين حسب العمر — لا خلط بينهما،
-// ولا ترتيب عشوائي داخل أي منهما.
-const YOUNG_AGE_THRESHOLD = 7;
-
-// عمر أصغر من 7: من المستوى الأول حصراً (تأسيسي بالكامل) — استماع، مطابقة
-// صور، تهيئة قرائية أساسية (تمييز حروف/حركات، لا نص متصل)، ثم أبسط تمارين
-// النحو الممكنة (هذا/هذه، هو/هي). بلا أي سؤال قراءة فقرة أو نحو مركّب.
-const YOUNG_TIER_IDS = [
-  'L1_EX1', 'L1_LC',                              // استماع
-  'L1_EX3', 'L1_VOC1',                            // مفردات (صور + مطابقة)
-  'L1_LR', 'L1_VC', 'L1_VL', 'L1_SK', 'L1_TW',    // تهيئة قرائية أساسية (حروف/حركات فقط)
-  'L1_GR1', 'L1_GR2', 'L1_GR3',                   // أبسط نحو ممكن
-];
-
-// عمر 7 فأكثر: هيكل ثابت متدرج إجبارياً بطلب صريح — 4 استماع/صور (إحماء)
-// ثم 4 مفردات ثم 4 قراءة وفهم. يقيس الأساسيات أولاً بلطف قبل الأصعب.
-const OLDER_TIER_IDS = [
-  'L1_EX3', 'L1_VOC1', 'L2_1', 'L2_2',   // إحماء: صور + استماع
-  'V2_1', 'V2_2', 'V2_3', 'V2_4',        // مفردات
-  'R2_1', 'R2_2', 'R2_3', 'R2_4',        // قراءة وفهم
-];
-
-function resolveIds(ids) {
-  const pool  = [...getLevelQuestions(1), ...getLevelQuestions(2)];
-  const byId  = Object.fromEntries(pool.map(q => [q.id, q]));
-  return ids.map(id => byId[id]).filter(Boolean);
-}
-
 /**
- * يبني قائمة أسئلة الاختبار السريع حسب عمر الطفل — مسار ثابت واحد لكل
- * فئة عمرية، بلا أي عشوائية أو خلط بين الفئتين.
+ * يحوّل قائمة IDs (معرَّفة في src/quicktest/tracks.js لكل مسار عمري) إلى
+ * كائنات الأسئلة الفعلية من بنك الأسئلة الحقيقي — لا نسخ محتوى، هذا يضمن
+ * بقاءه متزامناً مع أي تعديل مستقبلي على questions.js، ويحافظ على `skill`
+ * الصحيح المُلصَق فعلياً بواسطة getLevelQuestions. أي id غير موجود يُستبعَد
+ * بصمت (filter(Boolean)) — تحقّق العدد النهائي بعد أي تعديل على tracks.js.
  */
-export function getQuickTestQuestions(age) {
-  const isYoung = Number(age) > 0 && Number(age) < YOUNG_AGE_THRESHOLD;
-  return resolveIds(isYoung ? YOUNG_TIER_IDS : OLDER_TIER_IDS);
+export function resolveQuestionsByIds(ids) {
+  const pool = [...getLevelQuestions(1), ...getLevelQuestions(2)];
+  const byId = Object.fromEntries(pool.map(q => [q.id, q]));
+  return ids.map(id => byId[id]).filter(Boolean);
 }
