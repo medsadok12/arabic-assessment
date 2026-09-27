@@ -26,6 +26,7 @@ const CodesTab          = dynamic(() => import('../../components/admin/tabs/Code
 const SessionsTab       = dynamic(() => import('../../components/admin/tabs/SessionsTab'));
 const LexiconTab        = dynamic(() => import('../../components/admin/tabs/LexiconTab'));
 const AssessmentCmsTab  = dynamic(() => import('../../components/admin/tabs/AssessmentCmsTab'));
+const AnalyticsTab      = dynamic(() => import('../../components/admin/tabs/AnalyticsTab'));
 const TeacherPermissionsPanel = dynamic(() => import('../../components/admin/TeacherPermissionsPanel'));
 const RecruitmentTab    = dynamic(() => import('../../components/admin/tabs/RecruitmentTab'));
 const LogbookTab        = dynamic(() => import('../../components/admin/tabs/LogbookTab'));
@@ -1006,6 +1007,7 @@ export default function BoggarAdminPage() {
     { id: 'results',     label: tr('admin.tabs.results'),     show: canSee('results') },
     { id: 'lexicon',     label: tr('admin.tabs.lexicon'),     show: canSee('lexicon') },
     { id: 'assessment_cms', label: tr('admin.tabs.assessment_cms'), show: canSee('assessment_cms') },
+    { id: 'analytics',      label: tr('admin.tabs.analytics'),      show: canSee('analytics') },
     { id: 'recruitment', label: tr('admin.tabs.recruitment'), show: canSee('recruitment') },
     { id: 'simulator',   label: tr('admin.tabs.simulator'),   show: canSee('simulator') },
     { id: 'logbook',     label: tr('admin.tabs.logbook'),     show: isSuperAdmin },
@@ -1211,6 +1213,9 @@ export default function BoggarAdminPage() {
 
           {/* ══ Assessment CMS ════════════════════════════════════ */}
           {activeTab === 'assessment_cms' && <AssessmentCmsTab lang={lang} />}
+
+          {/* ══ Smart Analytics ═══════════════════════════════════ */}
+          {activeTab === 'analytics' && <AnalyticsTab />}
 
           {/* ══ Expression Theater ════════════════════════════════ */}
           {activeTab === 'simulator' && (
