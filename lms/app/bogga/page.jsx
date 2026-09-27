@@ -40,6 +40,14 @@ const VisitorQATab      = dynamic(() => import('../../components/admin/tabs/Visi
 const PuzzlesTab        = dynamic(() => import('../../components/admin/tabs/PuzzlesTab'));
 const SetupTab          = dynamic(() => import('../../components/admin/tabs/SetupTab'));
 
+// Sidebar accordion groups — which top-level tab ids nest under a collapsible
+// group header instead of showing as flat sidebar rows. Add more groups here
+// as the sidebar grows; each renders only if at least one child is visible
+// to the current admin (see sidebarNodes below).
+const SIDEBAR_GROUPS = [
+  { id: 'smart_assessments', icon: '🧠', children: ['assessment_cms', 'results', 'analytics'] },
+];
+
 // ════════════════════════════════════════════════════════════════════════════
 export default function BoggarAdminPage() {
   const supabase      = createClient();
@@ -49,6 +57,11 @@ export default function BoggarAdminPage() {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState('');
   const [tab,  setTab]  = useState('overview');
+
+  // Sidebar accordion groups (e.g. "التقييمات الذكية") — id -> is-open.
+  // A group auto-opens the moment its active child is being viewed (effect
+  // below) and otherwise keeps whatever the user last toggled it to.
+  const [openGroups, setOpenGroups] = useState({});
 
   // My permissions (non-super_admin only; null = loading, {} = no perms)
   const [myPermissions, setMyPermissions] = useState(null);
@@ -259,6 +272,14 @@ export default function BoggarAdminPage() {
     const url = new URL(window.location.href);
     url.searchParams.set('tab', tab);
     window.history.replaceState({}, '', url);
+  }, [tab]);
+
+  // ── فتح مجموعة القائمة الجانبية تلقائياً عند تصفّح أحد عناصرها ────────────
+  // لا تُغلق مجموعة مفتوحها المستخدم يدوياً — تفتح فقط، ولا تُلمس إن كانت
+  // مفتوحة أصلاً (الشرط الرابع من طلب الأستاذ محمد: الحفاظ على حالة الفتح).
+  useEffect(() => {
+    const g = SIDEBAR_GROUPS.find(g => g.children.includes(tab));
+    if (g) setOpenGroups(prev => prev[g.id] ? prev : { ...prev, [g.id]: true });
   }, [tab]);
 
   // ── Data loaders ──────────────────────────────────────────────────────────
@@ -1027,6 +1048,67 @@ export default function BoggarAdminPage() {
 
   const activeTab = TABS.some(t => t.id === tab) ? tab : TABS[0]?.id ?? 'overview';
 
+  // ── بناء عناصر القائمة الجانبية: تبويبات مسطّحة + مجموعات قابلة للطي ──────
+  // كل مجموعة تُحل مقابل TABS (بعد تصفية الصلاحيات أعلاه) فلا تظهر مجموعة
+  // فارغة لمشرف لا يملك صلاحية أي عنصر بداخلها.
+  const TABS_BY_ID = Object.fromEntries(TABS.map(t => [t.id, t]));
+  const groupedIds = new Set(SIDEBAR_GROUPS.flatMap(g => g.children));
+  const sidebarNodes = [];
+  const insertedGroups = new Set();
+  for (const t of TABS) {
+    if (groupedIds.has(t.id)) {
+      const group = SIDEBAR_GROUPS.find(g => g.children.includes(t.id));
+      if (insertedGroups.has(group.id)) continue;
+      const items = group.children.map(id => TABS_BY_ID[id]).filter(Boolean);
+      if (items.length > 0) {
+        sidebarNodes.push({
+          type: 'group', id: group.id, icon: group.icon,
+          label: lang === 'ar' ? 'التقييمات الذكية' : 'Smart Assessments',
+          items,
+        });
+      }
+      insertedGroups.add(group.id);
+      continue;
+    }
+    sidebarNodes.push({ type: 'tab', ...t });
+  }
+
+  // زر تبويب واحد (يُستخدم للعناصر المسطّحة ولعناصر داخل المجموعات معاً)
+  const renderTabBtn = (t, nested = false) => (
+    <div key={t.id} style={{ display: 'flex', alignItems: 'center' }}>
+      <button
+        className={activeTab === t.id ? '' : 'admin-tab-btn'}
+        onClick={() => setTab(t.id)}
+        style={{
+          flex: 1, display: 'flex', alignItems: 'center', gap: 8,
+          padding: nested ? '9px 13px' : '10px 13px',
+          marginInlineStart: nested ? 14 : 0,
+          borderRadius: 11, border: 'none', cursor: 'pointer',
+          fontFamily: 'inherit', fontSize: nested ? '.82rem' : '.875rem', fontWeight: 700,
+          background: activeTab === t.id ? 'var(--primary)' : 'transparent',
+          color: activeTab === t.id ? '#fff' : '#334155',
+          transition: 'all .15s', textAlign: 'inherit',
+          boxShadow: activeTab === t.id ? '0 2px 10px rgba(24,95,165,.28)' : 'none',
+        }}>
+        {t.label}
+      </button>
+      {isSuperAdmin && CONTROLLABLE.includes(t.id) && (
+        <button
+          onClick={e => openPermPopover(t.id, e)}
+          className="perm-icon"
+          title={`${lang === 'ar' ? 'إدارة صلاحيات' : 'Permissions'}: "${(lang === 'ar' ? TAB_NAMES : TAB_NAMES_EN)[t.id]}"`}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px',
+            fontSize: '.68rem', lineHeight: 1,
+            color: activeTab === t.id ? 'rgba(255,255,255,.5)' : '#c4cdd8',
+            flexShrink: 0,
+          }}>
+          🔒
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <>
       <style>{`
@@ -1077,6 +1159,10 @@ export default function BoggarAdminPage() {
 
           /* Hide permission lock icons on mobile — not actionable on small screens */
           .admin-sidebar .perm-icon { display: none !important; }
+
+          /* Accordion group: spans both grid columns so its expanded children
+             get a full-width row instead of being cramped into one cell */
+          .admin-sidebar-nav > .admin-sidebar-group { grid-column: 1 / -1 !important; }
 
           /* Ensure content area doesn't overflow screen */
           .admin-layout > div:last-child {
@@ -1138,35 +1224,30 @@ export default function BoggarAdminPage() {
 
             {/* Tab buttons */}
             <div className="admin-sidebar-nav" style={{ padding: '8px 6px', display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-              {TABS.map(t => (
-                <div key={t.id} style={{ display: 'flex', alignItems: 'center' }}>
+              {sidebarNodes.map(node => node.type === 'tab' ? (
+                renderTabBtn(node)
+              ) : (
+                <div key={node.id} className="admin-sidebar-group" style={{ display: 'flex', flexDirection: 'column' }}>
                   <button
-                    className={activeTab === t.id ? '' : 'admin-tab-btn'}
-                    onClick={() => setTab(t.id)}
+                    onClick={() => setOpenGroups(prev => ({ ...prev, [node.id]: !prev[node.id] }))}
+                    className="admin-tab-btn"
                     style={{
-                      flex: 1, display: 'flex', alignItems: 'center', gap: 8,
+                      display: 'flex', alignItems: 'center', gap: 8, width: '100%',
                       padding: '10px 13px', borderRadius: 11, border: 'none', cursor: 'pointer',
                       fontFamily: 'inherit', fontSize: '.875rem', fontWeight: 700,
-                      background: activeTab === t.id ? 'var(--primary)' : 'transparent',
-                      color: activeTab === t.id ? '#fff' : '#334155',
-                      transition: 'all .15s', textAlign: 'inherit',
-                      boxShadow: activeTab === t.id ? '0 2px 10px rgba(24,95,165,.28)' : 'none',
+                      background: 'transparent', color: '#334155', textAlign: 'inherit',
                     }}>
-                    {t.label}
+                    <span style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>{node.icon}</span>{node.label}
+                    </span>
+                    <span style={{ fontSize: '.7rem', color: '#94a3b8', transition: 'transform .15s', transform: openGroups[node.id] ? 'rotate(180deg)' : 'none' }}>
+                      ▾
+                    </span>
                   </button>
-                  {isSuperAdmin && CONTROLLABLE.includes(t.id) && (
-                    <button
-                      onClick={e => openPermPopover(t.id, e)}
-                      className="perm-icon"
-                      title={`${lang === 'ar' ? 'إدارة صلاحيات' : 'Permissions'}: "${(lang === 'ar' ? TAB_NAMES : TAB_NAMES_EN)[t.id]}"`}
-                      style={{
-                        background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px',
-                        fontSize: '.68rem', lineHeight: 1,
-                        color: activeTab === t.id ? 'rgba(255,255,255,.5)' : '#c4cdd8',
-                        flexShrink: 0,
-                      }}>
-                      🔒
-                    </button>
+                  {openGroups[node.id] && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
+                      {node.items.map(t => renderTabBtn(t, true))}
+                    </div>
                   )}
                 </div>
               ))}
