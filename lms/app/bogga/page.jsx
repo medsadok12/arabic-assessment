@@ -28,6 +28,7 @@ const LexiconTab        = dynamic(() => import('../../components/admin/tabs/Lexi
 const AssessmentCmsTab  = dynamic(() => import('../../components/admin/tabs/AssessmentCmsTab'));
 const AnalyticsTab      = dynamic(() => import('../../components/admin/tabs/AnalyticsTab'));
 const LeadsTab          = dynamic(() => import('../../components/admin/tabs/LeadsTab'));
+const QuicktestCmsTab   = dynamic(() => import('../../components/admin/tabs/QuicktestCmsTab'));
 const TeacherPermissionsPanel = dynamic(() => import('../../components/admin/TeacherPermissionsPanel'));
 const RecruitmentTab    = dynamic(() => import('../../components/admin/tabs/RecruitmentTab'));
 const LogbookTab        = dynamic(() => import('../../components/admin/tabs/LogbookTab'));
@@ -46,7 +47,8 @@ const SetupTab          = dynamic(() => import('../../components/admin/tabs/Setu
 // as the sidebar grows; each renders only if at least one child is visible
 // to the current admin (see sidebarNodes below).
 const SIDEBAR_GROUPS = [
-  { id: 'smart_assessments', icon: '🧠', children: ['assessment_cms', 'results', 'analytics'] },
+  { id: 'smart_assessments', icon: '🧠', label_ar: 'التقييمات الذكية', label_en: 'Smart Assessments', children: ['assessment_cms', 'results', 'analytics'] },
+  { id: 'marketing_funnel',  icon: '📈', label_ar: 'القمع التسويقي',   label_en: 'Marketing Funnel',   children: ['leads', 'quicktest_cms'] },
 ];
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1024,6 +1026,7 @@ export default function BoggarAdminPage() {
   const TABS = [
     { id: 'overview',    label: tr('admin.tabs.overview'),    show: canSee('overview') },
     { id: 'leads',       label: tr('admin.tabs.leads'),       show: canSee('leads') },
+    { id: 'quicktest_cms', label: tr('admin.tabs.quicktest_cms'), show: canSee('quicktest_cms') },
     { id: 'codes',       label: tr('admin.tabs.codes'),       show: canSee('codes') },
     { id: 'groups',      label: tr('admin.tabs.groups'),      show: canSee('groups') },
     { id: 'sessions',    label: tr('admin.tabs.sessions'),    show: canSee('sessions') },
@@ -1065,7 +1068,7 @@ export default function BoggarAdminPage() {
       if (items.length > 0) {
         sidebarNodes.push({
           type: 'group', id: group.id, icon: group.icon,
-          label: lang === 'ar' ? 'التقييمات الذكية' : 'Smart Assessments',
+          label: lang === 'ar' ? group.label_ar : group.label_en,
           items,
         });
       }
@@ -1302,6 +1305,9 @@ export default function BoggarAdminPage() {
 
           {/* ══ Marketing Leads ═══════════════════════════════════ */}
           {activeTab === 'leads' && <LeadsTab />}
+
+          {/* ══ Quicktest CMS ═══════════════════════════════════════ */}
+          {activeTab === 'quicktest_cms' && <QuicktestCmsTab />}
 
           {/* ══ Expression Theater ════════════════════════════════ */}
           {activeTab === 'simulator' && (

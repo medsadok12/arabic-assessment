@@ -1,27 +1,50 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import '../App.css';
-import { QUESTIONS, computeLevel } from './blueprint.js';
+import { QUESTIONS as FALLBACK_QUESTIONS, LEVELS as FALLBACK_LEVELS, DEFAULT_WHATSAPP_TEMPLATE } from './blueprint.js';
+import { getQuicktestData } from './fetchQuicktestData.js';
+import { pickLevelByScore } from './pickLevel.js';
 import QuickQuestion from './QuickQuestion.jsx';
 import LeadGate from './LeadGate.jsx';
 
-const PAGES = { START: 'start', ASSESSMENT: 'assessment', GATE: 'gate', RESULT: 'result' };
+const PAGES = { LOADING: 'loading', START: 'start', ASSESSMENT: 'assessment', GATE: 'gate', RESULT: 'result' };
 
 /**
  * تدفق مستقل تماماً عن App.jsx — قمع تسويقي عام بلا كود تقييم (راجع
- * quickTestMode.js)، اختبار واحد موحّد (15 سؤالاً ثابتاً، blueprint.js)
- * يتدرج من البراعم إلى المبدعين لكل زائر بلا استثناء — لا تفريع حسب عمر
- * الطفل (العمر يُجمَع كبيانات عميل محتمل فقط). المستوى يُحدَّد لاحقاً من
- * نقطة تعثّر الإجابات (computeLevel)، ثم بوابة تواصل ولي الأمر قبل عرض
- * تقرير وصفي (لا نسبة مئوية) يوصي ببرنامج محدد.
+ * quickTestMode.js). الأسئلة/المستويات/قالب واتساب تُجلب ديناميكياً من
+ * لوحة bogga (تبويب "إدارة الاختبار الترويجي") عبر fetchQuicktestData —
+ * مع سقوط تلقائي وصامت لمحتوى blueprint.js الثابت عند أي فشل، فلا يتعطل
+ * القمع أمام أي زائر مهما حدث لقاعدة البيانات (نفس فلسفة بنك التقييم
+ * الحقيقي الثابت في src/data/questions.js).
+ *
+ * المستوى النهائي يُحدَّد من عدد الإجابات الصحيحة مقابل نطاق [أدنى,أعلى]
+ * قابل للتعديل لكل مستوى (pickLevelByScore) — لا من موضع الأسئلة، لأن
+ * الأسئلة نفسها قابلة للتعديل من نفس اللوحة.
  */
 export default function QuickTestApp() {
-  const [page, setPage]               = useState(PAGES.START);
+  const [page, setPage]               = useState(PAGES.LOADING);
+  const [questions, setQuestions]     = useState(FALLBACK_QUESTIONS);
+  const [levels, setLevels]           = useState(FALLBACK_LEVELS);
+  const [waTemplate, setWaTemplate]   = useState(DEFAULT_WHATSAPP_TEMPLATE);
   const [childName, setChildName]     = useState('');
   const [childAge, setChildAge]       = useState('');
   const [startError, setStartError]   = useState('');
   const [questionIdx, setQuestionIdx] = useState(0);
   const [answers, setAnswers]         = useState([]);
   const [level, setLevel]             = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getQuicktestData().then(data => {
+      if (cancelled) return;
+      if (data.source === 'database') {
+        setQuestions(data.questions);
+        setLevels(data.levels);
+        if (data.whatsappTemplate) setWaTemplate(data.whatsappTemplate);
+      }
+      setPage(PAGES.START);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   function handleStart() {
     if (!childName.trim() || !childAge) {
@@ -40,18 +63,19 @@ export default function QuickTestApp() {
 
   function handleAnswer(isCorrect) {
     const updated = [...answers, { isCorrect }];
-    if (questionIdx + 1 < QUESTIONS.length) {
+    if (questionIdx + 1 < questions.length) {
       setAnswers(updated);
       setQuestionIdx(i => i + 1);
       return;
     }
-    setLevel(computeLevel(updated));
+    const correctCount = updated.filter(a => a.isCorrect).length;
+    setLevel(pickLevelByScore(correctCount, levels));
     setPage(PAGES.GATE);
   }
 
   const progressPct = page === PAGES.ASSESSMENT
-    ? Math.round((questionIdx / QUESTIONS.length) * 100)
-    : (page === PAGES.START ? 0 : 100);
+    ? Math.round((questionIdx / questions.length) * 100)
+    : (page === PAGES.START || page === PAGES.LOADING ? 0 : 100);
 
   return (
     <div className="app">
@@ -66,7 +90,7 @@ export default function QuickTestApp() {
         </div>
       </header>
 
-      {page !== PAGES.START && (
+      {page !== PAGES.START && page !== PAGES.LOADING && (
         <div className="global-progress">
           <div className="gp-info">
             <span>التقدم</span>
@@ -79,11 +103,17 @@ export default function QuickTestApp() {
       )}
 
       <main className="app-main">
+        {page === PAGES.LOADING && (
+          <div className="page-content" style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <div className="spinner" style={{ margin: '0 auto 16px' }} />
+          </div>
+        )}
+
         {page === PAGES.START && (
           <div className="page-content">
             <h2 className="page-title">اختبار تحديد المستوى المجاني</h2>
             <p className="page-subtitle">
-              15 سؤالاً ممتعاً ومتدرجاً (حوالي 5 دقائق) لمعرفة مستوى طفلك الحالي في اللغة العربية فوراً — بلا أي التزام.
+              أسئلة بسيطة وممتعة ومتدرجة (بضع دقائق) لمعرفة مستوى طفلك الحالي في اللغة العربية فوراً — بلا أي التزام.
             </p>
             <div className="form-group">
               <label>اسم الطفل *</label>
@@ -101,9 +131,9 @@ export default function QuickTestApp() {
         {page === PAGES.ASSESSMENT && (
           <QuickQuestion
             key={questionIdx}
-            question={QUESTIONS[questionIdx]}
+            question={questions[questionIdx]}
             questionNumber={questionIdx + 1}
-            total={QUESTIONS.length}
+            total={questions.length}
             onAnswer={handleAnswer}
           />
         )}
@@ -112,14 +142,14 @@ export default function QuickTestApp() {
           <LeadGate
             childName={childName}
             childAge={+childAge}
-            score={Math.round((answers.filter(a => a.isCorrect).length / QUESTIONS.length) * 100)}
+            score={Math.round((answers.filter(a => a.isCorrect).length / questions.length) * 100)}
             levelLabel={level.label}
             onDone={() => setPage(PAGES.RESULT)}
           />
         )}
 
         {page === PAGES.RESULT && level && (
-          <QuickTestResult childName={childName} level={level} />
+          <QuickTestResult childName={childName} level={level} waTemplate={waTemplate} />
         )}
       </main>
     </div>
@@ -131,8 +161,12 @@ export default function QuickTestApp() {
  * الأستاذ محمد: بطاقة بسيطة وواضحة (نقاط القوة + التوصية + برنامج محدد)
  * تدفع ولي الأمر للتواصل فوراً، لا جدول أرقام تقني.
  */
-function QuickTestResult({ childName, level }) {
-  const waText = `مرحباً أستاذ، أكمل طفلي ${childName} التقييم وأود الاستفسار عن ${level.program}`;
+function QuickTestResult({ childName, level, waTemplate }) {
+  const waText = waTemplate
+    .replaceAll('{childName}', childName)
+    .replaceAll('{program}', level.program)
+    .replaceAll('{المستوى}', level.label)
+    .replaceAll('{level}', level.label);
 
   return (
     <div className="page-content">

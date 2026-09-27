@@ -14,18 +14,20 @@ export const TIME_SLOTS = Array.from({ length: 288 }, (_, i) => {
 });
 
 // ── Tabs that assistant admins can be granted access to ─────────────────────
-export const CONTROLLABLE = ['overview', 'codes', 'groups', 'sessions', 'results', 'lexicon', 'recruitment', 'simulator', 'setup', 'assessment_cms', 'analytics', 'leads'];
+export const CONTROLLABLE = ['overview', 'codes', 'groups', 'sessions', 'results', 'lexicon', 'recruitment', 'simulator', 'setup', 'assessment_cms', 'analytics', 'leads', 'quicktest_cms'];
 export const TAB_NAMES = {
   overview: 'نظرة عامة', codes: 'الأكواد', groups: 'إدارة الطلاب',
   sessions: 'الحصص', results: 'نتائج الطلاب', lexicon: 'بنك الكلمات',
   recruitment: 'طلبات التوظيف', simulator: 'مسرح التعبير', setup: 'الإعداد',
   assessment_cms: 'إدارة التقييمات', analytics: 'تحليلات ذكية', leads: 'العملاء المحتملون',
+  quicktest_cms: 'إدارة الاختبار الترويجي',
 };
 export const TAB_NAMES_EN = {
   overview: 'Overview', codes: 'Codes', groups: 'Students',
   sessions: 'Sessions', results: 'Results', lexicon: 'Word Bank',
   recruitment: 'Job Applications', simulator: 'Expression Theater', setup: 'Setup',
   assessment_cms: 'Assessment CMS', analytics: 'Smart Analytics', leads: 'Leads',
+  quicktest_cms: 'Promo Quiz Manager',
 };
 
 // ── Arabic month names ──────────────────────────────────────────────────────

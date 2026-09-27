@@ -16,7 +16,21 @@ const SELECT_DELAY_MS = 450;
  */
 export default function QuickQuestion({ question, questionNumber, total, onAnswer }) {
   const [selected, setSelected] = useState(null);
-  const { playing, playOnce } = useTTSPlayer();
+  const [fileAudioPlaying, setFileAudioPlaying] = useState(false);
+  const { playing: ttsPlaying, playOnce } = useTTSPlayer();
+
+  // ملف صوتي مرفوع فعلياً (audioUrl، من لوحة الإدارة) له أولوية على النطق
+  // الآلي (audioPrompt عبر TTS) — صوت بشري حقيقي أدفأ لطفل صغير من TTS.
+  const playing = fileAudioPlaying || ttsPlaying;
+
+  function playAudioFile() {
+    if (fileAudioPlaying) return;
+    setFileAudioPlaying(true);
+    const audio = new Audio(question.audioUrl);
+    audio.onended = () => setFileAudioPlaying(false);
+    audio.onerror = () => setFileAudioPlaying(false);
+    audio.play().catch(() => setFileAudioPlaying(false));
+  }
 
   function handleSelect(idx) {
     if (selected !== null) return;
@@ -41,16 +55,20 @@ export default function QuickQuestion({ question, questionNumber, total, onAnswe
         </div>
       )}
 
-      {question.promptEmoji && (
+      {question.imageUrl ? (
+        <div style={{ textAlign: 'center', marginBottom: 14 }}>
+          <img src={question.imageUrl} alt="" style={{ maxWidth: '100%', maxHeight: 180, borderRadius: 12 }} />
+        </div>
+      ) : question.promptEmoji && (
         <div style={{ textAlign: 'center', fontSize: '3.4rem', marginBottom: 10 }}>
           {question.promptEmoji}
         </div>
       )}
 
-      {question.audioPrompt && (
+      {(question.audioUrl || question.audioPrompt) && (
         <div style={{ textAlign: 'center', margin: '4px 0 20px' }}>
           <button
-            onClick={() => playOnce(question.audioPrompt)}
+            onClick={() => question.audioUrl ? playAudioFile() : playOnce(question.audioPrompt)}
             disabled={playing}
             style={{
               background: playing ? '#b3a8d6' : 'var(--primary)', color: '#fff', border: 'none',
