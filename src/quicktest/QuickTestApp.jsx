@@ -6,7 +6,6 @@ import { calculateLevelScore } from '../utils/scoring.js';
 import { levelFromScore } from './levelLabel.js';
 import LeadGate from './LeadGate.jsx';
 
-const QUESTIONS = getQuickTestQuestions();
 const PAGES = { START: 'start', ASSESSMENT: 'assessment', GATE: 'gate', RESULT: 'result' };
 
 /**
@@ -15,12 +14,18 @@ const PAGES = { START: 'start', ASSESSMENT: 'assessment', GATE: 'gate', RESULT: 
  * ولا منطق ترقية/إنزال)، ثم بوابة تواصل ولي الأمر قبل عرض النتيجة.
  * يُعاد استخدام Assessment.jsx كما هو (يقبل أي مصفوفة أسئلة مسطّحة) —
  * لا تكرار لمنطق عرض الأسئلة/الأنواع الثلاثة والعشرين.
+ *
+ * قائمة الأسئلة تُحسَب فقط بعد إدخال عمر الطفل في handleStart (لا كثابت
+ * وحدة) — راجع quickTestQuestions.js: مسار ثابت مختلف لكل فئة عمرية، لا
+ * عشوائية إطلاقاً (طلب تربوي صريح: سحب عشوائي قد يُظهر سؤالاً متقدماً
+ * لطفل مبتدئ فيُحبَط ويغادر قبل بوابة التواصل).
  */
 export default function QuickTestApp() {
   const [page, setPage]               = useState(PAGES.START);
   const [childName, setChildName]     = useState('');
   const [childAge, setChildAge]       = useState('');
   const [startError, setStartError]   = useState('');
+  const [questions, setQuestions]     = useState([]);
   const [questionIdx, setQuestionIdx] = useState(0);
   const [scores, setScores]           = useState(null);
 
@@ -34,11 +39,13 @@ export default function QuickTestApp() {
       return;
     }
     setStartError('');
+    setQuestions(getQuickTestQuestions(+childAge));
+    setQuestionIdx(0);
     setPage(PAGES.ASSESSMENT);
   }
 
   const progressPct = page === PAGES.ASSESSMENT
-    ? Math.round((questionIdx / QUESTIONS.length) * 100)
+    ? Math.round((questionIdx / questions.length) * 100)
     : (page === PAGES.START ? 0 : 100);
 
   const lvl = scores ? levelFromScore(scores.overall) : null;
@@ -90,6 +97,7 @@ export default function QuickTestApp() {
 
         {page === PAGES.ASSESSMENT && (
           <QuestionRunner
+            questions={questions}
             childName={childName}
             childAge={+childAge}
             questionIdx={questionIdx}
@@ -122,19 +130,19 @@ export default function QuickTestApp() {
 /** يحمل مصفوفة الإجابات المتراكمة داخلياً (بمعزل عن حالة الصفحة الأعلى)
  *  ويستدعي onAdvance/onFinish عند كل إجابة — يبسّط QuickTestApp أعلاه من
  *  الحاجة لتمرير/تجميع answers يدوياً عبر كل إعادة رسم. */
-function QuestionRunner({ childName, childAge, questionIdx, onAdvance, onFinish }) {
+function QuestionRunner({ questions, childName, childAge, questionIdx, onAdvance, onFinish }) {
   const [answers] = useState(() => ({ list: [] }));
 
   function handleAnswer(answerObj) {
     answers.list.push(answerObj);
-    if (questionIdx + 1 < QUESTIONS.length) onAdvance();
+    if (questionIdx + 1 < questions.length) onAdvance();
     else onFinish(answers.list);
   }
 
   return (
     <Assessment
       key={questionIdx}
-      questions={QUESTIONS}
+      questions={questions}
       currentLevel={1}
       questionIndex={questionIdx}
       studentInfo={{ name: childName, age: childAge, type: 'native' }}
