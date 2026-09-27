@@ -27,6 +27,7 @@ const SessionsTab       = dynamic(() => import('../../components/admin/tabs/Sess
 const LexiconTab        = dynamic(() => import('../../components/admin/tabs/LexiconTab'));
 const AssessmentCmsTab  = dynamic(() => import('../../components/admin/tabs/AssessmentCmsTab'));
 const AnalyticsTab      = dynamic(() => import('../../components/admin/tabs/AnalyticsTab'));
+const LeadsTab          = dynamic(() => import('../../components/admin/tabs/LeadsTab'));
 const TeacherPermissionsPanel = dynamic(() => import('../../components/admin/TeacherPermissionsPanel'));
 const RecruitmentTab    = dynamic(() => import('../../components/admin/tabs/RecruitmentTab'));
 const LogbookTab        = dynamic(() => import('../../components/admin/tabs/LogbookTab'));
@@ -1022,6 +1023,7 @@ export default function BoggarAdminPage() {
   const canSee = id => isSuperAdmin || (CONTROLLABLE.includes(id) && myPermissions[id] === true);
   const TABS = [
     { id: 'overview',    label: tr('admin.tabs.overview'),    show: canSee('overview') },
+    { id: 'leads',       label: tr('admin.tabs.leads'),       show: canSee('leads') },
     { id: 'codes',       label: tr('admin.tabs.codes'),       show: canSee('codes') },
     { id: 'groups',      label: tr('admin.tabs.groups'),      show: canSee('groups') },
     { id: 'sessions',    label: tr('admin.tabs.sessions'),    show: canSee('sessions') },
@@ -1297,6 +1299,9 @@ export default function BoggarAdminPage() {
 
           {/* ══ Smart Analytics ═══════════════════════════════════ */}
           {activeTab === 'analytics' && <AnalyticsTab />}
+
+          {/* ══ Marketing Leads ═══════════════════════════════════ */}
+          {activeTab === 'leads' && <LeadsTab />}
 
           {/* ══ Expression Theater ════════════════════════════════ */}
           {activeTab === 'simulator' && (

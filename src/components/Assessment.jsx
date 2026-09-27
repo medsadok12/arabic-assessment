@@ -23,7 +23,7 @@ import ListenSpeak          from './ListenSpeak.jsx';
 import ListeningComprehension from './ListeningComprehension.jsx';
 import DialogueOrder        from './DialogueOrder.jsx';
 
-export default function Assessment({ questions, currentLevel, questionIndex, studentInfo, streak = 0, onAnswer }) {
+export default function Assessment({ questions, currentLevel, questionIndex, studentInfo, streak = 0, onAnswer, headerLabel }) {
   const [selected, setSelected] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
   // يُظهَر مرة واحدة عند الوصول لكل مضاعف من 3 (Assessment يُعاد تركيبه بالكامل
@@ -106,7 +106,7 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
         {showStreakToast && <StreakToast streak={streak} />}
         <div className="assessment-header">
           <div className="level-badge">
-            {levelInfo?.icon} المستوى {currentLevel} — {levelInfo?.name}
+            {headerLabel ?? `${levelInfo?.icon} المستوى ${currentLevel} — ${levelInfo?.name}`}
           </div>
           {streak > 0 && <StreakBadge streak={streak} />}
           <div className="question-counter">{questionIndex + 1} / {total}</div>
@@ -127,7 +127,7 @@ export default function Assessment({ questions, currentLevel, questionIndex, stu
       {showStreakToast && <StreakToast streak={streak} />}
       <div className="assessment-header">
         <div className="level-badge">
-          {levelInfo?.icon} المستوى {currentLevel} — {levelInfo?.name}
+          {headerLabel ?? `${levelInfo?.icon} المستوى ${currentLevel} — ${levelInfo?.name}`}
         </div>
         {streak > 0 && <StreakBadge streak={streak} />}
         <div className="question-counter">

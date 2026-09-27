@@ -6,6 +6,7 @@ const ICONS = {
   recruitment:       '📋',
   interview:         '🗓️',
   assessment:        '📝',
+  lead:              '🎯',
   teacher:           '👨‍🏫',
   session:           '📅',
   space_post:        '🏫',
