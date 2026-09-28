@@ -147,7 +147,13 @@ export default function LeadsTab() {
  * يكمّل القائمة التفصيلية أسفله، لا يستبدلها.
  */
 function LeadDetailsModal({ lead, onClose }) {
-  const answers = Array.isArray(lead.answers) ? lead.answers : [];
+  const allAnswers = Array.isArray(lead.answers) ? lead.answers : [];
+  // السؤال الافتتاحي (AlphabetGridAssessment.jsx) ليس MCQ عادياً — يحمل
+  // type:'alphabet-grid' بدل isCorrect/chosenText، ويُعرَض كقسم منفصل
+  // (قائمتا حروف) بدل صف سؤال/إجابة عادي. يُستبعَد من حساب المهارات
+  // المتقنة/الضعيفة أدناه (لا isCorrect له، ولا معنى لعدّه ضمنها).
+  const alphabet = allAnswers.find(a => a.type === 'alphabet-grid');
+  const answers  = allAnswers.filter(a => a.type !== 'alphabet-grid');
   const mastered   = answers.filter(a => a.isCorrect && a.skillTag);
   const needsHelp  = answers.filter(a => !a.isCorrect && a.skillTag);
 
@@ -185,6 +191,30 @@ function LeadDetailsModal({ lead, onClose }) {
             </div>
           </div>
         </div>
+
+        {alphabet && (
+          <div style={{ marginBottom: 18 }}>
+            <div className="dash-section-title" style={{ marginBottom: 10 }}>🔤 التعرف على الحروف الأبجدية (السؤال الافتتاحي)</div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 220px', background: '#eafbf3', border: '1px solid #bbf3d8', borderRadius: 10, padding: '12px 14px' }}>
+                <div style={{ fontWeight: 800, color: '#065f46', fontSize: '.85rem', marginBottom: 6 }}>
+                  حروف قرأها بنجاح ({alphabet.masteredLetters?.length ?? 0})
+                </div>
+                <div style={{ fontSize: '1.3rem', lineHeight: 1.8 }}>
+                  {alphabet.masteredLetters?.length ? alphabet.masteredLetters.join('، ') : <span style={{ fontSize: '.8rem', color: '#065f46' }}>لا شيء بعد</span>}
+                </div>
+              </div>
+              <div style={{ flex: '1 1 220px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '12px 14px' }}>
+                <div style={{ fontWeight: 800, color: '#92400e', fontSize: '.85rem', marginBottom: 6 }}>
+                  حروف تحتاج مراجعة ({alphabet.needsReviewLetters?.length ?? 0})
+                </div>
+                <div style={{ fontSize: '1.3rem', lineHeight: 1.8 }}>
+                  {alphabet.needsReviewLetters?.length ? alphabet.needsReviewLetters.join('، ') : <span style={{ fontSize: '.8rem', color: '#92400e' }}>لا شيء — أداء ممتاز!</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="dash-section-title" style={{ marginBottom: 10 }}>📝 كل الأسئلة والإجابات</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

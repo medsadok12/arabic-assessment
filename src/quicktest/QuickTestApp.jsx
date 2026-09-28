@@ -5,9 +5,10 @@ import { getQuicktestData } from './fetchQuicktestData.js';
 import { pickLevelByScore } from './pickLevel.js';
 import { isQuickTestAdminPreview, QUICK_TEST_PREVIEW_STUDENT } from './quickTestMode.js';
 import QuickQuestion from './QuickQuestion.jsx';
+import AlphabetGridAssessment from './AlphabetGridAssessment.jsx';
 import LeadGate from './LeadGate.jsx';
 
-const PAGES = { LOADING: 'loading', START: 'start', ASSESSMENT: 'assessment', GATE: 'gate', RESULT: 'result' };
+const PAGES = { LOADING: 'loading', START: 'start', ALPHABET: 'alphabet', ASSESSMENT: 'assessment', GATE: 'gate', RESULT: 'result' };
 
 // يُحسَب مرة واحدة عند تحميل الصفحة (لا يتغيّر أثناء الجلسة) — نفس نمط
 // adminPreviewLevel في App.jsx الحقيقي.
@@ -46,7 +47,8 @@ export default function QuickTestApp() {
         setLevels(data.levels);
         if (data.whatsappTemplate) setWaTemplate(data.whatsappTemplate);
       }
-      // معاينة المشرف: تخطَّ شاشة بيانات البداية بالكامل وابدأ الاختبار فوراً.
+      // معاينة المشرف: تخطَّ شاشة بيانات البداية وتدريب الحروف الافتتاحي
+      // بالكامل (مكوّن ثابت لا تديره لوحة CMS) وابدأ بالأسئلة المُدارة فوراً.
       setPage(adminPreview ? PAGES.ASSESSMENT : PAGES.START);
     });
     return () => { cancelled = true; };
@@ -63,6 +65,12 @@ export default function QuickTestApp() {
     }
     setStartError('');
     setAnswers([]);
+    setQuestionIdx(0);
+    setPage(PAGES.ALPHABET);
+  }
+
+  function handleAlphabetComplete(detail) {
+    setAnswers(prev => [...prev, detail]);
     setQuestionIdx(0);
     setPage(PAGES.ASSESSMENT);
   }
@@ -103,7 +111,7 @@ export default function QuickTestApp() {
         </div>
       </header>
 
-      {page !== PAGES.START && page !== PAGES.LOADING && (
+      {page !== PAGES.START && page !== PAGES.LOADING && page !== PAGES.ALPHABET && (
         <div className="global-progress">
           <div className="gp-info">
             <span>التقدم</span>
@@ -139,6 +147,10 @@ export default function QuickTestApp() {
             {startError && <div className="error-msg">⚠️ {startError}</div>}
             <button className="btn-primary" onClick={handleStart}>ابدأ الاختبار ←</button>
           </div>
+        )}
+
+        {page === PAGES.ALPHABET && (
+          <AlphabetGridAssessment onComplete={handleAlphabetComplete} />
         )}
 
         {page === PAGES.ASSESSMENT && (
