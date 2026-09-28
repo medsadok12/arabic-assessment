@@ -1,29 +1,39 @@
 import { useState } from 'react';
-
-const LETTERS = ['ا','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي'];
+import { ALPHABET_LETTERS, DEFAULT_ALPHABET_TITLE, DEFAULT_ALPHABET_SUBTITLE } from './blueprint.js';
 
 const STATE = { DEFAULT: 0, KNOWN: 1, NEEDS_PRACTICE: 2 };
 
 /**
  * السؤال الافتتاحي المخصص لتقييم "التعرف على الحروف الأبجدية" — أول خطوة
  * فعلية في الاختبار الترويجي (بعد نموذج بيانات الطفل، قبل الأسئلة الـ15
- * القادمة من لوحة الإدارة/blueprint.js). مكوّن ثابت في الكود (لا يُدار من
- * bogga) بقرار مقصود: شكله (شبكة 28 حرفاً بحالة ثلاثية لكل بطاقة) مختلف
- * جذرياً عن بنية MCQ القياسية في quicktest_questions، فلا فائدة من تعميمه
- * على نظام إدارة الأسئلة الحالي.
+ * القادمة من لوحة الإدارة). الحروف/العنوان/النص الفرعي أصبحت قابلة للتعديل
+ * من لوحة bogga (تبويب "إدارة الاختبار الترويجي" → قسم "🔤 تمرين الحروف")
+ * وتُمرَّر كـprops من QuickTestApp.jsx — القيم الافتراضية هنا (من
+ * blueprint.js) نسخة احتياطية فقط عند أي فشل في القراءة من قاعدة البيانات.
+ * الحالة الثلاثية لكل بطاقة تبقى منطقاً ثابتاً في الكود (لا تُدار من CMS)
+ * لأن شكلها مختلف جذرياً عن بنية MCQ القياسية في quicktest_questions.
+ *
+ * الحالة تُخزَّن بموضع الحرف (index) لا نصّه — لو أضاف الأستاذ محمد حرفاً
+ * مكرَّراً من اللوحة (نظرياً ممكن، لا قيد فريد على العمود) لا تتصادم حالتا
+ * الحرفين على نفس المفتاح كما كان سيحدث مع التخزين بالنص.
  *
  * قاعدة "صفر إحباط" مطبَّقة هنا بأقصى درجة، بطلب صريح من الأستاذ محمد: لا
  * علامة ❌ ولا اللون الأحمر إطلاقاً في أي حالة — "لم يعرفه الطفل" تُعرَض
  * كبطاقة باهتة (شفافية 50%) بلا أي أيقونة، لا كإشارة خطأ.
  */
-export default function AlphabetGridAssessment({ onComplete }) {
-  const [states, setStates] = useState(() => Object.fromEntries(LETTERS.map(l => [l, STATE.DEFAULT])));
+export default function AlphabetGridAssessment({
+  letters = ALPHABET_LETTERS,
+  title = DEFAULT_ALPHABET_TITLE,
+  subtitle = DEFAULT_ALPHABET_SUBTITLE,
+  onComplete,
+}) {
+  const [states, setStates] = useState(() => letters.map(() => STATE.DEFAULT));
 
-  const assignedCount = Object.values(states).filter(s => s !== STATE.DEFAULT).length;
-  const allAssigned = assignedCount === LETTERS.length;
+  const assignedCount = states.filter(s => s !== STATE.DEFAULT).length;
+  const allAssigned = assignedCount === letters.length;
 
-  function cycleLetter(letter) {
-    setStates(prev => ({ ...prev, [letter]: (prev[letter] + 1) % 3 }));
+  function cycleLetter(idx) {
+    setStates(prev => prev.map((s, i) => i === idx ? (s + 1) % 3 : s));
   }
 
   function buildResult(finalStates) {
@@ -31,18 +41,15 @@ export default function AlphabetGridAssessment({ onComplete }) {
       type: 'alphabet-grid',
       questionId: 'alphabet-grid',
       skillTag: 'التعرف على الحروف الأبجدية',
-      masteredLetters: LETTERS.filter(l => finalStates[l] === STATE.KNOWN),
-      needsReviewLetters: LETTERS.filter(l => finalStates[l] === STATE.NEEDS_PRACTICE),
+      masteredLetters: letters.filter((_, i) => finalStates[i] === STATE.KNOWN),
+      needsReviewLetters: letters.filter((_, i) => finalStates[i] === STATE.NEEDS_PRACTICE),
     };
   }
 
   // زر الإكمال السريع: يُحدِّد أي حرف لم يُلمَس بعد كـ"يحتاج تدريباً" وينتقل
   // فوراً — اختصار عند توقف الطفل عن الاستجابة، لا يحتاج ضغطة تأكيد ثانية.
   function markRestAndContinue() {
-    const finalStates = { ...states };
-    for (const letter of LETTERS) {
-      if (finalStates[letter] === STATE.DEFAULT) finalStates[letter] = STATE.NEEDS_PRACTICE;
-    }
+    const finalStates = states.map(s => s === STATE.DEFAULT ? STATE.NEEDS_PRACTICE : s);
     onComplete(buildResult(finalStates));
   }
 
@@ -56,10 +63,10 @@ export default function AlphabetGridAssessment({ onComplete }) {
         السؤال الافتتاحي
       </p>
       <h2 className="page-title" style={{ fontSize: '1.15rem', marginBottom: 8 }}>
-        🔤 هل يعرف طفلك هذه الحروف؟
+        {title}
       </h2>
       <p className="page-subtitle" style={{ marginBottom: 18 }}>
-        اطلب من طفلك قراءة كل حرف بصوت عالٍ، ثم اضغط على الحرف حسب إجابته. اضغط مرة أخرى لتغيير التقييم، ومرة ثالثة للعودة للوضع الافتراضي.
+        {subtitle}
       </p>
 
       <div
@@ -70,15 +77,15 @@ export default function AlphabetGridAssessment({ onComplete }) {
           marginBottom: 16,
         }}
       >
-        {LETTERS.map(letter => {
-          const state = states[letter];
+        {letters.map((letter, idx) => {
+          const state = states[idx];
           const isKnown = state === STATE.KNOWN;
           const needsPractice = state === STATE.NEEDS_PRACTICE;
           return (
             <button
-              key={letter}
+              key={idx}
               type="button"
-              onClick={() => cycleLetter(letter)}
+              onClick={() => cycleLetter(idx)}
               aria-label={`الحرف ${letter} — ${isKnown ? 'يعرفه الطفل' : needsPractice ? 'يحتاج تدريباً' : 'لم يُحدَّد بعد'}`}
               style={{
                 position: 'relative',
@@ -116,7 +123,7 @@ export default function AlphabetGridAssessment({ onComplete }) {
       </div>
 
       <p style={{ textAlign: 'center', color: 'var(--text-light)', fontSize: 13, marginBottom: 16 }}>
-        تم تحديد {assignedCount} من {LETTERS.length} حرفاً
+        تم تحديد {assignedCount} من {letters.length} حرفاً
       </p>
 
       <button className="btn-secondary" type="button" onClick={markRestAndContinue}>

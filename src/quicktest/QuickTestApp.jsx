@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import '../App.css';
-import { QUESTIONS as FALLBACK_QUESTIONS, LEVELS as FALLBACK_LEVELS, DEFAULT_WHATSAPP_TEMPLATE } from './blueprint.js';
+import {
+  QUESTIONS as FALLBACK_QUESTIONS, LEVELS as FALLBACK_LEVELS, DEFAULT_WHATSAPP_TEMPLATE,
+  ALPHABET_LETTERS as FALLBACK_ALPHABET_LETTERS, DEFAULT_ALPHABET_ENABLED, DEFAULT_ALPHABET_TITLE, DEFAULT_ALPHABET_SUBTITLE,
+} from './blueprint.js';
 import { getQuicktestData } from './fetchQuicktestData.js';
 import { pickLevelByScore } from './pickLevel.js';
 import { isQuickTestAdminPreview, QUICK_TEST_PREVIEW_STUDENT } from './quickTestMode.js';
@@ -31,6 +34,10 @@ export default function QuickTestApp() {
   const [questions, setQuestions]     = useState(FALLBACK_QUESTIONS);
   const [levels, setLevels]           = useState(FALLBACK_LEVELS);
   const [waTemplate, setWaTemplate]   = useState(DEFAULT_WHATSAPP_TEMPLATE);
+  const [alphabetLetters, setAlphabetLetters]   = useState(FALLBACK_ALPHABET_LETTERS);
+  const [alphabetEnabled, setAlphabetEnabled]   = useState(DEFAULT_ALPHABET_ENABLED);
+  const [alphabetTitle, setAlphabetTitle]       = useState(DEFAULT_ALPHABET_TITLE);
+  const [alphabetSubtitle, setAlphabetSubtitle] = useState(DEFAULT_ALPHABET_SUBTITLE);
   const [childName, setChildName]     = useState(adminPreview ? QUICK_TEST_PREVIEW_STUDENT.name : '');
   const [childAge, setChildAge]       = useState(adminPreview ? QUICK_TEST_PREVIEW_STUDENT.age : '');
   const [startError, setStartError]   = useState('');
@@ -42,15 +49,24 @@ export default function QuickTestApp() {
     let cancelled = false;
     getQuicktestData().then(data => {
       if (cancelled) return;
+      // تمرين الحروف يُقيَّم بشكل مستقل عن مصدر الأسئلة/المستويات — حتى
+      // لو فشلت قراءة أحدهما، الآخر يبقى ديناميكياً إن نجح جلبه (تفادياً
+      // لفشل شامل بلا داعٍ). كل حقل يُستبدَل فقط إن وصل بشكل سليم فعلاً.
+      let effectiveAlphabetEnabled = DEFAULT_ALPHABET_ENABLED;
       if (data.source === 'database') {
         setQuestions(data.questions);
         setLevels(data.levels);
         if (data.whatsappTemplate) setWaTemplate(data.whatsappTemplate);
+        if (Array.isArray(data.alphabetLetters) && data.alphabetLetters.length > 0) setAlphabetLetters(data.alphabetLetters);
+        if (typeof data.alphabetEnabled === 'boolean') { setAlphabetEnabled(data.alphabetEnabled); effectiveAlphabetEnabled = data.alphabetEnabled; }
+        if (data.alphabetTitle) setAlphabetTitle(data.alphabetTitle);
+        if (data.alphabetSubtitle) setAlphabetSubtitle(data.alphabetSubtitle);
       }
       // معاينة المشرف: تخطَّ شاشة بيانات البداية فقط (بيانات وهمية ثابتة
       // أصلاً) وابدأ من تدريب الحروف الافتتاحي — نفس تجربة الزائر الحقيقي
-      // بالضبط بلا نقصان، فـ"جرّب الاختبار فعلياً" يعني التجربة كاملة.
-      setPage(adminPreview ? PAGES.ALPHABET : PAGES.START);
+      // بالضبط بلا نقصان، فـ"جرّب الاختبار فعلياً" يعني التجربة كاملة. إن
+      // عطّل الأستاذ محمد التمرين من اللوحة، تُتخطى هذه الخطوة للجميع.
+      setPage(adminPreview ? (effectiveAlphabetEnabled ? PAGES.ALPHABET : PAGES.ASSESSMENT) : PAGES.START);
     });
     return () => { cancelled = true; };
   }, []);
@@ -67,7 +83,7 @@ export default function QuickTestApp() {
     setStartError('');
     setAnswers([]);
     setQuestionIdx(0);
-    setPage(PAGES.ALPHABET);
+    setPage(alphabetEnabled ? PAGES.ALPHABET : PAGES.ASSESSMENT);
   }
 
   function handleAlphabetComplete(detail) {
@@ -151,7 +167,12 @@ export default function QuickTestApp() {
         )}
 
         {page === PAGES.ALPHABET && (
-          <AlphabetGridAssessment onComplete={handleAlphabetComplete} />
+          <AlphabetGridAssessment
+            letters={alphabetLetters}
+            title={alphabetTitle}
+            subtitle={alphabetSubtitle}
+            onComplete={handleAlphabetComplete}
+          />
         )}
 
         {page === PAGES.ASSESSMENT && (

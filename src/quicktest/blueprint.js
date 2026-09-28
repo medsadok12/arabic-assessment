@@ -207,3 +207,12 @@ export const LEVELS = [
 ];
 
 export const DEFAULT_WHATSAPP_TEMPLATE = 'مرحباً أستاذ، أكمل طفلي {childName} التقييم وأود الاستفسار عن {program}';
+
+// نفس بذور quicktest_alphabet.sql حرفياً — السؤال الافتتاحي الثابت
+// "التعرف على الحروف الأبجدية" (AlphabetGridAssessment.jsx)، قابل الآن
+// للتعديل من نفس اللوحة (حروف/تفعيل/عنوان)، وهذه القيم تبقى النسخة
+// الاحتياطية الثابتة فقط عند أي فشل في القراءة من Supabase.
+export const ALPHABET_LETTERS = ['ا','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي'];
+export const DEFAULT_ALPHABET_ENABLED  = true;
+export const DEFAULT_ALPHABET_TITLE    = '🔤 هل يعرف طفلك هذه الحروف؟';
+export const DEFAULT_ALPHABET_SUBTITLE = 'اطلب من طفلك قراءة كل حرف بصوت عالٍ، ثم اضغط على الحرف حسب إجابته. اضغط مرة أخرى لتغيير التقييم، ومرة ثالثة للعودة للوضع الافتراضي.';

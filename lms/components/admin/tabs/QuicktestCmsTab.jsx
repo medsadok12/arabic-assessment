@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 /*
   لوحة إدارة "اختبار تحديد المستوى" التسويقي — ذاتية الاكتفاء (بلا props)،
   بنفس نمط LeadsTab.jsx/AnalyticsTab.jsx (حالتها الخاصة، جلبها الخاص).
-  ثلاثة أقسام داخلية: الأسئلة (CRUD + ترتيب بأزرار ▲▼ + رفع وسائط حقيقي)،
-  المستويات (حدود النقاط والنصوص الوصفية)، الإعدادات (قالب رسالة واتساب).
-  عند أي فشل في القراءة هنا، الموقع العام (assessment.aarem.net/?quick=1)
-  يسقط تلقائياً لمحتوى blueprint.js الثابت — راجع fetchQuicktestData.js.
+  أربعة أقسام داخلية: الأسئلة (CRUD + ترتيب بأزرار ▲▼ + رفع وسائط حقيقي)،
+  المستويات (حدود النقاط والنصوص الوصفية)، رسالة واتساب، وتمرين الحروف
+  الافتتاحي (تفعيل/عنوان/نص فرعي + إدارة الحروف الـ28 نفسها). عند أي فشل
+  في القراءة هنا، الموقع العام (assessment.aarem.net/?quick=1) يسقط
+  تلقائياً لمحتوى blueprint.js الثابت — راجع fetchQuicktestData.js.
 */
 
 async function uploadMedia(file, kind) {
@@ -48,17 +49,31 @@ export default function QuicktestCmsTab() {
   const [waSaving,   setWaSaving]   = useState(false);
   const [waMsg,      setWaMsg]      = useState(null);
 
+  const [letters, setLetters] = useState(null);
+  const [alphaEnabled,  setAlphaEnabled]  = useState(true);
+  const [alphaTitle,    setAlphaTitle]    = useState('');
+  const [alphaSubtitle, setAlphaSubtitle] = useState('');
+  const [alphaSaving,   setAlphaSaving]   = useState(false);
+  const [alphaMsg,      setAlphaMsg]      = useState(null);
+  const [newLetter,     setNewLetter]     = useState('');
+  const [letterSaving,  setLetterSaving]  = useState(null); // id الحرف الجاري حفظه/حذفه
+
   function loadAll() {
     Promise.all([
       fetch('/api/bogga/quicktest-questions').then(r => r.json()),
       fetch('/api/bogga/quicktest-levels').then(r => r.json()),
       fetch('/api/bogga/quicktest-settings').then(r => r.json()),
-    ]).then(([q, l, s]) => {
-      if (q.error || l.error || s.error) { setError(q.error || l.error || s.error); return; }
+      fetch('/api/bogga/quicktest-alphabet').then(r => r.json()),
+    ]).then(([q, l, s, a]) => {
+      if (q.error || l.error || s.error || a.error) { setError(q.error || l.error || s.error || a.error); return; }
       setQuestions(q.questions);
       setLevels(l.levels);
       setSettings(s.settings);
       setWaTemplate(s.settings?.whatsapp_template ?? '');
+      setAlphaEnabled(s.settings?.alphabet_enabled ?? true);
+      setAlphaTitle(s.settings?.alphabet_title ?? '');
+      setAlphaSubtitle(s.settings?.alphabet_subtitle ?? '');
+      setLetters(a.letters);
     }).catch(() => setError('تعذّر تحميل بيانات لوحة الاختبار الترويجي'));
   }
 
@@ -166,8 +181,87 @@ export default function QuicktestCmsTab() {
     setWaSaving(false);
   }
 
+  // ── تمرين الحروف الافتتاحي ────────────────────────────────────────────
+  async function saveAlphabetSettings() {
+    setAlphaSaving(true); setAlphaMsg(null);
+    try {
+      const res = await fetch('/api/bogga/quicktest-settings', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alphabet_enabled: alphaEnabled, alphabet_title: alphaTitle, alphabet_subtitle: alphaSubtitle }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'فشل الحفظ');
+      setAlphaMsg({ ok: true, text: '✅ تم الحفظ' });
+    } catch (err) {
+      setAlphaMsg({ ok: false, text: '❌ ' + err.message });
+    }
+    setAlphaSaving(false);
+  }
+
+  async function moveLetter(letter, dir) {
+    const idx = letters.findIndex(x => x.id === letter.id);
+    const j = idx + dir;
+    if (j < 0 || j >= letters.length) return;
+    const other = letters[j];
+    const res = await fetch('/api/bogga/quicktest-alphabet/reorder', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [{ id: letter.id, order_index: other.order_index }, { id: other.id, order_index: letter.order_index }] }),
+    });
+    if (res.ok) {
+      const next = [...letters];
+      [next[idx], next[j]] = [next[j], next[idx]];
+      const tmp = next[idx].order_index; next[idx].order_index = next[j].order_index; next[j].order_index = tmp;
+      setLetters(next.sort((a, b) => a.order_index - b.order_index));
+    }
+  }
+
+  async function updateLetterText(id, text) {
+    setLetterSaving(id);
+    const res = await fetch(`/api/bogga/quicktest-alphabet/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ letter: text }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setLetters(prev => prev.map(x => x.id === id ? data.letter : x));
+    }
+    setLetterSaving(null);
+  }
+
+  async function toggleLetterEnabled(letter) {
+    const res = await fetch(`/api/bogga/quicktest-alphabet/${letter.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: !letter.enabled }),
+    });
+    if (res.ok) setLetters(prev => prev.map(x => x.id === letter.id ? { ...x, enabled: !letter.enabled } : x));
+  }
+
+  async function deleteLetter(id) {
+    if (!confirm('هل تريد حذف هذا الحرف نهائياً؟')) return;
+    setLetterSaving(id);
+    const res = await fetch(`/api/bogga/quicktest-alphabet/${id}`, { method: 'DELETE' });
+    if (res.ok) setLetters(prev => prev.filter(x => x.id !== id));
+    setLetterSaving(null);
+  }
+
+  async function addLetter(e) {
+    e.preventDefault();
+    if (!newLetter.trim()) return;
+    setLetterSaving('new');
+    try {
+      const res = await fetch('/api/bogga/quicktest-alphabet', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ letter: newLetter.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) { setLetters(prev => [...prev, data.letter]); setNewLetter(''); }
+    } finally {
+      setLetterSaving(null);
+    }
+  }
+
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!questions || !levels) return <div style={{ textAlign: 'center', padding: 40 }}><span className="spinner" /></div>;
+  if (!questions || !levels || !letters) return <div style={{ textAlign: 'center', padding: 40 }}><span className="spinner" /></div>;
 
   return (
     <div>
@@ -195,6 +289,7 @@ export default function QuicktestCmsTab() {
           { id: 'questions', label: `📝 الأسئلة (${questions.length})` },
           { id: 'levels',    label: '⚙️ المستويات' },
           { id: 'settings',  label: '📱 رسالة واتساب' },
+          { id: 'alphabet',  label: `🔤 تمرين الحروف (${letters.length})` },
         ].map(t => (
           <button
             key={t.id}
@@ -244,6 +339,19 @@ export default function QuicktestCmsTab() {
             {waSaving ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> جارٍ الحفظ...</> : '✅ حفظ'}
           </button>
         </div>
+      )}
+
+      {subTab === 'alphabet' && (
+        <AlphabetSection
+          alphaEnabled={alphaEnabled} setAlphaEnabled={setAlphaEnabled}
+          alphaTitle={alphaTitle} setAlphaTitle={setAlphaTitle}
+          alphaSubtitle={alphaSubtitle} setAlphaSubtitle={setAlphaSubtitle}
+          alphaSaving={alphaSaving} alphaMsg={alphaMsg} onSaveSettings={saveAlphabetSettings}
+          letters={letters} letterSaving={letterSaving}
+          onMoveLetter={moveLetter} onUpdateLetterText={updateLetterText}
+          onToggleLetterEnabled={toggleLetterEnabled} onDeleteLetter={deleteLetter}
+          newLetter={newLetter} setNewLetter={setNewLetter} onAddLetter={addLetter}
+        />
       )}
 
       {editingQ && (
@@ -343,6 +451,106 @@ function LevelsSection({ levels, onEdit }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * قسم "تمرين الحروف الافتتاحي" — بطاقة إعدادات (تفعيل/عنوان/نص فرعي)
+ * + جدول الحروف الـ28 نفسها (نص/تفعيل/ترتيب ▲▼/حذف) + إضافة حرف جديد.
+ * الحفظ فوري لكل حرف على حدة (onBlur للنص، فوري للتفعيل/الحذف/الترتيب) —
+ * لا زر "حفظ" جماعي هنا، بخلاف بطاقة الإعدادات التي تُحفَظ دفعة واحدة.
+ */
+function AlphabetSection({
+  alphaEnabled, setAlphaEnabled, alphaTitle, setAlphaTitle, alphaSubtitle, setAlphaSubtitle,
+  alphaSaving, alphaMsg, onSaveSettings,
+  letters, letterSaving, onMoveLetter, onUpdateLetterText, onToggleLetterEnabled, onDeleteLetter,
+  newLetter, setNewLetter, onAddLetter,
+}) {
+  return (
+    <div>
+      <div className="card" style={{ maxWidth: 620, padding: 22, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <input type="checkbox" id="alpha-enabled" checked={alphaEnabled} onChange={e => setAlphaEnabled(e.target.checked)} />
+          <label htmlFor="alpha-enabled" style={{ fontWeight: 700, cursor: 'pointer' }}>تفعيل تمرين الحروف الافتتاحي (يظهر للزوار قبل الأسئلة الـ15)</label>
+        </div>
+        <div className="form-group">
+          <label className="form-label">العنوان</label>
+          <input className="form-input" value={alphaTitle} onChange={e => setAlphaTitle(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">النص الفرعي (تعليمات للطفل/ولي الأمر)</label>
+          <textarea className="form-input" rows={2} value={alphaSubtitle} onChange={e => setAlphaSubtitle(e.target.value)} />
+        </div>
+        {alphaMsg && <div className={`alert alert-${alphaMsg.ok ? 'success' : 'error'}`}>{alphaMsg.text}</div>}
+        <button className="btn btn-primary" onClick={onSaveSettings} disabled={alphaSaving}>
+          {alphaSaving ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> جارٍ الحفظ...</> : '✅ حفظ'}
+        </button>
+      </div>
+
+      <form onSubmit={onAddLetter} style={{ display: 'flex', gap: 8, marginBottom: 14, maxWidth: 300 }}>
+        <input className="form-input" placeholder="حرف جديد" value={newLetter} onChange={e => setNewLetter(e.target.value)} style={{ flex: 1 }} />
+        <button type="submit" className="btn btn-primary btn-sm" disabled={letterSaving === 'new' || !newLetter.trim()}>+ إضافة</button>
+      </form>
+
+      <div className="card table-scroll-wrapper" style={{ padding: 0 }}>
+        <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.87rem' }}>
+          <thead>
+            <tr>
+              {['#', 'الحرف', 'الحالة', 'إجراءات'].map(h => (
+                <th key={h} style={{ background: 'var(--primary)', color: '#fff', padding: '9px 14px', textAlign: 'right', fontWeight: 700 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {letters.map((l, i) => (
+              <LetterRow
+                key={l.id} letter={l} index={i} total={letters.length}
+                saving={letterSaving === l.id}
+                onMove={dir => onMoveLetter(l, dir)}
+                onUpdateText={text => onUpdateLetterText(l.id, text)}
+                onToggleEnabled={() => onToggleLetterEnabled(l)}
+                onDelete={() => onDeleteLetter(l.id)}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function LetterRow({ letter, index, total, saving, onMove, onUpdateText, onToggleEnabled, onDelete }) {
+  const [text, setText] = useState(letter.letter);
+
+  return (
+    <tr style={{ background: index % 2 === 0 ? '#fff' : '#f9fbff', opacity: letter.enabled ? 1 : .5 }}>
+      <td style={{ padding: '8px 14px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <button className="btn btn-sm" style={{ padding: '1px 8px' }} disabled={index === 0} onClick={() => onMove(-1)}>▲</button>
+          <button className="btn btn-sm" style={{ padding: '1px 8px' }} disabled={index === total - 1} onClick={() => onMove(1)}>▼</button>
+        </div>
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <input
+          className="form-input" style={{ width: 70, textAlign: 'center', fontSize: '1.1rem', fontWeight: 700 }}
+          value={text} disabled={saving}
+          onChange={e => setText(e.target.value)}
+          onBlur={() => { if (text.trim() && text !== letter.letter) onUpdateText(text); else setText(letter.letter); }}
+        />
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <button
+          onClick={onToggleEnabled}
+          className="btn btn-sm"
+          style={{ background: letter.enabled ? '#f0fdf4' : '#f1f5f9', color: letter.enabled ? '#16a34a' : '#64748b', border: 'none' }}
+        >
+          {letter.enabled ? '✅ مفعّل' : '⏸ معطّل'}
+        </button>
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <button className="btn btn-sm btn-danger" onClick={onDelete} disabled={saving}>🗑️</button>
+      </td>
+    </tr>
   );
 }
 

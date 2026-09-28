@@ -24,17 +24,33 @@ export async function GET() {
   return NextResponse.json({ settings: data });
 }
 
-// PATCH — تحديث قالب رسالة واتساب
+// PATCH — تحديث قالب رسالة واتساب و/أو إعدادات تمرين الحروف الافتتاحي
 export async function PATCH(req) {
   if (!(await guard())) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
 
-  const { whatsapp_template } = await req.json();
-  if (!whatsapp_template?.trim()) return NextResponse.json({ error: 'نص الرسالة مطلوب' }, { status: 400 });
+  const body = await req.json();
+  const patch = {};
+
+  if (body.whatsapp_template !== undefined) {
+    if (!body.whatsapp_template?.trim()) return NextResponse.json({ error: 'نص الرسالة مطلوب' }, { status: 400 });
+    patch.whatsapp_template = body.whatsapp_template.trim();
+  }
+  if (body.alphabet_enabled !== undefined) patch.alphabet_enabled = !!body.alphabet_enabled;
+  if (body.alphabet_title !== undefined) {
+    if (!body.alphabet_title?.trim()) return NextResponse.json({ error: 'عنوان تمرين الحروف مطلوب' }, { status: 400 });
+    patch.alphabet_title = body.alphabet_title.trim();
+  }
+  if (body.alphabet_subtitle !== undefined) {
+    if (!body.alphabet_subtitle?.trim()) return NextResponse.json({ error: 'النص الفرعي لتمرين الحروف مطلوب' }, { status: 400 });
+    patch.alphabet_subtitle = body.alphabet_subtitle.trim();
+  }
+  if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'لا توجد بيانات للتحديث' }, { status: 400 });
+  patch.updated_at = new Date().toISOString();
 
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('quicktest_settings')
-    .update({ whatsapp_template: whatsapp_template.trim(), updated_at: new Date().toISOString() })
+    .update(patch)
     .eq('id', 1)
     .select()
     .single();

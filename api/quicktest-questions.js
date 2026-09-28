@@ -67,13 +67,14 @@ export default async function handler(req, res) {
       throw new Error('Supabase env vars not configured');
     }
 
-    const [questionRows, levelRows, settingsRows] = await Promise.all([
+    const [questionRows, levelRows, settingsRows, alphabetRows] = await Promise.all([
       fetchJson('/rest/v1/quicktest_questions?enabled=eq.true&select=id,question_text,image_url,audio_url,prompt_emoji,audio_prompt,reading_text,parent_read_hint,skill_tag,options&order=order_index.asc'),
       fetchJson('/rest/v1/quicktest_levels?select=id,icon,label,min_correct,max_correct,strengths_text,recommendation,program_name,program_pitch&order=sort_order.asc'),
-      fetchJson('/rest/v1/quicktest_settings?select=whatsapp_template&limit=1'),
+      fetchJson('/rest/v1/quicktest_settings?select=whatsapp_template,alphabet_enabled,alphabet_title,alphabet_subtitle&limit=1'),
+      fetchJson('/rest/v1/quicktest_alphabet_letters?enabled=eq.true&select=letter&order=order_index.asc'),
     ]);
 
-    if (!Array.isArray(questionRows) || !Array.isArray(levelRows) || !Array.isArray(settingsRows)) {
+    if (!Array.isArray(questionRows) || !Array.isArray(levelRows) || !Array.isArray(settingsRows) || !Array.isArray(alphabetRows)) {
       throw new Error('Unexpected Supabase response shape');
     }
     if (questionRows.length === 0 || levelRows.length === 0) {
@@ -86,6 +87,13 @@ export default async function handler(req, res) {
       questions:        questionRows.map(toQuestionObject),
       levels:           levelRows.map(toLevelObject),
       whatsappTemplate: settingsRows[0]?.whatsapp_template || null,
+      // تمرين الحروف الافتتاحي — لا يُفشِل الاستجابة كاملة إن كان فارغاً؛
+      // يُقيَّم من جهة العميل بشكل مستقل (QuickTestApp.jsx)، ويسقط عندها
+      // لبنك الحروف الثابت في blueprint.js.
+      alphabetLetters:  alphabetRows.map(r => r.letter),
+      alphabetEnabled:  settingsRows[0]?.alphabet_enabled ?? true,
+      alphabetTitle:    settingsRows[0]?.alphabet_title || null,
+      alphabetSubtitle: settingsRows[0]?.alphabet_subtitle || null,
     });
   } catch (e) {
     console.error('[api/quicktest-questions] فشل الجلب من Supabase — سيعتمد العميل على النسخة الثابتة:', e.message);
