@@ -118,7 +118,8 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       borderRadius: 18, cursor: 'pointer', border: '2.5px solid var(--border)',
       background: '#FAF7F2', transition: 'transform .15s, background .15s, border-color .15s, box-shadow .15s',
-      textAlign: 'center', transform: 'scale(1)', minHeight: 56, padding: isImage ? 2 : '6px 12px',
+      textAlign: 'center', transform: 'scale(1)', minHeight: 56, padding: isImage ? 2 : '6px 22px',
+      ...(isImage ? {} : { width: 'fit-content', minWidth: 110, alignSelf: 'center' }),
     };
     if (colorIdx !== undefined) {
       const c = LINK_PALETTE[colorIdx];
