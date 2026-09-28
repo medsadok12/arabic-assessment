@@ -9,9 +9,15 @@ import { pickLevelByScore } from './pickLevel.js';
 import { isQuickTestAdminPreview, QUICK_TEST_PREVIEW_STUDENT } from './quickTestMode.js';
 import QuickQuestion from './QuickQuestion.jsx';
 import AlphabetGridAssessment from './AlphabetGridAssessment.jsx';
+import MatchingAssessment from './MatchingAssessment.jsx';
+import { MATCHING_PAIRS_1, MATCHING_PAIRS_2 } from './matchingData.js';
 import LeadGate from './LeadGate.jsx';
 
-const PAGES = { LOADING: 'loading', START: 'start', ALPHABET: 'alphabet', ASSESSMENT: 'assessment', GATE: 'gate', RESULT: 'result' };
+const PAGES = {
+  LOADING: 'loading', START: 'start', ALPHABET: 'alphabet',
+  MATCHING1: 'matching1', MATCHING2: 'matching2',
+  ASSESSMENT: 'assessment', GATE: 'gate', RESULT: 'result',
+};
 
 // يُحسَب مرة واحدة عند تحميل الصفحة (لا يتغيّر أثناء الجلسة) — نفس نمط
 // adminPreviewLevel في App.jsx الحقيقي.
@@ -65,8 +71,9 @@ export default function QuickTestApp() {
       // معاينة المشرف: تخطَّ شاشة بيانات البداية فقط (بيانات وهمية ثابتة
       // أصلاً) وابدأ من تدريب الحروف الافتتاحي — نفس تجربة الزائر الحقيقي
       // بالضبط بلا نقصان، فـ"جرّب الاختبار فعلياً" يعني التجربة كاملة. إن
-      // عطّل الأستاذ محمد التمرين من اللوحة، تُتخطى هذه الخطوة للجميع.
-      setPage(adminPreview ? (effectiveAlphabetEnabled ? PAGES.ALPHABET : PAGES.ASSESSMENT) : PAGES.START);
+      // عطّل الأستاذ محمد تمرين الحروف من اللوحة، تُتخطى هذه الخطوة للجميع
+      // مباشرة إلى تدريبَي المطابقة (لا خيار تعطيل لهما بعد — ثابتان دائماً).
+      setPage(adminPreview ? (effectiveAlphabetEnabled ? PAGES.ALPHABET : PAGES.MATCHING1) : PAGES.START);
     });
     return () => { cancelled = true; };
   }, []);
@@ -83,10 +90,20 @@ export default function QuickTestApp() {
     setStartError('');
     setAnswers([]);
     setQuestionIdx(0);
-    setPage(alphabetEnabled ? PAGES.ALPHABET : PAGES.ASSESSMENT);
+    setPage(alphabetEnabled ? PAGES.ALPHABET : PAGES.MATCHING1);
   }
 
   function handleAlphabetComplete(detail) {
+    setAnswers(prev => [...prev, detail]);
+    setPage(PAGES.MATCHING1);
+  }
+
+  function handleMatching1Complete(detail) {
+    setAnswers(prev => [...prev, detail]);
+    setPage(PAGES.MATCHING2);
+  }
+
+  function handleMatching2Complete(detail) {
     setAnswers(prev => [...prev, detail]);
     setQuestionIdx(0);
     setPage(PAGES.ASSESSMENT);
@@ -128,7 +145,8 @@ export default function QuickTestApp() {
         </div>
       </header>
 
-      {page !== PAGES.START && page !== PAGES.LOADING && page !== PAGES.ALPHABET && (
+      {page !== PAGES.START && page !== PAGES.LOADING && page !== PAGES.ALPHABET
+        && page !== PAGES.MATCHING1 && page !== PAGES.MATCHING2 && (
         <div className="global-progress">
           <div className="gp-info">
             <span>التقدم</span>
@@ -172,6 +190,30 @@ export default function QuickTestApp() {
             title={alphabetTitle}
             subtitle={alphabetSubtitle}
             onComplete={handleAlphabetComplete}
+          />
+        )}
+
+        {page === PAGES.MATCHING1 && (
+          <MatchingAssessment
+            pairs={MATCHING_PAIRS_1}
+            label="التدريب الثاني"
+            title="🔗 اربط كل صورة بالكلمة المناسبة"
+            subtitle="اضغط على الصورة ثم على الكلمة لربطهما، واضغط على أي منهما مرة أخرى لإلغاء الربط وتغيير إجابتك."
+            questionId="matching-1"
+            skillTag="مطابقة الصور بالكلمات — الاحتياجات اليومية"
+            onComplete={handleMatching1Complete}
+          />
+        )}
+
+        {page === PAGES.MATCHING2 && (
+          <MatchingAssessment
+            pairs={MATCHING_PAIRS_2}
+            label="التدريب الثالث"
+            title="🔗 اربط كل صورة بالكلمة المناسبة"
+            subtitle="اضغط على الصورة ثم على الكلمة لربطهما، واضغط على أي منهما مرة أخرى لإلغاء الربط وتغيير إجابتك."
+            questionId="matching-2"
+            skillTag="مطابقة الصور بالكلمات — أشياء من حولي"
+            onComplete={handleMatching2Complete}
           />
         )}
 

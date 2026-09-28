@@ -153,7 +153,11 @@ function LeadDetailsModal({ lead, onClose }) {
   // (قائمتا حروف) بدل صف سؤال/إجابة عادي. يُستبعَد من حساب المهارات
   // المتقنة/الضعيفة أدناه (لا isCorrect له، ولا معنى لعدّه ضمنها).
   const alphabet = allAnswers.find(a => a.type === 'alphabet-grid');
-  const answers  = allAnswers.filter(a => a.type !== 'alphabet-grid');
+  // تدريبا المطابقة (MatchingAssessment.jsx) نفس منطق الحروف — لا isCorrect
+  // على مستوى الإجابة نفسها (فقط correctWords/needsReviewWords)، فتُستبعَد
+  // بدورها من حساب المهارات العادي أدناه، وتُعرَض كقسمين منفصلين لكل تدريب.
+  const matchingEntries = allAnswers.filter(a => a.type === 'matching');
+  const answers  = allAnswers.filter(a => a.type !== 'alphabet-grid' && a.type !== 'matching');
   const mastered   = answers.filter(a => a.isCorrect && a.skillTag);
   const needsHelp  = answers.filter(a => !a.isCorrect && a.skillTag);
 
@@ -215,6 +219,34 @@ function LeadDetailsModal({ lead, onClose }) {
             </div>
           </div>
         )}
+
+        {matchingEntries.map((m, mi) => (
+          <div key={mi} style={{ marginBottom: 18 }}>
+            <div className="dash-section-title" style={{ marginBottom: 10 }}>🔗 {m.label || 'تدريب المطابقة'}</div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 220px', background: '#eafbf3', border: '1px solid #bbf3d8', borderRadius: 10, padding: '12px 14px' }}>
+                <div style={{ fontWeight: 800, color: '#065f46', fontSize: '.85rem', marginBottom: 6 }}>
+                  كلمات ربطها بنجاح ({m.correctWords?.length ?? 0})
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {m.correctWords?.length
+                    ? m.correctWords.map((w, i) => <span key={i} className="badge badge-green">{w}</span>)
+                    : <span style={{ fontSize: '.8rem', color: '#065f46' }}>لا شيء بعد</span>}
+                </div>
+              </div>
+              <div style={{ flex: '1 1 220px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '12px 14px' }}>
+                <div style={{ fontWeight: 800, color: '#92400e', fontSize: '.85rem', marginBottom: 6 }}>
+                  كلمات تحتاج مراجعة ({m.needsReviewWords?.length ?? 0})
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {m.needsReviewWords?.length
+                    ? m.needsReviewWords.map((w, i) => <span key={i} className="badge badge-orange">{w}</span>)
+                    : <span style={{ fontSize: '.8rem', color: '#92400e' }}>لا شيء — أداء ممتاز!</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
 
         <div className="dash-section-title" style={{ marginBottom: 10 }}>📝 كل الأسئلة والإجابات</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
