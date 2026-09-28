@@ -110,13 +110,15 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
   // نفس ارتفاع البطاقة لكلا العمودين (بلا aspect-ratio مربّع على عرض
   // العمود كاملاً) — وإلا كانت بطاقات الصور (أعرض على الجوال) تتمدد طولياً
   // بكثير عن بطاقات الكلمات، تاركةً فراغاً ضخماً أسفل عمود الكلمات بالضبط
-  // ما طُلب تجنّبه.
+  // ما طُلب تجنّبه. الإطار مضغوط عمداً (minHeight أقل + padding أقل) مع
+  // إبقاء حجم الإيموجي/الخط كما هو — الفراغ الذي طُلب تقليله كان في هوامش
+  // البطاقة نفسها لا في محتواها.
   function cardStyle({ isImage, isSelected, colorIdx }) {
     const base = {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      borderRadius: 20, cursor: 'pointer', border: '2.5px solid var(--border)',
+      borderRadius: 18, cursor: 'pointer', border: '2.5px solid var(--border)',
       background: '#FAF7F2', transition: 'transform .15s, background .15s, border-color .15s, box-shadow .15s',
-      textAlign: 'center', transform: 'scale(1)', minHeight: 78, padding: isImage ? 6 : '10px 12px',
+      textAlign: 'center', transform: 'scale(1)', minHeight: 56, padding: isImage ? 2 : '6px 12px',
     };
     if (colorIdx !== undefined) {
       const c = LINK_PALETTE[colorIdx];
@@ -150,7 +152,7 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {imageOrder.map(idx => {
               const link = links[idx];
               const isSelected = selected?.type === 'image' && selected.idx === idx;
@@ -167,7 +169,7 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
               );
             })}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {wordOrder.map(idx => {
               const linkEntry = findLinkForWord(idx);
               const isSelected = selected?.type === 'word' && selected.idx === idx;
