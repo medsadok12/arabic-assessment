@@ -39,6 +39,7 @@ function toQuestionObject(row) {
     audioPrompt:    row.audio_prompt || null,
     readingText:    row.reading_text || null,
     parentReadHint: !!row.parent_read_hint,
+    skillTag:       row.skill_tag || null,
     options:        Array.isArray(row.options) ? row.options : [],
   };
 }
@@ -67,7 +68,7 @@ export default async function handler(req, res) {
     }
 
     const [questionRows, levelRows, settingsRows] = await Promise.all([
-      fetchJson('/rest/v1/quicktest_questions?enabled=eq.true&select=id,question_text,image_url,audio_url,prompt_emoji,audio_prompt,reading_text,parent_read_hint,options&order=order_index.asc'),
+      fetchJson('/rest/v1/quicktest_questions?enabled=eq.true&select=id,question_text,image_url,audio_url,prompt_emoji,audio_prompt,reading_text,parent_read_hint,skill_tag,options&order=order_index.asc'),
       fetchJson('/rest/v1/quicktest_levels?select=id,icon,label,min_correct,max_correct,strengths_text,recommendation,program_name,program_pitch&order=sort_order.asc'),
       fetchJson('/rest/v1/quicktest_settings?select=whatsapp_template&limit=1'),
     ]);

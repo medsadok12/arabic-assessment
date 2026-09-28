@@ -61,8 +61,8 @@ export default function QuickTestApp() {
     setPage(PAGES.ASSESSMENT);
   }
 
-  function handleAnswer(isCorrect) {
-    const updated = [...answers, { isCorrect }];
+  function handleAnswer(detail) {
+    const updated = [...answers, detail];
     if (questionIdx + 1 < questions.length) {
       setAnswers(updated);
       setQuestionIdx(i => i + 1);
@@ -144,6 +144,7 @@ export default function QuickTestApp() {
             childAge={+childAge}
             score={Math.round((answers.filter(a => a.isCorrect).length / questions.length) * 100)}
             levelLabel={level.label}
+            answers={answers}
             onDone={() => setPage(PAGES.RESULT)}
           />
         )}

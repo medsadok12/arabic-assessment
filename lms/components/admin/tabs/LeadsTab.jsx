@@ -22,6 +22,7 @@ export default function LeadsTab() {
   const [leads, setLeads] = useState(null); // null = لم يُحمَّل بعد
   const [error, setError] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [detailsLead, setDetailsLead] = useState(null);
 
   useEffect(() => {
     fetch('/api/bogga/leads')
@@ -91,7 +92,7 @@ export default function LeadsTab() {
           <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.88rem' }}>
             <thead>
               <tr>
-                {['التاريخ', 'ولي الأمر', 'الهاتف/واتساب', 'البريد', 'الطفل', 'العمر', 'النتيجة', 'المستوى'].map(h => (
+                {['التاريخ', 'ولي الأمر', 'الهاتف/واتساب', 'البريد', 'الطفل', 'العمر', 'النتيجة', 'المستوى', ''].map(h => (
                   <th key={h} style={{ background: 'var(--primary)', color: '#fff', padding: '10px 16px', textAlign: 'right', fontWeight: 700 }}>{h}</th>
                 ))}
               </tr>
@@ -113,12 +114,106 @@ export default function LeadsTab() {
                   <td style={{ padding: '9px 16px', textAlign: 'center' }}>
                     {l.level ? <span className="badge badge-blue">{l.level}</span> : '—'}
                   </td>
+                  <td style={{ padding: '9px 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    <button
+                      className="btn btn-sm btn-outline"
+                      disabled={!Array.isArray(l.answers) || l.answers.length === 0}
+                      onClick={() => setDetailsLead(l)}
+                      title={!Array.isArray(l.answers) || l.answers.length === 0 ? 'لا تتوفر تفاصيل إجابات لهذا التقييم' : ''}
+                    >
+                      📋 تفاصيل
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {detailsLead && (
+        <LeadDetailsModal lead={detailsLead} onClose={() => setDetailsLead(null)} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * نافذة "تفاصيل الإجابات" — تعرض الـ15 سؤالاً كما أجاب عليها الطفل بالضبط
+ * (السؤال، إجابته مقابل الإجابة الصحيحة، ✓/✗)، وملخص أداء سريع حسب وسم
+ * كل سؤال (skill_tag) ليراجعه المدير/المعلم قبل مكالمة واتساب مع ولي الأمر.
+ * ملاحظة: كل سؤال في هذا الاختبار يحمل وسم مهارة فريداً (لا تكرار)، فـ
+ * "الملخص" هنا فعلياً تصنيف كل سؤال منفرد إلى متقن/يحتاج دعم — عرض سريع
+ * يكمّل القائمة التفصيلية أسفله، لا يستبدلها.
+ */
+function LeadDetailsModal({ lead, onClose }) {
+  const answers = Array.isArray(lead.answers) ? lead.answers : [];
+  const mastered   = answers.filter(a => a.isCorrect && a.skillTag);
+  const needsHelp  = answers.filter(a => !a.isCorrect && a.skillTag);
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, padding: 16 }}
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <div style={{ background: '#fff', borderRadius: 20, padding: '26px 22px', width: '100%', maxWidth: 640, direction: 'rtl', maxHeight: '92vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+          <div>
+            <h3 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>📋 تفاصيل إجابات {lead.child_name}</h3>
+            <p style={{ fontSize: '.85rem', color: 'var(--muted)' }}>
+              ولي الأمر: {lead.parent_name} · النتيجة: {lead.score != null ? `${lead.score}%` : '—'} · {lead.level ?? '—'}
+            </p>
+          </div>
+          <button className="btn btn-sm btn-ghost" onClick={onClose}>✕</button>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '18px 0' }}>
+          <div style={{ flex: '1 1 220px', background: '#eafbf3', border: '1px solid #bbf3d8', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ fontWeight: 800, color: '#065f46', fontSize: '.85rem', marginBottom: 6 }}>✅ مهارات أتقنها ({mastered.length})</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {mastered.length === 0
+                ? <span style={{ fontSize: '.8rem', color: '#065f46' }}>لا شيء بعد</span>
+                : mastered.map((a, i) => <span key={i} className="badge badge-green">{a.skillTag}</span>)}
+            </div>
+          </div>
+          <div style={{ flex: '1 1 220px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ fontWeight: 800, color: '#92400e', fontSize: '.85rem', marginBottom: 6 }}>⚠️ يحتاج دعماً في ({needsHelp.length})</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {needsHelp.length === 0
+                ? <span style={{ fontSize: '.8rem', color: '#92400e' }}>لا شيء — أداء ممتاز!</span>
+                : needsHelp.map((a, i) => <span key={i} className="badge badge-orange">{a.skillTag}</span>)}
+            </div>
+          </div>
+        </div>
+
+        <div className="dash-section-title" style={{ marginBottom: 10 }}>📝 كل الأسئلة والإجابات</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {answers.map((a, i) => (
+            <div key={i} style={{
+              border: `1.5px solid ${a.isCorrect ? '#bbf3d8' : '#fde0e0'}`,
+              background: a.isCorrect ? '#f7fefb' : '#fff8f8',
+              borderRadius: 10, padding: '10px 14px',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
+                <span style={{ fontWeight: 700, fontSize: '.88rem' }}>{i + 1}. {a.questionText}</span>
+                <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{a.isCorrect ? '✅' : '❌'}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '.82rem' }}>
+                <span>
+                  <strong style={{ color: 'var(--muted)' }}>إجابة الطفل: </strong>
+                  {a.chosenEmoji && <span>{a.chosenEmoji} </span>}{a.chosenText || '—'}
+                </span>
+                {!a.isCorrect && (
+                  <span>
+                    <strong style={{ color: 'var(--muted)' }}>الصحيحة: </strong>
+                    {a.correctEmoji && <span>{a.correctEmoji} </span>}{a.correctText || '—'}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

@@ -35,11 +35,19 @@ export async function POST(request) {
       );
     }
 
-    const { parentName, phone, email, childName, childAge, score, level } = await request.json();
+    const { parentName, phone, email, childName, childAge, score, level, answers } = await request.json();
 
     if (!parentName?.trim() || !phone?.trim() || !childName?.trim()) {
       return Response.json({ ok: false, error: 'بيانات ناقصة' }, { status: 400, headers: CORS });
     }
+
+    // تفاصيل الإجابات — لتغذية نافذة "تفاصيل الإجابات" في bogga. تُقبَل
+    // فقط إن كانت مصفوفة كائنات (لا تُثِق بشكل عناصرها الداخلي، إذ يأتي
+    // من متصفح الزائر مباشرة)، وتُحدّ بـ50 عنصراً دفاعياً (الاختبار الحالي
+    // 15 سؤالاً فقط، لا داعٍ لقبول حمولة أكبر بكثير من المتوقَّع).
+    const safeAnswers = Array.isArray(answers)
+      ? answers.filter(a => a && typeof a === 'object').slice(0, 50)
+      : null;
 
     const supabase = createAdminClient();
     const { error } = await supabase.from('marketing_leads').insert({
@@ -50,6 +58,7 @@ export async function POST(request) {
       child_age:   Number.isFinite(Number(childAge)) ? Number(childAge) : null,
       score:       Number.isFinite(Number(score)) ? Math.round(Number(score) * 10) / 10 : null,
       level:       level || null,
+      answers:     safeAnswers,
       source:      'quick_test',
     });
 

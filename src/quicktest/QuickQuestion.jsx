@@ -35,8 +35,19 @@ export default function QuickQuestion({ question, questionNumber, total, onAnswe
   function handleSelect(idx) {
     if (selected !== null) return;
     setSelected(idx);
-    const isCorrect = !!question.options[idx].correct;
-    setTimeout(() => onAnswer(isCorrect), SELECT_DELAY_MS);
+    const chosen  = question.options[idx];
+    const correct = question.options.find(o => o.correct);
+    const detail = {
+      questionId:   question.id,
+      questionText: question.text,
+      skillTag:     question.skillTag || null,
+      chosenText:   chosen.text ?? '',
+      chosenEmoji:  chosen.emoji || null,
+      correctText:  correct?.text ?? '',
+      correctEmoji: correct?.emoji || null,
+      isCorrect:    !!chosen.correct,
+    };
+    setTimeout(() => onAnswer(detail), SELECT_DELAY_MS);
   }
 
   return (

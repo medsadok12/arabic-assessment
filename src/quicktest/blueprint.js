@@ -16,6 +16,7 @@ export const QUESTIONS = [
   // ── 🟢 المرحلة الأولى: البراعم (١-٥) ──────────────────────────────
   {
     id: 'q1',
+    skillTag: 'تمييز سمعي',
     audioPrompt: 'بَ',
     text: 'استمعْ جيداً، ثم اختر الصورة التي تبدأ بهذا الصوت',
     options: [
@@ -26,6 +27,7 @@ export const QUESTIONS = [
   },
   {
     id: 'q2',
+    skillTag: 'فهم مسموع',
     audioPrompt: 'أين القطة؟',
     text: 'استمعْ للسؤال، ثم اختر الصورة الصحيحة',
     options: [
@@ -36,6 +38,7 @@ export const QUESTIONS = [
   },
   {
     id: 'q3',
+    skillTag: 'تمييز بصري',
     parentReadHint: true,
     text: 'أيُّ حرف من هذه الحروف هو (م)؟',
     options: [
@@ -46,6 +49,7 @@ export const QUESTIONS = [
   },
   {
     id: 'q4',
+    skillTag: 'فهم بصري',
     promptEmoji: '🧒💧',
     text: 'ماذا يفعل الطفل في الصورة؟',
     options: [
@@ -56,6 +60,7 @@ export const QUESTIONS = [
   },
   {
     id: 'q5',
+    skillTag: 'استخلاص معلومة',
     audioPrompt: 'ذهبت مريم إلى الحديقة ولعبت بالكرة',
     text: 'أين ذهبت مريم؟',
     options: [
@@ -68,6 +73,7 @@ export const QUESTIONS = [
   // ── 🟡 المرحلة الثانية: المستكشفون (٦-١٠) ─────────────────────────
   {
     id: 'q6',
+    skillTag: 'تهجئة',
     promptEmoji: '☀️',
     text: 'اختر الحرف الناقص لتكتمل الكلمة: شـ ... ـس',
     options: [
@@ -78,6 +84,7 @@ export const QUESTIONS = [
   },
   {
     id: 'q7',
+    skillTag: 'قراءة وربط',
     promptEmoji: '👧🎨🌸',
     text: 'اختر الجملة التي تعبّر عن الصورة',
     options: [
@@ -88,6 +95,7 @@ export const QUESTIONS = [
   },
   {
     id: 'q8',
+    skillTag: 'تراكيب أساسية',
     text: 'أكمل الجملة: أحمدُ .......... الحليبَ كلَّ صباحٍ.',
     options: [
       { text: 'يشربُ',   correct: true  },
@@ -97,6 +105,7 @@ export const QUESTIONS = [
   },
   {
     id: 'q9',
+    skillTag: 'رصيد لغوي',
     text: 'ما الكلمة التي تعني مكاناً نزرع فيه الأشجار والزهور؟',
     options: [
       { text: 'حديقة', correct: true  },
@@ -106,6 +115,7 @@ export const QUESTIONS = [
   },
   {
     id: 'q10',
+    skillTag: 'بناء الجملة',
     text: 'رتّب الكلمات التالية لتكوين جملة صحيحة: (في / يلعبُ / الأطفالُ / الحديقةِ)',
     options: [
       { text: 'يلعبُ الأطفالُ في الحديقةِ', correct: true  },
@@ -117,6 +127,7 @@ export const QUESTIONS = [
   // ── 🔴 المرحلة الثالثة: المبدعون (١١-١٥) ──────────────────────────
   {
     id: 'q11',
+    skillTag: 'فهم قرائي',
     readingText: 'عاد عمر من المدرسة مسروراً؛ لأنه حصل على وسام التفوق في اللغة العربية.',
     text: 'لماذا كان عمر مسروراً؟',
     options: [
@@ -127,6 +138,7 @@ export const QUESTIONS = [
   },
   {
     id: 'q12',
+    skillTag: 'مترادفات',
     readingText: 'عاد عمر من المدرسة مسروراً؛ لأنه حصل على وسام التفوق في اللغة العربية.',
     text: 'من النص السابق، ما الكلمة الأقرب في المعنى لكلمة «مسروراً»؟',
     options: [
@@ -137,6 +149,7 @@ export const QUESTIONS = [
   },
   {
     id: 'q13',
+    skillTag: 'سبب ونتيجة',
     readingText: 'كان الجو بارداً جداً، لذلك ارتدى خالد معطفه السميك قبل الخروج.',
     text: 'لماذا ارتدى خالد معطفه؟',
     options: [
@@ -147,6 +160,7 @@ export const QUESTIONS = [
   },
   {
     id: 'q14',
+    skillTag: 'تراكيب متقدمة',
     text: 'اختر الجملة الصحيحة لغوياً',
     options: [
       { text: 'الطالباتُ يكتبنَ الدرسَ', correct: true  },
@@ -156,6 +170,7 @@ export const QUESTIONS = [
   },
   {
     id: 'q15',
+    skillTag: 'فهم شامل',
     text: 'أيُّ جملة تعبّر بصورة صحيحة عن المحافظة على البيئة؟',
     options: [
       { text: 'نحافظ على نظافة المكان ولا نرمي النفايات', correct: true  },

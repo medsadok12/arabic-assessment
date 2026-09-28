@@ -8,7 +8,7 @@ const LMS_URL = 'https://www.aarem.net';
  * تُطلَب أي بيانات، تكتيك تسويقي قياسي لرفع نسبة الإكمال). النتيجة لا
  * تُعرَض إلا بعد نجاح هذا الإرسال — راجع QuickTestApp.jsx.
  */
-export default function LeadGate({ childName, childAge, score, levelLabel, onDone }) {
+export default function LeadGate({ childName, childAge, score, levelLabel, answers, onDone }) {
   const [form,       setForm]       = useState({ parentName: '', phone: '', email: '' });
   const [error,      setError]      = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -38,6 +38,7 @@ export default function LeadGate({ childName, childAge, score, levelLabel, onDon
           childAge,
           score,
           level: levelLabel,
+          answers,
         }),
       });
       const data = await res.json();
