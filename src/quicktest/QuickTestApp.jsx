@@ -47,9 +47,10 @@ export default function QuickTestApp() {
         setLevels(data.levels);
         if (data.whatsappTemplate) setWaTemplate(data.whatsappTemplate);
       }
-      // معاينة المشرف: تخطَّ شاشة بيانات البداية وتدريب الحروف الافتتاحي
-      // بالكامل (مكوّن ثابت لا تديره لوحة CMS) وابدأ بالأسئلة المُدارة فوراً.
-      setPage(adminPreview ? PAGES.ASSESSMENT : PAGES.START);
+      // معاينة المشرف: تخطَّ شاشة بيانات البداية فقط (بيانات وهمية ثابتة
+      // أصلاً) وابدأ من تدريب الحروف الافتتاحي — نفس تجربة الزائر الحقيقي
+      // بالضبط بلا نقصان، فـ"جرّب الاختبار فعلياً" يعني التجربة كاملة.
+      setPage(adminPreview ? PAGES.ALPHABET : PAGES.START);
     });
     return () => { cancelled = true; };
   }, []);
