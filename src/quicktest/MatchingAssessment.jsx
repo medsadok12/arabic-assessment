@@ -107,19 +107,18 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
 
   const SELECTED_GLOW = { border: '#E8B84B', bg: '#FFF8E8' };
 
-  // نفس ارتفاع البطاقة لكلا العمودين (بلا aspect-ratio مربّع على عرض
-  // العمود كاملاً) — وإلا كانت بطاقات الصور (أعرض على الجوال) تتمدد طولياً
-  // بكثير عن بطاقات الكلمات، تاركةً فراغاً ضخماً أسفل عمود الكلمات بالضبط
-  // ما طُلب تجنّبه. الإطار مضغوط عمداً (minHeight أقل + padding أقل) مع
-  // إبقاء حجم الإيموجي/الخط كما هو — الفراغ الذي طُلب تقليله كان في هوامش
-  // البطاقة نفسها لا في محتواها.
+  // بطاقة الصورة وبطاقة الكلمة بعرض ثابت متساوٍ (150px) — لا تمدُّد على
+  // كامل عرض العمود (كان يُنتج فراغاً جانبياً حول الكلمات القصيرة) ولا
+  // حجم مختلف من بطاقة لأخرى، بل عرض وارتفاع موحَّدان "من جميع النواحي"
+  // لكل بطاقات التمرين معاً، بحسب طلب الأستاذ محمد صراحة. تُوسَّط كل بطاقة
+  // أفقياً داخل عمودها عبر alignItems:center على حاوية العمود (flex).
   function cardStyle({ isImage, isSelected, colorIdx }) {
     const base = {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       borderRadius: 18, cursor: 'pointer', border: '2.5px solid var(--border)',
       background: '#FAF7F2', transition: 'transform .15s, background .15s, border-color .15s, box-shadow .15s',
-      textAlign: 'center', transform: 'scale(1)', minHeight: 56, padding: isImage ? 2 : '6px 22px',
-      ...(isImage ? {} : { width: 'fit-content', minWidth: 110, alignSelf: 'center' }),
+      textAlign: 'center', transform: 'scale(1)', minHeight: 56, width: '100%', maxWidth: 150,
+      padding: isImage ? 2 : '6px 10px',
     };
     if (colorIdx !== undefined) {
       const c = LINK_PALETTE[colorIdx];
@@ -153,7 +152,7 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
             {imageOrder.map(idx => {
               const link = links[idx];
               const isSelected = selected?.type === 'image' && selected.idx === idx;
@@ -163,14 +162,14 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
                   type="button"
                   onClick={() => tapImage(idx)}
                   aria-label={`صورة: ${pairs[idx].word}`}
-                  style={{ ...cardStyle({ isImage: true, isSelected, colorIdx: link?.colorIdx }), fontSize: 'clamp(2.2rem, 9vw, 2.8rem)' }}
+                  style={{ ...cardStyle({ isImage: true, isSelected, colorIdx: link?.colorIdx }), fontSize: '2.3rem' }}
                 >
                   {pairs[idx].emoji}
                 </button>
               );
             })}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
             {wordOrder.map(idx => {
               const linkEntry = findLinkForWord(idx);
               const isSelected = selected?.type === 'word' && selected.idx === idx;
@@ -179,7 +178,7 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
                   key={idx}
                   type="button"
                   onClick={() => tapWord(idx)}
-                  style={{ ...cardStyle({ isImage: false, isSelected, colorIdx: linkEntry?.colorIdx }), fontSize: 'clamp(1.05rem, 5vw, 1.35rem)', fontWeight: 800 }}
+                  style={{ ...cardStyle({ isImage: false, isSelected, colorIdx: linkEntry?.colorIdx }), fontSize: '1.15rem', fontWeight: 800 }}
                 >
                   {pairs[idx].word}
                 </button>
