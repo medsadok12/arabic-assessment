@@ -3,10 +3,15 @@ import '../App.css';
 import { QUESTIONS as FALLBACK_QUESTIONS, LEVELS as FALLBACK_LEVELS, DEFAULT_WHATSAPP_TEMPLATE } from './blueprint.js';
 import { getQuicktestData } from './fetchQuicktestData.js';
 import { pickLevelByScore } from './pickLevel.js';
+import { isQuickTestAdminPreview, QUICK_TEST_PREVIEW_STUDENT } from './quickTestMode.js';
 import QuickQuestion from './QuickQuestion.jsx';
 import LeadGate from './LeadGate.jsx';
 
 const PAGES = { LOADING: 'loading', START: 'start', ASSESSMENT: 'assessment', GATE: 'gate', RESULT: 'result' };
+
+// يُحسَب مرة واحدة عند تحميل الصفحة (لا يتغيّر أثناء الجلسة) — نفس نمط
+// adminPreviewLevel في App.jsx الحقيقي.
+const adminPreview = isQuickTestAdminPreview();
 
 /**
  * تدفق مستقل تماماً عن App.jsx — قمع تسويقي عام بلا كود تقييم (راجع
@@ -25,8 +30,8 @@ export default function QuickTestApp() {
   const [questions, setQuestions]     = useState(FALLBACK_QUESTIONS);
   const [levels, setLevels]           = useState(FALLBACK_LEVELS);
   const [waTemplate, setWaTemplate]   = useState(DEFAULT_WHATSAPP_TEMPLATE);
-  const [childName, setChildName]     = useState('');
-  const [childAge, setChildAge]       = useState('');
+  const [childName, setChildName]     = useState(adminPreview ? QUICK_TEST_PREVIEW_STUDENT.name : '');
+  const [childAge, setChildAge]       = useState(adminPreview ? QUICK_TEST_PREVIEW_STUDENT.age : '');
   const [startError, setStartError]   = useState('');
   const [questionIdx, setQuestionIdx] = useState(0);
   const [answers, setAnswers]         = useState([]);
@@ -41,7 +46,8 @@ export default function QuickTestApp() {
         setLevels(data.levels);
         if (data.whatsappTemplate) setWaTemplate(data.whatsappTemplate);
       }
-      setPage(PAGES.START);
+      // معاينة المشرف: تخطَّ شاشة بيانات البداية بالكامل وابدأ الاختبار فوراً.
+      setPage(adminPreview ? PAGES.ASSESSMENT : PAGES.START);
     });
     return () => { cancelled = true; };
   }, []);
@@ -70,7 +76,9 @@ export default function QuickTestApp() {
     }
     const correctCount = updated.filter(a => a.isCorrect).length;
     setLevel(pickLevelByScore(correctCount, levels));
-    setPage(PAGES.GATE);
+    // معاينة المشرف: لا بوابة تواصل، ولا أي إرسال لـ/api/leads — تجربة
+    // بحتة لمراجعة محتوى الأسئلة الحيّ فوراً.
+    setPage(adminPreview ? PAGES.RESULT : PAGES.GATE);
   }
 
   const progressPct = page === PAGES.ASSESSMENT
@@ -79,6 +87,11 @@ export default function QuickTestApp() {
 
   return (
     <div className="app">
+      {adminPreview && (
+        <div style={{ background: '#E8B84B', color: '#1A2B4A', textAlign: 'center', padding: '8px', fontSize: 14, fontWeight: 'bold' }}>
+          🚀 وضع معاينة المشرف — تجريبي بالكامل، لن يُحفَظ أو يُرسَل لأي نظام
+        </div>
+      )}
       <header className="app-header">
         <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="عارم أكاديمي" className="header-logo-img" />
         <div className="header-text">

@@ -35,6 +35,7 @@ export default function QuicktestCmsTab() {
   const [error,     setError]     = useState(null);
 
   const [editingQ, setEditingQ] = useState(null); // { id?, ...EMPTY_QUESTION } أو null
+  const [previewQ, setPreviewQ] = useState(null); // معاينة سؤال واحد فقط، بلا تعديل
   const [qSaving,  setQSaving]  = useState(false);
   const [qMsg,     setQMsg]     = useState(null);
   const [uploading, setUploading] = useState(null); // 'image' | 'audio' | null
@@ -170,9 +171,23 @@ export default function QuicktestCmsTab() {
 
   return (
     <div>
-      <h2 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 6 }}>🛠️ إدارة الاختبار الترويجي</h2>
-      <p style={{ color: 'var(--muted)', fontSize: '.85rem', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 6 }}>
+        <h2 style={{ fontWeight: 800, color: 'var(--primary)' }}>🛠️ إدارة الاختبار الترويجي</h2>
+        <a
+          href="https://assessment.aarem.net/?quick=1&admin_preview=1"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-primary btn-sm"
+          style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}
+        >
+          🚀 جرّب الاختبار فعلياً
+        </a>
+      </div>
+      <p style={{ color: 'var(--muted)', fontSize: '.85rem', marginBottom: 6 }}>
         يتحكم هذا التبويب باختبار "تحديد المستوى" المجاني المنشور على assessment.aarem.net/?quick=1 — عند أي فشل هنا، يعرض الموقع العام تلقائياً نسخة احتياطية ثابتة، فلا يتعطل أمام الزوار.
+      </p>
+      <p style={{ color: 'var(--muted)', fontSize: '.78rem', marginBottom: 20 }}>
+        يفتح زر "🚀 جرّب الاختبار فعلياً" التطبيق الحيّ مباشرة على الأسئلة (بلا نموذج بيانات ولا بوابة تواصل) — لا يُحفَظ أو يُرسَل أي شيء منه، تجربة معاينة بحتة.
       </p>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 22, borderBottom: '1.5px solid var(--border)', paddingBottom: 4 }}>
@@ -204,6 +219,7 @@ export default function QuicktestCmsTab() {
           deleteQuestion={deleteQuestion}
           onAdd={() => { setEditingQ({ ...EMPTY_QUESTION }); setQMsg(null); }}
           onEdit={q => { setEditingQ({ ...q, options: q.options?.length ? q.options : EMPTY_QUESTION.options }); setQMsg(null); }}
+          onPreview={q => setPreviewQ(q)}
         />
       )}
 
@@ -246,11 +262,15 @@ export default function QuicktestCmsTab() {
           saving={lSaving} msg={lMsg}
         />
       )}
+
+      {previewQ && (
+        <QuestionPreviewModal question={previewQ} onClose={() => setPreviewQ(null)} />
+      )}
     </div>
   );
 }
 
-function QuestionsSection({ questions, moveQuestion, toggleEnabled, deleteQuestion, onAdd, onEdit }) {
+function QuestionsSection({ questions, moveQuestion, toggleEnabled, deleteQuestion, onAdd, onEdit, onPreview }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
@@ -292,6 +312,7 @@ function QuestionsSection({ questions, moveQuestion, toggleEnabled, deleteQuesti
                   </button>
                 </td>
                 <td style={{ padding: '8px 14px', whiteSpace: 'nowrap' }}>
+                  <button className="btn btn-sm btn-outline" onClick={() => onPreview(q)} title="معاينة سريعة" style={{ marginLeft: 6 }}>👁️</button>
                   <button className="btn btn-sm btn-outline" onClick={() => onEdit(q)} style={{ marginLeft: 6 }}>✏️</button>
                   <button className="btn btn-sm btn-danger" onClick={() => deleteQuestion(q.id)}>🗑️</button>
                 </td>
@@ -476,6 +497,80 @@ function LevelModal({ value, setValue, onSubmit, onClose, saving, msg }) {
             <button type="button" className="btn btn-ghost" onClick={onClose}>إلغاء</button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * معاينة سؤال واحد بلا مغادرة الصفحة — لا يعيد استخدام QuickQuestion.jsx
+ * (تطبيق Vite منفصل تماماً، بنيته الخاصة وCSS الخاص به لا يعملان هنا) بل
+ * عرض تقديمي خفيف مستقل: نص السؤال ووسائطه وخياراته مع تمييز الإجابة
+ * الصحيحة — يكفي تماماً لمراجعة المحتوى دون تجربة الاختبار الحقيقي.
+ */
+function QuestionPreviewModal({ question: q, onClose }) {
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, padding: 16 }}
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <div style={{ background: '#fff', borderRadius: 20, padding: '26px 22px', width: '100%', maxWidth: 480, direction: 'rtl', maxHeight: '92vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <h3 style={{ fontWeight: 800, color: 'var(--primary)' }}>👁️ معاينة السؤال</h3>
+          <button className="btn btn-sm btn-ghost" onClick={onClose}>✕</button>
+        </div>
+
+        {q.reading_text && (
+          <div style={{ background: '#f4f1fb', border: '1px solid #d9d0ee', borderRadius: 10, padding: '12px 14px', marginBottom: 14, fontSize: '.9rem', lineHeight: 1.8 }}>
+            📖 {q.reading_text}
+          </div>
+        )}
+
+        {q.image_url ? (
+          <div style={{ textAlign: 'center', marginBottom: 12 }}>
+            <img src={q.image_url} alt="" style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 10 }} />
+          </div>
+        ) : q.prompt_emoji && (
+          <div style={{ textAlign: 'center', fontSize: '2.6rem', marginBottom: 12 }}>{q.prompt_emoji}</div>
+        )}
+
+        {q.audio_url ? (
+          <div style={{ textAlign: 'center', marginBottom: 12 }}>
+            <audio controls src={q.audio_url} style={{ maxWidth: '100%' }} />
+          </div>
+        ) : q.audio_prompt && (
+          <div style={{ background: '#eef5ff', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: '.85rem', color: '#1a3a5c' }}>
+            🔊 يُنطَق آلياً: «{q.audio_prompt}»
+          </div>
+        )}
+
+        {q.parent_read_hint && (
+          <div style={{ background: '#fff8e8', border: '1px solid #f3d78a', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: '.82rem', color: '#7a5a10' }}>
+            🗣️ يُطلَب من ولي الأمر قراءة السؤال بصوت مرتفع
+          </div>
+        )}
+
+        <p style={{ fontWeight: 800, fontSize: '1.05rem', marginBottom: 14 }}>{q.question_text}</p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {(q.options ?? []).map((opt, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8,
+              border: `1.5px solid ${opt.correct ? '#86efac' : 'var(--border)'}`,
+              background: opt.correct ? '#f0fdf4' : '#fff',
+            }}>
+              {opt.emoji && <span style={{ fontSize: '1.3rem' }}>{opt.emoji}</span>}
+              <span style={{ flex: 1, fontWeight: opt.correct ? 700 : 400 }}>{opt.text}</span>
+              {opt.correct && <span title="الإجابة الصحيحة">✅</span>}
+            </div>
+          ))}
+        </div>
+
+        {q.skill_tag && (
+          <div style={{ marginTop: 14 }}>
+            <span className="badge badge-blue">{q.skill_tag}</span>
+          </div>
+        )}
       </div>
     </div>
   );
