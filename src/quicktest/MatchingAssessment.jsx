@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 function shuffle(arr) {
   const a = [...arr];
@@ -9,29 +9,43 @@ function shuffle(arr) {
   return a;
 }
 
+// ستة ألوان باستيل هادئة مخصَّصة حصراً لتمييز أزواج الربط هنا — بطلب صريح
+// من الأستاذ محمد ("بطاقة الماء ونقطة الماء تتحولان معاً لنفس اللون")،
+// وهو الاستثناء الصريح الذي تسمح به قاعدة اللوحة الخماسية في القسم 2.1 من
+// CLAUDE.md. اللون يُحدَّد بترتيب إنشاء الربط (لا بمعرّف الزوج الصحيح)،
+// فزوج خاطئ يحصل أيضاً على لون مشترك — لا علاقة للون بصحة الإجابة إطلاقاً،
+// حفاظاً على قاعدة "صفر إحباط".
+const LINK_PALETTE = [
+  { bg: '#eaf6ff', border: '#7dc4f0' },
+  { bg: '#eafbf3', border: '#7fdfb0' },
+  { bg: '#f4f1fb', border: '#b9a8e8' },
+  { bg: '#fff4e6', border: '#f5b878' },
+  { bg: '#fdeef3', border: '#f0a8c4' },
+  { bg: '#e8faf7', border: '#7ddfd0' },
+];
+
 /**
  * مكوّن مطابقة عام قابل لإعادة الاستخدام (التدريبان الثاني والثالث في
  * الاختبار الترويجي) — يعرض عموداً للصور وعموداً للكلمات، كل منهما بترتيب
- * عشوائي مستقل، ويربط الطفل بينهما بالنقر المتتابع (صورة ثم كلمة، أو
- * العكس). لا خطوط SVG بين البطاقات — بدلاً من ذلك تُستخدَم نفس آلية
- * "التظليل المحايد" المعتمدة أصلاً في QuickQuestion.jsx (نفس حدود/خلفية
- * الخيار المُختار) للإشارة للربط، وهو البديل الذي طرحه الأستاذ محمد صراحةً
- * في المواصفات ("أو يتغير لون خلفية البطاقتين بنفس اللون"). هذا يتجنّب
- * عمداً اختراع لون منفصل لكل زوج (خارج اللوحة الخماسية المعتمدة، القسم 2.1
- * من CLAUDE.md) وتعقيد حساب إحداثيات خطوط بين عمودين متجاوبين على الجوال.
+ * عشوائي مستقل، ويربط الطفل بينهما بالنقر المتتابع. لا خطوط SVG بين
+ * البطاقات (تعقيد غير ضروري لعمودين متجاوبين مستقلَّي الترتيب على الجوال)
+ * — الربط يُعرَض بدلاً من ذلك بتلوين مشترك (LINK_PALETTE أعلاه) لبطاقتَي
+ * الصورة والكلمة معاً، بالضبط كما طلب الأستاذ محمد صراحةً في هذه الدفعة.
+ * أيقونة 🔗 في منتصف الشبكة زخرفية بحتة (تعبّر عن فكرة الربط عموماً) — لا
+ * تشير لصف بعينه، لأن ترتيب عمودَي الصور والكلمات مستقل ومختلط، فلا يوجد
+ * "صف" واحد يقابل زوجاً فعلياً لتُميَّزه.
  *
  * قاعدة "صفر إحباط": لا يظهر أي مؤشر صح/خطأ أثناء اللعب مهما كان الربط —
- * الصحة تُحسَب بصمت فقط عند "متابعة" (كل صورة "صحيحة" إن رُبطت بكلمتها
- * الأصلية في `pairs`، بما أن كل عنصر يحمل زوجه الصحيح أصلاً) وتُمرَّر عبر
- * onComplete بنفس شكل AlphabetGridAssessment.jsx (correctWords/
- * needsReviewWords) ليعرضها LeadDetailsModal بنفس الأسلوب.
+ * الصحة تُحسَب بصمت فقط عند "متابعة" وتُمرَّر عبر onComplete بنفس شكل
+ * AlphabetGridAssessment.jsx (correctWords/needsReviewWords).
  */
 export default function MatchingAssessment({ pairs, title, subtitle, label, questionId, skillTag, onComplete }) {
   const [imageOrder] = useState(() => shuffle(pairs.map((_, i) => i)));
   const [wordOrder]  = useState(() => shuffle(pairs.map((_, i) => i)));
 
   const [selected, setSelected] = useState(null); // { type:'image'|'word', idx }
-  const [links, setLinks] = useState({}); // { [imageIdx]: wordIdx }
+  const [links, setLinks] = useState({}); // { [imageIdx]: { wordIdx, colorIdx } }
+  const nextColorSeq = useRef(0);
 
   const linkedCount = Object.keys(links).length;
   const allLinked = linkedCount === pairs.length;
@@ -39,19 +53,21 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
   function imageIsLinked(imageIdx) {
     return links[imageIdx] !== undefined;
   }
-  function imageLinkedToWord(wordIdx) {
-    const entry = Object.entries(links).find(([, w]) => w === wordIdx);
-    return entry ? Number(entry[0]) : null;
+  function findLinkForWord(wordIdx) {
+    const entry = Object.entries(links).find(([, v]) => v.wordIdx === wordIdx);
+    return entry ? { imageIdx: Number(entry[0]), ...entry[1] } : null;
   }
 
   function formLink(imageIdx, wordIdx) {
+    const colorIdx = nextColorSeq.current % LINK_PALETTE.length;
+    nextColorSeq.current += 1;
     setLinks(prev => {
       const next = { ...prev };
       delete next[imageIdx];
       for (const k of Object.keys(next)) {
-        if (next[k] === wordIdx) delete next[k];
+        if (next[k].wordIdx === wordIdx) delete next[k];
       }
-      next[imageIdx] = wordIdx;
+      next[imageIdx] = { wordIdx, colorIdx };
       return next;
     });
   }
@@ -73,8 +89,8 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
   }
 
   function tapWord(wordIdx) {
-    const linkedImage = imageLinkedToWord(wordIdx);
-    if (linkedImage !== null) { unlinkImage(linkedImage); setSelected(null); return; }
+    const existing = findLinkForWord(wordIdx);
+    if (existing) { unlinkImage(existing.imageIdx); setSelected(null); return; }
     if (selected?.type === 'image') { formLink(selected.idx, wordIdx); setSelected(null); return; }
     setSelected(prev => (prev?.type === 'word' && prev.idx === wordIdx) ? null : { type: 'word', idx: wordIdx });
   }
@@ -83,23 +99,33 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
     const correctWords = [];
     const needsReviewWords = [];
     pairs.forEach((p, i) => {
-      if (links[i] === i) correctWords.push(p.word);
+      if (links[i]?.wordIdx === i) correctWords.push(p.word);
       else needsReviewWords.push(p.word);
     });
     onComplete({ type: 'matching', questionId, skillTag, label, correctWords, needsReviewWords });
   }
 
-  const cardBase = {
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: '14px 10px', borderRadius: 14, cursor: 'pointer',
-    border: '2px solid var(--border)', background: '#fff',
-    transition: 'all .15s', textAlign: 'center', minHeight: 64,
-  };
+  const SELECTED_GLOW = { border: '#E8B84B', bg: '#FFF8E8' };
 
-  function activeStyle(isActive) {
-    return isActive
-      ? { border: '2.5px solid var(--primary)', background: '#efe9f9', boxShadow: '0 0 10px rgba(26,43,74,.22)' }
-      : {};
+  // نفس ارتفاع البطاقة لكلا العمودين (بلا aspect-ratio مربّع على عرض
+  // العمود كاملاً) — وإلا كانت بطاقات الصور (أعرض على الجوال) تتمدد طولياً
+  // بكثير عن بطاقات الكلمات، تاركةً فراغاً ضخماً أسفل عمود الكلمات بالضبط
+  // ما طُلب تجنّبه.
+  function cardStyle({ isImage, isSelected, colorIdx }) {
+    const base = {
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      borderRadius: 20, cursor: 'pointer', border: '2.5px solid var(--border)',
+      background: '#FAF7F2', transition: 'transform .15s, background .15s, border-color .15s, box-shadow .15s',
+      textAlign: 'center', transform: 'scale(1)', minHeight: 78, padding: isImage ? 6 : '10px 12px',
+    };
+    if (colorIdx !== undefined) {
+      const c = LINK_PALETTE[colorIdx];
+      return { ...base, background: c.bg, borderColor: c.border };
+    }
+    if (isSelected) {
+      return { ...base, background: SELECTED_GLOW.bg, borderColor: SELECTED_GLOW.border, transform: 'scale(1.05)', boxShadow: '0 0 14px rgba(232,184,75,.5)' };
+    }
+    return base;
   }
 
   return (
@@ -108,39 +134,55 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
         {label}
       </p>
       <h2 className="page-title" style={{ fontSize: '1.15rem', marginBottom: 8 }}>{title}</h2>
-      <p className="page-subtitle" style={{ marginBottom: 18 }}>{subtitle}</p>
+      <p className="page-subtitle" style={{ marginBottom: 16 }}>{subtitle}</p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {imageOrder.map(idx => {
-            const active = imageIsLinked(idx) || (selected?.type === 'image' && selected.idx === idx);
-            return (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => tapImage(idx)}
-                aria-label={`صورة: ${pairs[idx].word}`}
-                style={{ ...cardBase, ...activeStyle(active), fontSize: 'clamp(1.8rem, 8vw, 2.4rem)' }}
-              >
-                {pairs[idx].emoji}
-              </button>
-            );
-          })}
+      <div style={{ position: 'relative' }}>
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
+            width: 38, height: 38, borderRadius: '50%', background: '#fff',
+            border: '2px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.1rem', zIndex: 1, boxShadow: '0 2px 8px rgba(26,43,74,.15)',
+          }}
+        >
+          🔗
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {wordOrder.map(idx => {
-            const active = imageLinkedToWord(idx) !== null || (selected?.type === 'word' && selected.idx === idx);
-            return (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => tapWord(idx)}
-                style={{ ...cardBase, ...activeStyle(active), fontSize: 'clamp(.95rem, 4vw, 1.1rem)', fontWeight: 800 }}
-              >
-                {pairs[idx].word}
-              </button>
-            );
-          })}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {imageOrder.map(idx => {
+              const link = links[idx];
+              const isSelected = selected?.type === 'image' && selected.idx === idx;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => tapImage(idx)}
+                  aria-label={`صورة: ${pairs[idx].word}`}
+                  style={{ ...cardStyle({ isImage: true, isSelected, colorIdx: link?.colorIdx }), fontSize: 'clamp(2.2rem, 9vw, 2.8rem)' }}
+                >
+                  {pairs[idx].emoji}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {wordOrder.map(idx => {
+              const linkEntry = findLinkForWord(idx);
+              const isSelected = selected?.type === 'word' && selected.idx === idx;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => tapWord(idx)}
+                  style={{ ...cardStyle({ isImage: false, isSelected, colorIdx: linkEntry?.colorIdx }), fontSize: 'clamp(1.05rem, 5vw, 1.35rem)', fontWeight: 800 }}
+                >
+                  {pairs[idx].word}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
