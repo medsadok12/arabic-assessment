@@ -10,7 +10,7 @@ import { isQuickTestAdminPreview, QUICK_TEST_PREVIEW_STUDENT } from './quickTest
 import QuickQuestion from './QuickQuestion.jsx';
 import AlphabetGridAssessment from './AlphabetGridAssessment.jsx';
 import MatchingAssessment from './MatchingAssessment.jsx';
-import { MATCHING_PAIRS_1, MATCHING_PAIRS_2 } from './matchingData.js';
+import { MATCHING_EXERCISES_FALLBACK } from './matchingData.js';
 import LeadGate from './LeadGate.jsx';
 
 const PAGES = {
@@ -22,6 +22,19 @@ const PAGES = {
 // يُحسَب مرة واحدة عند تحميل الصفحة (لا يتغيّر أثناء الجلسة) — نفس نمط
 // adminPreviewLevel في App.jsx الحقيقي.
 const adminPreview = isQuickTestAdminPreview();
+
+// تدريبا المطابقة أصبحا قابلَين للتعطيل من اللوحة (بخلاف تمرين الحروف
+// الذي له علم enabled واحد فقط) — هاتان الدالتان تحسبان الصفحة التالية
+// الصحيحة بتخطّي أي تدريب معطَّل، بترتيب matchingExercises الثابت
+// (matching-1 ثم matching-2) بصرف النظر عن حالة تفعيلهما.
+function firstEnabledMatchingPage(exercises) {
+  if (exercises[0]?.enabled) return PAGES.MATCHING1;
+  if (exercises[1]?.enabled) return PAGES.MATCHING2;
+  return PAGES.ASSESSMENT;
+}
+function pageAfterMatching1(exercises) {
+  return exercises[1]?.enabled ? PAGES.MATCHING2 : PAGES.ASSESSMENT;
+}
 
 /**
  * تدفق مستقل تماماً عن App.jsx — قمع تسويقي عام بلا كود تقييم (راجع
@@ -44,6 +57,7 @@ export default function QuickTestApp() {
   const [alphabetEnabled, setAlphabetEnabled]   = useState(DEFAULT_ALPHABET_ENABLED);
   const [alphabetTitle, setAlphabetTitle]       = useState(DEFAULT_ALPHABET_TITLE);
   const [alphabetSubtitle, setAlphabetSubtitle] = useState(DEFAULT_ALPHABET_SUBTITLE);
+  const [matchingExercises, setMatchingExercises] = useState(MATCHING_EXERCISES_FALLBACK);
   const [childName, setChildName]     = useState(adminPreview ? QUICK_TEST_PREVIEW_STUDENT.name : '');
   const [childAge, setChildAge]       = useState(adminPreview ? QUICK_TEST_PREVIEW_STUDENT.age : '');
   const [startError, setStartError]   = useState('');
@@ -59,6 +73,7 @@ export default function QuickTestApp() {
       // لو فشلت قراءة أحدهما، الآخر يبقى ديناميكياً إن نجح جلبه (تفادياً
       // لفشل شامل بلا داعٍ). كل حقل يُستبدَل فقط إن وصل بشكل سليم فعلاً.
       let effectiveAlphabetEnabled = DEFAULT_ALPHABET_ENABLED;
+      let effectiveMatching = MATCHING_EXERCISES_FALLBACK;
       if (data.source === 'database') {
         setQuestions(data.questions);
         setLevels(data.levels);
@@ -67,13 +82,23 @@ export default function QuickTestApp() {
         if (typeof data.alphabetEnabled === 'boolean') { setAlphabetEnabled(data.alphabetEnabled); effectiveAlphabetEnabled = data.alphabetEnabled; }
         if (data.alphabetTitle) setAlphabetTitle(data.alphabetTitle);
         if (data.alphabetSubtitle) setAlphabetSubtitle(data.alphabetSubtitle);
+        // كل تدريب مطابقة يُدمَج بمعزل عن الآخر — تدريب بأزواج فعلية من
+        // القاعدة يحلّ محل الاحتياطي، وتدريب فارغ/فاشل يبقى على نسخته
+        // الثابتة، فلا يسقط تدريبان معاً بسبب فشل واحد منهما فقط.
+        if (Array.isArray(data.matchingExercises)) {
+          effectiveMatching = MATCHING_EXERCISES_FALLBACK.map(fallbackEx => {
+            const dbEx = data.matchingExercises.find(e => e.key === fallbackEx.key);
+            return (dbEx && Array.isArray(dbEx.pairs) && dbEx.pairs.length > 0) ? { ...fallbackEx, ...dbEx } : fallbackEx;
+          });
+          setMatchingExercises(effectiveMatching);
+        }
       }
       // معاينة المشرف: تخطَّ شاشة بيانات البداية فقط (بيانات وهمية ثابتة
-      // أصلاً) وابدأ من تدريب الحروف الافتتاحي — نفس تجربة الزائر الحقيقي
-      // بالضبط بلا نقصان، فـ"جرّب الاختبار فعلياً" يعني التجربة كاملة. إن
-      // عطّل الأستاذ محمد تمرين الحروف من اللوحة، تُتخطى هذه الخطوة للجميع
-      // مباشرة إلى تدريبَي المطابقة (لا خيار تعطيل لهما بعد — ثابتان دائماً).
-      setPage(adminPreview ? (effectiveAlphabetEnabled ? PAGES.ALPHABET : PAGES.MATCHING1) : PAGES.START);
+      // أصلاً) وابدأ من أول خطوة فعلياً مفعَّلة — نفس تجربة الزائر الحقيقي
+      // بالضبط بلا نقصان، فـ"جرّب الاختبار فعلياً" يعني التجربة كاملة.
+      setPage(adminPreview
+        ? (effectiveAlphabetEnabled ? PAGES.ALPHABET : firstEnabledMatchingPage(effectiveMatching))
+        : PAGES.START);
     });
     return () => { cancelled = true; };
   }, []);
@@ -90,17 +115,17 @@ export default function QuickTestApp() {
     setStartError('');
     setAnswers([]);
     setQuestionIdx(0);
-    setPage(alphabetEnabled ? PAGES.ALPHABET : PAGES.MATCHING1);
+    setPage(alphabetEnabled ? PAGES.ALPHABET : firstEnabledMatchingPage(matchingExercises));
   }
 
   function handleAlphabetComplete(detail) {
     setAnswers(prev => [...prev, detail]);
-    setPage(PAGES.MATCHING1);
+    setPage(firstEnabledMatchingPage(matchingExercises));
   }
 
   function handleMatching1Complete(detail) {
     setAnswers(prev => [...prev, detail]);
-    setPage(PAGES.MATCHING2);
+    setPage(pageAfterMatching1(matchingExercises));
   }
 
   function handleMatching2Complete(detail) {
@@ -195,24 +220,24 @@ export default function QuickTestApp() {
 
         {page === PAGES.MATCHING1 && (
           <MatchingAssessment
-            pairs={MATCHING_PAIRS_1}
-            label="التدريب الثاني"
-            title="🔗 اربط كل صورة بالكلمة المناسبة"
-            subtitle="اضغط على الصورة ثم على الكلمة لربطهما، واضغط على أي منهما مرة أخرى لإلغاء الربط وتغيير إجابتك."
-            questionId="matching-1"
-            skillTag="مطابقة الصور بالكلمات — الاحتياجات اليومية"
+            pairs={matchingExercises[0].pairs}
+            label={matchingExercises[0].label}
+            title={matchingExercises[0].title}
+            subtitle={matchingExercises[0].subtitle}
+            questionId={matchingExercises[0].key}
+            skillTag={matchingExercises[0].skillTag}
             onComplete={handleMatching1Complete}
           />
         )}
 
         {page === PAGES.MATCHING2 && (
           <MatchingAssessment
-            pairs={MATCHING_PAIRS_2}
-            label="التدريب الثالث"
-            title="🔗 اربط كل صورة بالكلمة المناسبة"
-            subtitle="اضغط على الصورة ثم على الكلمة لربطهما، واضغط على أي منهما مرة أخرى لإلغاء الربط وتغيير إجابتك."
-            questionId="matching-2"
-            skillTag="مطابقة الصور بالكلمات — أشياء من حولي"
+            pairs={matchingExercises[1].pairs}
+            label={matchingExercises[1].label}
+            title={matchingExercises[1].title}
+            subtitle={matchingExercises[1].subtitle}
+            questionId={matchingExercises[1].key}
+            skillTag={matchingExercises[1].skillTag}
             onComplete={handleMatching2Complete}
           />
         )}

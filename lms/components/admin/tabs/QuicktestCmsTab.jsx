@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react';
 /*
   لوحة إدارة "اختبار تحديد المستوى" التسويقي — ذاتية الاكتفاء (بلا props)،
   بنفس نمط LeadsTab.jsx/AnalyticsTab.jsx (حالتها الخاصة، جلبها الخاص).
-  أربعة أقسام داخلية: الأسئلة (CRUD + ترتيب بأزرار ▲▼ + رفع وسائط حقيقي)،
-  المستويات (حدود النقاط والنصوص الوصفية)، رسالة واتساب، وتمرين الحروف
-  الافتتاحي (تفعيل/عنوان/نص فرعي + إدارة الحروف الـ28 نفسها). عند أي فشل
-  في القراءة هنا، الموقع العام (assessment.aarem.net/?quick=1) يسقط
-  تلقائياً لمحتوى blueprint.js الثابت — راجع fetchQuicktestData.js.
+  خمسة أقسام داخلية: الأسئلة (CRUD + ترتيب بأزرار ▲▼ + رفع وسائط حقيقي)،
+  المستويات (حدود النقاط والنصوص الوصفية)، رسالة واتساب، تمرين الحروف
+  الافتتاحي (تفعيل/عنوان/نص فرعي + إدارة الحروف الـ28 نفسها)، وتدريبا
+  المطابقة (تفعيل/عنوان/نص فرعي + أزواج الصور-الكلمات لكل تدريب على حدة).
+  عند أي فشل في القراءة هنا، الموقع العام (assessment.aarem.net/?quick=1)
+  يسقط تلقائياً لمحتوى blueprint.js/matchingData.js الثابت — راجع
+  fetchQuicktestData.js.
 */
 
 async function uploadMedia(file, kind) {
@@ -58,14 +60,23 @@ export default function QuicktestCmsTab() {
   const [newLetter,     setNewLetter]     = useState('');
   const [letterSaving,  setLetterSaving]  = useState(null); // id الحرف الجاري حفظه/حذفه
 
+  const [matchingSettings, setMatchingSettings] = useState(null); // [{exercise_key,...}, ...]
+  const [matchingPairs,    setMatchingPairs]    = useState(null); // كل الأزواج، كلا التدريبين معاً
+  const [pairSaving,       setPairSaving]       = useState(null); // id الزوج الجاري حفظه/حذفه، أو 'new:<exercise_key>'
+  const [newPairInputs,    setNewPairInputs]    = useState({ 'matching-1': { emoji: '', word: '' }, 'matching-2': { emoji: '', word: '' } });
+
   function loadAll() {
     Promise.all([
       fetch('/api/bogga/quicktest-questions').then(r => r.json()),
       fetch('/api/bogga/quicktest-levels').then(r => r.json()),
       fetch('/api/bogga/quicktest-settings').then(r => r.json()),
       fetch('/api/bogga/quicktest-alphabet').then(r => r.json()),
-    ]).then(([q, l, s, a]) => {
-      if (q.error || l.error || s.error || a.error) { setError(q.error || l.error || s.error || a.error); return; }
+      fetch('/api/bogga/quicktest-matching-settings').then(r => r.json()),
+      fetch('/api/bogga/quicktest-matching').then(r => r.json()),
+    ]).then(([q, l, s, a, ms, mp]) => {
+      if (q.error || l.error || s.error || a.error || ms.error || mp.error) {
+        setError(q.error || l.error || s.error || a.error || ms.error || mp.error); return;
+      }
       setQuestions(q.questions);
       setLevels(l.levels);
       setSettings(s.settings);
@@ -74,6 +85,8 @@ export default function QuicktestCmsTab() {
       setAlphaTitle(s.settings?.alphabet_title ?? '');
       setAlphaSubtitle(s.settings?.alphabet_subtitle ?? '');
       setLetters(a.letters);
+      setMatchingSettings(ms.settings);
+      setMatchingPairs(mp.pairs);
     }).catch(() => setError('تعذّر تحميل بيانات لوحة الاختبار الترويجي'));
   }
 
@@ -260,8 +273,78 @@ export default function QuicktestCmsTab() {
     }
   }
 
+  // ── تدريبا المطابقة ────────────────────────────────────────────────────
+  async function saveMatchingSettings(exercise_key, patch) {
+    const res = await fetch('/api/bogga/quicktest-matching-settings', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ exercise_key, ...patch }),
+    });
+    const data = await res.json();
+    if (res.ok) setMatchingSettings(prev => prev.map(s => s.exercise_key === exercise_key ? data.settings : s));
+    return { ok: res.ok, error: data.error };
+  }
+
+  async function moveMatchingPair(pair, dir) {
+    const siblings = matchingPairs.filter(p => p.exercise_key === pair.exercise_key);
+    const idx = siblings.findIndex(x => x.id === pair.id);
+    const j = idx + dir;
+    if (j < 0 || j >= siblings.length) return;
+    const other = siblings[j];
+    const res = await fetch('/api/bogga/quicktest-matching/reorder', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [{ id: pair.id, order_index: other.order_index }, { id: other.id, order_index: pair.order_index }] }),
+    });
+    if (res.ok) {
+      setMatchingPairs(prev => prev.map(p => {
+        if (p.id === pair.id) return { ...p, order_index: other.order_index };
+        if (p.id === other.id) return { ...p, order_index: pair.order_index };
+        return p;
+      }));
+    }
+  }
+
+  async function updateMatchingPair(id, patch) {
+    setPairSaving(id);
+    const res = await fetch(`/api/bogga/quicktest-matching/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setMatchingPairs(prev => prev.map(p => p.id === id ? data.pair : p));
+    }
+    setPairSaving(null);
+  }
+
+  async function deleteMatchingPair(id) {
+    if (!confirm('هل تريد حذف هذا الزوج نهائياً؟')) return;
+    setPairSaving(id);
+    const res = await fetch(`/api/bogga/quicktest-matching/${id}`, { method: 'DELETE' });
+    if (res.ok) setMatchingPairs(prev => prev.filter(p => p.id !== id));
+    setPairSaving(null);
+  }
+
+  async function addMatchingPair(exercise_key) {
+    const input = newPairInputs[exercise_key];
+    if (!input.emoji.trim() || !input.word.trim()) return;
+    setPairSaving(`new:${exercise_key}`);
+    try {
+      const res = await fetch('/api/bogga/quicktest-matching', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exercise_key, emoji: input.emoji.trim(), word: input.word.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMatchingPairs(prev => [...prev, data.pair]);
+        setNewPairInputs(prev => ({ ...prev, [exercise_key]: { emoji: '', word: '' } }));
+      }
+    } finally {
+      setPairSaving(null);
+    }
+  }
+
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!questions || !levels || !letters) return <div style={{ textAlign: 'center', padding: 40 }}><span className="spinner" /></div>;
+  if (!questions || !levels || !letters || !matchingSettings || !matchingPairs) return <div style={{ textAlign: 'center', padding: 40 }}><span className="spinner" /></div>;
 
   return (
     <div>
@@ -290,6 +373,7 @@ export default function QuicktestCmsTab() {
           { id: 'levels',    label: '⚙️ المستويات' },
           { id: 'settings',  label: '📱 رسالة واتساب' },
           { id: 'alphabet',  label: `🔤 تمرين الحروف (${letters.length})` },
+          { id: 'matching',  label: `🔗 تدريبا المطابقة (${matchingPairs.length})` },
         ].map(t => (
           <button
             key={t.id}
@@ -351,6 +435,21 @@ export default function QuicktestCmsTab() {
           onMoveLetter={moveLetter} onUpdateLetterText={updateLetterText}
           onToggleLetterEnabled={toggleLetterEnabled} onDeleteLetter={deleteLetter}
           newLetter={newLetter} setNewLetter={setNewLetter} onAddLetter={addLetter}
+        />
+      )}
+
+      {subTab === 'matching' && (
+        <MatchingSection
+          matchingSettings={matchingSettings}
+          matchingPairs={matchingPairs}
+          onSaveSettings={saveMatchingSettings}
+          pairSaving={pairSaving}
+          onMovePair={moveMatchingPair}
+          onUpdatePair={updateMatchingPair}
+          onDeletePair={deleteMatchingPair}
+          newPairInputs={newPairInputs}
+          setNewPairInputs={setNewPairInputs}
+          onAddPair={addMatchingPair}
         />
       )}
 
@@ -545,6 +644,154 @@ function LetterRow({ letter, index, total, saving, onMove, onUpdateText, onToggl
           style={{ background: letter.enabled ? '#f0fdf4' : '#f1f5f9', color: letter.enabled ? '#16a34a' : '#64748b', border: 'none' }}
         >
           {letter.enabled ? '✅ مفعّل' : '⏸ معطّل'}
+        </button>
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <button className="btn btn-sm btn-danger" onClick={onDelete} disabled={saving}>🗑️</button>
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * قسم "تدريبا المطابقة" — بطاقة إعدادات مستقلة لكل تدريب (تفعيل/عنوان/
+ * نص فرعي/تسمية) + جدول أزواج (إيموجي/كلمة) قابل للتعديل، بنفس أسلوب
+ * قسم تمرين الحروف تماماً (حفظ فوري للأزواج، حفظ دفعة واحدة للإعدادات).
+ */
+function MatchingSection({
+  matchingSettings, matchingPairs, onSaveSettings,
+  pairSaving, onMovePair, onUpdatePair, onDeletePair,
+  newPairInputs, setNewPairInputs, onAddPair,
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      {matchingSettings.map(settings => (
+        <MatchingExerciseCard
+          key={settings.exercise_key}
+          settings={settings}
+          pairs={matchingPairs.filter(p => p.exercise_key === settings.exercise_key).sort((a, b) => a.order_index - b.order_index)}
+          onSaveSettings={patch => onSaveSettings(settings.exercise_key, patch)}
+          pairSaving={pairSaving}
+          onMovePair={onMovePair}
+          onUpdatePair={onUpdatePair}
+          onDeletePair={onDeletePair}
+          newPair={newPairInputs[settings.exercise_key]}
+          setNewPair={val => setNewPairInputs(prev => ({ ...prev, [settings.exercise_key]: val }))}
+          onAddPair={() => onAddPair(settings.exercise_key)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MatchingExerciseCard({ settings, pairs, onSaveSettings, pairSaving, onMovePair, onUpdatePair, onDeletePair, newPair, setNewPair, onAddPair }) {
+  const [enabled,  setEnabled]  = useState(settings.enabled);
+  const [title,    setTitle]    = useState(settings.title);
+  const [subtitle, setSubtitle] = useState(settings.subtitle);
+  const [label,    setLabel]    = useState(settings.label);
+  const [saving,   setSaving]   = useState(false);
+  const [msg,      setMsg]      = useState(null);
+
+  async function handleSave() {
+    setSaving(true); setMsg(null);
+    const res = await onSaveSettings({ enabled, title, subtitle, label });
+    setMsg(res.ok ? { ok: true, text: '✅ تم الحفظ' } : { ok: false, text: '❌ ' + (res.error || 'فشل الحفظ') });
+    setSaving(false);
+  }
+
+  return (
+    <div>
+      <div className="card" style={{ maxWidth: 620, padding: 22, marginBottom: 16 }}>
+        <div style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 14 }}>{label || settings.exercise_key}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <input type="checkbox" id={`match-enabled-${settings.exercise_key}`} checked={enabled} onChange={e => setEnabled(e.target.checked)} />
+          <label htmlFor={`match-enabled-${settings.exercise_key}`} style={{ fontWeight: 700, cursor: 'pointer' }}>تفعيل هذا التدريب (يظهر للزوار)</label>
+        </div>
+        <div className="form-group">
+          <label className="form-label">التسمية (تظهر أعلى العنوان، مثال: "التدريب الثاني")</label>
+          <input className="form-input" value={label} onChange={e => setLabel(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">العنوان</label>
+          <input className="form-input" value={title} onChange={e => setTitle(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">النص الفرعي (تعليمات الربط)</label>
+          <textarea className="form-input" rows={2} value={subtitle} onChange={e => setSubtitle(e.target.value)} />
+        </div>
+        {msg && <div className={`alert alert-${msg.ok ? 'success' : 'error'}`}>{msg.text}</div>}
+        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+          {saving ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> جارٍ الحفظ...</> : '✅ حفظ'}
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, maxWidth: 340 }}>
+        <input className="form-input" placeholder="إيموجي" style={{ width: 70, textAlign: 'center' }} value={newPair.emoji} onChange={e => setNewPair({ ...newPair, emoji: e.target.value })} />
+        <input className="form-input" placeholder="الكلمة" style={{ flex: 1 }} value={newPair.word} onChange={e => setNewPair({ ...newPair, word: e.target.value })} />
+        <button className="btn btn-primary btn-sm" onClick={onAddPair} disabled={pairSaving === `new:${settings.exercise_key}` || !newPair.emoji.trim() || !newPair.word.trim()}>+ إضافة</button>
+      </div>
+
+      <div className="card table-scroll-wrapper" style={{ padding: 0 }}>
+        <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.87rem' }}>
+          <thead>
+            <tr>
+              {['#', 'الصورة', 'الكلمة', 'الحالة', 'إجراءات'].map(h => (
+                <th key={h} style={{ background: 'var(--primary)', color: '#fff', padding: '9px 14px', textAlign: 'right', fontWeight: 700 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {pairs.map((p, i) => (
+              <MatchingPairRow
+                key={p.id} pair={p} index={i} total={pairs.length}
+                saving={pairSaving === p.id}
+                onMove={dir => onMovePair(p, dir)}
+                onUpdate={patch => onUpdatePair(p.id, patch)}
+                onDelete={() => onDeletePair(p.id)}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function MatchingPairRow({ pair, index, total, saving, onMove, onUpdate, onDelete }) {
+  const [emoji, setEmoji] = useState(pair.emoji);
+  const [word,  setWord]  = useState(pair.word);
+
+  return (
+    <tr style={{ background: index % 2 === 0 ? '#fff' : '#f9fbff', opacity: pair.enabled ? 1 : .5 }}>
+      <td style={{ padding: '8px 14px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <button className="btn btn-sm" style={{ padding: '1px 8px' }} disabled={index === 0} onClick={() => onMove(-1)}>▲</button>
+          <button className="btn btn-sm" style={{ padding: '1px 8px' }} disabled={index === total - 1} onClick={() => onMove(1)}>▼</button>
+        </div>
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <input
+          className="form-input" style={{ width: 64, textAlign: 'center', fontSize: '1.3rem' }}
+          value={emoji} disabled={saving}
+          onChange={e => setEmoji(e.target.value)}
+          onBlur={() => { if (emoji.trim() && emoji !== pair.emoji) onUpdate({ emoji }); else setEmoji(pair.emoji); }}
+        />
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <input
+          className="form-input" style={{ width: 140, fontWeight: 700 }}
+          value={word} disabled={saving}
+          onChange={e => setWord(e.target.value)}
+          onBlur={() => { if (word.trim() && word !== pair.word) onUpdate({ word }); else setWord(pair.word); }}
+        />
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <button
+          onClick={() => onUpdate({ enabled: !pair.enabled })}
+          className="btn btn-sm"
+          style={{ background: pair.enabled ? '#f0fdf4' : '#f1f5f9', color: pair.enabled ? '#16a34a' : '#64748b', border: 'none' }}
+        >
+          {pair.enabled ? '✅ مفعّل' : '⏸ معطّل'}
         </button>
       </td>
       <td style={{ padding: '8px 14px' }}>
