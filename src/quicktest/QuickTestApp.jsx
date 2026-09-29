@@ -3,6 +3,7 @@ import '../App.css';
 import {
   QUESTIONS as FALLBACK_QUESTIONS, LEVELS as FALLBACK_LEVELS, DEFAULT_WHATSAPP_TEMPLATE,
   ALPHABET_LETTERS as FALLBACK_ALPHABET_LETTERS, DEFAULT_ALPHABET_ENABLED, DEFAULT_ALPHABET_TITLE, DEFAULT_ALPHABET_SUBTITLE,
+  VOICE_SENTENCES as FALLBACK_VOICE_SENTENCES, DEFAULT_VOICE_ENABLED, DEFAULT_VOICE_TITLE, DEFAULT_VOICE_SUBTITLE,
 } from './blueprint.js';
 import { getQuicktestData } from './fetchQuicktestData.js';
 import { pickLevelByScore } from './pickLevel.js';
@@ -24,20 +25,17 @@ const PAGES = {
 // adminPreviewLevel في App.jsx الحقيقي.
 const adminPreview = isQuickTestAdminPreview();
 
-// تدريبا المطابقة أصبحا قابلَين للتعطيل من اللوحة (بخلاف تمرين الحروف
-// الذي له علم enabled واحد فقط) — هاتان الدالتان تحسبان الصفحة التالية
-// الصحيحة بتخطّي أي تدريب معطَّل، بترتيب matchingExercises الثابت
-// (matching-1 ثم matching-2) بصرف النظر عن حالة تفعيلهما. الوجهة النهائية
-// بعد كليهما أصبحت PAGES.VOICE (تقييم القراءة الجهرية) لا PAGES.ASSESSMENT
-// مباشرة — VoiceReadingAssessment ثابت دائماً بلا خيار تعطيل، بنفس منطق
-// تدريبَي المطابقة أنفسهما عند بنائهما أول مرة.
-function firstEnabledMatchingPage(exercises) {
+// تدريبا المطابقة وتقييم القراءة الجهرية كلها قابلة للتعطيل من اللوحة الآن
+// (بخلاف تمرين الحروف الذي له علم enabled واحد فقط أصلاً) — هاتان الدالتان
+// تحسبان الصفحة التالية الصحيحة بتخطّي أي تدريب معطَّل، بترتيب ثابت
+// (matching-1 ← matching-2 ← القراءة الجهرية ← الأسئلة الـ15).
+function firstEnabledMatchingPage(exercises, voiceEnabled) {
   if (exercises[0]?.enabled) return PAGES.MATCHING1;
   if (exercises[1]?.enabled) return PAGES.MATCHING2;
-  return PAGES.VOICE;
+  return voiceEnabled ? PAGES.VOICE : PAGES.ASSESSMENT;
 }
-function pageAfterMatching1(exercises) {
-  return exercises[1]?.enabled ? PAGES.MATCHING2 : PAGES.VOICE;
+function pageAfterMatching1(exercises, voiceEnabled) {
+  return exercises[1]?.enabled ? PAGES.MATCHING2 : (voiceEnabled ? PAGES.VOICE : PAGES.ASSESSMENT);
 }
 
 /**
@@ -62,6 +60,10 @@ export default function QuickTestApp() {
   const [alphabetTitle, setAlphabetTitle]       = useState(DEFAULT_ALPHABET_TITLE);
   const [alphabetSubtitle, setAlphabetSubtitle] = useState(DEFAULT_ALPHABET_SUBTITLE);
   const [matchingExercises, setMatchingExercises] = useState(MATCHING_EXERCISES_FALLBACK);
+  const [voiceSentences, setVoiceSentences] = useState(FALLBACK_VOICE_SENTENCES);
+  const [voiceEnabled, setVoiceEnabled]     = useState(DEFAULT_VOICE_ENABLED);
+  const [voiceTitle, setVoiceTitle]         = useState(DEFAULT_VOICE_TITLE);
+  const [voiceSubtitle, setVoiceSubtitle]   = useState(DEFAULT_VOICE_SUBTITLE);
   const [childName, setChildName]     = useState(adminPreview ? QUICK_TEST_PREVIEW_STUDENT.name : '');
   const [childAge, setChildAge]       = useState(adminPreview ? QUICK_TEST_PREVIEW_STUDENT.age : '');
   const [startError, setStartError]   = useState('');
@@ -78,6 +80,7 @@ export default function QuickTestApp() {
       // لفشل شامل بلا داعٍ). كل حقل يُستبدَل فقط إن وصل بشكل سليم فعلاً.
       let effectiveAlphabetEnabled = DEFAULT_ALPHABET_ENABLED;
       let effectiveMatching = MATCHING_EXERCISES_FALLBACK;
+      let effectiveVoiceEnabled = DEFAULT_VOICE_ENABLED;
       if (data.source === 'database') {
         setQuestions(data.questions);
         setLevels(data.levels);
@@ -96,12 +99,17 @@ export default function QuickTestApp() {
           });
           setMatchingExercises(effectiveMatching);
         }
+        // القراءة الجهرية بمعزل تام عن بقية التدريبات — نفس فلسفة الحروف.
+        if (Array.isArray(data.voiceSentences) && data.voiceSentences.length > 0) setVoiceSentences(data.voiceSentences);
+        if (typeof data.voiceEnabled === 'boolean') { setVoiceEnabled(data.voiceEnabled); effectiveVoiceEnabled = data.voiceEnabled; }
+        if (data.voiceTitle) setVoiceTitle(data.voiceTitle);
+        if (data.voiceSubtitle) setVoiceSubtitle(data.voiceSubtitle);
       }
       // معاينة المشرف: تخطَّ شاشة بيانات البداية فقط (بيانات وهمية ثابتة
       // أصلاً) وابدأ من أول خطوة فعلياً مفعَّلة — نفس تجربة الزائر الحقيقي
       // بالضبط بلا نقصان، فـ"جرّب الاختبار فعلياً" يعني التجربة كاملة.
       setPage(adminPreview
-        ? (effectiveAlphabetEnabled ? PAGES.ALPHABET : firstEnabledMatchingPage(effectiveMatching))
+        ? (effectiveAlphabetEnabled ? PAGES.ALPHABET : firstEnabledMatchingPage(effectiveMatching, effectiveVoiceEnabled))
         : PAGES.START);
     });
     return () => { cancelled = true; };
@@ -119,22 +127,24 @@ export default function QuickTestApp() {
     setStartError('');
     setAnswers([]);
     setQuestionIdx(0);
-    setPage(alphabetEnabled ? PAGES.ALPHABET : firstEnabledMatchingPage(matchingExercises));
+    setPage(alphabetEnabled ? PAGES.ALPHABET : firstEnabledMatchingPage(matchingExercises, voiceEnabled));
   }
 
   function handleAlphabetComplete(detail) {
     setAnswers(prev => [...prev, detail]);
-    setPage(firstEnabledMatchingPage(matchingExercises));
+    setPage(firstEnabledMatchingPage(matchingExercises, voiceEnabled));
   }
 
   function handleMatching1Complete(detail) {
     setAnswers(prev => [...prev, detail]);
-    setPage(pageAfterMatching1(matchingExercises));
+    setPage(pageAfterMatching1(matchingExercises, voiceEnabled));
   }
 
   function handleMatching2Complete(detail) {
     setAnswers(prev => [...prev, detail]);
-    setPage(PAGES.VOICE);
+    if (voiceEnabled) { setPage(PAGES.VOICE); return; }
+    setQuestionIdx(0);
+    setPage(PAGES.ASSESSMENT);
   }
 
   function handleVoiceComplete(detail) {
@@ -287,7 +297,12 @@ export default function QuickTestApp() {
         )}
 
         {page === PAGES.VOICE && (
-          <VoiceReadingAssessment onComplete={handleVoiceComplete} />
+          <VoiceReadingAssessment
+            sentences={voiceSentences}
+            title={voiceTitle}
+            subtitle={voiceSubtitle}
+            onComplete={handleVoiceComplete}
+          />
         )}
 
         {page === PAGES.ASSESSMENT && (

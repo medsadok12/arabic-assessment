@@ -216,3 +216,17 @@ export const ALPHABET_LETTERS = ['ا','ب','ت','ث','ج','ح','خ','د','ذ','�
 export const DEFAULT_ALPHABET_ENABLED  = true;
 export const DEFAULT_ALPHABET_TITLE    = '🔤 هل يعرف طفلك هذه الحروف؟';
 export const DEFAULT_ALPHABET_SUBTITLE = 'اطلب من طفلك قراءة كل حرف بصوت عالٍ، ثم اضغط على الحرف حسب إجابته. اضغط مرة أخرى لتغيير التقييم، ومرة ثالثة للعودة للوضع الافتراضي.';
+
+// نفس بذور quicktest_voice.sql حرفياً — الجمل الأربع الثابتة لتقييم "القراءة
+// الجهرية والتسجيل الصوتي" (VoiceReadingAssessment.jsx)، قابلة الآن للتعديل
+// الكامل من نفس اللوحة (تفعيل/عنوان/جمل)، وهذه القيم تبقى النسخة الاحتياطية
+// الثابتة فقط عند أي فشل في القراءة من Supabase.
+export const VOICE_SENTENCES = [
+  { id: 'sentence-1', text: 'هَذَا أَبِي',             emoji: '👨' },
+  { id: 'sentence-2', text: 'هَذِهِ أُمِّي',            emoji: '👩' },
+  { id: 'sentence-3', text: 'هَذَا أَخِي',              emoji: '👦' },
+  { id: 'sentence-4', text: 'أَنَا أُحِبُّ مَدْرَسَتِي', emoji: '🏫' },
+];
+export const DEFAULT_VOICE_ENABLED  = true;
+export const DEFAULT_VOICE_TITLE    = '🎙️ اقرأ هذه الجمل بصوتك';
+export const DEFAULT_VOICE_SUBTITLE = 'اضغط "ابدأ التسجيل"، واقرأ كل جملة بصوت عالٍ وواضح. يمكنك الاستماع لصوتك أو حذفه وإعادة التسجيل قبل المتابعة.';

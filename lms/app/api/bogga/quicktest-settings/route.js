@@ -44,6 +44,15 @@ export async function PATCH(req) {
     if (!body.alphabet_subtitle?.trim()) return NextResponse.json({ error: 'النص الفرعي لتمرين الحروف مطلوب' }, { status: 400 });
     patch.alphabet_subtitle = body.alphabet_subtitle.trim();
   }
+  if (body.voice_enabled !== undefined) patch.voice_enabled = !!body.voice_enabled;
+  if (body.voice_title !== undefined) {
+    if (!body.voice_title?.trim()) return NextResponse.json({ error: 'عنوان تقييم القراءة الجهرية مطلوب' }, { status: 400 });
+    patch.voice_title = body.voice_title.trim();
+  }
+  if (body.voice_subtitle !== undefined) {
+    if (!body.voice_subtitle?.trim()) return NextResponse.json({ error: 'النص الفرعي لتقييم القراءة الجهرية مطلوب' }, { status: 400 });
+    patch.voice_subtitle = body.voice_subtitle.trim();
+  }
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'لا توجد بيانات للتحديث' }, { status: 400 });
   patch.updated_at = new Date().toISOString();
 

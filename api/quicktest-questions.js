@@ -67,17 +67,18 @@ export default async function handler(req, res) {
       throw new Error('Supabase env vars not configured');
     }
 
-    const [questionRows, levelRows, settingsRows, alphabetRows, matchingSettingsRows, matchingPairRows] = await Promise.all([
+    const [questionRows, levelRows, settingsRows, alphabetRows, matchingSettingsRows, matchingPairRows, voiceRows] = await Promise.all([
       fetchJson('/rest/v1/quicktest_questions?enabled=eq.true&select=id,question_text,image_url,audio_url,prompt_emoji,audio_prompt,reading_text,parent_read_hint,skill_tag,options&order=order_index.asc'),
       fetchJson('/rest/v1/quicktest_levels?select=id,icon,label,min_correct,max_correct,strengths_text,recommendation,program_name,program_pitch&order=sort_order.asc'),
-      fetchJson('/rest/v1/quicktest_settings?select=whatsapp_template,alphabet_enabled,alphabet_title,alphabet_subtitle&limit=1'),
+      fetchJson('/rest/v1/quicktest_settings?select=whatsapp_template,alphabet_enabled,alphabet_title,alphabet_subtitle,voice_enabled,voice_title,voice_subtitle&limit=1'),
       fetchJson('/rest/v1/quicktest_alphabet_letters?enabled=eq.true&select=letter&order=order_index.asc'),
       fetchJson('/rest/v1/quicktest_matching_settings?select=exercise_key,enabled,title,subtitle,label,skill_tag'),
       fetchJson('/rest/v1/quicktest_matching_pairs?enabled=eq.true&select=exercise_key,emoji,word,image_url&order=order_index.asc'),
+      fetchJson('/rest/v1/quicktest_voice_sentences?enabled=eq.true&select=id,sentence_text,emoji&order=order_index.asc'),
     ]);
 
     if (!Array.isArray(questionRows) || !Array.isArray(levelRows) || !Array.isArray(settingsRows) || !Array.isArray(alphabetRows)
-      || !Array.isArray(matchingSettingsRows) || !Array.isArray(matchingPairRows)) {
+      || !Array.isArray(matchingSettingsRows) || !Array.isArray(matchingPairRows) || !Array.isArray(voiceRows)) {
       throw new Error('Unexpected Supabase response shape');
     }
     if (questionRows.length === 0 || levelRows.length === 0) {
@@ -108,6 +109,12 @@ export default async function handler(req, res) {
         skillTag: s.skill_tag,
         pairs:    matchingPairRows.filter(p => p.exercise_key === s.exercise_key).map(p => ({ emoji: p.emoji, word: p.word, imageUrl: p.image_url || null })),
       })),
+      // تقييم القراءة الجهرية — نفس فلسفة تمرين الحروف: يُقيَّم بمعزل عن بقية
+      // الاستجابة، فلا يُفشِلها كاملة لو كان جدول الجمل فارغاً.
+      voiceSentences: voiceRows.map(r => ({ id: r.id, text: r.sentence_text, emoji: r.emoji })),
+      voiceEnabled:   settingsRows[0]?.voice_enabled ?? true,
+      voiceTitle:     settingsRows[0]?.voice_title || null,
+      voiceSubtitle:  settingsRows[0]?.voice_subtitle || null,
     });
   } catch (e) {
     console.error('[api/quicktest-questions] فشل الجلب من Supabase — سيعتمد العميل على النسخة الثابتة:', e.message);

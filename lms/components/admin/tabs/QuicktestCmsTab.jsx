@@ -76,6 +76,15 @@ export default function QuicktestCmsTab() {
   const [pairSaving,       setPairSaving]       = useState(null); // id الزوج الجاري حفظه/حذفه، أو 'new:<exercise_key>'
   const [newPairInputs,    setNewPairInputs]    = useState({ 'matching-1': { emoji: '', word: '' }, 'matching-2': { emoji: '', word: '' } });
 
+  const [sentences,      setSentences]      = useState(null);
+  const [voiceEnabled,   setVoiceEnabled]   = useState(true);
+  const [voiceTitle,     setVoiceTitle]     = useState('');
+  const [voiceSubtitle,  setVoiceSubtitle]  = useState('');
+  const [voiceSaving,    setVoiceSaving]    = useState(false);
+  const [voiceMsg,       setVoiceMsg]       = useState(null);
+  const [newSentence,    setNewSentence]    = useState({ emoji: '', sentence_text: '' });
+  const [sentenceSaving, setSentenceSaving] = useState(null); // id الجملة الجاري حفظها/حذفها، أو 'new'
+
   function loadAll() {
     Promise.all([
       fetch('/api/bogga/quicktest-questions').then(r => r.json()),
@@ -84,9 +93,10 @@ export default function QuicktestCmsTab() {
       fetch('/api/bogga/quicktest-alphabet').then(r => r.json()),
       fetch('/api/bogga/quicktest-matching-settings').then(r => r.json()),
       fetch('/api/bogga/quicktest-matching').then(r => r.json()),
-    ]).then(([q, l, s, a, ms, mp]) => {
-      if (q.error || l.error || s.error || a.error || ms.error || mp.error) {
-        setError(q.error || l.error || s.error || a.error || ms.error || mp.error); return;
+      fetch('/api/bogga/quicktest-voice').then(r => r.json()),
+    ]).then(([q, l, s, a, ms, mp, v]) => {
+      if (q.error || l.error || s.error || a.error || ms.error || mp.error || v.error) {
+        setError(q.error || l.error || s.error || a.error || ms.error || mp.error || v.error); return;
       }
       setQuestions(q.questions);
       setLevels(l.levels);
@@ -98,6 +108,10 @@ export default function QuicktestCmsTab() {
       setLetters(a.letters);
       setMatchingSettings(ms.settings);
       setMatchingPairs(mp.pairs);
+      setVoiceEnabled(s.settings?.voice_enabled ?? true);
+      setVoiceTitle(s.settings?.voice_title ?? '');
+      setVoiceSubtitle(s.settings?.voice_subtitle ?? '');
+      setSentences(v.sentences);
     }).catch(() => setError('تعذّر تحميل بيانات لوحة الاختبار الترويجي'));
   }
 
@@ -354,8 +368,79 @@ export default function QuicktestCmsTab() {
     }
   }
 
+  // ── تقييم القراءة الجهرية ──────────────────────────────────────────────
+  async function saveVoiceSettings() {
+    setVoiceSaving(true); setVoiceMsg(null);
+    try {
+      const res = await fetch('/api/bogga/quicktest-settings', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voice_enabled: voiceEnabled, voice_title: voiceTitle, voice_subtitle: voiceSubtitle }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'فشل الحفظ');
+      setVoiceMsg({ ok: true, text: '✅ تم الحفظ' });
+    } catch (err) {
+      setVoiceMsg({ ok: false, text: '❌ ' + err.message });
+    }
+    setVoiceSaving(false);
+  }
+
+  async function moveSentence(sentence, dir) {
+    const idx = sentences.findIndex(x => x.id === sentence.id);
+    const j = idx + dir;
+    if (j < 0 || j >= sentences.length) return;
+    const other = sentences[j];
+    const res = await fetch('/api/bogga/quicktest-voice/reorder', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [{ id: sentence.id, order_index: other.order_index }, { id: other.id, order_index: sentence.order_index }] }),
+    });
+    if (res.ok) {
+      const next = [...sentences];
+      [next[idx], next[j]] = [next[j], next[idx]];
+      const tmp = next[idx].order_index; next[idx].order_index = next[j].order_index; next[j].order_index = tmp;
+      setSentences(next.sort((a, b) => a.order_index - b.order_index));
+    }
+  }
+
+  async function updateSentence(id, patch) {
+    setSentenceSaving(id);
+    const res = await fetch(`/api/bogga/quicktest-voice/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setSentences(prev => prev.map(s => s.id === id ? data.sentence : s));
+    }
+    setSentenceSaving(null);
+  }
+
+  async function deleteSentence(id) {
+    if (!confirm('هل تريد حذف هذه الجملة نهائياً؟')) return;
+    setSentenceSaving(id);
+    const res = await fetch(`/api/bogga/quicktest-voice/${id}`, { method: 'DELETE' });
+    if (res.ok) setSentences(prev => prev.filter(s => s.id !== id));
+    setSentenceSaving(null);
+  }
+
+  async function addSentence(e) {
+    e.preventDefault();
+    if (!newSentence.sentence_text.trim() || !newSentence.emoji.trim()) return;
+    setSentenceSaving('new');
+    try {
+      const res = await fetch('/api/bogga/quicktest-voice', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sentence_text: newSentence.sentence_text.trim(), emoji: newSentence.emoji.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) { setSentences(prev => [...prev, data.sentence]); setNewSentence({ emoji: '', sentence_text: '' }); }
+    } finally {
+      setSentenceSaving(null);
+    }
+  }
+
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!questions || !levels || !letters || !matchingSettings || !matchingPairs) return <div style={{ textAlign: 'center', padding: 40 }}><span className="spinner" /></div>;
+  if (!questions || !levels || !letters || !matchingSettings || !matchingPairs || !sentences) return <div style={{ textAlign: 'center', padding: 40 }}><span className="spinner" /></div>;
 
   return (
     <div>
@@ -385,6 +470,7 @@ export default function QuicktestCmsTab() {
           { id: 'settings',  label: '📱 رسالة واتساب' },
           { id: 'alphabet',  label: `🔤 تمرين الحروف (${letters.length})` },
           { id: 'matching',  label: `🔗 تدريبا المطابقة (${matchingPairs.length})` },
+          { id: 'voice',     label: `🎙️ القراءة الجهرية (${sentences.length})` },
         ].map(t => (
           <button
             key={t.id}
@@ -461,6 +547,18 @@ export default function QuicktestCmsTab() {
           newPairInputs={newPairInputs}
           setNewPairInputs={setNewPairInputs}
           onAddPair={addMatchingPair}
+        />
+      )}
+
+      {subTab === 'voice' && (
+        <VoiceSection
+          voiceEnabled={voiceEnabled} setVoiceEnabled={setVoiceEnabled}
+          voiceTitle={voiceTitle} setVoiceTitle={setVoiceTitle}
+          voiceSubtitle={voiceSubtitle} setVoiceSubtitle={setVoiceSubtitle}
+          voiceSaving={voiceSaving} voiceMsg={voiceMsg} onSaveSettings={saveVoiceSettings}
+          sentences={sentences} sentenceSaving={sentenceSaving}
+          onMoveSentence={moveSentence} onUpdateSentence={updateSentence} onDeleteSentence={deleteSentence}
+          newSentence={newSentence} setNewSentence={setNewSentence} onAddSentence={addSentence}
         />
       )}
 
@@ -655,6 +753,115 @@ function LetterRow({ letter, index, total, saving, onMove, onUpdateText, onToggl
           style={{ background: letter.enabled ? '#f0fdf4' : '#f1f5f9', color: letter.enabled ? '#16a34a' : '#64748b', border: 'none' }}
         >
           {letter.enabled ? '✅ مفعّل' : '⏸ معطّل'}
+        </button>
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <button className="btn btn-sm btn-danger" onClick={onDelete} disabled={saving}>🗑️</button>
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * قسم "تقييم القراءة الجهرية" — بطاقة إعدادات (تفعيل/عنوان/نص فرعي) + جدول
+ * جمل قابل للتعديل مباشرة (نص الجملة + إيموجي معاً)، بنفس أسلوب قسم تمرين
+ * الحروف تماماً. تطبيق فوري للقاعدة الدائمة في القسم 7.3 من CLAUDE.md — أي
+ * تدريب جديد يُبنى بتحكم إداري كامل من أول دفعة.
+ */
+function VoiceSection({
+  voiceEnabled, setVoiceEnabled, voiceTitle, setVoiceTitle, voiceSubtitle, setVoiceSubtitle,
+  voiceSaving, voiceMsg, onSaveSettings,
+  sentences, sentenceSaving, onMoveSentence, onUpdateSentence, onDeleteSentence,
+  newSentence, setNewSentence, onAddSentence,
+}) {
+  return (
+    <div>
+      <div className="card" style={{ maxWidth: 620, padding: 22, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <input type="checkbox" id="voice-enabled" checked={voiceEnabled} onChange={e => setVoiceEnabled(e.target.checked)} />
+          <label htmlFor="voice-enabled" style={{ fontWeight: 700, cursor: 'pointer' }}>تفعيل تقييم القراءة الجهرية (يظهر للزوار بعد تدريبَي المطابقة، قبل الأسئلة الـ15)</label>
+        </div>
+        <div className="form-group">
+          <label className="form-label">العنوان</label>
+          <input className="form-input" value={voiceTitle} onChange={e => setVoiceTitle(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">النص الفرعي (تعليمات للطفل/ولي الأمر)</label>
+          <textarea className="form-input" rows={2} value={voiceSubtitle} onChange={e => setVoiceSubtitle(e.target.value)} />
+        </div>
+        {voiceMsg && <div className={`alert alert-${voiceMsg.ok ? 'success' : 'error'}`}>{voiceMsg.text}</div>}
+        <button className="btn btn-primary" onClick={onSaveSettings} disabled={voiceSaving}>
+          {voiceSaving ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> جارٍ الحفظ...</> : '✅ حفظ'}
+        </button>
+      </div>
+
+      <form onSubmit={onAddSentence} style={{ display: 'flex', gap: 8, marginBottom: 14, maxWidth: 460 }}>
+        <input className="form-input" placeholder="إيموجي" value={newSentence.emoji} onChange={e => setNewSentence(s => ({ ...s, emoji: e.target.value }))} style={{ width: 80 }} />
+        <input className="form-input" placeholder="نص الجملة (بالتشكيل)" value={newSentence.sentence_text} onChange={e => setNewSentence(s => ({ ...s, sentence_text: e.target.value }))} style={{ flex: 1 }} />
+        <button type="submit" className="btn btn-primary btn-sm" disabled={sentenceSaving === 'new' || !newSentence.sentence_text.trim() || !newSentence.emoji.trim()}>+ إضافة</button>
+      </form>
+
+      <div className="card table-scroll-wrapper" style={{ padding: 0 }}>
+        <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.87rem' }}>
+          <thead>
+            <tr>
+              {['#', 'الإيموجي', 'الجملة', 'الحالة', 'إجراءات'].map(h => (
+                <th key={h} style={{ background: 'var(--primary)', color: '#fff', padding: '9px 14px', textAlign: 'right', fontWeight: 700 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sentences.map((s, i) => (
+              <SentenceRow
+                key={s.id} sentence={s} index={i} total={sentences.length}
+                saving={sentenceSaving === s.id}
+                onMove={dir => onMoveSentence(s, dir)}
+                onUpdate={patch => onUpdateSentence(s.id, patch)}
+                onDelete={() => onDeleteSentence(s.id)}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SentenceRow({ sentence, index, total, saving, onMove, onUpdate, onDelete }) {
+  const [emoji, setEmoji] = useState(sentence.emoji);
+  const [text,  setText]  = useState(sentence.sentence_text);
+
+  return (
+    <tr style={{ background: index % 2 === 0 ? '#fff' : '#f9fbff', opacity: sentence.enabled ? 1 : .5 }}>
+      <td style={{ padding: '8px 14px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <button className="btn btn-sm" style={{ padding: '1px 8px' }} disabled={index === 0} onClick={() => onMove(-1)}>▲</button>
+          <button className="btn btn-sm" style={{ padding: '1px 8px' }} disabled={index === total - 1} onClick={() => onMove(1)}>▼</button>
+        </div>
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <input
+          className="form-input" style={{ width: 56, textAlign: 'center', fontSize: '1.2rem' }}
+          value={emoji} disabled={saving}
+          onChange={e => setEmoji(e.target.value)}
+          onBlur={() => { if (emoji.trim() && emoji !== sentence.emoji) onUpdate({ emoji }); else setEmoji(sentence.emoji); }}
+        />
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <input
+          className="form-input" style={{ width: 240, fontWeight: 700 }}
+          value={text} disabled={saving}
+          onChange={e => setText(e.target.value)}
+          onBlur={() => { if (text.trim() && text !== sentence.sentence_text) onUpdate({ sentence_text: text }); else setText(sentence.sentence_text); }}
+        />
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <button
+          onClick={() => onUpdate({ enabled: !sentence.enabled })}
+          className="btn btn-sm"
+          style={{ background: sentence.enabled ? '#f0fdf4' : '#f1f5f9', color: sentence.enabled ? '#16a34a' : '#64748b', border: 'none' }}
+        >
+          {sentence.enabled ? '✅ مفعّل' : '⏸ معطّل'}
         </button>
       </td>
       <td style={{ padding: '8px 14px' }}>

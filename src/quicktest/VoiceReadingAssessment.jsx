@@ -2,18 +2,6 @@ import { useState, useRef } from 'react';
 import { useAudioRecorder } from '../hooks/useAudioRecorder.js';
 import { uploadVoiceRecording } from './uploadVoiceRecording.js';
 
-// أربع جمل ثابتة بالتشكيل + إيموجي معبّر — المكوّن الرابع في تسلسل الاختبار
-// الترويجي (بعد تدريبَي المطابقة، قبل الأسئلة الـ15). غير قابل للتعديل من
-// bogga في هذه الدفعة (لم يُطلَب ذلك صراحة، بنفس القرار الأولي لتدريبَي
-// المطابقة عند بنائهما أول مرة) — إن طُلب لاحقاً يُبنى بنفس نمط
-// quicktest_alphabet_letters (جدول منفصل + مسارات CMS).
-const SENTENCES = [
-  { id: 'sentence-1', text: 'هَذَا أَبِي',             emoji: '👨' },
-  { id: 'sentence-2', text: 'هَذِهِ أُمِّي',            emoji: '👩' },
-  { id: 'sentence-3', text: 'هَذَا أَخِي',              emoji: '👦' },
-  { id: 'sentence-4', text: 'أَنَا أُحِبُّ مَدْرَسَتِي', emoji: '🏫' },
-];
-
 /**
  * تقييم القراءة الجهرية والتسجيل الصوتي — يسجّل الطفل قراءته لكل جملة عبر
  * MediaRecorder (useAudioRecorder، نفس الـhook المشترك مع أسئلة النطق في
@@ -22,11 +10,15 @@ const SENTENCES = [
  * عمداً عن Vercel Blob المستخدَم في التقييم المدفوع، بطلب صريح من الأستاذ
  * محمد لهذه الميزة تحديداً).
  *
- * صفر إحباط: التسجيل اختياري لكل جملة على حدة، ولا يُشترَط تسجيل الأربع
+ * الجمل/العنوان/النص الفرعي تصل كـprops من QuickTestApp.jsx (ديناميكية من
+ * لوحة bogga، مع سقوط احتياطي صامت لثوابت blueprint.js — القسم 7.3 من
+ * CLAUDE.md: كل تدريب جديد يُبنى بتحكم إداري كامل من أول دفعة).
+ *
+ * صفر إحباط: التسجيل اختياري لكل جملة على حدة، ولا يُشترَط تسجيل الجمل
  * جميعاً للمتابعة — عائلة بلا ميكروفون تعمل، وطفل خجول لا يُحبَس عند هذه
  * الخطوة. أي جملة غير مسجَّلة تُستبعَد بصمت من المصفوفة المُرسَلة.
  */
-export default function VoiceReadingAssessment({ onComplete }) {
+export default function VoiceReadingAssessment({ sentences, title, subtitle, onComplete }) {
   const blobsRef = useRef({});
   const [, forceUpdate]               = useState(0);
   const [uploading, setUploading]     = useState(false);
@@ -46,7 +38,7 @@ export default function VoiceReadingAssessment({ onComplete }) {
     const entries = Object.entries(blobsRef.current);
     const uploaded = await Promise.all(
       entries.map(async ([sentenceId, blob]) => {
-        const sentence = SENTENCES.find(s => s.id === sentenceId);
+        const sentence = sentences.find(s => s.id === sentenceId);
         const result = await uploadVoiceRecording(blob, sentenceId);
         return result.success
           ? { sentenceId, text: sentence.text, emoji: sentence.emoji, audioUrl: result.url }
@@ -74,13 +66,11 @@ export default function VoiceReadingAssessment({ onComplete }) {
       <p style={{ textAlign: 'center', color: 'var(--text-light)', fontSize: 13, marginBottom: 6 }}>
         المكوّن الرابع
       </p>
-      <h2 className="page-title" style={{ fontSize: '1.15rem', marginBottom: 8 }}>🎙️ اقرأ هذه الجمل بصوتك</h2>
-      <p className="page-subtitle" style={{ marginBottom: 20 }}>
-        اضغط "ابدأ التسجيل"، واقرأ كل جملة بصوت عالٍ وواضح. يمكنك الاستماع لصوتك أو حذفه وإعادة التسجيل قبل المتابعة.
-      </p>
+      <h2 className="page-title" style={{ fontSize: '1.15rem', marginBottom: 8 }}>{title}</h2>
+      <p className="page-subtitle" style={{ marginBottom: 20 }}>{subtitle}</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 6 }}>
-        {SENTENCES.map(sentence => (
+        {sentences.map(sentence => (
           <SentenceRecorder
             key={sentence.id}
             sentence={sentence}
