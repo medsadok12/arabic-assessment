@@ -143,6 +143,25 @@ export default function QuickTestApp() {
     setPage(PAGES.ASSESSMENT);
   }
 
+  // زر "تخطي" خاص بوضع معاينة المشرف فقط — طلب صريح من الأستاذ محمد: مراجعة
+  // كل تدريب (حروف/مطابقة×2/قراءة جهرية) بالكامل في كل مرة لرؤية ما بعده
+  // مرهق أثناء المراجعة الإدارية. يستدعي نفس معالج الإكمال الحقيقي لكل
+  // صفحة بتفاصيل وهمية فارغة (لا تُرسَل لأي مكان أصلاً في وضع المعاينة)، فلا
+  // منطق تنقّل جديد يُضاف — فقط تجاوز شرط "أكمل التدريب أولاً".
+  const SKIPPABLE_PAGES = [PAGES.ALPHABET, PAGES.MATCHING1, PAGES.MATCHING2, PAGES.VOICE];
+  function handleAdminSkip() {
+    if (page === PAGES.ALPHABET) {
+      handleAlphabetComplete({ type: 'alphabet-grid', questionId: 'alphabet-grid', skillTag: 'التعرف على الحروف الأبجدية', masteredLetters: [], needsReviewLetters: [] });
+    } else if (page === PAGES.MATCHING1 || page === PAGES.MATCHING2) {
+      const ex = page === PAGES.MATCHING1 ? matchingExercises[0] : matchingExercises[1];
+      const detail = { type: 'matching', questionId: ex.key, skillTag: ex.skillTag, label: ex.label, correctWords: [], needsReviewWords: [] };
+      if (page === PAGES.MATCHING1) handleMatching1Complete(detail);
+      else handleMatching2Complete(detail);
+    } else if (page === PAGES.VOICE) {
+      handleVoiceComplete({ type: 'voice-reading', questionId: 'voice-reading', skillTag: 'القراءة الجهرية', recordings: [] });
+    }
+  }
+
   function handleAnswer(detail) {
     const updated = [...answers, detail];
     if (questionIdx + 1 < questions.length) {
@@ -167,6 +186,22 @@ export default function QuickTestApp() {
         <div style={{ background: '#E8B84B', color: '#1A2B4A', textAlign: 'center', padding: '8px', fontSize: 14, fontWeight: 'bold' }}>
           🚀 وضع معاينة المشرف — تجريبي بالكامل، لن يُحفَظ أو يُرسَل لأي نظام
         </div>
+      )}
+
+      {adminPreview && SKIPPABLE_PAGES.includes(page) && (
+        <button
+          type="button"
+          onClick={handleAdminSkip}
+          style={{
+            position: 'fixed', bottom: 18, left: 18, zIndex: 200,
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: '#1A2B4A', color: '#E8B84B', border: '2px solid #E8B84B',
+            borderRadius: 999, padding: '11px 20px', fontWeight: 800, fontSize: '.88rem',
+            cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,.3)',
+          }}
+        >
+          ⏭️ تخطي هذا التدريب (وضع الإدارة)
+        </button>
       )}
       <header className="app-header">
         <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="عارم أكاديمي" className="header-logo-img" />
