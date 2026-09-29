@@ -157,7 +157,11 @@ function LeadDetailsModal({ lead, onClose }) {
   // على مستوى الإجابة نفسها (فقط correctWords/needsReviewWords)، فتُستبعَد
   // بدورها من حساب المهارات العادي أدناه، وتُعرَض كقسمين منفصلين لكل تدريب.
   const matchingEntries = allAnswers.filter(a => a.type === 'matching');
-  const answers  = allAnswers.filter(a => a.type !== 'alphabet-grid' && a.type !== 'matching');
+  // تقييم القراءة الجهرية (VoiceReadingAssessment.jsx) نفس منطق الحروف
+  // والمطابقة — لا isCorrect (تسجيلات صوتية للاستماع، لا صح/خطأ)، فتُستبعَد
+  // من حساب المهارات العادي وتُعرَض كقسم مستقل بمشغلات صوتية.
+  const voiceReading = allAnswers.find(a => a.type === 'voice-reading');
+  const answers  = allAnswers.filter(a => a.type !== 'alphabet-grid' && a.type !== 'matching' && a.type !== 'voice-reading');
   const mastered   = answers.filter(a => a.isCorrect && a.skillTag);
   const needsHelp  = answers.filter(a => !a.isCorrect && a.skillTag);
 
@@ -247,6 +251,27 @@ function LeadDetailsModal({ lead, onClose }) {
             </div>
           </div>
         ))}
+
+        {voiceReading && (
+          <div style={{ marginBottom: 18 }}>
+            <div className="dash-section-title" style={{ marginBottom: 10 }}>🎙️ تقييم القراءة الجهرية</div>
+            {!voiceReading.recordings?.length ? (
+              <p style={{ fontSize: '.85rem', color: 'var(--muted)' }}>لم يسجّل الطفل أياً من الجمل.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {voiceReading.recordings.map((r, i) => (
+                  <div key={i} style={{ border: '1.5px solid var(--border)', borderRadius: 10, padding: '10px 14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontWeight: 700, fontSize: '.95rem' }}>
+                      {r.emoji && <span style={{ fontSize: '1.3rem' }}>{r.emoji}</span>}
+                      <span>{r.text}</span>
+                    </div>
+                    <audio controls src={r.audioUrl} style={{ width: '100%' }} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="dash-section-title" style={{ marginBottom: 10 }}>📝 كل الأسئلة والإجابات</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

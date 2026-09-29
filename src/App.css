@@ -1114,6 +1114,26 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
   box-shadow: 0 4px 12px rgba(26,16,82,0.25);
 }
 
+/* ====== تقييم القراءة الجهرية (VoiceReadingAssessment) ====== */
+.vr-sentence-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.vr-sentence-emoji { font-size: 2rem; }
+.vr-sentence-text  { font-weight: 800; font-size: 1.25rem; color: var(--primary); }
+.vr-sentence-done  { margin-right: auto; font-size: 1.1rem; }
+.vr-actions        { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.vr-actions .aq-btn-rec,
+.vr-actions .aq-btn-stop { width: auto; flex: 1 1 160px; }
+
+.vr-delete-btn {
+  background: transparent;
+  border: 1.5px solid var(--danger);
+  color: var(--danger);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  flex: 1 1 160px;
+}
+
 /* ====== ترتيب الكلمات ====== */
 .wo-answer-area {
   min-height: 52px;

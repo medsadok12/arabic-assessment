@@ -11,11 +11,12 @@ import QuickQuestion from './QuickQuestion.jsx';
 import AlphabetGridAssessment from './AlphabetGridAssessment.jsx';
 import MatchingAssessment from './MatchingAssessment.jsx';
 import { MATCHING_EXERCISES_FALLBACK } from './matchingData.js';
+import VoiceReadingAssessment from './VoiceReadingAssessment.jsx';
 import LeadGate from './LeadGate.jsx';
 
 const PAGES = {
   LOADING: 'loading', START: 'start', ALPHABET: 'alphabet',
-  MATCHING1: 'matching1', MATCHING2: 'matching2',
+  MATCHING1: 'matching1', MATCHING2: 'matching2', VOICE: 'voice',
   ASSESSMENT: 'assessment', GATE: 'gate', RESULT: 'result',
 };
 
@@ -26,14 +27,17 @@ const adminPreview = isQuickTestAdminPreview();
 // تدريبا المطابقة أصبحا قابلَين للتعطيل من اللوحة (بخلاف تمرين الحروف
 // الذي له علم enabled واحد فقط) — هاتان الدالتان تحسبان الصفحة التالية
 // الصحيحة بتخطّي أي تدريب معطَّل، بترتيب matchingExercises الثابت
-// (matching-1 ثم matching-2) بصرف النظر عن حالة تفعيلهما.
+// (matching-1 ثم matching-2) بصرف النظر عن حالة تفعيلهما. الوجهة النهائية
+// بعد كليهما أصبحت PAGES.VOICE (تقييم القراءة الجهرية) لا PAGES.ASSESSMENT
+// مباشرة — VoiceReadingAssessment ثابت دائماً بلا خيار تعطيل، بنفس منطق
+// تدريبَي المطابقة أنفسهما عند بنائهما أول مرة.
 function firstEnabledMatchingPage(exercises) {
   if (exercises[0]?.enabled) return PAGES.MATCHING1;
   if (exercises[1]?.enabled) return PAGES.MATCHING2;
-  return PAGES.ASSESSMENT;
+  return PAGES.VOICE;
 }
 function pageAfterMatching1(exercises) {
-  return exercises[1]?.enabled ? PAGES.MATCHING2 : PAGES.ASSESSMENT;
+  return exercises[1]?.enabled ? PAGES.MATCHING2 : PAGES.VOICE;
 }
 
 /**
@@ -130,6 +134,11 @@ export default function QuickTestApp() {
 
   function handleMatching2Complete(detail) {
     setAnswers(prev => [...prev, detail]);
+    setPage(PAGES.VOICE);
+  }
+
+  function handleVoiceComplete(detail) {
+    setAnswers(prev => [...prev, detail]);
     setQuestionIdx(0);
     setPage(PAGES.ASSESSMENT);
   }
@@ -171,7 +180,7 @@ export default function QuickTestApp() {
       </header>
 
       {page !== PAGES.START && page !== PAGES.LOADING && page !== PAGES.ALPHABET
-        && page !== PAGES.MATCHING1 && page !== PAGES.MATCHING2 && (
+        && page !== PAGES.MATCHING1 && page !== PAGES.MATCHING2 && page !== PAGES.VOICE && (
         <div className="global-progress">
           <div className="gp-info">
             <span>التقدم</span>
@@ -240,6 +249,10 @@ export default function QuickTestApp() {
             skillTag={matchingExercises[1].skillTag}
             onComplete={handleMatching2Complete}
           />
+        )}
+
+        {page === PAGES.VOICE && (
+          <VoiceReadingAssessment onComplete={handleVoiceComplete} />
         )}
 
         {page === PAGES.ASSESSMENT && (
