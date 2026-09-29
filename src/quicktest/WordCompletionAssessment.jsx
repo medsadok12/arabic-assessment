@@ -9,6 +9,19 @@ function shuffle(arr) {
   return a;
 }
 
+// إطار خارجي بلون مختلف لكل كلمة — طلب صريح من الأستاذ محمد ("ممتعاً
+// للعينين")، نفس لوحة LINK_PALETTE الباستيل الهادئة المعتمدة أصلاً في
+// MatchingAssessment.jsx (استثناء صريح للوحة الخماسية، القسم 2.1) —
+// تُخصَّص بترتيب الكلمة في القائمة (لا معنى للربط بصحة الإجابة هنا أصلاً).
+const CARD_PALETTE = [
+  { bg: '#eaf6ff', border: '#7dc4f0' },
+  { bg: '#eafbf3', border: '#7fdfb0' },
+  { bg: '#f4f1fb', border: '#b9a8e8' },
+  { bg: '#fff4e6', border: '#f5b878' },
+  { bg: '#fdeef3', border: '#f0a8c4' },
+  { bg: '#e8faf7', border: '#7ddfd0' },
+];
+
 /**
  * تدريب "إكمال الكلمة الناقصة" — كل الكلمات (شمس/طاولة/سيارة افتراضياً)
  * تظهر معاً في صفحة واحدة (طلب صريح من الأستاذ محمد بعد تجربة حيّة —
@@ -54,10 +67,11 @@ export default function WordCompletionAssessment({ items, title, subtitle, onCom
       <p className="page-subtitle" style={{ marginBottom: 20 }}>{subtitle}</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 6 }}>
-        {items.map(item => (
+        {items.map((item, index) => (
           <WordCard
             key={item.id}
             item={item}
+            index={index}
             options={optionsByItem[item.id]}
             selected={selections[item.id] ?? null}
             onSelect={letter => selectLetter(item.id, letter)}
@@ -78,19 +92,20 @@ export default function WordCompletionAssessment({ items, title, subtitle, onCom
   );
 }
 
-function WordCard({ item, options, selected, onSelect }) {
-  const before = item.wordText.slice(0, item.missingIndex);
-  const after  = item.wordText.slice(item.missingIndex + 1);
+function WordCard({ item, index, options, selected, onSelect }) {
+  const before  = item.wordText.slice(0, item.missingIndex);
+  const after   = item.wordText.slice(item.missingIndex + 1);
+  const palette = CARD_PALETTE[index % CARD_PALETTE.length];
 
   return (
-    <div style={{ border: '1.5px solid var(--border)', borderRadius: 14, padding: '14px 16px', background: '#FAF7F2' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+    <div style={{ border: `2.5px solid ${palette.border}`, borderRadius: 16, padding: '18px 16px', background: palette.bg }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         {item.imageUrl ? (
-          <img src={item.imageUrl} alt="" style={{ width: 52, height: 52, objectFit: 'contain', borderRadius: 10, flexShrink: 0 }} />
+          <img src={item.imageUrl} alt="" style={{ width: 64, height: 64, objectFit: 'contain', borderRadius: 12 }} />
         ) : (
-          <span style={{ fontSize: '2.4rem', flexShrink: 0 }}>{item.emoji}</span>
+          <span style={{ fontSize: '2.8rem' }}>{item.emoji}</span>
         )}
-        <span style={{ fontWeight: 800, fontSize: '1.3rem', color: 'var(--primary)', letterSpacing: 1 }}>
+        <span style={{ fontWeight: 800, fontSize: '1.35rem', color: 'var(--primary)', letterSpacing: 1 }}>
           {before} ... {after}
         </span>
       </div>
