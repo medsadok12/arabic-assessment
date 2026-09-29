@@ -33,6 +33,16 @@ async function uploadMatchingImage(file) {
   return data.url;
 }
 
+// صور حقيقية لجمل القراءة الجهرية — نفس نمط uploadMatchingImage تماماً.
+async function uploadVoiceImage(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch('/api/bogga/quicktest-voice/upload', { method: 'POST', body: fd });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'فشل رفع الصورة');
+  return data.url;
+}
+
 const EMPTY_QUESTION = {
   question_text: '', image_url: null, audio_url: null, prompt_emoji: '', audio_prompt: '',
   reading_text: '', parent_read_hint: false, skill_tag: '',
@@ -558,6 +568,7 @@ export default function QuicktestCmsTab() {
           voiceSaving={voiceSaving} voiceMsg={voiceMsg} onSaveSettings={saveVoiceSettings}
           sentences={sentences} sentenceSaving={sentenceSaving}
           onMoveSentence={moveSentence} onUpdateSentence={updateSentence} onDeleteSentence={deleteSentence}
+          onUploadImage={uploadVoiceImage}
           newSentence={newSentence} setNewSentence={setNewSentence} onAddSentence={addSentence}
         />
       )}
@@ -771,7 +782,7 @@ function LetterRow({ letter, index, total, saving, onMove, onUpdateText, onToggl
 function VoiceSection({
   voiceEnabled, setVoiceEnabled, voiceTitle, setVoiceTitle, voiceSubtitle, setVoiceSubtitle,
   voiceSaving, voiceMsg, onSaveSettings,
-  sentences, sentenceSaving, onMoveSentence, onUpdateSentence, onDeleteSentence,
+  sentences, sentenceSaving, onMoveSentence, onUpdateSentence, onDeleteSentence, onUploadImage,
   newSentence, setNewSentence, onAddSentence,
 }) {
   return (
@@ -805,7 +816,7 @@ function VoiceSection({
         <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.87rem' }}>
           <thead>
             <tr>
-              {['#', 'الإيموجي', 'الجملة', 'الحالة', 'إجراءات'].map(h => (
+              {['#', 'الصورة', 'الجملة', 'الحالة', 'إجراءات'].map(h => (
                 <th key={h} style={{ background: 'var(--primary)', color: '#fff', padding: '9px 14px', textAlign: 'right', fontWeight: 700 }}>{h}</th>
               ))}
             </tr>
@@ -818,6 +829,7 @@ function VoiceSection({
                 onMove={dir => onMoveSentence(s, dir)}
                 onUpdate={patch => onUpdateSentence(s.id, patch)}
                 onDelete={() => onDeleteSentence(s.id)}
+                onUploadImage={onUploadImage}
               />
             ))}
           </tbody>
@@ -827,9 +839,27 @@ function VoiceSection({
   );
 }
 
-function SentenceRow({ sentence, index, total, saving, onMove, onUpdate, onDelete }) {
+/**
+ * عمود "الصورة" — صورة حقيقية مرفوعة (أولوية للعرض الحيّ) أو إيموجي سريع
+ * بلا رفع، بنفس نمط MatchingPairRow تماماً. وجود صورة يُخفي حقل الإيموجي
+ * ويُستبدَل بزر "إزالة" يعيد الصف لوضع الإيموجي بلا فقدان قيمته المحفوظة.
+ */
+function SentenceRow({ sentence, index, total, saving, onMove, onUpdate, onDelete, onUploadImage }) {
   const [emoji, setEmoji] = useState(sentence.emoji);
   const [text,  setText]  = useState(sentence.sentence_text);
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState(null);
+
+  async function handleFile(file) {
+    setUploading(true); setUploadErr(null);
+    try {
+      const url = await onUploadImage(file);
+      onUpdate({ image_url: url });
+    } catch (err) {
+      setUploadErr(err.message);
+    }
+    setUploading(false);
+  }
 
   return (
     <tr style={{ background: index % 2 === 0 ? '#fff' : '#f9fbff', opacity: sentence.enabled ? 1 : .5 }}>
@@ -840,12 +870,26 @@ function SentenceRow({ sentence, index, total, saving, onMove, onUpdate, onDelet
         </div>
       </td>
       <td style={{ padding: '8px 14px' }}>
-        <input
-          className="form-input" style={{ width: 56, textAlign: 'center', fontSize: '1.2rem' }}
-          value={emoji} disabled={saving}
-          onChange={e => setEmoji(e.target.value)}
-          onBlur={() => { if (emoji.trim() && emoji !== sentence.emoji) onUpdate({ emoji }); else setEmoji(sentence.emoji); }}
-        />
+        {sentence.image_url ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <img src={sentence.image_url} alt="" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--border)' }} />
+            <button type="button" className="btn btn-sm" style={{ padding: '1px 6px', fontSize: '.7rem' }} onClick={() => onUpdate({ image_url: null })} disabled={saving}>✕ إزالة</button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <input
+              className="form-input" style={{ width: 56, textAlign: 'center', fontSize: '1.2rem' }}
+              value={emoji} disabled={saving || uploading}
+              onChange={e => setEmoji(e.target.value)}
+              onBlur={() => { if (emoji.trim() && emoji !== sentence.emoji) onUpdate({ emoji }); else setEmoji(sentence.emoji); }}
+            />
+            <label className="btn btn-sm btn-outline" style={{ cursor: uploading ? 'default' : 'pointer', fontSize: '.68rem', padding: '2px 6px', whiteSpace: 'nowrap' }}>
+              {uploading ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : '📤 رفع صورة'}
+              <input type="file" accept="image/*" style={{ display: 'none' }} disabled={uploading} onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+            </label>
+            {uploadErr && <span style={{ fontSize: '.65rem', color: '#dc2626' }}>{uploadErr}</span>}
+          </div>
+        )}
       </td>
       <td style={{ padding: '8px 14px' }}>
         <input

@@ -1117,6 +1117,7 @@ button { font-family: 'Tajawal', sans-serif; cursor: pointer; border: none; }
 /* ====== تقييم القراءة الجهرية (VoiceReadingAssessment) ====== */
 .vr-sentence-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .vr-sentence-emoji { font-size: 2rem; }
+.vr-sentence-image { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; }
 .vr-sentence-text  { font-weight: 800; font-size: 1.25rem; color: var(--primary); }
 .vr-sentence-done  { margin-right: auto; font-size: 1.1rem; }
 .vr-actions        { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }

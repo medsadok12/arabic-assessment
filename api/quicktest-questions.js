@@ -74,7 +74,7 @@ export default async function handler(req, res) {
       fetchJson('/rest/v1/quicktest_alphabet_letters?enabled=eq.true&select=letter&order=order_index.asc'),
       fetchJson('/rest/v1/quicktest_matching_settings?select=exercise_key,enabled,title,subtitle,label,skill_tag'),
       fetchJson('/rest/v1/quicktest_matching_pairs?enabled=eq.true&select=exercise_key,emoji,word,image_url&order=order_index.asc'),
-      fetchJson('/rest/v1/quicktest_voice_sentences?enabled=eq.true&select=id,sentence_text,emoji&order=order_index.asc'),
+      fetchJson('/rest/v1/quicktest_voice_sentences?enabled=eq.true&select=id,sentence_text,emoji,image_url&order=order_index.asc'),
     ]);
 
     if (!Array.isArray(questionRows) || !Array.isArray(levelRows) || !Array.isArray(settingsRows) || !Array.isArray(alphabetRows)
@@ -111,7 +111,7 @@ export default async function handler(req, res) {
       })),
       // تقييم القراءة الجهرية — نفس فلسفة تمرين الحروف: يُقيَّم بمعزل عن بقية
       // الاستجابة، فلا يُفشِلها كاملة لو كان جدول الجمل فارغاً.
-      voiceSentences: voiceRows.map(r => ({ id: r.id, text: r.sentence_text, emoji: r.emoji })),
+      voiceSentences: voiceRows.map(r => ({ id: r.id, text: r.sentence_text, emoji: r.emoji, imageUrl: r.image_url || null })),
       voiceEnabled:   settingsRows[0]?.voice_enabled ?? true,
       voiceTitle:     settingsRows[0]?.voice_title || null,
       voiceSubtitle:  settingsRows[0]?.voice_subtitle || null,

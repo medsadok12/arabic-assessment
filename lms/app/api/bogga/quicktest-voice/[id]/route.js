@@ -14,10 +14,12 @@ async function guard() {
   return user;
 }
 
-const PATCHABLE = ['sentence_text', 'emoji', 'enabled'];
+const PATCHABLE = ['sentence_text', 'emoji', 'enabled', 'image_url'];
 
-// PUT — تحديث جملة قائمة (نصها/إيموجيها/حالة تفعيلها) — لا يمس order_index
-// (يُحدَّث حصراً عبر reorder/route.js)
+// PUT — تحديث جملة قائمة (نصها/إيموجيها/حالة تفعيلها/صورتها) — لا يمس
+// order_index (يُحدَّث حصراً عبر reorder/route.js). image_url: أولوية على
+// emoji عند العرض الحيّ (نفس نمط quicktest_matching_pairs) — يُقبَل null
+// صراحةً لإزالة الصورة والعودة للإيموجي.
 export async function PUT(req, { params }) {
   const user = await guard();
   if (!user) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
@@ -33,7 +35,9 @@ export async function PUT(req, { params }) {
   const patch = {};
   for (const key of PATCHABLE) {
     if (body[key] === undefined) continue;
-    patch[key] = key === 'enabled' ? body[key] : body[key].trim();
+    if (key === 'enabled') { patch[key] = body[key]; continue; }
+    if (key === 'image_url') { patch[key] = body[key] || null; continue; }
+    patch[key] = body[key].trim();
   }
   patch.updated_at = new Date().toISOString();
 

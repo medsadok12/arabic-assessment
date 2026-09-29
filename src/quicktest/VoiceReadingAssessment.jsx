@@ -108,7 +108,11 @@ function SentenceRecorder({ sentence, onChange }) {
   return (
     <div className={`aq-record-box${recording ? ' aq-rec-active' : ''}`} style={{ marginBottom: 0 }}>
       <div className="vr-sentence-row">
-        <span className="vr-sentence-emoji">{sentence.emoji}</span>
+        {sentence.imageUrl ? (
+          <img src={sentence.imageUrl} alt="" className="vr-sentence-image" />
+        ) : (
+          <span className="vr-sentence-emoji">{sentence.emoji}</span>
+        )}
         <span className="vr-sentence-text">{sentence.text}</span>
         {audioUrl && <span className="vr-sentence-done">✅</span>}
       </div>
