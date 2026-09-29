@@ -14,9 +14,11 @@ async function guard() {
   return user;
 }
 
-const PATCHABLE = ['emoji', 'word', 'enabled'];
+const PATCHABLE = ['emoji', 'word', 'enabled', 'image_url'];
 
 // PUT — تحديث زوج قائم — لا يمس order_index (يُحدَّث حصراً عبر reorder/route.js)
+// image_url: أولوية على emoji عند العرض الحيّ (نفس نمط quicktest_questions
+// image_url/prompt_emoji) — يُقبَل null صراحةً لإزالة الصورة والعودة للإيموجي.
 export async function PUT(req, { params }) {
   const user = await guard();
   if (!user) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
@@ -26,7 +28,12 @@ export async function PUT(req, { params }) {
   if (body.word !== undefined && !body.word?.trim()) return NextResponse.json({ error: 'الكلمة لا يمكن أن تكون فارغة' }, { status: 400 });
 
   const patch = {};
-  for (const key of PATCHABLE) if (body[key] !== undefined) patch[key] = (key === 'enabled') ? body[key] : body[key].trim();
+  for (const key of PATCHABLE) {
+    if (body[key] === undefined) continue;
+    if (key === 'enabled') { patch[key] = body[key]; continue; }
+    if (key === 'image_url') { patch[key] = body[key] || null; continue; }
+    patch[key] = body[key].trim();
+  }
   patch.updated_at = new Date().toISOString();
 
   const admin = createAdminClient();

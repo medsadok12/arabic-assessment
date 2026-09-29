@@ -22,6 +22,17 @@ async function uploadMedia(file, kind) {
   return data.url;
 }
 
+// صور حقيقية لأزواج المطابقة — أولوية على الإيموجي عند العرض الحيّ، بنفس
+// نمط رفع صور الأسئلة تماماً (مسار مستقل: quicktest-matching/upload).
+async function uploadMatchingImage(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch('/api/bogga/quicktest-matching/upload', { method: 'POST', body: fd });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'فشل رفع الصورة');
+  return data.url;
+}
+
 const EMPTY_QUESTION = {
   question_text: '', image_url: null, audio_url: null, prompt_emoji: '', audio_prompt: '',
   reading_text: '', parent_read_hint: false, skill_tag: '',
@@ -748,6 +759,7 @@ function MatchingExerciseCard({ settings, pairs, onSaveSettings, pairSaving, onM
                 onMove={dir => onMovePair(p, dir)}
                 onUpdate={patch => onUpdatePair(p.id, patch)}
                 onDelete={() => onDeletePair(p.id)}
+                onUploadImage={uploadMatchingImage}
               />
             ))}
           </tbody>
@@ -757,9 +769,28 @@ function MatchingExerciseCard({ settings, pairs, onSaveSettings, pairSaving, onM
   );
 }
 
-function MatchingPairRow({ pair, index, total, saving, onMove, onUpdate, onDelete }) {
+/**
+ * عمود "الصورة" — صورة حقيقية مرفوعة (أولوية للعرض الحيّ) أو إيموجي سريع
+ * بلا رفع، بنفس نمط image_url/prompt_emoji المعتمد أصلاً لأسئلة التقييم
+ * الحقيقي. وجود صورة يُخفي حقل الإيموجي (لا حاجة له وقتها) ويُستبدَل بزر
+ * "إزالة" يعيد الصف لوضع الإيموجي بلا فقدان قيمته المحفوظة في القاعدة.
+ */
+function MatchingPairRow({ pair, index, total, saving, onMove, onUpdate, onDelete, onUploadImage }) {
   const [emoji, setEmoji] = useState(pair.emoji);
   const [word,  setWord]  = useState(pair.word);
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState(null);
+
+  async function handleFile(file) {
+    setUploading(true); setUploadErr(null);
+    try {
+      const url = await onUploadImage(file);
+      onUpdate({ image_url: url });
+    } catch (err) {
+      setUploadErr(err.message);
+    }
+    setUploading(false);
+  }
 
   return (
     <tr style={{ background: index % 2 === 0 ? '#fff' : '#f9fbff', opacity: pair.enabled ? 1 : .5 }}>
@@ -770,12 +801,26 @@ function MatchingPairRow({ pair, index, total, saving, onMove, onUpdate, onDelet
         </div>
       </td>
       <td style={{ padding: '8px 14px' }}>
-        <input
-          className="form-input" style={{ width: 64, textAlign: 'center', fontSize: '1.3rem' }}
-          value={emoji} disabled={saving}
-          onChange={e => setEmoji(e.target.value)}
-          onBlur={() => { if (emoji.trim() && emoji !== pair.emoji) onUpdate({ emoji }); else setEmoji(pair.emoji); }}
-        />
+        {pair.image_url ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <img src={pair.image_url} alt="" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--border)' }} />
+            <button type="button" className="btn btn-sm" style={{ padding: '1px 6px', fontSize: '.7rem' }} onClick={() => onUpdate({ image_url: null })} disabled={saving}>✕ إزالة</button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <input
+              className="form-input" style={{ width: 56, textAlign: 'center', fontSize: '1.2rem' }}
+              value={emoji} disabled={saving || uploading}
+              onChange={e => setEmoji(e.target.value)}
+              onBlur={() => { if (emoji.trim() && emoji !== pair.emoji) onUpdate({ emoji }); else setEmoji(pair.emoji); }}
+            />
+            <label className="btn btn-sm btn-outline" style={{ cursor: uploading ? 'default' : 'pointer', fontSize: '.68rem', padding: '2px 6px', whiteSpace: 'nowrap' }}>
+              {uploading ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : '📤 رفع صورة'}
+              <input type="file" accept="image/*" style={{ display: 'none' }} disabled={uploading} onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+            </label>
+            {uploadErr && <span style={{ fontSize: '.65rem', color: '#dc2626' }}>{uploadErr}</span>}
+          </div>
+        )}
       </td>
       <td style={{ padding: '8px 14px' }}>
         <input

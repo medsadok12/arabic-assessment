@@ -73,7 +73,7 @@ export default async function handler(req, res) {
       fetchJson('/rest/v1/quicktest_settings?select=whatsapp_template,alphabet_enabled,alphabet_title,alphabet_subtitle&limit=1'),
       fetchJson('/rest/v1/quicktest_alphabet_letters?enabled=eq.true&select=letter&order=order_index.asc'),
       fetchJson('/rest/v1/quicktest_matching_settings?select=exercise_key,enabled,title,subtitle,label,skill_tag'),
-      fetchJson('/rest/v1/quicktest_matching_pairs?enabled=eq.true&select=exercise_key,emoji,word&order=order_index.asc'),
+      fetchJson('/rest/v1/quicktest_matching_pairs?enabled=eq.true&select=exercise_key,emoji,word,image_url&order=order_index.asc'),
     ]);
 
     if (!Array.isArray(questionRows) || !Array.isArray(levelRows) || !Array.isArray(settingsRows) || !Array.isArray(alphabetRows)
@@ -106,7 +106,7 @@ export default async function handler(req, res) {
         subtitle: s.subtitle,
         label:    s.label,
         skillTag: s.skill_tag,
-        pairs:    matchingPairRows.filter(p => p.exercise_key === s.exercise_key).map(p => ({ emoji: p.emoji, word: p.word })),
+        pairs:    matchingPairRows.filter(p => p.exercise_key === s.exercise_key).map(p => ({ emoji: p.emoji, word: p.word, imageUrl: p.image_url || null })),
       })),
     });
   } catch (e) {

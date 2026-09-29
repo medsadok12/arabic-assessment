@@ -164,7 +164,11 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
                   aria-label={`صورة: ${pairs[idx].word}`}
                   style={{ ...cardStyle({ isImage: true, isSelected, colorIdx: link?.colorIdx }), fontSize: '2.3rem' }}
                 >
-                  {pairs[idx].emoji}
+                  {pairs[idx].imageUrl ? (
+                    <img src={pairs[idx].imageUrl} alt="" style={{ maxWidth: '100%', maxHeight: 52, objectFit: 'contain', borderRadius: 10 }} />
+                  ) : (
+                    pairs[idx].emoji
+                  )}
                 </button>
               );
             })}
