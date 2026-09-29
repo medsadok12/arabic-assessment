@@ -4,6 +4,7 @@ import {
   QUESTIONS as FALLBACK_QUESTIONS, LEVELS as FALLBACK_LEVELS, DEFAULT_WHATSAPP_TEMPLATE,
   ALPHABET_LETTERS as FALLBACK_ALPHABET_LETTERS, DEFAULT_ALPHABET_ENABLED, DEFAULT_ALPHABET_TITLE, DEFAULT_ALPHABET_SUBTITLE,
   VOICE_SENTENCES as FALLBACK_VOICE_SENTENCES, DEFAULT_VOICE_ENABLED, DEFAULT_VOICE_TITLE, DEFAULT_VOICE_SUBTITLE,
+  WORD_COMPLETION_ITEMS as FALLBACK_WORD_COMPLETION_ITEMS, DEFAULT_WORD_COMPLETION_ENABLED, DEFAULT_WORD_COMPLETION_TITLE, DEFAULT_WORD_COMPLETION_SUBTITLE,
 } from './blueprint.js';
 import { getQuicktestData } from './fetchQuicktestData.js';
 import { pickLevelByScore } from './pickLevel.js';
@@ -13,11 +14,12 @@ import AlphabetGridAssessment from './AlphabetGridAssessment.jsx';
 import MatchingAssessment from './MatchingAssessment.jsx';
 import { MATCHING_EXERCISES_FALLBACK } from './matchingData.js';
 import VoiceReadingAssessment from './VoiceReadingAssessment.jsx';
+import WordCompletionAssessment from './WordCompletionAssessment.jsx';
 import LeadGate from './LeadGate.jsx';
 
 const PAGES = {
   LOADING: 'loading', START: 'start', ALPHABET: 'alphabet',
-  MATCHING1: 'matching1', MATCHING2: 'matching2', VOICE: 'voice',
+  MATCHING1: 'matching1', MATCHING2: 'matching2', VOICE: 'voice', WORD_COMPLETION: 'word_completion',
   ASSESSMENT: 'assessment', GATE: 'gate', RESULT: 'result',
 };
 
@@ -25,17 +27,23 @@ const PAGES = {
 // adminPreviewLevel في App.jsx الحقيقي.
 const adminPreview = isQuickTestAdminPreview();
 
-// تدريبا المطابقة وتقييم القراءة الجهرية كلها قابلة للتعطيل من اللوحة الآن
-// (بخلاف تمرين الحروف الذي له علم enabled واحد فقط أصلاً) — هاتان الدالتان
-// تحسبان الصفحة التالية الصحيحة بتخطّي أي تدريب معطَّل، بترتيب ثابت
-// (matching-1 ← matching-2 ← القراءة الجهرية ← الأسئلة الـ15).
-function firstEnabledMatchingPage(exercises, voiceEnabled) {
+// كل التدريبات (مطابقة×2/قراءة جهرية/إكمال الكلمة) قابلة للتعطيل من اللوحة
+// الآن (بخلاف تمرين الحروف الذي له علم enabled واحد فقط أصلاً) — هذه
+// الدوال تحسب الصفحة التالية الصحيحة بتخطّي أي تدريب معطَّل، بترتيب ثابت
+// (matching-1 ← matching-2 ← القراءة الجهرية ← إكمال الكلمة ← الأسئلة الـ15).
+function afterVoicePage(wordCompletionEnabled) {
+  return wordCompletionEnabled ? PAGES.WORD_COMPLETION : PAGES.ASSESSMENT;
+}
+function afterMatchingPage(voiceEnabled, wordCompletionEnabled) {
+  return voiceEnabled ? PAGES.VOICE : afterVoicePage(wordCompletionEnabled);
+}
+function firstEnabledMatchingPage(exercises, voiceEnabled, wordCompletionEnabled) {
   if (exercises[0]?.enabled) return PAGES.MATCHING1;
   if (exercises[1]?.enabled) return PAGES.MATCHING2;
-  return voiceEnabled ? PAGES.VOICE : PAGES.ASSESSMENT;
+  return afterMatchingPage(voiceEnabled, wordCompletionEnabled);
 }
-function pageAfterMatching1(exercises, voiceEnabled) {
-  return exercises[1]?.enabled ? PAGES.MATCHING2 : (voiceEnabled ? PAGES.VOICE : PAGES.ASSESSMENT);
+function pageAfterMatching1(exercises, voiceEnabled, wordCompletionEnabled) {
+  return exercises[1]?.enabled ? PAGES.MATCHING2 : afterMatchingPage(voiceEnabled, wordCompletionEnabled);
 }
 
 /**
@@ -64,6 +72,10 @@ export default function QuickTestApp() {
   const [voiceEnabled, setVoiceEnabled]     = useState(DEFAULT_VOICE_ENABLED);
   const [voiceTitle, setVoiceTitle]         = useState(DEFAULT_VOICE_TITLE);
   const [voiceSubtitle, setVoiceSubtitle]   = useState(DEFAULT_VOICE_SUBTITLE);
+  const [wordCompletionItems, setWordCompletionItems]       = useState(FALLBACK_WORD_COMPLETION_ITEMS);
+  const [wordCompletionEnabled, setWordCompletionEnabled]   = useState(DEFAULT_WORD_COMPLETION_ENABLED);
+  const [wordCompletionTitle, setWordCompletionTitle]       = useState(DEFAULT_WORD_COMPLETION_TITLE);
+  const [wordCompletionSubtitle, setWordCompletionSubtitle] = useState(DEFAULT_WORD_COMPLETION_SUBTITLE);
   const [childName, setChildName]     = useState(adminPreview ? QUICK_TEST_PREVIEW_STUDENT.name : '');
   const [childAge, setChildAge]       = useState(adminPreview ? QUICK_TEST_PREVIEW_STUDENT.age : '');
   const [startError, setStartError]   = useState('');
@@ -81,6 +93,7 @@ export default function QuickTestApp() {
       let effectiveAlphabetEnabled = DEFAULT_ALPHABET_ENABLED;
       let effectiveMatching = MATCHING_EXERCISES_FALLBACK;
       let effectiveVoiceEnabled = DEFAULT_VOICE_ENABLED;
+      let effectiveWordCompletionEnabled = DEFAULT_WORD_COMPLETION_ENABLED;
       if (data.source === 'database') {
         setQuestions(data.questions);
         setLevels(data.levels);
@@ -104,12 +117,17 @@ export default function QuickTestApp() {
         if (typeof data.voiceEnabled === 'boolean') { setVoiceEnabled(data.voiceEnabled); effectiveVoiceEnabled = data.voiceEnabled; }
         if (data.voiceTitle) setVoiceTitle(data.voiceTitle);
         if (data.voiceSubtitle) setVoiceSubtitle(data.voiceSubtitle);
+        // تدريب إكمال الكلمة الناقصة بمعزل تام عن بقية التدريبات.
+        if (Array.isArray(data.wordCompletionItems) && data.wordCompletionItems.length > 0) setWordCompletionItems(data.wordCompletionItems);
+        if (typeof data.wordCompletionEnabled === 'boolean') { setWordCompletionEnabled(data.wordCompletionEnabled); effectiveWordCompletionEnabled = data.wordCompletionEnabled; }
+        if (data.wordCompletionTitle) setWordCompletionTitle(data.wordCompletionTitle);
+        if (data.wordCompletionSubtitle) setWordCompletionSubtitle(data.wordCompletionSubtitle);
       }
       // معاينة المشرف: تخطَّ شاشة بيانات البداية فقط (بيانات وهمية ثابتة
       // أصلاً) وابدأ من أول خطوة فعلياً مفعَّلة — نفس تجربة الزائر الحقيقي
       // بالضبط بلا نقصان، فـ"جرّب الاختبار فعلياً" يعني التجربة كاملة.
       setPage(adminPreview
-        ? (effectiveAlphabetEnabled ? PAGES.ALPHABET : firstEnabledMatchingPage(effectiveMatching, effectiveVoiceEnabled))
+        ? (effectiveAlphabetEnabled ? PAGES.ALPHABET : firstEnabledMatchingPage(effectiveMatching, effectiveVoiceEnabled, effectiveWordCompletionEnabled))
         : PAGES.START);
     });
     return () => { cancelled = true; };
@@ -127,27 +145,30 @@ export default function QuickTestApp() {
     setStartError('');
     setAnswers([]);
     setQuestionIdx(0);
-    setPage(alphabetEnabled ? PAGES.ALPHABET : firstEnabledMatchingPage(matchingExercises, voiceEnabled));
+    setPage(alphabetEnabled ? PAGES.ALPHABET : firstEnabledMatchingPage(matchingExercises, voiceEnabled, wordCompletionEnabled));
   }
 
   function handleAlphabetComplete(detail) {
     setAnswers(prev => [...prev, detail]);
-    setPage(firstEnabledMatchingPage(matchingExercises, voiceEnabled));
+    setPage(firstEnabledMatchingPage(matchingExercises, voiceEnabled, wordCompletionEnabled));
   }
 
   function handleMatching1Complete(detail) {
     setAnswers(prev => [...prev, detail]);
-    setPage(pageAfterMatching1(matchingExercises, voiceEnabled));
+    setPage(pageAfterMatching1(matchingExercises, voiceEnabled, wordCompletionEnabled));
   }
 
   function handleMatching2Complete(detail) {
     setAnswers(prev => [...prev, detail]);
-    if (voiceEnabled) { setPage(PAGES.VOICE); return; }
-    setQuestionIdx(0);
-    setPage(PAGES.ASSESSMENT);
+    setPage(afterMatchingPage(voiceEnabled, wordCompletionEnabled));
   }
 
   function handleVoiceComplete(detail) {
+    setAnswers(prev => [...prev, detail]);
+    setPage(afterVoicePage(wordCompletionEnabled));
+  }
+
+  function handleWordCompletionComplete(detail) {
     setAnswers(prev => [...prev, detail]);
     setQuestionIdx(0);
     setPage(PAGES.ASSESSMENT);
@@ -158,7 +179,7 @@ export default function QuickTestApp() {
   // مرهق أثناء المراجعة الإدارية. يستدعي نفس معالج الإكمال الحقيقي لكل
   // صفحة بتفاصيل وهمية فارغة (لا تُرسَل لأي مكان أصلاً في وضع المعاينة)، فلا
   // منطق تنقّل جديد يُضاف — فقط تجاوز شرط "أكمل التدريب أولاً".
-  const SKIPPABLE_PAGES = [PAGES.ALPHABET, PAGES.MATCHING1, PAGES.MATCHING2, PAGES.VOICE];
+  const SKIPPABLE_PAGES = [PAGES.ALPHABET, PAGES.MATCHING1, PAGES.MATCHING2, PAGES.VOICE, PAGES.WORD_COMPLETION];
   function handleAdminSkip() {
     if (page === PAGES.ALPHABET) {
       handleAlphabetComplete({ type: 'alphabet-grid', questionId: 'alphabet-grid', skillTag: 'التعرف على الحروف الأبجدية', masteredLetters: [], needsReviewLetters: [] });
@@ -169,6 +190,8 @@ export default function QuickTestApp() {
       else handleMatching2Complete(detail);
     } else if (page === PAGES.VOICE) {
       handleVoiceComplete({ type: 'voice-reading', questionId: 'voice-reading', skillTag: 'القراءة الجهرية', recordings: [] });
+    } else if (page === PAGES.WORD_COMPLETION) {
+      handleWordCompletionComplete({ type: 'word-completion', questionId: 'word-completion', skillTag: 'تهجئة', items: [] });
     }
   }
 
@@ -225,7 +248,7 @@ export default function QuickTestApp() {
       </header>
 
       {page !== PAGES.START && page !== PAGES.LOADING && page !== PAGES.ALPHABET
-        && page !== PAGES.MATCHING1 && page !== PAGES.MATCHING2 && page !== PAGES.VOICE && (
+        && page !== PAGES.MATCHING1 && page !== PAGES.MATCHING2 && page !== PAGES.VOICE && page !== PAGES.WORD_COMPLETION && (
         <div className="global-progress">
           <div className="gp-info">
             <span>التقدم</span>
@@ -302,6 +325,15 @@ export default function QuickTestApp() {
             title={voiceTitle}
             subtitle={voiceSubtitle}
             onComplete={handleVoiceComplete}
+          />
+        )}
+
+        {page === PAGES.WORD_COMPLETION && (
+          <WordCompletionAssessment
+            items={wordCompletionItems}
+            title={wordCompletionTitle}
+            subtitle={wordCompletionSubtitle}
+            onComplete={handleWordCompletionComplete}
           />
         )}
 

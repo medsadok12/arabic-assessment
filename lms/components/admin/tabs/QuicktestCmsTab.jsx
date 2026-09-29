@@ -43,6 +43,28 @@ async function uploadVoiceImage(file) {
   return data.url;
 }
 
+// صور حقيقية لتدريب إكمال الكلمة — نفس نمط uploadMatchingImage تماماً.
+async function uploadWordCompletionImage(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch('/api/bogga/quicktest-word-completion/upload', { method: 'POST', body: fd });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'فشل رفع الصورة');
+  return data.url;
+}
+
+// "الكلمة المقنَّعة" — واجهة تحرير سهلة للأستاذ محمد: يكتب الكلمة مع "_"
+// في موضع الحرف الناقص (مثال: "ش_مس")، فتُشتَق word_text/missing_index
+// تلقائياً — لا حاجة لإدخال رقم موضع يدوياً عرضة للخطأ.
+function maskWord(wordText, missingIndex) {
+  return wordText.slice(0, missingIndex) + '_' + wordText.slice(missingIndex);
+}
+function parseMaskedWord(masked) {
+  const idx = masked.indexOf('_');
+  if (idx === -1 || masked.indexOf('_', idx + 1) !== -1) return null; // يجب وجود "_" واحد بالضبط
+  return { word_text: masked.slice(0, idx) + masked.slice(idx + 1), missing_index: idx };
+}
+
 const EMPTY_QUESTION = {
   question_text: '', image_url: null, audio_url: null, prompt_emoji: '', audio_prompt: '',
   reading_text: '', parent_read_hint: false, skill_tag: '',
@@ -95,6 +117,15 @@ export default function QuicktestCmsTab() {
   const [newSentence,    setNewSentence]    = useState({ emoji: '', sentence_text: '' });
   const [sentenceSaving, setSentenceSaving] = useState(null); // id الجملة الجاري حفظها/حذفها، أو 'new'
 
+  const [wcItems,    setWcItems]    = useState(null);
+  const [wcEnabled,  setWcEnabled]  = useState(true);
+  const [wcTitle,    setWcTitle]    = useState('');
+  const [wcSubtitle, setWcSubtitle] = useState('');
+  const [wcSaving,   setWcSaving]   = useState(false);
+  const [wcMsg,      setWcMsg]      = useState(null);
+  const [newWcItem,    setNewWcItem]    = useState({ masked: '', distractors: '', emoji: '' });
+  const [wcItemSaving, setWcItemSaving] = useState(null); // id العنصر الجاري حفظه/حذفه، أو 'new'
+
   function loadAll() {
     Promise.all([
       fetch('/api/bogga/quicktest-questions').then(r => r.json()),
@@ -104,9 +135,10 @@ export default function QuicktestCmsTab() {
       fetch('/api/bogga/quicktest-matching-settings').then(r => r.json()),
       fetch('/api/bogga/quicktest-matching').then(r => r.json()),
       fetch('/api/bogga/quicktest-voice').then(r => r.json()),
-    ]).then(([q, l, s, a, ms, mp, v]) => {
-      if (q.error || l.error || s.error || a.error || ms.error || mp.error || v.error) {
-        setError(q.error || l.error || s.error || a.error || ms.error || mp.error || v.error); return;
+      fetch('/api/bogga/quicktest-word-completion').then(r => r.json()),
+    ]).then(([q, l, s, a, ms, mp, v, wc]) => {
+      if (q.error || l.error || s.error || a.error || ms.error || mp.error || v.error || wc.error) {
+        setError(q.error || l.error || s.error || a.error || ms.error || mp.error || v.error || wc.error); return;
       }
       setQuestions(q.questions);
       setLevels(l.levels);
@@ -122,6 +154,10 @@ export default function QuicktestCmsTab() {
       setVoiceTitle(s.settings?.voice_title ?? '');
       setVoiceSubtitle(s.settings?.voice_subtitle ?? '');
       setSentences(v.sentences);
+      setWcEnabled(s.settings?.word_completion_enabled ?? true);
+      setWcTitle(s.settings?.word_completion_title ?? '');
+      setWcSubtitle(s.settings?.word_completion_subtitle ?? '');
+      setWcItems(wc.items);
     }).catch(() => setError('تعذّر تحميل بيانات لوحة الاختبار الترويجي'));
   }
 
@@ -449,8 +485,82 @@ export default function QuicktestCmsTab() {
     }
   }
 
+  // ── تدريب إكمال الكلمة الناقصة ─────────────────────────────────────────
+  async function saveWcSettings() {
+    setWcSaving(true); setWcMsg(null);
+    try {
+      const res = await fetch('/api/bogga/quicktest-settings', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word_completion_enabled: wcEnabled, word_completion_title: wcTitle, word_completion_subtitle: wcSubtitle }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'فشل الحفظ');
+      setWcMsg({ ok: true, text: '✅ تم الحفظ' });
+    } catch (err) {
+      setWcMsg({ ok: false, text: '❌ ' + err.message });
+    }
+    setWcSaving(false);
+  }
+
+  async function moveWcItem(item, dir) {
+    const idx = wcItems.findIndex(x => x.id === item.id);
+    const j = idx + dir;
+    if (j < 0 || j >= wcItems.length) return;
+    const other = wcItems[j];
+    const res = await fetch('/api/bogga/quicktest-word-completion/reorder', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [{ id: item.id, order_index: other.order_index }, { id: other.id, order_index: item.order_index }] }),
+    });
+    if (res.ok) {
+      const next = [...wcItems];
+      [next[idx], next[j]] = [next[j], next[idx]];
+      const tmp = next[idx].order_index; next[idx].order_index = next[j].order_index; next[j].order_index = tmp;
+      setWcItems(next.sort((a, b) => a.order_index - b.order_index));
+    }
+  }
+
+  async function updateWcItem(id, patch) {
+    setWcItemSaving(id);
+    const res = await fetch(`/api/bogga/quicktest-word-completion/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setWcItems(prev => prev.map(x => x.id === id ? data.item : x));
+    }
+    setWcItemSaving(null);
+  }
+
+  async function deleteWcItem(id) {
+    if (!confirm('هل تريد حذف هذه الكلمة نهائياً؟')) return;
+    setWcItemSaving(id);
+    const res = await fetch(`/api/bogga/quicktest-word-completion/${id}`, { method: 'DELETE' });
+    if (res.ok) setWcItems(prev => prev.filter(x => x.id !== id));
+    setWcItemSaving(null);
+  }
+
+  async function addWcItem(e) {
+    e.preventDefault();
+    const parsed = parseMaskedWord(newWcItem.masked.trim());
+    if (!parsed || !newWcItem.emoji.trim()) return;
+    const distractor_options = newWcItem.distractors.split(',').map(d => d.trim()).filter(Boolean);
+    if (distractor_options.length === 0) return;
+    setWcItemSaving('new');
+    try {
+      const res = await fetch('/api/bogga/quicktest-word-completion', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...parsed, distractor_options, emoji: newWcItem.emoji.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) { setWcItems(prev => [...prev, data.item]); setNewWcItem({ masked: '', distractors: '', emoji: '' }); }
+    } finally {
+      setWcItemSaving(null);
+    }
+  }
+
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!questions || !levels || !letters || !matchingSettings || !matchingPairs || !sentences) return <div style={{ textAlign: 'center', padding: 40 }}><span className="spinner" /></div>;
+  if (!questions || !levels || !letters || !matchingSettings || !matchingPairs || !sentences || !wcItems) return <div style={{ textAlign: 'center', padding: 40 }}><span className="spinner" /></div>;
 
   return (
     <div>
@@ -481,6 +591,7 @@ export default function QuicktestCmsTab() {
           { id: 'alphabet',  label: `🔤 تمرين الحروف (${letters.length})` },
           { id: 'matching',  label: `🔗 تدريبا المطابقة (${matchingPairs.length})` },
           { id: 'voice',     label: `🎙️ القراءة الجهرية (${sentences.length})` },
+          { id: 'word_completion', label: `🔤 إكمال الكلمة (${wcItems.length})` },
         ].map(t => (
           <button
             key={t.id}
@@ -570,6 +681,19 @@ export default function QuicktestCmsTab() {
           onMoveSentence={moveSentence} onUpdateSentence={updateSentence} onDeleteSentence={deleteSentence}
           onUploadImage={uploadVoiceImage}
           newSentence={newSentence} setNewSentence={setNewSentence} onAddSentence={addSentence}
+        />
+      )}
+
+      {subTab === 'word_completion' && (
+        <WordCompletionSection
+          wcEnabled={wcEnabled} setWcEnabled={setWcEnabled}
+          wcTitle={wcTitle} setWcTitle={setWcTitle}
+          wcSubtitle={wcSubtitle} setWcSubtitle={setWcSubtitle}
+          wcSaving={wcSaving} wcMsg={wcMsg} onSaveSettings={saveWcSettings}
+          items={wcItems} itemSaving={wcItemSaving}
+          onMoveItem={moveWcItem} onUpdateItem={updateWcItem} onDeleteItem={deleteWcItem}
+          onUploadImage={uploadWordCompletionImage}
+          newItem={newWcItem} setNewItem={setNewWcItem} onAddItem={addWcItem}
         />
       )}
 
@@ -906,6 +1030,172 @@ function SentenceRow({ sentence, index, total, saving, onMove, onUpdate, onDelet
           style={{ background: sentence.enabled ? '#f0fdf4' : '#f1f5f9', color: sentence.enabled ? '#16a34a' : '#64748b', border: 'none' }}
         >
           {sentence.enabled ? '✅ مفعّل' : '⏸ معطّل'}
+        </button>
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <button className="btn btn-sm btn-danger" onClick={onDelete} disabled={saving}>🗑️</button>
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * قسم "تدريب إكمال الكلمة الناقصة" — بطاقة إعدادات + جدول كلمات قابل
+ * للتعديل مباشرة، بنفس نمط قسم القراءة الجهرية/تمرين الحروف تماماً.
+ * الكلمة تُحرَّر كـ"كلمة مقنَّعة" (مثال: "ش_مس") بدل رقم موضع يدوي —
+ * أسهل وأقل عرضة للخطأ للأستاذ محمد.
+ */
+function WordCompletionSection({
+  wcEnabled, setWcEnabled, wcTitle, setWcTitle, wcSubtitle, setWcSubtitle,
+  wcSaving, wcMsg, onSaveSettings,
+  items, itemSaving, onMoveItem, onUpdateItem, onDeleteItem, onUploadImage,
+  newItem, setNewItem, onAddItem,
+}) {
+  return (
+    <div>
+      <div className="card" style={{ maxWidth: 620, padding: 22, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <input type="checkbox" id="wc-enabled" checked={wcEnabled} onChange={e => setWcEnabled(e.target.checked)} />
+          <label htmlFor="wc-enabled" style={{ fontWeight: 700, cursor: 'pointer' }}>تفعيل تدريب إكمال الكلمة (يظهر للزوار بعد تقييم القراءة الجهرية، قبل الأسئلة الـ15)</label>
+        </div>
+        <div className="form-group">
+          <label className="form-label">العنوان</label>
+          <input className="form-input" value={wcTitle} onChange={e => setWcTitle(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">النص الفرعي (تعليمات للطفل/ولي الأمر)</label>
+          <textarea className="form-input" rows={2} value={wcSubtitle} onChange={e => setWcSubtitle(e.target.value)} />
+        </div>
+        {wcMsg && <div className={`alert alert-${wcMsg.ok ? 'success' : 'error'}`}>{wcMsg.text}</div>}
+        <button className="btn btn-primary" onClick={onSaveSettings} disabled={wcSaving}>
+          {wcSaving ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> جارٍ الحفظ...</> : '✅ حفظ'}
+        </button>
+      </div>
+
+      <form onSubmit={onAddItem} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14, maxWidth: 620 }}>
+        <input className="form-input" placeholder="إيموجي" value={newItem.emoji} onChange={e => setNewItem(s => ({ ...s, emoji: e.target.value }))} style={{ width: 70 }} />
+        <input className="form-input" placeholder="الكلمة (ضع _ مكان الحرف الناقص، مثال: ش_مس)" value={newItem.masked} onChange={e => setNewItem(s => ({ ...s, masked: e.target.value }))} style={{ flex: '1 1 220px' }} />
+        <input className="form-input" placeholder="خيارات خاطئة (مفصولة بفاصلة، مثال: ر,ل)" value={newItem.distractors} onChange={e => setNewItem(s => ({ ...s, distractors: e.target.value }))} style={{ flex: '1 1 180px' }} />
+        <button type="submit" className="btn btn-primary btn-sm" disabled={itemSaving === 'new'}>+ إضافة</button>
+      </form>
+
+      <div className="card table-scroll-wrapper" style={{ padding: 0 }}>
+        <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.87rem' }}>
+          <thead>
+            <tr>
+              {['#', 'الصورة', 'الكلمة', 'خيارات خاطئة', 'الحالة', 'إجراءات'].map(h => (
+                <th key={h} style={{ background: 'var(--primary)', color: '#fff', padding: '9px 14px', textAlign: 'right', fontWeight: 700 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item, i) => (
+              <WordCompletionRow
+                key={item.id} item={item} index={i} total={items.length}
+                saving={itemSaving === item.id}
+                onMove={dir => onMoveItem(item, dir)}
+                onUpdate={patch => onUpdateItem(item.id, patch)}
+                onDelete={() => onDeleteItem(item.id)}
+                onUploadImage={onUploadImage}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function WordCompletionRow({ item, index, total, saving, onMove, onUpdate, onDelete, onUploadImage }) {
+  const [emoji, setEmoji]           = useState(item.emoji);
+  const [masked, setMasked]         = useState(maskWord(item.word_text, item.missing_index));
+  const [distractors, setDistractors] = useState(item.distractor_options.join(','));
+  const [uploading, setUploading]   = useState(false);
+  const [uploadErr, setUploadErr]   = useState(null);
+  const [maskedErr, setMaskedErr]   = useState(null);
+
+  async function handleFile(file) {
+    setUploading(true); setUploadErr(null);
+    try {
+      const url = await onUploadImage(file);
+      onUpdate({ image_url: url });
+    } catch (err) {
+      setUploadErr(err.message);
+    }
+    setUploading(false);
+  }
+
+  function handleMaskedBlur() {
+    const trimmed = masked.trim();
+    const currentMasked = maskWord(item.word_text, item.missing_index);
+    if (trimmed === currentMasked) return;
+    const parsed = parseMaskedWord(trimmed);
+    if (!parsed) { setMaskedErr('استخدم "_" واحدة بالضبط لموضع الحرف الناقص'); setMasked(currentMasked); return; }
+    setMaskedErr(null);
+    onUpdate(parsed);
+  }
+
+  function handleDistractorsBlur() {
+    const parsed = distractors.split(',').map(d => d.trim()).filter(Boolean);
+    const current = item.distractor_options.join(',');
+    if (distractors.trim() === current || parsed.length === 0) { setDistractors(item.distractor_options.join(',')); return; }
+    onUpdate({ distractor_options: parsed });
+  }
+
+  return (
+    <tr style={{ background: index % 2 === 0 ? '#fff' : '#f9fbff', opacity: item.enabled ? 1 : .5 }}>
+      <td style={{ padding: '8px 14px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <button className="btn btn-sm" style={{ padding: '1px 8px' }} disabled={index === 0} onClick={() => onMove(-1)}>▲</button>
+          <button className="btn btn-sm" style={{ padding: '1px 8px' }} disabled={index === total - 1} onClick={() => onMove(1)}>▼</button>
+        </div>
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        {item.image_url ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <img src={item.image_url} alt="" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--border)' }} />
+            <button type="button" className="btn btn-sm" style={{ padding: '1px 6px', fontSize: '.7rem' }} onClick={() => onUpdate({ image_url: null })} disabled={saving}>✕ إزالة</button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <input
+              className="form-input" style={{ width: 56, textAlign: 'center', fontSize: '1.2rem' }}
+              value={emoji} disabled={saving || uploading}
+              onChange={e => setEmoji(e.target.value)}
+              onBlur={() => { if (emoji.trim() && emoji !== item.emoji) onUpdate({ emoji }); else setEmoji(item.emoji); }}
+            />
+            <label className="btn btn-sm btn-outline" style={{ cursor: uploading ? 'default' : 'pointer', fontSize: '.68rem', padding: '2px 6px', whiteSpace: 'nowrap' }}>
+              {uploading ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> : '📤 رفع صورة'}
+              <input type="file" accept="image/*" style={{ display: 'none' }} disabled={uploading} onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+            </label>
+            {uploadErr && <span style={{ fontSize: '.65rem', color: '#dc2626' }}>{uploadErr}</span>}
+          </div>
+        )}
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <input
+          className="form-input" style={{ width: 140, fontWeight: 700, textAlign: 'center' }}
+          value={masked} disabled={saving}
+          onChange={e => setMasked(e.target.value)}
+          onBlur={handleMaskedBlur}
+        />
+        {maskedErr && <div style={{ fontSize: '.65rem', color: '#dc2626', marginTop: 4 }}>{maskedErr}</div>}
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <input
+          className="form-input" style={{ width: 120 }}
+          value={distractors} disabled={saving}
+          onChange={e => setDistractors(e.target.value)}
+          onBlur={handleDistractorsBlur}
+        />
+      </td>
+      <td style={{ padding: '8px 14px' }}>
+        <button
+          onClick={() => onUpdate({ enabled: !item.enabled })}
+          className="btn btn-sm"
+          style={{ background: item.enabled ? '#f0fdf4' : '#f1f5f9', color: item.enabled ? '#16a34a' : '#64748b', border: 'none' }}
+        >
+          {item.enabled ? '✅ مفعّل' : '⏸ معطّل'}
         </button>
       </td>
       <td style={{ padding: '8px 14px' }}>

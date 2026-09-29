@@ -161,7 +161,10 @@ function LeadDetailsModal({ lead, onClose }) {
   // والمطابقة — لا isCorrect (تسجيلات صوتية للاستماع، لا صح/خطأ)، فتُستبعَد
   // من حساب المهارات العادي وتُعرَض كقسم مستقل بمشغلات صوتية.
   const voiceReading = allAnswers.find(a => a.type === 'voice-reading');
-  const answers  = allAnswers.filter(a => a.type !== 'alphabet-grid' && a.type !== 'matching' && a.type !== 'voice-reading');
+  // تدريب إكمال الكلمة الناقصة (WordCompletionAssessment.jsx) — نفس منطق
+  // الحروف/المطابقة/القراءة الجهرية، مستبعَد من حساب المهارات العادي أدناه.
+  const wordCompletion = allAnswers.find(a => a.type === 'word-completion');
+  const answers  = allAnswers.filter(a => a.type !== 'alphabet-grid' && a.type !== 'matching' && a.type !== 'voice-reading' && a.type !== 'word-completion');
   const mastered   = answers.filter(a => a.isCorrect && a.skillTag);
   const needsHelp  = answers.filter(a => !a.isCorrect && a.skillTag);
 
@@ -272,6 +275,39 @@ function LeadDetailsModal({ lead, onClose }) {
             )}
           </div>
         )}
+
+        {wordCompletion && (() => {
+          const wcItems = Array.isArray(wordCompletion.items) ? wordCompletion.items : [];
+          const correctWords     = wcItems.filter(i => i.isCorrect).map(i => i.word);
+          const needsReviewWords = wcItems.filter(i => !i.isCorrect).map(i => i.word);
+          return (
+            <div style={{ marginBottom: 18 }}>
+              <div className="dash-section-title" style={{ marginBottom: 10 }}>🔤 تدريب إكمال الكلمة الناقصة</div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 220px', background: '#eafbf3', border: '1px solid #bbf3d8', borderRadius: 10, padding: '12px 14px' }}>
+                  <div style={{ fontWeight: 800, color: '#065f46', fontSize: '.85rem', marginBottom: 6 }}>
+                    كلمات أكملها بنجاح ({correctWords.length})
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {correctWords.length
+                      ? correctWords.map((w, i) => <span key={i} className="badge badge-green">{w}</span>)
+                      : <span style={{ fontSize: '.8rem', color: '#065f46' }}>لا شيء بعد</span>}
+                  </div>
+                </div>
+                <div style={{ flex: '1 1 220px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '12px 14px' }}>
+                  <div style={{ fontWeight: 800, color: '#92400e', fontSize: '.85rem', marginBottom: 6 }}>
+                    كلمات تحتاج مراجعة ({needsReviewWords.length})
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {needsReviewWords.length
+                      ? needsReviewWords.map((w, i) => <span key={i} className="badge badge-orange">{w}</span>)
+                      : <span style={{ fontSize: '.8rem', color: '#92400e' }}>لا شيء — أداء ممتاز!</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="dash-section-title" style={{ marginBottom: 10 }}>📝 كل الأسئلة والإجابات</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

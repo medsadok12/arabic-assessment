@@ -53,6 +53,15 @@ export async function PATCH(req) {
     if (!body.voice_subtitle?.trim()) return NextResponse.json({ error: 'النص الفرعي لتقييم القراءة الجهرية مطلوب' }, { status: 400 });
     patch.voice_subtitle = body.voice_subtitle.trim();
   }
+  if (body.word_completion_enabled !== undefined) patch.word_completion_enabled = !!body.word_completion_enabled;
+  if (body.word_completion_title !== undefined) {
+    if (!body.word_completion_title?.trim()) return NextResponse.json({ error: 'عنوان تدريب إكمال الكلمة مطلوب' }, { status: 400 });
+    patch.word_completion_title = body.word_completion_title.trim();
+  }
+  if (body.word_completion_subtitle !== undefined) {
+    if (!body.word_completion_subtitle?.trim()) return NextResponse.json({ error: 'النص الفرعي لتدريب إكمال الكلمة مطلوب' }, { status: 400 });
+    patch.word_completion_subtitle = body.word_completion_subtitle.trim();
+  }
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'لا توجد بيانات للتحديث' }, { status: 400 });
   patch.updated_at = new Date().toISOString();
 

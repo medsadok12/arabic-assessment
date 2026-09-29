@@ -67,18 +67,19 @@ export default async function handler(req, res) {
       throw new Error('Supabase env vars not configured');
     }
 
-    const [questionRows, levelRows, settingsRows, alphabetRows, matchingSettingsRows, matchingPairRows, voiceRows] = await Promise.all([
+    const [questionRows, levelRows, settingsRows, alphabetRows, matchingSettingsRows, matchingPairRows, voiceRows, wordCompletionRows] = await Promise.all([
       fetchJson('/rest/v1/quicktest_questions?enabled=eq.true&select=id,question_text,image_url,audio_url,prompt_emoji,audio_prompt,reading_text,parent_read_hint,skill_tag,options&order=order_index.asc'),
       fetchJson('/rest/v1/quicktest_levels?select=id,icon,label,min_correct,max_correct,strengths_text,recommendation,program_name,program_pitch&order=sort_order.asc'),
-      fetchJson('/rest/v1/quicktest_settings?select=whatsapp_template,alphabet_enabled,alphabet_title,alphabet_subtitle,voice_enabled,voice_title,voice_subtitle&limit=1'),
+      fetchJson('/rest/v1/quicktest_settings?select=whatsapp_template,alphabet_enabled,alphabet_title,alphabet_subtitle,voice_enabled,voice_title,voice_subtitle,word_completion_enabled,word_completion_title,word_completion_subtitle&limit=1'),
       fetchJson('/rest/v1/quicktest_alphabet_letters?enabled=eq.true&select=letter&order=order_index.asc'),
       fetchJson('/rest/v1/quicktest_matching_settings?select=exercise_key,enabled,title,subtitle,label,skill_tag'),
       fetchJson('/rest/v1/quicktest_matching_pairs?enabled=eq.true&select=exercise_key,emoji,word,image_url&order=order_index.asc'),
       fetchJson('/rest/v1/quicktest_voice_sentences?enabled=eq.true&select=id,sentence_text,emoji,image_url&order=order_index.asc'),
+      fetchJson('/rest/v1/quicktest_word_completion_items?enabled=eq.true&select=id,word_text,missing_index,distractor_options,emoji,image_url&order=order_index.asc'),
     ]);
 
     if (!Array.isArray(questionRows) || !Array.isArray(levelRows) || !Array.isArray(settingsRows) || !Array.isArray(alphabetRows)
-      || !Array.isArray(matchingSettingsRows) || !Array.isArray(matchingPairRows) || !Array.isArray(voiceRows)) {
+      || !Array.isArray(matchingSettingsRows) || !Array.isArray(matchingPairRows) || !Array.isArray(voiceRows) || !Array.isArray(wordCompletionRows)) {
       throw new Error('Unexpected Supabase response shape');
     }
     if (questionRows.length === 0 || levelRows.length === 0) {
@@ -115,6 +116,16 @@ export default async function handler(req, res) {
       voiceEnabled:   settingsRows[0]?.voice_enabled ?? true,
       voiceTitle:     settingsRows[0]?.voice_title || null,
       voiceSubtitle:  settingsRows[0]?.voice_subtitle || null,
+      // تدريب إكمال الكلمة الناقصة — نفس فلسفة الحروف/القراءة الجهرية،
+      // بمعزل تام عن بقية الاستجابة.
+      wordCompletionItems: wordCompletionRows.map(r => ({
+        id: r.id, wordText: r.word_text, missingIndex: r.missing_index,
+        distractorOptions: Array.isArray(r.distractor_options) ? r.distractor_options : [],
+        emoji: r.emoji, imageUrl: r.image_url || null,
+      })),
+      wordCompletionEnabled:  settingsRows[0]?.word_completion_enabled ?? true,
+      wordCompletionTitle:    settingsRows[0]?.word_completion_title || null,
+      wordCompletionSubtitle: settingsRows[0]?.word_completion_subtitle || null,
     });
   } catch (e) {
     console.error('[api/quicktest-questions] فشل الجلب من Supabase — سيعتمد العميل على النسخة الثابتة:', e.message);

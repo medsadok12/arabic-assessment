@@ -71,17 +71,10 @@ export const QUESTIONS = [
   },
 
   // ── 🟡 المرحلة الثانية: المستكشفون (٦-١٠) ─────────────────────────
-  {
-    id: 'q6',
-    skillTag: 'تهجئة',
-    promptEmoji: '☀️',
-    text: 'اختر الحرف الناقص لتكتمل الكلمة: شـ ... ـس',
-    options: [
-      { text: 'م', correct: true  },
-      { text: 'ر', correct: false },
-      { text: 'ل', correct: false },
-    ],
-  },
+  // ملاحظة: سؤال "اختر الحرف الناقص" (شمس) كان هنا سابقاً بمعرّف q6 —
+  // اسُتبدل بتدريب مستقل أغنى من 3 كلمات (WORD_COMPLETION_ITEMS أدناه)
+  // بطلب صريح من الأستاذ محمد، فحُذف من هذا البنك (وحُذف مقابله فعلياً من
+  // quicktest_questions الحيّة) تفادياً لتكرار المحتوى.
   {
     id: 'q7',
     skillTag: 'قراءة وربط',
@@ -230,3 +223,16 @@ export const VOICE_SENTENCES = [
 export const DEFAULT_VOICE_ENABLED  = true;
 export const DEFAULT_VOICE_TITLE    = '🎙️ اقرأ هذه الجمل بصوتك';
 export const DEFAULT_VOICE_SUBTITLE = 'اضغط "ابدأ التسجيل"، واقرأ كل جملة بصوت عالٍ وواضح. يمكنك الاستماع لصوتك أو حذفه وإعادة التسجيل قبل المتابعة.';
+
+// نفس بذور quicktest_word_completion.sql حرفياً — تدريب "إكمال الكلمة
+// الناقصة" (WordCompletionAssessment.jsx)، يحلّ محل سؤال "شمس" المفرد
+// الذي كان ضمن بنك الـ15 أعلاه (حُذف من هناك تفادياً للتكرار). الحرف
+// الصحيح دائماً wordText[missingIndex] — لا يُخزَّن مكرراً في الخيارات.
+export const WORD_COMPLETION_ITEMS = [
+  { id: 'wc-1', wordText: 'شمس',   missingIndex: 1, distractorOptions: ['ر', 'ل'], emoji: '☀️' },
+  { id: 'wc-2', wordText: 'طاولة', missingIndex: 2, distractorOptions: ['ب', 'س'], emoji: '🪑' },
+  { id: 'wc-3', wordText: 'سيارة', missingIndex: 3, distractorOptions: ['ن', 'ت'], emoji: '🚗' },
+];
+export const DEFAULT_WORD_COMPLETION_ENABLED  = true;
+export const DEFAULT_WORD_COMPLETION_TITLE    = '🔤 أكمل الكلمة الناقصة';
+export const DEFAULT_WORD_COMPLETION_SUBTITLE = 'انظر إلى الصورة، واختر الحرف الناقص لتكتمل الكلمة بشكل صحيح.';
