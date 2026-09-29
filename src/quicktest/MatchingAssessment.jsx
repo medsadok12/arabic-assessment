@@ -107,17 +107,20 @@ export default function MatchingAssessment({ pairs, title, subtitle, label, ques
 
   const SELECTED_GLOW = { border: '#E8B84B', bg: '#FFF8E8' };
 
-  // بطاقة الصورة وبطاقة الكلمة بعرض ثابت متساوٍ (150px) — لا تمدُّد على
-  // كامل عرض العمود (كان يُنتج فراغاً جانبياً حول الكلمات القصيرة) ولا
-  // حجم مختلف من بطاقة لأخرى، بل عرض وارتفاع موحَّدان "من جميع النواحي"
-  // لكل بطاقات التمرين معاً، بحسب طلب الأستاذ محمد صراحة. تُوسَّط كل بطاقة
-  // أفقياً داخل عمودها عبر alignItems:center على حاوية العمود (flex).
+  // بطاقة الصورة وبطاقة الكلمة بعرض وارتفاع ثابتَين متساويَين تماماً (150×56) —
+  // height لا minHeight: الإيموجي (خط النظام) له line-height افتراضي أطول من
+  // النص العادي، فكان minHeight يسمح لبطاقات الصور بالتمدد فوق بطاقات الكلمات
+  // رغم تساوي القيمة المرجعية (خلل مرصود فعلياً على المتصفح الحيّ). lineHeight:1
+  // يُلغي هذا التضخّم للإيموجي والنص معاً، وboxSizing:border-box يضمن أن الحشو
+  // (padding) لا يضيف فوق الـ56px المحدَّدة. تُوسَّط كل بطاقة أفقياً داخل عمودها
+  // عبر alignItems:center على حاوية العمود (flex).
   function cardStyle({ isImage, isSelected, colorIdx }) {
     const base = {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       borderRadius: 18, cursor: 'pointer', border: '2.5px solid var(--border)',
       background: '#FAF7F2', transition: 'transform .15s, background .15s, border-color .15s, box-shadow .15s',
-      textAlign: 'center', transform: 'scale(1)', minHeight: 56, width: '100%', maxWidth: 150,
+      textAlign: 'center', transform: 'scale(1)', height: 56, width: '100%', maxWidth: 150,
+      boxSizing: 'border-box', lineHeight: 1, overflow: 'hidden',
       padding: isImage ? 2 : '6px 10px',
     };
     if (colorIdx !== undefined) {
