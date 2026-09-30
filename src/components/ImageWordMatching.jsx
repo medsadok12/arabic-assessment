@@ -34,7 +34,10 @@ export default function ImageWordMatching({ question, onAnswer }) {
   }
 
   function clickName(nameId) {
-    if (checked || !selected) return;
+    // ملاحظة: يجب فحص `selected === null` صراحة لا `!selected` — أزواج
+    // بمعرّف رقمي `0` (أول عنصر) تجعل `!selected` تُقيَّم `true` بالخطأ
+    // (0 قيمة "زائفة" في جافاسكربت)، فيُحجَب أول زوج دائماً عن الربط.
+    if (checked || selected === null) return;
     setConnections(prev => {
       const next = { ...prev };
       Object.keys(next).forEach(k => { if (next[k] === nameId) delete next[k]; });
@@ -80,7 +83,10 @@ export default function ImageWordMatching({ question, onAnswer }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
             {shuffledNames.map((pair) => {
               const srcId  = Object.keys(connections).find(k => connections[k] === pair.id);
-              const srcIdx = srcId ? question.pairs.findIndex(p => p.id === srcId) : -1;
+              // srcId مفتاح كائن (نصّ دائماً حتى لو كان id الأصلي رقماً، مثل
+              // '0') — المقارنة بـp.id مباشرة كانت تفشل صامتاً لأي id رقمي
+              // (0 !== '0')، فتبقى كل بطاقات الكلمات المرتبطة بلا لون تمييز.
+              const srcIdx = srcId !== undefined ? question.pairs.findIndex(p => String(p.id) === srcId) : -1;
               const color  = srcIdx >= 0 ? COLORS[srcIdx] : null;
               const isTgt  = !!selected;
               return (
