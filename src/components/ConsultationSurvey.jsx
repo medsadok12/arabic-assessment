@@ -6,6 +6,20 @@ import { useState } from 'react';
 // العميل بتصميم قائم مسبقاً — راجع lms/app/api/leads/route.js).
 const LMS_URL = 'https://www.aarem.net';
 
+// مهلة طلب الإرسال — تمنع بقاء الزر عالقاً على "جارٍ الإرسال..." إلى ما لا
+// نهاية عند اتصال معلّق (لا استجابة، لا خطأ صريح من الشبكة).
+const SUBMIT_TIMEOUT_MS = 15000;
+
+// تطبيع الأرقام العربية/الهندية (٠-٩) والفارسية الممتدة (۰-۹) إلى أرقام
+// لاتينية — لوحات مفاتيح كثيرة لدى أولياء الأمور تكتب هذه الأرقام افتراضياً،
+// فكانت تُفشِل تحقق رقم الواتساب بصمت (regex يقبل [0-9] فقط).
+function normalizeDigits(str) {
+  return str.replace(/[٠-٩۰-۹]/g, d => {
+    const code = d.charCodeAt(0);
+    return String(code >= 0x06F0 ? code - 0x06F0 : code - 0x0660);
+  });
+}
+
 // لوحة الألوان الرسمية لأكاديمية عارم (القسم 2.1 من CLAUDE.md) — لا ألوان
 // خارجها. الذهبي للاختيار/الأزرار الأساسية (القاعدة الذهبية للزر، 2.2)،
 // الأخضر حصراً لشريط التقدّم المكتمل وشاشة النجاح، البنفسجي غير مستخدَم هنا
@@ -53,12 +67,13 @@ const INITIAL_ANSWERS = {
   whatsappNumber: '',
 };
 
-function OptionCard({ selected, onClick, children, recommended }) {
+function OptionCard({ selected, onClick, children, recommended, role = 'radio' }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-pressed={selected}
+      role={role}
+      aria-checked={selected}
       className={`cs-option${selected ? ' selected' : ''}${recommended ? ' recommended' : ''}`}
     >
       {children}
@@ -128,6 +143,11 @@ export default function ConsultationSurvey() {
     setSubmitting(true);
     setSubmitError('');
 
+    // مهلة صريحة على الطلب — اتصال معلّق بلا خطأ صريح من المتصفح كان سيُبقي
+    // الزر على "جارٍ الإرسال..." إلى ما لا نهاية بلا أي مخرج للمستخدم.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SUBMIT_TIMEOUT_MS);
+
     // يُرسَل إلى نفس جدول marketing_leads الذي يغذّي تبويب "العملاء
     // المحتملين" في bogga، بوسم source مختلف (consultation_survey مقابل
     // quick_test) بدل جدول منفصل — راجع lms/app/api/leads/route.js.
@@ -138,6 +158,7 @@ export default function ConsultationSurvey() {
       const res = await fetch(`${LMS_URL}/api/leads`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'x-webhook-secret': import.meta.env.VITE_ASSESSMENT_WEBHOOK_SECRET ?? '' },
+        signal:  controller.signal,
         body: JSON.stringify({
           parentName: answers.parentName.trim(),
           phone:      answers.whatsappNumber.trim(),
@@ -156,12 +177,28 @@ export default function ConsultationSurvey() {
           },
         }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || 'فشل الإرسال');
+
+      // فشل تطبيقي (400/429/500...) — يصل برسالة عربية جاهزة من الخادم
+      // نفسه (راجع lms/app/api/leads/route.js)، تُعرَض كما هي بدل رسالة
+      // عامة حين تتوفر.
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        setSubmitError(data?.error || 'تعذّر إرسال البيانات. تحقق من اتصالك بالإنترنت وحاول مجدداً.');
+        setSubmitting(false);
+        return;
+      }
       setSubmitted(true);
-    } catch {
-      setSubmitError('تعذّر إرسال البيانات. تحقق من اتصالك بالإنترنت وحاول مجدداً.');
+    } catch (err) {
+      // فشل الطلب نفسه (لا استجابة من الخادم إطلاقاً) — مهلة منتهية مقابل
+      // أي عطل شبكة آخر، برسالتين منفصلتين كما طُلب.
+      setSubmitError(
+        err.name === 'AbortError'
+          ? 'ضعف في الاتصال، يرجى المحاولة مرة أخرى.'
+          : 'تعذّر إرسال البيانات. تحقق من اتصالك بالإنترنت وحاول مجدداً.'
+      );
       setSubmitting(false);
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -253,10 +290,11 @@ export default function ConsultationSurvey() {
 
             <div className="cs-question">
               <div className="cs-question-label">ما هي أبرز الجوانب التي تود منا تطويرها؟ <span className="cs-hint">(اختر كل ما ينطبق)</span></div>
-              <div className="cs-options-grid cs-options-grid-wide">
+              <div className="cs-options-grid cs-options-grid-wide" role="group" aria-label="ما هي أبرز الجوانب التي تود منا تطويرها؟">
                 {GOALS_OPTIONS.map(opt => (
                   <OptionCard
                     key={opt.value}
+                    role="checkbox"
                     selected={answers.developmentGoals.includes(opt.value)}
                     onClick={() => toggleGoal(opt.value)}
                   >
@@ -272,7 +310,7 @@ export default function ConsultationSurvey() {
 
             <div className="cs-question">
               <div className="cs-question-label">كيف تقيم مستوى طفلك الحالي في العربية؟</div>
-              <div className="cs-options-grid cs-options-grid-wide">
+              <div className="cs-options-grid cs-options-grid-wide" role="radiogroup" aria-label="كيف تقيم مستوى طفلك الحالي في العربية؟">
                 {LEVEL_ASSESSMENT_OPTIONS.map(opt => (
                   <OptionCard key={opt} selected={answers.currentLevelAssessment === opt} onClick={() => setField('currentLevelAssessment', opt)}>
                     {opt}
@@ -289,7 +327,7 @@ export default function ConsultationSurvey() {
 
             <div className="cs-question">
               <div className="cs-question-label">ما هي بيئة التعلم المفضلة؟</div>
-              <div className="cs-options-grid">
+              <div className="cs-options-grid" role="radiogroup" aria-label="ما هي بيئة التعلم المفضلة؟">
                 {['درس خاص 1-on-1', 'ضمن مجموعة صغيرة'].map(opt => (
                   <OptionCard key={opt} selected={answers.learningEnvironment === opt} onClick={() => setField('learningEnvironment', opt)}>
                     {opt}
@@ -300,7 +338,7 @@ export default function ConsultationSurvey() {
 
             <div className="cs-question">
               <div className="cs-question-label">كم حصة أسبوعياً تناسب جدولكم؟</div>
-              <div className="cs-options-grid">
+              <div className="cs-options-grid" role="radiogroup" aria-label="كم حصة أسبوعياً تناسب جدولكم؟">
                 {['حصتان', '3 حصص', 'أحتاج استشارتكم'].map(opt => (
                   <OptionCard key={opt} selected={answers.sessionsPerWeek === opt} onClick={() => setField('sessionsPerWeek', opt)}>
                     {opt}
@@ -311,7 +349,7 @@ export default function ConsultationSurvey() {
 
             <div className="cs-question">
               <div className="cs-question-label">الأوقات الأنسب؟</div>
-              <div className="cs-options-grid">
+              <div className="cs-options-grid" role="radiogroup" aria-label="الأوقات الأنسب؟">
                 {['فترة العصر', 'فترة المساء', 'عطلة نهاية الأسبوع'].map(opt => (
                   <OptionCard key={opt} selected={answers.preferredTimes === opt} onClick={() => setField('preferredTimes', opt)}>
                     {opt}
@@ -332,7 +370,7 @@ export default function ConsultationSurvey() {
         {step === 4 && (
           <div className="cs-step">
             <StepHeader title="خطة الاستثمار 💡" desc="ما هي خطة الاشتراك الأنسب لكم؟" />
-            <div className="cs-options-grid cs-options-grid-wide">
+            <div className="cs-options-grid cs-options-grid-wide" role="radiogroup" aria-label="ما هي خطة الاشتراك الأنسب لكم؟">
               {PLAN_OPTIONS.map(opt => (
                 <OptionCard
                   key={opt.value}
@@ -360,6 +398,7 @@ export default function ConsultationSurvey() {
                 id="cs-parent-name"
                 className="cs-input"
                 type="text"
+                autoComplete="name"
                 placeholder="مثال: محمد أحمد"
                 value={answers.parentName}
                 onChange={e => setField('parentName', e.target.value)}
@@ -373,9 +412,10 @@ export default function ConsultationSurvey() {
                 className="cs-input"
                 type="tel"
                 inputMode="tel"
+                autoComplete="tel"
                 placeholder="مثال: 966500000000+"
                 value={answers.whatsappNumber}
-                onChange={e => setField('whatsappNumber', e.target.value)}
+                onChange={e => setField('whatsappNumber', normalizeDigits(e.target.value))}
               />
             </div>
 
@@ -561,7 +601,7 @@ const CS_STYLES = `
     border: 2px solid #e5e0d8;
     border-radius: 12px;
     font-family: inherit;
-    font-size: .95rem;
+    font-size: 1rem;
     color: ${NAVY};
     background: #fff;
     outline: none;
