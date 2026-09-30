@@ -520,7 +520,6 @@ const CS_STYLES = `
 
   .cs-nav {
     display: flex;
-    flex-direction: row-reverse;
     gap: 10px;
     margin-top: 24px;
   }
