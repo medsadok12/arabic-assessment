@@ -393,12 +393,13 @@ function ConsultationSurveyDetails({ lead, onClose }) {
   const goals = Array.isArray(a.developmentGoals) ? a.developmentGoals : [];
 
   const rows = [
-    { label: 'الفئة العمرية',        value: a.childAgeBracket },
-    { label: 'النظام المدرسي',       value: a.schoolSystem },
-    { label: 'بيئة التعلم المفضلة',  value: a.learningEnvironment },
-    { label: 'الحصص الأسبوعية',      value: a.sessionsPerWeek },
-    { label: 'الأوقات الأنسب',       value: a.preferredTimes },
-    { label: 'خطة الاشتراك المفضّلة', value: PLAN_LABELS[a.subscriptionPlan] || a.subscriptionPlan },
+    { label: 'الفئة العمرية',          value: a.childAgeBracket },
+    { label: 'النظام المدرسي',         value: a.schoolSystem },
+    { label: 'تقييم المستوى الحالي',   value: a.currentLevelAssessment },
+    { label: 'بيئة التعلم المفضلة',    value: a.learningEnvironment },
+    { label: 'الحصص الأسبوعية',        value: a.sessionsPerWeek },
+    { label: 'الأوقات الأنسب',         value: a.preferredTimes },
+    { label: 'خطة الاشتراك المفضّلة',   value: PLAN_LABELS[a.subscriptionPlan] || a.subscriptionPlan },
   ];
 
   return (
@@ -410,7 +411,9 @@ function ConsultationSurveyDetails({ lead, onClose }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
           <div>
             <h3 style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>📋 تفاصيل استبانة الاستشارة التعليمية</h3>
-            <p style={{ fontSize: '.85rem', color: 'var(--muted)' }}>ولي الأمر: {lead.parent_name} · {fmtDate(lead.created_at)}</p>
+            <p style={{ fontSize: '.85rem', color: 'var(--muted)' }}>
+              ولي الأمر: {lead.parent_name}{lead.child_name ? ` · الطفل: ${lead.child_name}` : ''} · {fmtDate(lead.created_at)}
+            </p>
           </div>
           <button className="btn btn-sm btn-ghost" onClick={onClose}>✕</button>
         </div>

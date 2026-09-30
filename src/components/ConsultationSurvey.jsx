@@ -32,10 +32,18 @@ const PLAN_OPTIONS = [
   { value: 'yearly',     label: 'سنوي',      badge: '⭐ القيمة الأفضل', recommended: true },
 ];
 
+const LEVEL_ASSESSMENT_OPTIONS = [
+  'مبتدئ تماماً (من الصفر)',
+  'يعرف الحروف ويقرأ ببطء',
+  'مستواه جيد ونطمح للامتياز',
+];
+
 const INITIAL_ANSWERS = {
+  childName: '',
   childAge: '',
   schoolSystem: '',
   developmentGoals: [],
+  currentLevelAssessment: '',
   learningEnvironment: '',
   sessionsPerWeek: '',
   preferredTimes: '',
@@ -94,8 +102,8 @@ export default function ConsultationSurvey() {
 
   function canProceed() {
     switch (step) {
-      case 1: return !!answers.childAge && !!answers.schoolSystem;
-      case 2: return answers.developmentGoals.length > 0;
+      case 1: return !!answers.childName.trim() && !!answers.childAge && !!answers.schoolSystem;
+      case 2: return answers.developmentGoals.length > 0 && !!answers.currentLevelAssessment;
       case 3: return !!answers.learningEnvironment && !!answers.sessionsPerWeek && !!answers.preferredTimes;
       case 4: return !!answers.subscriptionPlan;
       default: return true;
@@ -123,8 +131,9 @@ export default function ConsultationSurvey() {
     // يُرسَل إلى نفس جدول marketing_leads الذي يغذّي تبويب "العملاء
     // المحتملين" في bogga، بوسم source مختلف (consultation_survey مقابل
     // quick_test) بدل جدول منفصل — راجع lms/app/api/leads/route.js.
-    // لا اسم طفل يُجمَع في هذه الاستبانة أصلاً، فتُترَك تفاصيل الاختيارات
-    // كاملة ضمن answers ليراجعها المدير قبل تواصل واتساب.
+    // اسم الطفل يُرسَل على المستوى الأعلى (يملأ عمود child_name نفسه
+    // المستخدَم لاختبار تحديد المستوى)، وبقية الاختيارات ضمن answers
+    // ليراجعها المدير قبل تواصل واتساب.
     try {
       const res = await fetch(`${LMS_URL}/api/leads`, {
         method:  'POST',
@@ -132,16 +141,18 @@ export default function ConsultationSurvey() {
         body: JSON.stringify({
           parentName: answers.parentName.trim(),
           phone:      answers.whatsappNumber.trim(),
+          childName:  answers.childName.trim(),
           source:     'consultation_survey',
           answers: {
-            childAgeBracket:     answers.childAge,
-            schoolSystem:        answers.schoolSystem,
-            developmentGoals:    answers.developmentGoals,
-            learningEnvironment: answers.learningEnvironment,
-            sessionsPerWeek:     answers.sessionsPerWeek,
-            preferredTimes:      answers.preferredTimes,
-            preferredTimesNote:  answers.preferredTimesNote.trim() || null,
-            subscriptionPlan:    answers.subscriptionPlan,
+            childAgeBracket:        answers.childAge,
+            schoolSystem:           answers.schoolSystem,
+            developmentGoals:       answers.developmentGoals,
+            currentLevelAssessment: answers.currentLevelAssessment,
+            learningEnvironment:    answers.learningEnvironment,
+            sessionsPerWeek:        answers.sessionsPerWeek,
+            preferredTimes:         answers.preferredTimes,
+            preferredTimesNote:     answers.preferredTimesNote.trim() || null,
+            subscriptionPlan:       answers.subscriptionPlan,
           },
         }),
       });
@@ -155,18 +166,22 @@ export default function ConsultationSurvey() {
   }
 
   if (submitted) {
+    const childFirstName = answers.childName.trim() || 'البطل';
     return (
       <div className="cs-wrap" dir="rtl">
         <style>{CS_STYLES}</style>
         <div className="cs-card cs-success">
           <div className="cs-success-icon">✓</div>
-          <h2 className="cs-success-title">شكراً لك، {answers.parentName.split(' ')[0]}! 🌟</h2>
+          <h2 className="cs-success-title">تم استلام البيانات بنجاح! ✅</h2>
           <p className="cs-success-text">
-            استلمنا بياناتك بنجاح، وفريقنا التعليمي يعمل الآن على تجهيز الخطة الأنسب لطفلك.
+            يتم الآن إعداد الخطة المخصصة وسنتواصل معك قريباً عبر الواتساب.
           </p>
-          <p className="cs-success-text cs-success-sub">
-            سنتواصل معك قريباً عبر واتساب على الرقم <strong>{answers.whatsappNumber}</strong> لإرسال التفاصيل الكاملة.
-          </p>
+          {/* يوجّه ولي الأمر مباشرة لقمع "اختبار تحديد المستوى" التسويقي
+              (نفس الموقع، مسار ?quick=1) — تحويل ولي أمر انتهى للتو من
+              استبانة الاستشارة إلى عميل محتمل ثانٍ بأقل احتكاك ممكن. */}
+          <a href="?quick=1" className="cs-cta-quicktest">
+            دَع {childFirstName} يجرب اختبار المستوى الممتع الآن! (دقيقتين فقط)
+          </a>
         </div>
       </div>
     );
@@ -192,7 +207,19 @@ export default function ConsultationSurvey() {
 
         {step === 1 && (
           <div className="cs-step">
-            <StepHeader title="لنتعرف على البطل 🦸" desc="خطوتان سريعتان لنفهم احتياجات طفلك بدقة" />
+            <StepHeader title="لنتعرف على البطل 🦸" desc="خطوات سريعة لنفهم احتياجات طفلك بدقة" />
+
+            <div className="cs-question">
+              <label className="cs-question-label" htmlFor="cs-child-name">ما اسم البطل/البطلة؟ (الاسم الأول)</label>
+              <input
+                id="cs-child-name"
+                className="cs-input"
+                type="text"
+                placeholder="مثال: سارة"
+                value={answers.childName}
+                onChange={e => setField('childName', e.target.value)}
+              />
+            </div>
 
             <div className="cs-question">
               <div className="cs-question-label">كم عمر طفلك؟</div>
@@ -220,21 +247,36 @@ export default function ConsultationSurvey() {
 
         {step === 2 && (
           <div className="cs-step">
-            <StepHeader title="الأهداف والتحديات 🎯" desc="اختر كل ما ينطبق — يمكنك تحديد أكثر من جانب" />
-            <div className="cs-options-grid cs-options-grid-wide">
-              {GOALS_OPTIONS.map(opt => (
-                <OptionCard
-                  key={opt.value}
-                  selected={answers.developmentGoals.includes(opt.value)}
-                  onClick={() => toggleGoal(opt.value)}
-                >
-                  <span className="cs-option-emoji">{opt.emoji}</span>
-                  <span className="cs-option-text">
-                    <span className="cs-option-title">{opt.label}</span>
-                    {opt.sub && <span className="cs-option-sub">{opt.sub}</span>}
-                  </span>
-                </OptionCard>
-              ))}
+            <StepHeader title="الأهداف والتحديات 🎯" desc="اختياران سريعان ليتضح لنا المسار الأنسب لطفلك" />
+
+            <div className="cs-question">
+              <div className="cs-question-label">ما هي أبرز الجوانب التي تود منا تطويرها؟ (اختر كل ما ينطبق)</div>
+              <div className="cs-options-grid cs-options-grid-wide">
+                {GOALS_OPTIONS.map(opt => (
+                  <OptionCard
+                    key={opt.value}
+                    selected={answers.developmentGoals.includes(opt.value)}
+                    onClick={() => toggleGoal(opt.value)}
+                  >
+                    <span className="cs-option-emoji">{opt.emoji}</span>
+                    <span className="cs-option-text">
+                      <span className="cs-option-title">{opt.label}</span>
+                      {opt.sub && <span className="cs-option-sub">{opt.sub}</span>}
+                    </span>
+                  </OptionCard>
+                ))}
+              </div>
+            </div>
+
+            <div className="cs-question">
+              <div className="cs-question-label">كيف تقيم مستوى طفلك الحالي في العربية؟</div>
+              <div className="cs-options-grid cs-options-grid-wide">
+                {LEVEL_ASSESSMENT_OPTIONS.map(opt => (
+                  <OptionCard key={opt} selected={answers.currentLevelAssessment === opt} onClick={() => setField('currentLevelAssessment', opt)}>
+                    {opt}
+                  </OptionCard>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -593,7 +635,20 @@ const CS_STYLES = `
     line-height: 1.7;
     margin: 0 0 10px;
   }
-  .cs-success-sub { color: ${NAVY}; }
+  .cs-cta-quicktest {
+    display: inline-block;
+    margin-top: 22px;
+    padding: 16px 22px;
+    border-radius: 14px;
+    background: ${GOLD};
+    color: ${NAVY};
+    font-weight: 800;
+    font-size: 1rem;
+    text-decoration: none;
+    box-shadow: 0 6px 18px rgba(232,184,75,.45);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .cs-cta-quicktest:active { transform: scale(.97); }
 
   @media (max-width: 380px) {
     .cs-card { padding: 18px 14px 20px; border-radius: 16px; }
