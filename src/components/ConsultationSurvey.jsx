@@ -210,7 +210,7 @@ export default function ConsultationSurvey() {
             <StepHeader title="لنتعرف على البطل 🦸" desc="خطوات سريعة لنفهم احتياجات طفلك بدقة" />
 
             <div className="cs-question">
-              <label className="cs-question-label" htmlFor="cs-child-name">ما اسم البطل/البطلة؟ (الاسم الأول)</label>
+              <label className="cs-question-label" htmlFor="cs-child-name">ما اسم البطل/البطلة؟ <span className="cs-hint">(الاسم الأول)</span></label>
               <input
                 id="cs-child-name"
                 className="cs-input"
@@ -252,7 +252,7 @@ export default function ConsultationSurvey() {
             <StepHeader title="الأهداف والتحديات 🎯" desc="اختياران سريعان ليتضح لنا المسار الأنسب لطفلك" />
 
             <div className="cs-question">
-              <div className="cs-question-label">ما هي أبرز الجوانب التي تود منا تطويرها؟ (اختر كل ما ينطبق)</div>
+              <div className="cs-question-label">ما هي أبرز الجوانب التي تود منا تطويرها؟ <span className="cs-hint">(اختر كل ما ينطبق)</span></div>
               <div className="cs-options-grid cs-options-grid-wide">
                 {GOALS_OPTIONS.map(opt => (
                   <OptionCard
@@ -367,7 +367,7 @@ export default function ConsultationSurvey() {
             </div>
 
             <div className="cs-question">
-              <label className="cs-question-label" htmlFor="cs-whatsapp">رقم الواتساب (لإرسال الخطة)</label>
+              <label className="cs-question-label" htmlFor="cs-whatsapp">رقم الواتساب <span className="cs-hint">(لإرسال الخطة)</span></label>
               <input
                 id="cs-whatsapp"
                 className="cs-input"
@@ -480,7 +480,7 @@ const CS_STYLES = `
   }
   .cs-step-desc {
     font-size: .85rem;
-    color: #6b7280;
+    color: #64748B;
     margin: 0 0 18px;
   }
 
@@ -488,10 +488,15 @@ const CS_STYLES = `
   .cs-question:last-child { margin-bottom: 0; }
   .cs-question-label {
     display: block;
-    font-size: .95rem;
+    font-size: 1.08rem;
     font-weight: 700;
-    color: ${NAVY};
+    color: #0F172A;
     margin-bottom: 10px;
+  }
+  .cs-hint {
+    font-size: .85rem;
+    font-weight: 500;
+    color: #64748B;
   }
 
   .cs-options-grid {
@@ -514,7 +519,7 @@ const CS_STYLES = `
     font-family: inherit;
     font-size: .92rem;
     font-weight: 600;
-    color: ${NAVY};
+    color: #0F172A;
     cursor: pointer;
     transition: border-color .15s, background .15s, transform .1s;
   }
@@ -522,6 +527,7 @@ const CS_STYLES = `
   .cs-option.selected {
     border-color: ${GOLD};
     background: rgba(232,184,75,.14);
+    color: #8a6a1e;
   }
   .cs-option.recommended {
     border-color: rgba(232,184,75,.5);
@@ -532,8 +538,10 @@ const CS_STYLES = `
 
   .cs-option-emoji { font-size: 1.6rem; line-height: 1; flex-shrink: 0; }
   .cs-option-text { display: flex; flex-direction: column; gap: 2px; }
-  .cs-option-title { font-weight: 700; }
-  .cs-option-sub { font-size: .75rem; font-weight: 500; color: #6b7280; }
+  .cs-option-title { font-weight: 600; color: #0F172A; }
+  .cs-option-sub { font-size: .8rem; font-weight: 500; color: #64748B; }
+  .cs-option.selected .cs-option-title { color: #8a6a1e; }
+  .cs-option.selected .cs-option-sub  { color: #a1793a; }
 
   .cs-plan-badge {
     display: inline-block;
