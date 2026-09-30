@@ -430,6 +430,15 @@ function ConsultationSurveyDetails({ lead, onClose }) {
             ? goals.map((g, i) => <span key={i} className="badge badge-blue">{GOAL_LABELS[g] || g}</span>)
             : <span style={{ fontSize: '.85rem', color: 'var(--muted)' }}>لا يوجد</span>}
         </div>
+
+        {a.preferredTimesNote && (
+          <div style={{ marginTop: 18 }}>
+            <div className="dash-section-title" style={{ marginBottom: 10 }}>📝 ملاحظة ولي الأمر عن الأوقات</div>
+            <div style={{ background: '#f9fbff', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', fontSize: '.88rem', whiteSpace: 'pre-wrap' }}>
+              {a.preferredTimesNote}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

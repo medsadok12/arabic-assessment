@@ -39,6 +39,7 @@ const INITIAL_ANSWERS = {
   learningEnvironment: '',
   sessionsPerWeek: '',
   preferredTimes: '',
+  preferredTimesNote: '',
   subscriptionPlan: '',
   parentName: '',
   whatsappNumber: '',
@@ -139,6 +140,7 @@ export default function ConsultationSurvey() {
             learningEnvironment: answers.learningEnvironment,
             sessionsPerWeek:     answers.sessionsPerWeek,
             preferredTimes:      answers.preferredTimes,
+            preferredTimesNote:  answers.preferredTimesNote.trim() || null,
             subscriptionPlan:    answers.subscriptionPlan,
           },
         }),
@@ -272,6 +274,13 @@ export default function ConsultationSurvey() {
                   </OptionCard>
                 ))}
               </div>
+              <textarea
+                className="cs-textarea"
+                rows={2}
+                placeholder="أو اكتب الأيام والأوقات الدقيقة المناسبة لكم هنا... (اختياري)"
+                value={answers.preferredTimesNote}
+                onChange={e => setField('preferredTimesNote', e.target.value)}
+              />
             </div>
           </div>
         )}
@@ -494,7 +503,7 @@ const CS_STYLES = `
     margin-top: 2px;
   }
 
-  .cs-input {
+  .cs-input, .cs-textarea {
     width: 100%;
     padding: 13px 14px;
     border: 2px solid #e5e0d8;
@@ -504,9 +513,17 @@ const CS_STYLES = `
     color: ${NAVY};
     background: #fff;
     outline: none;
-    transition: border-color .15s;
+    transition: border-color .15s, box-shadow .15s;
   }
-  .cs-input:focus { border-color: ${GOLD}; }
+  .cs-input:focus, .cs-textarea:focus { border-color: ${GOLD}; box-shadow: 0 0 0 3px rgba(232,184,75,.18); }
+
+  .cs-textarea {
+    margin-top: 10px;
+    resize: vertical;
+    min-height: 56px;
+    line-height: 1.6;
+  }
+  .cs-textarea::placeholder { color: #9a9488; }
 
   .cs-error {
     margin-top: 14px;
