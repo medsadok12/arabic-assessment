@@ -102,7 +102,7 @@ export default function ConsultationSurvey() {
 
   function canProceed() {
     switch (step) {
-      case 1: return !!answers.childName.trim() && !!answers.childAge && !!answers.schoolSystem;
+      case 1: return !!answers.childName.trim() && !!answers.childAge.trim() && !!answers.schoolSystem.trim();
       case 2: return answers.developmentGoals.length > 0 && !!answers.currentLevelAssessment;
       case 3: return !!answers.learningEnvironment && !!answers.sessionsPerWeek && !!answers.preferredTimes;
       case 4: return !!answers.subscriptionPlan;
@@ -144,8 +144,8 @@ export default function ConsultationSurvey() {
           childName:  answers.childName.trim(),
           source:     'consultation_survey',
           answers: {
-            childAgeBracket:        answers.childAge,
-            schoolSystem:           answers.schoolSystem,
+            childAgeBracket:        answers.childAge.trim(),
+            schoolSystem:           answers.schoolSystem.trim(),
             developmentGoals:       answers.developmentGoals,
             currentLevelAssessment: answers.currentLevelAssessment,
             learningEnvironment:    answers.learningEnvironment,
@@ -222,25 +222,27 @@ export default function ConsultationSurvey() {
             </div>
 
             <div className="cs-question">
-              <div className="cs-question-label">كم عمر طفلك؟</div>
-              <div className="cs-options-grid">
-                {['5-7 سنوات', '8-10 سنوات', '11-13 سنة', '14 سنة فما فوق'].map(opt => (
-                  <OptionCard key={opt} selected={answers.childAge === opt} onClick={() => setField('childAge', opt)}>
-                    {opt}
-                  </OptionCard>
-                ))}
-              </div>
+              <label className="cs-question-label" htmlFor="cs-child-age">كم عمر طفلك؟</label>
+              <input
+                id="cs-child-age"
+                className="cs-input"
+                type="text"
+                placeholder="اكتب عمر الطفل أو صفه الدراسي (مثال: 7 سنوات، أو الصف الثاني ابتدائي)..."
+                value={answers.childAge}
+                onChange={e => setField('childAge', e.target.value)}
+              />
             </div>
 
             <div className="cs-question">
-              <div className="cs-question-label">ما هو النظام المدرسي الحالي؟</div>
-              <div className="cs-options-grid">
-                {['دولي', 'وطني/حكومي', 'لغات/مزدوج'].map(opt => (
-                  <OptionCard key={opt} selected={answers.schoolSystem === opt} onClick={() => setField('schoolSystem', opt)}>
-                    {opt}
-                  </OptionCard>
-                ))}
-              </div>
+              <label className="cs-question-label" htmlFor="cs-school-system">ما هو النظام المدرسي الحالي؟</label>
+              <input
+                id="cs-school-system"
+                className="cs-input"
+                type="text"
+                placeholder="اكتب النظام المدرسي (مثال: دولي بريطاني، حكومي، فرنسي، تعليم منزلي)..."
+                value={answers.schoolSystem}
+                onChange={e => setField('schoolSystem', e.target.value)}
+              />
             </div>
           </div>
         )}
