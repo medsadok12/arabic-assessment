@@ -1,4 +1,8 @@
-// 60 سؤال للتقييم الشامل - أكاديمية عارم
+// بنك أسئلة التقييم الشامل - أكاديمية عارم (العدد الدقيق متغيّر بتطور
+// المحتوى؛ احسب getLevelQuestions(level).length بدل الاعتماد على رقم ثابت
+// هنا). وسّع بشكل كبير 2026-10-01 بدمج محتوى الاختبار الترويجي المجاني
+// (?quick=1) واختبار المهارات للمبتدئين (?skills=beginner) بعد حذفهما
+// كمسارين منفصلين — راجع معرّفات الأسئلة المنتهية بـ`_MRG` في كل مستوى.
 
 export const SKILLS = [
   { id: 'listening',  name: 'الاستماع والفهم السمعي', weight: 1 / 6 },
@@ -49,6 +53,69 @@ export const questionsBank = {
           { letter: 'خ', choices: ['ح', 'خ', 'ج'] },
         ],
       },
+      // ── مُدمَج من "اختبار المهارات للمبتدئين" (القسم ٥ — تمييز صوتي متقدم
+      // بالتشكيل/المقاطع) — دُمج 2026-10-01، حُذف المكوّن المنفصل بعدها.
+      {
+        id:    'L1_MRG_LC5',
+        type:  'letter-listen-choose',
+        text:  'اسْتَمِعْ وَاخْتَرِ المَقْطَعَ الصَّحِيح',
+        skill: 'listening',
+        items: [
+          { letter: 'آ',  choices: ['كا', 'آ', 'ها'] },
+          { letter: 'قي', choices: ['كي', 'في', 'قي'] },
+          { letter: 'صو', choices: ['صو', 'ضو', 'سو'] },
+          { letter: 'تٌ',  choices: ['تُنْ', 'طٌ', 'تٌ'] },
+          { letter: 'بٍ',  choices: ['بِن', 'بٍ', 'بان'] },
+        ],
+      },
+      // ── مُدمَج من بنك الـ15 سؤالاً لـ"اختبار تحديد المستوى" (كان q1/q2/q5
+      // بلا كود، حُذف القمع التسويقي كاملاً بعد هذا الدمج) ──
+      {
+        id:        'L1_MRG_Q1',
+        type:      'listening-comprehension',
+        audioText: 'بَ',
+        text:      'اسْتَمِعْ جَيِّداً، ثُمَّ اخْتَرِ الكَلِمَةَ الَّتِي تَبْدَأُ بِهَذَا الصَّوْت',
+        skill:     'listening',
+        options: [
+          { text: '🦆 بَطَّة',   correct: true  },
+          { text: '🍎 تُفَّاحَة', correct: false },
+          { text: '🐘 فِيل',     correct: false },
+        ],
+      },
+      {
+        id:        'L1_MRG_Q2',
+        type:      'listening-comprehension',
+        audioText: 'أَيْنَ القِطَّة؟',
+        text:      'اسْتَمِعْ لِلسُّؤَالِ، ثُمَّ اخْتَرِ الإِجَابَةَ الصَّحِيحَة',
+        skill:     'listening',
+        options: [
+          { text: '🐱 قِطَّة',   correct: true  },
+          { text: '🐶 كَلْب',    correct: false },
+          { text: '🐦 عُصْفُور', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_Q3',
+        skill: 'listening',
+        text:  'أَيُّ حَرْفٍ مِنْ هَذِهِ الحُرُوفِ هُوَ (م)؟',
+        options: [
+          { text: 'مـ', correct: true  },
+          { text: 'بـ', correct: false },
+          { text: 'سـ', correct: false },
+        ],
+      },
+      {
+        id:        'L1_MRG_Q5',
+        type:      'listening-comprehension',
+        audioText: 'ذَهَبَتْ مَرْيَمُ إِلَى الْحَدِيقَةِ وَلَعِبَتْ بِالْكُرَة',
+        text:      'أَيْنَ ذَهَبَتْ مَرْيَم؟',
+        skill:     'listening',
+        options: [
+          { text: '🌳 إِلَى الْحَدِيقَة', correct: true  },
+          { text: '🏫 إِلَى الْمَدْرَسَة', correct: false },
+          { text: '🏠 إِلَى الْبَيْت',     correct: false },
+        ],
+      },
     ],
     vocabulary: [
       {
@@ -77,6 +144,77 @@ export const questionsBank = {
           { id: 'arnab',  emoji: '🐰', name: 'أَرْنَب'   },
           { id: 'samaka', emoji: '🐟', name: 'سَمَكَة'   },
           { id: 'usfour', emoji: '🐦', name: 'عُصْفُور'  },
+        ],
+      },
+      // ── مُدمَج من تدريبَي المطابقة في الاختبار الترويجي المحذوف ──
+      {
+        id:   'L1_MRG_MATCH1',
+        type: 'image-matching',
+        text: 'اِرْبِطِ الصُّورَةَ بِالْكَلِمَةِ الْمُنَاسِبَة',
+        skill: 'vocabulary',
+        pairs: [
+          { id: 'halib',    emoji: '🥛', name: 'حَلِيب'   },
+          { id: 'maa',      emoji: '💧', name: 'مَاء'     },
+          { id: 'bayt',     emoji: '🏠', name: 'بَيْت'    },
+          { id: 'madrasa',  emoji: '🏫', name: 'مَدْرَسَة' },
+          { id: 'qalam2',   emoji: '✏️', name: 'قَلَم'    },
+        ],
+      },
+      {
+        id:   'L1_MRG_MATCH2',
+        type: 'image-matching',
+        text: 'اِرْبِطِ الصُّورَةَ بِالْكَلِمَةِ الْمُنَاسِبَة',
+        skill: 'vocabulary',
+        pairs: [
+          { id: 'korsi2', emoji: '🪑', name: 'كُرْسِي' },
+          { id: 'kalb2',  emoji: '🐶', name: 'كَلْب'   },
+          { id: 'qitta2', emoji: '🐱', name: 'قِطّ'    },
+          { id: 'bab',    emoji: '🚪', name: 'بَاب'    },
+          { id: 'walad',  emoji: '👦', name: 'وَلَد'   },
+          { id: 'bint',   emoji: '👧', name: 'بِنْت'   },
+        ],
+      },
+      // ── مُدمَج من بنك الـ15 سؤالاً (q4 — فهم بصري) ──
+      {
+        id:    'L1_MRG_Q4',
+        skill: 'vocabulary',
+        text:  '🧒💧 مَاذَا يَفْعَلُ الطِّفْلُ فِي الصُّورَة؟',
+        options: [
+          { text: '💧 يَشْرَب', correct: true  },
+          { text: '💤 يَنَام',  correct: false },
+          { text: '🏃 يَرْكُض', correct: false },
+        ],
+      },
+      // ── مُدمَج من تدريب "إكمال الكلمة الناقصة" في الاختبار الترويجي المحذوف
+      // — الحرف الصحيح مُشتَقّ من الكلمة الكاملة نفسها، لا مُخزَّناً مكرراً ──
+      {
+        id:    'L1_MRG_WC1',
+        skill: 'vocabulary',
+        text:  '☀️ اخْتَرِ الحَرْفَ النَّاقِصَ لِتَكْتَمِلَ الكَلِمَة: شـ...ـس',
+        options: [
+          { text: 'م', correct: true  },
+          { text: 'ر', correct: false },
+          { text: 'ل', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WC2',
+        skill: 'vocabulary',
+        text:  '🪑 اخْتَرِ الحَرْفَ النَّاقِصَ لِتَكْتَمِلَ الكَلِمَة: طا...لة',
+        options: [
+          { text: 'و', correct: true  },
+          { text: 'ب', correct: false },
+          { text: 'س', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WC3',
+        skill: 'vocabulary',
+        text:  '🚗 اخْتَرِ الحَرْفَ النَّاقِصَ لِتَكْتَمِلَ الكَلِمَة: سيا...ة',
+        options: [
+          { text: 'ر', correct: true  },
+          { text: 'ن', correct: false },
+          { text: 'ت', correct: false },
         ],
       },
     ],
@@ -141,6 +279,68 @@ export const questionsBank = {
         text:  'رَكِّبِ الكَلِمَةَ',
         skill: 'reading',
       },
+      // ── مُدمَج من "اختبار المهارات للمبتدئين" (القسم ٨ — فهم مقروء، فقرة
+      // واحدة + 5 أسئلة؛ صُحِّح خطأ مطبعي واحد: "مَنْ أيْنَ"←"مِنْ أيْنَ") ──
+      {
+        id:        'L1_MRG_RC1',
+        type:      'listening-comprehension',
+        audioText: 'سَامِي وَلَدٌ لَطِيفٌ يَعِيشُ فِي قَطَرَ، هُوَ مِصْرِيٌّ، عُمْرُهُ سِتُّ سَنَوَاتٍ. هُوَ يَدْرُسُ فِي الصَّفِّ الْأَوَّلِ. يُحِبُّ سَامِي كُرَةَ الْقَدَمِ، وَيَلْعَبُهَا فِي الْحَدِيقَةِ كُلَّ يَوْمٍ مَعَ أَصْدِقَائِهِ.',
+        text:      'مِنْ أَيْنَ سَامِي؟',
+        skill:     'reading',
+        options: [
+          { text: 'مِصْر',       correct: true  },
+          { text: 'قَطَر',       correct: false },
+          { text: 'السُّعُودِيَّة', correct: false },
+        ],
+      },
+      {
+        id:        'L1_MRG_RC2',
+        type:      'listening-comprehension',
+        audioText: 'سَامِي وَلَدٌ لَطِيفٌ يَعِيشُ فِي قَطَرَ، هُوَ مِصْرِيٌّ، عُمْرُهُ سِتُّ سَنَوَاتٍ. هُوَ يَدْرُسُ فِي الصَّفِّ الْأَوَّلِ. يُحِبُّ سَامِي كُرَةَ الْقَدَمِ، وَيَلْعَبُهَا فِي الْحَدِيقَةِ كُلَّ يَوْمٍ مَعَ أَصْدِقَائِهِ.',
+        text:      'أَيْنَ يَعِيشُ سَامِي؟',
+        skill:     'reading',
+        options: [
+          { text: 'قَطَر',    correct: true  },
+          { text: 'مِصْر',    correct: false },
+          { text: 'الإِمَارَات', correct: false },
+        ],
+      },
+      {
+        id:        'L1_MRG_RC3',
+        type:      'listening-comprehension',
+        audioText: 'سَامِي وَلَدٌ لَطِيفٌ يَعِيشُ فِي قَطَرَ، هُوَ مِصْرِيٌّ، عُمْرُهُ سِتُّ سَنَوَاتٍ. هُوَ يَدْرُسُ فِي الصَّفِّ الْأَوَّلِ. يُحِبُّ سَامِي كُرَةَ الْقَدَمِ، وَيَلْعَبُهَا فِي الْحَدِيقَةِ كُلَّ يَوْمٍ مَعَ أَصْدِقَائِهِ.',
+        text:      'كَمْ عُمْرُ سَامِي؟',
+        skill:     'reading',
+        options: [
+          { text: 'سِتُّ سَنَوَات',  correct: true  },
+          { text: 'خَمْسُ سَنَوَات', correct: false },
+          { text: 'سَبْعُ سَنَوَات', correct: false },
+        ],
+      },
+      {
+        id:        'L1_MRG_RC4',
+        type:      'listening-comprehension',
+        audioText: 'سَامِي وَلَدٌ لَطِيفٌ يَعِيشُ فِي قَطَرَ، هُوَ مِصْرِيٌّ، عُمْرُهُ سِتُّ سَنَوَاتٍ. هُوَ يَدْرُسُ فِي الصَّفِّ الْأَوَّلِ. يُحِبُّ سَامِي كُرَةَ الْقَدَمِ، وَيَلْعَبُهَا فِي الْحَدِيقَةِ كُلَّ يَوْمٍ مَعَ أَصْدِقَائِهِ.',
+        text:      'فِي أَيِّ صَفٍّ يَدْرُسُ سَامِي؟',
+        skill:     'reading',
+        options: [
+          { text: 'الصَّفُّ الْأَوَّل', correct: true  },
+          { text: 'الصَّفُّ الثَّانِي', correct: false },
+          { text: 'الصَّفُّ الثَّالِث', correct: false },
+        ],
+      },
+      {
+        id:        'L1_MRG_RC5',
+        type:      'listening-comprehension',
+        audioText: 'سَامِي وَلَدٌ لَطِيفٌ يَعِيشُ فِي قَطَرَ، هُوَ مِصْرِيٌّ، عُمْرُهُ سِتُّ سَنَوَاتٍ. هُوَ يَدْرُسُ فِي الصَّفِّ الْأَوَّلِ. يُحِبُّ سَامِي كُرَةَ الْقَدَمِ، وَيَلْعَبُهَا فِي الْحَدِيقَةِ كُلَّ يَوْمٍ مَعَ أَصْدِقَائِهِ.',
+        text:      'مَاذَا يُحِبُّ سَامِي؟',
+        skill:     'reading',
+        options: [
+          { text: 'كُرَةُ الْقَدَم', correct: true  },
+          { text: 'السِّبَاحَة',      correct: false },
+          { text: 'الرَّسْم',        correct: false },
+        ],
+      },
     ],
     grammar: [
       {
@@ -170,6 +370,78 @@ export const questionsBank = {
           { text: 'هِيَ', correct: false },
         ],
       },
+      // ── مُدمَج من "اختبار المهارات للمبتدئين" (القسم ٧ — إكمال الجملة
+      // بالضمير المناسب؛ المُشتِّتات من تصميمنا، النص الأصلي لم يُعطِها) ──
+      {
+        id:    'L1_MRG_GR1',
+        skill: 'grammar',
+        text:  '........ يَسْبَحانِ',
+        options: [
+          { text: 'هما',   correct: true  },
+          { text: 'هم',    correct: false },
+          { text: 'أنتما', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_GR2',
+        skill: 'grammar',
+        text:  '........ أُراجِعُ دُرُوسِي',
+        options: [
+          { text: 'أنا', correct: true  },
+          { text: 'أنتَ', correct: false },
+          { text: 'هو',   correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_GR3',
+        skill: 'grammar',
+        text:  '........ تُعِدُّ الطَّعَامَ',
+        options: [
+          { text: 'هي',   correct: true  },
+          { text: 'هو',   correct: false },
+          { text: 'أنتِ', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_GR4',
+        skill: 'grammar',
+        text:  '....... يَلْعَبُونَ فِي الْحَدِيقَةِ',
+        options: [
+          { text: 'هم',   correct: true  },
+          { text: 'هما',  correct: false },
+          { text: 'نحن',  correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_GR5',
+        skill: 'grammar',
+        text:  '....... ذَهَبْنَ إِلَى الْمَتْجَر',
+        options: [
+          { text: 'هنّ',   correct: true  },
+          { text: 'هم',    correct: false },
+          { text: 'أنتنّ', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_GR6',
+        skill: 'grammar',
+        text:  '....... نَلْعَبُ كُرَةَ الْقَدَمِ',
+        options: [
+          { text: 'نحن', correct: true  },
+          { text: 'أنا',  correct: false },
+          { text: 'أنتم', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_GR7',
+        skill: 'grammar',
+        text:  '....... تُسَاعِدُ أُمَّهَا',
+        options: [
+          { text: 'هي',   correct: true  },
+          { text: 'هو',   correct: false },
+          { text: 'أنتِ', correct: false },
+        ],
+      },
     ],
     writing: [
       {
@@ -183,6 +455,80 @@ export const questionsBank = {
         type:  'photo-writing',
         skill: 'writing',
         text:  '✍️ انْظُرْ إِلَى الصُّورَةِ، ثُمَّ اكْتُبِ اسْمَهَا عَلَى وَرَقَةٍ وَصَوِّرْهَا: ☀️',
+      },
+      // ── مُدمَج من "اختبار المهارات للمبتدئين" (القسم ٦ — إملاء، اختيار
+      // الرسم الصحيح للكلمة). العنصر الثالث (طاولة) استُبعِد عمداً — لا رسمٌ
+      // من الخيارات الأصلية الثلاثة يطابق الكلمة الصحيحة فعلياً، فلا يصلح
+      // سؤالاً مُصحَّحاً آلياً. راجع ملاحظة الأستاذ محمد الأصلية في جلسة البناء. ──
+      {
+        id:    'L1_MRG_WR1',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'هَذا',  correct: true  },
+          { text: 'هاذا',  correct: false },
+          { text: 'هاذَ',  correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WR2',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'ذَلِكَ',  correct: true  },
+          { text: 'ذالكَ',   correct: false },
+          { text: 'ذالِكا',  correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WR3',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'كِتابٌ',  correct: true  },
+          { text: 'كَتَبٌ',  correct: false },
+          { text: 'كِتابُنْ', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WR4',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'بِئْرٌ', correct: true  },
+          { text: 'بِؤْرٌ', correct: false },
+          { text: 'بِأرٌ',  correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WR5',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'شَيْءٌ', correct: true  },
+          { text: 'شَيْئٌ', correct: false },
+          { text: 'شَيْؤٌ', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WR6',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'رَأيْتُ',  correct: true  },
+          { text: 'رَءَيْتُ', correct: false },
+          { text: 'رَئَيْتُ', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WR7',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'سَماءً',   correct: true  },
+          { text: 'سَماءًا',  correct: false },
+          { text: 'سَماأً',   correct: false },
+        ],
       },
     ],
     speaking: [
@@ -205,6 +551,19 @@ export const questionsBank = {
         type:  'oral-assessment',
         text:  'أَسْمِعْنِي صَوْتَكَ',
         skill: 'speaking',
+      },
+      // ── مُدمَج من "تقييم القراءة الجهرية" في الاختبار الترويجي المحذوف ──
+      {
+        id:    'L1_MRG_VOICE',
+        type:  'listen-speak',
+        text:  'اقْرَأْ هَذِهِ الجُمَلَ بِصَوْتِكَ',
+        skill: 'speaking',
+        items: [
+          { text: 'هَذَا أَبِي' },
+          { text: 'هَذِهِ أُمِّي' },
+          { text: 'هَذَا أَخِي' },
+          { text: 'أَنَا أُحِبُّ مَدْرَسَتِي' },
+        ],
       },
     ],
   },
@@ -311,6 +670,16 @@ export const questionsBank = {
           { text: 'موز',      correct: false },
         ],
       },
+      // ── مُدمَج من بنك الـ15 سؤالاً (q9 — رصيد لغوي) ──
+      {
+        id: 'L2_MRG_Q9',
+        text: 'ما الكلمة التي تعني مكاناً نزرع فيه الأشجار والزهور؟',
+        options: [
+          { text: 'حديقة', correct: true  },
+          { text: 'مطبخ',  correct: false },
+          { text: 'فصل',   correct: false },
+        ],
+      },
     ],
     reading: [
       {
@@ -364,6 +733,16 @@ export const questionsBank = {
           { id: 'd', speaker: 'يوسف', text: 'نعم، أنهيته قبل قليل.' },
         ],
       },
+      // ── مُدمَج من بنك الـ15 سؤالاً (q7 — قراءة وربط صورة بجملة) ──
+      {
+        id: 'L2_MRG_Q7',
+        text: '👧🎨🌸 اختر الجملة التي تعبّر عن الصورة',
+        options: [
+          { text: 'ترسمُ البنتُ زهرةً',   correct: true  },
+          { text: 'تأكلُ البنتُ تفاحةً',  correct: false },
+          { text: 'تلعبُ البنتُ بالكرةِ', correct: false },
+        ],
+      },
     ],
     grammar: [
       {
@@ -404,6 +783,25 @@ export const questionsBank = {
           { text: 'خطأ في ترتيب الجملة',           correct: false },
           { text: 'خطأ في تصريف الفعل',            correct: false },
           { text: 'خطأ في استخدام "الذين"',        correct: false },
+        ],
+      },
+      // ── مُدمَج من بنك الـ15 سؤالاً (q8/q10 — تراكيب أساسية وبناء الجملة) ──
+      {
+        id: 'L2_MRG_Q8',
+        text: 'أكمل الجملة: أحمدُ .......... الحليبَ كلَّ صباحٍ.',
+        options: [
+          { text: 'يشربُ',   correct: true  },
+          { text: 'تشربُ',   correct: false },
+          { text: 'يشربون',  correct: false },
+        ],
+      },
+      {
+        id: 'L2_MRG_Q10',
+        text: 'رتّب الكلمات التالية لتكوين جملة صحيحة: (في / يلعبُ / الأطفالُ / الحديقةِ)',
+        options: [
+          { text: 'يلعبُ الأطفالُ في الحديقةِ', correct: true  },
+          { text: 'الأطفالُ يلعبُ في الحديقةِ', correct: false },
+          { text: 'الحديقةِ يلعبُ الأطفالُ',   correct: false },
         ],
       },
     ],
@@ -606,6 +1004,54 @@ export const questionsBank = {
           { id: 'd', speaker: 'يوسف', text: 'بالتأكيد، شكراً لتذكيري!' },
         ],
       },
+      // ── مُدمَج من بنك الـ15 سؤالاً (q11/q12 — فهم قرائي ومترادفات لنفس
+      // الفقرة، q13 — سبب ونتيجة، q15 — فهم شامل) ──
+      {
+        id:        'L3_MRG_Q11',
+        type:      'listening-comprehension',
+        audioText: 'عاد عمر من المدرسة مسروراً؛ لأنه حصل على وسام التفوق في اللغة العربية.',
+        text:      'لماذا كان عمر مسروراً؟',
+        skill:     'reading',
+        options: [
+          { text: 'لأنه حصل على وسام التفوق',   correct: true  },
+          { text: 'لأنه ذهب مع أصدقائه',         correct: false },
+          { text: 'لأنه تناول طعامه المفضل',     correct: false },
+        ],
+      },
+      {
+        id:        'L3_MRG_Q12',
+        type:      'listening-comprehension',
+        audioText: 'عاد عمر من المدرسة مسروراً؛ لأنه حصل على وسام التفوق في اللغة العربية.',
+        text:      'من النص السابق، ما الكلمة الأقرب في المعنى لكلمة «مسروراً»؟',
+        skill:     'reading',
+        options: [
+          { text: 'سعيداً', correct: true  },
+          { text: 'حزيناً', correct: false },
+          { text: 'غاضباً', correct: false },
+        ],
+      },
+      {
+        id:        'L3_MRG_Q13',
+        type:      'listening-comprehension',
+        audioText: 'كان الجو بارداً جداً، لذلك ارتدى خالد معطفه السميك قبل الخروج.',
+        text:      'لماذا ارتدى خالد معطفه؟',
+        skill:     'reading',
+        options: [
+          { text: 'لأن الجو كان بارداً',        correct: true  },
+          { text: 'لأنه اشترى معطفاً جديداً',   correct: false },
+          { text: 'لأنه ذاهب إلى المدرسة',       correct: false },
+        ],
+      },
+      {
+        id:    'L3_MRG_Q15',
+        skill: 'reading',
+        text:  'أيُّ جملة تعبّر بصورة صحيحة عن المحافظة على البيئة؟',
+        options: [
+          { text: 'نحافظ على نظافة المكان ولا نرمي النفايات', correct: true  },
+          { text: 'نرمي النفايات في الشارع',                   correct: false },
+          { text: 'نترك النفايات في الحديقة',                  correct: false },
+        ],
+      },
     ],
     grammar: [
       {
@@ -646,6 +1092,16 @@ export const questionsBank = {
           { text: 'لأن الفعل الماضي لا يناسب السياق',     correct: false },
           { text: 'بدون قصد بلاغي',                          correct: false },
           { text: 'لأن المضارع أسهل في الكتابة',           correct: false },
+        ],
+      },
+      // ── مُدمَج من بنك الـ15 سؤالاً (q14 — تراكيب متقدمة) ──
+      {
+        id: 'L3_MRG_Q14',
+        text: 'اختر الجملة الصحيحة لغوياً',
+        options: [
+          { text: 'الطالباتُ يكتبنَ الدرسَ', correct: true  },
+          { text: 'الطالباتُ يكتبونَ الدرسَ', correct: false },
+          { text: 'الطالباتُ يكتبُ الدرسَ',   correct: false },
         ],
       },
     ],

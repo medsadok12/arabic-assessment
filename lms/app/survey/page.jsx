@@ -31,12 +31,6 @@ const GOLD   = '#E8B84B';
 const CREAM  = '#F4EFE6';
 const GREEN  = '#2ABB7A';
 
-// رابط اختبار تحديد المستوى — يبقى على الموقع المستقل assessment.aarem.net
-// (مطلق لا نسبي، بما أن هذه الصفحة أصبحت تعيش على مسار /survey ضمن
-// www.aarem.net، فالرابط النسبي القديم "?quick=1" كان سيُحيل خطأً لـ
-// /survey?quick=1 بدل القمع التسويقي الفعلي).
-const QUICKTEST_URL = 'https://assessment.aarem.net/?quick=1';
-
 const TOTAL_STEPS = 5;
 
 const GOALS_OPTIONS = [
@@ -209,7 +203,6 @@ export default function SurveyPage() {
   }
 
   if (submitted) {
-    const childFirstName = answers.childName.trim() || 'البطل';
     return (
       <div className="cs-wrap" dir="rtl">
         <style>{CS_STYLES}</style>
@@ -219,12 +212,6 @@ export default function SurveyPage() {
           <p className="cs-success-text">
             يتم الآن إعداد الخطة المخصصة وسنتواصل معك قريباً عبر الواتساب.
           </p>
-          {/* يوجّه ولي الأمر مباشرة لقمع "اختبار تحديد المستوى" التسويقي
-              على assessment.aarem.net — تحويل ولي أمر انتهى للتو من استبانة
-              الاستشارة إلى عميل محتمل ثانٍ بأقل احتكاك ممكن. */}
-          <a href={QUICKTEST_URL} className="cs-cta-quicktest">
-            دَع {childFirstName} يجرب اختبار المستوى الممتع الآن! (دقيقتين فقط)
-          </a>
         </div>
       </div>
     );
@@ -703,21 +690,6 @@ const CS_STYLES = `
     line-height: 1.7;
     margin: 0 0 10px;
   }
-  .cs-cta-quicktest {
-    display: inline-block;
-    margin-top: 22px;
-    padding: 16px 22px;
-    border-radius: 14px;
-    background: ${GOLD};
-    color: ${NAVY};
-    font-weight: 800;
-    font-size: 1rem;
-    text-decoration: none;
-    box-shadow: 0 6px 18px rgba(232,184,75,.45);
-    transition: transform .15s, box-shadow .15s;
-  }
-  .cs-cta-quicktest:active { transform: scale(.97); }
-
   @media (max-width: 380px) {
     .cs-card { padding: 18px 14px 20px; border-radius: 16px; }
     .cs-options-grid { grid-template-columns: 1fr; }
