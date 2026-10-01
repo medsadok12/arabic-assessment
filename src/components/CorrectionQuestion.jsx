@@ -18,7 +18,11 @@ export default function CorrectionQuestion({ question, onAnswer }) {
     const isCorrect = normalizeAr(value) === normalizeAr(question.correctAnswer);
     setChecked(true);
     setCorrect(isCorrect);
-    setTimeout(() => onAnswer({ questionId: question.id, skill: question.skill, answer: value, isCorrect }), 1400);
+    setTimeout(() => onAnswer({
+      questionId: question.id, skill: question.skill, answer: value, isCorrect,
+      answerText:  value,
+      correctText: question.correctAnswer,
+    }), 1400);
   }
 
   return (

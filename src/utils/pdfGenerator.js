@@ -1,22 +1,299 @@
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import { LEVELS, SKILLS } from '../data/questions.js';
+// jsPDF وhtml2canvas (مكتبتان ثقيلتان، ~274KB مضغوطتان معاً) تُستوردان
+// ديناميكياً داخل generateAssessmentPDF نفسها بدل استيراد ثابت هنا — بهذا
+// لا تُحمَّلان إطلاقاً إلا عند إنشاء تقرير فعلي (نهاية التقييم)، لا ضمن
+// الحزمة الرئيسية التي يُحمِّلها كل طفل فور فتح التطبيق.
+import { LEVELS, SKILLS, questionsBank } from '../data/questions.js';
 import { getGradeInfo } from './scoring.js';
 
-export async function generateAssessmentPDF(studentInfo, scores, finalLevel) {
+// Sanitize any user-supplied value before embedding in HTML
+function sanitize(val) {
+  if (val == null) return '—';
+  return String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/`/g, '&#96;');
+}
+
+// Build a flat questionId → question lookup from the nested questionsBank
+function buildQMap() {
+  const map = {};
+  for (const lvKey of Object.keys(questionsBank)) {
+    const lvData = questionsBank[lvKey];
+    for (const skKey of Object.keys(lvData)) {
+      for (const q of (lvData[skKey] || [])) {
+        map[q.id] = { ...q, _skill: skKey };
+      }
+    }
+  }
+  return map;
+}
+
+// Decide what to show in the student-answer and correct-answer columns.
+// Every question component captures answerText/correctText at answer time;
+// the branches below are a fallback for sessions saved before those fields existed.
+// Returns RAW (unescaped) text — callers embedding it into HTML (the PDF)
+// must sanitize() at the point of interpolation; callers returning it as
+// plain data (buildAnswerReport, consumed later by React's own auto-escaping
+// text rendering) must NOT sanitize it, or entities would show up literally.
+function getAnswerDisplay(answerObj, qData) {
+  if (answerObj.answerText != null || answerObj.correctText != null) {
+    return {
+      student: answerObj.answerText || '—',
+      correct: answerObj.correctText || '—',
+    };
+  }
+
+  if (!qData) return { student: '—', correct: '—' };
+
+  const type = qData.type;
+  const raw  = answerObj.answer;
+
+  if (type === 'fill') {
+    return {
+      student: raw || '—',
+      correct: (qData.answers || [])[0] || '—',
+    };
+  }
+
+  if (type === 'correction') {
+    return {
+      student: raw || '—',
+      correct: qData.correctAnswer || '—',
+    };
+  }
+
+  if (type === 'word-order') {
+    return {
+      student: (Array.isArray(raw) ? raw.join(' ') : raw) || '—',
+      correct: (qData.answer || []).join(' '),
+    };
+  }
+
+  // Regular MCQ stored as an index into shuffled options
+  if (Array.isArray(qData.options)) {
+    const correctOpt = qData.options.find(o => o.correct);
+    return {
+      student: '—',
+      correct: correctOpt?.text || '—',
+    };
+  }
+
+  // Complex types (matching, oral, letter-listen, image-matching, …)
+  return { student: '—', correct: '—' };
+}
+
+const SKILL_NAMES = {
+  ...Object.fromEntries(SKILLS.map(s => [s.id, s.name])),
+  speaking: 'التحدث والكلام',
+  other:    'أخرى',
+};
+const SKILL_ORDER = [...SKILLS.map(s => s.id), 'speaking'];
+
+// نسخة "بيانات خام" من نفس منطق buildQuestionsSection أدناه — تُستخدم لإرسال
+// تفاصيل الإجابات إلى /api/save-assessment (لوحة bogga)، بدل بناء HTML.
+// مصدر وحيد للحقيقة: أي تعديل مستقبلي على طريقة عرض الإجابة يُطبَّق هنا مرة
+// واحدة وينعكس تلقائياً في كل من تقرير PDF ولوحة المعلم.
+export function buildAnswerReport(allAnswers) {
+  const qMap = buildQMap();
+  return (allAnswers ?? []).map((ans) => {
+    const qData = qMap[ans.questionId];
+    const { student, correct } = getAnswerDisplay(ans, qData);
+
+    // تسمية كل تسجيل صوتي بنص سؤاله الفرعي الفعلي حين يتوفر (listen-speak
+    // يحمل `text` لكل عنصر في `answer`)، أو ترك label فارغاً فيسقط العرض
+    // لاحقاً لترقيم تسلسلي بسيط (oral-assessment: كلمات مصوَّرة بلا نص عربي
+    // مخزَّن في كائن الإجابة نفسه، فلا تسمية أدق متاحة هنا بأمان).
+    let audioUrls;
+    if (Array.isArray(ans.answer) && ans.answer.some((a) => a?.audioUrl)) {
+      audioUrls = ans.answer
+        .filter((a) => a?.audioUrl)
+        .map((a) => ({ url: a.audioUrl, label: a.text || null }));
+    } else if (ans.audioUrl) {
+      audioUrls = [{ url: ans.audioUrl, label: null }];
+    } else {
+      audioUrls = [];
+    }
+
+    return {
+      questionId:    ans.questionId,
+      skill:         ans.skill || 'other',
+      skillName:     SKILL_NAMES[ans.skill] || ans.skill || 'أخرى',
+      questionText:  qData?.text || ans.questionId,
+      studentAnswer: student,
+      correctAnswer: correct,
+      isCorrect:     Boolean(ans.isCorrect),
+      audioUrls,
+    };
+  });
+}
+
+// Marker(s) for any uploaded recording(s) tied to this answer — measured
+// after render (getBoundingClientRect) and turned into real clickable
+// pdf.link() annotations, since the PDF body itself is a rasterized image
+// (see generateAssessmentPDF) where plain HTML text is never clickable.
+function buildRecordingLinks(ans) {
+  const urls = ans.recordingUrls?.length ? ans.recordingUrls : (ans.audioUrl ? [ans.audioUrl] : []);
+  if (!urls.length) return '';
+  return urls.map((url, i) => `<span data-audio-link="${sanitize(url)}" style="display:inline-block;margin-inline-start:4px;color:#185FA5;font-size:11px;font-weight:700;text-decoration:underline;">🎙️${urls.length > 1 ? ` ${i + 1}` : ''}</span>`).join('');
+}
+
+// Build the full per-question detail section (grouped by skill)
+// overallScore: نفس الرقم المعروض أعلى التقرير (scores.overall، الوزن
+// الديناميكي حسب المهارة من calculateLevelScore) — مصدر وحيد للحقيقة، بدل
+// حساب متوسط خام منفصل هنا كان يُنتج رقماً مختلفاً عن رأس الصفحة أحياناً.
+function buildQuestionsSection(allAnswers, qMap, overallScore) {
+  // Explicit empty state: absence of answer data must be visible in the
+  // report, never silent — it signals a stale client build or a legacy session
+  if (!allAnswers?.length) {
+    return `
+    <div style="background:#f0f4f8;padding:28px 44px 36px;">
+      <div data-atom style="background:#1A2B4A;color:white;padding:18px 28px;border-radius:10px;">
+        <div style="font-size:16px;font-weight:900;margin-bottom:4px;">تفاصيل إجابات الطالب</div>
+        <div style="font-size:12px;opacity:0.85;">لا تتوفر تفاصيل الإجابات لهذه الجلسة — أعد التقييم من جلسة جديدة</div>
+      </div>
+    </div>`;
+  }
+
+  const skillOrder = SKILL_ORDER;
+
+  // Group answers by skill
+  const bySkill = {};
+  let totalQ = 0;
+  let totalCorrect = 0;
+  for (const ans of allAnswers) {
+    const sk = ans.skill || 'other';
+    if (!bySkill[sk]) bySkill[sk] = [];
+    bySkill[sk].push(ans);
+    totalQ++;
+    if (ans.isCorrect) totalCorrect++;
+  }
+
+  // Preserve defined skill order, then any extras
+  const orderedSkills = [
+    ...skillOrder.filter(sk => bySkill[sk]?.length),
+    ...Object.keys(bySkill).filter(sk => !skillOrder.includes(sk) && bySkill[sk]?.length),
+  ];
+
+  let tablesHTML = '';
+  for (const sk of orderedSkills) {
+    const answers    = bySkill[sk];
+    const skillName  = SKILL_NAMES[sk] || sk;
+    const skCorrect  = answers.filter(a => a.isCorrect).length;
+    const skPct      = Math.round((skCorrect / answers.length) * 100);
+
+    const rows = answers.map((ans, i) => {
+      const qData  = qMap[ans.questionId];
+      const qText  = sanitize(qData?.text || ans.questionId);
+      const { student, correct } = getAnswerDisplay(ans, qData);
+      const bg  = ans.isCorrect ? '#f0fdf4' : '#fff5f5';
+      const ind = ans.isCorrect
+        ? '<span style="color:#2ABB7A;font-size:14px;font-weight:900;">✅</span>'
+        : '<span style="color:#e53e3e;font-size:14px;font-weight:900;">❌</span>';
+
+      return `
+        <tr data-atom style="background:${bg};">
+          <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;font-size:11px;color:#888;font-weight:700;">${i + 1}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e5e5e5;font-size:12px;line-height:1.65;">${qText}</td>
+          <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;">${ind}</td>
+          <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;font-size:12px;color:#444;">${sanitize(student)}${buildRecordingLinks(ans)}</td>
+          <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #e5e5e5;font-size:12px;color:#444;">${sanitize(correct)}</td>
+        </tr>`;
+    }).join('');
+
+    tablesHTML += `
+      <div style="margin-bottom:24px;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.07);">
+        <div data-atom data-keep-next style="background:#1A2B4A;color:white;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:700;font-size:13px;">${skillName}</span>
+          <span style="color:#E8B84B;font-size:12px;font-weight:700;">${skCorrect}/${answers.length} — ${skPct}%</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;direction:rtl;font-family:'Tajawal',Arial,sans-serif;">
+          <thead>
+            <tr data-atom data-keep-next style="background:#f0f4f8;">
+              <th style="padding:8px 10px;text-align:center;font-size:11px;border-bottom:2px solid #1A2B4A;color:#1A2B4A;width:34px;">#</th>
+              <th style="padding:8px 10px;text-align:right;font-size:11px;border-bottom:2px solid #1A2B4A;color:#1A2B4A;">السؤال</th>
+              <th style="padding:8px 10px;text-align:center;font-size:11px;border-bottom:2px solid #1A2B4A;color:#1A2B4A;width:50px;">نتيجة</th>
+              <th style="padding:8px 10px;text-align:center;font-size:11px;border-bottom:2px solid #1A2B4A;color:#1A2B4A;width:128px;">إجابة الطالب</th>
+              <th style="padding:8px 10px;text-align:center;font-size:11px;border-bottom:2px solid #1A2B4A;color:#1A2B4A;width:128px;">الإجابة الصحيحة</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  const overallPct = Math.round(overallScore ?? 0);
+
+  return `
+    <div style="background:#f0f4f8;padding:28px 44px 36px;">
+      <div data-atom data-keep-next style="background:#1A2B4A;color:white;padding:18px 28px;border-radius:10px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:16px;font-weight:900;margin-bottom:4px;">تفاصيل إجابات الطالب</div>
+          <div style="font-size:12px;opacity:0.85;">عرض كامل لكل سؤال وإجاباته</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:26px;font-weight:900;color:#E8B84B;">${overallPct}%</div>
+          <div style="font-size:11px;opacity:0.8;">${totalCorrect} صحيح من ${totalQ}</div>
+        </div>
+      </div>
+      ${tablesHTML}
+    </div>`;
+}
+
+// Pure pagination over measured atom boundaries (canvas px).
+// Never cuts inside an atom (a table row / content block); breaks land between
+// atoms only. An atom flagged keepNext (section header, thead) is never left
+// alone at the bottom of a page — the break moves above it so it travels to
+// the next page together with what follows it.
+// Page 1 stays flush at the top (report banner); later pages get a top margin,
+// and every page keeps a bottom margin.
+export function computePageSlices(atoms, totalHeightPx, pxPerMm, marginMm = 8) {
+  const sorted = [...atoms].sort((a, b) => a.top - b.top);
+  const pages  = [];
+  let y = 0;
+  while (y < totalHeightPx - 1) {
+    const first  = pages.length === 0;
+    const usable = (297 - (first ? 0 : marginMm) - marginMm) * pxPerMm;
+    const limit  = y + usable;
+    let  cut     = Math.min(limit, totalHeightPx);
+    if (limit < totalHeightPx) {
+      let best = 0;
+      for (const a of sorted) {
+        if (a.bottom > y + 1 && a.bottom <= limit && !a.keepNext && a.bottom > best) {
+          best = a.bottom;
+        }
+      }
+      // Fall back to a hard cut only if no boundary gives reasonable progress
+      // (would only happen if a single atom were taller than a page)
+      if (best > y + usable * 0.35) cut = best;
+    }
+    pages.push({ from: y, to: cut, topMm: first ? 0 : marginMm });
+    y = cut;
+  }
+  return pages;
+}
+
+export async function generateAssessmentPDF(studentInfo, scores, finalLevel, allAnswers = []) {
+  const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+    import('jspdf'),
+    import('html2canvas'),
+  ]);
+
   const levelInfo = LEVELS.find(l => l.id === finalLevel);
   const grade     = getGradeInfo(scores.overall);
-  const dateStr   = new Date().toLocaleDateString('ar-SA', {
+  const dateStr   = new Date().toLocaleDateString('ar-SA-u-nu-latn', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
 
   const skillsHTML = SKILLS.map(skill => {
-    const s     = scores.bySkill[skill.id];
+    const s = scores.bySkill[skill.id];
     if (!s) return '';
     const pct   = Math.round(s.score);
     const color = pct >= 80 ? '#2e7d32' : pct >= 60 ? '#e65100' : '#c62828';
     return `
-      <div style="margin-bottom:14px;">
+      <div data-atom style="margin-bottom:14px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
           <span style="font-weight:700;font-size:13px;">${skill.name}</span>
           <span style="font-weight:800;color:${color};font-size:13px;">${pct}% &nbsp;(${s.correct}/${s.total})</span>
@@ -24,8 +301,7 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel) {
         <div style="background:#e0e0e0;height:8px;border-radius:8px;overflow:hidden;">
           <div style="background:${color};height:100%;width:${pct}%;border-radius:8px;"></div>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 
   const typeLabel =
@@ -33,29 +309,32 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel) {
     studentInfo.type === 'non-native' ? 'غير ناطق باللغة العربية' :
     'متعلم تراثي';
 
+  const qMap = buildQMap();
+
   const el = document.createElement('div');
   Object.assign(el.style, {
-    width: '794px', padding: '0', fontFamily: "'Tajawal', Arial, sans-serif",
+    width: '794px', padding: '0',
+    fontFamily: "'Tajawal', Arial, sans-serif",
     direction: 'rtl', background: 'white',
     position: 'fixed', top: '-9999px', left: '-9999px', zIndex: '-1',
   });
 
   el.innerHTML = `
-    <div style="background:linear-gradient(135deg,#1a1052 0%,#2d1b69 100%);color:white;padding:36px 44px;text-align:center;">
+    <div data-atom style="background:linear-gradient(135deg,#1a1052 0%,#2d1b69 100%);color:white;padding:36px 44px;text-align:center;">
       <div style="font-size:50px;margin-bottom:10px;color:#d4952a;font-family:serif;">ع</div>
       <h1 style="margin:0 0 6px;font-size:26px;font-weight:900;">عارم أكاديمي — تقرير التقييم</h1>
       <p style="margin:0;opacity:0.9;font-size:15px;">AREM ACADEMY | تعليم اللغة العربية</p>
     </div>
 
-    <div style="padding:32px 44px;">
+    <div style="padding:32px 44px;background:white;">
 
-      <div style="display:flex;gap:20px;margin-bottom:28px;">
+      <div data-atom style="display:flex;gap:20px;margin-bottom:28px;">
         <div style="flex:1.5;background:#f5f7fa;padding:22px;border-radius:12px;">
           <h3 style="color:#1a1052;margin:0 0 14px;font-size:15px;padding-bottom:8px;border-bottom:2px solid #e0e0e0;">
             معلومات الطالب
           </h3>
-          <p style="margin:0 0 9px;font-size:13px;"><strong>الاسم:</strong> ${studentInfo.name}</p>
-          <p style="margin:0 0 9px;font-size:13px;"><strong>العمر:</strong> ${studentInfo.age} سنة</p>
+          <p style="margin:0 0 9px;font-size:13px;"><strong>الاسم:</strong> ${sanitize(studentInfo.name)}</p>
+          <p style="margin:0 0 9px;font-size:13px;"><strong>العمر:</strong> ${sanitize(String(studentInfo.age))} سنة</p>
           <p style="margin:0 0 9px;font-size:13px;"><strong>نوع المتعلم:</strong> ${typeLabel}</p>
           <p style="margin:0;font-size:13px;"><strong>التاريخ:</strong> ${dateStr}</p>
         </div>
@@ -70,20 +349,22 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel) {
       </div>
 
       <div style="margin-bottom:26px;">
-        <h3 style="color:#1a1052;margin:0 0 16px;font-size:15px;padding-bottom:8px;border-bottom:2px solid #e0e0e0;">
+        <h3 data-atom data-keep-next style="color:#1a1052;margin:0 0 16px;font-size:15px;padding-bottom:8px;border-bottom:2px solid #e0e0e0;">
           تفاصيل المهارات
         </h3>
         ${skillsHTML}
       </div>
 
-      <div style="background:#e8f5e9;border-right:4px solid #2e7d32;padding:16px 20px;border-radius:10px;margin-bottom:10px;">
+      <div data-atom style="background:#e8f5e9;border-right:4px solid #2e7d32;padding:16px 20px;border-radius:10px;">
         <h3 style="color:#2e7d32;margin:0 0 8px;font-size:14px;">التوصيات</h3>
         <p style="margin:0;font-size:13px;line-height:1.8;color:#333;">${buildRecommendation(scores, levelInfo?.name)}</p>
       </div>
 
     </div>
 
-    <div style="background:#f5f7fa;padding:16px 44px;text-align:center;border-top:1px solid #e0e0e0;">
+    ${buildQuestionsSection(allAnswers, qMap, scores.overall)}
+
+    <div data-atom style="background:#f5f7fa;padding:16px 44px;text-align:center;border-top:1px solid #e0e0e0;">
       <p style="margin:0;color:#9e9e9e;font-size:11px;">
         أكاديمية عارم — gandouzimohamed9@gmail.com — ${dateStr}
       </p>
@@ -97,21 +378,62 @@ export async function generateAssessmentPDF(studentInfo, scores, finalLevel) {
     scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff',
   });
 
+  // Measure atom boundaries (rows/blocks) while el is still in the DOM,
+  // mapped from CSS px to canvas px
+  const imgW     = 210;
+  const elRect   = el.getBoundingClientRect();
+  const cnvScale = canvas.width / elRect.width;
+  const atoms    = Array.from(el.querySelectorAll('[data-atom]')).map(a => {
+    const r = a.getBoundingClientRect();
+    return {
+      top:      (r.top    - elRect.top) * cnvScale,
+      bottom:   (r.bottom - elRect.top) * cnvScale,
+      keepNext: a.hasAttribute('data-keep-next'),
+    };
+  });
+
+  // Recording-link markers — measured the same way as atoms (each one is
+  // nested inside a `<tr data-atom>` row that is never split across pages,
+  // so it always lands fully within a single slice below).
+  const linkEls = Array.from(el.querySelectorAll('[data-audio-link]')).map(a => {
+    const r = a.getBoundingClientRect();
+    return {
+      top:    (r.top  - elRect.top)  * cnvScale,
+      bottom: (r.bottom - elRect.top) * cnvScale,
+      xMm:    (r.left - elRect.left) / elRect.width * imgW,
+      wMm:    r.width / elRect.width * imgW,
+      url:    a.getAttribute('data-audio-link'),
+    };
+  });
+
   document.body.removeChild(el);
 
-  const pdf      = new jsPDF('p', 'mm', 'a4');
-  const imgData  = canvas.toDataURL('image/jpeg', 0.7);
-  const imgW     = 210;
-  const imgH     = (canvas.height / canvas.width) * imgW;
+  const pdf     = new jsPDF('p', 'mm', 'a4');
+  const pxPerMm = canvas.width / imgW;
+  const slices  = computePageSlices(atoms, canvas.height, pxPerMm);
 
-  pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH);
+  slices.forEach((p, i) => {
+    if (i > 0) pdf.addPage();
+    const sliceH = Math.max(1, Math.round(p.to - p.from));
+    const c = document.createElement('canvas');
+    c.width  = canvas.width;
+    c.height = sliceH;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(canvas, 0, p.from, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+    pdf.addImage(c.toDataURL('image/jpeg', 0.72), 'JPEG', 0, p.topMm, imgW, sliceH / pxPerMm);
 
-  let remaining = imgH - 297;
-  while (remaining > 0) {
-    pdf.addPage();
-    pdf.addImage(imgData, 'JPEG', 0, -(imgH - remaining), imgW, imgH);
-    remaining -= 297;
-  }
+    // Real clickable annotations over the rasterized recording markers that
+    // fall on this page — the URL text itself is baked into the image and
+    // is not clickable on its own.
+    for (const link of linkEls) {
+      if (link.bottom <= p.from || link.top >= p.to || !link.url) continue;
+      const topPx = Math.max(link.top, p.from) - p.from;
+      const hPx   = Math.min(link.bottom, p.to) - Math.max(link.top, p.from);
+      pdf.link(link.xMm, p.topMm + topPx / pxPerMm, link.wMm, hPx / pxPerMm, { url: link.url });
+    }
+  });
 
   return pdf.output('datauristring');
 }

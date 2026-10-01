@@ -16,8 +16,8 @@ export function calculateLevelScore(answers) {
     }
   }
 
-  let overall = 0;
   const bySkill = {};
+  const presentSkills = []; // المهارات التي لها أسئلة فعلية في هذا المستوى (total > 0)
 
   for (const skill of SKILLS) {
     const total   = skillCounts[skill.id];
@@ -30,8 +30,19 @@ export function calculateLevelScore(answers) {
       correct,
       total,
     };
-    overall += pct * skill.weight;
+    if (total > 0) presentSkills.push({ weight: skill.weight, pct });
   }
+
+  // وزن ديناميكي: أي مهارة بلا أسئلة في هذا المستوى (total = 0) لا تُحتسب
+  // صفراً ضمن المجموع — بل يُعاد توزيع وزنها على المهارات الحاضرة فعلياً،
+  // بنسبة أوزانها الأصلية النسبية. هذا يضمن أن 100% تبقى قابلة للتحقيق
+  // رياضياً مهما اختلفت تغطية المهارات بين المستويات (كان المستوى الأول
+  // سابقاً محدوداً بحد أقصى ~40% لخلوّه من أسئلة مفردات/نحو/كتابة، فتصبح
+  // عتبة الترقية JUMP_THRESHOLD غير قابلة للتحقيق إطلاقاً لأي مبتدئ).
+  const weightSum = presentSkills.reduce((sum, s) => sum + s.weight, 0);
+  const overall = weightSum > 0
+    ? presentSkills.reduce((sum, s) => sum + s.pct * (s.weight / weightSum), 0)
+    : 0;
 
   return { overall, bySkill };
 }
@@ -40,6 +51,24 @@ export function applyJumpLogic(score, currentLevel) {
   if (score >= JUMP_THRESHOLD && currentLevel < 3) return currentLevel + 1;
   if (score < REGRESSION_THRESHOLD && currentLevel > 1) return currentLevel - 1;
   return currentLevel;
+}
+
+// نقطة تحقق منتصف الطريق (القسم 13 من CLAUDE.md — الترقية/الإنزال المبكر).
+// مستخرجة من App.jsx كدالة نقية قابلة للاختبار بمعزل عن حالة React — نفس
+// المبدأ المُطبَّق أصلاً على calculateLevelScore/applyJumpLogic أعلاه.
+export const EARLY_JUMP_RATE = 0.9;
+export const EARLY_DROP_RATE = 0.2;
+
+/**
+ * يقرر بناءً على نسبة النجاح الخام في أول عشرة أسئلة من المستوى الحالي:
+ * 'jump' — أداء متفوق (>90%) ويمكن الانتقال لمستوى أعلى (currentLevel < 3).
+ * 'drop' — أداء ضعيف جداً (<20%) في المستويين 2 أو 3 تحديداً (لا مستوى أدنى من 1).
+ * null   — لا إجراء مبكر، تُكمَل بقية أسئلة المستوى بشكل طبيعي.
+ */
+export function evaluateCheckpoint(rate, currentLevel) {
+  if (rate > EARLY_JUMP_RATE && currentLevel < 3) return 'jump';
+  if (rate < EARLY_DROP_RATE && (currentLevel === 2 || currentLevel === 3)) return 'drop';
+  return null;
 }
 
 export function getGradeInfo(score) {

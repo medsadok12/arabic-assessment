@@ -20,7 +20,11 @@ export default function FillQuestion({ question, onAnswer }) {
     const isCorrect = question.answers.some(a => normalizeAr(a) === normalizeAr(value));
     setChecked(true);
     setCorrect(isCorrect);
-    setTimeout(() => onAnswer({ questionId: question.id, skill: question.skill, answer: value, isCorrect }), 1400);
+    setTimeout(() => onAnswer({
+      questionId: question.id, skill: question.skill, answer: value, isCorrect,
+      answerText:  value,
+      correctText: question.answers[0],
+    }), 1400);
   }
 
   return (

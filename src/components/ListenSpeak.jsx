@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTTSPlayer } from '../hooks/useTTSPlayer.js';
+import { useAudioRecorder } from '../hooks/useAudioRecorder.js';
+import { uploadRecording } from '../utils/uploadRecording.js';
 
 const RESPONSES = [
   { id: 'correct',  icon: '✅', label: 'أجاب بشكل صحيح' },
@@ -6,70 +9,56 @@ const RESPONSES = [
   { id: 'wrong',    icon: '❌', label: 'لم يجب'          },
 ];
 
-export default function ListenSpeak({ question, onAnswer }) {
+export default function ListenSpeak({ question, studentInfo, onAnswer }) {
   const items = question.items;
   const [idx, setIdx]           = useState(0);
   const [answers, setAnswers]   = useState([]);
-  const [playing, setPlaying]   = useState(false);
-  const [recording, setRecording] = useState(false);
-  const [audioURL, setAudioURL]   = useState(null);
-  const [micError, setMicError]   = useState(false);
+  const [uploading, setUploading] = useState(false);
+  // حارس إعادة الدخول: يمنع تسجيل استجابتين لنفس العنصر إن ضُغط زران بسرعة
+  // أثناء انتظار رفع التسجيل (await pending) — بلا هذا الحارس كانت الضغطة
+  // الثانية تُعيد قراءة answers/idx القديمين وتُسقِط الأولى صامتاً، وقد
+  // تستدعي onAnswer مرتين إن وقعت على العنصر الأخير.
+  const [submitting, setSubmitting] = useState(false);
 
-  const mediaRef    = useRef(null);
-  const chunksRef   = useRef([]);
+  const { playing, audioError, playOnce, stop, resetError } = useTTSPlayer();
+
+  const uploadPromiseRef = useRef(null);
+  const idxRef = useRef(idx);
+  useEffect(() => { idxRef.current = idx; });
+
+  // يبدأ رفع التسجيل في الخلفية فور توقّفه (من داخل معالج حدث MediaRecorder
+  // نفسه، لا من useEffect) — لا ينتظر ضغط الولي لزر التقييم، فيكون الرابط
+  // جاهزاً (أو شبه جاهز) لحظة استدعاء handleResponse.
+  const {
+    recording, audioUrl, micError, noSupport,
+    start: startRecording, stop: stopRecording, reset: resetRecording,
+  } = useAudioRecorder({
+    onStop: (blob) => {
+      setUploading(true);
+      uploadPromiseRef.current = uploadRecording(blob, {
+        studentName: studentInfo?.name,
+        questionId:  question.id,
+        itemId:      idxRef.current,
+      }).then((result) => {
+        setUploading(false);
+        return result;
+      });
+    },
+  });
 
   useEffect(() => {
-    setAudioURL(null);
-    setRecording(false);
-    setMicError(false);
-  }, [idx]);
+    resetRecording();
+    setUploading(false);
+    setSubmitting(false);
+    uploadPromiseRef.current = null;
+    resetError();
+  }, [idx, resetError, resetRecording]);
 
-  useEffect(() => () => {
-    window.speechSynthesis?.cancel();
-    stopRecording();
-  }, []);
+  useEffect(() => () => stopRecording(), [stopRecording]);
 
   function playQuestion() {
-    const synth = window.speechSynthesis;
-    if (!synth || playing) return;
-    synth.cancel();
-    setPlaying(true);
-    const u = new SpeechSynthesisUtterance(items[idx].text);
-    u.lang = 'ar-SA';
-    u.rate = 0.85;
-    u.pitch = 1;
-    u.onend  = () => setPlaying(false);
-    u.onerror = () => setPlaying(false);
-    const go = () => synth.speak(u);
-    if (synth.getVoices().length > 0) go(); else synth.onvoiceschanged = go;
-  }
-
-  async function startRecording() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      chunksRef.current = [];
-      const mr = new MediaRecorder(stream);
-      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        setAudioURL(URL.createObjectURL(blob));
-        stream.getTracks().forEach(t => t.stop());
-      };
-      mediaRef.current = mr;
-      mr.start();
-      setRecording(true);
-      setAudioURL(null);
-      setMicError(false);
-    } catch {
-      setMicError(true);
-    }
-  }
-
-  function stopRecording() {
-    if (mediaRef.current && mediaRef.current.state !== 'inactive') {
-      mediaRef.current.stop();
-    }
-    setRecording(false);
+    if (playing) return;
+    playOnce(items[idx].text);
   }
 
   function toggleRecording() {
@@ -77,21 +66,32 @@ export default function ListenSpeak({ question, onAnswer }) {
     else startRecording();
   }
 
-  function handleResponse(responseId) {
-    window.speechSynthesis?.cancel();
-    setPlaying(false);
+  async function handleResponse(responseId) {
+    if (submitting) return;
+    setSubmitting(true);
+    stop();
     stopRecording();
-    const updated = [...answers, { text: items[idx].text, response: responseId }];
-    setAnswers(updated);
+    const pending = uploadPromiseRef.current;
+    const uploadResult = pending ? await pending : null;
+    const newAnswer = {
+      text:     items[idx].text,
+      response: responseId,
+      audioUrl: uploadResult?.success ? uploadResult.url : null,
+    };
+    const updated = [...answers, newAnswer];
+    setAnswers((prev) => [...prev, newAnswer]);
     if (idx + 1 < items.length) {
-      setIdx(i => i + 1);
+      setIdx((i) => i + 1);
     } else {
-      const correctCount = updated.filter(a => a.response === 'correct').length;
+      const correctCount = updated.filter((a) => a.response === 'correct').length;
       onAnswer({
-        questionId: question.id,
-        skill:      question.skill ?? 'speaking',
-        answer:     updated,
-        isCorrect:  correctCount / items.length >= 0.5,
+        questionId:    question.id,
+        skill:         question.skill ?? 'speaking',
+        answer:        updated,
+        isCorrect:     correctCount / items.length >= 0.5,
+        answerText:    `أجاب صحيحاً عن ${correctCount} من ${items.length} أسئلة شفهية`,
+        correctText:   `${items.length} إجابات شفهية صحيحة`,
+        recordingUrls: updated.map((a) => a.audioUrl).filter(Boolean),
       });
     }
   }
@@ -134,6 +134,11 @@ export default function ListenSpeak({ question, onAnswer }) {
         }}>
           {items[idx].text}
         </p>
+        {audioError && (
+          <p style={{ color: '#c62828', fontSize: 12, fontFamily: 'Tajawal, sans-serif', marginTop: 6 }}>
+            ⚠️ تعذّر تشغيل الصوت، جرّب مرة أخرى
+          </p>
+        )}
       </div>
 
       {/* منطقة التسجيل الصوتي للطالب */}
@@ -149,8 +154,15 @@ export default function ListenSpeak({ question, onAnswer }) {
           🎙️ سجّل إجابتك
         </p>
 
+        {noSupport && (
+          <p style={{ color: '#c62828', fontSize: 12, fontFamily: 'Tajawal, sans-serif', marginBottom: 8 }}>
+            ⚠️ المتصفح لا يدعم التسجيل. استخدم Chrome أو Edge.
+          </p>
+        )}
+
         <button
           onClick={toggleRecording}
+          disabled={noSupport}
           style={{
             background: recording ? '#c62828' : '#43a047',
             color: '#fff',
@@ -159,7 +171,7 @@ export default function ListenSpeak({ question, onAnswer }) {
             width: 72,
             height: 72,
             fontSize: 28,
-            cursor: 'pointer',
+            cursor: noSupport ? 'not-allowed' : 'pointer',
             boxShadow: recording
               ? '0 0 0 6px rgba(198,40,40,.25)'
               : '0 4px 12px rgba(67,160,71,.35)',
@@ -181,9 +193,14 @@ export default function ListenSpeak({ question, onAnswer }) {
           </p>
         )}
 
-        {audioURL && !recording && (
+        {audioUrl && !recording && (
           <div style={{ marginTop: 10 }}>
-            <audio controls src={audioURL} style={{ width: '100%', maxWidth: 280, borderRadius: 8 }} />
+            <audio controls src={audioUrl} style={{ width: '100%', maxWidth: 280, borderRadius: 8 }} />
+            {uploading && (
+              <p style={{ marginTop: 6, fontSize: 11, color: '#888', fontFamily: 'Tajawal, sans-serif' }}>
+                ⏳ جارٍ حفظ التسجيل...
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -192,11 +209,13 @@ export default function ListenSpeak({ question, onAnswer }) {
       <div className="oa-parent-controls">
         <p className="oa-controls-label">— للولي فقط: اضغط الزر المناسب بعد إجابة الطفل —</p>
         <div className="oa-buttons">
-          {RESPONSES.map(r => (
+          {RESPONSES.map((r) => (
             <button
               key={r.id}
               className={`oa-btn oa-btn-${r.id}`}
               onClick={() => handleResponse(r.id)}
+              disabled={submitting}
+              style={submitting ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
             >
               <span className="oa-btn-icon">{r.icon}</span>
               <span className="oa-btn-label">{r.label}</span>

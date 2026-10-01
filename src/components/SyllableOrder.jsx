@@ -1,20 +1,12 @@
 import { useState } from 'react';
-
-function doShuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+import { shuffle } from '../data/questions.js';
 
 export default function SyllableOrder({ question, onAnswer }) {
   const syllables = question.syllables || [];
   const n         = syllables.length;
 
   /* خلط المقاطع مرة واحدة عند بدء التدريب */
-  const [initPool] = useState(() => doShuffle(syllables.map((_, i) => i)));
+  const [initPool] = useState(() => shuffle(syllables.map((_, i) => i)));
   const [slots,    setSlots]    = useState(() => Array(n).fill(null));
   const [pool,     setPool]     = useState([...initPool]);
   const [selected, setSelected] = useState(null); // فهرس المقطع المختار من البركة
@@ -53,6 +45,8 @@ export default function SyllableOrder({ question, onAnswer }) {
       skill:      question.skill ?? 'reading',
       answer:     arranged.join(''),
       isCorrect:  slots.every((sylIdx, slotIdx) => sylIdx === slotIdx),
+      answerText:  arranged.join(''),
+      correctText: question.word || syllables.join(''),
     });
   }
 

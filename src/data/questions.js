@@ -1,11 +1,25 @@
-// 60 سؤال للتقييم الشامل - أكاديمية عارم
+// بنك أسئلة التقييم الشامل - أكاديمية عارم (العدد الدقيق متغيّر بتطور
+// المحتوى؛ احسب getLevelQuestions(level).length بدل الاعتماد على رقم ثابت
+// هنا). وسّع بشكل كبير 2026-10-01 بدمج محتوى الاختبار الترويجي المجاني
+// (?quick=1) واختبار المهارات للمبتدئين (?skills=beginner) بعد حذفهما
+// كمسارين منفصلين — راجع معرّفات الأسئلة المنتهية بـ`_MRG` في كل مستوى.
 
 export const SKILLS = [
-  { id: 'listening',  name: 'الاستماع والفهم السمعي', weight: 0.20 },
-  { id: 'vocabulary', name: 'المفردات والمعاني',       weight: 0.20 },
-  { id: 'reading',    name: 'القراءة والفهم',          weight: 0.20 },
-  { id: 'grammar',    name: 'القواعد النحوية',         weight: 0.20 },
-  { id: 'writing',    name: 'الكتابة والتعبير',        weight: 0.20 },
+  { id: 'listening',  name: 'الاستماع والفهم السمعي', weight: 1 / 6 },
+  { id: 'vocabulary', name: 'المفردات والمعاني',       weight: 1 / 6 },
+  { id: 'reading',    name: 'القراءة والفهم',          weight: 1 / 6 },
+  { id: 'grammar',    name: 'القواعد النحوية',         weight: 1 / 6 },
+  { id: 'writing',    name: 'الكتابة والتعبير',        weight: 1 / 6 },
+  // كانت أسئلة النطق الشفهي (listen-speak, oral-assessment) مُصنَّفة في
+  // بياناتها الأصلية skill:'speaking'، لكن `getLevelQuestions` أدناه
+  // يفرض `skill` كل سؤال ليطابق اسم المصفوفة التي يقع تحتها (listening/
+  // reading/...) — فكانت هذه الأسئلة تُحتسب فعلياً ضمن الاستماع أو
+  // القراءة (بحسب مكانها)، لا تُستبعَد ولا تُحتسب كنطق مستقل، رغم أن
+  // بياناتها الأصلية توثّق نيّة واضحة بأنها "speaking". أُدرجت المهارة
+  // رسمياً هنا، **ونُقلت الأسئلة نفسها إلى مصفوفة `speaking` مستقلة أدناه**
+  // ليتطابق مكانها مع الوسم الذي كُتب لها أصلاً — الإدراج في القائمة وحده
+  // لا يكفي دون هذا النقل.
+  { id: 'speaking',   name: 'النطق والتعبير الشفهي',   weight: 1 / 6 },
 ];
 
 export const LEVELS = [
@@ -16,6 +30,11 @@ export const LEVELS = [
 
 export const JUMP_THRESHOLD      = 85;
 export const REGRESSION_THRESHOLD = 70;
+
+// نقطة تحقق منتصف الطريق (القسم 13 — الترقية/الإنزال المبكر في App.jsx):
+// مصدر الحقيقة الوحيد لرقم السؤال العاشر، يستورده أيضاً api/assessment-meta.js
+// لتغذية المساعد الذكي "فهيم" بمعلومة دقيقة بدل رقم ثابت قديم في نصّه.
+export const CHECKPOINT_QUESTION = 10;
 
 export const questionsBank = {
   level1: {
@@ -34,13 +53,71 @@ export const questionsBank = {
           { letter: 'خ', choices: ['ح', 'خ', 'ج'] },
         ],
       },
+      // ── مُدمَج من "اختبار المهارات للمبتدئين" (القسم ٥ — تمييز صوتي متقدم
+      // بالتشكيل/المقاطع) — دُمج 2026-10-01، حُذف المكوّن المنفصل بعدها.
       {
-        id:        'L1_EX2',
-        type:      'syllable-reading',
-        text:      'اقْرَأِ المَقَاطِعَ التَّالِيَة',
-        skill:     'reading',
-        syllables: ['غَ', 'عُ', 'قُ', 'طِ', 'ظُ', 'صَ'],
+        id:    'L1_MRG_LC5',
+        type:  'letter-listen-choose',
+        text:  'اسْتَمِعْ وَاخْتَرِ المَقْطَعَ الصَّحِيح',
+        skill: 'listening',
+        items: [
+          { letter: 'آ',  choices: ['كا', 'آ', 'ها'] },
+          { letter: 'قي', choices: ['كي', 'في', 'قي'] },
+          { letter: 'صو', choices: ['صو', 'ضو', 'سو'] },
+          { letter: 'تٌ',  choices: ['تُنْ', 'طٌ', 'تٌ'] },
+          { letter: 'بٍ',  choices: ['بِن', 'بٍ', 'بان'] },
+        ],
       },
+      // ── مُدمَج من بنك الـ15 سؤالاً لـ"اختبار تحديد المستوى" (كان q1/q2/q5
+      // بلا كود، حُذف القمع التسويقي كاملاً بعد هذا الدمج) ──
+      {
+        id:        'L1_MRG_Q1',
+        type:      'listening-comprehension',
+        audioText: 'بَ',
+        text:      'اسْتَمِعْ جَيِّداً، ثُمَّ اخْتَرِ الكَلِمَةَ الَّتِي تَبْدَأُ بِهَذَا الصَّوْت',
+        skill:     'listening',
+        options: [
+          { text: '🦆 بَطَّة',   correct: true  },
+          { text: '🍎 تُفَّاحَة', correct: false },
+          { text: '🐘 فِيل',     correct: false },
+        ],
+      },
+      {
+        id:        'L1_MRG_Q2',
+        type:      'listening-comprehension',
+        audioText: 'أَيْنَ القِطَّة؟',
+        text:      'اسْتَمِعْ لِلسُّؤَالِ، ثُمَّ اخْتَرِ الإِجَابَةَ الصَّحِيحَة',
+        skill:     'listening',
+        options: [
+          { text: '🐱 قِطَّة',   correct: true  },
+          { text: '🐶 كَلْب',    correct: false },
+          { text: '🐦 عُصْفُور', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_Q3',
+        skill: 'listening',
+        text:  'أَيُّ حَرْفٍ مِنْ هَذِهِ الحُرُوفِ هُوَ (م)؟',
+        options: [
+          { text: 'مـ', correct: true  },
+          { text: 'بـ', correct: false },
+          { text: 'سـ', correct: false },
+        ],
+      },
+      {
+        id:        'L1_MRG_Q5',
+        type:      'listening-comprehension',
+        audioText: 'ذَهَبَتْ مَرْيَمُ إِلَى الْحَدِيقَةِ وَلَعِبَتْ بِالْكُرَة',
+        text:      'أَيْنَ ذَهَبَتْ مَرْيَم؟',
+        skill:     'listening',
+        options: [
+          { text: '🌳 إِلَى الْحَدِيقَة', correct: true  },
+          { text: '🏫 إِلَى الْمَدْرَسَة', correct: false },
+          { text: '🏠 إِلَى الْبَيْت',     correct: false },
+        ],
+      },
+    ],
+    vocabulary: [
       {
         id:   'L1_EX3',
         type: 'image-matching',
@@ -56,21 +133,99 @@ export const questionsBank = {
         ],
       },
       {
-        id:    'L1_EX4',
-        type:  'listen-speak',
-        text:  'اسْتَمِعْ وَأَجِبْ شَفَهِيًّا',
-        skill: 'speaking',
-        items: [
-          { text: 'مَا اسْمُك؟' },
-          { text: 'كَمْ عُمْرُك؟' },
-          { text: 'أَيْنَ تَسْكُن؟' },
-          { text: 'فِي أَيِّ صَفٍّ تَدْرُس؟' },
-          { text: 'كَيْفَ حَالُك؟' },
-          { text: 'مَاذَا تُحِبّ؟' },
+        id:   'L1_VOC1',
+        type: 'image-matching',
+        text: 'اِرْبِطِ صُورَةَ الْحَيَوَانِ بِاسْمِهِ',
+        skill: 'vocabulary',
+        pairs: [
+          { id: 'qitta',  emoji: '🐱', name: 'قِطَّة'    },
+          { id: 'kalb',   emoji: '🐶', name: 'كَلْب'     },
+          { id: 'asad',   emoji: '🦁', name: 'أَسَد'     },
+          { id: 'arnab',  emoji: '🐰', name: 'أَرْنَب'   },
+          { id: 'samaka', emoji: '🐟', name: 'سَمَكَة'   },
+          { id: 'usfour', emoji: '🐦', name: 'عُصْفُور'  },
+        ],
+      },
+      // ── مُدمَج من تدريبَي المطابقة في الاختبار الترويجي المحذوف ──
+      {
+        id:   'L1_MRG_MATCH1',
+        type: 'image-matching',
+        text: 'اِرْبِطِ الصُّورَةَ بِالْكَلِمَةِ الْمُنَاسِبَة',
+        skill: 'vocabulary',
+        pairs: [
+          { id: 'halib',    emoji: '🥛', name: 'حَلِيب'   },
+          { id: 'maa',      emoji: '💧', name: 'مَاء'     },
+          { id: 'bayt',     emoji: '🏠', name: 'بَيْت'    },
+          { id: 'madrasa',  emoji: '🏫', name: 'مَدْرَسَة' },
+          { id: 'qalam2',   emoji: '✏️', name: 'قَلَم'    },
+        ],
+      },
+      {
+        id:   'L1_MRG_MATCH2',
+        type: 'image-matching',
+        text: 'اِرْبِطِ الصُّورَةَ بِالْكَلِمَةِ الْمُنَاسِبَة',
+        skill: 'vocabulary',
+        pairs: [
+          { id: 'korsi2', emoji: '🪑', name: 'كُرْسِي' },
+          { id: 'kalb2',  emoji: '🐶', name: 'كَلْب'   },
+          { id: 'qitta2', emoji: '🐱', name: 'قِطّ'    },
+          { id: 'bab',    emoji: '🚪', name: 'بَاب'    },
+          { id: 'walad',  emoji: '👦', name: 'وَلَد'   },
+          { id: 'bint',   emoji: '👧', name: 'بِنْت'   },
+        ],
+      },
+      // ── مُدمَج من بنك الـ15 سؤالاً (q4 — فهم بصري) ──
+      {
+        id:    'L1_MRG_Q4',
+        skill: 'vocabulary',
+        text:  '🧒💧 مَاذَا يَفْعَلُ الطِّفْلُ فِي الصُّورَة؟',
+        options: [
+          { text: '💧 يَشْرَب', correct: true  },
+          { text: '💤 يَنَام',  correct: false },
+          { text: '🏃 يَرْكُض', correct: false },
+        ],
+      },
+      // ── مُدمَج من تدريب "إكمال الكلمة الناقصة" في الاختبار الترويجي المحذوف
+      // — الحرف الصحيح مُشتَقّ من الكلمة الكاملة نفسها، لا مُخزَّناً مكرراً ──
+      {
+        id:    'L1_MRG_WC1',
+        skill: 'vocabulary',
+        text:  '☀️ اخْتَرِ الحَرْفَ النَّاقِصَ لِتَكْتَمِلَ الكَلِمَة: شـ...ـس',
+        options: [
+          { text: 'م', correct: true  },
+          { text: 'ر', correct: false },
+          { text: 'ل', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WC2',
+        skill: 'vocabulary',
+        text:  '🪑 اخْتَرِ الحَرْفَ النَّاقِصَ لِتَكْتَمِلَ الكَلِمَة: طا...لة',
+        options: [
+          { text: 'و', correct: true  },
+          { text: 'ب', correct: false },
+          { text: 'س', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WC3',
+        skill: 'vocabulary',
+        text:  '🚗 اخْتَرِ الحَرْفَ النَّاقِصَ لِتَكْتَمِلَ الكَلِمَة: سيا...ة',
+        options: [
+          { text: 'ر', correct: true  },
+          { text: 'ن', correct: false },
+          { text: 'ت', correct: false },
         ],
       },
     ],
     reading: [
+      {
+        id:        'L1_EX2',
+        type:      'syllable-reading',
+        text:      'اقْرَأِ المَقَاطِعَ التَّالِيَة',
+        skill:     'reading',
+        syllables: ['غَ', 'عُ', 'قُ', 'طِ', 'ظُ', 'صَ'],
+      },
       {
         id:   'L1_LR',
         type: 'letter-recognition',
@@ -124,11 +279,291 @@ export const questionsBank = {
         text:  'رَكِّبِ الكَلِمَةَ',
         skill: 'reading',
       },
+      // ── مُدمَج من "اختبار المهارات للمبتدئين" (القسم ٨ — فهم مقروء، فقرة
+      // واحدة + 5 أسئلة؛ صُحِّح خطأ مطبعي واحد: "مَنْ أيْنَ"←"مِنْ أيْنَ") ──
+      {
+        id:        'L1_MRG_RC1',
+        type:      'listening-comprehension',
+        audioText: 'سَامِي وَلَدٌ لَطِيفٌ يَعِيشُ فِي قَطَرَ، هُوَ مِصْرِيٌّ، عُمْرُهُ سِتُّ سَنَوَاتٍ. هُوَ يَدْرُسُ فِي الصَّفِّ الْأَوَّلِ. يُحِبُّ سَامِي كُرَةَ الْقَدَمِ، وَيَلْعَبُهَا فِي الْحَدِيقَةِ كُلَّ يَوْمٍ مَعَ أَصْدِقَائِهِ.',
+        text:      'مِنْ أَيْنَ سَامِي؟',
+        skill:     'reading',
+        options: [
+          { text: 'مِصْر',       correct: true  },
+          { text: 'قَطَر',       correct: false },
+          { text: 'السُّعُودِيَّة', correct: false },
+        ],
+      },
+      {
+        id:        'L1_MRG_RC2',
+        type:      'listening-comprehension',
+        audioText: 'سَامِي وَلَدٌ لَطِيفٌ يَعِيشُ فِي قَطَرَ، هُوَ مِصْرِيٌّ، عُمْرُهُ سِتُّ سَنَوَاتٍ. هُوَ يَدْرُسُ فِي الصَّفِّ الْأَوَّلِ. يُحِبُّ سَامِي كُرَةَ الْقَدَمِ، وَيَلْعَبُهَا فِي الْحَدِيقَةِ كُلَّ يَوْمٍ مَعَ أَصْدِقَائِهِ.',
+        text:      'أَيْنَ يَعِيشُ سَامِي؟',
+        skill:     'reading',
+        options: [
+          { text: 'قَطَر',    correct: true  },
+          { text: 'مِصْر',    correct: false },
+          { text: 'الإِمَارَات', correct: false },
+        ],
+      },
+      {
+        id:        'L1_MRG_RC3',
+        type:      'listening-comprehension',
+        audioText: 'سَامِي وَلَدٌ لَطِيفٌ يَعِيشُ فِي قَطَرَ، هُوَ مِصْرِيٌّ، عُمْرُهُ سِتُّ سَنَوَاتٍ. هُوَ يَدْرُسُ فِي الصَّفِّ الْأَوَّلِ. يُحِبُّ سَامِي كُرَةَ الْقَدَمِ، وَيَلْعَبُهَا فِي الْحَدِيقَةِ كُلَّ يَوْمٍ مَعَ أَصْدِقَائِهِ.',
+        text:      'كَمْ عُمْرُ سَامِي؟',
+        skill:     'reading',
+        options: [
+          { text: 'سِتُّ سَنَوَات',  correct: true  },
+          { text: 'خَمْسُ سَنَوَات', correct: false },
+          { text: 'سَبْعُ سَنَوَات', correct: false },
+        ],
+      },
+      {
+        id:        'L1_MRG_RC4',
+        type:      'listening-comprehension',
+        audioText: 'سَامِي وَلَدٌ لَطِيفٌ يَعِيشُ فِي قَطَرَ، هُوَ مِصْرِيٌّ، عُمْرُهُ سِتُّ سَنَوَاتٍ. هُوَ يَدْرُسُ فِي الصَّفِّ الْأَوَّلِ. يُحِبُّ سَامِي كُرَةَ الْقَدَمِ، وَيَلْعَبُهَا فِي الْحَدِيقَةِ كُلَّ يَوْمٍ مَعَ أَصْدِقَائِهِ.',
+        text:      'فِي أَيِّ صَفٍّ يَدْرُسُ سَامِي؟',
+        skill:     'reading',
+        options: [
+          { text: 'الصَّفُّ الْأَوَّل', correct: true  },
+          { text: 'الصَّفُّ الثَّانِي', correct: false },
+          { text: 'الصَّفُّ الثَّالِث', correct: false },
+        ],
+      },
+      {
+        id:        'L1_MRG_RC5',
+        type:      'listening-comprehension',
+        audioText: 'سَامِي وَلَدٌ لَطِيفٌ يَعِيشُ فِي قَطَرَ، هُوَ مِصْرِيٌّ، عُمْرُهُ سِتُّ سَنَوَاتٍ. هُوَ يَدْرُسُ فِي الصَّفِّ الْأَوَّلِ. يُحِبُّ سَامِي كُرَةَ الْقَدَمِ، وَيَلْعَبُهَا فِي الْحَدِيقَةِ كُلَّ يَوْمٍ مَعَ أَصْدِقَائِهِ.',
+        text:      'مَاذَا يُحِبُّ سَامِي؟',
+        skill:     'reading',
+        options: [
+          { text: 'كُرَةُ الْقَدَم', correct: true  },
+          { text: 'السِّبَاحَة',      correct: false },
+          { text: 'الرَّسْم',        correct: false },
+        ],
+      },
+    ],
+    grammar: [
+      {
+        id:    'L1_GR1',
+        skill: 'grammar',
+        text:  '👦 هَذَا وَلَدٌ. مَا الْكَلِمَةُ الصَّحِيحَة؟ ___ وَلَدٌ.',
+        options: [
+          { text: 'هَذَا',  correct: true  },
+          { text: 'هَذِهِ', correct: false },
+        ],
+      },
+      {
+        id:    'L1_GR2',
+        skill: 'grammar',
+        text:  '👧 هَذِهِ بِنْتٌ. مَا الْكَلِمَةُ الصَّحِيحَة؟ ___ بِنْتٌ.',
+        options: [
+          { text: 'هَذِهِ', correct: true  },
+          { text: 'هَذَا',  correct: false },
+        ],
+      },
+      {
+        id:    'L1_GR3',
+        skill: 'grammar',
+        text:  '👩 هِيَ مُعَلِّمَة. مَاذَا نَقُولُ عَنِ الْوَلَدِ؟ ___ طَالِبٌ.',
+        options: [
+          { text: 'هُوَ', correct: true  },
+          { text: 'هِيَ', correct: false },
+        ],
+      },
+      // ── مُدمَج من "اختبار المهارات للمبتدئين" (القسم ٧ — إكمال الجملة
+      // بالضمير المناسب؛ المُشتِّتات من تصميمنا، النص الأصلي لم يُعطِها) ──
+      {
+        id:    'L1_MRG_GR1',
+        skill: 'grammar',
+        text:  '........ يَسْبَحانِ',
+        options: [
+          { text: 'هما',   correct: true  },
+          { text: 'هم',    correct: false },
+          { text: 'أنتما', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_GR2',
+        skill: 'grammar',
+        text:  '........ أُراجِعُ دُرُوسِي',
+        options: [
+          { text: 'أنا', correct: true  },
+          { text: 'أنتَ', correct: false },
+          { text: 'هو',   correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_GR3',
+        skill: 'grammar',
+        text:  '........ تُعِدُّ الطَّعَامَ',
+        options: [
+          { text: 'هي',   correct: true  },
+          { text: 'هو',   correct: false },
+          { text: 'أنتِ', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_GR4',
+        skill: 'grammar',
+        text:  '....... يَلْعَبُونَ فِي الْحَدِيقَةِ',
+        options: [
+          { text: 'هم',   correct: true  },
+          { text: 'هما',  correct: false },
+          { text: 'نحن',  correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_GR5',
+        skill: 'grammar',
+        text:  '....... ذَهَبْنَ إِلَى الْمَتْجَر',
+        options: [
+          { text: 'هنّ',   correct: true  },
+          { text: 'هم',    correct: false },
+          { text: 'أنتنّ', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_GR6',
+        skill: 'grammar',
+        text:  '....... نَلْعَبُ كُرَةَ الْقَدَمِ',
+        options: [
+          { text: 'نحن', correct: true  },
+          { text: 'أنا',  correct: false },
+          { text: 'أنتم', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_GR7',
+        skill: 'grammar',
+        text:  '....... تُسَاعِدُ أُمَّهَا',
+        options: [
+          { text: 'هي',   correct: true  },
+          { text: 'هو',   correct: false },
+          { text: 'أنتِ', correct: false },
+        ],
+      },
+    ],
+    writing: [
+      {
+        id:    'L1_WR1',
+        type:  'photo-writing',
+        skill: 'writing',
+        text:  '✍️ انْظُرْ إِلَى الصُّورَةِ، ثُمَّ اكْتُبِ اسْمَهَا عَلَى وَرَقَةٍ وَصَوِّرْهَا: 🐱',
+      },
+      {
+        id:    'L1_WR2',
+        type:  'photo-writing',
+        skill: 'writing',
+        text:  '✍️ انْظُرْ إِلَى الصُّورَةِ، ثُمَّ اكْتُبِ اسْمَهَا عَلَى وَرَقَةٍ وَصَوِّرْهَا: ☀️',
+      },
+      // ── مُدمَج من "اختبار المهارات للمبتدئين" (القسم ٦ — إملاء، اختيار
+      // الرسم الصحيح للكلمة). العنصر الثالث (طاولة) استُبعِد عمداً — لا رسمٌ
+      // من الخيارات الأصلية الثلاثة يطابق الكلمة الصحيحة فعلياً، فلا يصلح
+      // سؤالاً مُصحَّحاً آلياً. راجع ملاحظة الأستاذ محمد الأصلية في جلسة البناء. ──
+      {
+        id:    'L1_MRG_WR1',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'هَذا',  correct: true  },
+          { text: 'هاذا',  correct: false },
+          { text: 'هاذَ',  correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WR2',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'ذَلِكَ',  correct: true  },
+          { text: 'ذالكَ',   correct: false },
+          { text: 'ذالِكا',  correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WR3',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'كِتابٌ',  correct: true  },
+          { text: 'كَتَبٌ',  correct: false },
+          { text: 'كِتابُنْ', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WR4',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'بِئْرٌ', correct: true  },
+          { text: 'بِؤْرٌ', correct: false },
+          { text: 'بِأرٌ',  correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WR5',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'شَيْءٌ', correct: true  },
+          { text: 'شَيْئٌ', correct: false },
+          { text: 'شَيْؤٌ', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WR6',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'رَأيْتُ',  correct: true  },
+          { text: 'رَءَيْتُ', correct: false },
+          { text: 'رَئَيْتُ', correct: false },
+        ],
+      },
+      {
+        id:    'L1_MRG_WR7',
+        skill: 'writing',
+        text:  'اخْتَرِ الرَّسْمَ الصَّحِيحَ لِلْكَلِمَة',
+        options: [
+          { text: 'سَماءً',   correct: true  },
+          { text: 'سَماءًا',  correct: false },
+          { text: 'سَماأً',   correct: false },
+        ],
+      },
+    ],
+    speaking: [
+      {
+        id:    'L1_EX4',
+        type:  'listen-speak',
+        text:  'اسْتَمِعْ وَأَجِبْ شَفَهِيًّا',
+        skill: 'speaking',
+        items: [
+          { text: 'مَا اسْمُك؟' },
+          { text: 'كَمْ عُمْرُك؟' },
+          { text: 'أَيْنَ تَسْكُن؟' },
+          { text: 'فِي أَيِّ صَفٍّ تَدْرُس؟' },
+          { text: 'كَيْفَ حَالُك؟' },
+          { text: 'مَاذَا تُحِبّ؟' },
+        ],
+      },
       {
         id:    'L1_OA',
         type:  'oral-assessment',
         text:  'أَسْمِعْنِي صَوْتَكَ',
         skill: 'speaking',
+      },
+      // ── مُدمَج من "تقييم القراءة الجهرية" في الاختبار الترويجي المحذوف ──
+      {
+        id:    'L1_MRG_VOICE',
+        type:  'listen-speak',
+        text:  'اقْرَأْ هَذِهِ الجُمَلَ بِصَوْتِكَ',
+        skill: 'speaking',
+        items: [
+          { text: 'هَذَا أَبِي' },
+          { text: 'هَذِهِ أُمِّي' },
+          { text: 'هَذَا أَخِي' },
+          { text: 'أَنَا أُحِبُّ مَدْرَسَتِي' },
+        ],
       },
     ],
   },
@@ -136,18 +571,22 @@ export const questionsBank = {
   level2: {
     listening: [
       {
-        id: 'L2_1',
-        text: 'استمعت لهذا النص: "الطالب الجيد يدرس بانتظام ويحضّر دروسه". ما الفكرة الرئيسية؟',
+        id:        'L2_1',
+        type:      'listening-comprehension',
+        audioText: 'سارة تلميذة مجتهدة، تراجع دروسها كل يوم بعد المدرسة.',
+        text:      'ما الفكرة الرئيسية؟',
         options: [
-          { text: 'أهمية الدراسة المنتظمة', correct: true  },
-          { text: 'الطلاب كسالى دائماً',    correct: false },
+          { text: 'أهمية المراجعة اليومية', correct: true  },
           { text: 'المدرسة صعبة جداً',       correct: false },
-          { text: 'الامتحانات مهمة',         correct: false },
+          { text: 'سارة تكره الدراسة',       correct: false },
+          { text: 'الامتحانات كثيرة',        correct: false },
         ],
       },
       {
-        id: 'L2_2',
-        text: 'استمعت: "محمد يعمل مهندساً في شركة كبيرة". ما مهنة محمد؟',
+        id:        'L2_2',
+        type:      'listening-comprehension',
+        audioText: 'والد سارة يبني المباني الكبيرة في المدينة.',
+        text:      'ما مهنته؟',
         options: [
           { text: 'مهندس',  correct: true  },
           { text: 'طبيب',   correct: false },
@@ -156,23 +595,27 @@ export const questionsBank = {
         ],
       },
       {
-        id: 'L2_3',
-        text: 'استمعت: "السماء مليئة بغيوم داكنة والرياح قوية". ما توقعك للطقس؟',
+        id:        'L2_3',
+        type:      'listening-comprehension',
+        audioText: 'قال يوسف: انظري يا سارة! السماء مليئة بغيوم داكنة.',
+        text:      'ما توقعك للطقس؟',
         options: [
-          { text: 'سيمطر قريباً',       correct: true  },
-          { text: 'الطقس جميل ومشمس',   correct: false },
-          { text: 'ستشرق الشمس بقوة',   correct: false },
-          { text: 'الطقس حار جداً',      correct: false },
+          { text: 'سيمطر قريباً',   correct: true  },
+          { text: 'الطقس مشمس',     correct: false },
+          { text: 'سيثلج غداً',      correct: false },
+          { text: 'الجو حار جداً',   correct: false },
         ],
       },
       {
-        id: 'L2_4',
-        text: 'استمعت: "يقضي أحمد وقته في الفصل يشرح للطلاب ويصحح الواجبات". ما مهنة أحمد؟',
+        id:        'L2_4',
+        type:      'listening-comprehension',
+        audioText: 'معلمة سارة تشرح الدرس بابتسامة وتساعد كل طالب.',
+        text:      'ما مهنتها؟',
         options: [
-          { text: 'معلم',    correct: true  },
-          { text: 'طبيب',    correct: false },
-          { text: 'مهندس',   correct: false },
-          { text: 'تاجر',    correct: false },
+          { text: 'معلمة',   correct: true  },
+          { text: 'طبيبة',   correct: false },
+          { text: 'مهندسة',  correct: false },
+          { text: 'تاجرة',   correct: false },
         ],
       },
     ],
@@ -189,126 +632,176 @@ export const questionsBank = {
       },
       {
         id: 'V2_1',
-        text: 'ما معنى كلمة "عميق" في جملة "البحر عميق جداً"؟',
+        text: 'قالت سارة: "البحر عميق جداً!" ماذا تقصد؟',
         options: [
-          { text: 'بعيد القاع', correct: true  },
-          { text: 'ذو ألوان كثيرة', correct: false },
-          { text: 'مليء بالأسماك', correct: false },
-          { text: 'واسع الأطراف',  correct: false },
+          { text: 'بعيد القاع',      correct: true  },
+          { text: 'كثير الألوان',    correct: false },
+          { text: 'مليء بالأسماك',  correct: false },
+          { text: 'واسع جداً',       correct: false },
         ],
       },
       {
         id: 'V2_2',
-        text: 'ما مرادف كلمة "رائع"؟',
+        text: 'قال يوسف بعد الرحلة: "كانت رائعة!" ماذا يقصد؟',
         options: [
-          { text: 'جميل ومبهر', correct: true  },
-          { text: 'كبير الحجم', correct: false },
-          { text: 'سريع الحركة', correct: false },
-          { text: 'صغير جداً',   correct: false },
+          { text: 'جميلة ومبهجة', correct: true  },
+          { text: 'طويلة ومملة',  correct: false },
+          { text: 'سريعة جداً',    correct: false },
+          { text: 'قصيرة جداً',    correct: false },
         ],
       },
       {
         id: 'V2_3',
-        text: 'أكمل الجملة: "النبات _____ ببطء ويحتاج إلى ماء وضوء"',
+        text: 'أكمل الجملة: "الزهرة في حديقتنا _____ كل يوم لأننا نسقيها"',
         options: [
-          { text: 'ينمو',   correct: true  },
-          { text: 'يموت',   correct: false },
-          { text: 'يسبح',   correct: false },
-          { text: 'يطير',   correct: false },
+          { text: 'تنمو',   correct: true  },
+          { text: 'تذبل',   correct: false },
+          { text: 'تسبح',   correct: false },
+          { text: 'تطير',   correct: false },
         ],
       },
       {
         id: 'V2_4',
-        text: 'أيّ من الكلمات التالية لا تنتمي للمجموعة: (تفاح، برتقال، سيارة، موز)؟',
+        text: 'في سلة فاكهة سارة: تفاح، برتقال، موز، ______. أيّ كلمة لا تنتمي؟',
         options: [
-          { text: 'سيارة',    correct: true  },
+          { text: 'دراجة',    correct: true  },
           { text: 'تفاح',     correct: false },
           { text: 'برتقال',   correct: false },
           { text: 'موز',      correct: false },
+        ],
+      },
+      // ── مُدمَج من بنك الـ15 سؤالاً (q9 — رصيد لغوي) ──
+      {
+        id: 'L2_MRG_Q9',
+        text: 'ما الكلمة التي تعني مكاناً نزرع فيه الأشجار والزهور؟',
+        options: [
+          { text: 'حديقة', correct: true  },
+          { text: 'مطبخ',  correct: false },
+          { text: 'فصل',   correct: false },
         ],
       },
     ],
     reading: [
       {
         id: 'R2_1',
-        text: 'اقرأ: "التعليم أساس التقدم وركيزة بناء الأمم". ما الفكرة الرئيسية؟',
+        text: 'اقرأ: يذهب يوسف وسارة إلى المدرسة كل صباح مشياً مع صديقهما خالد. ما الفكرة الرئيسية؟',
         options: [
-          { text: 'أهمية التعليم في تقدم المجتمعات', correct: true  },
-          { text: 'المدارس تكلف أموالاً كثيرة',       correct: false },
-          { text: 'الجامعات صعبة وشاقة',               correct: false },
-          { text: 'التعليم متاح للجميع',               correct: false },
+          { text: 'يذهبون إلى المدرسة معاً كل يوم', correct: true  },
+          { text: 'خالد لا يحب المدرسة',             correct: false },
+          { text: 'المدرسة بعيدة جداً',               correct: false },
+          { text: 'يذهبون بالسيارة',                  correct: false },
         ],
       },
       {
         id: 'R2_2',
-        text: 'اقرأ: "فاطمة تقضي ساعتين يومياً في القراءة وتحب الروايات". ما هوايتها المفضلة؟',
+        text: 'اقرأ: تحب سارة القراءة كثيراً، وتقرأ قصة جديدة كل مساء قبل النوم. ما هوايتها؟',
         options: [
-          { text: 'القراءة',       correct: true  },
-          { text: 'الرياضيات',     correct: false },
-          { text: 'اللغة العربية', correct: false },
-          { text: 'الرسم',         correct: false },
+          { text: 'القراءة',   correct: true  },
+          { text: 'الرياضة',   correct: false },
+          { text: 'الرسم',     correct: false },
+          { text: 'الطبخ',     correct: false },
         ],
       },
       {
         id: 'R2_3',
-        text: 'اقرأ: "تراكمت الغيوم الداكنة وهبّت رياح قوية". ما الذي يمكن استنتاجه؟',
+        text: 'اقرأ: في نزهة العائلة، ظهرت فجأة غيوم داكنة وهبّت رياح قوية. ما الذي يمكن استنتاجه؟',
         options: [
           { text: 'من المرجح أن يمطر',   correct: true  },
           { text: 'الطقس مشمس وجميل',    correct: false },
-          { text: 'ستشرق الشمس بشدة',    correct: false },
-          { text: 'الطقس حار ورطب',       correct: false },
+          { text: 'الجو حار جداً',        correct: false },
+          { text: 'ستخرج الشمس بقوة',    correct: false },
         ],
       },
       {
         id: 'R2_4',
-        text: 'اقرأ: "يعمل العمال بسرعة كبيرة لنقل الخضار والفواكه لأن الحرارة تتلفها". لماذا يعملون بسرعة؟',
+        text: 'اقرأ: قبل النزهة، جهّزت الأم سلة الطعام بسرعة لأن الجو كان يسخن والطعام قد يفسد. لماذا أسرعت الأم؟',
         options: [
-          { text: 'لأن الحرارة تتلف البضاعة', correct: true  },
-          { text: 'لأنهم يريدون راحة مبكرة',  correct: false },
-          { text: 'لأنهم كسالى في الغالب',    correct: false },
-          { text: 'لأن المدير يراقبهم',        correct: false },
+          { text: 'لأن الحرارة قد تُفسد الطعام', correct: true  },
+          { text: 'لأنها تريد الراحة',            correct: false },
+          { text: 'لأنها كانت متعبة',             correct: false },
+          { text: 'لأن الوقت متأخر',              correct: false },
+        ],
+      },
+      {
+        id:   'D2_1',
+        type: 'dialogue-order',
+        text: 'رتّب جمل هذا الحوار بين سارة ويوسف بالترتيب الصحيح',
+        lines: [
+          { id: 'a', speaker: 'سارة', text: 'مرحباً يا يوسف، كيف حالك؟' },
+          { id: 'b', speaker: 'يوسف', text: 'أنا بخير، شكراً! وأنتِ؟' },
+          { id: 'c', speaker: 'سارة', text: 'أنا بخير أيضاً. هل أنهيت واجبك؟' },
+          { id: 'd', speaker: 'يوسف', text: 'نعم، أنهيته قبل قليل.' },
+        ],
+      },
+      // ── مُدمَج من بنك الـ15 سؤالاً (q7 — قراءة وربط صورة بجملة) ──
+      {
+        id: 'L2_MRG_Q7',
+        text: '👧🎨🌸 اختر الجملة التي تعبّر عن الصورة',
+        options: [
+          { text: 'ترسمُ البنتُ زهرةً',   correct: true  },
+          { text: 'تأكلُ البنتُ تفاحةً',  correct: false },
+          { text: 'تلعبُ البنتُ بالكرةِ', correct: false },
         ],
       },
     ],
     grammar: [
       {
         id: 'G2_1',
-        text: 'اختر الجملة النحوية الصحيحة:',
+        text: 'اختر الجملة الصحيحة عن رحلة سارة:',
         options: [
-          { text: 'يذهب الطلاب إلى المدرسة كل يوم',    correct: true  },
-          { text: 'يذهبوا الطلاب إلى المدرسة',          correct: false },
-          { text: 'الطلاب يذهبوا كل يوم للمدرسة',       correct: false },
-          { text: 'ذهب الطلاب غداً للمدرسة',            correct: false },
+          { text: 'ذهبت سارة وأخوها إلى الحديقة يوم الجمعة', correct: true  },
+          { text: 'ذهبت سارة وأخوها يذهبوا الحديقة',          correct: false },
+          { text: 'سارة وأخوها الحديقة ذهبوا يوم',            correct: false },
+          { text: 'يوم الجمعة ذهبت الحديقة سارة',             correct: false },
         ],
       },
       {
         id: 'G2_2',
-        text: 'أكمل الجملة: "هم _____ الدرس جيداً"',
+        text: 'أكمل الجملة: "سارة ويوسف _____ إلى الحديقة كل جمعة"',
         options: [
-          { text: 'يفهمون',  correct: true  },
-          { text: 'يفهم',    correct: false },
-          { text: 'يفهمان',  correct: false },
-          { text: 'تفهم',    correct: false },
+          { text: 'يذهبان',  correct: true  },
+          { text: 'يذهبون',  correct: false },
+          { text: 'تذهب',    correct: false },
+          { text: 'أذهب',    correct: false },
         ],
       },
       {
         id: 'G2_3',
         text: 'اختر الجملة المركبة الصحيحة:',
         options: [
-          { text: 'عندما ذهبتُ إلى السوق، وجدتُها مغلقة',   correct: true  },
-          { text: 'ذهبتُ للسوق وجدتُ مغلق',                  correct: false },
-          { text: 'أنا ذهبتُ وجدتُ السوق مغلقة',             correct: false },
-          { text: 'السوق ذهبتُ وجدتُها مغلقة',               correct: false },
+          { text: 'عندما وصلت سارة إلى المدرسة، رأت صديقتها عند الباب', correct: true  },
+          { text: 'وصلت سارة وجدت صديقتها الباب',                        correct: false },
+          { text: 'أنا سارة وصلت وجدت صديقتها',                          correct: false },
+          { text: 'صديقتها سارة وصلت وجدتها',                            correct: false },
         ],
       },
       {
         id: 'G2_4',
-        text: 'حدّد الخطأ النحوي في: "الطلابُ الذين درسوا بجد نجحوا في الامتحان"',
+        text: 'هل هذه الجملة صحيحة نحوياً؟ "الأصدقاء الذين لعبوا في الحديقة عادوا مبتسمين"',
         options: [
-          { text: 'الجملة صحيحة نحوياً',         correct: true  },
-          { text: 'خطأ في ترتيب الجملة',          correct: false },
-          { text: 'خطأ في تصريف الفعل',           correct: false },
-          { text: 'خطأ في استخدام الاسم الموصول', correct: false },
+          { text: 'نعم، صحيحة نحوياً بالكامل',    correct: true  },
+          { text: 'خطأ في ترتيب الجملة',           correct: false },
+          { text: 'خطأ في تصريف الفعل',            correct: false },
+          { text: 'خطأ في استخدام "الذين"',        correct: false },
+        ],
+      },
+      // ── مُدمَج من بنك الـ15 سؤالاً (q8/q10 — تراكيب أساسية وبناء الجملة) ──
+      {
+        id: 'L2_MRG_Q8',
+        text: 'أكمل الجملة: أحمدُ .......... الحليبَ كلَّ صباحٍ.',
+        options: [
+          { text: 'يشربُ',   correct: true  },
+          { text: 'تشربُ',   correct: false },
+          { text: 'يشربون',  correct: false },
+        ],
+      },
+      {
+        id: 'L2_MRG_Q10',
+        text: 'رتّب الكلمات التالية لتكوين جملة صحيحة: (في / يلعبُ / الأطفالُ / الحديقةِ)',
+        options: [
+          { text: 'يلعبُ الأطفالُ في الحديقةِ', correct: true  },
+          { text: 'الأطفالُ يلعبُ في الحديقةِ', correct: false },
+          { text: 'الحديقةِ يلعبُ الأطفالُ',   correct: false },
         ],
       },
     ],
@@ -325,32 +818,32 @@ export const questionsBank = {
       },
       {
         id: 'W2_2',
-        text: 'اختر الحوار المناسب عن الطقس بين شخصين:',
+        text: 'اختر الحوار المناسب عن الطقس بين سارة ويوسف:',
         options: [
-          { text: '- كيف الطقس اليوم؟ - جميل ومشمس، مناسب للنزهة', correct: true  },
-          { text: '- ما اسمك؟ - اسمي محمد وأنا من القاهرة',          correct: false },
-          { text: '- أين المدرسة؟ - هي في وسط المدينة',               correct: false },
-          { text: '- متى يبدأ الدرس؟ - يبدأ في الثامنة',              correct: false },
+          { text: '- كيف الطقس اليوم يا يوسف؟ - جميل ومشمس، مناسب للنزهة!', correct: true  },
+          { text: '- ما اسمك؟ - اسمي محمد وأنا من القاهرة',                  correct: false },
+          { text: '- أين المدرسة؟ - هي في وسط المدينة',                       correct: false },
+          { text: '- متى يبدأ الدرس؟ - يبدأ في الثامنة',                      correct: false },
         ],
       },
       {
         id: 'W2_3',
-        text: 'اختر الجملة الأنسب لشرح أهمية القراءة:',
+        text: 'اختر الجملة الأنسب لشرح لماذا تحب سارة القراءة:',
         options: [
-          { text: 'القراءة تزيد المعرفة وتوسّع الأفق وتنمّي الخيال',  correct: true  },
-          { text: 'القراءة تسبب الملل وتضيع الوقت',                     correct: false },
-          { text: 'القراءة ليست مهمة في العصر الرقمي',                  correct: false },
-          { text: 'القراءة مفيدة للصغار فقط',                           correct: false },
+          { text: 'القراءة ممتعة وتعلّمني أشياء جديدة كل يوم', correct: true  },
+          { text: 'القراءة تسبب الملل وتضيع الوقت',              correct: false },
+          { text: 'القراءة ليست مهمة أبداً',                       correct: false },
+          { text: 'القراءة مفيدة للكبار فقط',                      correct: false },
         ],
       },
       {
         id: 'W2_4',
-        text: 'اكتب عن يوم مميز. اختر التعبير الأفضل:',
+        text: 'اكتب عن يوم مميز مع عائلتك. اختر التعبير الأفضل:',
         options: [
-          { text: 'كان يوماً جميلاً أمضيته مع عائلتي في رحلة ممتعة إلى البحر', correct: true  },
-          { text: 'كان يوماً عادياً لم يحدث فيه شيء',                              correct: false },
-          { text: 'لا أتذكر أي شيء عن ذلك اليوم',                                  correct: false },
-          { text: 'كان يوماً سيئاً لا أريد تذكره',                                  correct: false },
+          { text: 'كان يوماً جميلاً أمضيته مع عائلتي في رحلة ممتعة إلى الشاطئ', correct: true  },
+          { text: 'كان يوماً عادياً لم يحدث فيه شيء',                                correct: false },
+          { text: 'لا أتذكر أي شيء عن ذلك اليوم',                                    correct: false },
+          { text: 'كان يوماً سيئاً لا أريد تذكره',                                    correct: false },
         ],
       },
     ],
@@ -359,43 +852,51 @@ export const questionsBank = {
   level3: {
     listening: [
       {
-        id: 'L3_1',
-        text: 'استمعتَ لمحاضرة تقول: "اللغة العربية إرث حضاري عريق يمتد عبر قرون". ما الوصف الأنسب للغة وفق المحاضرة؟',
+        id:        'L3_1',
+        type:      'listening-comprehension',
+        audioText: 'زارت سارة ويوسف مع مدرستهما مزرعة في الريف، وشاهدا كيف تُحلَب الأبقار وتُجمَع البيوض.',
+        text:      'ما الوصف الأنسب لهذه الرحلة؟',
         options: [
-          { text: 'لغة تاريخية غنية وعريقة',      correct: true  },
-          { text: 'لغة صعبة التعلم والاستيعاب',   correct: false },
-          { text: 'لغة قديمة غير مستخدمة',         correct: false },
-          { text: 'لغة محدودة الانتشار',            correct: false },
+          { text: 'رحلة تعليمية ممتعة عن الحياة في الريف', correct: true  },
+          { text: 'رحلة صعبة ومملة',                          correct: false },
+          { text: 'رحلة قصيرة بلا فائدة',                      correct: false },
+          { text: 'رحلة إلى مدينة كبيرة',                       correct: false },
         ],
       },
       {
-        id: 'L3_2',
-        text: 'استمعتَ: "التفوق الأكاديمي لا يعني الحفظ وحده، بل الفهم العميق والتطبيق". ماذا يستلزم التفوق وفق هذا النص؟',
+        id:        'L3_2',
+        type:      'listening-comprehension',
+        audioText: 'قال المعلم إن النجاح في المسابقة العلمية يحتاج تدرّباً يومياً لا حفظ المعلومات ليلة الاختبار فقط.',
+        text:      'ماذا يحتاج النجاح وفق كلامه؟',
         options: [
-          { text: 'الفهم العميق والتطبيق الفعلي', correct: true  },
-          { text: 'الحفظ والاستذكار وحدهما',       correct: false },
-          { text: 'الدراسة المكثفة فقط',            correct: false },
-          { text: 'الاعتماد على الأساتذة',           correct: false },
+          { text: 'التدرّب المستمر لا الحفظ في اللحظة الأخيرة', correct: true  },
+          { text: 'الحفظ والاستذكار وحدهما',                      correct: false },
+          { text: 'الدراسة ليلة الاختبار فقط',                     correct: false },
+          { text: 'الاعتماد على الحظ',                              correct: false },
         ],
       },
       {
-        id: 'L3_3',
-        text: 'استمعتَ لنقاش حول التعليم الإلكتروني. قال المتحدث: "له مزايا عديدة، لكن ينبغي ألا يحلّ محل التفاعل الإنساني". ما موقف المتحدث؟',
+        id:        'L3_3',
+        type:      'listening-comprehension',
+        audioText: 'في نقاش بين سارة وصديقتها حول الألعاب الإلكترونية، قالت سارة: ممتعة، لكن يجب ألا تُلهينا عن اللعب في الخارج مع الأصدقاء.',
+        text:      'ما موقف سارة؟',
         options: [
-          { text: 'إيجابي مع تحفّظ على الاستغناء عن التفاعل البشري', correct: true  },
-          { text: 'رافض للتعليم الإلكتروني رفضاً تاماً',               correct: false },
-          { text: 'محايد لا رأي له في الموضوع',                         correct: false },
-          { text: 'مؤيد كامل دون أي تحفظات',                            correct: false },
+          { text: 'إيجابي مع تحفّظ على الإفراط فيها', correct: true  },
+          { text: 'رافضة لها تماماً',                    correct: false },
+          { text: 'لا رأي لها في الموضوع',              correct: false },
+          { text: 'مؤيدة بلا أي تحفظ',                   correct: false },
         ],
       },
       {
-        id: 'L3_4',
-        text: 'استمعتَ لنقاش بين شخصين: الأول قدّم أدلة وإحصاءات دقيقة، والثاني اعتمد على أمثلة عاطفية فقط. أيّهما أقوى حجةً؟',
+        id:        'L3_4',
+        type:      'listening-comprehension',
+        audioText: 'بعد المباراة، قال أحد اللاعبين إن فريقه خسر بسبب خطأ الحكم، وقال آخر إن فريقه يحتاج تدريباً أكثر.',
+        text:      'أيّهما أقرب للصواب؟',
         options: [
-          { text: 'الأول لأن حججه مدعومة بأدلة موضوعية', correct: true  },
-          { text: 'كلاهما متساوٍ في القوة والإقناع',        correct: false },
-          { text: 'الثاني لأن العواطف أكثر إقناعاً',        correct: false },
-          { text: 'لا يمكن التمييز بينهما',                  correct: false },
+          { text: 'الثاني، لأنه يعترف بنقاط الضعف ويسعى لتحسينها', correct: true  },
+          { text: 'الأول، لأن الحكم مسؤول دائماً',                    correct: false },
+          { text: 'كلاهما مخطئ',                                        correct: false },
+          { text: 'لا يمكن معرفة ذلك',                                   correct: false },
         ],
       },
     ],
@@ -412,27 +913,27 @@ export const questionsBank = {
       },
       {
         id: 'V3_1',
-        text: 'ما المعنى الدقيق لكلمة "الاستقلالية" في السياق الفكري؟',
+        text: 'ما معنى "الشجاعة" في جملة: "واجه خالد خوفه بشجاعة وشارك في المسابقة"؟',
         options: [
-          { text: 'القدرة على اتخاذ القرارات بشكل ذاتي ومستقل', correct: true  },
-          { text: 'امتلاك الثروة والنفوذ',                        correct: false },
-          { text: 'القوة العسكرية للدولة',                        correct: false },
-          { text: 'الانعزال عن المجتمع',                          correct: false },
+          { text: 'مواجهة الخوف بقوة وثقة', correct: true  },
+          { text: 'الفوز بالمسابقة',          correct: false },
+          { text: 'حب المسابقات',             correct: false },
+          { text: 'الخجل من المشاركة',        correct: false },
         ],
       },
       {
         id: 'V3_2',
-        text: 'ما الفرق الدقيق بين "يتذكر" و"يستذكر"؟',
+        text: 'ما الفرق بين "مشى" و"ركض"؟',
         options: [
-          { text: 'يتذكر: استحضار من الذاكرة، يستذكر: مراجعة الدروس للحفظ', correct: true  },
-          { text: 'كلاهما بنفس المعنى تماماً',                                  correct: false },
-          { text: 'يستذكر أقوى في المعنى من يتذكر',                            correct: false },
-          { text: 'يتذكر أشمل وأعمق من يستذكر',                                correct: false },
+          { text: '"مشى": بخطى عادية، "ركض": بسرعة كبيرة', correct: true  },
+          { text: 'كلاهما بنفس السرعة تماماً',                correct: false },
+          { text: '"ركض" أبطأ من "مشى"',                     correct: false },
+          { text: 'لا فرق بينهما',                              correct: false },
         ],
       },
       {
         id: 'V3_3',
-        text: 'أكمل العبارة الأدبية: "الأديب الحقيقي _____ في أعماق التجربة الإنسانية"',
+        text: 'أكمل: "الغطّاس الماهر _____ في أعماق البحر ليكتشف الشعاب المرجانية"',
         options: [
           { text: 'يغوص',   correct: true  },
           { text: 'يركض',   correct: false },
@@ -442,7 +943,7 @@ export const questionsBank = {
       },
       {
         id: 'V3_4',
-        text: 'اختر التعبير الأدبي الأدق: "الشاعر الماهر _____ مشاعره في صور بلاغية رائعة"',
+        text: 'أكمل: "المصوّر الماهر _____ أجمل اللحظات في صور خالدة"',
         options: [
           { text: 'يُجسّد',   correct: true  },
           { text: 'يقول فقط', correct: false },
@@ -454,49 +955,108 @@ export const questionsBank = {
     reading: [
       {
         id: 'R3_1',
-        text: 'اقرأ: "الإنسان كائن يبحث دوماً عن معنى لوجوده في هذا العالم الفسيح". ما الفكرة المحورية؟',
+        text: 'اقرأ: بعد رحلة المزرعة، قرر يوسف تربية أرنب في المنزل والاعتناء به يومياً ليتعلّم المسؤولية. ما الفكرة المحورية؟',
         options: [
-          { text: 'البحث الأزلي للإنسان عن معنى الوجود',  correct: true  },
-          { text: 'الإنسان حزين دائماً في هذا العالم',    correct: false },
-          { text: 'لا معنى لوجود الإنسان',                  correct: false },
-          { text: 'العالم واسع وفسيح فقط',                  correct: false },
+          { text: 'يوسف يتعلم المسؤولية من رعاية حيوان أليف', correct: true  },
+          { text: 'الأرانب حيوانات خطيرة',                       correct: false },
+          { text: 'يوسف يكره الحيوانات',                          correct: false },
+          { text: 'المزرعة مكان ممل',                              correct: false },
         ],
       },
       {
         id: 'R3_2',
-        text: 'اقرأ: "التقدم التكنولوجي سلاح ذو حدّين: يُيسّر الحياة ويهدد الخصوصية في آنٍ واحد". ما الاستنتاج المناسب؟',
+        text: 'اقرأ: الهاتف يساعد سارة على التواصل مع أصدقائها ومعرفة الواجبات، لكنه قد يشغلها عن المذاكرة إن أفرطت في استخدامه. ما الاستنتاج المناسب؟',
         options: [
-          { text: 'التكنولوجيا لها مزايا وسلبيات في آنٍ معاً',  correct: true  },
-          { text: 'التكنولوجيا سيئة ومضرة بالمجتمع',              correct: false },
-          { text: 'التكنولوجيا حلم وردي بلا عيوب',                correct: false },
-          { text: 'التكنولوجيا تقتصر على تيسير الحياة فقط',      correct: false },
+          { text: 'للهاتف فوائد وأضرار في آنٍ معاً',       correct: true  },
+          { text: 'الهاتف ضار بالكامل',                       correct: false },
+          { text: 'الهاتف مفيد فقط بلا أي عيوب',              correct: false },
+          { text: 'الهاتف غير مهم لسارة',                      correct: false },
         ],
       },
       {
         id: 'R3_3',
-        text: 'اقرأ: "المعرفة وحدها لا تملأ الروح؛ تحتاج إلى جماليات الفن والتأمل لتكتمل". ما دلالة هذا النص؟',
+        text: 'اقرأ: فاز فريق سارة بالمسابقة العلمية لأنهم لم يكتفوا بالمعلومات، بل تدرّبوا كثيراً على العرض أمام الجمهور. ما دلالة هذا النص؟',
         options: [
-          { text: 'المعرفة ضرورية لكنها تحتاج إلى عناصر أخرى كالفن لتكتمل', correct: true  },
-          { text: 'المعرفة العلمية غير مهمة لكمال الإنسان',                    correct: false },
-          { text: 'الروح أهم من العقل في كل الأحوال',                          correct: false },
-          { text: 'الفن يعوض عن المعرفة بالكامل',                               correct: false },
+          { text: 'المعرفة وحدها لا تكفي؛ يحتاج النجاح إلى التدريب أيضاً', correct: true  },
+          { text: 'المعلومات غير مهمة للفوز',                                correct: false },
+          { text: 'العرض أهم من المعرفة دائماً',                             correct: false },
+          { text: 'الحظ وحده سبب الفوز',                                     correct: false },
         ],
       },
       {
         id: 'R3_4',
-        text: 'قارن نصّين: الأول يعتمد على أدلة علمية، والثاني على أدلة عاطفية. من الأقوى حجةً؟',
+        text: 'اقرأ: في سباق المدرسة، قال تفسير أول إن يوسف فاز لأنه تدرّب كل يوم لمدة شهر، وقال تفسير ثانٍ إنه فاز لأن الحظ حالفه. أيّ التفسيرين أقوى؟',
         options: [
-          { text: 'الأول أقوى لأن الأدلة العلمية موضوعية ويمكن التحقق منها', correct: true  },
-          { text: 'كلاهما متساوٍ في الحجة والإقناع',                            correct: false },
-          { text: 'الثاني أفضل لأن العاطفة تؤثر في الجمهور أكثر',            correct: false },
-          { text: 'لا يمكن المقارنة بينهما أصلاً',                              correct: false },
+          { text: 'الأول، لأنه يعتمد على سبب واقعي يمكن التحقق منه', correct: true  },
+          { text: 'الثاني، لأن الحظ هو الأهم دائماً',                   correct: false },
+          { text: 'كلاهما متساويان في القوة',                            correct: false },
+          { text: 'لا يمكن تفضيل أحدهما',                                 correct: false },
+        ],
+      },
+      {
+        id:   'D3_1',
+        type: 'dialogue-order',
+        text: 'رتّب جمل هذا الحوار بين سارة ويوسف بالترتيب الصحيح',
+        lines: [
+          { id: 'a', speaker: 'سارة', text: 'يوسف، هل جهّزت أدواتك للمسابقة العلمية غداً؟' },
+          { id: 'b', speaker: 'يوسف', text: 'ليس بعد، سأجهّزها الليلة.' },
+          { id: 'c', speaker: 'سارة', text: 'لا تنسَ إحضار النموذج الذي صنعناه معاً.' },
+          { id: 'd', speaker: 'يوسف', text: 'بالتأكيد، شكراً لتذكيري!' },
+        ],
+      },
+      // ── مُدمَج من بنك الـ15 سؤالاً (q11/q12 — فهم قرائي ومترادفات لنفس
+      // الفقرة، q13 — سبب ونتيجة، q15 — فهم شامل) ──
+      {
+        id:        'L3_MRG_Q11',
+        type:      'listening-comprehension',
+        audioText: 'عاد عمر من المدرسة مسروراً؛ لأنه حصل على وسام التفوق في اللغة العربية.',
+        text:      'لماذا كان عمر مسروراً؟',
+        skill:     'reading',
+        options: [
+          { text: 'لأنه حصل على وسام التفوق',   correct: true  },
+          { text: 'لأنه ذهب مع أصدقائه',         correct: false },
+          { text: 'لأنه تناول طعامه المفضل',     correct: false },
+        ],
+      },
+      {
+        id:        'L3_MRG_Q12',
+        type:      'listening-comprehension',
+        audioText: 'عاد عمر من المدرسة مسروراً؛ لأنه حصل على وسام التفوق في اللغة العربية.',
+        text:      'من النص السابق، ما الكلمة الأقرب في المعنى لكلمة «مسروراً»؟',
+        skill:     'reading',
+        options: [
+          { text: 'سعيداً', correct: true  },
+          { text: 'حزيناً', correct: false },
+          { text: 'غاضباً', correct: false },
+        ],
+      },
+      {
+        id:        'L3_MRG_Q13',
+        type:      'listening-comprehension',
+        audioText: 'كان الجو بارداً جداً، لذلك ارتدى خالد معطفه السميك قبل الخروج.',
+        text:      'لماذا ارتدى خالد معطفه؟',
+        skill:     'reading',
+        options: [
+          { text: 'لأن الجو كان بارداً',        correct: true  },
+          { text: 'لأنه اشترى معطفاً جديداً',   correct: false },
+          { text: 'لأنه ذاهب إلى المدرسة',       correct: false },
+        ],
+      },
+      {
+        id:    'L3_MRG_Q15',
+        skill: 'reading',
+        text:  'أيُّ جملة تعبّر بصورة صحيحة عن المحافظة على البيئة؟',
+        options: [
+          { text: 'نحافظ على نظافة المكان ولا نرمي النفايات', correct: true  },
+          { text: 'نرمي النفايات في الشارع',                   correct: false },
+          { text: 'نترك النفايات في الحديقة',                  correct: false },
         ],
       },
     ],
     grammar: [
       {
         id: 'G3_1',
-        text: 'حدّد صحة هذه الجملة نحوياً: "لو كان يدرس أكثر لنجح في الامتحان"',
+        text: 'حدّد صحة هذه الجملة نحوياً: "لو تدرّب يوسف أكثر لفاز في السباق"',
         options: [
           { text: 'صحيحة نحوياً، وهي جملة شرطية بـ"لو"',  correct: true  },
           { text: 'خطأ في الجزم',                              correct: false },
@@ -506,7 +1066,7 @@ export const questionsBank = {
       },
       {
         id: 'G3_2',
-        text: 'حدّد الصحة النحوية: "الطلابُ الذين لم يُذاكروا رسبوا في الامتحان"',
+        text: 'حدّد الصحة النحوية: "الطلابُ الذين تدرّبوا كثيراً فازوا في المسابقة العلمية"',
         options: [
           { text: 'الجملة صحيحة نحوياً بالكامل',            correct: true  },
           { text: 'خطأ في الموافقة بين الفعل والفاعل',       correct: false },
@@ -516,64 +1076,74 @@ export const questionsBank = {
       },
       {
         id: 'G3_3',
-        text: 'اختر الجملة الأكثر أناقةً وصحةً أسلوبياً:',
+        text: 'اختر الجملة الأكثر أناقةً وصحةً حول تحضير سارة للمسابقة:',
         options: [
-          { text: 'من الممكن تحقيق النجاح إذا توافرت الإرادة والعزيمة', correct: true  },
-          { text: 'قد يكون ممكن تحقيق النجاح',                            correct: false },
-          { text: 'قد النجاح يتحقق ربما',                                   correct: false },
-          { text: 'النجاح شيء ممكن إذا الإرادة توجد',                     correct: false },
+          { text: 'من الممكن تحقيق النجاح إذا توافر الجهد والتدريب المستمر', correct: true  },
+          { text: 'قد يكون ممكن تحقيق النجاح',                                correct: false },
+          { text: 'قد النجاح يتحقق ربما',                                       correct: false },
+          { text: 'النجاح شيء ممكن إذا الجهد يوجد',                            correct: false },
         ],
       },
       {
         id: 'G3_4',
-        text: 'في النص الأدبي: "يسعى الأديب إلى تصوير الواقع بعين الشاعر". لماذا اختار الكاتب المضارع "يسعى"؟',
+        text: 'في الجملة: "تسعى سارة إلى تحسين علاماتها كل فصل دراسي"، لماذا استُخدم الفعل المضارع "تسعى"؟',
         options: [
-          { text: 'للدلالة على الاستمرارية والتجدد',      correct: true  },
+          { text: 'للدلالة على الاستمرارية والتكرار',      correct: true  },
           { text: 'لأن الفعل الماضي لا يناسب السياق',     correct: false },
           { text: 'بدون قصد بلاغي',                          correct: false },
           { text: 'لأن المضارع أسهل في الكتابة',           correct: false },
+        ],
+      },
+      // ── مُدمَج من بنك الـ15 سؤالاً (q14 — تراكيب متقدمة) ──
+      {
+        id: 'L3_MRG_Q14',
+        text: 'اختر الجملة الصحيحة لغوياً',
+        options: [
+          { text: 'الطالباتُ يكتبنَ الدرسَ', correct: true  },
+          { text: 'الطالباتُ يكتبونَ الدرسَ', correct: false },
+          { text: 'الطالباتُ يكتبُ الدرسَ',   correct: false },
         ],
       },
     ],
     writing: [
       {
         id: 'W3_1',
-        text: 'اكتب عن دور الإعلام في المجتمع. اختر التعبير الأوفى:',
+        text: 'اكتب عن رحلتكم إلى المزرعة. اختر الفقرة الأفضل:',
         options: [
-          { text: 'الإعلام مسؤول عن نشر المعلومات وتشكيل الوعي العام وتوعية المجتمع بقضاياه', correct: true  },
-          { text: 'الإعلام غير مهم وتأثيره محدود',                                                correct: false },
-          { text: 'الإعلام يكذب دائماً ولا يُعتمد عليه',                                           correct: false },
-          { text: 'الإعلام وسيلة ترفيه بحتة لا أكثر',                                               correct: false },
+          { text: 'زرنا المزرعة الجميلة، وشاهدنا الحيوانات، وتعلّمنا من أين يأتي طعامنا', correct: true  },
+          { text: 'المزرعة مكان ممل ولا أريد العودة إليها',                                  correct: false },
+          { text: 'لا أتذكر شيئاً عن تلك الرحلة',                                            correct: false },
+          { text: 'كانت رحلة سيئة لا تستحق الذكر',                                           correct: false },
         ],
       },
       {
         id: 'W3_2',
-        text: 'اختر التعبير الأدبي الأجمل لموضوع "الحب والعطاء":',
+        text: 'اختر أفضل وصف لصداقة سارة ويوسف:',
         options: [
-          { text: 'الحب والعطاء جناحان يرفعان الروح نحو سماء الجمال والخير', correct: true  },
-          { text: 'الحب والعطاء مجرد وهم لا وجود له',                           correct: false },
-          { text: 'الحب والعطاء خسارة وضياع للوقت',                              correct: false },
-          { text: 'الحب والعطاء مفاهيم تقليدية لا معنى لها',                    correct: false },
+          { text: 'سارة ويوسف صديقان مقربان يساعد كل منهما الآخر ويشاركانه أجمل اللحظات', correct: true  },
+          { text: 'سارة ويوسف لا يتفقان أبداً',                                              correct: false },
+          { text: 'صداقتهما ليست مهمة',                                                      correct: false },
+          { text: 'كل منهما يلعب وحده دائماً',                                               correct: false },
         ],
       },
       {
         id: 'W3_3',
-        text: 'في تحليل نقدي لقصيدة ما، أيّ العناصر الأساسية التي ينبغي تناولها؟',
+        text: 'بعد فوز الفريق في المسابقة العلمية، أيّ العناصر يجب ذكرها في تقرير قصير عن التجربة؟',
         options: [
-          { text: 'الصور البلاغية والأسلوب والبنية والفكرة الرئيسية',        correct: true  },
-          { text: 'ذكر اسم الشاعر وتاريخ ميلاده فقط',                         correct: false },
-          { text: 'إعادة كتابة القصيدة بأسلوب آخر',                             correct: false },
-          { text: 'مقارنة القصيدة بأغنية عصرية',                                correct: false },
+          { text: 'خطوات التحضير، والصعوبات التي واجهوها، وشعورهم بالفوز', correct: true  },
+          { text: 'ذكر اسم القاعة وتاريخ المسابقة فقط',                      correct: false },
+          { text: 'إعادة كتابة أسئلة المسابقة',                              correct: false },
+          { text: 'مقارنة المسابقة بمباراة كرة قدم',                          correct: false },
         ],
       },
       {
         id: 'W3_4',
-        text: 'اختر الافتتاحية الأفضل لرسالة رسمية إلى مدير المدرسة:',
+        text: 'اختر أفضل رسالة قصيرة لمعلمتك تشكرينها فيها على مساعدتها في المسابقة:',
         options: [
-          { text: 'حضرة المدير الموقر، تحية طيبة وبعد؛ أتقدم إليكم بهذا الطلب...',   correct: true  },
-          { text: 'مرحبا يا مدير، أريد أن أطلب منك شيئاً...',                            correct: false },
-          { text: 'صاحبي العزيز، أكتب إليك هذه الرسالة...',                               correct: false },
-          { text: 'إلى من يهمه الأمر، بخصوص الموضوع...',                                 correct: false },
+          { text: 'معلمتي العزيزة، أشكرك من قلبي على مساعدتك ودعمك لنا في المسابقة', correct: true  },
+          { text: 'مرحباً، أعطيني علامة عالية من فضلك',                                correct: false },
+          { text: 'يا أستاذة، أنا مشغول الآن',                                          correct: false },
+          { text: 'إلى من يهمه الأمر، بخصوص الموضوع',                                  correct: false },
         ],
       },
     ],

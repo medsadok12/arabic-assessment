@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>خطة أكاديمية عارم — الوضع الراهن والخارطة المستقبلية</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:   #1a3a6b;
+      --accent:    #185FA5;
+      --green:     #1a7c40;
+      --amber:     #9a5200;
+      --red:       #b91c1c;
+      --muted:     #6b7280;
+      --border:    #e2e8f0;
+      --bg:        #f8fafc;
+      --white:     #ffffff;
+      --text:      #1a202c;
+      --light-blue: #eef5ff;
+    }
+
+    html { font-size: 15px; }
+
+    body {
+      font-family: 'Cairo', 'Tajawal', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.85;
+      direction: rtl;
+    }
+
+    /* ─── PAGE WRAPPER ─── */
+    .page { max-width: 900px; margin: 0 auto; padding: 48px 32px; }
+
+    /* ─── COVER ─── */
+    .cover {
+      background: linear-gradient(135deg, #0f2550 0%, #185FA5 60%, #1a7c40 100%);
+      border-radius: 22px;
+      padding: 60px 48px;
+      text-align: center;
+      color: #fff;
+      margin-bottom: 48px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") center;
+      pointer-events: none;
+    }
+    .cover-logo { font-size: 3.2rem; margin-bottom: 16px; }
+    .cover h1 { font-size: 2rem; font-weight: 900; letter-spacing: -.02em; margin-bottom: 8px; }
+    .cover h2 { font-size: 1.15rem; font-weight: 600; opacity: .85; margin-bottom: 28px; }
+    .cover-meta {
+      display: flex; justify-content: center; gap: 32px; flex-wrap: wrap;
+      font-size: .88rem; opacity: .75;
+    }
+    .cover-meta span { display: flex; align-items: center; gap: 6px; }
+
+    /* ─── TABLE OF CONTENTS ─── */
+    .toc {
+      background: var(--white);
+      border-radius: 16px;
+      border: 1.5px solid var(--border);
+      padding: 28px 32px;
+      margin-bottom: 40px;
+    }
+    .toc h3 { font-size: 1.05rem; font-weight: 800; color: var(--primary); margin-bottom: 18px; border-bottom: 2px solid var(--light-blue); padding-bottom: 10px; }
+    .toc ol { padding-right: 20px; }
+    .toc li { margin-bottom: 7px; font-size: .93rem; color: var(--accent); font-weight: 600; }
+    .toc li span { color: var(--muted); font-weight: 400; }
+
+    /* ─── SECTION ─── */
+    .section { margin-bottom: 44px; }
+    .section-header {
+      display: flex; align-items: center; gap: 12px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      color: #fff;
+      border-radius: 12px 12px 0 0;
+      padding: 14px 22px;
+      margin-bottom: 0;
+    }
+    .section-header .sec-num {
+      background: rgba(255,255,255,.22);
+      border-radius: 50%;
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: .9rem; flex-shrink: 0;
+    }
+    .section-header h2 { font-size: 1.05rem; font-weight: 800; }
+    .section-body {
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      padding: 26px 26px;
+    }
+
+    /* ─── SUBSECTION ─── */
+    .sub { margin-bottom: 22px; }
+    .sub-title {
+      font-size: .95rem; font-weight: 800; color: var(--primary);
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sub-title::after {
+      content: ''; flex: 1; height: 2px;
+      background: var(--light-blue); border-radius: 2px;
+    }
+
+    /* ─── TABLE ─── */
+    .tbl { width: 100%; border-collapse: collapse; font-size: .88rem; margin-bottom: 14px; }
+    .tbl th {
+      background: var(--primary); color: #fff;
+      padding: 9px 14px; text-align: right; font-weight: 700;
+      border-bottom: 2px solid var(--accent);
+    }
+    .tbl td { padding: 8px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl tr:nth-child(even) td { background: #f9fbff; }
+
+    /* ─── BADGES ─── */
+    .badge {
+      display: inline-block; padding: 2px 10px; border-radius: 20px;
+      font-size: .78rem; font-weight: 700; white-space: nowrap;
+    }
+    .badge-done   { background: #d1fae5; color: #065f46; }
+    .badge-wip    { background: #fef3c7; color: #92400e; }
+    .badge-todo   { background: #fee2e2; color: #991b1b; }
+    .badge-future { background: #ede9fe; color: #5b21b6; }
+    .badge-blue   { background: #dbeafe; color: #1e40af; }
+
+    /* ─── CARDS GRID ─── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 16px; }
+    .card {
+      border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 16px 18px; background: var(--white);
+    }
+    .card-icon { font-size: 1.6rem; margin-bottom: 8px; }
+    .card-title { font-weight: 800; font-size: .93rem; color: var(--primary); margin-bottom: 4px; }
+    .card-desc { font-size: .83rem; color: var(--muted); line-height: 1.7; }
+    .card.green  { border-color: #a7f3d0; background: #f0fdf4; }
+    .card.amber  { border-color: #fcd34d; background: #fffbeb; }
+    .card.purple { border-color: #c4b5fd; background: #f5f3ff; }
+    .card.blue   { border-color: #93c5fd; background: #eff6ff; }
+
+    /* ─── PRIORITY LIST ─── */
+    .plist { list-style: none; }
+    .plist li {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 10px 0; border-bottom: 1px dashed var(--border);
+      font-size: .9rem;
+    }
+    .plist li:last-child { border-bottom: none; }
+    .plist-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .78rem; font-weight: 900; flex-shrink: 0; margin-top: 1px;
+    }
+    .plist-body { flex: 1; }
+    .plist-title { font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .plist-desc  { color: var(--muted); font-size: .84rem; }
+
+    /* ─── TIMELINE ─── */
+    .timeline { position: relative; padding-right: 24px; }
+    .timeline::before {
+      content: ''; position: absolute; right: 8px; top: 0; bottom: 0;
+      width: 2px; background: var(--light-blue);
+    }
+    .tl-item { position: relative; margin-bottom: 24px; }
+    .tl-dot {
+      position: absolute; right: -24px; top: 4px;
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid var(--white);
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+    .tl-dot.green  { background: var(--green); box-shadow: 0 0 0 2px var(--green); }
+    .tl-dot.amber  { background: #d97706;       box-shadow: 0 0 0 2px #d97706; }
+    .tl-dot.purple { background: #7c3aed;       box-shadow: 0 0 0 2px #7c3aed; }
+    .tl-dot.blue   { background: var(--accent); }
+    .tl-phase { font-size: .78rem; font-weight: 700; color: var(--muted); margin-bottom: 3px; }
+    .tl-title { font-weight: 800; color: var(--primary); margin-bottom: 4px; }
+    .tl-items-list { font-size: .85rem; color: var(--text); }
+    .tl-items-list li { margin-bottom: 2px; }
+
+    /* ─── ALERT BOX ─── */
+    .alert-box {
+      border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;
+      display: flex; gap: 12px; font-size: .9rem;
+    }
+    .alert-box.info   { background: #eff6ff; border-right: 4px solid var(--accent); color: #1e3a5f; }
+    .alert-box.warn   { background: #fffbeb; border-right: 4px solid #d97706; color: #92400e; }
+    .alert-box.success{ background: #f0fdf4; border-right: 4px solid var(--green); color: #065f46; }
+
+    /* ─── STAT ROW ─── */
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat-box {
+      text-align: center; background: var(--light-blue);
+      border-radius: 10px; padding: 16px 12px;
+    }
+    .stat-box .val { font-size: 1.6rem; font-weight: 900; color: var(--primary); }
+    .stat-box .lbl { font-size: .79rem; color: var(--muted); margin-top: 2px; }
+
+    /* ─── FOOTER ─── */
+    .doc-footer {
+      margin-top: 56px; text-align: center; padding-top: 24px;
+      border-top: 2px solid var(--border);
+      color: var(--muted); font-size: .82rem;
+    }
+    .doc-footer strong { color: var(--primary); }
+
+    /* ─── PRINT ─── */
+    @media print {
+      body { background: #fff; }
+      .page { padding: 20px; }
+      .cover { border-radius: 0; }
+      .section-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .tbl th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .tl-dot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .badge  { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .card   { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ═══════════════ COVER ═══════════════ -->
+  <div class="cover">
+    <div class="cover-logo">🎓</div>
+    <h1>أكاديمية عارم للتعليم</h1>
+    <h2>الوضع الراهن للمنصة · الفجوات التطويرية · الخارطة المستقبلية</h2>
+    <div class="cover-meta">
+      <span>📅 يونيو 2026</span>
+      <span>🌐 aarem.net</span>
+      <span>📁 medsadok12/arabic-assessment</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TOC ═══════════════ -->
+  <div class="toc">
+    <h3>📋 فهرس المحتوى</h3>
+    <ol>
+      <li>لمحة عامة — أرقام وإحصاءات سريعة <span>— الحجم الراهن للمنصة</span></li>
+      <li>ما هو مكتمل ومنشور حالياً <span>— وصف تفصيلي لكل وحدة</span></li>
+      <li>ما ينقص حالياً — الفجوات التقنية والتشغيلية <span>— ما يجب إنجازه قريباً</span></li>
+      <li>الهدف الكامل للمنصة <span>— الرؤية والغاية</span></li>
+      <li>خارطة التطوير المستقبلية <span>— المراحل والأولويات</span></li>
+      <li>المتطلبات التقنية والبنية التحتية <span>— الخدمات والتكاليف</span></li>
+    </ol>
+  </div>
+
+  <!-- ═══════════════ 1. QUICK STATS ═══════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="sec-num">1</div>
+      <h2>📊 لمحة عامة — الحجم الراهن للمنصة</h2>
+    </div>
+    <div class="section-body">
+      <div class="stat-row">
+        <div class="stat-box"><div class="val">2</div><div class="lbl">تطبيقان متكاملان</div></div>
+        <div class="stat-box"><div class="val">4</div><div class="lbl">أدوار مستخدمين</div></div>
+        <div class="stat-box"><div class="val">35+</div><div class="lbl">مسار API</div></div>
+        <div class="stat-box"><div class="val">6</div><div class="lbl">جداول Supabase</div></div>
+        <div class="stat-box"><div class="val">5</div><div class="lbl">نماذج إيميل جاهزة</div></div>
+        <div class="stat-box"><div class="val">7</div><div class="lbl">تبويبات لوحة التحكم</div></div>
+      </div>
+      <div class="alert-box info">
+        <span>🏗️</span>
+        <div>المنصة مكوّنة من تطبيقَين: <strong>نظام التقييم الذكي</strong> (react SPA على <code>arabic-assessment.vercel.app</code>) و<strong>منصة أكاديمية عارم</strong> (Next.js 14 App Router على <code>aarem.net</code>). كلاهما موجود في نفس المستودع.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 2. WHAT'S DONE ═══════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="sec-num">2</div>
+      <h2>✅ ما هو مكتمل ومنشور حالياً</h2>
+    </div>
+    <div class="section-body">
+
+      <!-- 2.1 -->
+      <div class="sub">
+        <div class="sub-title">🎯 نظام التقييم الذكي (SPA)</div>
+        <div class="cards">
+          <div class="card green">
+            <div class="card-icon">📝</div>
+            <div class="card-title">تقييم تشخيصي متكامل</div>
+            <div class="card-desc">60 سؤال موزعة على مستويات متعددة، MCQ + أسئلة ربط تفاعلية بالسهم. يحدد مستوى الطالب تلقائياً.</div>
+          </div>
+          <div class="card green">
+            <div class="card-icon">📄</div>
+            <div class="card-title">تقرير PDF تلقائي</div>
+            <div class="card-desc">يُنشأ تقرير مفصّل بعد إكمال التقييم ويُرسل بالبريد الإلكتروني إلى ولي الأمر.</div>
+          </div>
+          <div class="card green">
+            <div class="card-icon">🔑</div>
+            <div class="card-title">نظام أكواد الدخول</div>
+            <div class="card-desc">كود أحادي الاستخدام يُمنح للطالب قبل التقييم، يمنع الدخول العشوائي.</div>
+          </div>
+          <div class="card green">
+            <div class="card-icon">📧</div>
+            <div class="card-title">إرسال النتائج بالإيميل</div>
+            <div class="card-desc">PDF يصل للأهل مباشرة بعد إنهاء التقييم عبر Gmail App Password.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.2 -->
+      <div class="sub">
+        <div class="sub-title">🏠 الصفحة الرئيسية والتسجيل (aarem.net)</div>
+        <div class="cards">
+          <div class="card blue">
+            <div class="card-icon">🌐</div>
+            <div class="card-title">Landing Page احترافية</div>
+            <div class="card-desc">صفحة تعريفية بالأكاديمية، فيديو ترويجي، أزرار CTA للتسجيل والدخول.</div>
+          </div>
+          <div class="card blue">
+            <div class="card-icon">🔐</div>
+            <div class="card-title">تسجيل الدخول والتسجيل</div>
+            <div class="card-desc">طالب (بكود + درجة)، معلم (بكود دعوة)، مدير. توجيه تلقائي حسب الدور.</div>
+          </div>
+          <div class="card blue">
+            <div class="card-icon">📋</div>
+            <div class="card-title">صفحة التوظيف</div>
+            <div class="card-desc">نموذج تقديم وظيفي عام مع رفع CV، إيميل تأكيد للمتقدم، حقول: التخصص، الدولة، لينكدإن.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.3 -->
+      <div class="sub">
+        <div class="sub-title">👨‍🎓 لوحة الطالب</div>
+        <table class="tbl">
+          <thead><tr><th>الميزة</th><th>التفاصيل</th><th>الحالة</th></tr></thead>
+          <tbody>
+            <tr><td>إحصائيات التقييم</td><td>عدد التقييمات، الحالة، آخر مستوى، متوسط النتائج</td><td><span class="badge badge-done">✅ مكتمل</span></td></tr>
+            <tr><td>الحصص القادمة</td><td>قائمة بحصص المعلمين المجدولة مع رابط Jitsi للانضمام</td><td><span class="badge badge-done">✅ مكتمل</span></td></tr>
+            <tr><td>بنك الكلمات الذكي</td><td>مكتبة كلمات مشكولة مع فلترة حسب النوع والموضوع والصف</td><td><span class="badge badge-done">✅ مكتمل</span></td></tr>
+            <tr><td>مساعد فهيم</td><td>ذكاء اصطناعي تفاعلي + صوت عربي طبيعي</td><td><span class="badge badge-done">✅ مكتمل</span></td></tr>
+            <tr><td>سجل التقييمات</td><td>جدول بآخر 5 تقييمات مع التاريخ والمستوى</td><td><span class="badge badge-done">✅ مكتمل</span></td></tr>
+            <tr><td>إجراءات سريعة</td><td>روابط للمكتبة، بنك الكلمات، التقارير</td><td><span class="badge badge-done">✅ مكتمل</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 2.4 -->
+      <div class="sub">
+        <div class="sub-title">👨‍🏫 لوحة المعلم</div>
+        <div class="cards">
+          <div class="card green">
+            <div class="card-icon">📅</div>
+            <div class="card-title">جدولة الحصص</div>
+            <div class="card-desc">مودال لإنشاء حصة: اسم الطالب، بريده، الموضوع، التاريخ، الوقت (07:00–20:30)، المدة.</div>
+          </div>
+          <div class="card green">
+            <div class="card-icon">🎥</div>
+            <div class="card-title">غرف Jitsi التلقائية</div>
+            <div class="card-desc">اسم غرفة فريد لكل حصة (aarem-{id}-{date}-{time}). زر "ابدأ الحصة" يفتح meet.jit.si مباشرة.</div>
+          </div>
+          <div class="card green">
+            <div class="card-icon">📧</div>
+            <div class="card-title">إيميل دعوة للطالب</div>
+            <div class="card-desc">رابط الانضمام يُرسل للطالب تلقائياً عند الجدولة (إن أُدخل بريده).</div>
+          </div>
+          <div class="card green">
+            <div class="card-icon">📋</div>
+            <div class="card-title">سجل الحصص</div>
+            <div class="card-desc">قائمة منفصلة للحصص القادمة والمنتهية والملغية مع خيار إلغاء أي حصة.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.5 -->
+      <div class="sub">
+        <div class="sub-title">⚙️ لوحة المدير (Bogga)</div>
+        <table class="tbl">
+          <thead><tr><th>التبويب</th><th>الوظيفة</th><th>الوصول</th></tr></thead>
+          <tbody>
+            <tr><td>📊 نظرة عامة</td><td>إحصاءات عامة + سجل النشاط + بيانات الجلسات</td><td><span class="badge badge-blue">الجميع</span></td></tr>
+            <tr><td>🔑 الأكواد</td><td>إنشاء/حذف أكواد التقييم والطلاب والمعلمين</td><td><span class="badge badge-blue">قابل للضبط</span></td></tr>
+            <tr><td>👥 المجموعات</td><td>إدارة مجموعات الطلاب + تعديل معلوماتهم</td><td><span class="badge badge-blue">قابل للضبط</span></td></tr>
+            <tr><td>📈 النتائج</td><td>نتائج تقييمات الطلاب كاملة</td><td><span class="badge badge-blue">قابل للضبط</span></td></tr>
+            <tr><td>📖 بنك الكلمات</td><td>إضافة/تعديل/حذف كلمات مع صورة وصوت</td><td><span class="badge badge-blue">قابل للضبط</span></td></tr>
+            <tr><td>💼 التوظيف</td><td>قائمة المتقدمين + جدولة مقابلات + إيميلات تفاعلية</td><td><span class="badge badge-done">المدير العام فقط</span></td></tr>
+            <tr><td>🔒 الإعداد</td><td>إضافة مشرفين مساعدين + تحديد صلاحياتهم</td><td><span class="badge badge-done">المدير العام فقط</span></td></tr>
+          </tbody>
+        </table>
+        <div class="alert-box success">
+          <span>🔔</span>
+          <div>لوحة التحكم تحتوي على <strong>نظام إشعارات</strong> مباشر: جرس 🔔 في الرأس يعرض آخر 30 إشعار مع تحديث كل 30 ثانية. الإشعارات تشمل: طلبات توظيف جديدة، ردود المترشحين، تسجيل معلمين، بدء تقييمات.</div>
+        </div>
+      </div>
+
+      <!-- 2.6 -->
+      <div class="sub">
+        <div class="sub-title">📧 منظومة الإيميل (Resend)</div>
+        <table class="tbl">
+          <thead><tr><th>القالب</th><th>المتلقي</th><th>المحتوى</th></tr></thead>
+          <tbody>
+            <tr><td>دعوة مقابلة</td><td>المترشح</td><td>تفاصيل الموعد + 3 أزرار: تأكيد / تعديل / اعتذار</td></tr>
+            <tr><td>رفض وظيفي</td><td>المترشح</td><td>رسالة مهنية لطيفة (يُرسل مرة واحدة فقط)</td></tr>
+            <tr><td>ترحيب بمشرف</td><td>المشرف الجديد</td><td>بيانات الدخول + كلمة مرور مؤقتة 12 حرف</td></tr>
+            <tr><td>تأكيد التقديم</td><td>المتقدم للوظيفة</td><td>تأكيد استلام طلبه + حالة: قيد المراجعة</td></tr>
+            <tr><td>دعوة حصة</td><td>الطالب</td><td>تفاصيل الحصة + رابط Jitsi مباشر</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 2.7 -->
+      <div class="sub">
+        <div class="sub-title">🤖 مساعد فهيم الذكي</div>
+        <div class="cards">
+          <div class="card blue">
+            <div class="card-icon">🧠</div>
+            <div class="card-title">سلسلة نماذج AI</div>
+            <div class="card-desc">Gemini 2.5 Flash → 2.0 Flash → 2.0 Flash Lite → 1.5 Flash → Claude Haiku</div>
+          </div>
+          <div class="card blue">
+            <div class="card-icon">🎙️</div>
+            <div class="card-title">سلسلة صوت TTS</div>
+            <div class="card-desc">Azure Neural (ar-SA-HamedNeural) → Google Translate TTS → Web Speech API</div>
+          </div>
+          <div class="card blue">
+            <div class="card-icon">🌸</div>
+            <div class="card-title">لغة عربية مدروسة</div>
+            <div class="card-desc">ضمائر ذكر/أنثى، تشكيل كامل، تنوين، حجم نص مناسب للأطفال.</div>
+          </div>
+          <div class="card blue">
+            <div class="card-icon">⚡</div>
+            <div class="card-title">أداء محسّن</div>
+            <div class="card-desc">Timeout 6000ms Gemini / 5000ms Anthropic. تقطيع النص لقطع 180 حرف للصوت.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════ 3. GAPS ═══════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="sec-num">3</div>
+      <h2>⚠️ ما ينقص حالياً — الفجوات التقنية والتشغيلية</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="sub">
+        <div class="sub-title">🔴 عاجل — يؤثر على عمل الموقع الآن</div>
+        <ul class="plist">
+          <li>
+            <div class="plist-num">1</div>
+            <div class="plist-body">
+              <div class="plist-title">إضافة RESEND_API_KEY في Vercel <span class="badge badge-todo">لم يُضف بعد</span></div>
+              <div class="plist-desc">بدون هذا المفتاح لن تصل أي إيميلات: دعوات المقابلة، ترحيب المشرفين، إيميلات الحصص، تأكيدات التوظيف.</div>
+            </div>
+          </li>
+          <li>
+            <div class="plist-num">2</div>
+            <div class="plist-body">
+              <div class="plist-title">تشغيل SQL جدول sessions في Supabase <span class="badge badge-todo">مطلوب</span></div>
+              <div class="plist-desc">الجدول موجود في SETUP_SQL لكن لم يُنفَّذ بعد → المعلم لا يستطيع جدولة حصة حتى يُنشأ الجدول في Supabase.</div>
+            </div>
+          </li>
+          <li>
+            <div class="plist-num">3</div>
+            <div class="plist-body">
+              <div class="plist-title">التحقق من نطاق aarem.net في Namecheap <span class="badge badge-wip">15 يوم متبقية</span></div>
+              <div class="plist-desc">تحقق التواصل يجب إتمامه أو سيتوقف النطاق عن العمل.</div>
+            </div>
+          </li>
+          <li>
+            <div class="plist-num">4</div>
+            <div class="plist-body">
+              <div class="plist-title">ربط نطاق مخصص بـ Resend <span class="badge badge-todo">مستقبلاً</span></div>
+              <div class="plist-desc">حالياً الإيميلات تُرسَل من onboarding@resend.dev — بعد ربط النطاق ستُرسَل من noreply@aarem.net لمصداقية أعلى.</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="sub">
+        <div class="sub-title">🟡 مهم — يحد من كفاءة الأكاديمية</div>
+        <ul class="plist">
+          <li>
+            <div class="plist-num">1</div>
+            <div class="plist-body">
+              <div class="plist-title">Azure TTS غير مربوط <span class="badge badge-wip">تم إنشاء الحساب</span></div>
+              <div class="plist-desc">مفاتيح AZURE_SPEECH_KEY + AZURE_SPEECH_REGION لم تُضَف لـ Vercel بعد → فهيم يستخدم Google TTS الاحتياطي بجودة أقل.</div>
+            </div>
+          </li>
+          <li>
+            <div class="plist-num">2</div>
+            <div class="plist-body">
+              <div class="plist-title">لا توجد صفحة تقدم تفصيلية للطالب <span class="badge badge-todo">مطلوب</span></div>
+              <div class="plist-desc">الطالب يرى عدد تقييماته فقط. لا رسم بياني للتقدم، لا مقارنة بين جلستين، لا توصيات مخصصة.</div>
+            </div>
+          </li>
+          <li>
+            <div class="plist-num">3</div>
+            <div class="plist-body">
+              <div class="plist-title">المعلم لا يرى نتائج طلابه <span class="badge badge-todo">مطلوب</span></div>
+              <div class="plist-desc">لوحة المعلم تدير الحصص فقط، ليس فيها صفحة لنتائج التقييم أو مستوى الطلاب.</div>
+            </div>
+          </li>
+          <li>
+            <div class="plist-num">4</div>
+            <div class="plist-body">
+              <div class="plist-title">لا يوجد إشعار عند قرب موعد الحصة <span class="badge badge-todo">مقترح</span></div>
+              <div class="plist-desc">الطالب لا يتلقى تذكيراً قبل الحصة بـ 30 دقيقة. يحتاج لـ email reminder أو إشعار browser.</div>
+            </div>
+          </li>
+          <li>
+            <div class="plist-num">5</div>
+            <div class="plist-body">
+              <div class="plist-title">لا تقرير تصديري للمدير <span class="badge badge-todo">مقترح</span></div>
+              <div class="plist-desc">المدير لا يستطيع تصدير بيانات الطلاب أو التقييمات كـ Excel/CSV.</div>
+            </div>
+          </li>
+          <li>
+            <div class="plist-num">6</div>
+            <div class="plist-body">
+              <div class="plist-title">لا تسجيل تلقائي للحضور والغياب <span class="badge badge-todo">مقترح</span></div>
+              <div class="plist-desc">بعد كل حصة، الحالة تبقى "scheduled" — لا آلية لتحويلها إلى "completed" تلقائياً.</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="sub">
+        <div class="sub-title">🟢 تحسينات UX والجودة</div>
+        <ul class="plist">
+          <li>
+            <div class="plist-num">1</div>
+            <div class="plist-body">
+              <div class="plist-title">واجهة متعددة اللغات (عربي/إنجليزي) <span class="badge badge-wip">متفق عليه</span></div>
+              <div class="plist-desc">صفحات الطالب والتسجيل والتنقل تحتاج ترجمة إنجليزية للطلاب غير الناطقين بالعربية.</div>
+            </div>
+          </li>
+          <li>
+            <div class="plist-num">2</div>
+            <div class="plist-body">
+              <div class="plist-title">Push Notifications للمتصفح <span class="badge badge-wip">متفق عليه</span></div>
+              <div class="plist-desc">Service Worker + Web Push API لإيصال الإشعارات حتى عند إغلاق الموقع.</div>
+            </div>
+          </li>
+          <li>
+            <div class="plist-num">3</div>
+            <div class="plist-body">
+              <div class="plist-title">حفظ تقدم التقييم واستئنافه <span class="badge badge-todo">مقترح</span></div>
+              <div class="plist-desc">الطالب يفقد تقدمه إذا أغلق المتصفح في منتصف التقييم.</div>
+            </div>
+          </li>
+          <li>
+            <div class="plist-num">4</div>
+            <div class="plist-body">
+              <div class="plist-title">التحقق من تعارض مواعيد الحصص <span class="badge badge-todo">مطلوب</span></div>
+              <div class="plist-desc">المعلم يمكنه جدولة حصتين في نفس الوقت — لا يوجد تحقق في API.</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════ 4. GOALS ═══════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="sec-num">4</div>
+      <h2>🎯 الهدف الكامل للمنصة</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="alert-box info">
+        <span>🌟</span>
+        <div><strong>أكاديمية عارم</strong> هي منصة تعليم عربي متكاملة تستهدف الأطفال والمراهقين الناطقين بالعربية أو المتعلمين لها، توفر تشخيصاً آنياً لمستوى اللغة، تعليماً فردياً بإشراف معلمين مباشر، ومرافقة ذكاء اصطناعي مصمم خصيصاً للطفل العربي.</div>
+      </div>
+
+      <div class="cards">
+        <div class="card green">
+          <div class="card-icon">🔍</div>
+          <div class="card-title">التشخيص الدقيق</div>
+          <div class="card-desc">تحديد المستوى الحقيقي للطالب في القراءة، الإملاء، النحو، والفهم — في أقل من 15 دقيقة.</div>
+        </div>
+        <div class="card blue">
+          <div class="card-icon">📚</div>
+          <div class="card-title">التعلم المخصص</div>
+          <div class="card-desc">خطة دراسية مبنية على نتيجة التشخيص، مدعومة بحصص مباشرة مع معلم متخصص.</div>
+        </div>
+        <div class="card purple">
+          <div class="card-icon">🤖</div>
+          <div class="card-title">المرافق الذكي</div>
+          <div class="card-desc">فهيم: مساعد AI متاح 24/7 يجيب على أسئلة الطالب بلغة عربية فصحى سليمة وصوت طبيعي.</div>
+        </div>
+        <div class="card amber">
+          <div class="card-icon">📊</div>
+          <div class="card-title">متابعة الأهل</div>
+          <div class="card-desc">تقارير دورية للأهل عن تقدم أبنائهم مع توصيات عملية وملموسة.</div>
+        </div>
+        <div class="card green">
+          <div class="card-icon">👥</div>
+          <div class="card-title">منظومة إدارية كاملة</div>
+          <div class="card-desc">أدوات للمدير: توظيف معلمين، متابعة الطلاب، إدارة المحتوى، صلاحيات مرنة.</div>
+        </div>
+        <div class="card blue">
+          <div class="card-icon">🌍</div>
+          <div class="card-title">وصول عالمي</div>
+          <div class="card-desc">خدمة الطلاب في أي مكان بالعالم عبر حصص فيديو مباشرة بدون تطبيقات إضافية.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════ 5. ROADMAP ═══════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="sec-num">5</div>
+      <h2>🗺️ خارطة التطوير المستقبلية</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="timeline">
+
+        <div class="tl-item">
+          <div class="tl-dot green"></div>
+          <div class="tl-phase">المرحلة 0 — مكتملة ✅</div>
+          <div class="tl-title">البنية التحتية الأساسية</div>
+          <ul class="tl-items-list">
+            <li>✅ نظام التقييم الذكي (60 سؤال، PDF، إيميل)</li>
+            <li>✅ Supabase Auth + صلاحيات متعددة الأدوار</li>
+            <li>✅ لوحة المدير الكاملة (7 تبويبات)</li>
+            <li>✅ نظام بنك الكلمات مع الوسائط</li>
+            <li>✅ منظومة التوظيف والمقابلات</li>
+            <li>✅ مساعد فهيم الذكي (AI + TTS)</li>
+            <li>✅ نظام إشعارات لوحة التحكم</li>
+            <li>✅ منظومة الحصص المباشرة (Jitsi)</li>
+          </ul>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-dot amber"></div>
+          <div class="tl-phase">المرحلة 1 — يونيو 2026 (الأسبوعان القادمان)</div>
+          <div class="tl-title">الاستقرار والتشغيل الكامل</div>
+          <ul class="tl-items-list">
+            <li>⏳ إضافة RESEND_API_KEY في Vercel + إعادة نشر</li>
+            <li>⏳ تشغيل SQL جدول sessions في Supabase</li>
+            <li>⏳ ربط Azure TTS (AZURE_SPEECH_KEY + AZURE_SPEECH_REGION)</li>
+            <li>⏳ التحقق من نطاق Namecheap</li>
+            <li>⏳ إصلاح تعارض مواعيد حصص المعلم</li>
+            <li>⏳ ربط نطاق aarem.net بـ Resend</li>
+          </ul>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-dot blue"></div>
+          <div class="tl-phase">المرحلة 2 — يوليو 2026</div>
+          <div class="tl-title">تعميق تجربة الطالب والمعلم</div>
+          <ul class="tl-items-list">
+            <li>📈 صفحة تقدم تفصيلية للطالب (رسوم بيانية + توصيات)</li>
+            <li>👨‍🏫 صفحة نتائج الطلاب في لوحة المعلم</li>
+            <li>⏰ تذكير تلقائي بالبريد قبل الحصة بـ 30 دقيقة</li>
+            <li>✅ تحويل الحصة لـ "completed" تلقائياً بعد انقضاء وقتها</li>
+            <li>🌐 واجهة ثنائية اللغة (عربي/إنجليزي)</li>
+          </ul>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-dot purple"></div>
+          <div class="tl-phase">المرحلة 3 — أغسطس–سبتمبر 2026</div>
+          <div class="tl-title">الميزات المتقدمة</div>
+          <ul class="tl-items-list">
+            <li>🔔 Push Notifications للمتصفح (Service Worker)</li>
+            <li>💾 حفظ تقدم التقييم واستئنافه</li>
+            <li>📊 تصدير بيانات الطلاب والتقييمات (Excel/CSV)</li>
+            <li>📱 تطبيق PWA (قابل للتثبيت على الجوال)</li>
+            <li>🎧 أسئلة صوتية في التقييم (استماع وتمييز)</li>
+          </ul>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-phase">المرحلة 4 — Q4 2026</div>
+          <div class="tl-title">التوسع والاحتراف</div>
+          <ul class="tl-items-list">
+            <li>🏆 نظام النقاط والشارات (Gamification)</li>
+            <li>📝 أنواع أسئلة إضافية: أكمل الجملة، رتّب الكلمات</li>
+            <li>🎯 خطط دراسية مخصصة AI بناءً على التقييم</li>
+            <li>👨‍👩‍👧 بوابة أولياء الأمور المستقلة</li>
+            <li>💳 نظام الاشتراكات والدفع الإلكتروني</li>
+          </ul>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════ 6. TECHNICAL ═══════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="sec-num">6</div>
+      <h2>🔧 المتطلبات التقنية والبنية التحتية</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="sub">
+        <div class="sub-title">🏗️ الخدمات المستخدمة حالياً</div>
+        <table class="tbl">
+          <thead><tr><th>الخدمة</th><th>الغرض</th><th>التكلفة</th><th>الحالة</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Vercel</strong></td>
+              <td>استضافة Next.js (LMS + موقع Assessment)</td>
+              <td>مجاني (Hobby)</td>
+              <td><span class="badge badge-done">✅ نشط</span></td>
+            </tr>
+            <tr>
+              <td><strong>Supabase</strong></td>
+              <td>قاعدة البيانات + Auth + التخزين</td>
+              <td>مجاني (Free tier)</td>
+              <td><span class="badge badge-done">✅ نشط</span></td>
+            </tr>
+            <tr>
+              <td><strong>Resend</strong></td>
+              <td>إرسال الإيميلات التسويقية والتشغيلية</td>
+              <td>مجاني (100/يوم)</td>
+              <td><span class="badge badge-todo">⚠️ يحتاج مفتاح</span></td>
+            </tr>
+            <tr>
+              <td><strong>Jitsi Meet</strong></td>
+              <td>حصص الفيديو المباشرة</td>
+              <td>مجاني تماماً</td>
+              <td><span class="badge badge-done">✅ جاهز</span></td>
+            </tr>
+            <tr>
+              <td><strong>Google Gemini</strong></td>
+              <td>نموذج AI لمساعد فهيم</td>
+              <td>مجاني (Free tier)</td>
+              <td><span class="badge badge-done">✅ نشط</span></td>
+            </tr>
+            <tr>
+              <td><strong>Azure TTS</strong></td>
+              <td>صوت عربي طبيعي لفهيم</td>
+              <td>مجاني (F0 tier)</td>
+              <td><span class="badge badge-wip">⏳ يحتاج إضافة مفاتيح</span></td>
+            </tr>
+            <tr>
+              <td><strong>Namecheap</strong></td>
+              <td>نطاق aarem.net</td>
+              <td>~$15/سنة</td>
+              <td><span class="badge badge-wip">⚠️ يحتاج تحقق</span></td>
+            </tr>
+            <tr>
+              <td><strong>Anthropic Claude</strong></td>
+              <td>Fallback لفهيم (الأولوية الأخيرة)</td>
+              <td>حسب الاستخدام</td>
+              <td><span class="badge badge-done">✅ مربوط</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sub">
+        <div class="sub-title">📐 الحدود التقنية الحالية (Vercel Hobby)</div>
+        <div class="cards">
+          <div class="card amber">
+            <div class="card-icon">⏱️</div>
+            <div class="card-title">Serverless Timeout</div>
+            <div class="card-desc">10 ثوانٍ كحد أقصى لكل API route. تم الحل: Gemini 6s + Anthropic 5s timeout.</div>
+          </div>
+          <div class="card amber">
+            <div class="card-icon">📦</div>
+            <div class="card-title">حجم الملف</div>
+            <div class="card-desc">4.5MB حد للـ PDF في API. تم الحل: JPEG scale 1.5 يبقي الحجم أقل من الحد.</div>
+          </div>
+          <div class="card amber">
+            <div class="card-icon">📧</div>
+            <div class="card-title">Resend Free</div>
+            <div class="card-desc">100 إيميل/يوم. كافٍ الآن — عند التوسع يحتاج ترقية للـ Pro ($20/شهر).</div>
+          </div>
+          <div class="card amber">
+            <div class="card-icon">🗄️</div>
+            <div class="card-title">Supabase Free</div>
+            <div class="card-desc">500MB تخزين، 2GB bandwidth. يكفي للمرحلة الأولى — Pro عند التوسع ($25/شهر).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub">
+        <div class="sub-title">🔐 أمان المنصة</div>
+        <div class="alert-box success">
+          <span>🛡️</span>
+          <div>
+            <strong>نقاط قوة الأمان:</strong><br/>
+            • RLS مفعّل على جدول الصلاحيات — كل مشرف يرى صلاحياته فقط<br/>
+            • service_role يستخدم فقط في API routes من server-side (لا يُكشف للمستخدم)<br/>
+            • روابط ردود المقابلة محمية بـ UUID token فريد لكل مترشح<br/>
+            • أكواد الطلاب أحادية الاستخدام تمنع التسجيل المتعدد<br/>
+            • كلمات المرور المؤقتة للمشرفين: 12 حرف بدون أحرف متشابهة
+          </div>
+        </div>
+        <div class="alert-box warn">
+          <span>⚠️</span>
+          <div>
+            <strong>نقاط تحتاج تحسين:</strong><br/>
+            • middleware.js حالياً مجرد passthrough — يحتاج تطوير لحماية routes حساسة<br/>
+            • لا يوجد rate limiting على API routes العامة (register, apply, validate-code)<br/>
+            • لا يوجد CAPTCHA على نماذج التسجيل العامة
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════ FOOTER ═══════════════ -->
+  <div class="doc-footer">
+    <p><strong>أكاديمية عارم للتعليم</strong> — وثيقة التخطيط التقني</p>
+    <p style="margin-top:6px">يونيو 2026 · aarem.net · medsadok12/arabic-assessment</p>
+    <p style="margin-top:6px; font-size:.75rem; color:#9ca3af">هذه الوثيقة تمثل الوضع الراهن والخطة المقترحة — تُحدَّث مع كل إنجاز رئيسي.</p>
+  </div>
+
+</div>
+</body>
+</html>

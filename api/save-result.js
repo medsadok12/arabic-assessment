@@ -50,13 +50,20 @@ export default async function handler(req, res) {
   if (req.method !== 'POST')
     return res.status(405).json({ error: 'Method not allowed' });
 
+  const d = req.body;
+
+  // هذا المسار مخصَّص لـGoogle Sheets فقط — لم يعد يكتب إلى Supabase مباشرة.
+  // مصدر الحقيقة الوحيد لجدول assessments هو /api/save-assessment (LMS)،
+  // الذي يحفظ الصف الكامل (النتيجة + الإجابات + روابط التسجيل) دفعة واحدة.
+  // كان هذا المسار يكتب صفاً موازياً ناقصاً (بلا user_id/answers/recordings)
+  // لكل تقييم — نتيجتها صفّان لكل تقييم واحد في الجدول.
+
   // إذا لم يُضبط SHEETS_ID بعد نتجاهل بصمت
   if (!process.env.SHEETS_ID || !process.env.GOOGLE_SA_KEY)
-    return res.status(200).json({ success: false, note: 'Sheets not configured yet' });
+    return res.status(200).json({ success: true, note: 'Sheets not configured' });
 
   try {
     const { token } = await getToken();
-    const d          = req.body;
     const skillRows  = Object.values(d.bySkill || {}).map(s => Math.round(s.score) + '%');
 
     // رأس الجدول في الصف الأول تلقائياً إذا كان فارغاً
@@ -76,7 +83,7 @@ export default async function handler(req, res) {
     }
 
     await appendRow(token, process.env.SHEETS_ID, [
-      new Date().toLocaleDateString('ar-SA'),
+      new Date().toLocaleDateString('ar-SA-u-nu-latn'),
       d.studentName || '',
       d.age         || '',
       d.learnerType || '',

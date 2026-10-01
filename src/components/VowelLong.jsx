@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { shuffle } from '../data/questions.js';
 
 const BALLOONS = [
   { id: 'alef', symbol: 'ـا', color: '#c0396a', bg: '#fce4ec', name: 'مدّ الألف' },
@@ -29,17 +30,8 @@ const BASE = [
 
 const TOTAL = BASE.length;
 
-function doShuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 export default function VowelLong({ question, onAnswer }) {
-  const [syllables] = useState(() => doShuffle(BASE));
+  const [syllables] = useState(() => shuffle(BASE));
 
   /* placement: { sylId → balloonId } — خريطة تصنيف الطالب كاملة */
   const [placement, setPlacement] = useState({});
@@ -96,12 +88,15 @@ export default function VowelLong({ question, onAnswer }) {
 
   /* إرسال خريطة التصنيف كاملة — isCorrect محسوب صامتاً للسجل */
   function handleSubmit() {
-    const isCorrect = BASE.every(s => placement[s.id] === s.medd);
+    const isCorrect     = BASE.every(s => placement[s.id] === s.medd);
+    const correctPlaced = BASE.filter(s => placement[s.id] === s.medd).length;
     onAnswer({
       questionId: question.id,
       skill:      question.skill ?? 'reading',
       answer:     placement,
       isCorrect,
+      answerText:  `صنّف ${correctPlaced} من ${BASE.length} مقاطع بشكل صحيح`,
+      correctText: `تصنيف ${BASE.length} مقاطع المدّ كلها`,
     });
   }
 
@@ -195,7 +190,12 @@ export default function VowelLong({ question, onAnswer }) {
         <button className="lr-reset-btn" onClick={handleReset}>إعادة تعيين 🔄</button>
       </div>
 
-      <button className="btn-primary" onClick={handleSubmit} style={{ marginTop: 14 }}>
+      <button
+        className="btn-primary"
+        onClick={handleSubmit}
+        disabled={placedCount === 0}
+        style={{ opacity: placedCount === 0 ? 0.5 : 1, marginTop: 14 }}
+      >
         تأكيد وإكمال التدريب ✓
       </button>
     </div>
