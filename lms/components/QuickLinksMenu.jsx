@@ -10,7 +10,7 @@ const LINKS = [
   { icon: '📝', label: 'نظام التقييم التشخيصي الرئيسي',    url: 'https://assessment.aarem.net' },
   { icon: '🐣', label: 'اختبار المهارات للمبتدئين',        url: 'https://assessment.aarem.net/?skills=beginner' },
   { icon: '⚡', label: 'التقييم السريع',                   url: 'https://assessment.aarem.net/?quick=1' },
-  { icon: '📋', label: 'استبيان التقييم',                  url: 'https://assessment.aarem.net/?survey=1' },
+  { icon: '📋', label: 'استبانة الاستشارة التعليمية',       url: 'https://www.aarem.net/survey' },
 ];
 
 export default function QuickLinksMenu({ lang = 'ar' }) {

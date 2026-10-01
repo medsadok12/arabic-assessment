@@ -1,10 +1,12 @@
+'use client';
 import { useState } from 'react';
 
-// نفس نمط src/quicktest/LeadGate.jsx بالضبط — الموقع العام (Vite،
-// assessment.aarem.net) يرسل مباشرة لمسار الـLMS (Next.js، aarem.net)
-// عبر سرّ ويبهوك مشترك (VITE_ASSESSMENT_WEBHOOK_SECRET، مُضمَّن في حزمة
-// العميل بتصميم قائم مسبقاً — راجع lms/app/api/leads/route.js).
-const LMS_URL = 'https://www.aarem.net';
+// نُقلت هذه الاستبانة من assessment.aarem.net/?survey=1 (تطبيق Vite منفصل)
+// إلى www.aarem.net/survey (هنا، داخل تطبيق الـLMS الفعلي) — طلب صريح من
+// الأستاذ محمد لأن كلمة "assessment" في الرابط القديم توحي خطأً بأنها
+// اختبار/تقييم، بينما هي مجرد نموذج جمع بيانات. ترسل الآن مباشرة إلى
+// /api/survey (مسار داخلي في نفس التطبيق، لا حاجة لسرّ ويبهوك مشترك كما
+// كان مطلوباً للاتصال من أصل خارجي — راجع lms/app/api/survey/route.js).
 
 // مهلة طلب الإرسال — تمنع بقاء الزر عالقاً على "جارٍ الإرسال..." إلى ما لا
 // نهاية عند اتصال معلّق (لا استجابة، لا خطأ صريح من الشبكة).
@@ -28,6 +30,12 @@ const NAVY   = '#1A2B4A';
 const GOLD   = '#E8B84B';
 const CREAM  = '#F4EFE6';
 const GREEN  = '#2ABB7A';
+
+// رابط اختبار تحديد المستوى — يبقى على الموقع المستقل assessment.aarem.net
+// (مطلق لا نسبي، بما أن هذه الصفحة أصبحت تعيش على مسار /survey ضمن
+// www.aarem.net، فالرابط النسبي القديم "?quick=1" كان سيُحيل خطأً لـ
+// /survey?quick=1 بدل القمع التسويقي الفعلي).
+const QUICKTEST_URL = 'https://assessment.aarem.net/?quick=1';
 
 const TOTAL_STEPS = 5;
 
@@ -90,7 +98,7 @@ function StepHeader({ title, desc }) {
   );
 }
 
-export default function ConsultationSurvey() {
+export default function SurveyPage() {
   const [step, setStep] = useState(1);
   const [answers, setAnswers] = useState(INITIAL_ANSWERS);
   const [submitted, setSubmitted] = useState(false);
@@ -149,21 +157,17 @@ export default function ConsultationSurvey() {
     const timeoutId = setTimeout(() => controller.abort(), SUBMIT_TIMEOUT_MS);
 
     // يُرسَل إلى نفس جدول marketing_leads الذي يغذّي تبويب "العملاء
-    // المحتملين" في bogga، بوسم source مختلف (consultation_survey مقابل
-    // quick_test) بدل جدول منفصل — راجع lms/app/api/leads/route.js.
-    // اسم الطفل يُرسَل على المستوى الأعلى (يملأ عمود child_name نفسه
-    // المستخدَم لاختبار تحديد المستوى)، وبقية الاختيارات ضمن answers
-    // ليراجعها المدير قبل تواصل واتساب.
+    // المحتملين" في bogga، بوسم source='consultation_survey' — راجع
+    // lms/app/api/survey/route.js.
     try {
-      const res = await fetch(`${LMS_URL}/api/leads`, {
+      const res = await fetch('/api/survey', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json', 'x-webhook-secret': import.meta.env.VITE_ASSESSMENT_WEBHOOK_SECRET ?? '' },
+        headers: { 'Content-Type': 'application/json' },
         signal:  controller.signal,
         body: JSON.stringify({
           parentName: answers.parentName.trim(),
           phone:      answers.whatsappNumber.trim(),
           childName:  answers.childName.trim(),
-          source:     'consultation_survey',
           answers: {
             childAgeBracket:        answers.childAge.trim(),
             schoolSystem:           answers.schoolSystem.trim(),
@@ -179,7 +183,7 @@ export default function ConsultationSurvey() {
       });
 
       // فشل تطبيقي (400/429/500...) — يصل برسالة عربية جاهزة من الخادم
-      // نفسه (راجع lms/app/api/leads/route.js)، تُعرَض كما هي بدل رسالة
+      // نفسه (راجع lms/app/api/survey/route.js)، تُعرَض كما هي بدل رسالة
       // عامة حين تتوفر.
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) {
@@ -214,9 +218,9 @@ export default function ConsultationSurvey() {
             يتم الآن إعداد الخطة المخصصة وسنتواصل معك قريباً عبر الواتساب.
           </p>
           {/* يوجّه ولي الأمر مباشرة لقمع "اختبار تحديد المستوى" التسويقي
-              (نفس الموقع، مسار ?quick=1) — تحويل ولي أمر انتهى للتو من
-              استبانة الاستشارة إلى عميل محتمل ثانٍ بأقل احتكاك ممكن. */}
-          <a href="?quick=1" className="cs-cta-quicktest">
+              على assessment.aarem.net — تحويل ولي أمر انتهى للتو من استبانة
+              الاستشارة إلى عميل محتمل ثانٍ بأقل احتكاك ممكن. */}
+          <a href={QUICKTEST_URL} className="cs-cta-quicktest">
             دَع {childFirstName} يجرب اختبار المستوى الممتع الآن! (دقيقتين فقط)
           </a>
         </div>
