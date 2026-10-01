@@ -236,7 +236,7 @@ export default function SurveyPage() {
       <form className="cs-card" onSubmit={handleSubmit}>
         <div className="cs-brand">
           <span className="cs-brand-badge">🎓 أكاديمية عارم</span>
-          <span className="cs-brand-trust">استشارة تعليمية مجانية</span>
+          <span className="cs-brand-trust">معلومات الطالب</span>
         </div>
 
         <div className="cs-progress">
