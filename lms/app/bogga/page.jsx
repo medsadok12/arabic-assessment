@@ -18,6 +18,7 @@ import OverviewTab      from '../../components/admin/tabs/OverviewTab';
 const GroupsManager     = dynamic(() => import('../../components/GroupsManager'));
 const TeacherSpace      = dynamic(() => import('../../components/TeacherSpace'));
 const NotificationBell  = dynamic(() => import('../../components/NotificationBell'));
+const QuickLinksMenu    = dynamic(() => import('../../components/QuickLinksMenu'));
 const FinancialsTab     = dynamic(() => import('../../components/FinancialsTab'));
 const LifeSceneSimulator = dynamic(() => import('../../components/LifeSceneSimulator'));
 const PricingAdmin      = dynamic(() => import('../../components/PricingAdmin'));
@@ -1193,6 +1194,8 @@ export default function BoggarAdminPage() {
             <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
               {/* ── Notification Bell ── */}
               <NotificationBell userId={user?.id} role={role} lang={lang} />
+              {/* ── روابط المنصة السريعة ── */}
+              <QuickLinksMenu lang={lang} />
               <Link href="/bogga/lexicon" className="btn btn-outline btn-sm">📖 {lang === 'ar' ? 'بنك الكلمات' : 'Word Bank'}</Link>
             </div>
           </div>
