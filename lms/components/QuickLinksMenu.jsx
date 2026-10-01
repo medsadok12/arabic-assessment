@@ -4,13 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 // قائمة روابط المنصة السريعة — ثابتة في الكود عمداً (روابط بنية تحتية
 // لا محتوى إداري متغيّر)، بنفس نمط الإغلاق عند النقر خارج القائمة والـz-index
 // المعتمدَين فعلياً في NotificationBell.jsx المجاور لهذا الزر.
+// ملاحظة: اختبار المهارات للمبتدئين (?skills=beginner) والتقييم السريع
+// (?quick=1) أُزيلا عمداً من هذه القائمة — دُمجا ضمن رابط واحد موحَّد
+// (نظام التقييم التشخيصي)، تاركَين لصفحة assessment.aarem.net نفسها مهمة
+// توجيه الزائر لنوع التقييم المناسب، لا قائمة روابط منفصلة.
 const LINKS = [
   { icon: '🌐', label: 'المنصة الرئيسية',                 url: 'https://www.aarem.net' },
   { icon: '🏰', label: 'حصن الإدارة',                     url: 'https://www.aarem.net/bogga' },
-  { icon: '📝', label: 'نظام التقييم التشخيصي الرئيسي',    url: 'https://assessment.aarem.net' },
-  { icon: '🐣', label: 'اختبار المهارات للمبتدئين',        url: 'https://assessment.aarem.net/?skills=beginner' },
-  { icon: '⚡', label: 'التقييم السريع',                   url: 'https://assessment.aarem.net/?quick=1' },
-  { icon: '📋', label: 'استبانة الاستشارة التعليمية',       url: 'https://www.aarem.net/survey' },
+  { icon: '📝', label: 'نظام التقييم التشخيصي',            url: 'https://assessment.aarem.net' },
+  { icon: '📋', label: 'استبانة البيانات والمعلومات',       url: 'https://www.aarem.net/survey' },
 ];
 
 export default function QuickLinksMenu({ lang = 'ar' }) {
