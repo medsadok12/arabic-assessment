@@ -64,6 +64,7 @@ const INITIAL_ANSWERS = {
   childName: '',
   childAge: '',
   schoolSystem: '',
+  country: '',
   developmentGoals: [],
   currentLevelAssessment: '',
   learningEnvironment: '',
@@ -125,7 +126,7 @@ export default function SurveyPage() {
 
   function canProceed() {
     switch (step) {
-      case 1: return !!answers.childName.trim() && !!answers.childAge.trim() && !!answers.schoolSystem.trim();
+      case 1: return !!answers.childName.trim() && !!answers.childAge.trim() && !!answers.schoolSystem.trim() && !!answers.country.trim();
       case 2: return answers.developmentGoals.length > 0 && !!answers.currentLevelAssessment;
       case 3: return !!answers.learningEnvironment && !!answers.sessionsPerWeek && !!answers.preferredTimes;
       case 4: return !!answers.subscriptionPlan;
@@ -171,6 +172,7 @@ export default function SurveyPage() {
           answers: {
             childAgeBracket:        answers.childAge.trim(),
             schoolSystem:           answers.schoolSystem.trim(),
+            country:                answers.country.trim(),
             developmentGoals:       answers.developmentGoals,
             currentLevelAssessment: answers.currentLevelAssessment,
             learningEnvironment:    answers.learningEnvironment,
@@ -283,6 +285,18 @@ export default function SurveyPage() {
                 placeholder="اكتب النظام المدرسي (مثال: دولي بريطاني، حكومي، فرنسي، تعليم منزلي)..."
                 value={answers.schoolSystem}
                 onChange={e => setField('schoolSystem', e.target.value)}
+              />
+            </div>
+
+            <div className="cs-question">
+              <label className="cs-question-label" htmlFor="cs-country">بلد الإقامة</label>
+              <input
+                id="cs-country"
+                className="cs-input"
+                type="text"
+                placeholder="مثال: قطر، السعودية، مصر..."
+                value={answers.country}
+                onChange={e => setField('country', e.target.value)}
               />
             </div>
           </div>

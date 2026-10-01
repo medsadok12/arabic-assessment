@@ -395,6 +395,7 @@ function ConsultationSurveyDetails({ lead, onClose }) {
   const rows = [
     { label: 'الفئة العمرية',          value: a.childAgeBracket },
     { label: 'النظام المدرسي',         value: a.schoolSystem },
+    { label: 'بلد الإقامة',            value: a.country },
     { label: 'تقييم المستوى الحالي',   value: a.currentLevelAssessment },
     { label: 'بيئة التعلم المفضلة',    value: a.learningEnvironment },
     { label: 'الحصص الأسبوعية',        value: a.sessionsPerWeek },
