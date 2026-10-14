@@ -81,8 +81,8 @@ export default function LandingPage() {
           <Image
             src="/teacher-student-hero.png"
             alt="معلم وطالب يستخدمان التطبيق مع الفيل فهيم"
-            width={493}
-            height={372}
+            width={1894}
+            height={1414}
             priority
             sizes="(max-width: 768px) 92vw, 64vw"
             className="hero-photo"
