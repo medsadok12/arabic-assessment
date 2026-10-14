@@ -2,13 +2,6 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 
-const LEVEL_SECTIONS = [
-  { tag: 'مستوى 1', emoji: '⭐' },
-  { tag: 'مستوى 2', emoji: '📗' },
-  { tag: 'مستوى 3', emoji: '🏆' },
-  { tag: 'تعزيزي',  emoji: '🎮' },
-];
-
 const RESOURCES = [
   {
     key: 'huroof',
@@ -321,17 +314,16 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           font-size:.72rem; color:#64748b; font-weight:700; white-space:nowrap;
         }
 
-        /* ── الشبكة ── */
+        /* ── الشبكة — دائماً عمودان جنباً إلى جنب ── */
         .lib-grid {
           display:grid;
-          grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));
+          grid-template-columns:repeat(2, 1fr);
           gap:16px;
         }
         @media (max-width:600px) {
-          .lib-grid { grid-template-columns:repeat(2,1fr); gap:10px; }
+          .lib-grid { gap:10px; }
           .lib-header h1 { font-size:1.3rem; }
         }
-        @media (max-width:380px) { .lib-grid { grid-template-columns:1fr; } }
 
         /* ✓ شارة الإكمال */
         .lib-done-badge {
@@ -357,12 +349,6 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         ══════════════════════════════════════════ */
         @keyframes sgSheetUp { from { transform:translateY(24px); opacity:.4; } to { transform:translateY(0); opacity:1; } }
         @keyframes sgFade    { from { opacity:0; } to { opacity:1; } }
-
-        .sg-section { margin-top:22px; }
-        .sg-section:first-child { margin-top:4px; }
-        .sg-section-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; direction:rtl; }
-        .sg-section-label { font-size:.82rem; font-weight:800; color:#1A2B4A; white-space:nowrap; }
-        .sg-section-line { flex:1; height:1.5px; background:linear-gradient(90deg,#e2e8f0,transparent); }
 
         /* ── بطاقة بسيطة: صورة وعنوان فقط — أسلوب "ملصق مرح" ── */
         .sg-card {
@@ -682,9 +668,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
             const displayIcon  = displayImg ? null : (meta.icon || r.icon);
             const done         = completedKeys.has(r.key);
             return (
-              <button key={r.key} type="button" className="sg-card" onClick={() => setSelectedKey(r.key)}
-                style={{ background: r.bg, border: `2px solid ${r.accent}`, boxShadow: `3px 4px 0 ${r.accent}3d` }}
-              >
+              <button key={r.key} type="button" className="sg-card" onClick={() => setSelectedKey(r.key)}>
                 {isTeacher && (
                   <button className="lib-edit-btn"
                     onClick={e => { e.stopPropagation(); openEdit(r); }}
@@ -709,25 +693,10 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
             );
           };
 
-          /* شبكة بسيطة مقسّمة بعناوين، بلا أي وصف على البطاقة نفسها */
-          const sections = LEVEL_SECTIONS.map(sec => ({
-            ...sec,
-            items: RESOURCES.filter(r => r.tag === sec.tag),
-          }));
-
+          /* شبكة واحدة مسطّحة — بلا تقسيم مستويات وبلا أي وصف على البطاقة نفسها */
           return (
-            <div id="lib-activities-grid">
-              {sections.map(sec => (
-                <div key={sec.tag} className="sg-section">
-                  <div className="sg-section-head">
-                    <span className="sg-section-label">{sec.emoji} {sec.tag}</span>
-                    <div className="sg-section-line" />
-                  </div>
-                  <div className="lib-grid">
-                    {sec.items.map(renderSimpleCard)}
-                  </div>
-                </div>
-              ))}
+            <div className="lib-grid" id="lib-activities-grid">
+              {RESOURCES.map(renderSimpleCard)}
             </div>
           );
         })()}
