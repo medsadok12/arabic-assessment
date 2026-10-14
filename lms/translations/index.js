@@ -59,6 +59,10 @@ const t = {
       ctaApply: 'مدرس ومهتم بالانضمام للفريق؟',
       ctaApplyLink: 'سجل ترشحك كمعلم',
       footer: '© 2026 أكاديمية عارم — جميع الحقوق محفوظة',
+      faheemTag: 'رحلة تقييم ذكية',
+      faheemTitle: 'فهيم معك في كل خطوة',
+      faheemFact: 'نظام تكيّفي حقيقي: نتيجة ٨٥٪ فأكثر ترفع طفلك مستوى، وأقل من ٧٠٪ تمنحه مزيداً من التدريب قبل التقدّم — لا اختبار واحد يناسب الجميع.',
+      faheemSkills: ['قراءة', 'كتابة', 'استماع', 'تحدث'],
       features: [
         { title: 'تقييم تشخيصي ذكي',       desc: 'قياس مستوى الطالب في القراءة والكتابة والاستماع والتحدث عبر 10 تدريبات تشخيصية متنوعة.' },
         { title: 'تقارير تفصيلية',           desc: 'تقارير تفصيلية فورية تُرسل تلقائياً لولي الأمر لمتابعة مستوى الطالب وتطوره أولاً بأول.' },
@@ -439,6 +443,10 @@ const t = {
       ctaApply: 'A teacher interested in joining the team?',
       ctaApplyLink: 'Apply as a teacher',
       footer: '© 2026 Aarem Academy — All rights reserved',
+      faheemTag: 'A Smart Assessment Journey',
+      faheemTitle: 'Faheem Is With You Every Step',
+      faheemFact: 'A truly adaptive system: scoring 85% or higher moves your child up a level, and below 70% gives extra practice before advancing — no one-size-fits-all test.',
+      faheemSkills: ['Reading', 'Writing', 'Listening', 'Speaking'],
       features: [
         { title: 'Smart Diagnostic Assessment', desc: 'Measure student level in reading, writing, listening, and speaking through 10 diverse diagnostic exercises.' },
         { title: 'Detailed Reports',             desc: 'Instant detailed reports automatically sent to parents to track student progress step by step.' },
