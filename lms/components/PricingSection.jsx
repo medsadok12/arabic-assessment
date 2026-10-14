@@ -297,8 +297,8 @@ export default function PricingSection() {
     ? 'اختر الخطة المناسبة لك — يمكنك إلغاء الاشتراك في أي وقت'
     : 'Choose the right plan for you — cancel anytime';
   const flexibilityNote = lang === 'ar'
-    ? '🛡️ جميع الباقات تشمل الدعم الفني وتغطية المناهج، ويمكنك إلغاء الاشتراك أو التعديل في أي وقت.'
-    : '🛡️ All plans include technical support and curriculum coverage — cancel or change your subscription anytime.';
+    ? '* جميع الباقات تشمل الدعم الفني وتغطية المناهج، ويمكنك إلغاء الاشتراك أو التعديل في أي وقت.'
+    : '* All plans include technical support and curriculum coverage — cancel or change your subscription anytime.';
 
   return (
     <section ref={sectionRef} style={{
