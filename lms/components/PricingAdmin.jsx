@@ -30,6 +30,12 @@ const ACCENT_COLORS = [
   { value: '#0284c7', label: 'سماوي'   },
 ];
 
+const BILLING_PERIODS = [
+  { key: 'monthly',  ar: 'شهري',        en: 'Monthly'  },
+  { key: 'yearly',   ar: 'سنوي',        en: 'Yearly'   },
+  { key: 'one_time', ar: 'لمرة واحدة',  en: 'One-time' },
+];
+
 const EMPTY = {
   plan_name_ar: '', plan_name_en: '',
   prices: {}, checkout_urls: {},
@@ -39,6 +45,10 @@ const EMPTY = {
   accent_color: '#185FA5',
   sort_order: 0,
   is_active: true,
+  billing_period: 'monthly',
+  badge_text: '',
+  cta_label_ar: '',
+  cta_label_en: '',
 };
 
 /* ── FeatureEditor ── */
@@ -246,6 +256,21 @@ function PlanModal({ plan, onClose, onSave, lang }) {
           </select>
         </div>
 
+        {/* Billing period */}
+        {!isSchool && (
+          <div className="form-group" style={{ marginBottom: 14 }}>
+            <label className="form-label">دورة الفوترة</label>
+            <select className="form-input" style={{ margin: 0 }} value={form.billing_period} onChange={e => set('billing_period', e.target.value)}>
+              {BILLING_PERIODS.map(b => <option key={b.key} value={b.key}>{b.ar} — {b.en}</option>)}
+            </select>
+            {form.billing_period === 'one_time' && (
+              <p style={{ color: '#64748b', fontSize: '.78rem', marginTop: 6 }}>
+                باقة بسعر لمرة واحدة — استخدم عمود "Monthly" أدناه كحقل السعر الوحيد (لن تظهر فترة "/شهر" للزائر).
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Currency prices */}
         <div className="form-group" style={{ marginBottom: 14 }}>
           <label className="form-label">
@@ -265,6 +290,25 @@ function PlanModal({ plan, onClose, onSave, lang }) {
             </p>
           )}
         </div>
+
+        {/* Badge + CTA overrides */}
+        {!isSchool && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">نص الشارة (اختياري)</label>
+              <input className="form-input" style={{ margin: 0 }} value={form.badge_text || ''} onChange={e => set('badge_text', e.target.value)} placeholder="مثال: 💎 أفضل قيمة" />
+              <p style={{ fontSize: '.72rem', color: '#94a3b8', marginTop: 4 }}>يظهر فقط إن كانت "الأكثر طلباً" مفعّلة أدناه — وإلا يُستخدَم "⭐ الأكثر طلباً" تلقائياً.</p>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">نص الزر (عربي، اختياري)</label>
+              <input className="form-input" style={{ margin: 0 }} value={form.cta_label_ar || ''} onChange={e => set('cta_label_ar', e.target.value)} placeholder="اشترك الآن ←" />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Button text (EN, optional)</label>
+              <input className="form-input" style={{ margin: 0, direction: 'ltr' }} value={form.cta_label_en || ''} onChange={e => set('cta_label_en', e.target.value)} placeholder="Get Started →" />
+            </div>
+          </div>
+        )}
 
         {/* Features */}
         <div className="form-group">

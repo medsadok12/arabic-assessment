@@ -126,6 +126,10 @@ function buildPayload(b) {
     accent_color:   String(b.accent_color  ?? '#185FA5'),
     sort_order:     Number(b.sort_order    ?? 0),
     is_active:      b.is_active !== undefined ? Boolean(b.is_active) : true,
+    billing_period: ['monthly','yearly','one_time'].includes(b.billing_period) ? b.billing_period : 'monthly',
+    badge_text:     b.badge_text   ? String(b.badge_text)   : null,
+    cta_label_ar:   b.cta_label_ar ? String(b.cta_label_ar) : null,
+    cta_label_en:   b.cta_label_en ? String(b.cta_label_en) : null,
   };
 }
 
