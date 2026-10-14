@@ -15,6 +15,7 @@ import { getRole } from '../lib/auth-role';
 
 const WHATSAPP_HREF = 'https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0';
 const FEATURE_ICONS = [Target, FileBarChart, Globe, Smartphone, Lock, Zap];
+const FEATURE_COLORS = ['gold', 'purple', 'green', 'gold', 'purple', 'green'];
 
 export default function LandingPage() {
   const router = useRouter();
@@ -32,7 +33,7 @@ export default function LandingPage() {
     });
   }, [router]);
 
-  const features = t('landing.features').map((f, i) => ({ ...f, icon: FEATURE_ICONS[i] }));
+  const features = t('landing.features').map((f, i) => ({ ...f, icon: FEATURE_ICONS[i], color: FEATURE_COLORS[i] }));
 
   const videoUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/promo.mp4`;
 
@@ -103,7 +104,7 @@ export default function LandingPage() {
           <div className="card-grid-3">
             {features.map(f => (
               <div key={f.title} className="feature-card">
-                <span className="feature-icon">
+                <span className={`feature-icon ${f.color}`}>
                   <f.icon size={32} strokeWidth={1.6} />
                 </span>
                 <h3>{f.title}</h3>

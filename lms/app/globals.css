@@ -461,6 +461,9 @@ body {
   color: #fff;
   transform: scale(1.1) rotate(-5deg);
 }
+.feature-icon.gold   { background: linear-gradient(135deg, #FDF1DB, #FBE8C4); color: #C9962E; }
+.feature-icon.purple { background: linear-gradient(135deg, #EFE9FB, #E3D9F9); color: #5f3fc4; }
+.feature-icon.green  { background: linear-gradient(135deg, #E6F7EF, #D7F2E4); color: #1f9a63; }
 .feature-card h3 { font-size: 1.08rem; font-weight: 700; color: var(--text); margin-bottom: 10px; transition: color .28s; }
 .feature-card p  { font-size: .88rem; color: var(--muted); line-height: 1.75; transition: color .28s; }
 .feature-card:hover h3 { color: #fff; }
