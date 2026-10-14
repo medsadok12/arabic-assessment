@@ -80,9 +80,9 @@ export default function LandingPage() {
         <div className="hero-image">
           <Image
             src="/teacher-student-hero.png"
-            alt="معلم وطالب يستخدمان التطبيق"
-            width={1408}
-            height={768}
+            alt="معلم وطالب يستخدمان التطبيق مع الفيل فهيم"
+            width={493}
+            height={372}
             priority
             sizes="(max-width: 768px) 92vw, 64vw"
             className="hero-photo"
