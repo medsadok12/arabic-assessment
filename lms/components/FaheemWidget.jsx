@@ -363,7 +363,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
             borderRadius: 16, padding: '8px 14px', boxShadow: '0 6px 16px rgba(0,0,0,.16)',
             whiteSpace: 'nowrap', marginBottom: 58, animation: 'fPillBob 2.6s ease-in-out infinite',
           }}>
-            اسْأَلْ فَهِيماً! 💬
+            اسْأَلْ فَهِيم! 💬
             <span style={{
               position: 'absolute', top: '50%', right: -5, width: 12, height: 12, background: '#fff',
               transform: 'translateY(-50%) rotate(45deg)',
