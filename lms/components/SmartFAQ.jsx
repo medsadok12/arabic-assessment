@@ -201,27 +201,20 @@ export default function SmartFAQ() {
               {/* Header: avatar + text side by side */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 22 }}>
 
-                {/* Faheem avatar — الفيل فهيم، دائرة بنفسجية، حركة طفو */}
-                <div style={{
-                  flexShrink: 0,
-                  width: 86,
-                  height: 86,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(145deg, #f3f0ff 0%, #c4b5fd 55%, #7C5CD9 100%)',
-                  border: '3px solid rgba(255,255,255,0.55)',
-                  boxShadow: '0 4px 20px rgba(124,92,217,0.5)',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  animation: 'faheemFloat 3s ease-in-out infinite',
-                }}>
-                  <Image
-                    src="/faheem.png"
-                    alt="فهيم"
-                    fill
-                    sizes="86px"
-                    style={{ objectFit: 'contain', padding: 10 }}
-                  />
-                </div>
+                {/* Faheem — الفيل فهيم، بلا إطار، حركة طفو */}
+                <Image
+                  src="/faheem.png"
+                  alt="فهيم"
+                  width={555}
+                  height={707}
+                  style={{
+                    flexShrink: 0,
+                    width: 'auto',
+                    height: 92,
+                    filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.35))',
+                    animation: 'faheemFloat 3s ease-in-out infinite',
+                  }}
+                />
 
                 {/* Title text */}
                 <div style={{ flex: 1, minWidth: 0 }}>

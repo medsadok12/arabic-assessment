@@ -122,9 +122,9 @@ export default function LandingPage() {
           .faheem-chapter .container{ display:flex; flex-direction:column; align-items:center; gap:24px; text-align:center; }
           .faheem-tag{ color:#E8B84B; font-weight:800; font-size:.85rem; letter-spacing:.3px; }
           .faheem-chapter h2{ color:#fff; font-size:1.9rem; font-weight:900; max-width:18ch; margin:0; }
-          .faheem-spot{
-            width:170px; height:170px; border-radius:50%; background:#FAF7F2;
-            position:relative; box-shadow:0 16px 34px rgba(0,0,0,.2); overflow:hidden; flex-shrink:0;
+          .faheem-pic{
+            width:auto; height:188px; flex-shrink:0;
+            filter:drop-shadow(0 14px 22px rgba(0,0,0,.25));
           }
           .faheem-skills{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
           .faheem-pill{
@@ -139,15 +139,13 @@ export default function LandingPage() {
           @media (max-width:480px){
             .faheem-chapter{ padding:52px 0; }
             .faheem-chapter h2{ font-size:1.5rem; }
-            .faheem-spot{ width:140px; height:140px; }
+            .faheem-pic{ height:148px; }
           }
         `}</style>
         <div className="container">
           <span className="faheem-tag">{t('landing.faheemTag')}</span>
           <h2>{t('landing.faheemTitle')}</h2>
-          <div className="faheem-spot">
-            <Image src="/faheem.png" alt="فهيم" fill sizes="170px" style={{ objectFit: 'contain', padding: 14 }} />
-          </div>
+          <Image src="/faheem.png" alt="فهيم" width={555} height={707} className="faheem-pic" />
           <div className="faheem-skills">
             {t('landing.faheemSkills').map(s => (
               <span key={s} className="faheem-pill">{s}</span>
