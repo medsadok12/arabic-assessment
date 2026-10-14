@@ -96,25 +96,6 @@ export default function LandingPage() {
         </svg>
       </section>
 
-      {/* ── Features ── */}
-      <section className="features">
-        <div className="container">
-          <h2>{t('landing.whyTitle')}</h2>
-          <p className="features-subtitle">{t('landing.whySub')}</p>
-          <div className="card-grid-3">
-            {features.map(f => (
-              <div key={f.title} className="feature-card">
-                <span className={`feature-icon ${f.color}`}>
-                  <f.icon size={32} strokeWidth={1.6} />
-                </span>
-                <h3>{f.title}</h3>
-                <p>{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── Faheem chapter ── */}
       <section className="faheem-chapter">
         <style>{`
@@ -152,6 +133,25 @@ export default function LandingPage() {
             ))}
           </div>
           <p className="faheem-fact">{t('landing.faheemFact')}</p>
+        </div>
+      </section>
+
+      {/* ── Features ── */}
+      <section className="features">
+        <div className="container">
+          <h2>{t('landing.whyTitle')}</h2>
+          <p className="features-subtitle">{t('landing.whySub')}</p>
+          <div className="card-grid-3">
+            {features.map(f => (
+              <div key={f.title} className="feature-card">
+                <span className={`feature-icon ${f.color}`}>
+                  <f.icon size={32} strokeWidth={1.6} />
+                </span>
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -193,13 +193,14 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Team ── */}
+      <TeamShowcase />
+
       {/* ── Pricing ── */}
       <PricingSection />
 
       {/* ── Smart FAQ ── */}
       <SmartFAQ />
-
-      <TeamShowcase />
 
       <footer style={{ background: '#0d1f38', color: 'rgba(255,255,255,.55)', textAlign: 'center', padding: '24px 20px', fontSize: '.88rem' }}>
         <style>{`
