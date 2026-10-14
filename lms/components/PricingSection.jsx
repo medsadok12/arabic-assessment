@@ -7,9 +7,9 @@ const WHATSAPP_HREF = 'https://api.whatsapp.com/send/?phone=447400755914&text&ty
 
 // العملة الوحيدة المعروضة في هذا القسم — القاعدة لا تزال تخزّن بقية العملات
 // (prices/checkout_urls لكل عملة) لإمكانية إعادة تفعيل اختيار العملة لاحقاً
-// بلا أي تغيير في البنية، لكن هذه النسخة من القسم تعرض ر.ق حصراً كما طُلب.
-const CURRENCY = 'QAR';
-const CURRENCY_SYMBOL = 'ر.ق';
+// بلا أي تغيير في البنية، لكن هذه النسخة من القسم تعرض الدولار حصراً كما طُلب.
+const CURRENCY = 'USD';
+const CURRENCY_SYMBOL = '$';
 
 // ── Parsing helpers ───────────────────────────────────────────────────────────
 
@@ -47,9 +47,20 @@ function getCheckoutHref(plan) {
 }
 
 function periodLabel(plan, lang) {
-  if (plan.billing_period === 'yearly') return lang === 'ar' ? '/سنة' : '/yr';
-  if (plan.billing_period === 'one_time') return lang === 'ar' ? '/حصة' : '/session';
-  return lang === 'ar' ? '/شهر' : '/mo';
+  if (plan.billing_period === 'yearly') return lang === 'ar' ? '/سنوياً' : '/yr';
+  if (plan.billing_period === 'one_time') return ''; // سعر ثابت لمرة واحدة — بلا أي لاحقة
+  return lang === 'ar' ? '/شهرياً' : '/mo';
+}
+
+/** توحيد شكل عنصر الميزة: نص بسيط (قديم، بلا شرح) أو كائن {text, description} */
+function normalizeFeature(feat) {
+  if (typeof feat === 'string') return { text: feat, description: '' };
+  if (feat && typeof feat === 'object') {
+    // توافق خلفي مع الشكل القديم {ar, en}
+    const text = feat.text ?? feat.ar ?? feat.en ?? '';
+    return { text, description: feat.description || '' };
+  }
+  return { text: '', description: '' };
 }
 
 // ── Animated price counter ────────────────────────────────────────────────────
@@ -82,6 +93,47 @@ function CheckIcon({ color }) {
   );
 }
 
+// ── عنصر ميزة قابل للطي (Accordion) — ينفتح عند النقر إن وُجد شرح ───────────────
+
+function FeatureAccordionItem({ feature, color, lang }) {
+  const [open, setOpen] = useState(false);
+  const { text, description } = feature;
+  const hasDescription = !!description;
+
+  return (
+    <div style={{ background: '#f8fafc', borderRadius: 8, border: '1.5px solid #e2e8f0', overflow: 'hidden' }}>
+      <div
+        onClick={hasDescription ? () => setOpen(v => !v) : undefined}
+        role={hasDescription ? 'button' : undefined}
+        tabIndex={hasDescription ? 0 : undefined}
+        onKeyDown={hasDescription ? (e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(v => !v); } }) : undefined}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px',
+          cursor: hasDescription ? 'pointer' : 'default',
+        }}
+      >
+        <CheckIcon color={color} />
+        <span style={{ flex: 1, fontSize: '.88rem', fontWeight: 600, color: '#334155' }}>{text}</span>
+        {hasDescription && (
+          <span style={{
+            fontSize: '.75rem', color: '#94a3b8', transition: 'transform .2s',
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0,
+          }}>▾</span>
+        )}
+      </div>
+      {hasDescription && (
+        <div style={{
+          maxHeight: open ? 160 : 0, overflow: 'hidden', transition: 'max-height .3s ease',
+        }}>
+          <p style={{ margin: 0, padding: '0 10px 10px 34px', fontSize: '.8rem', lineHeight: 1.7, color: '#64748b' }}>
+            {description}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Pricing card ──────────────────────────────────────────────────────────────
 
 function PricingCard({ plan, lang }) {
@@ -91,7 +143,7 @@ function PricingCard({ plan, lang }) {
   const period   = periodLabel(plan, lang);
   const color    = plan.accent_color || '#1A2B4A';
   const name     = lang === 'ar' ? plan.plan_name_ar : plan.plan_name_en;
-  const features = Array.isArray(plan.features_list) ? plan.features_list : [];
+  const features = (Array.isArray(plan.features_list) ? plan.features_list : []).map(normalizeFeature);
   const checkoutUrl = isSchool ? WHATSAPP_HREF : getCheckoutHref(plan);
   const ctaLabel = isSchool
     ? (lang === 'ar' ? '💬 تواصل معنا للحصول على عرض' : '💬 Contact Us for a Quote')
@@ -144,9 +196,9 @@ function PricingCard({ plan, lang }) {
           </span>
         ) : (
           <>
-            <span style={{ fontSize: '.65rem', fontWeight: 700, opacity: .85 }}>{CURRENCY_SYMBOL}</span>
+            <span style={{ fontSize: '.7rem', fontWeight: 700, opacity: .85 }}>{CURRENCY_SYMBOL}</span>
             <span style={{ fontSize: '1.1rem', fontWeight: 900, lineHeight: 1 }}><PriceCounter value={price} /></span>
-            <span style={{ fontSize: '.5rem', fontWeight: 700, opacity: .85 }}>{period}</span>
+            {period && <span style={{ fontSize: '.48rem', fontWeight: 700, opacity: .85 }}>{period}</span>}
           </>
         )}
       </div>
@@ -169,12 +221,7 @@ function PricingCard({ plan, lang }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, marginBottom: 20 }}>
         {features.map((feat, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: '#f8fafc', borderRadius: 8, border: '1.5px solid #e2e8f0' }}>
-            <CheckIcon color={color} />
-            <span style={{ fontSize: '.88rem', fontWeight: 600, color: '#334155' }}>
-              {typeof feat === 'object' ? (lang === 'ar' ? feat.ar : feat.en) : feat}
-            </span>
-          </div>
+          <FeatureAccordionItem key={i} feature={feat} color={color} lang={lang} />
         ))}
       </div>
 
@@ -187,65 +234,6 @@ function PricingCard({ plan, lang }) {
         }}>
         {ctaLabel}
       </a>
-    </div>
-  );
-}
-
-// ── جدول مقارنة الميزات (ثابت البنية، يعرض أسماء الباقات الثلاث الحيّة من القاعدة) ──
-// ملاحظة: القيم هنا ثابتة بافتراض وجود 3 باقات بهذا الترتيب تحديداً (فردية/شهرية/سنوية).
-// لو أُضيفت باقة رابعة أو أُعيد ترتيبها من bogga، يحتاج هذا الجدول مراجعة يدوية.
-function comparisonRows(lang) {
-  const yes = '✓';
-  const no  = '—';
-  return [
-    { label: lang === 'ar' ? 'نمط الحصص' : 'Session format',
-      values: lang === 'ar'
-        ? ['حصة واحدة تجريبية', 'حصص أسبوعية منتظمة', 'حصص أسبوعية منتظمة']
-        : ['One trial session', 'Regular weekly sessions', 'Regular weekly sessions'] },
-    { label: lang === 'ar' ? 'نظام التقييم الذكي' : 'Smart assessment system', values: [yes, yes, yes] },
-    { label: lang === 'ar' ? 'دليل الطالب الرقمي' : 'Digital student guide', values: [no, yes, yes] },
-    { label: lang === 'ar' ? 'المكتبة التفاعلية' : 'Interactive library', values: [no, yes, yes] },
-    { label: lang === 'ar' ? 'تقارير أداء دورية' : 'Regular performance reports', values: [no, yes, yes] },
-    { label: lang === 'ar' ? 'إلغاء أو تعديل في أي وقت' : 'Cancel or change anytime', values: [no, yes, yes] },
-    { label: lang === 'ar' ? 'التوفير مقارنة بالسعر الشهري' : 'Savings vs. monthly price',
-      values: [no, no, lang === 'ar' ? '💰 20%' : '💰 20%'] },
-  ];
-}
-
-function ComparisonTable({ plans, lang }) {
-  if (plans.length < 2) return null;
-  const rows = comparisonRows(lang);
-  return (
-    <div className="table-scroll-wrapper" style={{ maxWidth: 960, margin: '40px auto 0' }}>
-      <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse', background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
-        <thead>
-          <tr style={{ background: 'var(--primary)' }}>
-            <th style={{ padding: '14px 16px', textAlign: lang === 'ar' ? 'right' : 'left', color: '#fff', fontSize: '.85rem', fontWeight: 700 }}>
-              {lang === 'ar' ? 'الميزة' : 'Feature'}
-            </th>
-            {plans.map(p => (
-              <th key={p.id} style={{ padding: '14px 10px', textAlign: 'center', color: '#fff', fontSize: '.85rem', fontWeight: 800 }}>
-                {lang === 'ar' ? p.plan_name_ar : p.plan_name_en}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i} style={{ borderBottom: '1px solid #e2e8f0', background: i % 2 ? '#f8fafc' : '#fff' }}>
-              <td style={{ padding: '12px 16px', fontSize: '.85rem', fontWeight: 600, color: '#334155' }}>{row.label}</td>
-              {row.values.map((v, j) => (
-                <td key={j} style={{
-                  padding: '12px 10px', textAlign: 'center', fontSize: '.85rem', fontWeight: 700,
-                  color: v === '—' ? '#cbd5e1' : (v === '✓' ? '#2ABB7A' : '#1a1a2e'),
-                }}>
-                  {v}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }
@@ -297,8 +285,8 @@ export default function PricingSection() {
     ? 'اختر الخطة المناسبة لك — يمكنك إلغاء الاشتراك في أي وقت'
     : 'Choose the right plan for you — cancel anytime';
   const flexibilityNote = lang === 'ar'
-    ? '* جميع الباقات تشمل الدعم الفني وتغطية المناهج، ويمكنك إلغاء الاشتراك أو التعديل في أي وقت.'
-    : '* All plans include technical support and curriculum coverage — cancel or change your subscription anytime.';
+    ? '* جميع الباقات تشمل الدعم الفني وتغطية المناهج، مع ضمان استرداد الأموال خلال 14 يوماً للباقة السنوية.'
+    : '* All plans include technical support and curriculum coverage, with a 14-day money-back guarantee on the annual plan.';
 
   return (
     <section ref={sectionRef} style={{
@@ -360,8 +348,6 @@ export default function PricingSection() {
             {flexibilityNote}
           </p>
         )}
-
-        {!loading && <ComparisonTable plans={plans} lang={lang} />}
       </div>
     </section>
   );

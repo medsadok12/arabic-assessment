@@ -51,36 +51,64 @@ const EMPTY = {
   cta_label_en: '',
 };
 
-/* ── FeatureEditor ── */
+/* ── FeatureEditor — نص الميزة + شرح اختياري يظهر عند النقر (Accordion) في الموقع ── */
+function normalizeFeatureForEdit(f) {
+  if (typeof f === 'string') return { text: f, description: '' };
+  if (f && typeof f === 'object') return { text: f.text ?? f.ar ?? f.en ?? '', description: f.description || '' };
+  return { text: '', description: '' };
+}
+
 function FeatureEditor({ features, onChange, lang }) {
-  const [input, setInput] = useState('');
+  const [text, setText] = useState('');
+  const [desc, setDesc] = useState('');
+  const items = features.map(normalizeFeatureForEdit);
+
+  function updateItem(i, patch) {
+    onChange(items.map((it, idx) => idx === i ? { ...it, ...patch } : it));
+  }
   function add() {
-    const v = input.trim();
+    const v = text.trim();
     if (!v) return;
-    onChange([...features, v]);
-    setInput('');
+    onChange([...items, { text: v, description: desc.trim() }]);
+    setText(''); setDesc('');
   }
   return (
     <div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-        {features.map((f, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '6px 10px' }}>
-            <span style={{ flex: 1, fontSize: '.88rem' }}>{f}</span>
-            <button onClick={() => { const a = [...features]; if (i > 0) { [a[i-1],a[i]]=[a[i],a[i-1]]; onChange(a); } }} style={iconBtn} disabled={i === 0}>↑</button>
-            <button onClick={() => { const a = [...features]; if (i < a.length-1) { [a[i],a[i+1]]=[a[i+1],a[i]]; onChange(a); } }} style={iconBtn} disabled={i === features.length - 1}>↓</button>
-            <button onClick={() => onChange(features.filter((_,idx) => idx !== i))} style={{ ...iconBtn, color: '#e53935' }}>✕</button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+        {items.map((f, i) => (
+          <div key={i} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <input
+                className="form-input" style={{ flex: 1, margin: 0, fontSize: '.88rem' }}
+                value={f.text} onChange={e => updateItem(i, { text: e.target.value })}
+              />
+              <button onClick={() => { const a = [...items]; if (i > 0) { [a[i-1],a[i]]=[a[i],a[i-1]]; onChange(a); } }} style={iconBtn} disabled={i === 0}>↑</button>
+              <button onClick={() => { const a = [...items]; if (i < a.length-1) { [a[i],a[i+1]]=[a[i+1],a[i]]; onChange(a); } }} style={iconBtn} disabled={i === items.length - 1}>↓</button>
+              <button onClick={() => onChange(items.filter((_,idx) => idx !== i))} style={{ ...iconBtn, color: '#e53935' }}>✕</button>
+            </div>
+            <textarea
+              value={f.description} onChange={e => updateItem(i, { description: e.target.value })}
+              placeholder={lang === 'ar' ? 'شرح الميزة عند الضغط عليها (اختياري — يظهر كقائمة منسدلة في الموقع)' : 'Feature explanation shown when clicked (optional)'}
+              rows={2}
+              style={{ width: '100%', fontSize: '.8rem', padding: '6px 8px', border: '1px solid #cbd5e1', borderRadius: 6, fontFamily: 'inherit', resize: 'vertical' }}
+            />
           </div>
         ))}
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: '#fff', border: '1.5px dashed #cbd5e1', borderRadius: 8, padding: 10 }}>
         <input
-          className="form-input" style={{ flex: 1, margin: 0, fontSize: '.88rem' }}
-          placeholder={lang === 'ar' ? 'أضف ميزة...' : 'Add feature...'}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), add())}
+          className="form-input" style={{ margin: 0, fontSize: '.88rem' }}
+          placeholder={lang === 'ar' ? 'نص الميزة الجديدة...' : 'New feature text...'}
+          value={text}
+          onChange={e => setText(e.target.value)}
         />
-        <button onClick={add} className="btn btn-primary btn-sm">+ {lang === 'ar' ? 'أضف' : 'Add'}</button>
+        <textarea
+          value={desc} onChange={e => setDesc(e.target.value)}
+          placeholder={lang === 'ar' ? 'شرح الميزة (اختياري)...' : 'Feature explanation (optional)...'}
+          rows={2}
+          style={{ width: '100%', fontSize: '.8rem', padding: '6px 8px', border: '1px solid #cbd5e1', borderRadius: 6, fontFamily: 'inherit', resize: 'vertical' }}
+        />
+        <button onClick={add} className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>+ {lang === 'ar' ? 'أضف الميزة' : 'Add feature'}</button>
       </div>
     </div>
   );
@@ -518,7 +546,10 @@ export default function PricingAdmin({ lang = 'ar' }) {
               </div>
 
               <div style={{ fontSize: '.8rem', color: '#64748b', marginBottom: 12 }}>
-                {(Array.isArray(p.features_list) ? p.features_list : []).slice(0, 3).join(' · ')}
+                {(Array.isArray(p.features_list) ? p.features_list : [])
+                  .slice(0, 3)
+                  .map(f => normalizeFeatureForEdit(f).text)
+                  .join(' · ')}
                 {p.features_list?.length > 3 && ` +${p.features_list.length - 3}`}
               </div>
 
