@@ -139,7 +139,7 @@ function LetterSheet({ data, index, onClose }) {
       <div
         onClick={onClose}
         style={{
-          position: 'fixed', inset: 0, zIndex: 1000,
+          position: 'fixed', inset: 0, zIndex: 1200,
           background: 'rgba(0,0,0,.45)',
           backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
           animation: 'hfFadeIn .2s ease',
@@ -147,10 +147,10 @@ function LetterSheet({ data, index, onClose }) {
       />
       {/* sheet */}
       <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1001,
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1201,
         background: '#fff',
         borderRadius: '24px 24px 0 0',
-        padding: '20px 24px 40px',
+        padding: '20px 24px calc(40px + env(safe-area-inset-bottom, 0px))',
         textAlign: 'center',
         fontFamily: "'Cairo','Tajawal',sans-serif",
         direction: 'rtl',
