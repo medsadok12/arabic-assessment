@@ -166,18 +166,6 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 20px;
 }
-.card-grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-@media (max-width: 900px) {
-  .card-grid-3 { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 580px) {
-  .card-grid-3 { grid-template-columns: 1fr; }
-}
-
 /* ── Buttons ── */
 .btn {
   display: inline-flex;
@@ -418,57 +406,6 @@ body {
   height: auto;
   filter: drop-shadow(0 14px 30px rgba(0,0,0,0.22));
 }
-.features { padding: 80px 0; background: #FAF7F2; }
-.features h2 {
-  text-align: center;
-  font-size: 1.9rem;
-  font-weight: 800;
-  color: var(--primary);
-  margin-bottom: 12px;
-}
-.features-subtitle {
-  text-align: center;
-  color: var(--muted);
-  font-size: .97rem;
-  margin-bottom: 48px;
-}
-.feature-card {
-  background: #fff;
-  border-radius: 20px;
-  padding: 36px 24px 28px;
-  box-shadow: 0 1px 4px rgba(26,43,74,.06), 0 4px 20px rgba(26,43,74,.08);
-  text-align: center;
-  border: 1.5px solid rgba(26,43,74,.08);
-  transition: transform .28s, box-shadow .28s, background .28s, border-color .28s;
-}
-.feature-card:hover {
-  transform: translateY(-7px);
-  box-shadow: 0 12px 40px rgba(26,43,74,.28);
-  background: linear-gradient(145deg, #1A2B4A 0%, #253d6a 100%);
-  border-color: transparent;
-}
-.feature-icon {
-  width: 72px; height: 72px;
-  border-radius: 22px;
-  background: linear-gradient(135deg, #EDE5D8, #F4EFE6);
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 20px;
-  color: var(--primary);
-  transition: background .28s, transform .28s, color .28s;
-}
-.feature-card:hover .feature-icon {
-  background: rgba(255,255,255,0.2);
-  color: #fff;
-  transform: scale(1.1) rotate(-5deg);
-}
-.feature-icon.gold   { background: linear-gradient(135deg, #FDF1DB, #FBE8C4); color: #C9962E; }
-.feature-icon.purple { background: linear-gradient(135deg, #EFE9FB, #E3D9F9); color: #5f3fc4; }
-.feature-icon.green  { background: linear-gradient(135deg, #E6F7EF, #D7F2E4); color: #1f9a63; }
-.feature-card h3 { font-size: 1.08rem; font-weight: 700; color: var(--text); margin-bottom: 10px; transition: color .28s; }
-.feature-card p  { font-size: .88rem; color: var(--muted); line-height: 1.75; transition: color .28s; }
-.feature-card:hover h3 { color: #fff; }
-.feature-card:hover p  { color: rgba(255,255,255,.82); }
-
 /* ── Dashboard ── */
 .dash-welcome { font-size: 1.5rem; font-weight: 700; margin-bottom: 24px; color: var(--text); }
 .stat-card {

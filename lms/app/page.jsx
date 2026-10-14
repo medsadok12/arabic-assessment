@@ -136,47 +136,59 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section className="features">
+      {/* ── Features + About Video (combined) ── */}
+      <section id="about" className="features-about">
+        <style>{`
+          .features-about{ background:#EDE5D8; padding:80px 0; }
+          .features-about h2{ text-align:center; font-size:1.9rem; font-weight:800; color:var(--primary); margin-bottom:12px; }
+          .features-about .fa-sub{ text-align:center; color:var(--muted); font-size:.97rem; margin-bottom:48px; }
+          .fa-grid{ display:flex; gap:52px; align-items:center; flex-wrap:wrap; }
+          .fa-cards{ flex:1 1 380px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+          .fa-card{
+            display:flex; align-items:center; gap:16px;
+            background:#fff; border-radius:16px; padding:16px 20px;
+            box-shadow:0 1px 4px rgba(26,43,74,.06), 0 4px 16px rgba(26,43,74,.07);
+            border:1.5px solid rgba(26,43,74,.08);
+          }
+          .fa-icon{
+            width:48px; height:48px; flex-shrink:0; border-radius:14px;
+            display:flex; align-items:center; justify-content:center;
+          }
+          .fa-icon.gold   { background:linear-gradient(135deg,#FDF1DB,#FBE8C4); color:#C9962E; }
+          .fa-icon.purple { background:linear-gradient(135deg,#EFE9FB,#E3D9F9); color:#5f3fc4; }
+          .fa-icon.green  { background:linear-gradient(135deg,#E6F7EF,#D7F2E4); color:#1f9a63; }
+          .fa-card-text{ min-width:0; text-align:right; }
+          .fa-card-text h3{ font-size:.98rem; font-weight:700; color:var(--text); margin:0 0 3px; }
+          .fa-card-text p{ font-size:.82rem; color:var(--muted); line-height:1.6; margin:0; }
+          .fa-video{ flex:0 1 380px; min-width:260px; }
+          @media (max-width:640px){
+            .features-about{ padding:56px 0; }
+            .features-about .fa-sub{ margin-bottom:32px; }
+            .fa-grid{ gap:28px; }
+          }
+        `}</style>
         <div className="container">
           <h2>{t('landing.whyTitle')}</h2>
-          <p className="features-subtitle">{t('landing.whySub')}</p>
-          <div className="card-grid-3">
-            {features.map(f => (
-              <div key={f.title} className="feature-card">
-                <span className={`feature-icon ${f.color}`}>
-                  <f.icon size={32} strokeWidth={1.6} />
-                </span>
-                <h3>{f.title}</h3>
-                <p>{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+          <p className="fa-sub">{t('landing.whySub')}</p>
+          <div className="fa-grid">
 
-      {/* ── About + Video ── */}
-      <section id="about" style={{ background: '#EDE5D8', padding: '80px 0' }}>
-        <div className="container">
-          <div style={{ display: 'flex', gap: 52, alignItems: 'center', flexWrap: 'wrap' }}>
-
-            {/* Right — text */}
-            <div style={{ flex: '1 1 340px', minWidth: 0, textAlign: 'right' }}>
-              <div style={{ fontSize: '2rem', marginBottom: 12 }}>🌱</div>
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary)', marginBottom: 8 }}>
-                {t('landing.aboutTitle')}
-              </h2>
-              <p style={{ fontSize: '1rem', fontWeight: 700, color: '#1A2B4A', marginBottom: 20 }}>
-                {t('landing.aboutMotto')}
-              </p>
-              <div style={{ lineHeight: 2, color: '#2d3748', fontSize: '1rem' }}>
-                <p style={{ marginBottom: 16 }}>{t('landing.aboutBody1')}</p>
-                <p>{t('landing.aboutBody2')}</p>
-              </div>
+            {/* Right — feature cards stack */}
+            <div className="fa-cards">
+              {features.map(f => (
+                <div key={f.title} className="fa-card">
+                  <span className={`fa-icon ${f.color}`}>
+                    <f.icon size={22} strokeWidth={1.8} />
+                  </span>
+                  <div className="fa-card-text">
+                    <h3>{f.title}</h3>
+                    <p>{f.desc}</p>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Left — promo video */}
-            <div id="promo-video" style={{ flex: '0 1 380px', minWidth: 260 }}>
+            <div id="promo-video" className="fa-video">
               <video
                 src={videoUrl}
                 controls
