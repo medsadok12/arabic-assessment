@@ -15,7 +15,7 @@ const RESOURCES = [
     icon: '🔤', title: 'الحروف الهجائية',
     desc: 'تعلّم الحروف بأشكالها مع أصوات وأمثلة مشوّقة!',
     tag: 'مستوى 1', link: '/library/huroof', ready: true,
-    accent: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE', iconBg: '#DBEAFE',
+    accent: '#3B82F6', dark: '#1D4ED8', rot: -4, bg: '#EFF6FF', border: '#BFDBFE', iconBg: '#DBEAFE',
     btnBg: 'linear-gradient(135deg,#3B82F6,#2563EB)',
   },
   {
@@ -23,7 +23,7 @@ const RESOURCES = [
     icon: '🔊', title: 'الحركات والتشكيل',
     desc: 'اكتشف الفتحة والكسرة والضمة مع أمثلة صوتية!',
     tag: 'مستوى 1', link: '/library/games/vowel-balloon', ready: true,
-    accent: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE', iconBg: '#EDE9FE',
+    accent: '#8B5CF6', dark: '#6D28D9', rot: 3, bg: '#F5F3FF', border: '#DDD6FE', iconBg: '#EDE9FE',
     btnBg: 'linear-gradient(135deg,#8B5CF6,#7C3AED)',
   },
   {
@@ -31,42 +31,42 @@ const RESOURCES = [
     icon: '📖', title: 'القراءة المقطعية',
     desc: 'قطّع الكلمات وتعلّم القراءة خطوة بخطوة!',
     tag: 'مستوى 1', link: '#', ready: false,
-    accent: '#10B981', bg: '#ECFDF5', border: '#A7F3D0', iconBg: '#D1FAE5',
+    accent: '#10B981', dark: '#047857', rot: -3, bg: '#ECFDF5', border: '#A7F3D0', iconBg: '#D1FAE5',
   },
   {
     key: 'writing',
     icon: '✍️', title: 'الكتابة الصحيحة',
     desc: 'تدرّب على الكتابة الصحيحة وصحّح أخطاءك!',
     tag: 'مستوى 2', link: '#', ready: false,
-    accent: '#F97316', bg: '#FFF7ED', border: '#FED7AA', iconBg: '#FFEDD5',
+    accent: '#F97316', dark: '#C2410C', rot: 4, bg: '#FFF7ED', border: '#FED7AA', iconBg: '#FFEDD5',
   },
   {
     key: 'listening',
     icon: '👂', title: 'الاستماع والفهم',
     desc: 'استمع وافهم — نصوص صوتية تنمّي مهاراتك!',
     tag: 'مستوى 2', link: '#', ready: false,
-    accent: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', iconBg: '#FEF3C7',
+    accent: '#F59E0B', dark: '#B45309', rot: -2, bg: '#FFFBEB', border: '#FDE68A', iconBg: '#FEF3C7',
   },
   {
     key: 'speaking',
     icon: '💬', title: 'التعبير الشفهي',
     desc: 'تحدّث بثقة — حوارات تنمّي لغتك العربية!',
     tag: 'مستوى 3', link: '#', ready: false,
-    accent: '#EC4899', bg: '#FDF2F8', border: '#FBCFE8', iconBg: '#FCE7F3',
+    accent: '#EC4899', dark: '#BE185D', rot: 3, bg: '#FDF2F8', border: '#FBCFE8', iconBg: '#FCE7F3',
   },
   {
     key: 'literature',
     icon: '📝', title: 'النصوص الأدبية',
     desc: 'قصص رائعة تناسب عمرك وتشعل خيالك!',
     tag: 'مستوى 3', link: '#', ready: false,
-    accent: '#14B8A6', bg: '#F0FDFA', border: '#99F6E4', iconBg: '#CCFBF1',
+    accent: '#14B8A6', dark: '#0F766E', rot: -4, bg: '#F0FDFA', border: '#99F6E4', iconBg: '#CCFBF1',
   },
   {
     key: 'letter-catcher',
     icon: '🎮', title: 'صيّاد الحروف',
     desc: 'أوجد الحرف الناقص — هل أنت صيّاد ماهر؟',
     tag: 'تعزيزي', link: '/library/games/letter-catcher', ready: true,
-    accent: '#6366F1', bg: '#EEF2FF', border: '#C7D2FE', iconBg: '#E0E7FF',
+    accent: '#6366F1', dark: '#4338CA', rot: 3, bg: '#EEF2FF', border: '#C7D2FE', iconBg: '#E0E7FF',
     btnBg: 'linear-gradient(135deg,#6366F1,#4F46E5)',
   },
   {
@@ -74,7 +74,7 @@ const RESOURCES = [
     icon: '🔀', title: 'رتّب الكلمة',
     desc: 'رتّب الحروف المبعثرة لتكوّن كلمة صحيحة!',
     tag: 'تعزيزي', link: '/library/games/word-scramble', ready: true,
-    accent: '#EF4444', bg: '#FEF2F2', border: '#FECACA', iconBg: '#FEE2E2',
+    accent: '#EF4444', dark: '#B91C1C', rot: -4, bg: '#FEF2F2', border: '#FECACA', iconBg: '#FEE2E2',
     btnBg: 'linear-gradient(135deg,#EF4444,#DC2626)',
   },
   {
@@ -82,7 +82,7 @@ const RESOURCES = [
     icon: '🖼️', title: 'صِل الكلمة بصورتها',
     desc: 'وصّل كل كلمة بصورتها — لعبة بصرية رائعة!',
     tag: 'تعزيزي', link: '/library/games/word-image-match', ready: true,
-    accent: '#06B6D4', bg: '#ECFEFF', border: '#A5F3FC', iconBg: '#CFFAFE',
+    accent: '#06B6D4', dark: '#0E7490', rot: 2, bg: '#ECFEFF', border: '#A5F3FC', iconBg: '#CFFAFE',
     btnBg: 'linear-gradient(135deg,#06B6D4,#0891B2)',
   },
   {
@@ -90,7 +90,7 @@ const RESOURCES = [
     icon: '🔨', title: 'مطرقة التفكيك',
     desc: 'فكّك الكلمة إلى مقاطعها — اضرب الإجابة الصحيحة!',
     tag: 'تعزيزي', link: '/library/games/word-smash', ready: true,
-    accent: '#84CC16', bg: '#F7FEE7', border: '#BEF264', iconBg: '#ECFCCB',
+    accent: '#84CC16', dark: '#4D7C0F', rot: -3, bg: '#F7FEE7', border: '#BEF264', iconBg: '#ECFCCB',
     btnBg: 'linear-gradient(135deg,#84CC16,#65A30D)',
   },
   {
@@ -98,7 +98,7 @@ const RESOURCES = [
     icon: '🎡', title: 'عجلة الكلمات',
     desc: 'كوّن كلمات من حروف العجلة — الحرف الأوسط إلزامي!',
     tag: 'تعزيزي', link: '/library/games/word-wheel', ready: true,
-    accent: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', iconBg: '#FEF3C7',
+    accent: '#F59E0B', dark: '#B45309', rot: 4, bg: '#FFFBEB', border: '#FDE68A', iconBg: '#FEF3C7',
     btnBg: 'linear-gradient(135deg,#F59E0B,#D97706)',
   },
   {
@@ -106,7 +106,7 @@ const RESOURCES = [
     icon: '🧩', title: 'الأحجية السحرية',
     desc: 'اجمع نقاطاً من الألعاب واكتشف الصورة المخفية قطعةً قطعة!',
     tag: 'تعزيزي', link: '/library/puzzle', ready: true,
-    accent: '#A855F7', bg: '#FAF5FF', border: '#E9D5FF', iconBg: '#F3E8FF',
+    accent: '#A855F7', dark: '#7E22CE', rot: -2, bg: '#FAF5FF', border: '#E9D5FF', iconBg: '#F3E8FF',
     btnBg: 'linear-gradient(135deg,#A855F7,#9333EA)',
   },
   {
@@ -114,7 +114,7 @@ const RESOURCES = [
     icon: '⚡', title: 'وضع التحدي',
     desc: 'تحدّى صديقك في الوقت الحقيقي — من يجيب أولاً يفوز!',
     tag: 'تعزيزي', link: '/library/games/challenge', ready: true,
-    accent: '#6366F1', bg: '#EEF2FF', border: '#C7D2FE', iconBg: '#E0E7FF',
+    accent: '#6366F1', dark: '#4338CA', rot: 3, bg: '#EEF2FF', border: '#C7D2FE', iconBg: '#E0E7FF',
     btnBg: 'linear-gradient(135deg,#6366F1,#4F46E5)',
   },
   {
@@ -122,7 +122,7 @@ const RESOURCES = [
     icon: '🃏', title: 'بطاقات الحفظ',
     desc: 'راجع مفرداتك يومياً — الكلمات الصعبة تعود تلقائياً!',
     tag: 'تعزيزي', link: '/library/flashcards', ready: true,
-    accent: '#312E81', bg: '#EEF2FF', border: '#A5B4FC', iconBg: '#E0E7FF',
+    accent: '#312E81', dark: '#1E1B4B', rot: -3, bg: '#EEF2FF', border: '#A5B4FC', iconBg: '#E0E7FF',
     btnBg: 'linear-gradient(135deg,#312E81,#4338CA)',
   },
 ];
@@ -276,7 +276,12 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           to   { opacity:1; transform:translateY(0); }
         }
 
-        .lib-page { direction:rtl; font-family:inherit; }
+        .lib-page {
+          direction:rtl; font-family:inherit;
+          background-color:#FAF7F2;
+          background-image: radial-gradient(#E8B84B2e 1.6px, transparent 1.6px);
+          background-size: 22px 22px;
+        }
 
         /* ── هيدر ── */
         .lib-header { text-align:center; margin-bottom:18px; }
@@ -536,24 +541,25 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         .sg-section-label { font-size:.82rem; font-weight:800; color:#1A2B4A; white-space:nowrap; }
         .sg-section-line { flex:1; height:1.5px; background:linear-gradient(90deg,#e2e8f0,transparent); }
 
-        /* ── بطاقة بسيطة: صورة وعنوان فقط ── */
+        /* ── بطاقة بسيطة: صورة وعنوان فقط — أسلوب "ملصق مرح" ── */
         .sg-card {
-          all:unset; cursor:pointer; box-sizing:border-box; background:#fff;
-          border:2px solid #eef0f3; border-radius:16px; padding:14px 8px 12px;
-          display:flex; flex-direction:column; align-items:center; text-align:center; gap:7px;
-          box-shadow:0 2px 8px rgba(0,0,0,.05); position:relative;
-          transition:transform .15s, box-shadow .15s;
+          all:unset; cursor:pointer; box-sizing:border-box;
+          border-radius:16px; padding:16px 8px 12px;
+          display:flex; flex-direction:column; align-items:center; text-align:center; gap:9px;
+          position:relative;
+          transition:transform .15s;
         }
         .sg-card:active { transform:scale(.96); }
-        .sg-card:hover  { box-shadow:0 6px 16px rgba(0,0,0,.1); }
         .sg-card-icon {
-          position:relative; width:54px; height:54px; border-radius:50%;
-          display:flex; align-items:center; justify-content:center; font-size:1.6rem;
+          position:relative; width:56px; height:56px; border-radius:20px;
+          border:3.5px solid #fff; box-sizing:border-box;
+          display:flex; align-items:center; justify-content:center; font-size:1.65rem;
         }
         .sg-card-title { font-size:.78rem; font-weight:800; color:#1e293b; line-height:1.3; }
         .sg-card-lock {
-          position:absolute; bottom:-2px; left:-2px; width:18px; height:18px; border-radius:50%;
-          background:#fff; border:2px solid #e2e8f0; display:flex; align-items:center; justify-content:center; font-size:.55rem;
+          position:absolute; bottom:-6px; left:-6px; width:19px; height:19px; border-radius:50%;
+          background:#fff; border:2px solid #e2e8f0; display:flex; align-items:center; justify-content:center; font-size:.56rem;
+          box-shadow:0 2px 4px rgba(0,0,0,.12);
         }
         .sg-card:hover .lib-edit-btn { opacity:1; }
 
@@ -576,7 +582,8 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         }
         .sg-sheet-body { display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; }
         .sg-sheet-icon {
-          width:88px; height:88px; border-radius:26px;
+          width:88px; height:88px; border-radius:28px;
+          border:4px solid #fff; box-sizing:border-box;
           display:flex; align-items:center; justify-content:center; font-size:2.6rem;
         }
         .sg-sheet-tag   { background:#f1f5f9; color:#475569; border-radius:50px; padding:4px 13px; font-size:.7rem; font-weight:800; }
@@ -928,20 +935,25 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
             const displayIcon  = displayImg ? null : (meta.icon || r.icon);
             const done         = completedKeys.has(r.key);
             return (
-              <button key={r.key} type="button" className="sg-card" onClick={() => setSelectedKey(r.key)}>
+              <button key={r.key} type="button" className="sg-card" onClick={() => setSelectedKey(r.key)}
+                style={{ background: r.bg, border: `2px solid ${r.accent}`, boxShadow: `3px 4px 0 ${r.accent}3d` }}
+              >
                 {isTeacher && (
                   <button className="lib-edit-btn"
                     onClick={e => { e.stopPropagation(); openEdit(r); }}
                     title="تعديل البطاقة">✏️</button>
                 )}
                 <div className="sg-card-icon" style={{
-                  background: r.iconBg,
-                  boxShadow: done ? '0 0 0 2.5px #22c55e, 0 0 0 5px rgba(34,197,94,.12)' : 'none',
+                  background: r.accent,
+                  boxShadow: done ? '0 0 0 2.5px #22c55e, 0 0 0 5px rgba(34,197,94,.12)' : `0 0 0 2px ${r.accent}, 3px 4px 0 ${r.dark}`,
+                  transform: `rotate(${r.rot}deg)`,
                 }}>
-                  {displayImg
-                    ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'inherit' }}/>
-                    : <span style={{ filter:r.ready?'none':'grayscale(1) brightness(.7)' }}>{displayIcon}</span>
-                  }
+                  <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'100%', height:'100%', transform:`rotate(${-r.rot}deg)` }}>
+                    {displayImg
+                      ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:16 }}/>
+                      : <span style={{ filter:r.ready?'none':'grayscale(1) brightness(.7)' }}>{displayIcon}</span>
+                    }
+                  </span>
                   {done && <span className="lib-done-badge">✓</span>}
                   {!r.ready && <span className="sg-card-lock">🔒</span>}
                 </div>
@@ -1208,9 +1220,12 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
                 <button className="sg-sheet-close" onClick={closeSheet}>✕</button>
               </div>
               <div className="sg-sheet-body">
-                <div className="sg-sheet-icon" style={{ background: r.iconBg }}>
+                <div className="sg-sheet-icon" style={{
+                  background: r.accent,
+                  boxShadow: `0 0 0 2.5px ${r.accent}, 4px 5px 0 ${r.dark}`,
+                }}>
                   {displayImg
-                    ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'inherit' }}/>
+                    ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:24 }}/>
                     : <span style={{ filter:r.ready?'none':'grayscale(1) brightness(.7)' }}>{displayIcon}</span>
                   }
                 </div>
