@@ -1,13 +1,16 @@
 'use client';
 import { useState, useRef } from 'react';
 import Link from 'next/link';
-import FanCarousel from '../../components/FanCarousel';
 
-const CAROUSEL_GROUPS = [
-  { tag: 'مستوى 1', emoji: '⭐' },
-  { tag: 'مستوى 2', emoji: '📗' },
-  { tag: 'مستوى 3', emoji: '🏆' },
-  { tag: 'تعزيزي',  emoji: '🎮' },
+const LEVEL_ZONES = [
+  { tag: 'مستوى 1', flavor: 'البداية السحرية', emoji: '⭐',
+    sky: 'linear-gradient(165deg,#bfdbfe,#eef2ff)', accentBorder: '#93c5fd', night: false },
+  { tag: 'مستوى 2', flavor: 'درب التحدي', emoji: '📗',
+    sky: 'linear-gradient(165deg,#fed7aa,#fff7ed)', accentBorder: '#fdba74', night: false },
+  { tag: 'مستوى 3', flavor: 'قمة الأبطال', emoji: '🏆',
+    sky: 'linear-gradient(165deg,#fbcfe8,#f5f3ff)', accentBorder: '#f9a8d4', night: false },
+  { tag: 'تعزيزي',  flavor: 'أرض المرح',   emoji: '🎮',
+    sky: 'linear-gradient(160deg,#1e1b4b,#4c1d95)', accentBorder: '#a78bfa', night: true },
 ];
 
 const RESOURCES = [
@@ -523,19 +526,97 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         }
         .lib-empty span { display:block; font-size:2.8rem; margin-bottom:10px; }
 
-        /* ── fan-card: تأكد أن البطاقة تملأ عرض الحاوي ── */
-        .fan-card .lib-card { width:100%; box-sizing:border-box; animation:none !important; }
-        /* رأس المجموعة */
-        .fan-group-header {
-          display:flex; align-items:center; gap:8px;
-          margin:24px 0 8px; direction:rtl;
+        /* ══════════════════════════════════════════
+           لوحة الأبطال — العرض الافتراضي الجديد
+        ══════════════════════════════════════════ */
+        @keyframes hbFloat   { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-5px); } }
+        @keyframes hbTwinkle { 0%,100% { opacity:.35; } 50% { opacity:1; } }
+
+        .hb-zone { margin-top:30px; }
+        .hb-zone:first-child { margin-top:8px; }
+
+        .hb-zone-badge-wrap { position:relative; z-index:5; display:flex; justify-content:center; }
+        .hb-zone-badge {
+          background:#fff; border:3px solid #e2e8f0; border-radius:50px;
+          padding:8px 18px; font-size:.85rem; font-weight:900; color:#1e293b;
+          box-shadow:0 8px 18px rgba(0,0,0,.14); display:inline-flex; align-items:center; gap:7px;
+          white-space:nowrap;
         }
-        .fan-group-label {
-          font-size:.78rem; font-weight:800; border-radius:20px;
-          padding:4px 13px; flex-shrink:0;
+        .hb-zone-flavor { font-weight:700; color:#94a3b8; font-size:.72rem; }
+
+        .hb-zone-panel {
+          position:relative; margin-top:-20px; border-radius:28px; overflow:hidden;
+          padding:34px 16px 22px; box-shadow:0 10px 30px rgba(0,0,0,.1);
         }
-        .fan-group-line { flex:1; height:1.5px; background:linear-gradient(90deg,#e2e8f0,transparent); }
-        .fan-group-count { font-size:.7rem; color:#94a3b8; font-weight:700; flex-shrink:0; }
+
+        .hb-star { position:absolute; color:#fde68a; font-size:.75rem; animation:hbTwinkle 2.6s ease-in-out infinite; }
+
+        /* ── بطاقة البطل ── */
+        .hb-hero {
+          position:relative; display:flex; align-items:center; gap:13px;
+          background:#fff; border-radius:22px; padding:15px;
+          box-shadow:0 10px 24px rgba(0,0,0,.14);
+          text-decoration:none; transition:transform .2s, box-shadow .2s;
+        }
+        a.hb-hero:hover { transform:translateY(-4px); box-shadow:0 16px 34px rgba(0,0,0,.2); }
+        .hb-hero:hover .lib-edit-btn { opacity:1; }
+        .hb-hero-ribbon {
+          position:absolute; top:-9px; right:16px; background:#16a34a; color:#fff;
+          border-radius:12px; padding:3px 10px; font-size:.6rem; font-weight:800;
+          box-shadow:0 3px 8px rgba(0,0,0,.2); z-index:2;
+        }
+        .hb-hero-icon {
+          position:relative; width:72px; height:72px; border-radius:22px;
+          display:flex; align-items:center; justify-content:center; font-size:2.2rem;
+          flex-shrink:0; box-shadow:0 6px 14px rgba(0,0,0,.12); overflow:hidden;
+          animation:hbFloat 3.2s ease-in-out infinite;
+        }
+        .hb-hero-text  { flex:1; min-width:0; }
+        .hb-hero-title { font-size:.94rem; font-weight:900; color:#1e293b; margin:0 0 3px; line-height:1.3; }
+        .hb-hero-desc  { font-size:.7rem; color:#64748b; line-height:1.5; margin:0 0 9px; }
+
+        /* ── الأصدقاء الصغار ── */
+        .hb-rest { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; justify-content:center; position:relative; }
+        .hb-bub {
+          position:relative; display:flex; flex-direction:column; align-items:center; gap:4px;
+          width:64px; text-decoration:none; cursor:pointer;
+        }
+        div.hb-bub { cursor:default; }
+        .hb-bub-icon {
+          position:relative; width:56px; height:56px; border-radius:50%; overflow:hidden;
+          display:flex; align-items:center; justify-content:center; font-size:1.45rem;
+          border:3px solid #fff; box-shadow:0 4px 10px rgba(0,0,0,.14);
+          animation:hbFloat 3.2s ease-in-out infinite; transition:transform .2s;
+        }
+        a.hb-bub:hover .hb-bub-icon { transform:scale(1.1) translateY(-3px); }
+        .hb-bub-badge {
+          position:absolute; bottom:-3px; right:-3px; z-index:2;
+          width:18px; height:18px; border-radius:50%;
+          display:flex; align-items:center; justify-content:center; font-size:.58rem;
+          border:2px solid #fff; box-shadow:0 2px 5px rgba(0,0,0,.18);
+        }
+        .hb-bub-badge.done  { background:#22c55e; color:#fff; font-weight:900; }
+        .hb-bub-badge.lock  { background:#fff; border-color:#e2e8f0; }
+        .hb-bub-label { font-size:.6rem; font-weight:700; text-align:center; line-height:1.25; color:#1e293b; }
+        .hb-zone-panel.night .hb-bub-label { color:#fff; }
+        .hb-bub-edit {
+          position:absolute; top:-4px; left:-4px; z-index:3;
+          background:rgba(255,255,255,.95); border:none; border-radius:50%;
+          width:20px; height:20px; font-size:.6rem; cursor:pointer;
+          display:flex; align-items:center; justify-content:center;
+          box-shadow:0 2px 6px rgba(0,0,0,.2); opacity:0; transition:opacity .18s;
+        }
+        .hb-bub:hover .hb-bub-edit { opacity:1; }
+
+        @media (max-width:600px) {
+          .hb-zone-panel { padding:30px 12px 18px; }
+          .hb-hero { padding:12px; gap:10px; }
+          .hb-hero-icon { width:60px; height:60px; font-size:1.8rem; border-radius:18px; }
+          .hb-hero-title { font-size:.86rem; }
+          .hb-hero-desc  { font-size:.65rem; }
+          .hb-bub { width:58px; }
+          .hb-bub-icon { width:50px; height:50px; font-size:1.3rem; }
+        }
 
         /* ══════════════════════════════════════════
            قسم القصص والحكايات
@@ -857,6 +938,80 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
               : <div  key={r.key}               className={cls} style={sty}>{cardContent}</div>;
           };
 
+          /* بطاقة "البطل" — أبرز نشاط في المستوى (بنفس منطق نقاط/صور/تعديل المعلم) */
+          const renderHero = (r) => {
+            const meta         = cardMeta[r.key] || {};
+            const displayTitle = meta.title       || r.title;
+            const displayDesc  = meta.description || r.desc;
+            const displayImg   = meta.image_url   || null;
+            const displayIcon  = displayImg ? null : (meta.icon || r.icon);
+            const done         = completedKeys.has(r.key);
+            const recommended  = r.ready && !done;
+            const content = (
+              <>
+                {isTeacher && (
+                  <button className="lib-edit-btn"
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); openEdit(r); }}
+                    title="تعديل البطاقة">✏️</button>
+                )}
+                {recommended && <span className="hb-hero-ribbon">⭐ ابدأ من هنا</span>}
+                <div className="hb-hero-icon" style={{
+                  background: r.iconBg,
+                  boxShadow: done ? '0 0 0 3px #22c55e, 0 0 0 6px rgba(34,197,94,.15)' : 'none',
+                }}>
+                  {displayImg
+                    ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                    : <span style={{ filter:r.ready?'none':'grayscale(1) brightness(.7)' }}>{displayIcon}</span>
+                  }
+                  {done && <span className="lib-done-badge">✓</span>}
+                </div>
+                <div className="hb-hero-text">
+                  <p className="hb-hero-title">{displayTitle}</p>
+                  <p className="hb-hero-desc">{displayDesc}</p>
+                  {r.ready
+                    ? done
+                      ? <span className="lib-replay-btn">✓ العب مجدداً</span>
+                      : <span className="lib-start-btn" style={{ background:r.btnBg }}>ابدأ الآن ←</span>
+                    : <span className="lib-coming-badge">🔒 قريباً</span>
+                  }
+                </div>
+              </>
+            );
+            return r.ready
+              ? <Link href={r.link} className="hb-hero">{content}</Link>
+              : <div               className="hb-hero">{content}</div>;
+          };
+
+          /* فقاعة صديق صغير — بقية أنشطة المستوى */
+          const renderBubble = (r) => {
+            const meta        = cardMeta[r.key] || {};
+            const displayTitle = meta.title     || r.title;
+            const displayImg  = meta.image_url  || null;
+            const displayIcon = displayImg ? null : (meta.icon || r.icon);
+            const done        = completedKeys.has(r.key);
+            const content = (
+              <>
+                {isTeacher && (
+                  <button className="hb-bub-edit"
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); openEdit(r); }}
+                    title="تعديل البطاقة">✏️</button>
+                )}
+                <div className="hb-bub-icon" style={{ background:r.iconBg }}>
+                  {displayImg
+                    ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                    : <span style={{ filter:r.ready?'none':'grayscale(1) brightness(.7)' }}>{displayIcon}</span>
+                  }
+                  {done && <span className="hb-bub-badge done">✓</span>}
+                  {!r.ready && <span className="hb-bub-badge lock">🔒</span>}
+                </div>
+                <span className="hb-bub-label">{displayTitle}</span>
+              </>
+            );
+            return r.ready
+              ? <Link key={r.key} href={r.link} className="hb-bub">{content}</Link>
+              : <div  key={r.key}               className="hb-bub">{content}</div>;
+          };
+
           /* بحث أو فلتر → شبكة عادية */
           if (search.trim() || activeFilter !== 'الكل') return (
             <div className="lib-grid" id="lib-activities-grid">
@@ -867,17 +1022,41 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
             </div>
           );
 
-          /* العرض الافتراضي: 3 مراوح متساوية (5 بطاقات لكل مروحة) */
-          const rows = [
-            RESOURCES.slice(0,  5),
-            RESOURCES.slice(5,  10),
-            RESOURCES.slice(10, 15),
-          ];
+          /* العرض الافتراضي: لوحة الأبطال — عالم ملوّن مستقل لكل مستوى */
+          const zonesData = LEVEL_ZONES.map(zone => {
+            const zoneItems = RESOURCES.filter(r => r.tag === zone.tag);
+            const heroItem =
+              zoneItems.find(r => r.ready && !completedKeys.has(r.key)) ||
+              zoneItems.find(r => r.ready) ||
+              zoneItems[0];
+            const restItems = zoneItems.filter(r => r.key !== heroItem.key);
+            return { ...zone, heroItem, restItems };
+          });
 
           return (
             <div id="lib-activities-grid">
-              {rows.map((row, i) => (
-                <FanCarousel key={i} items={row} renderCard={renderLibCard} />
+              {zonesData.map(zone => (
+                <div key={zone.tag} className="hb-zone">
+                  <div className="hb-zone-badge-wrap">
+                    <span className="hb-zone-badge" style={{ borderColor: zone.accentBorder }}>
+                      {zone.emoji} {zone.tag}
+                      <span className="hb-zone-flavor">— {zone.flavor}</span>
+                    </span>
+                  </div>
+                  <div className={`hb-zone-panel${zone.night ? ' night' : ''}`} style={{ background: zone.sky }}>
+                    {zone.night && (
+                      <>
+                        <span className="hb-star" style={{ top:18, right:28 }}>✦</span>
+                        <span className="hb-star" style={{ top:46, left:30, animationDelay:'.6s', fontSize:'.6rem' }}>★</span>
+                        <span className="hb-star" style={{ bottom:20, right:40, animationDelay:'1.1s' }}>✦</span>
+                      </>
+                    )}
+                    {renderHero(zone.heroItem)}
+                    <div className="hb-rest">
+                      {zone.restItems.map(renderBubble)}
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           );
