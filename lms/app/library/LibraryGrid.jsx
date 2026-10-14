@@ -2,15 +2,11 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 
-const LEVEL_ZONES = [
-  { tag: 'مستوى 1', flavor: 'البداية السحرية', emoji: '⭐',
-    sky: 'linear-gradient(165deg,#bfdbfe,#eef2ff)', accentBorder: '#93c5fd', night: false },
-  { tag: 'مستوى 2', flavor: 'درب التحدي', emoji: '📗',
-    sky: 'linear-gradient(165deg,#fed7aa,#fff7ed)', accentBorder: '#fdba74', night: false },
-  { tag: 'مستوى 3', flavor: 'قمة الأبطال', emoji: '🏆',
-    sky: 'linear-gradient(165deg,#fbcfe8,#f5f3ff)', accentBorder: '#f9a8d4', night: false },
-  { tag: 'تعزيزي',  flavor: 'أرض المرح',   emoji: '🎮',
-    sky: 'linear-gradient(160deg,#1e1b4b,#4c1d95)', accentBorder: '#a78bfa', night: true },
+const LEVEL_SECTIONS = [
+  { tag: 'مستوى 1', emoji: '⭐' },
+  { tag: 'مستوى 2', emoji: '📗' },
+  { tag: 'مستوى 3', emoji: '🏆' },
+  { tag: 'تعزيزي',  emoji: '🎮' },
 ];
 
 const RESOURCES = [
@@ -165,6 +161,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
   const [search,        setSearch]        = useState('');
   const [bannerDismiss, setBannerDismiss] = useState(false);
   const [dockHover,     setDockHover]     = useState(null);
+  const [selectedKey,   setSelectedKey]   = useState(null);
   const fileRef    = useRef();
   const touchTimer = useRef(null);
 
@@ -258,7 +255,8 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
     }
   };
 
-  const editingResource = RESOURCES.find(r => r.key === editing);
+  const editingResource  = RESOURCES.find(r => r.key === editing);
+  const selectedResource = RESOURCES.find(r => r.key === selectedKey);
 
   return (
     <>
@@ -527,95 +525,79 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         .lib-empty span { display:block; font-size:2.8rem; margin-bottom:10px; }
 
         /* ══════════════════════════════════════════
-           لوحة الأبطال — العرض الافتراضي الجديد
+           شبكة بسيطة + نافذة تفاصيل عند الضغط — العرض الافتراضي الجديد
         ══════════════════════════════════════════ */
-        @keyframes hbFloat   { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-5px); } }
-        @keyframes hbTwinkle { 0%,100% { opacity:.35; } 50% { opacity:1; } }
+        @keyframes sgSheetUp { from { transform:translateY(24px); opacity:.4; } to { transform:translateY(0); opacity:1; } }
+        @keyframes sgFade    { from { opacity:0; } to { opacity:1; } }
 
-        .hb-zone { margin-top:30px; }
-        .hb-zone:first-child { margin-top:8px; }
+        .sg-section { margin-top:22px; }
+        .sg-section:first-child { margin-top:4px; }
+        .sg-section-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; direction:rtl; }
+        .sg-section-label { font-size:.82rem; font-weight:800; color:#1A2B4A; white-space:nowrap; }
+        .sg-section-line { flex:1; height:1.5px; background:linear-gradient(90deg,#e2e8f0,transparent); }
 
-        .hb-zone-badge-wrap { position:relative; z-index:5; display:flex; justify-content:center; }
-        .hb-zone-badge {
-          background:#fff; border:3px solid #e2e8f0; border-radius:50px;
-          padding:8px 18px; font-size:.85rem; font-weight:900; color:#1e293b;
-          box-shadow:0 8px 18px rgba(0,0,0,.14); display:inline-flex; align-items:center; gap:7px;
-          white-space:nowrap;
+        /* ── بطاقة بسيطة: صورة وعنوان فقط ── */
+        .sg-card {
+          all:unset; cursor:pointer; box-sizing:border-box; background:#fff;
+          border:2px solid #eef0f3; border-radius:16px; padding:14px 8px 12px;
+          display:flex; flex-direction:column; align-items:center; text-align:center; gap:7px;
+          box-shadow:0 2px 8px rgba(0,0,0,.05); position:relative;
+          transition:transform .15s, box-shadow .15s;
         }
-        .hb-zone-flavor { font-weight:700; color:#94a3b8; font-size:.72rem; }
+        .sg-card:active { transform:scale(.96); }
+        .sg-card:hover  { box-shadow:0 6px 16px rgba(0,0,0,.1); }
+        .sg-card-icon {
+          position:relative; width:54px; height:54px; border-radius:50%;
+          display:flex; align-items:center; justify-content:center; font-size:1.6rem;
+        }
+        .sg-card-title { font-size:.78rem; font-weight:800; color:#1e293b; line-height:1.3; }
+        .sg-card-lock {
+          position:absolute; bottom:-2px; left:-2px; width:18px; height:18px; border-radius:50%;
+          background:#fff; border:2px solid #e2e8f0; display:flex; align-items:center; justify-content:center; font-size:.55rem;
+        }
+        .sg-card:hover .lib-edit-btn { opacity:1; }
 
-        .hb-zone-panel {
-          position:relative; margin-top:-20px; border-radius:28px; overflow:hidden;
-          padding:34px 16px 22px; box-shadow:0 10px 30px rgba(0,0,0,.1);
+        /* ── نافذة التفاصيل عند الضغط ── */
+        .sg-overlay {
+          position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:200;
+          display:flex; align-items:flex-end; justify-content:center;
+          animation:sgFade .2s ease-out;
         }
-
-        .hb-star { position:absolute; color:#fde68a; font-size:.75rem; animation:hbTwinkle 2.6s ease-in-out infinite; }
-
-        /* ── بطاقة البطل ── */
-        .hb-hero {
-          position:relative; display:flex; align-items:center; gap:13px;
-          background:#fff; border-radius:22px; padding:15px;
-          box-shadow:0 10px 24px rgba(0,0,0,.14);
-          text-decoration:none; transition:transform .2s, box-shadow .2s;
+        .sg-sheet {
+          background:#fff; width:100%; max-width:480px; border-radius:26px 26px 0 0;
+          padding:20px 20px 30px; box-shadow:0 -10px 40px rgba(0,0,0,.3);
+          animation:sgSheetUp .22s ease-out; box-sizing:border-box; direction:rtl;
         }
-        a.hb-hero:hover { transform:translateY(-4px); box-shadow:0 16px 34px rgba(0,0,0,.2); }
-        .hb-hero:hover .lib-edit-btn { opacity:1; }
-        .hb-hero-ribbon {
-          position:absolute; top:-9px; right:16px; background:#16a34a; color:#fff;
-          border-radius:12px; padding:3px 10px; font-size:.6rem; font-weight:800;
-          box-shadow:0 3px 8px rgba(0,0,0,.2); z-index:2;
-        }
-        .hb-hero-icon {
-          position:relative; width:72px; height:72px; border-radius:22px;
-          display:flex; align-items:center; justify-content:center; font-size:2.2rem;
-          flex-shrink:0; box-shadow:0 6px 14px rgba(0,0,0,.12); overflow:hidden;
-          animation:hbFloat 3.2s ease-in-out infinite;
-        }
-        .hb-hero-text  { flex:1; min-width:0; }
-        .hb-hero-title { font-size:.94rem; font-weight:900; color:#1e293b; margin:0 0 3px; line-height:1.3; }
-        .hb-hero-desc  { font-size:.7rem; color:#64748b; line-height:1.5; margin:0 0 9px; }
-
-        /* ── الأصدقاء الصغار ── */
-        .hb-rest { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; justify-content:center; position:relative; }
-        .hb-bub {
-          position:relative; display:flex; flex-direction:column; align-items:center; gap:4px;
-          width:64px; text-decoration:none; cursor:pointer;
-        }
-        div.hb-bub { cursor:default; }
-        .hb-bub-icon {
-          position:relative; width:56px; height:56px; border-radius:50%; overflow:hidden;
-          display:flex; align-items:center; justify-content:center; font-size:1.45rem;
-          border:3px solid #fff; box-shadow:0 4px 10px rgba(0,0,0,.14);
-          animation:hbFloat 3.2s ease-in-out infinite; transition:transform .2s;
-        }
-        a.hb-bub:hover .hb-bub-icon { transform:scale(1.1) translateY(-3px); }
-        .hb-bub-badge {
-          position:absolute; bottom:-3px; right:-3px; z-index:2;
-          width:18px; height:18px; border-radius:50%;
-          display:flex; align-items:center; justify-content:center; font-size:.58rem;
-          border:2px solid #fff; box-shadow:0 2px 5px rgba(0,0,0,.18);
-        }
-        .hb-bub-badge.done  { background:#22c55e; color:#fff; font-weight:900; }
-        .hb-bub-badge.lock  { background:#fff; border-color:#e2e8f0; }
-        .hb-bub-label { font-size:.6rem; font-weight:700; text-align:center; line-height:1.25; color:#1e293b; }
-        .hb-zone-panel.night .hb-bub-label { color:#fff; }
-        .hb-bub-edit {
-          position:absolute; top:-4px; left:-4px; z-index:3;
-          background:rgba(255,255,255,.95); border:none; border-radius:50%;
-          width:20px; height:20px; font-size:.6rem; cursor:pointer;
+        .sg-sheet-top { display:flex; justify-content:flex-end; margin-bottom:-6px; }
+        .sg-sheet-close {
+          background:#f1f5f9; border:none; border-radius:50%;
+          width:32px; height:32px; cursor:pointer; font-size:1rem; color:#64748b;
           display:flex; align-items:center; justify-content:center;
-          box-shadow:0 2px 6px rgba(0,0,0,.2); opacity:0; transition:opacity .18s;
         }
-        .hb-bub:hover .hb-bub-edit { opacity:1; }
-
-        @media (max-width:600px) {
-          .hb-zone-panel { padding:30px 12px 18px; }
-          .hb-hero { padding:12px; gap:10px; }
-          .hb-hero-icon { width:60px; height:60px; font-size:1.8rem; border-radius:18px; }
-          .hb-hero-title { font-size:.86rem; }
-          .hb-hero-desc  { font-size:.65rem; }
-          .hb-bub { width:58px; }
-          .hb-bub-icon { width:50px; height:50px; font-size:1.3rem; }
+        .sg-sheet-body { display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; }
+        .sg-sheet-icon {
+          width:88px; height:88px; border-radius:26px;
+          display:flex; align-items:center; justify-content:center; font-size:2.6rem;
+        }
+        .sg-sheet-tag   { background:#f1f5f9; color:#475569; border-radius:50px; padding:4px 13px; font-size:.7rem; font-weight:800; }
+        .sg-sheet-title { font-size:1.05rem; font-weight:900; color:#1e293b; margin:0; }
+        .sg-sheet-desc  { font-size:.8rem; color:#64748b; line-height:1.7; padding:0 4px; margin:0; }
+        .sg-sheet-actions { margin-top:20px; }
+        .sg-sheet-cta {
+          display:flex; align-items:center; justify-content:center; gap:6px;
+          border-radius:50px; padding:13px; color:#fff; font-size:.9rem; font-weight:800;
+          text-decoration:none; border:none; cursor:pointer; font-family:inherit;
+        }
+        .sg-sheet-locked {
+          display:flex; align-items:center; justify-content:center; gap:6px;
+          border-radius:50px; padding:13px; color:#94a3b8; font-size:.85rem; font-weight:800;
+          background:#f8fafc; border:2px dashed #cbd5e1;
+        }
+        .sg-sheet-edit {
+          display:flex; align-items:center; justify-content:center; gap:6px; width:100%;
+          border-radius:50px; padding:11px; color:#5b4fc4; font-size:.82rem; font-weight:700;
+          background:#f5f3ff; border:1.5px solid #ddd6fe; cursor:pointer; font-family:inherit;
+          margin-top:10px; box-sizing:border-box;
         }
 
         /* ══════════════════════════════════════════
@@ -938,78 +920,34 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
               : <div  key={r.key}               className={cls} style={sty}>{cardContent}</div>;
           };
 
-          /* بطاقة "البطل" — أبرز نشاط في المستوى (بنفس منطق نقاط/صور/تعديل المعلم) */
-          const renderHero = (r) => {
+          /* بطاقة بسيطة: صورة وعنوان فقط — الضغط عليها يفتح نافذة التفاصيل */
+          const renderSimpleCard = (r) => {
             const meta         = cardMeta[r.key] || {};
-            const displayTitle = meta.title       || r.title;
-            const displayDesc  = meta.description || r.desc;
-            const displayImg   = meta.image_url   || null;
+            const displayTitle = meta.title     || r.title;
+            const displayImg   = meta.image_url || null;
             const displayIcon  = displayImg ? null : (meta.icon || r.icon);
             const done         = completedKeys.has(r.key);
-            const recommended  = r.ready && !done;
-            const content = (
-              <>
+            return (
+              <button key={r.key} type="button" className="sg-card" onClick={() => setSelectedKey(r.key)}>
                 {isTeacher && (
                   <button className="lib-edit-btn"
-                    onClick={e => { e.preventDefault(); e.stopPropagation(); openEdit(r); }}
+                    onClick={e => { e.stopPropagation(); openEdit(r); }}
                     title="تعديل البطاقة">✏️</button>
                 )}
-                {recommended && <span className="hb-hero-ribbon">⭐ ابدأ من هنا</span>}
-                <div className="hb-hero-icon" style={{
+                <div className="sg-card-icon" style={{
                   background: r.iconBg,
-                  boxShadow: done ? '0 0 0 3px #22c55e, 0 0 0 6px rgba(34,197,94,.15)' : 'none',
+                  boxShadow: done ? '0 0 0 2.5px #22c55e, 0 0 0 5px rgba(34,197,94,.12)' : 'none',
                 }}>
                   {displayImg
-                    ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                    ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'inherit' }}/>
                     : <span style={{ filter:r.ready?'none':'grayscale(1) brightness(.7)' }}>{displayIcon}</span>
                   }
                   {done && <span className="lib-done-badge">✓</span>}
+                  {!r.ready && <span className="sg-card-lock">🔒</span>}
                 </div>
-                <div className="hb-hero-text">
-                  <p className="hb-hero-title">{displayTitle}</p>
-                  <p className="hb-hero-desc">{displayDesc}</p>
-                  {r.ready
-                    ? done
-                      ? <span className="lib-replay-btn">✓ العب مجدداً</span>
-                      : <span className="lib-start-btn" style={{ background:r.btnBg }}>ابدأ الآن ←</span>
-                    : <span className="lib-coming-badge">🔒 قريباً</span>
-                  }
-                </div>
-              </>
+                <span className="sg-card-title">{displayTitle}</span>
+              </button>
             );
-            return r.ready
-              ? <Link href={r.link} className="hb-hero">{content}</Link>
-              : <div               className="hb-hero">{content}</div>;
-          };
-
-          /* فقاعة صديق صغير — بقية أنشطة المستوى */
-          const renderBubble = (r) => {
-            const meta        = cardMeta[r.key] || {};
-            const displayTitle = meta.title     || r.title;
-            const displayImg  = meta.image_url  || null;
-            const displayIcon = displayImg ? null : (meta.icon || r.icon);
-            const done        = completedKeys.has(r.key);
-            const content = (
-              <>
-                {isTeacher && (
-                  <button className="hb-bub-edit"
-                    onClick={e => { e.preventDefault(); e.stopPropagation(); openEdit(r); }}
-                    title="تعديل البطاقة">✏️</button>
-                )}
-                <div className="hb-bub-icon" style={{ background:r.iconBg }}>
-                  {displayImg
-                    ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                    : <span style={{ filter:r.ready?'none':'grayscale(1) brightness(.7)' }}>{displayIcon}</span>
-                  }
-                  {done && <span className="hb-bub-badge done">✓</span>}
-                  {!r.ready && <span className="hb-bub-badge lock">🔒</span>}
-                </div>
-                <span className="hb-bub-label">{displayTitle}</span>
-              </>
-            );
-            return r.ready
-              ? <Link key={r.key} href={r.link} className="hb-bub">{content}</Link>
-              : <div  key={r.key}               className="hb-bub">{content}</div>;
           };
 
           /* بحث أو فلتر → شبكة عادية */
@@ -1022,39 +960,22 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
             </div>
           );
 
-          /* العرض الافتراضي: لوحة الأبطال — عالم ملوّن مستقل لكل مستوى */
-          const zonesData = LEVEL_ZONES.map(zone => {
-            const zoneItems = RESOURCES.filter(r => r.tag === zone.tag);
-            const heroItem =
-              zoneItems.find(r => r.ready && !completedKeys.has(r.key)) ||
-              zoneItems.find(r => r.ready) ||
-              zoneItems[0];
-            const restItems = zoneItems.filter(r => r.key !== heroItem.key);
-            return { ...zone, heroItem, restItems };
-          });
+          /* العرض الافتراضي: شبكة بسيطة مقسّمة بعناوين، بلا أي وصف على البطاقة نفسها */
+          const sections = LEVEL_SECTIONS.map(sec => ({
+            ...sec,
+            items: RESOURCES.filter(r => r.tag === sec.tag),
+          }));
 
           return (
             <div id="lib-activities-grid">
-              {zonesData.map(zone => (
-                <div key={zone.tag} className="hb-zone">
-                  <div className="hb-zone-badge-wrap">
-                    <span className="hb-zone-badge" style={{ borderColor: zone.accentBorder }}>
-                      {zone.emoji} {zone.tag}
-                      <span className="hb-zone-flavor">— {zone.flavor}</span>
-                    </span>
+              {sections.map(sec => (
+                <div key={sec.tag} className="sg-section">
+                  <div className="sg-section-head">
+                    <span className="sg-section-label">{sec.emoji} {sec.tag}</span>
+                    <div className="sg-section-line" />
                   </div>
-                  <div className={`hb-zone-panel${zone.night ? ' night' : ''}`} style={{ background: zone.sky }}>
-                    {zone.night && (
-                      <>
-                        <span className="hb-star" style={{ top:18, right:28 }}>✦</span>
-                        <span className="hb-star" style={{ top:46, left:30, animationDelay:'.6s', fontSize:'.6rem' }}>★</span>
-                        <span className="hb-star" style={{ bottom:20, right:40, animationDelay:'1.1s' }}>✦</span>
-                      </>
-                    )}
-                    {renderHero(zone.heroItem)}
-                    <div className="hb-rest">
-                      {zone.restItems.map(renderBubble)}
-                    </div>
+                  <div className="lib-grid">
+                    {sec.items.map(renderSimpleCard)}
                   </div>
                 </div>
               ))}
@@ -1266,6 +1187,54 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         {/* نهاية قسم القصص */}
 
       </div>
+
+      {/* ══════════════════════════════════════════════
+          نافذة تفاصيل النشاط — تظهر عند الضغط على أي بطاقة
+      ══════════════════════════════════════════════ */}
+      {selectedResource && (() => {
+        const r            = selectedResource;
+        const meta         = cardMeta[r.key] || {};
+        const displayTitle = meta.title       || r.title;
+        const displayDesc  = meta.description || r.desc;
+        const displayImg   = meta.image_url   || null;
+        const displayIcon  = displayImg ? null : (meta.icon || r.icon);
+        const done         = completedKeys.has(r.key);
+        const ctaLabel     = r.tag === 'تعزيزي' ? '🎮 ابدأ اللعب الآن ←' : '📖 ابدأ التعلّم الآن ←';
+        const closeSheet   = () => setSelectedKey(null);
+        return (
+          <div className="sg-overlay" onClick={closeSheet}>
+            <div className="sg-sheet" onClick={e => e.stopPropagation()}>
+              <div className="sg-sheet-top">
+                <button className="sg-sheet-close" onClick={closeSheet}>✕</button>
+              </div>
+              <div className="sg-sheet-body">
+                <div className="sg-sheet-icon" style={{ background: r.iconBg }}>
+                  {displayImg
+                    ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'inherit' }}/>
+                    : <span style={{ filter:r.ready?'none':'grayscale(1) brightness(.7)' }}>{displayIcon}</span>
+                  }
+                </div>
+                <span className="sg-sheet-tag">{r.tag}</span>
+                <p className="sg-sheet-title">{displayTitle}</p>
+                <p className="sg-sheet-desc">{displayDesc}</p>
+              </div>
+              <div className="sg-sheet-actions">
+                {r.ready
+                  ? done
+                    ? <Link href={r.link} className="sg-sheet-cta" style={{ background:'linear-gradient(135deg,#22c55e,#16a34a)' }}>✓ العب مجدداً</Link>
+                    : <Link href={r.link} className="sg-sheet-cta" style={{ background:r.btnBg }}>{ctaLabel}</Link>
+                  : <div className="sg-sheet-locked">🔒 سيكون هذا النشاط متاحاً قريباً</div>
+                }
+                {isTeacher && (
+                  <button className="sg-sheet-edit" onClick={() => { closeSheet(); openEdit(r); }}>
+                    ✏️ تعديل هذه البطاقة
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ══════════════════════════════════════════════
           نافذة التعديل — محفوظة كاملاً للمعلمين
