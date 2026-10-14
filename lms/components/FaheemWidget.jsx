@@ -457,10 +457,6 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
   return (
     <>
       <style>{`
-        @keyframes fPulse {
-          0%,100% { box-shadow: 0 8px 28px rgba(124,92,217,.38), 0 0 0 4px rgba(124,92,217,.22); }
-          50%      { box-shadow: 0 8px 28px rgba(124,92,217,.45), 0 0 0 10px rgba(124,92,217,.10); }
-        }
         @keyframes fDot {
           0%,80%,100% { transform: scale(.55); opacity: .35; }
           40%          { transform: scale(1);   opacity: 1;   }
@@ -468,6 +464,18 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
         @keyframes fSlideUp {
           from { opacity: 0; transform: translateY(20px) scale(.96); }
           to   { opacity: 1; transform: translateY(0)   scale(1);   }
+        }
+        @keyframes fFloat {
+          0%,100% { transform: translateX(-50%) translateY(0); }
+          50%      { transform: translateX(-50%) translateY(-7px); }
+        }
+        @keyframes fShadow {
+          0%,100% { transform: translateX(-50%) scaleX(1);   opacity: .28; }
+          50%      { transform: translateX(-50%) scaleX(.82); opacity: .18; }
+        }
+        @keyframes fPillBob {
+          0%,100% { transform: translateY(0); }
+          50%      { transform: translateY(-3px); }
         }
       `}</style>
 
@@ -477,16 +485,35 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
           title="تَحَدَّثْ مَعَ فَهِيمٍ"
           style={{
             position: 'fixed', bottom: 'var(--faheem-btn-bottom, 24px)', right: 24, zIndex: 1000,
-            width: 72, height: 72, borderRadius: '50%',
-            border: '3px solid rgba(255,255,255,.4)',
-            background: 'linear-gradient(135deg,#7C5CD9,#5B3FA8)',
-            cursor: 'pointer', padding: 0,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            animation: 'fPulse 2.5s ease-in-out infinite',
+            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+            display: 'flex', alignItems: 'flex-end', gap: 8,
           }}
         >
-          <span style={{ fontSize: '2rem', lineHeight: 1 }}>🐘</span>
-          <span style={{ fontSize: '.52rem', color: '#fff', fontWeight: 800, marginTop: 2 }}>فَهِيمٌ</span>
+          <div style={{ position: 'relative', width: 100, height: 150, flexShrink: 0 }}>
+            <div style={{
+              position: 'absolute', bottom: 10, left: '50%', width: 54, height: 13, borderRadius: '50%',
+              background: 'radial-gradient(ellipse, rgba(15,23,42,.42), transparent 72%)',
+              animation: 'fShadow 3s ease-in-out infinite',
+            }} />
+            <img src="/faheem.png" alt="فَهِيمٌ" width={555} height={707}
+              style={{
+                position: 'absolute', bottom: 14, left: '50%', height: 128, width: 'auto',
+                filter: 'drop-shadow(0 10px 14px rgba(0,0,0,.22))',
+                animation: 'fFloat 3.2s ease-in-out infinite',
+              }}
+            />
+          </div>
+          <div style={{
+            position: 'relative', background: '#fff', color: '#1A2B4A', fontWeight: 800, fontSize: '.78rem',
+            borderRadius: 16, padding: '8px 14px', boxShadow: '0 6px 16px rgba(0,0,0,.16)',
+            whiteSpace: 'nowrap', marginBottom: 58, animation: 'fPillBob 2.6s ease-in-out infinite',
+          }}>
+            اسْأَلْنِي! 💬
+            <span style={{
+              position: 'absolute', top: '50%', right: -5, width: 12, height: 12, background: '#fff',
+              transform: 'translateY(-50%) rotate(45deg)',
+            }} />
+          </div>
         </button>
       )}
 
