@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 
 // إجابة "نظام التقييم الذكي" تُبنى ديناميكياً من /api/assessment-meta (ترجع
 // مستوى بروكسي بنفس الأصل لمشروع arabic-assessment المنفصل) — لا رقماً
@@ -200,7 +201,7 @@ export default function SmartFAQ() {
               {/* Header: avatar + text side by side */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 22 }}>
 
-                {/* Faheem avatar — golden circle, float animation */}
+                {/* Faheem avatar — الفيل فهيم، دائرة بنفسجية، حركة طفو */}
                 <div style={{
                   flexShrink: 0,
                   width: 86,
@@ -210,37 +211,16 @@ export default function SmartFAQ() {
                   border: '3px solid rgba(255,255,255,0.55)',
                   boxShadow: '0 4px 20px rgba(124,92,217,0.5)',
                   overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  justifyContent: 'center',
+                  position: 'relative',
                   animation: 'faheemFloat 3s ease-in-out infinite',
                 }}>
-                  <svg viewBox="0 0 120 158" width="78" height="102" style={{ marginBottom: -8 }}>
-                    <rect x="22" y="118" width="76" height="44" rx="18" fill="#1f2d5a" />
-                    <path d="M40,120 L60,133 L80,120" fill="none" stroke="#d4952a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    <circle cx="60" cy="142" r="8" fill="#d4952a" />
-                    <text x="60" y="146.5" textAnchor="middle" fontSize="8.5" fill="#1f2d5a" fontFamily="serif" fontWeight="900">&#x639;</text>
-                    <circle cx="60" cy="64" r="49" fill="#fce8c8" />
-                    <ellipse cx="60" cy="21" rx="49" ry="28" fill="#3d2510" />
-                    <ellipse cx="60" cy="16" rx="44" ry="22" fill="#4a2f15" />
-                    <path d="M63,2 Q74,-4 72,14" fill="none" stroke="#3d2510" strokeWidth="5.5" strokeLinecap="round" />
-                    <ellipse cx="11" cy="66" rx="9" ry="12" fill="#f5c47e" />
-                    <ellipse cx="109" cy="66" rx="9" ry="12" fill="#f5c47e" />
-                    <ellipse cx="40" cy="63" rx="12" ry="14" fill="white" />
-                    <circle cx="41" cy="65" r="8.5" fill="#1a2d4a" />
-                    <circle cx="41" cy="65" r="4.2" fill="#080808" />
-                    <circle cx="43.5" cy="62" r="2.5" fill="white" />
-                    <ellipse cx="80" cy="63" rx="12" ry="14" fill="white" />
-                    <circle cx="81" cy="65" r="8.5" fill="#1a2d4a" />
-                    <circle cx="81" cy="65" r="4.2" fill="#080808" />
-                    <circle cx="83.5" cy="62" r="2.5" fill="white" />
-                    <path d="M28,50 Q40,44 52,50" fill="none" stroke="#3d2510" strokeWidth="3.2" strokeLinecap="round" />
-                    <path d="M68,50 Q80,44 92,50" fill="none" stroke="#3d2510" strokeWidth="3.2" strokeLinecap="round" />
-                    <circle cx="60" cy="79" r="2.8" fill="#d4956a" opacity=".45" />
-                    <circle cx="19" cy="82" r="10" fill="#f08070" opacity=".3" />
-                    <circle cx="101" cy="82" r="10" fill="#f08070" opacity=".3" />
-                    <path d="M42,92 Q60,116 78,92" fill="none" stroke="#c0392b" strokeWidth="3.5" strokeLinecap="round" />
-                  </svg>
+                  <Image
+                    src="/faheem.png"
+                    alt="فهيم"
+                    fill
+                    sizes="86px"
+                    style={{ objectFit: 'contain', padding: 10 }}
+                  />
                 </div>
 
                 {/* Title text */}

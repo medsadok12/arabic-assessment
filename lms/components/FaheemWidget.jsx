@@ -155,53 +155,68 @@ function FaheemFace({ phase, mouthOpen, blink, bob }) {
       <text x="60" y="146.5" textAnchor="middle" fontSize="8.5"
         fill="#1f2d5a" fontFamily="serif" fontWeight="900">&#x639;</text>
 
-      <circle cx="60" cy="64" r="49" fill="#fce8c8" />
+      {/* آذان فهيم الفيل — كبيرة ومرفرفة */}
+      <ellipse cx="4"   cy="70" rx="16" ry="24" fill="#bdb6d9" transform="rotate(-10 4 70)" />
+      <ellipse cx="6"   cy="70" rx="9"  ry="15" fill="#a89fcf" transform="rotate(-10 6 70)" />
+      <ellipse cx="116" cy="70" rx="16" ry="24" fill="#bdb6d9" transform="rotate(10 116 70)" />
+      <ellipse cx="114" cy="70" rx="9"  ry="15" fill="#a89fcf" transform="rotate(10 114 70)" />
 
-      <ellipse cx="60" cy="21" rx="49" ry="28" fill="#3d2510" />
-      <ellipse cx="60" cy="16" rx="44" ry="22" fill="#4a2f15" />
-      <path d="M63,2 Q74,-4 72,14"
-        fill="none" stroke="#3d2510" strokeWidth="5.5" strokeLinecap="round" />
-
-      <ellipse cx="11" cy="66" rx="9" ry="12" fill="#f5c47e" />
-      <ellipse cx="8.5" cy="66" rx="5" ry="7.5" fill="#e8a860" />
-      <ellipse cx="109" cy="66" rx="9" ry="12" fill="#f5c47e" />
-      <ellipse cx="111.5" cy="66" rx="5" ry="7.5" fill="#e8a860" />
+      <circle cx="60" cy="64" r="49" fill="#cdc7e6" />
 
       <ellipse cx="40" cy="63" rx="12" ry="14" fill="white" />
       <circle  cx="41" cy="65" r="8.5"  fill="#1a2d4a" />
       <circle  cx="41" cy="65" r="4.2"  fill="#080808" />
       <circle  cx="43.5" cy="62" r="2.5" fill="white" />
-      {blink && <ellipse cx="40" cy="63" rx="12" ry="14" fill="#fce8c8" />}
+      {blink && <ellipse cx="40" cy="63" rx="12" ry="14" fill="#cdc7e6" />}
 
       <ellipse cx="80" cy="63" rx="12" ry="14" fill="white" />
       <circle  cx="81" cy="65" r="8.5"  fill="#1a2d4a" />
       <circle  cx="81" cy="65" r="4.2"  fill="#080808" />
       <circle  cx="83.5" cy="62" r="2.5" fill="white" />
-      {blink && <ellipse cx="80" cy="63" rx="12" ry="14" fill="#fce8c8" />}
+      {blink && <ellipse cx="80" cy="63" rx="12" ry="14" fill="#cdc7e6" />}
 
       <path
         d={thinking ? 'M28,46 Q40,39 52,45' : 'M28,50 Q40,44 52,50'}
-        fill="none" stroke="#3d2510" strokeWidth="3.2" strokeLinecap="round"
+        fill="none" stroke="#9b8fc9" strokeWidth="3.2" strokeLinecap="round"
         style={{ transition: 'd .4s' }}
       />
       <path
         d={thinking ? 'M68,45 Q80,39 92,46' : 'M68,50 Q80,44 92,50'}
-        fill="none" stroke="#3d2510" strokeWidth="3.2" strokeLinecap="round"
+        fill="none" stroke="#9b8fc9" strokeWidth="3.2" strokeLinecap="round"
         style={{ transition: 'd .4s' }}
       />
 
-      <circle cx="60" cy="79" r="2.8" fill="#d4956a" opacity=".45" />
       <circle cx="19" cy="82" r="10" fill="#f08070" opacity=".18" />
       <circle cx="101" cy="82" r="10" fill="#f08070" opacity=".18" />
 
+      {/* خرطوم فهيم — يتحرك حسب الحالة (استرخاء / تفكير / حديث) */}
+      <ellipse cx="60" cy="90" rx="9.5" ry="11" fill="#9b8fc9" />
       {speaking ? (
-        <ellipse cx="60" cy="97" rx="13" ry={mouthOpen ? 9 : 4} fill="#c0392b" />
+        mouthOpen ? (
+          <>
+            <ellipse cx="63" cy="101" rx="8.5" ry="10.5" fill="#9b8fc9" />
+            <ellipse cx="68" cy="109" rx="7"   ry="9"   fill="#9b8fc9" />
+            <ellipse cx="71" cy="116" rx="6"   ry="7"   fill="#8577bd" />
+          </>
+        ) : (
+          <>
+            <ellipse cx="57" cy="103" rx="8.5" ry="10.5" fill="#9b8fc9" />
+            <ellipse cx="51" cy="113" rx="7"   ry="9"   fill="#9b8fc9" />
+            <ellipse cx="46" cy="120" rx="6"   ry="7"   fill="#8577bd" />
+          </>
+        )
       ) : thinking ? (
-        <path d="M50,97 Q60,95 70,97"
-          fill="none" stroke="#c0392b" strokeWidth="2.5" strokeLinecap="round" />
+        <>
+          <ellipse cx="56" cy="99" rx="8"   ry="9.5" fill="#9b8fc9" />
+          <ellipse cx="48" cy="98" rx="6.5" ry="7.5" fill="#9b8fc9" />
+          <ellipse cx="42" cy="93" rx="5.5" ry="6"   fill="#8577bd" />
+        </>
       ) : (
-        <path d="M42,92 Q60,114 78,92"
-          fill="none" stroke="#c0392b" strokeWidth="3" strokeLinecap="round" />
+        <>
+          <ellipse cx="58" cy="102" rx="8"   ry="10"  fill="#9b8fc9" />
+          <ellipse cx="54" cy="113" rx="6.5" ry="8.5" fill="#9b8fc9" />
+          <ellipse cx="50" cy="122" rx="5.5" ry="6.5" fill="#8577bd" />
+        </>
       )}
 
       {thinking && [0, 1, 2].map(i => (
@@ -470,7 +485,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
             animation: 'fPulse 2.5s ease-in-out infinite',
           }}
         >
-          <span style={{ fontSize: '2rem', lineHeight: 1 }}>🧒</span>
+          <span style={{ fontSize: '2rem', lineHeight: 1 }}>🐘</span>
           <span style={{ fontSize: '.52rem', color: '#fff', fontWeight: 800, marginTop: 2 }}>فَهِيمٌ</span>
         </button>
       )}
@@ -497,7 +512,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
                 width: 42, height: 42, borderRadius: '50%',
                 border: '2px solid rgba(255,255,255,.4)', background: 'rgba(255,255,255,.1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.7rem',
-              }}>🧒</div>
+              }}>🐘</div>
               <div>
                 <div style={{ color: '#fff', fontWeight: 800, fontSize: '.92rem' }}>فَهِيمٌ</div>
                 <div style={{ color: 'rgba(255,255,255,.6)', fontSize: '.7rem' }}>{phaseLabel}</div>
