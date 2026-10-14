@@ -131,116 +131,6 @@ function useSpeech() {
   return { speak, cancel };
 }
 
-/* ── SVG Faheem character face ── */
-function FaheemFace({ phase, mouthOpen, blink, bob }) {
-  const speaking = phase === 'speaking';
-  const thinking = phase === 'thinking';
-
-  return (
-    <svg
-      viewBox="0 0 120 158"
-      width="90" height="118"
-      style={{
-        transform: `translateY(${bob}px)`,
-        transition: 'transform .75s ease-in-out',
-        overflow: 'visible',
-        filter: 'drop-shadow(0 6px 16px rgba(0,0,0,.22))',
-      }}
-    >
-      <rect x="22" y="118" width="76" height="44" rx="18" fill="#1f2d5a" />
-      <ellipse cx="60" cy="160" rx="34" ry="9" fill="#15213d" />
-      <path d="M40,120 L60,133 L80,120"
-        fill="none" stroke="#d4952a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="60" cy="142" r="8" fill="#d4952a" />
-      <text x="60" y="146.5" textAnchor="middle" fontSize="8.5"
-        fill="#1f2d5a" fontFamily="serif" fontWeight="900">&#x639;</text>
-
-      {/* آذان فهيم الفيل — كبيرة ومرفرفة */}
-      <ellipse cx="4"   cy="70" rx="16" ry="24" fill="#bdb6d9" transform="rotate(-10 4 70)" />
-      <ellipse cx="6"   cy="70" rx="9"  ry="15" fill="#a89fcf" transform="rotate(-10 6 70)" />
-      <ellipse cx="116" cy="70" rx="16" ry="24" fill="#bdb6d9" transform="rotate(10 116 70)" />
-      <ellipse cx="114" cy="70" rx="9"  ry="15" fill="#a89fcf" transform="rotate(10 114 70)" />
-
-      <circle cx="60" cy="64" r="49" fill="#cdc7e6" />
-
-      <ellipse cx="40" cy="63" rx="12" ry="14" fill="white" />
-      <circle  cx="41" cy="65" r="8.5"  fill="#1a2d4a" />
-      <circle  cx="41" cy="65" r="4.2"  fill="#080808" />
-      <circle  cx="43.5" cy="62" r="2.5" fill="white" />
-      {blink && <ellipse cx="40" cy="63" rx="12" ry="14" fill="#cdc7e6" />}
-
-      <ellipse cx="80" cy="63" rx="12" ry="14" fill="white" />
-      <circle  cx="81" cy="65" r="8.5"  fill="#1a2d4a" />
-      <circle  cx="81" cy="65" r="4.2"  fill="#080808" />
-      <circle  cx="83.5" cy="62" r="2.5" fill="white" />
-      {blink && <ellipse cx="80" cy="63" rx="12" ry="14" fill="#cdc7e6" />}
-
-      <path
-        d={thinking ? 'M28,46 Q40,39 52,45' : 'M28,50 Q40,44 52,50'}
-        fill="none" stroke="#9b8fc9" strokeWidth="3.2" strokeLinecap="round"
-        style={{ transition: 'd .4s' }}
-      />
-      <path
-        d={thinking ? 'M68,45 Q80,39 92,46' : 'M68,50 Q80,44 92,50'}
-        fill="none" stroke="#9b8fc9" strokeWidth="3.2" strokeLinecap="round"
-        style={{ transition: 'd .4s' }}
-      />
-
-      <circle cx="19" cy="82" r="10" fill="#f08070" opacity=".18" />
-      <circle cx="101" cy="82" r="10" fill="#f08070" opacity=".18" />
-
-      {/* خرطوم فهيم — يتحرك حسب الحالة (استرخاء / تفكير / حديث) */}
-      <ellipse cx="60" cy="90" rx="9.5" ry="11" fill="#9b8fc9" />
-      {speaking ? (
-        mouthOpen ? (
-          <>
-            <ellipse cx="63" cy="101" rx="8.5" ry="10.5" fill="#9b8fc9" />
-            <ellipse cx="68" cy="109" rx="7"   ry="9"   fill="#9b8fc9" />
-            <ellipse cx="71" cy="116" rx="6"   ry="7"   fill="#8577bd" />
-          </>
-        ) : (
-          <>
-            <ellipse cx="57" cy="103" rx="8.5" ry="10.5" fill="#9b8fc9" />
-            <ellipse cx="51" cy="113" rx="7"   ry="9"   fill="#9b8fc9" />
-            <ellipse cx="46" cy="120" rx="6"   ry="7"   fill="#8577bd" />
-          </>
-        )
-      ) : thinking ? (
-        <>
-          <ellipse cx="56" cy="99" rx="8"   ry="9.5" fill="#9b8fc9" />
-          <ellipse cx="48" cy="98" rx="6.5" ry="7.5" fill="#9b8fc9" />
-          <ellipse cx="42" cy="93" rx="5.5" ry="6"   fill="#8577bd" />
-        </>
-      ) : (
-        <>
-          <ellipse cx="58" cy="102" rx="8"   ry="10"  fill="#9b8fc9" />
-          <ellipse cx="54" cy="113" rx="6.5" ry="8.5" fill="#9b8fc9" />
-          <ellipse cx="50" cy="122" rx="5.5" ry="6.5" fill="#8577bd" />
-        </>
-      )}
-
-      {thinking && [0, 1, 2].map(i => (
-        <circle key={i} cx={72 + i * 12} cy="16" r="4" fill="#d4952a" opacity=".85">
-          <animate attributeName="cy" values="16;7;16" dur=".9s"
-            begin={`${i * 0.22}s`} repeatCount="indefinite" />
-          <animate attributeName="opacity" values=".4;1;.4" dur=".9s"
-            begin={`${i * 0.22}s`} repeatCount="indefinite" />
-        </circle>
-      ))}
-
-      {phase === 'listening' && [0, 1, 2].map(i => (
-        <circle key={i} cx="60" cy={108} r={6 + i * 4} fill="none"
-          stroke="#d4952a" strokeWidth="1.5" opacity={.5 - i * .15}>
-          <animate attributeName="r" values={`${6 + i * 4};${14 + i * 6};${6 + i * 4}`}
-            dur="1.4s" begin={`${i * .3}s`} repeatCount="indefinite" />
-          <animate attributeName="opacity" values={`.5;0;.5`}
-            dur="1.4s" begin={`${i * .3}s`} repeatCount="indefinite" />
-        </circle>
-      ))}
-    </svg>
-  );
-}
-
 const iconBtn = {
   background: 'rgba(255,255,255,.13)', border: 'none', borderRadius: '50%',
   width: 30, height: 30, color: '#fff', cursor: 'pointer',
@@ -305,48 +195,13 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
   const [msgs,      setMsgs]    = useState([]);
   const [input,     setInput]   = useState('');
   const [isRec,     setIsRec]   = useState(false);
-  const [mouthOpen, setMouthO]  = useState(false);
-  const [blink,     setBlink]   = useState(false);
-  const [bob,       setBob]     = useState(0);
   const [sttErr,    setSttErr]  = useState('');
   const [pendingQ,  setPendingQ] = useState(null); // prefetched question
 
   const recRef   = useRef(null);
   const endRef   = useRef(null);
-  const mouthTid = useRef(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
-
-  useEffect(() => {
-    let t;
-    const tick = () => { setBob(b => b === 0 ? -5 : 0); t = setTimeout(tick, 1100); };
-    t = setTimeout(tick, 1100);
-    return () => clearTimeout(t);
-  }, []);
-
-  useEffect(() => {
-    let t;
-    const schedule = () => {
-      t = setTimeout(() => {
-        setBlink(true);
-        setTimeout(() => setBlink(false), 130);
-        schedule();
-      }, 2300 + Math.random() * 2700);
-    };
-    schedule();
-    return () => clearTimeout(t);
-  }, []);
-
-  useEffect(() => {
-    clearTimeout(mouthTid.current);
-    if (phase === 'speaking') {
-      const tick = () => { setMouthO(m => !m); mouthTid.current = setTimeout(tick, 185); };
-      mouthTid.current = setTimeout(tick, 185);
-    } else {
-      setMouthO(false);
-    }
-    return () => clearTimeout(mouthTid.current);
-  }, [phase]);
 
   const sayText = useCallback((text) => {
     setPhase('speaking');
@@ -508,7 +363,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
             borderRadius: 16, padding: '8px 14px', boxShadow: '0 6px 16px rgba(0,0,0,.16)',
             whiteSpace: 'nowrap', marginBottom: 58, animation: 'fPillBob 2.6s ease-in-out infinite',
           }}>
-            اسْأَلْنِي! 💬
+            اسْأَلْ فَهِيماً! 💬
             <span style={{
               position: 'absolute', top: '50%', right: -5, width: 12, height: 12, background: '#fff',
               transform: 'translateY(-50%) rotate(45deg)',
@@ -538,8 +393,11 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
               <div style={{
                 width: 42, height: 42, borderRadius: '50%',
                 border: '2px solid rgba(255,255,255,.4)', background: 'rgba(255,255,255,.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.7rem',
-              }}>🐘</div>
+                display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+              }}>
+                <img src="/faheem.png" alt="فَهِيمٌ" width={555} height={707}
+                  style={{ width: '82%', height: '82%', objectFit: 'contain' }} />
+              </div>
               <div>
                 <div style={{ color: '#fff', fontWeight: 800, fontSize: '.92rem' }}>فَهِيمٌ</div>
                 <div style={{ color: 'rgba(255,255,255,.6)', fontSize: '.7rem' }}>{phaseLabel}</div>
@@ -558,7 +416,8 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
             display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
             padding: '14px 0 4px', borderBottom: '1px solid #e8eef5', flexShrink: 0,
           }}>
-            <FaheemFace phase={phase} mouthOpen={mouthOpen} blink={blink} bob={phase === 'idle' ? bob : 0} />
+            <img src="/faheem.png" alt="فَهِيمٌ" width={555} height={707}
+              style={{ height: 112, width: 'auto', filter: 'drop-shadow(0 6px 16px rgba(0,0,0,.22))' }} />
           </div>
 
           <div style={{
