@@ -129,15 +129,6 @@ const RESOURCES = [
 
 /* STORIES loaded dynamically from DB — see initialStories prop */
 
-const TAG_COLORS = {
-  'مستوى 1': { bg: '#EFF6FF', color: '#1D4ED8' },
-  'مستوى 2': { bg: '#FFF7ED', color: '#C2410C' },
-  'مستوى 3': { bg: '#FDF2F8', color: '#BE185D' },
-  'تعزيزي':  { bg: '#ECFDF5', color: '#065F46' },
-};
-
-const FILTERS = ['الكل', 'مستوى 1', 'مستوى 2', 'مستوى 3', 'تعزيزي'];
-
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -157,13 +148,9 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
   const [editDesc,      setEditDesc]      = useState('');
   const [saving,        setSaving]        = useState(false);
   const [msg,           setMsg]           = useState(null);
-  const [activeFilter,  setActiveFilter]  = useState('الكل');
-  const [search,        setSearch]        = useState('');
   const [bannerDismiss, setBannerDismiss] = useState(false);
-  const [dockHover,     setDockHover]     = useState(null);
   const [selectedKey,   setSelectedKey]   = useState(null);
   const fileRef    = useRef();
-  const touchTimer = useRef(null);
 
   /* ── مجموعة المكتملة ── */
   const completedKeys = new Set(
@@ -181,26 +168,10 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
     RESOURCES.find((r, i) => r.ready && !completedKeys.has(r.key) && i > lastDoneIdx) ||
     RESOURCES.find(r => r.ready && !completedKeys.has(r.key));
 
-  /* ── فلترة ── */
-  const filtered = RESOURCES.filter(r => {
-    const meta  = cardMeta[r.key] || {};
-    const title = (meta.title || r.title).toLowerCase();
-    const desc  = (meta.description || r.desc).toLowerCase();
-    const q     = search.trim().toLowerCase();
-    return (activeFilter === 'الكل' || r.tag === activeFilter)
-        && (!q || title.includes(q) || desc.includes(q));
-  });
-
   /* ── إحصاء شريط التقدم ── */
-  const totalInFilter = activeFilter === 'الكل'
-    ? RESOURCES.length
-    : RESOURCES.filter(r => r.tag === activeFilter).length;
-  const readyInFilter = activeFilter === 'الكل'
-    ? RESOURCES.filter(r => r.ready).length
-    : RESOURCES.filter(r => r.tag === activeFilter && r.ready).length;
-  const doneInFilter = activeFilter === 'الكل'
-    ? RESOURCES.filter(r => completedKeys.has(r.key)).length
-    : RESOURCES.filter(r => r.tag === activeFilter && completedKeys.has(r.key)).length;
+  const totalInFilter = RESOURCES.length;
+  const readyInFilter = RESOURCES.filter(r => r.ready).length;
+  const doneInFilter  = RESOURCES.filter(r => completedKeys.has(r.key)).length;
 
   const progressPct = hasAnyProgress
     ? (readyInFilter > 0 ? Math.round((doneInFilter / readyInFilter) * 100) : 0)
@@ -275,6 +246,10 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           from { opacity:0; transform:translateY(-10px); }
           to   { opacity:1; transform:translateY(0); }
         }
+        @keyframes libFaheemFloat {
+          0%,100% { transform:translateY(0); }
+          50%      { transform:translateY(-8px); }
+        }
 
         .lib-page {
           direction:rtl; font-family:inherit;
@@ -325,47 +300,6 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         }
         .lib-banner-close:hover { background:rgba(0,0,0,.08); }
 
-        /* ── بحث ── */
-        .lib-search-wrap { position:relative; margin-bottom:14px; }
-        .lib-search {
-          width:100%; border:2px solid #e2e8f0; border-radius:14px;
-          padding:10px 42px 10px 16px; font-size:.92rem;
-          font-family:inherit; direction:rtl;
-          background:#fff; color:#1e293b; outline:none; box-sizing:border-box;
-          transition:border-color .18s, box-shadow .18s;
-        }
-        .lib-search:focus { border-color:#818cf8; box-shadow:0 0 0 3px rgba(129,140,248,.15); }
-        .lib-search-icon {
-          position:absolute; top:50%; right:14px; transform:translateY(-50%);
-          font-size:1rem; pointer-events:none;
-        }
-
-        /* ── فلاتر ── */
-        .lib-filters {
-          display:flex; gap:7px; flex-wrap:wrap; justify-content:center;
-          margin-bottom:16px;
-        }
-        .lib-filter-btn {
-          display:inline-flex; align-items:center; gap:5px;
-          border:2px solid #e2e8f0; border-radius:50px;
-          padding:5px 13px; font-size:.8rem; font-weight:700;
-          cursor:pointer; background:#fff; color:#64748b;
-          font-family:inherit;
-          transition:all .18s;
-        }
-        .lib-filter-btn:hover:not(.active) { border-color:#a5b4fc; color:#4f46e5; }
-        .lib-filter-btn.active {
-          background:linear-gradient(135deg,#6366f1,#8b5cf6);
-          color:#fff; border-color:transparent;
-          box-shadow:0 4px 14px rgba(99,102,241,.32);
-        }
-        .lib-filter-count {
-          background:rgba(0,0,0,.1); border-radius:50%;
-          min-width:18px; height:18px; padding:0 2px;
-          font-size:.6rem; display:flex; align-items:center; justify-content:center;
-        }
-        .lib-filter-btn.active .lib-filter-count { background:rgba(255,255,255,.25); }
-
         /* ── شريط التقدم ── */
         .lib-progress {
           display:flex; align-items:center; gap:10px;
@@ -396,56 +330,8 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         @media (max-width:600px) {
           .lib-grid { grid-template-columns:repeat(2,1fr); gap:10px; }
           .lib-header h1 { font-size:1.3rem; }
-          .lib-filter-btn { font-size:.75rem; padding:4px 10px; }
         }
         @media (max-width:380px) { .lib-grid { grid-template-columns:1fr; } }
-
-        /* ── البطاقة ── */
-        .lib-card {
-          border-radius:18px; padding:18px 14px 14px;
-          display:flex; flex-direction:column; align-items:center;
-          text-align:center; gap:7px; border:2px solid;
-          text-decoration:none; position:relative; overflow:hidden;
-          animation:libCardIn .42s cubic-bezier(.34,1.56,.64,1) both;
-          transition:transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
-        }
-        .lib-card.ready::after {
-          content:''; position:absolute; inset:0; pointer-events:none;
-          background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.38) 50%,transparent 65%);
-          transform:translateX(-100%); transition:transform .45s ease;
-        }
-        .lib-card.ready:hover::after { transform:translateX(110%); }
-        .lib-card.ready:hover {
-          transform:translateY(-7px) scale(1.035);
-          box-shadow:0 18px 40px rgba(0,0,0,.14);
-        }
-        .lib-card.coming { opacity:.78; cursor:default; }
-        .lib-card.lvl1   { box-shadow:0 4px 18px rgba(99,102,241,.12); }
-        .lib-card.lvl1.ready:hover { box-shadow:0 18px 40px rgba(99,102,241,.22) !important; }
-        /* بطاقة مكتملة: حدود خضراء خفيفة */
-        .lib-card.done {
-          border-color:#86efac !important;
-          box-shadow:0 4px 16px rgba(34,197,94,.14);
-        }
-        .lib-card.done.ready:hover { box-shadow:0 18px 40px rgba(34,197,94,.2) !important; }
-
-        /* ── أيقونة ── */
-        .lib-icon-outer { position:relative; flex-shrink:0; margin-top:8px; }
-        .lib-icon-wrap {
-          width:64px; height:64px; border-radius:50%;
-          display:flex; align-items:center; justify-content:center;
-          font-size:2.3rem; overflow:hidden;
-          transition:transform .22s cubic-bezier(.34,1.56,.64,1),
-                      box-shadow .2s;
-        }
-        .lib-card.ready:hover .lib-icon-wrap {
-          animation:libIconPop .45s cubic-bezier(.34,1.56,.64,1) forwards;
-        }
-        @media (max-width:600px) {
-          .lib-icon-wrap { width:52px; height:52px; font-size:1.8rem; }
-          .lib-card { padding:13px 10px 11px; gap:5px; }
-          .lib-icon-outer { margin-top:4px; }
-        }
 
         /* ✓ شارة الإكمال */
         .lib-done-badge {
@@ -457,60 +343,6 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           box-shadow:0 2px 6px rgba(34,197,94,.45);
         }
 
-        /* ── وسم ── */
-        .lib-tag {
-          position:absolute; top:10px; right:10px;
-          border-radius:20px; padding:2px 9px;
-          font-size:.63rem; font-weight:800;
-        }
-
-        /* ── عنوان ووصف ── */
-        .lib-card-title { font-size:.92rem; font-weight:800; color:#1e293b; margin:0; line-height:1.3; }
-        .lib-card-desc  { font-size:.73rem; color:#64748b; line-height:1.5; margin:0; flex:1; }
-        @media (max-width:600px) {
-          .lib-card-title { font-size:.82rem; }
-          .lib-card-desc  { font-size:.67rem; }
-        }
-
-        /* ── زر ابدأ / العب مجدداً ── */
-        .lib-start-btn {
-          display:inline-block; border:none; border-radius:50px;
-          padding:7px 18px; color:#fff; font-size:.8rem; font-weight:700;
-          cursor:pointer; font-family:inherit;
-          box-shadow:0 4px 12px rgba(0,0,0,.18); text-decoration:none;
-          transition:transform .18s, box-shadow .18s;
-        }
-        .lib-card.ready:hover .lib-start-btn { transform:scale(1.08); box-shadow:0 7px 20px rgba(0,0,0,.24); }
-        .lib-replay-btn {
-          display:inline-flex; align-items:center; gap:5px;
-          border:none; border-radius:50px;
-          padding:7px 14px; color:#fff; font-size:.78rem; font-weight:700;
-          cursor:pointer; font-family:inherit;
-          text-decoration:none;
-          background:linear-gradient(135deg,#22c55e,#16a34a);
-          box-shadow:0 4px 12px rgba(34,197,94,.3);
-          transition:transform .18s, box-shadow .18s;
-        }
-        .lib-card.ready:hover .lib-replay-btn { transform:scale(1.08); }
-
-        /* ── قريباً ── */
-        .lib-coming-badge {
-          display:inline-flex; align-items:center; gap:5px;
-          background:#f1f5f9; color:#94a3b8;
-          border-radius:50px; padding:6px 14px; font-size:.73rem; font-weight:700;
-          border:1.5px dashed #cbd5e1;
-        }
-
-        /* ── طبقة قفل ── */
-        .lib-lock-overlay {
-          position:absolute; inset:0; border-radius:16px;
-          background:rgba(255,255,255,.52); backdrop-filter:blur(2px);
-          display:flex; align-items:center; justify-content:center;
-          font-size:2.2rem; opacity:0; pointer-events:none;
-          transition:opacity .18s;
-        }
-        .lib-card.coming:hover .lib-lock-overlay { opacity:1; }
-
         /* ── زر تعديل المعلم ── */
         .lib-edit-btn {
           position:absolute; top:10px; left:10px;
@@ -520,15 +352,6 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           box-shadow:0 2px 8px rgba(0,0,0,.15); opacity:0;
           transition:opacity .18s; z-index:3;
         }
-        .lib-card:hover .lib-edit-btn { opacity:1; }
-
-        /* ── حالة فارغة ── */
-        .lib-empty {
-          grid-column:1/-1; text-align:center; padding:48px 20px;
-          color:#94a3b8; font-weight:700; font-size:.92rem;
-        }
-        .lib-empty span { display:block; font-size:2.8rem; margin-bottom:10px; }
-
         /* ══════════════════════════════════════════
            شبكة بسيطة + نافذة تفاصيل عند الضغط — العرض الافتراضي الجديد
         ══════════════════════════════════════════ */
@@ -820,43 +643,18 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           );
         })()}
 
-        {/* ── فلاتر بأسلوب Dock ── */}
-        <div
-          className="lib-filters"
-          style={{ alignItems: 'flex-end', paddingTop: 38, paddingBottom: 4 }}
-          onMouseLeave={() => setDockHover(null)}
-        >
-          {FILTERS.map((f, i) => {
-            const count = f === 'الكل'
-              ? RESOURCES.length
-              : RESOURCES.filter(r => r.tag === f).length;
-            const d     = dockHover === null ? Infinity : Math.abs(i - dockHover);
-            const scale = d === 0 ? 1.6 : d === 1 ? 1.3 : d === 2 ? 1.1 : 1;
-            return (
-              <button
-                key={f}
-                onMouseEnter={() => setDockHover(i)}
-                onTouchStart={() => {
-                  /* تأثير الـ Dock على الجوال: تكبير لحظي عند اللمس */
-                  clearTimeout(touchTimer.current);
-                  setDockHover(i);
-                  touchTimer.current = setTimeout(() => setDockHover(null), 380);
-                }}
-                className={`lib-filter-btn${activeFilter === f ? ' active' : ''}`}
-                onClick={() => { setActiveFilter(f); setSearch(''); }}
-                style={{
-                  transform: `scale(${scale})`,
-                  transformOrigin: 'bottom center',
-                  position: 'relative',
-                  zIndex: scale > 1 ? 10 : 1,
-                  transition: 'transform .22s cubic-bezier(.34,1.56,.64,1), border-color .18s, background .18s, color .18s, box-shadow .18s',
-                }}
-              >
-                {f}
-                <span className="lib-filter-count">{count}</span>
-              </button>
-            );
-          })}
+        {/* ── فهيم يرافقك في المكتبة ── */}
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0 24px' }}>
+          <img
+            src="/faheem-tablet.png"
+            alt="فَهِيمٌ"
+            width={648} height={729}
+            style={{
+              height: 152, width: 'auto',
+              filter: 'drop-shadow(0 10px 18px rgba(26,43,74,.22))',
+              animation: 'libFaheemFloat 3.2s ease-in-out infinite',
+            }}
+          />
         </div>
 
         {/* ── شريط التقدم — يظهر فقط بعد إكمال نشاط واحد على الأقل ── */}
@@ -876,57 +674,6 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
 
         {/* ── الشبكة / مروحة البطاقات ── */}
         {(() => {
-          /* دالة رسم بطاقة واحدة — مشتركة بين المروحة والشبكة */
-          const renderLibCard = (r, i) => {
-            const meta         = cardMeta[r.key] || {};
-            const displayTitle = meta.title       || r.title;
-            const displayDesc  = meta.description || r.desc;
-            const displayImg   = meta.image_url   || null;
-            const displayIcon  = displayImg ? null : (meta.icon || r.icon);
-            const tagStyle     = TAG_COLORS[r.tag] ?? { bg:'#f1f5f9', color:'#475569' };
-            const isLvl1       = r.tag === 'مستوى 1';
-            const done         = completedKeys.has(r.key);
-            const cardContent = (
-              <>
-                {isTeacher && (
-                  <button className="lib-edit-btn"
-                    onClick={e => { e.preventDefault(); e.stopPropagation(); openEdit(r); }}
-                    title="تعديل البطاقة">✏️</button>
-                )}
-                <span className="lib-tag" style={{ background:tagStyle.bg, color:tagStyle.color }}>{r.tag}</span>
-                {isLvl1 && r.ready && !done && (
-                  <span style={{ position:'absolute', top:9, left:isTeacher?42:10, fontSize:'.85rem' }}>⭐</span>
-                )}
-                <div className="lib-icon-outer">
-                  <div className="lib-icon-wrap" style={{
-                    background: r.iconBg,
-                    boxShadow: done ? '0 0 0 2.5px #22c55e, 0 0 0 5px rgba(34,197,94,.12)' : 'none',
-                  }}>
-                    {displayImg
-                      ? <img src={displayImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                      : <span style={{ filter:r.ready?'none':'grayscale(1) brightness(.65)' }}>{displayIcon}</span>
-                    }
-                  </div>
-                  {done && <span className="lib-done-badge">✓</span>}
-                </div>
-                <p className="lib-card-title">{displayTitle}</p>
-                <p className="lib-card-desc">{displayDesc}</p>
-                {r.ready
-                  ? done
-                    ? <span className="lib-replay-btn">✓ العب مجدداً</span>
-                    : <span className="lib-start-btn" style={{ background:r.btnBg }}>ابدأ الآن ←</span>
-                  : <span className="lib-coming-badge">🔒 قريباً</span>
-                }
-                {!r.ready && <div className="lib-lock-overlay">🔒</div>}
-              </>
-            );
-            const cls = ['lib-card', r.ready?'ready':'coming', isLvl1?'lvl1':'', done?'done':''].filter(Boolean).join(' ');
-            const sty = { background:r.bg, borderColor:done?'#86efac':r.border, boxShadow:r.ready?`0 4px 16px ${r.accent}18`:'none' };
-            return r.ready
-              ? <Link key={r.key} href={r.link} className={cls} style={sty}>{cardContent}</Link>
-              : <div  key={r.key}               className={cls} style={sty}>{cardContent}</div>;
-          };
-
           /* بطاقة بسيطة: صورة وعنوان فقط — الضغط عليها يفتح نافذة التفاصيل */
           const renderSimpleCard = (r) => {
             const meta         = cardMeta[r.key] || {};
@@ -962,17 +709,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
             );
           };
 
-          /* بحث أو فلتر → شبكة عادية */
-          if (search.trim() || activeFilter !== 'الكل') return (
-            <div className="lib-grid" id="lib-activities-grid">
-              {filtered.length === 0
-                ? <div className="lib-empty"><span>🔍</span>لا توجد نتائج مطابقة</div>
-                : filtered.map(renderLibCard)
-              }
-            </div>
-          );
-
-          /* العرض الافتراضي: شبكة بسيطة مقسّمة بعناوين، بلا أي وصف على البطاقة نفسها */
+          /* شبكة بسيطة مقسّمة بعناوين، بلا أي وصف على البطاقة نفسها */
           const sections = LEVEL_SECTIONS.map(sec => ({
             ...sec,
             items: RESOURCES.filter(r => r.tag === sec.tag),
