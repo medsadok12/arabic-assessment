@@ -64,8 +64,24 @@ function publicBase() {
   return `${url}/storage/v1/object/public/${STORY_AUDIO_BUCKET}/`;
 }
 
-export function storyAudioPublicUrl(path) {
+/* رابط عام لملف في bucket ‎media‎ (القصص، الحروف الهجائية، بطاقات المكتبة…) */
+export function mediaPublicUrl(path) {
   return publicBase() + path;
+}
+
+/* يستخرج مسار التخزين من رابط عام في bucket ‎media‎ — ويرفض أي رابط
+   خارج المجلد المحدَّد (prefix) أو يحاول الخروج منه بـ«..» */
+export function mediaPathFromUrl(url, prefix) {
+  if (typeof url !== 'string') return null;
+  const base = publicBase();
+  if (!url.startsWith(base)) return null;
+  const path = url.slice(base.length).split('?')[0];
+  if (!path.startsWith(prefix) || path.includes('..')) return null;
+  return path;
+}
+
+export function storyAudioPublicUrl(path) {
+  return mediaPublicUrl(path);
 }
 
 /* تحقق من مصفوفة أصوات صفحات واردة من العميل — رسالة خطأ أو null */
@@ -77,10 +93,5 @@ export function pageAudioError(list) {
 
 /* يستخرج مسار التخزين من رابط عام — ويرفض أي رابط خارج مجلد صوت القصص */
 export function storyAudioPathFromUrl(url) {
-  if (typeof url !== 'string') return null;
-  const base = publicBase();
-  if (!url.startsWith(base)) return null;
-  const path = url.slice(base.length).split('?')[0];
-  if (!path.startsWith(STORY_AUDIO_PREFIX) || path.includes('..')) return null;
-  return path;
+  return mediaPathFromUrl(url, STORY_AUDIO_PREFIX);
 }

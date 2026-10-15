@@ -1,9 +1,14 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import Navbar from '../../../components/Navbar';
+import LetterEditor from './LetterEditor';
 import { createClient } from '../../../lib/supabase';
 import { childFetch } from '../../../lib/child-fetch';
+import { getRole } from '../../../lib/auth-role';
+import { HUROOF_COUNT, mergeLetters } from '../../../lib/huroof';
+
+const STAFF_ROLES = ['teacher', 'admin', 'super_admin'];
 
 const PALETTE = [
   { main: '#185FA5', light: '#dbeafe' },
@@ -20,36 +25,7 @@ const PALETTE = [
   { main: '#166534', light: '#dcfce7' },
 ];
 
-const LETTERS = [
-  { l: 'أ',  name: 'أَلِفْ',  word: 'أَسَدٌ',     emoji: '🦁', sentence: 'الأَسَدُ مَلِكُ الغَابَةْ' },
-  { l: 'ب',  name: 'بَاءْ',   word: 'بَيْتٌ',     emoji: '🏠', sentence: 'البَيْتُ دَافِئٌ وَجَمِيلْ' },
-  { l: 'ت',  name: 'تَاءْ',   word: 'تُفَّاحَةٌ', emoji: '🍎', sentence: 'التُّفَّاحَةُ حَمْرَاءُ وَحُلْوَةْ' },
-  { l: 'ث',  name: 'ثَاءْ',   word: 'ثَعْلَبٌ',   emoji: '🦊', sentence: 'الثَّعْلَبُ حَيَوَانٌ ذَكِيٌّ وَسَرِيعْ' },
-  { l: 'ج',  name: 'جِيمْ',   word: 'جَمَلٌ',     emoji: '🐫', sentence: 'الجَمَلُ سَفِينَةُ الصَّحْرَاءْ' },
-  { l: 'ح',  name: 'حَاءْ',   word: 'حِصَانٌ',    emoji: '🐴', sentence: 'الحِصَانُ يَرْكُضُ بِسُرْعَةْ' },
-  { l: 'خ',  name: 'خَاءْ',   word: 'خُبْزٌ',     emoji: '🍞', sentence: 'الخُبْزُ طَعَامٌ لَذِيذٌ وَمُفِيدْ' },
-  { l: 'د',  name: 'دَالْ',   word: 'دَجَاجَةٌ',  emoji: '🐔', sentence: 'الدَّجَاجَةُ تَبِيضُ كُلَّ يَوْمْ' },
-  { l: 'ذ',  name: 'ذَالْ',   word: 'ذِئْبٌ',     emoji: '🐺', sentence: 'الذِّئْبُ يَعِيشُ فِي الغَابَةِ البَعِيدَةْ' },
-  { l: 'ر',  name: 'رَاءْ',   word: 'رُمَّانٌ',   emoji: '🌺', sentence: 'الرُّمَّانُ فَاكِهَةٌ حُلْوَةٌ وَمُفِيدَةْ' },
-  { l: 'ز',  name: 'زَايْ',   word: 'زَرَافَةٌ',  emoji: '🦒', sentence: 'الزَّرَافَةُ أَطْوَلُ الحَيَوَانَاتِ عُنُقًاْ' },
-  { l: 'س',  name: 'سِينْ',   word: 'سَمَكَةٌ',   emoji: '🐟', sentence: 'السَّمَكَةُ تَسْبَحُ فِي المَاءْ' },
-  { l: 'ش',  name: 'شِينْ',   word: 'شَمْسٌ',     emoji: '☀️', sentence: 'الشَّمْسُ تُضِيءُ النَّهَارَ الجَمِيلْ' },
-  { l: 'ص',  name: 'صَادْ',   word: 'صَقْرٌ',     emoji: '🦅', sentence: 'الصَّقْرُ يَطِيرُ عَالِيًا فِي السَّمَاءْ' },
-  { l: 'ض',  name: 'ضَادْ',   word: 'ضِفْدَعٌ',   emoji: '🐸', sentence: 'الضِّفْدَعُ يَقْفِزُ بَيْنَ الأَشْجَارْ' },
-  { l: 'ط',  name: 'طَاءْ',   word: 'طَائِرٌ',    emoji: '🐦', sentence: 'الطَّائِرُ يُغَنِّي فَوْقَ الشَّجَرَةْ' },
-  { l: 'ظ',  name: 'ظَاءْ',   word: 'ظَبْيٌ',     emoji: '🦌', sentence: 'الظَّبْيُ يَرْعَى فِي السَّهْلِ الأَخْضَرْ' },
-  { l: 'ع',  name: 'عَيْنْ',  word: 'عِنَبٌ',     emoji: '🍇', sentence: 'العِنَبُ فَاكِهَةٌ لَذِيذَةٌ وَغَنِيَّةْ' },
-  { l: 'غ',  name: 'غَيْنْ',  word: 'غَزَالٌ',    emoji: '🦌', sentence: 'الغَزَالُ يَرْكُضُ بِخِفَّةٍ وَرَشَاقَةْ' },
-  { l: 'ف',  name: 'فَاءْ',   word: 'فَرَسٌ',     emoji: '🐎', sentence: 'الفَرَسُ حَيَوَانٌ أَصِيلٌ وَجَمِيلْ' },
-  { l: 'ق',  name: 'قَافْ',   word: 'قِطَّةٌ',    emoji: '🐱', sentence: 'القِطَّةُ تَلْعَبُ وَتَقْفِزُ بِمَرَحْ' },
-  { l: 'ك',  name: 'كَافْ',   word: 'كِتَابٌ',    emoji: '📚', sentence: 'الكِتَابُ خَيْرُ صَدِيقٍ وَرَفِيقْ' },
-  { l: 'ل',  name: 'لَامْ',   word: 'لَيْمُونٌ',  emoji: '🍋', sentence: 'اللَّيْمُونُ حَامِضٌ وَمُفِيدٌ لِلصِّحَّةْ' },
-  { l: 'م',  name: 'مِيمْ',   word: 'مَوْزَةٌ',   emoji: '🍌', sentence: 'المَوْزَةُ صَفْرَاءُ وَطَعْمُهَا حُلْوْ' },
-  { l: 'ن',  name: 'نُونْ',   word: 'نَمِرٌ',     emoji: '🐯', sentence: 'النَّمِرُ حَيَوَانٌ سَرِيعٌ وَشَجَاعْ' },
-  { l: 'هـ', name: 'هَاءْ',   word: 'هِلَالٌ',    emoji: '🌙', sentence: 'الهِلَالُ يُضِيءُ اللَّيْلَ الهَادِئَ الجَمِيلْ' },
-  { l: 'و',  name: 'وَاوْ',   word: 'وَرْدَةٌ',   emoji: '🌹', sentence: 'الوَرْدَةُ جَمِيلَةٌ وَعَطِرَةٌ وَرَقِيقَةْ' },
-  { l: 'ي',  name: 'يَاءْ',   word: 'يَمَامَةٌ',  emoji: '🕊️', sentence: 'اليَمَامَةُ تُغَنِّي بِصَوْتٍ عَذْبٍ جَمِيلْ' },
-];
+/* محتوى الحروف الافتراضي + تعديلات المعلم/الإدارة: lib/huroof.js (mergeLetters) */
 
 function speak(text) {
   if (!('speechSynthesis' in window)) return;
@@ -71,12 +47,12 @@ function speak(text) {
   }
 }
 
-function LetterCard({ data, index, active, onToggle }) {
+function LetterCard({ data, index, active, onToggle, onPlay, showBadges }) {
   const pal = PALETTE[index % PALETTE.length];
 
   return (
     <button
-      onClick={() => { speak(data.name); onToggle(index); }}
+      onClick={() => { onPlay(data.letter_audio_url, data.name); onToggle(index); }}
       style={{
         background: active
           ? `linear-gradient(145deg, ${pal.main}, ${pal.main}dd)`
@@ -126,12 +102,18 @@ function LetterCard({ data, index, active, onToggle }) {
           background: pal.main, opacity: .35,
         }} />
       )}
+      {/* للمعلم/المدير: علامة صغيرة على الحروف التي لها صوت مسجَّل أو صورة */}
+      {showBadges && (data.letter_audio_url || data.sentence_audio_url || data.image_url) && (
+        <div style={{ position: 'absolute', top: 4, right: 5, fontSize: '.62rem', lineHeight: 1 }}>
+          {(data.letter_audio_url || data.sentence_audio_url) ? '🔊' : ''}{data.image_url ? '🖼️' : ''}
+        </div>
+      )}
     </button>
   );
 }
 
 /* ── Bottom sheet shown when a letter is selected ── */
-function LetterSheet({ data, index, onClose }) {
+function LetterSheet({ data, index, onClose, onPlay, onEdit }) {
   const pal = PALETTE[index % PALETTE.length];
   return (
     <>
@@ -176,13 +158,24 @@ function LetterSheet({ data, index, onClose }) {
           {data.name}
         </div>
 
-        {/* emoji */}
-        <div style={{
-          fontSize: '4rem', lineHeight: 1, marginBottom: 12,
-          filter: 'drop-shadow(0 4px 8px rgba(0,0,0,.12))',
-        }}>
-          {data.emoji}
-        </div>
+        {/* صورة الكلمة (إن رفعها المعلم) وإلا الإيموجي */}
+        {data.image_url ? (
+          <img
+            src={data.image_url}
+            alt={data.word}
+            style={{
+              display: 'block', width: 120, height: 120, objectFit: 'contain', margin: '0 auto 12px',
+              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,.12))',
+            }}
+          />
+        ) : (
+          <div style={{
+            fontSize: '4rem', lineHeight: 1, marginBottom: 12,
+            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,.12))',
+          }}>
+            {data.emoji}
+          </div>
+        )}
 
         {/* word */}
         <div style={{
@@ -203,7 +196,7 @@ function LetterSheet({ data, index, onClose }) {
 
         {/* listen button */}
         <button
-          onClick={() => speak(`${data.word}. ${data.sentence}`)}
+          onClick={() => onPlay(data.sentence_audio_url, `${data.word}. ${data.sentence}`)}
           style={{
             background: `linear-gradient(135deg, ${pal.main}, ${pal.main}cc)`,
             color: '#fff', border: 'none', borderRadius: 14,
@@ -216,21 +209,69 @@ function LetterSheet({ data, index, onClose }) {
         >
           🔊 استمع
         </button>
+
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            style={{
+              marginTop: 10, width: '100%', minHeight: 46, borderRadius: 14,
+              border: '2px dashed #E8B84B', background: '#FFFBEB', color: '#1A2B4A',
+              fontSize: '.9rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            ✏️ تعديل الحرف — الصورة والأصوات والجملة
+          </button>
+        )}
       </div>
     </>
   );
 }
 
 export default function HuroofPage() {
-  const [user,   setUser]   = useState(null);
-  const [active, setActive] = useState(null);
-  const [seen,   setSeen]   = useState(new Set());
+  const [user,    setUser]    = useState(null);
+  const [active,  setActive]  = useState(null);
+  const [seen,    setSeen]    = useState(new Set());
+  const [rows,    setRows]    = useState([]);     // تعديلات الإدارة من huroof_letters
+  const [editing, setEditing] = useState(null);   // فهرس الحرف المفتوح في المحرر
   const pointsGivenRef     = useRef(new Set());
   const completionBonusRef = useRef(false);
+  const audioRef           = useRef(null);
+
+  const letters = useMemo(() => mergeLetters(rows), [rows]);
+  const isStaff = STAFF_ROLES.includes(getRole(user) ?? '');
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user: u } }) => setUser(u));
   }, []);
+
+  // محتوى يتحكم فيه المعلم ويراه الطفل: يُجلب حيّاً بلا كاش وعند العودة للتبويب
+  // (القسم 9.5)، وعند أي فشل يبقى المحتوى الافتراضي بصمت.
+  useEffect(() => {
+    let alive = true;
+    const load = () => fetch(`/api/huroof?t=${Date.now()}`, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => { if (alive && Array.isArray(j?.rows)) setRows(j.rows); })
+      .catch(() => {});
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    load();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { alive = false; document.removeEventListener('visibilitychange', onVisible); };
+  }, []);
+
+  // صوت مسجَّل إن رفعه المعلم، وإلا قراءة الجهاز الآلية. عنصر صوت واحد مشترك،
+  // يُشغَّل داخل معالج اللمسة نفسه (شرط سفاري على آيباد/آيفون).
+  function play(url, fallbackText) {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    const el = audioRef.current || (audioRef.current = new Audio());
+    el.pause();
+    if (!url) { speak(fallbackText); return; }
+    el.src = url;
+    el.play().catch(() => speak(fallbackText));
+  }
+
+  function savedRow(idx, row) {
+    setRows(prev => [...prev.filter(r => r.idx !== idx), ...(row ? [row] : [])]);
+  }
 
   function toggle(i) {
     const isNew = !seen.has(i);
@@ -245,7 +286,7 @@ export default function HuroofPage() {
         body: JSON.stringify({ reason: `huroof_letter:${i}` }),
       }).catch(() => {});
 
-      if (seen.size + 1 === LETTERS.length && !completionBonusRef.current) {
+      if (seen.size + 1 === HUROOF_COUNT && !completionBonusRef.current) {
         completionBonusRef.current = true;
         childFetch('/api/points', {
           method: 'POST',
@@ -256,7 +297,7 @@ export default function HuroofPage() {
     }
   }
 
-  const progress = Math.round((seen.size / LETTERS.length) * 100);
+  const progress = Math.round((seen.size / HUROOF_COUNT) * 100);
 
   return (
     <>
@@ -295,9 +336,19 @@ export default function HuroofPage() {
               🔤 الحروف الهجائية
             </h1>
             <p style={{ color: '#64748b', fontSize: '.88rem', margin: 0 }}>
-              اضغط على أي حرف لسماع نطقه واستكشاف كلمة جديدة — {LETTERS.length} حرفاً
+              اضغط على أي حرف لسماع نطقه واستكشاف كلمة جديدة — {HUROOF_COUNT} حرفاً
             </p>
           </div>
+
+          {/* للمعلم/المدير: كيف يعدّل محتوى الحروف */}
+          {isStaff && (
+            <div style={{
+              marginBottom: 18, background: '#FFFBEB', border: '2px solid #E8B84B', borderRadius: 14,
+              padding: '10px 14px', color: '#1A2B4A', fontSize: '.85rem', fontWeight: 700, lineHeight: 1.8,
+            }}>
+              ✏️ وضع المعلم: اضغط أي حرف ثم «تعديل الحرف» لتغيير صورته وكلمته وجملته وتسجيل صوت نطقه وصوت جملته — يراه الطلاب فوراً.
+            </div>
+          )}
 
           {/* Progress bar */}
           {seen.size > 0 && (
@@ -308,7 +359,7 @@ export default function HuroofPage() {
               }}>
                 <span>تقدمك في الرحلة</span>
                 <span style={{ fontWeight: 700 }}>
-                  {seen.size} / {LETTERS.length} حرف ({progress}%)
+                  {seen.size} / {HUROOF_COUNT} حرف ({progress}%)
                 </span>
               </div>
               <div style={{ height: 9, background: '#e2e8f0', borderRadius: 99, overflow: 'hidden' }}>
@@ -337,13 +388,15 @@ export default function HuroofPage() {
 
           {/* Letters grid — 7 per row → 4 equal rows of 7 */}
           <div className="huroof-grid" style={{ display: 'grid', gap: 12, alignItems: 'start' }}>
-            {LETTERS.map((data, i) => (
+            {letters.map((data, i) => (
               <LetterCard
                 key={data.l}
                 data={data}
                 index={i}
                 active={active === i}
                 onToggle={toggle}
+                onPlay={play}
+                showBadges={isStaff}
               />
             ))}
           </div>
@@ -360,7 +413,22 @@ export default function HuroofPage() {
 
       {/* Bottom sheet — rendered outside grid so it never breaks layout */}
       {active !== null && (
-        <LetterSheet data={LETTERS[active]} index={active} onClose={() => setActive(null)} />
+        <LetterSheet
+          data={letters[active]}
+          index={active}
+          onClose={() => { audioRef.current?.pause(); setActive(null); }}
+          onPlay={play}
+          onEdit={isStaff ? () => { audioRef.current?.pause(); setEditing(active); setActive(null); } : null}
+        />
+      )}
+
+      {editing !== null && (
+        <LetterEditor
+          key={editing}
+          letter={letters[editing]}
+          onClose={() => setEditing(null)}
+          onSaved={(row) => savedRow(editing, row)}
+        />
       )}
     </>
   );

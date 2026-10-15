@@ -45,19 +45,23 @@ export async function uploadStoryPageAudio(storyId, page, blob, onProgress) {
   });
   const up = await res.json().catch(() => ({}));
   if (!res.ok || !up.signedUrl) throw new Error(up.error || 'تعذّر تجهيز الرفع');
+  await putToSignedUrl(up.signedUrl, blob, up.contentType, onProgress);
+  return up.publicUrl;
+}
 
-  await new Promise((resolve, reject) => {
+/* رفع ملف إلى رابط رفع موقَّع من Supabase Storage مع نسبة التقدّم */
+export function putToSignedUrl(signedUrl, blob, contentType, onProgress) {
+  return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.upload.onprogress = (ev) => {
       if (ev.lengthComputable) onProgress?.(Math.round((ev.loaded / ev.total) * 100));
     };
     xhr.onload  = () => (xhr.status < 300 ? resolve() : reject(new Error(`فشل رفع الملف (${xhr.status})`)));
     xhr.onerror = () => reject(new Error('انقطع الاتصال أثناء الرفع'));
-    xhr.open('PUT', up.signedUrl);
-    xhr.setRequestHeader('Content-Type', up.contentType);
+    xhr.open('PUT', signedUrl);
+    xhr.setRequestHeader('Content-Type', contentType);
     xhr.send(blob);
   });
-  return up.publicUrl;
 }
 
 /* دورة حياة التسجيل من الميكروفون.

@@ -4,6 +4,7 @@ import { createAdminClient } from '../../lib/supabase-admin';
 import Navbar       from '../../components/Navbar';
 import LibraryGrid  from './LibraryGrid';
 import { getRole } from '../../lib/auth-role';
+import { isDataImage, moveCardImageToStorage } from '../../lib/library-card-image';
 
 export default async function LibraryPage() {
   let user;
@@ -26,6 +27,14 @@ export default async function LibraryPage() {
   try {
     const { data } = await admin.from('library_card_meta').select('*');
     (data || []).forEach(c => { initialMeta[c.card_key] = c; });
+    // إصلاح ذاتي لمرة واحدة: صورة بطاقة قديمة محفوظة base64 تُنقل إلى Storage
+    // (وإلا حُمِّلت كاملة مع الصفحة لكل طالب). عند أي فشل تبقى كما هي.
+    for (const c of (data || []).filter(c => isDataImage(c.image_url))) {
+      const url = await moveCardImageToStorage(admin, c.card_key, c.image_url);
+      if (!url) continue;
+      const { error } = await admin.from('library_card_meta').update({ image_url: url }).eq('card_key', c.card_key);
+      if (!error) initialMeta[c.card_key] = { ...c, image_url: url };
+    }
   } catch {}
 
   // fetch published stories

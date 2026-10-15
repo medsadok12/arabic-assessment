@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/auth-role';
+import { isDataImage, moveCardImageToStorage } from '../../../../lib/library-card-image';
 
 async function checkAuth() {
   const supabase = createClient();
@@ -31,10 +32,18 @@ export async function PUT(request) {
     if (!card_key?.trim()) return NextResponse.json({ error: 'مفتاح البطاقة مطلوب' }, { status: 400 });
 
     const admin = createAdminClient();
+
+    // الصورة تصل من المتصفح كـdata URL صغير — تُنقل إلى Storage ويُحفظ رابطها فقط
+    let storedImage = image_url || null;
+    if (isDataImage(storedImage)) {
+      storedImage = await moveCardImageToStorage(admin, card_key.trim(), storedImage);
+      if (!storedImage) return NextResponse.json({ error: 'تعذّر رفع الصورة — جرّب صورة أصغر' }, { status: 400 });
+    }
+
     const { data, error } = await admin
       .from('library_card_meta')
       .upsert(
-        { card_key: card_key.trim(), icon: icon || null, image_url: image_url || null, title: title || null, description: description || null, updated_at: new Date().toISOString() },
+        { card_key: card_key.trim(), icon: icon || null, image_url: storedImage, title: title || null, description: description || null, updated_at: new Date().toISOString() },
         { onConflict: 'card_key' }
       )
       .select()

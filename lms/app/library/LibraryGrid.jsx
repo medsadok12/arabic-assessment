@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import Link from 'next/link';
+import { resizeImageToWebp } from '../../lib/image-resize';
 
 const RESOURCES = [
   {
@@ -122,12 +123,15 @@ const RESOURCES = [
 
 /* STORIES loaded dynamically from DB — see initialStories prop */
 
-function fileToBase64(file) {
+/* صورة البطاقة تُصغَّر في المتصفح (تُعرض بحجم ~100px) ثم تُرسل كـdata URL صغير؛
+   الخادم يرفعها إلى Storage ويحفظ رابطها فقط (lib/library-card-image.js) */
+async function cardImageToDataUrl(file) {
+  const blob = await resizeImageToWebp(file, 320);
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result);
     r.onerror = reject;
-    r.readAsDataURL(file);
+    r.readAsDataURL(blob);
   });
 }
 
@@ -196,13 +200,13 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           description: editDesc  || null,
         }),
       });
-      if (!res.ok) throw new Error();
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error);
       setCardMeta(prev => ({ ...prev, [editing]: json.card }));
       setMsg({ ok: true, text: '✅ تم الحفظ بنجاح' });
       setTimeout(closeEdit, 800);
-    } catch {
-      setMsg({ ok: false, text: '❌ فشل الحفظ' });
+    } catch (e) {
+      setMsg({ ok: false, text: `❌ ${e.message || 'فشل الحفظ'}` });
     }
     setSaving(false);
   };
@@ -982,9 +986,13 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
             </div>
             <input type="file" accept="image/*" hidden ref={fileRef}
               onChange={async e => {
-                const f = e.target.files?.[0]; if (!f) return;
-                const b64 = await fileToBase64(f);
-                setEditImg(b64); setEditIcon('');
+                const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
+                try {
+                  const small = await cardImageToDataUrl(f);
+                  setEditImg(small); setEditIcon('');
+                } catch (err) {
+                  setMsg({ ok: false, text: `❌ ${err.message || 'تعذّر تجهيز الصورة'}` });
+                }
               }}
             />
 
@@ -998,6 +1006,12 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
                 >✕ مسح الصورة</button>
               )}
             </div>
+
+            {editing === 'huroof' && (
+              <Link href="/library/huroof"
+                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, minHeight:46, marginBottom:16, borderRadius:12, border:'2px dashed #E8B84B', background:'#FFFBEB', color:'#1A2B4A', fontWeight:800, fontSize:'.86rem', textDecoration:'none', textAlign:'center', padding:'8px 12px' }}
+              >🔤 تعديل محتوى الحروف: صورة كل حرف وصوته وجملته ←</Link>
+            )}
 
             <label style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:14 }}>
               <span style={{ fontWeight:700, color:'#374151', fontSize:'.85rem' }}>الأيقونة (رمز)</span>
