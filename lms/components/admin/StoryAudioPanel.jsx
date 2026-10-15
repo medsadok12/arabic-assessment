@@ -1,38 +1,23 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { STORY_AUDIO_MAX_MB, splitStoryPages, normalizePageAudio } from '../../lib/story-audio';
 import {
-  STORY_AUDIO_MAX_MB, normalizeStoryAudioType, splitStoryPages, normalizePageAudio,
-} from '../../lib/story-audio';
+  STORY_AUDIO_ACCEPT, checkStoryAudioFile, uploadStoryPageAudio,
+  useStoryAudioRecorder, formatRecSecs,
+} from '../../lib/story-audio-client';
 
 /* ════════════════════════════════════════════════════════════════
    لوحة أصوات صفحات القصة (تبويب القصص في bogga) — صوت مستقل لكل صفحة
    • لكل صفحة: تسجيل مباشر (مع عرض نص الصفحة لقراءته) أو رفع ملف، معاينة، حذف
    • بعد حفظ تسجيل صفحة: زر «سجّل الصفحة التالية» لمتابعة القصة بلا توقف
    • رفع ملفات عدة صفحات دفعة واحدة: تُرتَّب بأسمائها (1، 2، 3…) وتُربط بالترتيب
-   الرفع: رابط موقَّع من /api/stories/audio-upload-url ← الملف يذهب مباشرة
-   إلى Supabase Storage (بلا حد Vercel 4.5MB) ← PUT /api/stories/[id] { page_audio }
+   التسجيل والرفع من lib/story-audio-client.js (مشترك مع محرر القصص الكامل)،
+   ثم الحفظ عبر PUT /api/stories/[id] { page_audio }
 ════════════════════════════════════════════════════════════════ */
 
 const GOLD = '#E8B84B';
 const NAVY = '#1A2B4A';
 const SAND = '#EDE5D8';
-const MAX_REC_SECS = 10 * 60;
-
-/* أول صيغة تسجيل يدعمها المتصفح — AAC/MP4 أولاً لأنها تعمل على كل أجهزة
-   الطلاب (آيباد/آيفون/أندرويد/حاسوب)، ثم WEBM/OGG كبديل */
-const REC_TYPES = [
-  'audio/mp4;codecs=mp4a.40.2',
-  'audio/webm;codecs=opus',
-  'audio/webm',
-  'audio/mp4',
-  'audio/ogg;codecs=opus',
-];
-function pickRecorderType() {
-  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return '';
-  return REC_TYPES.find(t => MediaRecorder.isTypeSupported(t)) || '';
-}
-
-const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 /* نص الصفحة وصورتها الأولى من HTML المحفوظ — بلا DOM (يعمل في أي بيئة) */
 function pageSummary(html) {
@@ -58,47 +43,14 @@ const BTN_GOLD  = { ...BTN, border: 'none', background: GOLD, color: NAVY, boxSh
 const BTN_LIGHT = { ...BTN, border: `2px solid ${SAND}`, background: '#fff', color: NAVY };
 const BTN_RED   = { ...BTN, border: 'none', background: '#fee2e2', color: '#b91c1c' };
 
-/* رفع ملف واحد: رابط موقَّع ثم PUT مباشر إلى التخزين، يُرجع الرابط العام */
-async function uploadPageFile(storyId, page, blob, onProgress) {
-  const res = await fetch('/api/stories/audio-upload-url', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ storyId, page, type: blob.type, fileName: blob.name || '' }),
-  });
-  const up = await res.json().catch(() => ({}));
-  if (!res.ok || !up.signedUrl) throw new Error(up.error || 'تعذّر تجهيز الرفع');
-
-  await new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.upload.onprogress = (ev) => {
-      if (ev.lengthComputable) onProgress?.(Math.round((ev.loaded / ev.total) * 100));
-    };
-    xhr.onload  = () => (xhr.status < 300 ? resolve() : reject(new Error(`فشل رفع الملف (${xhr.status})`)));
-    xhr.onerror = () => reject(new Error('انقطع الاتصال أثناء الرفع'));
-    xhr.open('PUT', up.signedUrl);
-    xhr.setRequestHeader('Content-Type', up.contentType);
-    xhr.send(blob);
-  });
-  return up.publicUrl;
-}
-
-function checkFile(file) {
-  if (!normalizeStoryAudioType(file.type, file.name))
-    return `«${file.name}» ليس ملفاً صوتياً مدعوماً — اختر MP3 أو M4A أو WAV أو WEBM أو OGG`;
-  if (file.size > STORY_AUDIO_MAX_MB * 1024 * 1024)
-    return `«${file.name}» أكبر من ${STORY_AUDIO_MAX_MB}MB`;
-  return null;
-}
-
 export default function StoryAudioPanel({ story, onSaved }) {
   const pages = splitStoryPages(story.content);
   const audio = normalizePageAudio(story.page_audio, pages.length);
   const withAudio = audio.filter(Boolean).length;
 
+  const rec = useStoryAudioRecorder();
   const [active,    setActive]    = useState(null);  // رقم الصفحة المفتوحة للتسجيل/المعاينة
   const [pending,   setPending]   = useState(null);  // { blob, url, name }
-  const [recording, setRecording] = useState(false);
-  const [recSecs,   setRecSecs]   = useState(0);
   const [progress,  setProgress]  = useState(null);  // null | 0..100
   const [busy,      setBusy]      = useState(false);
   const [msg,       setMsg]       = useState(null);  // { ok, text, page?, next? }
@@ -107,10 +59,6 @@ export default function StoryAudioPanel({ story, onSaved }) {
   const fileRef     = useRef(null);
   const bulkRef     = useRef(null);
   const filePageRef = useRef(null);
-  const recorderRef = useRef(null);
-  const streamRef   = useRef(null);
-  const chunksRef   = useRef([]);
-  const timerRef    = useRef(null);
   const pendingRef  = useRef(null);
 
   /* تحرير رابط المعاينة القديم كلما تغيّر الملف المعلَّق */
@@ -120,14 +68,8 @@ export default function StoryAudioPanel({ story, onSaved }) {
     setPending(clip);
   };
 
-  /* تنظيف كامل عند إغلاق اللوحة: إيقاف الميكروفون والمؤقت ورابط المعاينة */
+  /* تحرير رابط المعاينة عند إغلاق اللوحة (الميكروفون يوقفه useStoryAudioRecorder) */
   useEffect(() => () => {
-    clearInterval(timerRef.current);
-    if (recorderRef.current?.state === 'recording') {
-      recorderRef.current.onstop = null;
-      recorderRef.current.stop();
-    }
-    streamRef.current?.getTracks().forEach(t => t.stop());
     if (pendingRef.current?.url) URL.revokeObjectURL(pendingRef.current.url);
   }, []);
 
@@ -156,7 +98,7 @@ export default function StoryAudioPanel({ story, onSaved }) {
     e.target.value = '';
     const page = filePageRef.current;
     if (!file || page === null) return;
-    const err = checkFile(file);
+    const err = checkStoryAudioFile(file);
     if (err) { setMsg({ ok: false, text: err }); return; }
     setMsg(null);
     setActive(page);
@@ -164,55 +106,19 @@ export default function StoryAudioPanel({ story, onSaved }) {
   };
 
   /* ── التسجيل ── */
-  const stopRecording = () => {
-    clearInterval(timerRef.current);
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
-    setRecording(false);
-  };
-
   const startRecording = async (page) => {
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      setMsg({ ok: false, text: 'هذا المتصفح لا يدعم التسجيل الصوتي — جرّب Chrome أو Safari حديثاً، أو ارفع ملفاً صوتياً' });
-      return;
-    }
     setMsg(null);
     setPendingClip(null);
     setActive(page);
-    let stream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-    } catch {
-      setMsg({ ok: false, text: 'تعذّر الوصول إلى الميكروفون — اسمح للمتصفح باستخدامه ثم أعد المحاولة' });
-      setActive(null);
-      return;
-    }
-    streamRef.current = stream;
-    chunksRef.current = [];
-    const mimeType = pickRecorderType();
-    const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-    mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-    mr.onstop = () => {
-      stream.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-      const type = (mr.mimeType || mimeType || 'audio/webm').split(';')[0];
-      const blob = new Blob(chunksRef.current, { type });
-      if (blob.size === 0) {
+    const err = await rec.start((blob) => {
+      if (!blob) {
         setMsg({ ok: false, text: 'لم يُلتقط أي صوت — تأكد من الميكروفون وأعد التسجيل' });
         setActive(null);
         return;
       }
       setPendingClip({ blob, url: URL.createObjectURL(blob), name: `تسجيل الصفحة ${page + 1}` });
-    };
-    recorderRef.current = mr;
-    mr.start(1000);
-    setRecording(true);
-    setRecSecs(0);
-    const startedAt = Date.now();
-    timerRef.current = setInterval(() => {
-      const secs = Math.floor((Date.now() - startedAt) / 1000);
-      setRecSecs(secs);
-      if (secs >= MAX_REC_SECS) stopRecording();
-    }, 1000);
+    });
+    if (err) { setMsg({ ok: false, text: err }); setActive(null); }
   };
 
   /* ── حفظ الصوت المعلَّق للصفحة المفتوحة ── */
@@ -221,7 +127,7 @@ export default function StoryAudioPanel({ story, onSaved }) {
     const page = active;
     setBusy(true); setMsg(null); setProgress(0);
     try {
-      const url = await uploadPageFile(story.id, page, pending.blob, setProgress);
+      const url = await uploadStoryPageAudio(story.id, page, pending.blob, setProgress);
       const next = [...audio];
       next[page] = url;
       await saveAudio(next);
@@ -254,7 +160,7 @@ export default function StoryAudioPanel({ story, onSaved }) {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
     if (!files.length) return;
-    const bad = files.map(checkFile).find(Boolean);
+    const bad = files.map(checkStoryAudioFile).find(Boolean);
     if (bad) { setMsg({ ok: false, text: bad }); return; }
 
     files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
@@ -270,7 +176,7 @@ export default function StoryAudioPanel({ story, onSaved }) {
     try {
       for (let i = 0; i < used.length; i++) {
         setBulkInfo(`⏳ جارٍ رفع الصفحة ${i + 1} من ${used.length}...`);
-        next[i] = await uploadPageFile(story.id, i, used[i]);
+        next[i] = await uploadStoryPageAudio(story.id, i, used[i]);
         done++;
       }
     } catch (err) {
@@ -297,7 +203,7 @@ export default function StoryAudioPanel({ story, onSaved }) {
     );
   }
 
-  const locked = busy || recording;
+  const locked = busy || rec.recording;
 
   return (
     <div style={{
@@ -305,8 +211,8 @@ export default function StoryAudioPanel({ story, onSaved }) {
       padding: 16, display: 'flex', flexDirection: 'column', gap: 12,
     }}>
       <style>{`@keyframes sapPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}`}</style>
-      <input ref={fileRef} type="file" accept="audio/*,.mp3,.m4a,.wav,.webm,.ogg,.aac" onChange={handleFile} style={{ display: 'none' }} />
-      <input ref={bulkRef} type="file" multiple accept="audio/*,.mp3,.m4a,.wav,.webm,.ogg,.aac" onChange={handleBulk} style={{ display: 'none' }} />
+      <input ref={fileRef} type="file" accept={STORY_AUDIO_ACCEPT} onChange={handleFile} style={{ display: 'none' }} />
+      <input ref={bulkRef} type="file" multiple accept={STORY_AUDIO_ACCEPT} onChange={handleBulk} style={{ display: 'none' }} />
 
       {/* الرأس */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
@@ -379,16 +285,16 @@ export default function StoryAudioPanel({ story, onSaved }) {
             )}
 
             {/* أثناء التسجيل: نص الصفحة كبيراً لقراءته مباشرة */}
-            {isActive && recording && (
+            {isActive && rec.recording && (
               <>
                 <div style={{ background: '#fffdf5', border: `1.5px solid ${SAND}`, borderRadius: 12, padding: '12px 16px', maxHeight: 240, overflowY: 'auto', whiteSpace: 'pre-line', fontSize: '1.25rem', lineHeight: 2, color: '#2d1f0e', fontWeight: 600 }}>
                   {text || '🖼 هذه الصفحة صورة بلا نص — صِف الصورة أو اقرأ ما يناسبها'}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', border: '2px solid #fecaca', borderRadius: 12, padding: '8px 12px' }}>
                   <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#dc2626', animation: 'sapPulse 1.1s ease infinite', flexShrink: 0 }} />
-                  <span style={{ fontWeight: 900, color: '#b91c1c', fontSize: '1rem', direction: 'ltr' }}>{fmt(recSecs)}</span>
+                  <span style={{ fontWeight: 900, color: '#b91c1c', fontSize: '1rem', direction: 'ltr' }}>{formatRecSecs(rec.secs)}</span>
                   <span style={{ color: '#64748b', fontSize: '.82rem', flex: 1 }}>جارٍ تسجيل الصفحة {i + 1}... اقرأ بصوت واضح وهادئ</span>
-                  <button type="button" onClick={stopRecording} style={{ ...BTN, border: 'none', background: '#dc2626', color: '#fff' }}>
+                  <button type="button" onClick={rec.stop} style={{ ...BTN, border: 'none', background: '#dc2626', color: '#fff' }}>
                     ⏹ إيقاف
                   </button>
                 </div>
@@ -396,7 +302,7 @@ export default function StoryAudioPanel({ story, onSaved }) {
             )}
 
             {/* معاينة قبل الحفظ */}
-            {isActive && !recording && pending && (
+            {isActive && !rec.recording && pending && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ fontWeight: 800, color: NAVY, fontSize: '.85rem' }}>👂 استمع قبل الحفظ: {pending.name}</div>
                 <audio controls src={pending.url} style={{ width: '100%' }} />

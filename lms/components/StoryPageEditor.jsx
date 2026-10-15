@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { splitStoryPages } from '../lib/story-audio';
+import StoryPageAudioField from './StoryPageAudioField';
 
 /* ─── تعريف التخطيطات ─────────────────────────────────────────── */
 const LAYOUTS = [
@@ -86,11 +87,12 @@ function LayoutSvg({ type }) {
 /* ══════════════════════════════════════════════════════════════════
    المكوّن الرئيسي
 ══════════════════════════════════════════════════════════════════ */
-export default function StoryPageEditor({ value = '', onChange, audio = [], onAudioChange }) {
+export default function StoryPageEditor({ value = '', onChange, audio = [], onAudioChange, storyId = null }) {
   const [pages,     setPages]     = useState([{ ...BLANK }]);
   const [sel,       setSel]       = useState(0);
   const [uploading, setUploading] = useState(false);
   const [dragOver,  setDragOver]  = useState(false);
+  const [loaded,    setLoaded]    = useState(false); // الصفحات المحفوظة حُمِّلت في الحالة
   const textRef = useRef(null);
   const fileRef = useRef(null);
   const selRef  = useRef(0); // ref للـ sel لتجنب stale closure في async
@@ -104,6 +106,7 @@ export default function StoryPageEditor({ value = '', onChange, audio = [], onAu
     setPages(parsed);
     setSel(0);
     selRef.current = 0;
+    setLoaded(true);
   }, []); // eslint-disable-line
 
   /* ── مزامنة ref عند تغيير sel ── */
@@ -111,10 +114,13 @@ export default function StoryPageEditor({ value = '', onChange, audio = [], onAu
     selRef.current = sel;
   }, [sel]);
 
-  /* ── مزامنة محرر النص عند تغيير الصفحة ── */
+  /* ── مزامنة صندوق النص: عند تحميل الصفحات المحفوظة، وعند تغيير الصفحة، وعند ظهور
+        الصندوق بعد تخطيط «صورة فقط». بدون loaded كان صندوق الصفحة الأولى يبقى فارغاً
+        عند الفتح رغم أن لها نصاً — والكتابة فيه كانت تمسح محتوى الصفحة ── */
+  const txtVisible = (pages[sel]?.layout || 'text-only') !== 'img-only';
   useEffect(() => {
     if (textRef.current) textRef.current.innerHTML = pages[sel]?.text || '';
-  }, [sel]); // eslint-disable-line
+  }, [sel, txtVisible, loaded]); // eslint-disable-line
 
   /* ── إرسال المحتوى المحدَّث للأب (يُستدعى خارج setPages) ── */
   function emit(newPages) {
@@ -441,6 +447,15 @@ export default function StoryPageEditor({ value = '', onChange, audio = [], onAu
             </div>
           )}
         </div>
+
+        {/* ══ صوت قراءة هذه الصفحة ══ */}
+        <StoryPageAudioField
+          key={sel}
+          storyId={storyId}
+          page={sel}
+          audioUrl={cur.audio || null}
+          onChange={(url) => patchPage(sel, { audio: url })}
+        />
 
         {/* ══ معاينة مباشرة ══ */}
         <div style={{ marginTop: 4 }}>

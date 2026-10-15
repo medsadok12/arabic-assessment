@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient }      from '../../../lib/supabase-server';
 import { getRole } from '../../../lib/auth-role';
+import { splitStoryPages, normalizePageAudio, pageAudioError } from '../../../lib/story-audio';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,9 +39,11 @@ export async function POST(req) {
     if (!user || !isTeacher) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
 
     const body = await req.json();
-    const { title, icon, level, length, content, status, points, accent, bg, border_color } = body;
+    const { title, icon, level, length, content, status, points, accent, bg, border_color, page_audio } = body;
 
     if (!title?.trim()) return NextResponse.json({ error: 'العنوان مطلوب' }, { status: 400 });
+    const audioErr = page_audio !== undefined ? pageAudioError(page_audio) : null;
+    if (audioErr) return NextResponse.json({ error: audioErr }, { status: 400 });
 
     // Generate slug from title
     const slug = title.trim()
@@ -63,6 +66,7 @@ export async function POST(req) {
         accent:       accent || '#10b981',
         bg:           bg || '#ecfdf5',
         border_color: border_color || '#6ee7b7',
+        page_audio:   normalizePageAudio(page_audio, splitStoryPages(content).length),
         created_at:   new Date().toISOString(),
         updated_at:   new Date().toISOString(),
       })

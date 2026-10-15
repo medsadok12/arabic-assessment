@@ -68,6 +68,13 @@ export function storyAudioPublicUrl(path) {
   return publicBase() + path;
 }
 
+/* تحقق من مصفوفة أصوات صفحات واردة من العميل — رسالة خطأ أو null */
+export function pageAudioError(list) {
+  if (!Array.isArray(list) || list.length > STORY_MAX_PAGES) return 'بيانات أصوات الصفحات غير صالحة';
+  if (list.some(u => u && !storyAudioPathFromUrl(u))) return 'رابط صوت غير صالح';
+  return null;
+}
+
 /* يستخرج مسار التخزين من رابط عام — ويرفض أي رابط خارج مجلد صوت القصص */
 export function storyAudioPathFromUrl(url) {
   if (typeof url !== 'string') return null;

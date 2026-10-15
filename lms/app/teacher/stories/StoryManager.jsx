@@ -308,11 +308,10 @@ export default function StoryManager({ initialStories }) {
       const url     = view === 'edit' ? `/api/stories/${editId}` : '/api/stories';
       // المحتوى يأتي من StoryPageEditor عبر form.content (لا من نسخة قديمة للصفحات)،
       // ومعه أصوات الصفحات بترتيبها الحالي حتى يبقى كل صوت مع صفحته
-      const body = view === 'edit' ? { ...form, page_audio: pageAudio } : form;
       const res  = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...form, page_audio: pageAudio }),
       });
       const json = await res.json();
       if (!res.ok || json.error) throw new Error(json.error || 'فشل الحفظ');
@@ -704,6 +703,7 @@ export default function StoryManager({ initialStories }) {
                       onChange={v => f('content', v)}
                       audio={pageAudio}
                       onAudioChange={setPageAudio}
+                      storyId={editId}
                     />
                   </div>
                 </div>
