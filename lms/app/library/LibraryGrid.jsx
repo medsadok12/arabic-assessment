@@ -380,7 +380,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         }
         .sg-sheet {
           background:#fff; width:100%; max-width:480px; border-radius:26px 26px 0 0;
-          padding:20px 20px 30px; box-shadow:0 -10px 40px rgba(0,0,0,.3);
+          padding:20px 20px calc(30px + env(safe-area-inset-bottom, 0px)); box-shadow:0 -10px 40px rgba(0,0,0,.3);
           animation:sgSheetUp .22s ease-out; box-sizing:border-box; direction:rtl;
         }
         .sg-sheet-top { display:flex; justify-content:flex-end; margin-bottom:-6px; }

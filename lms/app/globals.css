@@ -607,7 +607,10 @@ body {
   width: 100vw;
   max-width: 100vw;
   background: var(--primary);
-  z-index: 1100;
+  /* نفس طبقة الترويسة العلوية (100): أي نافذة منبثقة أو لوحة سفلية في المنصة
+     (طبقتها 200 فأعلى) تظهر فوق الشريط ولا يغطي أزرارها. كان 1100 فكان يغطي
+     كل النوافذ تحت 1100 (نافذة تفاصيل نشاط المكتبة، نوافذ الإدارة…). */
+  z-index: 100;
   border-top: 2px solid rgba(255,255,255,0.18);
   padding: 6px 0 env(safe-area-inset-bottom, 6px);
   justify-content: space-around;
@@ -885,6 +888,8 @@ body {
 /* ── Mobile: full-width fixed bottom navigation bar ── */
 @media (max-width: 768px) {
   .fsr {
+    /* تحت شريط التنقل السفلي (100) كي يبقى الشريط ظاهراً للطالب المسجَّل */
+    z-index: 90;
     top: auto;
     right: 0;
     left: 0;
