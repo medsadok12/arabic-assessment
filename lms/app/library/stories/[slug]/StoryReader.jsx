@@ -96,6 +96,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher, isPublic = 
           points={story.points || 10}
           pageAudio={pageAudio}
           backHref={backHref}
+          backLabel={isPublic ? '→ الرئيسية' : '→ المكتبة'}
           mode="fullscreen"
         />
 

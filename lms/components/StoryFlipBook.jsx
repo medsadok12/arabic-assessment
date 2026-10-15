@@ -44,18 +44,39 @@ const StoryPage = forwardRef(function StoryPage({ html, pageNum, total, isRight,
   );
 });
 
-const BTN = {
-  display: 'inline-flex', alignItems: 'center', gap: 6,
-  border: 'none', borderRadius: 50, padding: '10px 24px',
-  fontSize: '.9rem', fontWeight: 800, cursor: 'pointer',
-  fontFamily: 'inherit', transition: 'opacity .15s, transform .12s',
-};
+/* ── أزرار التنقل ثلاثية الأبعاد (رجوع/التالي/انتهيت) — بنفس روح زر الاستماع:
+      حافة سفلية أغمق + ظل، وتغوص عند الضغط. لون «التالي» = لون القصة نفسها ── */
+const NAV_CSS = `
+  .sfb-nav { display:inline-flex; align-items:center; justify-content:center; gap:8px; box-sizing:border-box;
+    min-height:54px; padding:0 20px; border-radius:16px; font-family:inherit; font-size:1.05rem; font-weight:900;
+    cursor:pointer; user-select:none; text-decoration:none; white-space:nowrap; background-repeat:no-repeat;
+    transition:transform .08s ease, border-bottom-width .08s ease, box-shadow .08s ease, opacity .15s;
+    -webkit-tap-highlight-color:transparent; }
+  .sfb-prev { background-color:#FAF7F2; background-image:linear-gradient(180deg,#FFFFFF 0%,#F4EFE6 100%); color:#1A2B4A;
+    border:2px solid #EDE5D8; border-bottom:6px solid #D9CBB0; box-shadow:0 8px 16px rgba(26,43,74,.14); }
+  .sfb-next { background-color:var(--sfb-accent,#0284c7); background-image:linear-gradient(180deg,rgba(255,255,255,.28) 0%,rgba(255,255,255,0) 70%);
+    color:#fff; text-shadow:0 1px 1px rgba(0,0,0,.25);
+    border:2px solid rgba(0,0,0,.06); border-bottom:6px solid rgba(0,0,0,.28); box-shadow:0 8px 18px rgba(26,43,74,.24); }
+  .sfb-done { background-color:#d1fae5; color:#065f46; border:2px solid #86efac; border-bottom:6px solid #5fcf98; }
+  .sfb-nav:not(:disabled):active { transform:translateY(4px); border-bottom-width:2px; box-shadow:0 3px 8px rgba(26,43,74,.16); }
+  .sfb-nav:disabled { opacity:.35; cursor:default; box-shadow:none; }
+  .sfb-nav:focus-visible { outline:3px solid #1A2B4A; outline-offset:3px; }
+`;
+
+function NavBtn({ kind = 'prev', onClick, disabled, href, children, style }) {
+  const cls = `sfb-nav sfb-${kind}`;
+  if (href) return <Link href={href} className={cls} style={style}>{children}</Link>;
+  return <button type="button" className={cls} onClick={onClick} disabled={disabled} style={style}>{children}</button>;
+}
+
+/* شريط أزرار الجوال أسفل الشاشة — الكتاب يقصر بقدره فلا تغطي الأزرار نص الصفحة */
+const FS_BAR_H = 100;
 
 /* حساب الأبعاد — يُستدعى فقط من جانب العميل */
 function calcDims(mode) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  if (mode === 'fullscreen') return { w: vw, h: vh };
+  if (mode === 'fullscreen') return { w: vw, h: vh - FS_BAR_H };
   if (mode === 'spread') {
     const totalW = Math.min(vw - 48, 1100);
     const w = Math.floor((totalW - 12) / 2);
@@ -72,6 +93,7 @@ function calcDims(mode) {
 export default function StoryFlipBook({
   pages, accent = '#10b981', onComplete, read, loading, isTeacher, points,
   backHref = '/library',
+  backLabel = '→ المكتبة',
   pageAudio = [],
   mode = 'default',
 }) {
@@ -170,7 +192,8 @@ export default function StoryFlipBook({
   if (mode === 'fullscreen') {
     if (!dims) return null;
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, direction: 'rtl', background: '#fffdf5' }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, direction: 'rtl', background: '#fffdf5', '--sfb-accent': accent }}>
+        <style>{NAV_CSS}</style>
 
         <Link href={backHref} style={{
           position: 'absolute', top: 14, right: 14, zIndex: 30,
@@ -179,17 +202,25 @@ export default function StoryFlipBook({
           borderRadius: 20, padding: '6px 14px',
           color: '#fff', fontSize: '.72rem', fontWeight: 900,
           textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
-        }}>→ رجوع</Link>
+        }}>{backLabel}</Link>
 
-        {/* نقاط التقدم — مقلوبة لتبدأ من اليمين (اتجاه القراءة العربي) */}
+        {/* قلب تلقائي — الزاوية العليا اليسرى */}
+        {narr.hasAudio && totalPages > 1 && (
+          <div style={{ position: 'absolute', top: 12, left: 14, zIndex: 30 }}>
+            <AutoFlipToggle on={narr.autoFlip} onToggle={narr.toggleAuto} />
+          </div>
+        )}
+
+        {/* نقاط التقدم — الحاوية RTL أصلاً فتبدأ الأولى من اليمين (اتجاه القراءة العربي).
+            لا scaleX(-1) هنا: كان يعكسها مرة ثانية فتبدأ من اليسار */}
         <div style={{
           position: 'absolute', top: 18, left: '50%',
-          transform: 'translateX(-50%) scaleX(-1)',
-          zIndex: 30, display: 'flex', gap: 6,
+          transform: 'translateX(-50%)',
+          zIndex: 30, display: 'flex', gap: totalPages > 8 ? 4 : 6,
         }}>
           {pages.map((_, i) => (
             <div key={i} style={{
-              width: i === current ? 18 : 8, height: 8, borderRadius: 99,
+              width: i === current ? 18 : (totalPages > 8 ? 6 : 8), height: 8, borderRadius: 99,
               background: i < current ? `${accent}88` : i === current ? accent : 'rgba(0,0,0,.15)',
               transition: 'all .3s',
             }} />
@@ -200,7 +231,7 @@ export default function StoryFlipBook({
         <div
           onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
           onClick={(e) => safeFlip(e.clientX < window.innerWidth / 2 ? 'next' : 'prev')}
-          style={{ position: 'absolute', inset: 0, touchAction: 'pan-y', transform: 'scaleX(-1)' }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: FS_BAR_H, touchAction: 'pan-y', transform: 'scaleX(-1)' }}
         >
           <HTMLFlipBook
             key={`fs-${dims.w}x${dims.h}`}
@@ -214,36 +245,43 @@ export default function StoryFlipBook({
           </HTMLFlipBook>
         </div>
 
-        {/* زر الاستماع لهذه الصفحة — عائم أسفل يمين الشاشة (خارج منطقة قلب الصفحات) */}
+        {/* شريط الأزرار السفلي: رجوع (يميناً) — استمع (وسطاً) — التالي/انتهيت (يساراً) */}
         {narr.audioElement}
-        {narr.stateOf(current).hasAudio && (
-          <div style={{ position: 'absolute', bottom: 22, right: 14, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-            {current + 1 < totalPages && <AutoFlipToggle on={narr.autoFlip} onToggle={narr.toggleAuto} />}
-            {listenBtn(current, 'round')}
-          </div>
-        )}
+        <div style={{
+          position: 'absolute', left: 0, right: 0, bottom: 0, height: FS_BAR_H, zIndex: 30,
+          boxSizing: 'border-box', padding: '0 12px env(safe-area-inset-bottom, 0px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          background: '#fffdf5', borderTop: '1.5px solid #f0e6cf', direction: 'rtl',
+        }}>
+          <NavBtn kind="prev" onClick={() => safeFlip('prev')} disabled={current === 0}
+            style={{ flex: '1 1 0', maxWidth: 150, minWidth: 0, padding: '0 10px' }}>
+            ▶ رجوع
+          </NavBtn>
 
-        {isLastPage && !isTeacher && (
-          <div style={{ position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)', zIndex: 30 }}>
-            {read ? (
-              <Link href="/library" style={{
-                ...BTN, background: '#d1fae5', color: '#065f46',
-                border: '2px solid #86efac', textDecoration: 'none',
-                boxShadow: '0 4px 16px rgba(5,150,105,.2)',
-              }}>✅ أنهيت — العودة للمكتبة</Link>
-            ) : (
-              <button onClick={onComplete} disabled={loading} style={{
-                ...BTN,
-                background: `linear-gradient(135deg,${accent},${accent}cc)`,
-                color: '#fff', boxShadow: `0 6px 22px ${accent}55`,
-                fontSize: '.92rem', padding: '12px 28px',
-                opacity: loading ? .65 : 1, cursor: loading ? 'default' : 'pointer',
-              }}>
-                {loading ? '⏳...' : `🎉 انتهيت! +${points} نقطة`}
-              </button>
-            )}
+          <div style={{ flex: '0 0 76px', display: 'flex', justifyContent: 'center' }}>
+            {narr.stateOf(current).hasAudio && listenBtn(current, 'round')}
           </div>
-        )}
+
+          {!isLastPage ? (
+            <NavBtn kind="next" onClick={() => safeFlip('next')}
+              style={{ flex: '1 1 0', maxWidth: 150, minWidth: 0, padding: '0 10px' }}>
+              التالي ◀
+            </NavBtn>
+          ) : isTeacher ? (
+            <NavBtn kind="next" disabled style={{ flex: '1 1 0', maxWidth: 150, minWidth: 0, padding: '0 10px' }}>
+              التالي ◀
+            </NavBtn>
+          ) : read ? (
+            <NavBtn kind="done" href="/library" style={{ flex: '1 1 0', maxWidth: 150, minWidth: 0, padding: '0 10px', fontSize: '.95rem' }}>
+              ✅ أنهيت
+            </NavBtn>
+          ) : (
+            <NavBtn kind="next" onClick={onComplete} disabled={loading}
+              style={{ flex: '1 1 0', maxWidth: 160, minWidth: 0, padding: '0 10px', fontSize: '.95rem' }}>
+              {loading ? '⏳...' : `🎉 انتهيت! +${points}`}
+            </NavBtn>
+          )}
+        </div>
       </div>
     );
   }
@@ -262,7 +300,8 @@ export default function StoryFlipBook({
         : 'pointer';
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: 0, '--sfb-accent': accent }}>
+        <style>{NAV_CSS}</style>
 
         {/* نقاط التقدم */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
@@ -347,12 +386,9 @@ export default function StoryFlipBook({
           width: bookW, maxWidth: 'calc(100vw - 48px)',
           marginTop: 20, direction: 'rtl',
         }}>
-          <button onClick={() => safeFlip('prev')} disabled={current === 0} style={{
-            ...BTN, background: '#f1f5f9', color: '#475569',
-            opacity: current === 0 ? .25 : 1,
-          }}>
-            ▶ السابق
-          </button>
+          <NavBtn kind="prev" onClick={() => safeFlip('prev')} disabled={current === 0}>
+            ▶ رجوع
+          </NavBtn>
 
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ color: '#94a3b8', fontSize: '.85rem', fontWeight: 700, direction: 'ltr' }}>
@@ -362,32 +398,16 @@ export default function StoryFlipBook({
             {narr.hasAudio && <AutoFlipToggle on={narr.autoFlip} onToggle={narr.toggleAuto} />}
           </span>
 
-          {isLastPage ? (
-            !isTeacher && (read ? (
-              <div style={{ ...BTN, background: '#d1fae5', color: '#065f46', border: '1.5px solid #86efac', cursor: 'default' }}>
-                ✅ أنهيت القصة
-              </div>
-            ) : (
-              <button onClick={onComplete} disabled={loading} style={{
-                ...BTN,
-                background: `linear-gradient(135deg,${accent},${accent}cc)`,
-                color: '#fff', boxShadow: `0 4px 18px ${accent}44`,
-                opacity: loading ? .6 : 1, cursor: loading ? 'default' : 'pointer',
-              }}>
-                {loading ? '⏳...' : `🎉 انتهيت! +${points} نقطة`}
-              </button>
-            ))
+          {!isLastPage ? (
+            <NavBtn kind="next" onClick={() => safeFlip('next')}>التالي ◀</NavBtn>
+          ) : isTeacher ? (
+            <NavBtn kind="next" disabled>التالي ◀</NavBtn>
+          ) : read ? (
+            <NavBtn kind="done" href="/library">✅ أنهيت القصة</NavBtn>
           ) : (
-            <button onClick={() => safeFlip('next')} style={{
-              ...BTN,
-              background: `linear-gradient(135deg,${accent},${accent}cc)`,
-              color: '#fff', boxShadow: `0 4px 18px ${accent}44`,
-            }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-            >
-              التالي ◀
-            </button>
+            <NavBtn kind="next" onClick={onComplete} disabled={loading}>
+              {loading ? '⏳...' : `🎉 انتهيت! +${points} نقطة`}
+            </NavBtn>
           )}
         </div>
       </div>
@@ -398,7 +418,8 @@ export default function StoryFlipBook({
      ③ الوضع الافتراضي — صفحة واحدة (موبايل غير fullscreen)
   ════════════════════════════════════════ */
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', '--sfb-accent': accent }}>
+      <style>{NAV_CSS}</style>
       <div style={{ display: 'flex', gap: 7, marginBottom: 14 }}>
         {pages.map((_, i) => (
           <div key={i} style={{
@@ -441,23 +462,16 @@ export default function StoryFlipBook({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           width: dims.w, marginTop: 16, direction: 'rtl',
         }}>
-          <button onClick={() => safeFlip('prev')} disabled={current === 0} style={{
-            ...BTN, background: '#f1f5f9', color: '#64748b', opacity: current === 0 ? .25 : 1,
-          }}>▶ السابق</button>
+          <NavBtn kind="prev" onClick={() => safeFlip('prev')} disabled={current === 0}>▶ رجوع</NavBtn>
           <span style={{ color: '#94a3b8', fontSize: '.8rem', fontWeight: 700, direction: 'ltr' }}>{totalPages} / {current+1}</span>
-          {isLastPage ? (!isTeacher && (read ? (
-            <div style={{ ...BTN, background: '#d1fae5', color: '#065f46', border: '1.5px solid #86efac', cursor: 'default' }}>✅ أنهيت</div>
+          {!isLastPage ? (
+            <NavBtn kind="next" onClick={() => safeFlip('next')}>التالي ◀</NavBtn>
+          ) : isTeacher ? (
+            <NavBtn kind="next" disabled>التالي ◀</NavBtn>
+          ) : read ? (
+            <NavBtn kind="done" href="/library">✅ أنهيت</NavBtn>
           ) : (
-            <button onClick={onComplete} disabled={loading} style={{
-              ...BTN, background: `linear-gradient(135deg,${accent},${accent}cc)`,
-              color: '#fff', boxShadow: `0 4px 14px ${accent}44`,
-              opacity: loading ? .6 : 1, cursor: loading ? 'default' : 'pointer',
-            }}>{loading ? '⏳...' : `🎉 انتهيت! +${points}`}</button>
-          ))) : (
-            <button onClick={() => safeFlip('next')} style={{
-              ...BTN, background: `linear-gradient(135deg,${accent},${accent}cc)`,
-              color: '#fff', boxShadow: `0 4px 14px ${accent}44`,
-            }}>التالي ◀</button>
+            <NavBtn kind="next" onClick={onComplete} disabled={loading}>{loading ? '⏳...' : `🎉 انتهيت! +${points}`}</NavBtn>
           )}
         </div>
       )}
