@@ -57,12 +57,16 @@ function shuffle(arr) {
 /* ── contextual Arabic letter forms ─────────────────────────── */
 const NON_CONNECTORS = new Set('اأإآءوردذزىة');
 
+// المسافة بين كلمتين (مثل «حمار وحشي») حدّ كلمة: الحرف قبلها وبعدها لا يتصل بها
+const isGap = (ch) => ch == null || /\s/.test(ch);
+
 function getLetterForm(stripped, idx) {
   const letter    = stripped[idx];
+  if (isGap(letter)) return 'isolated';
   const prev      = idx > 0                   ? stripped[idx - 1] : null;
   const next      = idx < stripped.length - 1 ? stripped[idx + 1] : null;
-  const joinsPrev = prev !== null && !NON_CONNECTORS.has(prev);
-  const joinsNext = next !== null && !NON_CONNECTORS.has(letter);
+  const joinsPrev = !isGap(prev) && !NON_CONNECTORS.has(prev);
+  const joinsNext = !isGap(next) && !NON_CONNECTORS.has(letter);
   if (joinsPrev && joinsNext) return 'medial';
   if (joinsPrev)              return 'final';
   if (joinsNext)              return 'initial';
@@ -685,6 +689,19 @@ export default function LetterCatcherGame() {
   const isLast        = cur + 1 >= queue.length;
   const fullWordDisplay = w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word;
 
+  // عبارة من كلمتين أو أكثر (مثل «حمار وحشي»): كل كلمة مجموعة مربعات مستقلة
+  // وبينها مسافة — لا مربع فارغ للمسافة يبدو كأنه حرف ناقص، ولا تنكسر الكلمة
+  // الواحدة على سطرين
+  const wordGroups = [[]];
+  sw.split('').forEach((ch, i) => {
+    if (isGap(ch) && i !== mi) {
+      if (wordGroups[wordGroups.length - 1].length) wordGroups.push([]);
+    } else {
+      wordGroups[wordGroups.length - 1].push(i);
+    }
+  });
+  const letterGroups = wordGroups.filter(g => g.length);
+
   return (
     <div style={S.page}>
       <style>{`
@@ -806,26 +823,30 @@ export default function LetterCatcherGame() {
                 <span style={S.wordLetterBox}>{w.word}</span>
                 <span style={{ ...S.blank, background:'#eef3fc', borderColor:'#7c3aed', color:'#7c3aed' }}>؟</span>
               </>
-            ) : sw.split('').map((ch, i) => {
-              const form = getLetterForm(sw, i);
-              if (i === mi) {
-                return (
-                  <span key={i} style={{
-                    ...S.blank,
-                    background:  correct === null ? '#eef3fc' : '#f8d7da',
-                    borderColor: correct === null ? '#7c3aed'  : '#e74c3c',
-                    color:       correct === null ? '#7c3aed'  : '#e74c3c',
-                  }}>
-                    {correct !== null ? toContextual(w.missing_letter, form) : '؟'}
-                  </span>
-                );
-              }
-              return (
-                <span key={i} style={S.wordLetterBox}>
-                  {toContextual(ch, form)}
-                </span>
-              );
-            })}
+            ) : letterGroups.map((group, gi) => (
+              <span key={gi} style={S.wordGroup}>
+                {group.map(i => {
+                  const form = getLetterForm(sw, i);
+                  if (i === mi) {
+                    return (
+                      <span key={i} style={{
+                        ...S.blank,
+                        background:  correct === null ? '#eef3fc' : '#f8d7da',
+                        borderColor: correct === null ? '#7c3aed'  : '#e74c3c',
+                        color:       correct === null ? '#7c3aed'  : '#e74c3c',
+                      }}>
+                        {correct !== null ? toContextual(w.missing_letter, form) : '؟'}
+                      </span>
+                    );
+                  }
+                  return (
+                    <span key={i} style={S.wordLetterBox}>
+                      {toContextual(sw[i], form)}
+                    </span>
+                  );
+                })}
+              </span>
+            ))}
           </div>
         )}
 
@@ -974,8 +995,12 @@ const S = {
   },
   wordImg: { width: 140, height: 140, objectFit: 'contain', borderRadius: 16 },
   wordRow: {
-    display: 'flex', alignItems: 'center', gap: 6,
+    display: 'flex', alignItems: 'center', gap: '10px 26px',
     flexWrap: 'wrap', justifyContent: 'center', direction: 'rtl',
+  },
+  wordGroup: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    flexWrap: 'wrap', justifyContent: 'center', direction: 'rtl', maxWidth: '100%',
   },
   wordLetterBox: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
