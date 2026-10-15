@@ -3,13 +3,13 @@ import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/auth-role';
 import { storableAudioUrl, healAudioRows } from '../../../../lib/game-audio';
+import { letterCount } from '../../../../lib/letter-catcher';
 
 // المعلم يعدّل المحتوى من لوحة اللعبة، فالقراءة حيّة دائماً (القسم 9.5):
 // كاش Vercel لساعة كان يُرجع القائمة القديمة بعد الحفظ فيبدو أن التعديل لم يُسجَّل
 export const dynamic = 'force-dynamic';
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
-const DIACRITICS = /[ً-ٰٟ]/g;
 const TABLE      = 'word_scramble_words';
 const ROLES      = ['super_admin', 'admin', 'teacher'];
 
@@ -43,7 +43,7 @@ export async function GET(request) {
 
     const valid = data.filter(w => {
       if (!w.word) return false;
-      const len = w.word.replace(DIACRITICS, '').length;
+      const len = letterCount(w.word); // الحروف فقط — المسافة بين كلمتين لا تُحسب
       if (minLen > 0 && len < minLen) return false;
       if (maxLen < 99 && len > maxLen) return false;
       return true;

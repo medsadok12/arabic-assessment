@@ -7,6 +7,7 @@ import { getRole } from '../../../../lib/auth-role';
 import { childFetch, getActiveChildTab } from '../../../../lib/child-fetch';
 import { LC_DEFAULT_SETTINGS, LEN_NO_LIMIT, normalizeLcSettings, roundSize, pickRotation, markSeen } from '../../../../lib/letter-catcher';
 import { freshFetch } from '../../../../lib/fresh-fetch';
+import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useElementWidth } from '../../../../lib/fit-tiles';
 
 /* teacher-only panel loads only when the teacher opens it — not in students' bundle */
 const SettingsPanel = dynamic(() => import('./_teacher-panel'), { ssr: false, loading: () => null });
@@ -196,6 +197,9 @@ export default function LetterCatcherGame() {
   const [ptPopupActive, setPtPopupActive] = useState(false);
   const [catResults,    setCatResults]    = useState({});  // category → {correct,wrong,total}
   const [currentUser,   setCurrentUser]   = useState(null);
+  /* عرض صف مربعات الكلمة — لتصغير مربعات الاسم المكوّن من كلمتين ليسع سطراً واحداً */
+  const [wordRowEl, setWordRowEl] = useState(null);
+  const wordRowWidth = useElementWidth(wordRowEl);
 
   /* ── detect teacher/admin role + load user + load past results ── */
   useEffect(() => {
@@ -756,6 +760,11 @@ export default function LetterCatcherGame() {
     }
   });
   const letterGroups = wordGroups.filter(g => g.length);
+  // اسم من كلمتين فأكثر: مربعات أصغر في سطر واحد (lib/fit-tiles.js). الكلمة الواحدة كما هي.
+  const isPhrase = mi >= 0 && letterGroups.length > 1;
+  const tile = isPhrase
+    ? compactTileStyle(fitTileSize(wordRowWidth, letterGroups.reduce((n, g) => n + g.length, 0), letterGroups.length))
+    : null;
 
   return (
     <div style={S.page}>
@@ -872,20 +881,21 @@ export default function LetterCatcherGame() {
           </div>
         ) : (
           /* ── unanswered / wrong: segmented letter boxes ── */
-          <div style={{ ...S.wordRow, animation: correct === false ? 'lcWrongShake .45s cubic-bezier(.36,.07,.19,.97) both' : 'none' }}>
+          <div ref={setWordRowEl} style={{ ...S.wordRow, ...(isPhrase ? compactRowStyle : null), animation: correct === false ? 'lcWrongShake .45s cubic-bezier(.36,.07,.19,.97) both' : 'none' }}>
             {mi < 0 ? (
               <>
                 <span style={S.wordLetterBox}>{w.word}</span>
                 <span style={{ ...S.blank, background:'#eef3fc', borderColor:'#7c3aed', color:'#7c3aed' }}>؟</span>
               </>
             ) : letterGroups.map((group, gi) => (
-              <span key={gi} style={S.wordGroup}>
+              <span key={gi} style={isPhrase ? { ...S.wordGroup, ...compactGroupStyle } : S.wordGroup}>
                 {group.map(i => {
                   const form = getLetterForm(sw, i);
                   if (i === mi) {
                     return (
                       <span key={i} style={{
                         ...S.blank,
+                        ...tile,
                         background:  correct === null ? '#eef3fc' : '#f8d7da',
                         borderColor: correct === null ? '#7c3aed'  : '#e74c3c',
                         color:       correct === null ? '#7c3aed'  : '#e74c3c',
@@ -895,7 +905,7 @@ export default function LetterCatcherGame() {
                     );
                   }
                   return (
-                    <span key={i} style={S.wordLetterBox}>
+                    <span key={i} style={tile ? { ...S.wordLetterBox, ...tile } : S.wordLetterBox}>
                       {toContextual(sw[i], form)}
                     </span>
                   );
@@ -1050,6 +1060,7 @@ const S = {
   },
   wordImg: { width: 140, height: 140, objectFit: 'contain', borderRadius: 16 },
   wordRow: {
+    width: '100%',
     display: 'flex', alignItems: 'center', gap: '10px 26px',
     flexWrap: 'wrap', justifyContent: 'center', direction: 'rtl',
   },

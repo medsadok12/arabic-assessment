@@ -6,6 +6,8 @@ import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
 import { freshFetch } from '../../../../lib/fresh-fetch';
 import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
+import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useElementWidth } from '../../../../lib/fit-tiles';
+import { LEN_NO_LIMIT } from '../../../../lib/letter-catcher';
 
 /* ────────────────────────── helpers ────────────────────────── */
 
@@ -407,9 +409,12 @@ export default function WordScrambleGame() {
     topic: '',
     grade: 0,
     minLen: 2,
-    maxLen: 12,
+    maxLen: LEN_NO_LIMIT, // بلا حد: الحد 12 (مع عدّ المسافة) كان يُخفي 4 أسماء من كلمتين
   });
   const [totalPoints,   setTotalPoints]   = useState(0);
+  /* عرض صف خانات الإجابة — لتصغير خانات الاسم المكوّن من كلمتين ليسع سطراً واحداً */
+  const [slotRowEl, setSlotRowEl] = useState(null);
+  const slotRowWidth = useElementWidth(slotRowEl);
   const [ptPopupKey,    setPtPopupKey]    = useState(0);
   const [ptPopupActive, setPtPopupActive] = useState(false);
   const [currentTopic,    setCurrentTopic]    = useState(null);
@@ -457,8 +462,8 @@ export default function WordScrambleGame() {
       const p = new URLSearchParams();
       if (cfg.topic)    p.set('topic',  cfg.topic);
       if (cfg.grade > 0) p.set('grade', String(cfg.grade));
-      p.set('minLen', String(cfg.minLen));
-      p.set('maxLen', String(cfg.maxLen));
+      if (cfg.minLen > 2) p.set('minLen', String(cfg.minLen));
+      if (cfg.maxLen < LEN_NO_LIMIT) p.set('maxLen', String(cfg.maxLen));
       const res  = await freshFetch(`/api/games/word-scramble?${p}`);
       const json = await res.json();
       setGameWords((json.words || []).filter(isValid));
@@ -472,9 +477,19 @@ export default function WordScrambleGame() {
   // Build round queue: add chunks + scrambled arrays per word
   const buildQueue = useCallback((words, count) => {
     return shuffle(words).slice(0, count).map(w => {
-      const chunks   = splitArabicLetters(w.word).map((ch, i) => ({ ch, id: i }));
+      // المسافة بين كلمتين حدّ كلمة لا حرف: لا خانة لها ولا مربع في الحروف المبعثرة
+      const chunks = [];
+      const slotGroups = [[]];
+      splitArabicLetters(w.word.trim()).forEach(ch => {
+        if (/^\s+$/.test(ch)) {
+          if (slotGroups[slotGroups.length - 1].length) slotGroups.push([]);
+        } else {
+          slotGroups[slotGroups.length - 1].push(chunks.length);
+          chunks.push({ ch, id: chunks.length });
+        }
+      });
       const scrambled = scramble(chunks);
-      return { ...w, chunks, scrambled };
+      return { ...w, chunks, scrambled, slotGroups: slotGroups.filter(g => g.length) };
     });
   }, []);
 
@@ -837,6 +852,32 @@ export default function WordScrambleGame() {
   /* ══════ RENDER: PLAYING ══════ */
   const w      = queue[cur];
   const isLast = cur + 1 >= queue.length;
+  // اسم من كلمتين فأكثر: خانات أصغر في سطر واحد (lib/fit-tiles.js). الكلمة الواحدة كما هي.
+  const slotGroups = w?.slotGroups || [];
+  const isPhrase   = slotGroups.length > 1;
+  const tile       = isPhrase ? compactTileStyle(fitTileSize(slotRowWidth, answer.length, slotGroups.length)) : null;
+  const renderSlot = (i) => {
+    const chunk = answer[i];
+    return (
+      <div key={i}
+        style={{
+          ...S.answerSlot,
+          ...tile,
+          background:  result === 'wrong' ? '#f8d7da' : chunk ? '#ede9fe' : '#f5f3ff',
+          borderColor: result === 'wrong' ? '#e74c3c' : chunk ? '#7c3aed' : '#c4b5fd',
+          cursor: chunk && result === null ? 'pointer' : 'default',
+        }}
+        onClick={() => chunk && result === null && removeFromAnswer(i)}
+        title={chunk && result === null ? 'انقر للإزالة' : ''}
+      >
+        {chunk && (
+          <span style={{ fontSize: tile ? tile.fontSize : '2.2rem', fontWeight: 800, color: result === 'wrong' ? '#9b1c1c' : '#5b4fc4' }}>
+            {chunk.ch}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div style={S.page}>
@@ -920,25 +961,12 @@ export default function WordScrambleGame() {
           </div>
         ) : (
           /* ── Normal: answer slots ── */
-          <div style={S.answerRow}>
-            {answer.map((chunk, i) => (
-              <div key={i}
-                style={{
-                  ...S.answerSlot,
-                  background:  result === 'wrong' ? '#f8d7da' : chunk ? '#ede9fe' : '#f5f3ff',
-                  borderColor: result === 'wrong' ? '#e74c3c' : chunk ? '#7c3aed' : '#c4b5fd',
-                  cursor: chunk && result === null ? 'pointer' : 'default',
-                }}
-                onClick={() => chunk && result === null && removeFromAnswer(i)}
-                title={chunk && result === null ? 'انقر للإزالة' : ''}
-              >
-                {chunk && (
-                  <span style={{ fontSize: '2.2rem', fontWeight: 800, color: result === 'wrong' ? '#9b1c1c' : '#5b4fc4' }}>
-                    {chunk.ch}
-                  </span>
-                )}
-              </div>
-            ))}
+          <div ref={setSlotRowEl} style={isPhrase ? { ...S.answerRow, ...compactRowStyle } : S.answerRow}>
+            {isPhrase
+              ? slotGroups.map((group, gi) => (
+                  <div key={gi} style={{ ...S.answerGroup, ...compactGroupStyle }}>{group.map(renderSlot)}</div>
+                ))
+              : answer.map((_, i) => renderSlot(i))}
           </div>
         )}
 
@@ -1084,9 +1112,11 @@ const S = {
   },
   wordImg:  { width: 130, height: 130, objectFit: 'contain', borderRadius: 16 },
   answerRow: {
+    width: '100%',
     display: 'flex', direction: 'rtl', gap: 6,
     justifyContent: 'center', flexWrap: 'wrap', minHeight: 68,
   },
+  answerGroup: { display: 'flex', direction: 'rtl', alignItems: 'center' },
   answerSlot: {
     width: 58, height: 64, border: '3px dashed', borderRadius: 12,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
