@@ -3,6 +3,11 @@ import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/auth-role';
 
+// المعلم يعدّل المحتوى من لوحة اللعبة، فالقراءة حيّة دائماً (القسم 9.5):
+// كاش Vercel لساعة كان يُرجع القائمة القديمة بعد الحفظ فيبدو أن التعديل لم يُسجَّل
+export const dynamic = 'force-dynamic';
+const NO_STORE = { 'Cache-Control': 'no-store' };
+
 async function checkAuth() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -32,14 +37,14 @@ export async function GET(request) {
     if (grade > 0) query = query.eq('grade_level', grade);
 
     const { data, error } = await query;
-    if (error || !data) return NextResponse.json({ words: [], source: 'error' });
+    if (error || !data) return NextResponse.json({ words: [], source: 'error' }, { headers: NO_STORE });
 
     return NextResponse.json(
       { words: data.filter(isValid), source: 'database' },
-      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } }
+      { headers: NO_STORE }
     );
   } catch {
-    return NextResponse.json({ words: [], source: 'error' });
+    return NextResponse.json({ words: [], source: 'error' }, { headers: NO_STORE });
   }
 }
 

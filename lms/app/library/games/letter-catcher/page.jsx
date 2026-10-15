@@ -5,6 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
+import { freshFetch } from '../../../../lib/fresh-fetch';
 
 /* teacher-only panel loads only when the teacher opens it — not in students' bundle */
 const SettingsPanel = dynamic(() => import('./_teacher-panel'), { ssr: false, loading: () => null });
@@ -201,7 +202,7 @@ export default function LetterCatcherGame() {
   const loadWords = useCallback(async () => {
     if (!isTeacher) return;
     try {
-      const res  = await fetch('/api/games/letter-catcher');
+      const res  = await freshFetch('/api/games/letter-catcher');
       const json = await res.json();
       setDbWords((json.words || []).filter(isValid));
     } catch {
@@ -209,17 +210,19 @@ export default function LetterCatcherGame() {
     }
   }, [isTeacher]);
 
-  /* ── fetch fresh words from API silently in background (never blocks UI) ── */
-  const loadGameWords = useCallback(async () => {
-    setLoadProgress(10);
+  /* ── fetch fresh words from API silently in background (never blocks UI) ──
+     القراءة حيّة دائماً (القسم 9.5): الكاش المحلي يُظهر الكلمات فوراً عند الفتح فقط،
+     ثم تحلّ محله النسخة الحالية من قاعدة البيانات. quiet: بلا شريط تحميل (العودة للتبويب) */
+  const loadGameWords = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) setLoadProgress(10);
     try {
       const p = new URLSearchParams();
       if (cfg.topic)     p.set('topic',  cfg.topic);
       if (cfg.grade > 0) p.set('grade',  String(cfg.grade));
       p.set('minLen', String(cfg.minLen));
       p.set('maxLen', String(cfg.maxLen));
-      setLoadProgress(50);
-      const res  = await fetch(`/api/games/letter-catcher?${p}`);
+      if (!quiet) setLoadProgress(50);
+      const res  = await freshFetch(`/api/games/letter-catcher?${p}`);
       const json = await res.json();
       const fresh = (json.words || []).filter(isValid);
       if (fresh.length > 0) {
@@ -227,12 +230,12 @@ export default function LetterCatcherGame() {
         setCachedWords(fresh);
       }
     } catch { /* keep fallback/cached words already shown */ }
-    setLoadProgress(100);
+    if (!quiet) setLoadProgress(100);
   }, [cfg.topic, cfg.grade, cfg.minLen, cfg.maxLen]);
 
   const loadCatMeta = useCallback(async () => {
     try {
-      const res  = await fetch('/api/games/letter-catcher/categories');
+      const res  = await freshFetch('/api/games/letter-catcher/categories');
       const json = await res.json();
       const m = {};
       (json.categories || []).forEach(c => { m[c.name] = c; });
@@ -243,6 +246,23 @@ export default function LetterCatcherGame() {
   useEffect(() => { loadWords(); }, [loadWords]);
   useEffect(() => { loadGameWords(); }, [loadGameWords]);
   useEffect(() => { loadCatMeta(); }, [loadCatMeta]);
+
+  /* عودة الطفل لتبويب مفتوح مسبقاً: يجلب آخر ما عدّله المعلم بدل نسخة قديمة */
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      loadGameWords({ quiet: true });
+      loadCatMeta();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [loadGameWords, loadCatMeta]);
+
+  /* بعد أي حفظ/حذف في لوحة المعلم: قائمة الإدارة وكلمات اللعب معاً */
+  const refreshAfterEdit = useCallback(
+    () => Promise.all([loadWords(), loadGameWords({ quiet: true })]),
+    [loadWords, loadGameWords]
+  );
 
   /* ── save result when game finishes ── */
   const savedResultRef = useRef(false);
@@ -393,7 +413,7 @@ export default function LetterCatcherGame() {
         `}</style>
 
         {isTeacher && showCfg && (
-          <SettingsPanel cfg={cfg} onChange={setCfg} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={loadWords} catMeta={catMeta} onCatMetaRefresh={loadCatMeta} />
+          <SettingsPanel cfg={cfg} onChange={setCfg} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={refreshAfterEdit} catMeta={catMeta} onCatMetaRefresh={loadCatMeta} />
         )}
 
         {/* ── STEP 2 MODAL: settings + start button ── */}

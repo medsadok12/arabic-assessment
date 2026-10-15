@@ -1,8 +1,10 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
+import { freshFetch } from '../../../../lib/fresh-fetch';
+import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
 
 /* ─── helpers ─── */
 function speak(text) {
@@ -104,6 +106,7 @@ function WordManager({ dbWords, onRefresh }) {
   const [saving,  setSaving]  = useState(false);
   const [delId,   setDelId]   = useState(null);
   const [msg,     setMsg]     = useState(null);
+  const formRef = useRef(null);
 
   const parseSegs = s => s.split(/[،,]/).map(x => x.trim()).filter(Boolean);
 
@@ -126,7 +129,7 @@ function WordManager({ dbWords, onRefresh }) {
     setImgPrev(item.image_url || '');
     setImgFile(null);
     setMsg(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    bringIntoView(formRef.current); // نموذج التعديل نفسه أمام المعلم، لا أعلى الصفحة
   };
 
   const handleImgFile = (e) => {
@@ -166,7 +169,9 @@ function WordManager({ dbWords, onRefresh }) {
       const json   = await res.json();
       if (json.error) throw new Error(json.error);
       setMsg({ ok: true, text: editId ? 'تم التعديل ✅' : 'أُضيفت الكلمة ✅' });
-      reset(); onRefresh();
+      const savedId = editId;
+      reset(); await Promise.resolve(onRefresh()).catch(() => {}); // فشل إعادة التحميل لا يُظهر الحفظ الناجح كخطأ
+      if (savedId) flashSavedRow(savedId); // العودة لنفس الكلمة في القائمة بعد حفظ التعديل
     } catch (e) {
       setMsg({ ok: false, text: e.message });
     }
@@ -194,7 +199,7 @@ function WordManager({ dbWords, onRefresh }) {
         🔨 إدارة كلمات مطرقة التفكيك {editId ? '— (تعديل)' : ''}
       </div>
 
-      <div style={{ padding: 16, borderBottom: '1px solid #f1f5f9' }}>
+      <div ref={formRef} style={{ padding: 16, borderBottom: '1px solid #f1f5f9', scrollMarginTop: 90 }}>
         {/* Word */}
         <div style={{ marginBottom: 10 }}>
           <label style={S.label}>الكلمة المُشكَّلة</label>
@@ -308,7 +313,7 @@ function WordManager({ dbWords, onRefresh }) {
         {dbWords.length === 0 ? (
           <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontFamily: 'Cairo, sans-serif' }}>لا توجد كلمات بعد</div>
         ) : dbWords.map(item => (
-          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid #f1f5f9', background: editId === item.id ? '#f0fdf4' : 'transparent', direction: 'rtl' }}>
+          <div key={item.id} data-edit-row={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid #f1f5f9', background: editId === item.id ? '#f0fdf4' : 'transparent', direction: 'rtl' }}>
             {item.image_url
               ? <img src={item.image_url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 7, border: '1.5px solid #d1fae5', flexShrink: 0 }} />
               : <button onClick={() => speak(item.word_text)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', flexShrink: 0, padding: '2px 4px' }}>🔊</button>
@@ -576,7 +581,7 @@ export default function WordSmashGame() {
   /* load all words (teacher only, for manager) */
   const loadDbWords = useCallback(async () => {
     if (!isTeacher) return;
-    const res  = await fetch('/api/games/word-smash');
+    const res  = await freshFetch('/api/games/word-smash');
     const json = await res.json().catch(() => ({ words: [] }));
     setDbWords(json.words || []);
   }, [isTeacher]);
@@ -587,7 +592,7 @@ export default function WordSmashGame() {
     const p = new URLSearchParams();
     if (cfg.topic)    p.set('topic', cfg.topic);
     if (cfg.grade > 0) p.set('grade', String(cfg.grade));
-    const res  = await fetch(`/api/games/word-smash?${p}`);
+    const res  = await freshFetch(`/api/games/word-smash?${p}`);
     const json = await res.json().catch(() => ({ words: [] }));
     setGameWords(json.words || []);
     setLoadingWords(false);
@@ -853,7 +858,7 @@ export default function WordSmashGame() {
 
             {isTeacher && showMgr && (
               <div style={{ width: '100%', textAlign: 'right' }}>
-                <WordManager dbWords={dbWords} onRefresh={() => { loadDbWords(); loadGameWords(); }} />
+                <WordManager dbWords={dbWords} onRefresh={() => Promise.all([loadDbWords(), loadGameWords()])} />
               </div>
             )}
 

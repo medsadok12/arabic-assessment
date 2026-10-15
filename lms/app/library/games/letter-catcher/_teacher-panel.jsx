@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
 
 /* ── constants (duplicated here so this chunk loads independently) ── */
 const TOPICS = ['الحيوانات', 'الأشكال', 'الأسرة', 'الألوان', 'الفواكه', 'المدرسة', 'الطقس', 'الأرقام'];
@@ -135,6 +136,7 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
   const [editingWordId,    setEditingWordId]    = useState(null);
   const [existingImageUrl, setExistingImageUrl] = useState(null);
   const fileRef   = useRef();
+  const formRef   = useRef(null);
   const catImgRef = useRef();
   const mediaRef  = useRef(null);
   const chunksRef = useRef([]);
@@ -229,6 +231,7 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
     setImgPrev(w.image_url || null);
     setEditingWordId(w.id);
     setMsg(null);
+    bringIntoView(formRef.current); // نموذج التعديل أمام المعلم مباشرة، بلا صعود يدوي
   };
 
   const cancelEdit = () => resetForm();
@@ -261,8 +264,11 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
       setMsg({ ok: true, text: isEditing
         ? `✅ حُدِّثت "${word.trim().replace('_', missing.trim())}" بنجاح`
         : `✅ أُضيفت "${word.trim().replace('_', missing.trim())}" بنجاح` });
+      const savedId = editingWordId;
       resetForm();
-      onRefresh();
+      await onRefresh();
+      // بعد حفظ التعديل يعود المعلم إلى نفس الكلمة في القائمة ليكمل من حيث توقف
+      if (isEditing) flashSavedRow(savedId);
     } catch (e) { setMsg({ ok: false, text: `❌ ${e.message}` }); }
     setSaving(false);
   };
@@ -281,7 +287,7 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
 
   return (
     <div>
-      <div style={{ background: editingWordId ? '#fffbeb' : '#f5f3ff', borderRadius:14, padding:16, marginBottom:18, border: `1.5px dashed ${editingWordId ? '#f59e0b' : '#7c3aed'}` }}>
+      <div ref={formRef} style={{ background: editingWordId ? '#fffbeb' : '#f5f3ff', borderRadius:14, padding:16, marginBottom:18, border: `1.5px dashed ${editingWordId ? '#f59e0b' : '#7c3aed'}`, scrollMarginTop:12 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
           <div style={{ fontWeight:800, color: editingWordId ? '#d97706' : '#7c3aed', fontSize:'.92rem' }}>
             {editingWordId ? '✏️ تعديل كلمة' : '➕ إضافة كلمة جديدة'}
@@ -461,7 +467,7 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
 
                   <div style={{ display:'flex', flexDirection:'column', gap:4, paddingRight:10 }}>
                     {words.map(w => (
-                      <div key={w.id} style={{
+                      <div key={w.id} data-edit-row={w.id} style={{
                         display:'flex', alignItems:'center', gap:7, borderRadius:8, padding:'6px 10px',
                         background: editingWordId === w.id ? '#fffbeb' : '#f9fafb',
                         border: `1px solid ${editingWordId === w.id ? '#f59e0b' : '#e5e7eb'}`,

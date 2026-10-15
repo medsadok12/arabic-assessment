@@ -4,6 +4,8 @@ import { createClient } from '../../../../lib/supabase';
 import Navbar from '../../../../components/Navbar';
 import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
+import { freshFetch } from '../../../../lib/fresh-fetch';
+import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
 
 /* ─── balloon colors by position ─── */
 const BALLOON_COLORS = [
@@ -164,6 +166,7 @@ function WordManager({ user }) {
   const [recording,     setRecording]     = useState(false);
   const mediaRef  = useRef(null);
   const chunksRef = useRef([]);
+  const formRef   = useRef(null);
 
   const flash = (text, ok=true) => { setMsg({text,ok}); setTimeout(() => setMsg(''), 3500); };
   const upd   = key => e => setForm(f => ({...f, [key]: e.target.value}));
@@ -173,7 +176,7 @@ function WordManager({ user }) {
   async function fetchItems() {
     setLoading(true);
     try {
-      const r = await fetch('/api/games/vowel-balloon');
+      const r = await freshFetch('/api/games/vowel-balloon');
       const d = await r.json();
       setItems(d.items || []);
     } catch { setItems([]); }
@@ -187,6 +190,7 @@ function WordManager({ user }) {
     setCorrectCustom(isPreset ? '' : it.correct_option);
     setForm({ target_text:it.target_text, wrong_option_1:it.wrong_option_1||'', wrong_option_2:it.wrong_option_2||'', rule_text:it.rule_text, topic:it.topic||'', grade_level:it.grade_level||'' });
     setAudioB64(it.audio_url || '');
+    bringIntoView(formRef.current); // نموذج التعديل أمام المعلم مباشرة، بلا صعود يدوي
   }
 
   function cancelEdit() {
@@ -218,7 +222,9 @@ function WordManager({ user }) {
     setSaving(false);
     if (d.error) { flash(d.error, false); return; }
     flash(editId ? 'تم التعديل ✅' : 'تمت الإضافة ✅');
-    cancelEdit(); fetchItems();
+    const savedId = editId;
+    cancelEdit(); await fetchItems();
+    if (savedId) flashSavedRow(savedId); // العودة لنفس العنصر في الجدول بعد حفظ التعديل
   }
 
   async function del(id) {
@@ -277,7 +283,7 @@ function WordManager({ user }) {
       <h2 style={S.h2}>⚙️ لوحة تحكم منطاد الحركات</h2>
 
       {/* ── form ── */}
-      <div style={{ background:'#f8fafc', borderRadius:14, padding:'18px 16px', marginBottom:20, border:'1.5px solid #e2e8f0' }}>
+      <div ref={formRef} style={{ background:'#f8fafc', borderRadius:14, padding:'18px 16px', marginBottom:20, border:'1.5px solid #e2e8f0', scrollMarginTop:90 }}>
         <h3 style={{ fontSize:'.95rem', fontWeight:800, color:'#1e3a5f', marginBottom:14 }}>
           {editId ? '✏️ تعديل عنصر' : '➕ إضافة عنصر جديد'}
         </h3>
@@ -387,7 +393,7 @@ function WordManager({ user }) {
                 <tr><td colSpan={6} style={{ ...S.td, textAlign:'center', color:'#94a3b8' }}>لا توجد عناصر — أضف أول عنصر أعلاه</td></tr>
               )}
               {items.map(it => (
-                <tr key={it.id}>
+                <tr key={it.id} data-edit-row={it.id}>
                   <td style={{ ...S.td, fontSize:'1.8rem', textAlign:'center', fontFamily:"'Cairo','Tajawal',sans-serif" }}>{it.target_text}</td>
                   <td style={{ ...S.td, color:'#10b981', fontWeight:700 }}>{it.correct_option}</td>
                   <td style={S.td}>{it.wrong_option_1 || <span style={{ color:'#cbd5e1' }}>تلقائي</span>}</td>
@@ -449,7 +455,7 @@ export default function VowelBalloonPage() {
       return [...raw].sort(() => Math.random() - 0.5)
                      .map(item => ({ ...item, _options: buildOptions(item) }));
     }
-    fetch('/api/games/vowel-balloon')
+    freshFetch('/api/games/vowel-balloon')
       .then(r => r.json())
       .then(d => {
         const src = d.source || 'error';

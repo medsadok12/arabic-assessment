@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/auth-role';
+import { storableAudioUrl, healAudioRows } from '../../../../lib/game-audio';
+
+// المعلم يعدّل المحتوى من لوحة اللعبة، فالقراءة حيّة دائماً (القسم 9.5):
+// كاش Vercel لساعة كان يُرجع القائمة القديمة بعد الحفظ فيبدو أن التعديل لم يُسجَّل
+export const dynamic = 'force-dynamic';
+const NO_STORE = { 'Cache-Control': 'no-store' };
 
 async function checkAuth() {
   const supabase = createClient();
@@ -27,14 +33,16 @@ export async function GET(request) {
     if (grade > 0) query = query.eq('grade_level', grade);
 
     const { data, error } = await query;
-    if (error || !data) return NextResponse.json({ items: [], source: 'error' });
+    if (error || !data) return NextResponse.json({ items: [], source: 'error' }, { headers: NO_STORE });
+
+    await healAudioRows(admin, 'vowel_balloon_games', 'vowel-balloon', data);
 
     return NextResponse.json(
       { items: data.filter(isValid), source: 'database' },
-      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } }
+      { headers: NO_STORE }
     );
   } catch {
-    return NextResponse.json({ items: [], source: 'error' });
+    return NextResponse.json({ items: [], source: 'error' }, { headers: NO_STORE });
   }
 }
 
@@ -54,6 +62,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'نص القاعدة مطلوب' }, { status: 400 });
 
     const admin = createAdminClient();
+    const audio = await storableAudioUrl(admin, 'vowel-balloon', audio_url);
     const { data, error } = await admin
       .from('vowel_balloon_games')
       .insert({
@@ -61,7 +70,7 @@ export async function POST(request) {
         correct_option: correct_option.trim(),
         wrong_option_1: wrong_option_1?.trim() || null,
         wrong_option_2: wrong_option_2?.trim() || null,
-        audio_url:      audio_url || null,
+        audio_url:      audio || null,
         rule_text:      rule_text.trim(),
         topic:          topic?.trim() || null,
         grade_level:    grade_level ? Number(grade_level) : null,
@@ -89,6 +98,7 @@ export async function PUT(request) {
     const { target_text, correct_option, wrong_option_1, wrong_option_2, audio_url, rule_text, topic, grade_level } = await request.json();
 
     const admin = createAdminClient();
+    const audio = await storableAudioUrl(admin, 'vowel-balloon', audio_url);
     const { data, error } = await admin
       .from('vowel_balloon_games')
       .update({
@@ -96,7 +106,7 @@ export async function PUT(request) {
         correct_option: correct_option?.trim(),
         wrong_option_1: wrong_option_1?.trim() || null,
         wrong_option_2: wrong_option_2?.trim() || null,
-        audio_url:      audio_url ?? null,
+        audio_url:      audio ?? null,
         rule_text:      rule_text?.trim(),
         topic:          topic?.trim() || null,
         grade_level:    grade_level ? Number(grade_level) : null,

@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
+import { freshFetch } from '../../../../lib/fresh-fetch';
+import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
 
 /* ─────────────── helpers ─────────────── */
 function shuffle(arr) {
@@ -119,9 +121,10 @@ function PairManager({ allPairs, onRefresh }) {
   const [saving,   setSaving]   = useState(false);
   const [msg,      setMsg]      = useState(null);
   const { recording, recSecs, startRecording, stopRecording } = useRecorder();
+  const formRef = useRef(null);
 
   const reset = () => { setEditId(null); setWord(''); setTopic(''); setGrade(0); setImgUrl(''); setImgPrev(''); setImgFile(null); setAudioUrl(''); setMsg(null); };
-  const startEdit = (p) => { setEditId(p.id); setWord(p.word_text); setTopic(p.topic||''); setGrade(p.grade_level||0); setImgUrl(p.image_url||''); setImgPrev(p.image_url||''); setImgFile(null); setAudioUrl(p.audio_url||''); setMsg(null); };
+  const startEdit = (p) => { setEditId(p.id); setWord(p.word_text); setTopic(p.topic||''); setGrade(p.grade_level||0); setImgUrl(p.image_url||''); setImgPrev(p.image_url||''); setImgFile(null); setAudioUrl(p.audio_url||''); setMsg(null); bringIntoView(formRef.current); };
   const handleImgFile = (e) => { const f = e.target.files?.[0]; if (!f) return; setImgFile(f); setImgPrev(URL.createObjectURL(f)); };
 
   const handleSave = async () => {
@@ -141,7 +144,9 @@ function PairManager({ allPairs, onRefresh }) {
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       setMsg({ ok:true, text: editId ? 'تم التعديل ✅' : 'تمت الإضافة ✅' });
-      reset(); onRefresh();
+      const savedId = editId;
+      reset(); await Promise.resolve(onRefresh()).catch(() => {}); // فشل إعادة التحميل لا يُظهر الحفظ الناجح كخطأ
+      if (savedId) flashSavedRow(savedId); // العودة لنفس الكلمة في القائمة بعد حفظ التعديل
     } catch (e) { setMsg({ ok:false, text: e.message }); }
     finally { setSaving(false); }
   };
@@ -158,7 +163,7 @@ function PairManager({ allPairs, onRefresh }) {
   return (
     <div style={{ border:'1.5px solid #e2e8f0', borderRadius:12, background:'#fff', overflow:'hidden', marginBottom:16 }}>
       <div style={{ background:'#f8fafc', borderBottom:'1px solid #e2e8f0', padding:'10px 14px', fontWeight:700, color:'#1e40af', fontFamily:'inherit', fontSize:'.9rem' }}>📚 إدارة الكلمات والصور</div>
-      <div style={{ padding:14, borderBottom:'1px solid #f1f5f9' }}>
+      <div ref={formRef} style={{ padding:14, borderBottom:'1px solid #f1f5f9', scrollMarginTop:90 }}>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
           <div><label style={S.label}>الكلمة</label><input value={word} onChange={e=>setWord(e.target.value)} placeholder="مثال: أسد" style={S.input} dir="rtl" /></div>
           <div>
@@ -199,7 +204,7 @@ function PairManager({ allPairs, onRefresh }) {
         {allPairs.length === 0 ? (
           <div style={{ padding:20, textAlign:'center', color:'#94a3b8', fontFamily:'inherit', fontSize:'.88rem' }}>لا توجد كلمات بعد</div>
         ) : allPairs.map(p => (
-          <div key={p.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderBottom:'1px solid #f1f5f9', background:editId===p.id?'#eff6ff':'transparent' }}>
+          <div key={p.id} data-edit-row={p.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderBottom:'1px solid #f1f5f9', background:editId===p.id?'#eff6ff':'transparent' }}>
             {p.image_url && <img src={p.image_url} alt="" style={{ width:42, height:42, objectFit:'cover', borderRadius:6, flexShrink:0 }} />}
             <div style={{ flex:1, fontFamily:'inherit', direction:'rtl', textAlign:'right' }}>
               <div style={{ fontWeight:700, fontSize:'.95rem' }}>{p.word_text}</div>
@@ -970,7 +975,7 @@ export default function WordImageMatchPage() {
 
   const loadAllPairs = useCallback(async () => {
     if (!isTeacher) return;
-    const res  = await fetch('/api/games/word-image-match');
+    const res  = await freshFetch('/api/games/word-image-match');
     const json = await res.json().catch(() => ({ pairs:[] }));
     setAllPairs(json.pairs || []);
   }, [isTeacher]);
@@ -980,7 +985,7 @@ export default function WordImageMatchPage() {
     const p = new URLSearchParams();
     if (cfg.topic)    p.set('topic', cfg.topic);
     if (cfg.grade > 0) p.set('grade', String(cfg.grade));
-    const res  = await fetch(`/api/games/word-image-match?${p}`);
+    const res  = await freshFetch(`/api/games/word-image-match?${p}`);
     const json = await res.json().catch(() => ({ pairs:[] }));
     setGamePairs(json.pairs || []);
     setLoading(false);
@@ -1106,7 +1111,7 @@ export default function WordImageMatchPage() {
         </div>
 
         {isTeacher && showCfg && <SettingsPanel cfg={cfg} setCfg={setCfg} />}
-        {isTeacher && showMgr && <PairManager allPairs={allPairs} onRefresh={() => { loadAllPairs(); loadGamePairs(); }} />}
+        {isTeacher && showMgr && <PairManager allPairs={allPairs} onRefresh={() => Promise.all([loadAllPairs(), loadGamePairs()])} />}
 
         {/* game card — warm cream, amber border, floating shadow, corner sparkles */}
         <div style={{

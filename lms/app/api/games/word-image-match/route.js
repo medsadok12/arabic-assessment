@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/auth-role';
+import { storableAudioUrl, healAudioRows } from '../../../../lib/game-audio';
+
+// المعلم يعدّل المحتوى من لوحة اللعبة، فالقراءة حيّة دائماً (القسم 9.5):
+// كاش Vercel لساعة كان يُرجع القائمة القديمة بعد الحفظ فيبدو أن التعديل لم يُسجَّل
+export const dynamic = 'force-dynamic';
+const NO_STORE = { 'Cache-Control': 'no-store' };
 
 const TABLE = 'word_image_matches';
 const ROLES = ['super_admin', 'admin', 'teacher'];
@@ -28,15 +34,17 @@ export async function GET(request) {
     if (grade > 0) query = query.eq('grade_level', grade);
 
     const { data, error } = await query;
-    if (error || !data) return NextResponse.json({ pairs: [], source: 'error' });
+    if (error || !data) return NextResponse.json({ pairs: [], source: 'error' }, { headers: NO_STORE });
+
+    await healAudioRows(admin, 'word_image_matches', 'word-image-match', data);
 
     const valid = data.filter(p => p.word_text?.trim() && p.image_url);
     return NextResponse.json(
       { pairs: valid, source: 'database' },
-      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } }
+      { headers: NO_STORE }
     );
   } catch {
-    return NextResponse.json({ pairs: [], source: 'error' });
+    return NextResponse.json({ pairs: [], source: 'error' }, { headers: NO_STORE });
   }
 }
 
@@ -51,9 +59,10 @@ export async function POST(request) {
     if (!image_url)          return NextResponse.json({ error: 'الصورة مطلوبة' }, { status: 400 });
 
     const admin = createAdminClient();
+    const audio = await storableAudioUrl(admin, 'word-image-match', audio_url);
     const { data, error } = await admin.from(TABLE).insert({
       word_text:   word_text.trim(),
-      audio_url:   audio_url   || null,
+      audio_url:   audio       || null,
       image_url,
       topic:       topic?.trim()  || null,
       grade_level: grade_level ? Number(grade_level) : null,
@@ -80,9 +89,10 @@ export async function PUT(request) {
     if (!word_text?.trim()) return NextResponse.json({ error: 'الكلمة مطلوبة' }, { status: 400 });
 
     const admin = createAdminClient();
+    const audio = await storableAudioUrl(admin, 'word-image-match', audio_url);
     const { data, error } = await admin.from(TABLE).update({
       word_text:   word_text.trim(),
-      audio_url:   audio_url !== undefined ? (audio_url || null) : undefined,
+      audio_url:   audio !== undefined ? (audio || null) : undefined,
       image_url:   image_url  || null,
       topic:       topic?.trim()  || null,
       grade_level: grade_level ? Number(grade_level) : null,

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
+import { freshFetch } from '../../../../lib/fresh-fetch';
+import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
 
 /* ────────────────────────── helpers ────────────────────────── */
 
@@ -86,6 +88,7 @@ function WordManager({ dbWords, onRefresh }) {
   const [editId,    setEditId]    = useState(null);
   const [msg,       setMsg]       = useState(null);
   const fileRef  = useRef();
+  const formRef  = useRef(null);
   const mediaRef = useRef(null);
   const chunksRef = useRef([]);
   const timerRef = useRef(null);
@@ -105,6 +108,7 @@ function WordManager({ dbWords, onRefresh }) {
     setImgPrev(w.image_url || null);
     setAudioUrl(w.audio_url || null);
     setImgFile(null); setMsg(null);
+    bringIntoView(formRef.current); // نموذج التعديل أمام المعلم مباشرة، بلا صعود يدوي
   };
 
   const handleImg = (e) => {
@@ -170,7 +174,9 @@ function WordManager({ dbWords, onRefresh }) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'فشل الحفظ');
       setMsg({ ok: true, text: editId ? `✅ تم تعديل "${word.trim()}"` : `✅ أُضيفت "${word.trim()}" بنجاح` });
-      resetForm(); onRefresh();
+      const savedId = editId;
+      resetForm(); await onRefresh();
+      if (savedId) flashSavedRow(savedId); // العودة لنفس الكلمة في القائمة بعد حفظ التعديل
     } catch (e) {
       setMsg({ ok: false, text: `❌ ${e.message}` });
     }
@@ -190,7 +196,7 @@ function WordManager({ dbWords, onRefresh }) {
 
   return (
     <div>
-      <div style={{ background: '#f5f3ff', borderRadius: 14, padding: 16, marginBottom: 18, border: '1.5px dashed #7c3aed' }}>
+      <div ref={formRef} style={{ background: '#f5f3ff', borderRadius: 14, padding: 16, marginBottom: 18, border: '1.5px dashed #7c3aed', scrollMarginTop: 12 }}>
         <div style={{ fontWeight: 800, color: '#7c3aed', marginBottom: 12, fontSize: '.92rem' }}>
           {editId ? '✏️ تعديل الكلمة' : '➕ إضافة كلمة جديدة'}
         </div>
@@ -323,7 +329,7 @@ function WordManager({ dbWords, onRefresh }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
           {dbWords.map(w => (
-            <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f9fafb', borderRadius: 10, padding: '8px 12px', border: '1px solid #e5e7eb' }}>
+            <div key={w.id} data-edit-row={w.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f9fafb', borderRadius: 10, padding: '8px 12px', border: '1px solid #e5e7eb' }}>
               {w.image_url && <img src={w.image_url} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />}
               <span style={{ flex: 1, fontWeight: 700, color: '#1f2937', fontSize: '.9rem' }}>{w.word}</span>
               {w.topic && <span style={{ background: '#e0f2fe', color: '#0369a1', borderRadius: 20, padding: '2px 8px', fontSize: '.7rem', fontWeight: 700 }}>{w.topic}</span>}
@@ -438,7 +444,7 @@ export default function WordScrambleGame() {
   const loadWords = useCallback(async () => {
     if (!isTeacher) return;
     try {
-      const res  = await fetch('/api/games/word-scramble');
+      const res  = await freshFetch('/api/games/word-scramble');
       const json = await res.json();
       setDbWords((json.words || []).filter(isValid));
     } catch { setDbWords([]); }
@@ -453,7 +459,7 @@ export default function WordScrambleGame() {
       if (cfg.grade > 0) p.set('grade', String(cfg.grade));
       p.set('minLen', String(cfg.minLen));
       p.set('maxLen', String(cfg.maxLen));
-      const res  = await fetch(`/api/games/word-scramble?${p}`);
+      const res  = await freshFetch(`/api/games/word-scramble?${p}`);
       const json = await res.json();
       setGameWords((json.words || []).filter(isValid));
     } catch { setGameWords([]); }
@@ -626,7 +632,7 @@ export default function WordScrambleGame() {
         {isTeacher && showCfg && (
           <SettingsPanel
             onClose={() => setShowCfg(false)}
-            dbWords={dbWords} onRefresh={loadWords} />
+            dbWords={dbWords} onRefresh={() => Promise.all([loadWords(), loadGameWords()])} />
         )}
         <style>{`
           @keyframes ws-fadein { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }

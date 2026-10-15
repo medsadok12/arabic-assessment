@@ -2,9 +2,13 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/auth-role';
+import { storableAudioUrl, healAudioRows } from '../../../../lib/game-audio';
 
-export const runtime   = 'edge';
-export const revalidate = 3600;
+export const runtime = 'edge';
+// المعلم يعدّل الكلمات من لوحة اللعبة، فالقراءة حيّة دائماً (القسم 9.5):
+// كاش Vercel لساعة كان يُرجع القائمة القديمة بعد الحفظ فيبدو أن التعديل لم يُسجَّل
+export const dynamic = 'force-dynamic';
+const NO_STORE = { 'Cache-Control': 'no-store' };
 
 const ARABIC_LETTERS = 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي';
 const DIACRITICS     = /[ً-ْٰ]/g;
@@ -46,8 +50,10 @@ export async function GET(request) {
     const { data, error } = await query;
 
     if (error || !data) {
-      return NextResponse.json({ words: [], source: 'error' });
+      return NextResponse.json({ words: [], source: 'error' }, { headers: NO_STORE });
     }
+
+    await healAudioRows(admin, 'letter_catcher_words', 'letter-catcher', data);
 
     const valid = data.filter(w => {
       if (!w.word || !w.missing_letter) return false;
@@ -61,12 +67,12 @@ export async function GET(request) {
     const words = valid.length > 0 ? valid : FALLBACK_WORDS;
     return NextResponse.json(
       { words, source: valid.length > 0 ? 'database' : 'fallback' },
-      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } }
+      { headers: NO_STORE }
     );
   } catch {
     return NextResponse.json(
       { words: FALLBACK_WORDS, source: 'fallback' },
-      { headers: { 'Cache-Control': 'public, s-maxage=60' } }
+      { headers: NO_STORE }
     );
   }
 }
@@ -103,6 +109,7 @@ export async function POST(request) {
 
     const options = buildOptions(missing_letter.trim());
     const admin   = createAdminClient();
+    const audio   = await storableAudioUrl(admin, 'letter-catcher', audio_url);
 
     const { data, error } = await admin
       .from('letter_catcher_words')
@@ -112,7 +119,7 @@ export async function POST(request) {
         options,
         emoji:       emoji?.trim()       || null,
         image_url:   image_url           || null,
-        audio_url:   audio_url           || null,
+        audio_url:   audio               || null,
         topic:       topic?.trim()       || null,
         grade_level: grade_level ? Number(grade_level) : null,
         category:    category?.trim()    || null,
@@ -146,6 +153,7 @@ export async function PUT(request) {
 
     const options = buildOptions(missing_letter.trim());
     const admin   = createAdminClient();
+    const audio   = await storableAudioUrl(admin, 'letter-catcher', audio_url);
 
     const { data, error } = await admin
       .from('letter_catcher_words')
@@ -155,7 +163,7 @@ export async function PUT(request) {
         options,
         emoji:       emoji?.trim()       || null,
         image_url:   image_url           || null,
-        audio_url:   audio_url           || null,
+        audio_url:   audio               || null,
         topic:       topic?.trim()       || null,
         grade_level: grade_level ? Number(grade_level) : null,
         category:    category?.trim()    || null,

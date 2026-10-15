@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/auth-role';
+import { storableAudioUrl, healAudioRows } from '../../../../lib/game-audio';
+
+// المعلم يعدّل المحتوى من لوحة اللعبة، فالقراءة حيّة دائماً (القسم 9.5):
+// كاش Vercel لساعة كان يُرجع القائمة القديمة بعد الحفظ فيبدو أن التعديل لم يُسجَّل
+export const dynamic = 'force-dynamic';
+const NO_STORE = { 'Cache-Control': 'no-store' };
 
 const DIACRITICS = /[ً-ٰٟ]/g;
 const TABLE      = 'word_scramble_words';
@@ -31,7 +37,9 @@ export async function GET(request) {
     if (grade > 0) query = query.eq('grade_level', grade);
 
     const { data, error } = await query;
-    if (error || !data) return NextResponse.json({ words: [], source: 'error' });
+    if (error || !data) return NextResponse.json({ words: [], source: 'error' }, { headers: NO_STORE });
+
+    await healAudioRows(admin, 'word_scramble_words', 'word-scramble', data);
 
     const valid = data.filter(w => {
       if (!w.word) return false;
@@ -43,10 +51,10 @@ export async function GET(request) {
 
     return NextResponse.json(
       { words: valid, source: 'database' },
-      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } }
+      { headers: NO_STORE }
     );
   } catch {
-    return NextResponse.json({ words: [], source: 'error' });
+    return NextResponse.json({ words: [], source: 'error' }, { headers: NO_STORE });
   }
 }
 
@@ -60,11 +68,12 @@ export async function POST(request) {
     if (!word?.trim()) return NextResponse.json({ error: 'الكلمة مطلوبة' }, { status: 400 });
 
     const admin = createAdminClient();
+    const audio = await storableAudioUrl(admin, 'word-scramble', audio_url);
     const { data, error } = await admin.from(TABLE).insert({
       word:        word.trim(),
       emoji:       emoji?.trim()       || null,
       image_url:   image_url           || null,
-      audio_url:   audio_url           || null,
+      audio_url:   audio               || null,
       topic:       topic?.trim()       || null,
       grade_level: grade_level ? Number(grade_level) : null,
     }).select().single();
@@ -90,11 +99,12 @@ export async function PUT(request) {
     if (!word?.trim()) return NextResponse.json({ error: 'الكلمة مطلوبة' }, { status: 400 });
 
     const admin = createAdminClient();
+    const audio = await storableAudioUrl(admin, 'word-scramble', audio_url);
     const { data, error } = await admin.from(TABLE).update({
       word:        word.trim(),
       emoji:       emoji?.trim()       || null,
       image_url:   image_url           || null,
-      audio_url:   audio_url           || null,
+      audio_url:   audio               || null,
       topic:       topic?.trim()       || null,
       grade_level: grade_level ? Number(grade_level) : null,
     }).eq('id', id).select().single();
