@@ -90,7 +90,7 @@ function calcDims(mode) {
 ══════════════════════════════════════════════════════ */
 export default function StoryFlipBook({
   pages, accent = '#10b981', onComplete, read, loading, isTeacher, points,
-  audioUrl = null,
+  pageAudio = [],
   mode = 'default',
 }) {
   const bookRef     = useRef(null);
@@ -106,7 +106,10 @@ export default function StoryFlipBook({
   const [fontIdx, setFontIdx] = useState(2); // index into FONT_STEPS, default 1.0rem
 
   const totalPages = pages.length;
-  const isLastPage = current >= totalPages - 1;
+  /* وضع الحاسوب يعرض صفحتين معاً (current وcurrent+1): آخر عرض هو الذي تظهر فيه
+     الصفحة الأخيرة — وإلا لا يظهر زر «انتهيت» أبداً في قصة عدد صفحاتها زوجي */
+  const step       = mode === 'spread' ? 2 : 1;
+  const isLastPage = current + step >= totalPages;
 
   /* ── حساب الأبعاد ── */
   useEffect(() => {
@@ -155,6 +158,17 @@ export default function StoryFlipBook({
 
   const onFlip        = useCallback((e) => setCurrent(e.data), []);
   const onChangeState = useCallback((e) => { if (e.data === 'read') isFlipping.current = false; }, []);
+
+  /* ── صوت الصفحات: أصوات الصفحات الظاهرة الآن فقط (صفحتان متقابلتان في وضع الحاسوب) ── */
+  const hasAudio  = pageAudio.some(Boolean);
+  const audioTracks = Array.from({ length: step }, (_, k) => current + k)
+    .filter(i => i < totalPages && pageAudio[i])
+    .map(i => ({ page: i, src: pageAudio[i] }));
+  const audioProps = {
+    tracks: audioTracks,
+    hasNext: current + step < totalPages,
+    onAdvance: () => safeFlip('next'),
+  };
 
   /* لوحة المفاتيح */
   useEffect(() => {
@@ -255,10 +269,10 @@ export default function StoryFlipBook({
           </HTMLFlipBook>
         </div>
 
-        {/* زر الاستماع لقراءة القصة — عائم في الزاوية السفلى اليمنى (خارج منطقة قلب الصفحات) */}
-        {audioUrl && (
+        {/* زر الاستماع لصوت الصفحة الحالية — عائم في الزاوية السفلى اليمنى (خارج منطقة قلب الصفحات) */}
+        {hasAudio && (
           <StoryAudioPlayer
-            src={audioUrl}
+            {...audioProps}
             variant="fab"
             style={{ position: 'absolute', bottom: 22, right: 14, zIndex: 30 }}
           />
@@ -315,6 +329,14 @@ export default function StoryFlipBook({
             }} />
           ))}
         </div>
+
+        {/* صوت الصفحتين الظاهرتين */}
+        {hasAudio && (
+          <StoryAudioPlayer
+            {...audioProps}
+            style={{ width: bookW, maxWidth: 'calc(100vw - 48px)', boxSizing: 'border-box', marginBottom: 18 }}
+          />
+        )}
 
         {/* غلاف الكتاب المفتوح */}
         {dims && (
@@ -448,6 +470,10 @@ export default function StoryFlipBook({
           }} />
         ))}
       </div>
+
+      {hasAudio && dims && (
+        <StoryAudioPlayer {...audioProps} style={{ width: dims.w, boxSizing: 'border-box', marginBottom: 14 }} />
+      )}
 
       {dims && (
         <div

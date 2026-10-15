@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { splitStoryPages } from '../lib/story-audio';
 
 /* ─── تعريف التخطيطات ─────────────────────────────────────────── */
 const LAYOUTS = [
@@ -12,7 +13,8 @@ const LAYOUTS = [
   { key: 'img-bg',     label: 'خلفية+نص', hasImg: true  },
 ];
 
-const BLANK = { layout: 'text-only', imageUrl: '', fit: 'cover', text: '' };
+// audio: رابط صوت قراءة الصفحة (يُدار من bogga) — يتحرك مع صفحته عند التقديم/التأخير ويُحذف معها
+const BLANK = { layout: 'text-only', imageUrl: '', fit: 'cover', text: '', audio: null };
 
 /* ─── تحويل بيانات الصفحة → HTML للحفظ ────────────────────────── */
 function pageToHtml({ layout, imageUrl, fit = 'cover', text = '' }) {
@@ -84,7 +86,7 @@ function LayoutSvg({ type }) {
 /* ══════════════════════════════════════════════════════════════════
    المكوّن الرئيسي
 ══════════════════════════════════════════════════════════════════ */
-export default function StoryPageEditor({ value = '', onChange }) {
+export default function StoryPageEditor({ value = '', onChange, audio = [], onAudioChange }) {
   const [pages,     setPages]     = useState([{ ...BLANK }]);
   const [sel,       setSel]       = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -95,8 +97,10 @@ export default function StoryPageEditor({ value = '', onChange }) {
 
   /* ── تهيئة الصفحات من القيمة الأولية ── */
   useEffect(() => {
-    const parts  = (value || '').split('<!-- PAGE -->').map(s => s.trim()).filter(Boolean);
-    const parsed = parts.length ? parts.map(htmlToPage) : [{ ...BLANK }];
+    const parts  = splitStoryPages(value);
+    const parsed = parts.length
+      ? parts.map((html, i) => ({ ...htmlToPage(html), audio: audio[i] || null }))
+      : [{ ...BLANK }];
     setPages(parsed);
     setSel(0);
     selRef.current = 0;
@@ -116,6 +120,7 @@ export default function StoryPageEditor({ value = '', onChange }) {
   function emit(newPages) {
     const content = newPages.map(pageToHtml).join('\n<!-- PAGE -->\n');
     onChange?.(content);
+    onAudioChange?.(newPages.map(p => p.audio || null)); // أصوات الصفحات بترتيبها الجديد
   }
 
   function patchPage(idx, patch) {
@@ -330,6 +335,7 @@ export default function StoryPageEditor({ value = '', onChange }) {
                 ? <img src={p.imageUrl} style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', borderRadius:6, opacity:.75 }} alt="" />
                 : <LayoutSvg type={p.layout} />
               }
+              {p.audio && <span title="لهذه الصفحة صوت" style={{ position:'absolute', top:3, left:3, zIndex:1, fontSize:'.7rem', lineHeight:1 }}>🔊</span>}
               <span className="spe-thumb-num">{i + 1}</span>
             </div>
           ))}
@@ -453,7 +459,7 @@ export default function StoryPageEditor({ value = '', onChange }) {
           <button
             className="spe-cbtn del"
             disabled={pages.length <= 1}
-            onClick={() => { if (confirm(`هل تريد حذف الصفحة ${sel + 1}؟`)) removePage(sel); }}
+            onClick={() => { if (confirm(`هل تريد حذف الصفحة ${sel + 1}؟${pages[sel]?.audio ? '\nسيُحذف صوت هذه الصفحة أيضاً عند الحفظ.' : ''}`)) removePage(sel); }}
           >
             🗑 حذف الصفحة
           </button>

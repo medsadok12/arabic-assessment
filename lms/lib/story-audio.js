@@ -1,13 +1,32 @@
 /* ════════════════════════════════════════════════════════════════
-   صوت قراءة القصة — ثوابت ومساعدات مشتركة بين الخادم والعميل
+   صوت قراءة القصة — صوت مستقل لكل صفحة
+   ثوابت ومساعدات مشتركة بين الخادم والعميل.
    الملفات تُرفع مباشرة من المتصفح إلى Supabase Storage عبر رابط موقَّع
-   (لتجاوز حد Vercel ‎4.5MB لجسم الطلب)، ويُخزَّن الرابط العام في
-   stories.audio_url (هجرة lms/supabase/add_stories_audio_url.sql).
+   (لتجاوز حد Vercel ‎4.5MB لجسم الطلب)، وتُخزَّن روابطها العامة في
+   stories.page_audio — مصفوفة بفهرس الصفحة: page_audio[i] = صوت الصفحة i
+   أو null (هجرة lms/supabase/stories_page_audio.sql).
 ════════════════════════════════════════════════════════════════ */
 
 export const STORY_AUDIO_BUCKET = 'media';
 export const STORY_AUDIO_PREFIX = 'stories/audio/';
 export const STORY_AUDIO_MAX_MB = 25;
+export const STORY_MAX_PAGES    = 300;
+
+export const STORY_PAGE_SEPARATOR = '<!-- PAGE -->';
+
+/* تقسيم محتوى القصة إلى صفحات — المرجع الوحيد لفهرسة الصفحات.
+   القارئ ولوحة الصوت ومحرر الصفحات والخادم كلها تستخدمه، فيبقى
+   page_audio[i] مطابقاً للصفحة i نفسها في كل مكان. */
+export function splitStoryPages(content) {
+  return String(content || '').split(STORY_PAGE_SEPARATOR).map(p => p.trim()).filter(Boolean);
+}
+
+/* مصفوفة أصوات بطول عدد الصفحات بالضبط: null لكل صفحة بلا صوت */
+export function normalizePageAudio(list, pageCount) {
+  const src = Array.isArray(list) ? list : [];
+  return Array.from({ length: Math.max(0, pageCount) }, (_, i) =>
+    (typeof src[i] === 'string' && src[i]) ? src[i] : null);
+}
 
 /* الأنواع المقبولة ← الامتداد المحفوظ */
 export const STORY_AUDIO_TYPES = {

@@ -5,13 +5,15 @@ import DOMPurify from 'isomorphic-dompurify';
 import StoryFlipBook from '../../../../components/StoryFlipBook';
 import StoryAudioPlayer from '../../../../components/StoryAudioPlayer';
 import { childFetch } from '../../../../lib/child-fetch';
+import { splitStoryPages, normalizePageAudio } from '../../../../lib/story-audio';
 
 const LEVEL_LABELS = { 1: 'مستوى 1', 2: 'مستوى 2', 3: 'مستوى 3' };
 const SR_FONT_STEPS = ['.78rem', '.9rem', '1.0rem', '1.12rem', '1.28rem', '1.44rem'];
 
 export default function StoryReader({ story, alreadyRead, isTeacher }) {
-  const pages       = (story.content || '').split('<!-- PAGE -->').map(p => p.trim()).filter(Boolean);
+  const pages       = splitStoryPages(story.content);
   const isMultiPage = pages.length > 1;
+  const pageAudio   = normalizePageAudio(story.page_audio, pages.length); // صوت كل صفحة بفهرسها
 
   const [read,       setRead]       = useState(alreadyRead);
   const [loading,    setLoading]    = useState(false);
@@ -81,8 +83,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
     setLoading(false);
   };
 
-  const accent   = story.accent || '#10b981';
-  const audioUrl = story.audio_url || null;
+  const accent = story.accent || '#10b981';
 
   /* ══════════════════════════════════════
      الهاتف + متعدد الصفحات
@@ -106,7 +107,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
           loading={loading}
           isTeacher={isTeacher}
           points={story.points || 10}
-          audioUrl={audioUrl}
+          pageAudio={pageAudio}
           mode="fullscreen"
         />
 
@@ -165,7 +166,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
               )}
             </div>
           </div>
-          {audioUrl && <StoryAudioPlayer src={audioUrl} style={{ maxWidth:760, margin:'0 auto 18px' }} />}
+          {pageAudio[0] && <StoryAudioPlayer tracks={[{ page: 0, src: pageAudio[0] }]} style={{ maxWidth:760, margin:'0 auto 18px' }} />}
           <div className="sr-prog-bar"><div className="sr-prog-fill" style={{ width:`${scrollPct}%`, background:accent }} /></div>
           <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:8, maxWidth:760, margin:'0 auto 10px' }}>
             <span style={{ color:'#94a3b8', fontSize:'.72rem', fontWeight:700 }}>حجم الخط</span>
@@ -229,7 +230,6 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
                 )}
               </div>
             </div>
-            {audioUrl && <StoryAudioPlayer src={audioUrl} style={{ marginTop:14 }} />}
           </div>
 
           {/* الكتاب — أكبر قدر ممكن */}
@@ -241,6 +241,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
             loading={loading}
             isTeacher={isTeacher}
             points={story.points || 10}
+            pageAudio={pageAudio}
             mode="spread"
           />
         </div>

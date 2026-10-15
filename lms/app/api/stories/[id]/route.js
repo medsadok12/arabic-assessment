@@ -2,15 +2,18 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/auth-role';
-import { STORY_AUDIO_BUCKET, storyAudioPathFromUrl } from '../../../../lib/story-audio';
+import {
+  STORY_AUDIO_BUCKET, STORY_MAX_PAGES,
+  storyAudioPathFromUrl, splitStoryPages, normalizePageAudio,
+} from '../../../../lib/story-audio';
 
 export const dynamic = 'force-dynamic';
 
-// حذف ملف صوت قديم من التخزين — أفضل جهد: فشله لا يُفشل العملية الأصلية
-async function removeStoryAudio(admin, url) {
-  const path = storyAudioPathFromUrl(url);
-  if (!path) return;
-  try { await admin.storage.from(STORY_AUDIO_BUCKET).remove([path]); } catch {}
+// حذف ملفات صوت لم تعد مستخدمة من التخزين — أفضل جهد: فشله لا يُفشل العملية الأصلية
+async function removeStoryAudio(admin, urls) {
+  const paths = urls.map(storyAudioPathFromUrl).filter(Boolean);
+  if (!paths.length) return;
+  try { await admin.storage.from(STORY_AUDIO_BUCKET).remove(paths); } catch {}
 }
 
 async function getTeacher() {
@@ -53,21 +56,32 @@ export async function PUT(req, { params }) {
 
     const { id } = params;
     const body = await req.json();
-    const { title, icon, level, length, content, status, points, accent, bg, border_color, audio_url } = body;
+    const { title, icon, level, length, content, status, points, accent, bg, border_color, page_audio } = body;
 
     const admin = createAdminClient();
     const updates = {
       updated_at: new Date().toISOString(),
     };
 
-    // صوت القصة: يُقبل فقط رابط من مجلد صوت القصص في تخزيننا، أو null للحذف
-    let oldAudioUrl = null;
-    if (audio_url !== undefined) {
-      if (audio_url && !storyAudioPathFromUrl(audio_url))
-        return NextResponse.json({ error: 'رابط الصوت غير صالح' }, { status: 400 });
-      updates.audio_url = audio_url || null;
-      const { data: current } = await admin.from('stories').select('audio_url').eq('id', id).maybeSingle();
-      oldAudioUrl = current?.audio_url || null;
+    // أصوات الصفحات: مصفوفة بفهرس الصفحة، كل عنصر رابط من مجلد صوت القصص
+    // في تخزيننا أو null. تُضبط على عدد صفحات المحتوى (الجديد إن أُرسل).
+    let droppedAudio = [];
+    if (page_audio !== undefined) {
+      if (!Array.isArray(page_audio) || page_audio.length > STORY_MAX_PAGES)
+        return NextResponse.json({ error: 'بيانات أصوات الصفحات غير صالحة' }, { status: 400 });
+      if (page_audio.some(u => u && !storyAudioPathFromUrl(u)))
+        return NextResponse.json({ error: 'رابط صوت غير صالح' }, { status: 400 });
+
+      const { data: current, error: curErr } = await admin
+        .from('stories').select('content, page_audio').eq('id', id).maybeSingle();
+      if (curErr) throw curErr;
+      if (!current) return NextResponse.json({ error: 'القصة غير موجودة' }, { status: 404 });
+
+      const pageCount = splitStoryPages(content !== undefined ? content : current.content).length;
+      updates.page_audio = normalizePageAudio(page_audio, pageCount);
+      const kept = new Set(updates.page_audio.filter(Boolean));
+      droppedAudio = (Array.isArray(current.page_audio) ? current.page_audio : [])
+        .filter(u => u && !kept.has(u));
     }
     if (title       !== undefined) updates.title        = title;
     if (icon        !== undefined) updates.icon         = icon;
@@ -88,7 +102,7 @@ export async function PUT(req, { params }) {
       .single();
 
     if (error) throw error;
-    if (oldAudioUrl && oldAudioUrl !== updates.audio_url) await removeStoryAudio(admin, oldAudioUrl);
+    if (droppedAudio.length) await removeStoryAudio(admin, droppedAudio);
     return NextResponse.json({ story: data });
   } catch (e) {
     return NextResponse.json({ error: e.message || 'فشل التحديث' }, { status: 500 });
@@ -103,10 +117,10 @@ export async function DELETE(req, { params }) {
 
     const { id } = params;
     const admin = createAdminClient();
-    const { data: current } = await admin.from('stories').select('audio_url').eq('id', id).maybeSingle();
+    const { data: current } = await admin.from('stories').select('page_audio').eq('id', id).maybeSingle();
     const { error } = await admin.from('stories').delete().eq('id', id);
     if (error) throw error;
-    if (current?.audio_url) await removeStoryAudio(admin, current.audio_url);
+    if (Array.isArray(current?.page_audio)) await removeStoryAudio(admin, current.page_audio.filter(Boolean));
     return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json({ error: e.message || 'فشل الحذف' }, { status: 500 });

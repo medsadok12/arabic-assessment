@@ -22,30 +22,6 @@ const EMPTY_FORM = {
   accent: '#10b981', bg: '#ecfdf5', border_color: '#6ee7b7',
 };
 
-/* ── تحويل content ↔ مصفوفة صفحات ── */
-function parseToPages(content) {
-  const blocks = (content || '').split('<!-- PAGE -->').map(b => b.trim()).filter(Boolean);
-  if (!blocks.length) return [{ html: '', imgUrl: '' }];
-  return blocks.map(block => {
-    const m = block.match(/^<img\s+class="sp-img"\s+src="([^"]*)"[^>]*>/i);
-    return m
-      ? { imgUrl: m[1], html: block.slice(m[0].length).trim() }
-      : { imgUrl: '', html: block };
-  });
-}
-
-function pagesToContent(pages) {
-  return pages
-    .filter(p => p.html.trim() || p.imgUrl)
-    .map(p => {
-      const imgTag = p.imgUrl
-        ? `<img class="sp-img" src="${p.imgUrl}" alt="" style="width:100%;max-height:260px;object-fit:cover;border-radius:14px;margin-bottom:18px;display:block;">`
-        : '';
-      return imgTag + (imgTag && p.html ? '\n' : '') + p.html;
-    })
-    .join('\n<!-- PAGE -->\n');
-}
-
 /* ══════════════════════════════════════════════════════
    ألوان شريط أدوات المحرر
 ══════════════════════════════════════════════════════ */
@@ -294,36 +270,13 @@ export default function StoryManager({ initialStories }) {
   const [deleting,  setDeleting]  = useState(null);
   const [msg,       setMsg]       = useState(null);
   const [preview,   setPreview]   = useState(false);
-  const [pages,     setPages]     = useState([{ html: '', imgUrl: '' }]);
-  const [uploading, setUploading] = useState(null); // index of page being uploaded
+  const [pageAudio, setPageAudio] = useState([]);  // صوت كل صفحة — يتحرك مع صفحته داخل StoryPageEditor
 
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  /* ── صفحات ── */
-  const updatePage  = (i, key, val) => setPages(p => p.map((pg, idx) => idx === i ? { ...pg, [key]: val } : pg));
-  const addPage     = () => setPages(p => [...p, { html: '', imgUrl: '' }]);
-  const deletePage  = (i) => setPages(p => p.filter((_, idx) => idx !== i));
-  const movePage    = (i, dir) => setPages(p => {
-    const arr = [...p];
-    [arr[i + dir], arr[i]] = [arr[i], arr[i + dir]];
-    return arr;
-  });
-  const uploadPageImg = async (i, file) => {
-    setUploading(i);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const res  = await fetch('/api/stories/upload', { method: 'POST', body: fd });
-      const json = await res.json();
-      if (json.url) updatePage(i, 'imgUrl', json.url);
-      else setMsg({ ok: false, text: `❌ فشل رفع الصورة: ${json.error || ''}` });
-    } catch { setMsg({ ok: false, text: '❌ خطأ في رفع الصورة' }); }
-    setUploading(null);
-  };
-
   const openCreate = () => {
     setForm(EMPTY_FORM);
-    setPages([{ html: '', imgUrl: '' }]);
+    setPageAudio([]);
     setEditId(null); setMsg(null); setPreview(false); setView('create');
   };
   const openEdit   = (s) => {
@@ -339,7 +292,7 @@ export default function StoryManager({ initialStories }) {
       bg:           s.bg || '#ecfdf5',
       border_color: s.border_color || '#6ee7b7',
     });
-    setPages(parseToPages(s.content));
+    setPageAudio(Array.isArray(s.page_audio) ? s.page_audio : []);
     setEditId(s.id);
     setMsg(null);
     setPreview(false);
@@ -353,11 +306,13 @@ export default function StoryManager({ initialStories }) {
     try {
       const method  = view === 'edit' ? 'PUT' : 'POST';
       const url     = view === 'edit' ? `/api/stories/${editId}` : '/api/stories';
-      const content = pagesToContent(pages);
+      // المحتوى يأتي من StoryPageEditor عبر form.content (لا من نسخة قديمة للصفحات)،
+      // ومعه أصوات الصفحات بترتيبها الحالي حتى يبقى كل صوت مع صفحته
+      const body = view === 'edit' ? { ...form, page_audio: pageAudio } : form;
       const res  = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, content }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok || json.error) throw new Error(json.error || 'فشل الحفظ');
@@ -747,6 +702,8 @@ export default function StoryManager({ initialStories }) {
                       key={editId || 'new'}
                       value={form.content}
                       onChange={v => f('content', v)}
+                      audio={pageAudio}
+                      onAudioChange={setPageAudio}
                     />
                   </div>
                 </div>
