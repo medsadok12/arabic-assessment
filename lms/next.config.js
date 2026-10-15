@@ -12,8 +12,9 @@ const SECURITY_HEADERS = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   // Prevent opener attacks (e.g. tab-napping); allow-popups needed for Google Meet links
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
-  // Restrict browser features we don't need
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
+  // Restrict browser features we don't need — الميكروفون مسموح لنفس الموقع فقط
+  // (تسجيل صوت القصص في bogga + تسجيلات المعلم في الألعاب ومساحة المعلمين)
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=(), interest-cohort=()' },
   // Content Security Policy — permissive enough for Next.js inline styles/scripts
   {
     key: 'Content-Security-Policy',

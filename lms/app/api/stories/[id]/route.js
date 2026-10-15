@@ -2,8 +2,16 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/auth-role';
+import { STORY_AUDIO_BUCKET, storyAudioPathFromUrl } from '../../../../lib/story-audio';
 
 export const dynamic = 'force-dynamic';
+
+// حذف ملف صوت قديم من التخزين — أفضل جهد: فشله لا يُفشل العملية الأصلية
+async function removeStoryAudio(admin, url) {
+  const path = storyAudioPathFromUrl(url);
+  if (!path) return;
+  try { await admin.storage.from(STORY_AUDIO_BUCKET).remove([path]); } catch {}
+}
 
 async function getTeacher() {
   const supabase = createClient();
@@ -45,12 +53,22 @@ export async function PUT(req, { params }) {
 
     const { id } = params;
     const body = await req.json();
-    const { title, icon, level, length, content, status, points, accent, bg, border_color } = body;
+    const { title, icon, level, length, content, status, points, accent, bg, border_color, audio_url } = body;
 
     const admin = createAdminClient();
     const updates = {
       updated_at: new Date().toISOString(),
     };
+
+    // صوت القصة: يُقبل فقط رابط من مجلد صوت القصص في تخزيننا، أو null للحذف
+    let oldAudioUrl = null;
+    if (audio_url !== undefined) {
+      if (audio_url && !storyAudioPathFromUrl(audio_url))
+        return NextResponse.json({ error: 'رابط الصوت غير صالح' }, { status: 400 });
+      updates.audio_url = audio_url || null;
+      const { data: current } = await admin.from('stories').select('audio_url').eq('id', id).maybeSingle();
+      oldAudioUrl = current?.audio_url || null;
+    }
     if (title       !== undefined) updates.title        = title;
     if (icon        !== undefined) updates.icon         = icon;
     if (level       !== undefined) updates.level        = parseInt(level);
@@ -70,6 +88,7 @@ export async function PUT(req, { params }) {
       .single();
 
     if (error) throw error;
+    if (oldAudioUrl && oldAudioUrl !== updates.audio_url) await removeStoryAudio(admin, oldAudioUrl);
     return NextResponse.json({ story: data });
   } catch (e) {
     return NextResponse.json({ error: e.message || 'فشل التحديث' }, { status: 500 });
@@ -84,8 +103,10 @@ export async function DELETE(req, { params }) {
 
     const { id } = params;
     const admin = createAdminClient();
+    const { data: current } = await admin.from('stories').select('audio_url').eq('id', id).maybeSingle();
     const { error } = await admin.from('stories').delete().eq('id', id);
     if (error) throw error;
+    if (current?.audio_url) await removeStoryAudio(admin, current.audio_url);
     return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json({ error: e.message || 'فشل الحذف' }, { status: 500 });

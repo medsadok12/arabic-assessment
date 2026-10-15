@@ -3,6 +3,7 @@ import { useRef, useState, useCallback, forwardRef, useEffect } from 'react';
 import Link from 'next/link';
 import HTMLFlipBook from 'react-pageflip';
 import DOMPurify from 'isomorphic-dompurify';
+import StoryAudioPlayer from './StoryAudioPlayer';
 
 /* ── صفحة واحدة ── */
 const StoryPage = forwardRef(function StoryPage({ html, pageNum, total, isRight, mirrorX }, ref) {
@@ -89,6 +90,7 @@ function calcDims(mode) {
 ══════════════════════════════════════════════════════ */
 export default function StoryFlipBook({
   pages, accent = '#10b981', onComplete, read, loading, isTeacher, points,
+  audioUrl = null,
   mode = 'default',
 }) {
   const bookRef     = useRef(null);
@@ -252,6 +254,15 @@ export default function StoryFlipBook({
             ))}
           </HTMLFlipBook>
         </div>
+
+        {/* زر الاستماع لقراءة القصة — عائم في الزاوية السفلى اليمنى (خارج منطقة قلب الصفحات) */}
+        {audioUrl && (
+          <StoryAudioPlayer
+            src={audioUrl}
+            variant="fab"
+            style={{ position: 'absolute', bottom: 22, right: 14, zIndex: 30 }}
+          />
+        )}
 
         {isLastPage && !isTeacher && (
           <div style={{ position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)', zIndex: 30 }}>

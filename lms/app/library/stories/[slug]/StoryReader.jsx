@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import DOMPurify from 'isomorphic-dompurify';
 import StoryFlipBook from '../../../../components/StoryFlipBook';
+import StoryAudioPlayer from '../../../../components/StoryAudioPlayer';
 import { childFetch } from '../../../../lib/child-fetch';
 
 const LEVEL_LABELS = { 1: 'مستوى 1', 2: 'مستوى 2', 3: 'مستوى 3' };
@@ -80,7 +81,8 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
     setLoading(false);
   };
 
-  const accent = story.accent || '#10b981';
+  const accent   = story.accent || '#10b981';
+  const audioUrl = story.audio_url || null;
 
   /* ══════════════════════════════════════
      الهاتف + متعدد الصفحات
@@ -104,6 +106,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
           loading={loading}
           isTeacher={isTeacher}
           points={story.points || 10}
+          audioUrl={audioUrl}
           mode="fullscreen"
         />
 
@@ -162,6 +165,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
               )}
             </div>
           </div>
+          {audioUrl && <StoryAudioPlayer src={audioUrl} style={{ maxWidth:760, margin:'0 auto 18px' }} />}
           <div className="sr-prog-bar"><div className="sr-prog-fill" style={{ width:`${scrollPct}%`, background:accent }} /></div>
           <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:8, maxWidth:760, margin:'0 auto 10px' }}>
             <span style={{ color:'#94a3b8', fontSize:'.72rem', fontWeight:700 }}>حجم الخط</span>
@@ -225,6 +229,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
                 )}
               </div>
             </div>
+            {audioUrl && <StoryAudioPlayer src={audioUrl} style={{ marginTop:14 }} />}
           </div>
 
           {/* الكتاب — أكبر قدر ممكن */}

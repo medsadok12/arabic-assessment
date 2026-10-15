@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import StoryAudioPanel from '../StoryAudioPanel';
 
 /* هذا المكوّن استُخرج حرفياً من lms/app/bogga/page.jsx (تفكيك الملف الأحادي).
    الحالة والمعالجات بقيت في الصفحة الأم وتصل هنا كـprops — سلوك مطابق 100%. */
@@ -7,6 +8,7 @@ export default function StoriesTab({ lang }) {
   const [stories,  setStories]  = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [toggling, setToggling] = useState(null);
+  const [audioFor, setAudioFor] = useState(null); // id القصة المفتوحة لوحة صوتها
 
   useEffect(() => {
     fetch('/api/stories')
@@ -73,50 +75,67 @@ export default function StoriesTab({ lang }) {
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           {stories.map(s => (
-            <div key={s.id} className="mobile-stack" style={{
-              display:'flex', alignItems:'center', gap:14,
-              background:'#fff', borderRadius:16, padding:'14px 18px',
-              border:'1.5px solid #f1f5f9', boxShadow:'0 2px 10px rgba(0,0,0,.05)',
-            }}>
-              <div className="mobile-stack-main" style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:0 }}>
-                <div style={{ width:48, height:48, borderRadius:12, background: s.bg || '#ecfdf5', border:`2px solid ${s.border_color || '#6ee7b7'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.7rem', flexShrink:0 }}>
-                  {s.icon || '📖'}
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontWeight:800, color:'#1e293b', fontSize:'.92rem', marginBottom:5, wordBreak:'break-word' }}>{s.title}</div>
-                  <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
-                    {s.status === 'published'
-                      ? <span style={{ background:'#d1fae5', color:'#065f46', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:900, border:'1.5px solid #86efac' }}>✅ منشورة</span>
-                      : <span style={{ background:'#fef3c7', color:'#78350f', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:900, border:'1.5px solid #fde68a' }}>✏️ مسودة</span>
-                    }
-                    <span style={{ background:'#f8fafc', color:'#64748b', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:700, border:'1px solid #e2e8f0' }}>مستوى {s.level || 1}</span>
-                    <span style={{ background:'#f8fafc', color:'#64748b', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:700, border:'1px solid #e2e8f0' }}>⭐ {s.points || 10} نقطة</span>
+            <div key={s.id} style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              <div className="mobile-stack" style={{
+                display:'flex', alignItems:'center', gap:14,
+                background:'#fff', borderRadius:16, padding:'14px 18px',
+                border:'1.5px solid #f1f5f9', boxShadow:'0 2px 10px rgba(0,0,0,.05)',
+              }}>
+                <div className="mobile-stack-main" style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:0 }}>
+                  <div style={{ width:48, height:48, borderRadius:12, background: s.bg || '#ecfdf5', border:`2px solid ${s.border_color || '#6ee7b7'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.7rem', flexShrink:0 }}>
+                    {s.icon || '📖'}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:800, color:'#1e293b', fontSize:'.92rem', marginBottom:5, wordBreak:'break-word' }}>{s.title}</div>
+                    <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
+                      {s.status === 'published'
+                        ? <span style={{ background:'#d1fae5', color:'#065f46', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:900, border:'1.5px solid #86efac' }}>✅ منشورة</span>
+                        : <span style={{ background:'#fef3c7', color:'#78350f', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:900, border:'1.5px solid #fde68a' }}>✏️ مسودة</span>
+                      }
+                      <span style={{ background:'#f8fafc', color:'#64748b', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:700, border:'1px solid #e2e8f0' }}>مستوى {s.level || 1}</span>
+                      <span style={{ background:'#f8fafc', color:'#64748b', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:700, border:'1px solid #e2e8f0' }}>⭐ {s.points || 10} نقطة</span>
+                      {s.audio_url && <span style={{ background:'#fdf6e3', color:'#1A2B4A', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:900, border:'1.5px solid #E8B84B' }}>🔊 بصوت</span>}
+                    </div>
                   </div>
                 </div>
+                <div className="mobile-stack-actions" style={{ display:'flex', gap:8, flexShrink:0 }}>
+                  {s.status === 'published' && (
+                    <a className="mobile-stack-act" href={`/library/stories/${s.slug}`} target="_blank" style={{ background:'#ecfdf5', color:'#065f46', border:'1.5px solid #86efac', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:700, textDecoration:'none' }}>
+                      👁 عرض
+                    </a>
+                  )}
+                  <button
+                    className="mobile-stack-act"
+                    onClick={() => setAudioFor(audioFor === s.id ? null : s.id)}
+                    aria-expanded={audioFor === s.id}
+                    style={{ background: audioFor === s.id ? '#1A2B4A' : '#E8B84B', color: audioFor === s.id ? '#fff' : '#1A2B4A', border:'none', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:800, cursor:'pointer' }}
+                  >
+                    {audioFor === s.id ? '✖ إغلاق الصوت' : s.audio_url ? '🔊 صوت القصة' : '🎙️ أضف صوتاً'}
+                  </button>
+                  <button
+                    className="mobile-stack-act"
+                    onClick={() => handleToggle(s)}
+                    disabled={toggling === s.id}
+                    style={{ background: s.status==='published'?'#fef3c7':'#d1fae5', color: s.status==='published'?'#78350f':'#065f46', border:'none', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:700, cursor:'pointer' }}
+                  >
+                    {toggling === s.id ? '...' : s.status==='published' ? '⬇️ إلغاء النشر' : '🚀 نشر'}
+                  </button>
+                  <button
+                    className="mobile-stack-act"
+                    onClick={() => handleDelete(s.id)}
+                    disabled={deleting === s.id}
+                    style={{ background:'#fee2e2', color:'#b91c1c', border:'none', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:700, cursor:'pointer' }}
+                  >
+                    {deleting === s.id ? '...' : '🗑'}
+                  </button>
+                </div>
               </div>
-              <div className="mobile-stack-actions" style={{ display:'flex', gap:8, flexShrink:0 }}>
-                {s.status === 'published' && (
-                  <a className="mobile-stack-act" href={`/library/stories/${s.slug}`} target="_blank" style={{ background:'#ecfdf5', color:'#065f46', border:'1.5px solid #86efac', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:700, textDecoration:'none' }}>
-                    👁 عرض
-                  </a>
-                )}
-                <button
-                  className="mobile-stack-act"
-                  onClick={() => handleToggle(s)}
-                  disabled={toggling === s.id}
-                  style={{ background: s.status==='published'?'#fef3c7':'#d1fae5', color: s.status==='published'?'#78350f':'#065f46', border:'none', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:700, cursor:'pointer' }}
-                >
-                  {toggling === s.id ? '...' : s.status==='published' ? '⬇️ إلغاء النشر' : '🚀 نشر'}
-                </button>
-                <button
-                  className="mobile-stack-act"
-                  onClick={() => handleDelete(s.id)}
-                  disabled={deleting === s.id}
-                  style={{ background:'#fee2e2', color:'#b91c1c', border:'none', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:700, cursor:'pointer' }}
-                >
-                  {deleting === s.id ? '...' : '🗑'}
-                </button>
-              </div>
+              {audioFor === s.id && (
+                <StoryAudioPanel
+                  story={s}
+                  onSaved={(updated) => setStories(p => p.map(x => x.id === updated.id ? updated : x))}
+                />
+              )}
             </div>
           ))}
         </div>
