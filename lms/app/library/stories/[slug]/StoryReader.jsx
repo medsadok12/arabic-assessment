@@ -8,7 +8,6 @@ import { childFetch } from '../../../../lib/child-fetch';
 import { splitStoryPages, normalizePageAudio } from '../../../../lib/story-audio';
 
 const LEVEL_LABELS = { 1: 'مستوى 1', 2: 'مستوى 2', 3: 'مستوى 3' };
-const SR_FONT_STEPS = ['.78rem', '.9rem', '1.0rem', '1.12rem', '1.28rem', '1.44rem'];
 
 export default function StoryReader({ story, alreadyRead, isTeacher }) {
   const pages       = splitStoryPages(story.content);
@@ -22,7 +21,6 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
   const [scrollPct,  setScrollPct]  = useState(0);
   const [btnReady,   setBtnReady]   = useState(alreadyRead);
   const [isMobile,   setIsMobile]   = useState(false);
-  const [srFontIdx,  setSrFontIdx]  = useState(3); // 1.12rem — matches .sr-scroll-box default
   const contentRef = useRef(null);
 
   /* قصة بصفحة واحدة: زر استماع تحت النص (المتعددة الصفحات يتولاها StoryFlipBook) */
@@ -34,24 +32,6 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('aarem-story-font');
-      if (saved !== null) {
-        const idx = parseInt(saved, 10);
-        if (idx >= 0 && idx < SR_FONT_STEPS.length) setSrFontIdx(idx);
-      }
-    } catch {}
-  }, []);
-
-  const changeSrFont = (dir) => {
-    setSrFontIdx(prev => {
-      const next = Math.max(0, Math.min(SR_FONT_STEPS.length - 1, prev + dir));
-      try { localStorage.setItem('aarem-story-font', String(next)); } catch {}
-      return next;
-    });
-  };
 
   /* تتبع التمرير للقصص ذات الصفحة الواحدة */
   useEffect(() => {
@@ -170,22 +150,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
             </div>
           </div>
           <div className="sr-prog-bar"><div className="sr-prog-fill" style={{ width:`${scrollPct}%`, background:accent }} /></div>
-          <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:8, maxWidth:760, margin:'0 auto 10px' }}>
-            <span style={{ color:'#94a3b8', fontSize:'.72rem', fontWeight:700 }}>حجم الخط</span>
-            <button
-              onClick={() => changeSrFont(-1)}
-              disabled={srFontIdx === 0}
-              style={{ border:'1.5px solid #e2e8f0', background:'#f8fafc', borderRadius:10, padding:'4px 10px', fontSize:'.76rem', fontWeight:900, cursor:'pointer', color:'#475569', fontFamily:'inherit', opacity: srFontIdx === 0 ? .3 : 1 }}
-              aria-label="تصغير الخط"
-            >أ−</button>
-            <button
-              onClick={() => changeSrFont(+1)}
-              disabled={srFontIdx === SR_FONT_STEPS.length - 1}
-              style={{ border:'1.5px solid #e2e8f0', background:'#f8fafc', borderRadius:10, padding:'4px 10px', fontSize:'.76rem', fontWeight:900, cursor:'pointer', color:'#475569', fontFamily:'inherit', opacity: srFontIdx === SR_FONT_STEPS.length - 1 ? .3 : 1 }}
-              aria-label="تكبير الخط"
-            >أ+</button>
-          </div>
-          <div className="sr-scroll-box" ref={contentRef} style={{ fontSize: SR_FONT_STEPS[srFontIdx] }}>
+          <div className="sr-scroll-box" ref={contentRef}>
             {story.content
               ? <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(story.content) }} />
               : <p style={{ color:'#94a3b8', textAlign:'center', padding:'40px 0' }}>محتوى القصة سيضاف قريباً...</p>
