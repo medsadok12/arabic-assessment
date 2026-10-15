@@ -8,14 +8,17 @@ import FloatingSidebar from '../components/FloatingSidebar';
 import SmartFAQ from '../components/SmartFAQ';
 import TeamShowcase from '../components/TeamShowcase';
 import PricingSection from '../components/PricingSection';
-import { Target, FileBarChart, Globe, Smartphone, Lock, Zap } from 'lucide-react';
+import {
+  ClipboardCheck, BookOpen, Gamepad2, FileBarChart, Target, Languages, Zap, MonitorSmartphone, ShieldCheck,
+} from 'lucide-react';
 import { createClient } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getRole } from '../lib/auth-role';
 
 const WHATSAPP_HREF = 'https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0';
-const FEATURE_ICONS = [Target, FileBarChart, Globe, Smartphone, Lock, Zap];
-const FEATURE_COLORS = ['gold', 'purple', 'green', 'gold', 'purple', 'green'];
+/* أيقونة ولون لكل بطاقة من البطاقات التسع في landing.features — بنفس الترتيب */
+const FEATURE_ICONS = [ClipboardCheck, BookOpen, Gamepad2, FileBarChart, Target, Languages, Zap, MonitorSmartphone, ShieldCheck];
+const FEATURE_COLORS = ['gold', 'purple', 'green', 'gold', 'purple', 'green', 'gold', 'purple', 'green'];
 
 /* فصل «فهيم معك في كل خطوة» البنفسجي — مخفي بطلب الأستاذ محمد (2026-10-15).
    لإعادته: true فقط (النصوص في translations/index.js باقية كما هي). */
@@ -148,7 +151,7 @@ export default function LandingPage() {
           .features-about{ background:#EDE5D8; padding:80px 0; }
           .features-about h2{ text-align:center; font-size:1.9rem; font-weight:800; color:var(--primary); margin-bottom:12px; }
           .features-about .fa-sub{ text-align:center; color:var(--muted); font-size:.97rem; margin-bottom:48px; }
-          .fa-grid{ display:flex; gap:52px; align-items:center; flex-wrap:wrap; }
+          .fa-grid{ display:flex; gap:52px; align-items:flex-start; flex-wrap:wrap; }
           .fa-cards{ flex:1 1 380px; min-width:0; display:flex; flex-direction:column; gap:14px; }
           .fa-card{
             display:flex; align-items:center; gap:16px;
