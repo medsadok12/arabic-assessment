@@ -416,6 +416,9 @@ export default function Navbar({ user: initialUser, sessionCountdown = null, vie
 
   const role      = getRole(user) ?? 'student';
   const fullName  = user?.user_metadata?.full_name ?? '';
+  // صفحات قراءة القصص (المكتبة + رابط المشاركة العام /story/) مساحة للطفل —
+  // زر «محادثات الفريق» العائم خاص بالمعلمين والإدارة ويغطي أزرار الكتاب، فلا يُعرض فيها.
+  const isStoryPage = !!pathname && (pathname.startsWith('/story/') || pathname.startsWith('/library/stories/'));
   // عند عرض لوحة طفل مُضاف، تعرض القائمة العلوية اسم الطفل المعروض لا اسم
   // حساب الدخول الجذر (displayName يمرَّر من DashboardContent). صورة الأفاتار
   // تبقى من حساب الدخول (الطفل alias بلا صورة → تُعرض أوائل اسمه).
@@ -588,7 +591,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null, vie
       </div>
 
     </nav>
-    <TeamChat user={user} />
+    {!isStoryPage && <TeamChat user={user} />}
     {user && <BottomNav navLinks={navLinks} pathname={pathname} role={role} viewingChildId={viewingChildId} />}
     {user && role === 'student' && <PointsBadge viewingChildId={viewingChildId} />}
     </>
