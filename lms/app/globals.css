@@ -919,6 +919,38 @@ body {
   body { padding-bottom: 120px; }
 }
 
+/* ── Mobile compact variant (FloatingSidebar compact — /landing-v2): دائرتان صغيرتان
+   في الزاوية بدل الشريط العريض، وتختفيان أثناء التمرير للأسفل ── */
+@media (max-width: 768px) {
+  .fsr.fsr--compact {
+    left: auto;
+    right: 12px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    width: auto;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    transition: transform .25s ease, opacity .25s ease;
+  }
+  .fsr--compact .fsr-item {
+    flex: none;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border-radius: 50%;
+    box-shadow: 0 4px 14px rgba(26,43,74,.25);
+  }
+  .fsr--compact .fsr-icon { width: 48px; height: 48px; border-radius: 50%; }
+  .fsr--compact .fsr-label { display: none; }
+  .fsr--compact .fsr-wa .fsr-icon  { background: #1a7c40; color: #fff; }
+  .fsr--compact .fsr-sup .fsr-icon { background: #7C5CD9; color: #fff; }
+  .fsr--compact.fsr--hidden { transform: translateY(160%); opacity: 0; pointer-events: none; }
+}
+
 /* ── Mobile: dashboard & shared components ── */
 @media (max-width: 640px) {
   .page-wrap { padding: 20px 0 120px; }

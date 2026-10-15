@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { MessageCircle, BookOpen } from 'lucide-react';
 
@@ -14,7 +14,7 @@ function RailItem({ type, href, external, Icon, label, cls, onClick }) {
       <span className="fsr-label">{label}</span>
     </>
   );
-  const shared = { className: `fsr-item ${cls}` };
+  const shared = { className: `fsr-item ${cls}`, 'aria-label': label.replace('\n', ' ') };
 
   if (onClick) return <button onClick={onClick} {...shared}>{inner}</button>;
   if (type === 'link') return <Link href={href} {...shared}>{inner}</Link>;
@@ -28,7 +28,33 @@ function RailItem({ type, href, external, Icon, label, cls, onClick }) {
   );
 }
 
-export default function FloatingSidebar() {
+/* compact (الصفحة الرئيسية الجديدة /landing-v2 فقط): على الجوال دائرتان صغيرتان في
+   الزاوية بدل الشريط السفلي العريض، تظهران بعد تجاوز قسم البداية وتختفيان أثناء
+   التمرير للأسفل كي لا تحجبا النص الذي يقرؤه الزائر. الحاسوب بلا تغيير. */
+function useCompactVisibility(enabled) {
+  const [hidden, setHidden] = useState(enabled);
+  const lastY = useRef(0);
+  useEffect(() => {
+    if (!enabled) return undefined;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const goingDown = y > lastY.current + 4;
+      const goingUp = y < lastY.current - 4;
+      if (y < 420) setHidden(true);
+      else if (goingDown) setHidden(true);
+      else if (goingUp) setHidden(false);
+      if (goingDown || goingUp) lastY.current = y;
+    };
+    lastY.current = window.scrollY;
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [enabled]);
+  return hidden;
+}
+
+export default function FloatingSidebar({ compact = false }) {
+  const hidden = useCompactVisibility(compact);
   const [open,    setOpen]    = useState(false);
   const [form,    setForm]    = useState(EMPTY_FORM);
   const [sending, setSending] = useState(false);
@@ -63,7 +89,7 @@ export default function FloatingSidebar() {
 
   return (
     <>
-      <nav className="fsr" aria-label="روابط الطالب السريعة">
+      <nav className={`fsr${compact ? ' fsr--compact' : ''}${compact && hidden ? ' fsr--hidden' : ''}`} aria-label="روابط الطالب السريعة">
         <RailItem type="a"    href={WHATSAPP_HREF}  Icon={MessageCircle} label={'تواصل\nمعنا'} cls="fsr-wa" external />
         <RailItem Icon={BookOpen} label={'راسل\nالمرشد'} cls="fsr-sup" onClick={() => setOpen(true)} />
       </nav>
