@@ -9,7 +9,11 @@ import { splitStoryPages, normalizePageAudio } from '../../../../lib/story-audio
 
 const LEVEL_LABELS = { 1: 'مستوى 1', 2: 'مستوى 2', 3: 'مستوى 3' };
 
-export default function StoryReader({ story, alreadyRead, isTeacher }) {
+export default function StoryReader({ story, alreadyRead, isTeacher, isPublic = false }) {
+  // isPublic: رابط مشاركة عام (/story/<token>) — قراءة واستماع فقط، بلا نقاط ولا زر «انتهيت»
+  const readOnly  = isTeacher || isPublic;
+  const backHref  = isPublic ? '/' : '/library';
+  const backLabel = isPublic ? '→ أكاديمية عارم' : '→ العودة للمكتبة';
   const pages       = splitStoryPages(story.content);
   const isMultiPage = pages.length > 1;
   const pageAudio   = normalizePageAudio(story.page_audio, pages.length); // صوت كل صفحة بفهرسها
@@ -52,7 +56,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
   }, [isMultiPage, read]);
 
   const handleComplete = async () => {
-    if (read || loading || isTeacher) return;
+    if (read || loading || readOnly) return;
     setLoading(true);
     try {
       const res  = await childFetch(`/api/stories/${story.id}/complete`, { method: 'POST' });
@@ -88,9 +92,10 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
           onComplete={handleComplete}
           read={read}
           loading={loading}
-          isTeacher={isTeacher}
+          isTeacher={readOnly}
           points={story.points || 10}
           pageAudio={pageAudio}
+          backHref={backHref}
           mode="fullscreen"
         />
 
@@ -135,7 +140,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
       {/* ══ الحاسوب: صفحة واحدة ══ */}
       {!isMultiPage && (
         <div className="sr-wrap" style={{ maxWidth: 800 }}>
-          <Link href="/library" className="sr-back">→ العودة للمكتبة</Link>
+          <Link href={backHref} className="sr-back">{backLabel}</Link>
           <div className="sr-header" style={{ background:`linear-gradient(135deg,${accent}ee,${accent})` }}>
             <div className="sr-header-deco" />
             <span className="sr-icon">{story.icon || '📖'}</span>
@@ -143,7 +148,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
             <div className="sr-meta">
               <span className="sr-badge">{LEVEL_LABELS[story.level] || 'مستوى 1'}</span>
               <span className="sr-badge">⏱ {story.length || 'قصيرة'}</span>
-              {!isTeacher && <span className="sr-pts-badge" style={{ color:accent }}>⭐ {story.points || 10} نقطة</span>}
+              {!readOnly && <span className="sr-pts-badge" style={{ color:accent }}>⭐ {story.points || 10} نقطة</span>}
               {isTeacher && story.status === 'draft' && (
                 <span style={{ background:'rgba(251,191,36,.9)', color:'#78350f', borderRadius:20, padding:'3px 12px', fontSize:'.7rem', fontWeight:900 }}>✏️ مسودة</span>
               )}
@@ -162,7 +167,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
               <PageListenButton state={narr.stateOf(0)} onClick={() => narr.toggle(0)} pageNumber={1} />
             </div>
           )}
-          {!isTeacher && (read ? (
+          {!readOnly && (read ? (
             <div className="sr-done-card">
               <span style={{ fontSize:'2.4rem' }}>✅</span>
               <div>
@@ -188,7 +193,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
 
           {/* رأس محدود العرض */}
           <div style={{ maxWidth: 760, margin: '0 auto 28px' }}>
-            <Link href="/library" className="sr-back">→ العودة للمكتبة</Link>
+            <Link href={backHref} className="sr-back">{backLabel}</Link>
             <div className="sr-header" style={{ background:`linear-gradient(135deg,${accent}ee,${accent})`, marginBottom: 0 }}>
               <div className="sr-header-deco" />
               <span className="sr-icon">{story.icon || '📖'}</span>
@@ -197,7 +202,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
                 <span className="sr-badge">{LEVEL_LABELS[story.level] || 'مستوى 1'}</span>
                 <span className="sr-badge">⏱ {story.length || 'قصيرة'}</span>
                 <span className="sr-badge">📄 {pages.length} صفحات</span>
-                {!isTeacher && <span className="sr-pts-badge" style={{ color:accent }}>⭐ {story.points || 10} نقطة</span>}
+                {!readOnly && <span className="sr-pts-badge" style={{ color:accent }}>⭐ {story.points || 10} نقطة</span>}
                 {isTeacher && story.status === 'draft' && (
                   <span style={{ background:'rgba(251,191,36,.9)', color:'#78350f', borderRadius:20, padding:'3px 12px', fontSize:'.7rem', fontWeight:900 }}>✏️ مسودة</span>
                 )}
@@ -212,7 +217,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
             onComplete={handleComplete}
             read={read}
             loading={loading}
-            isTeacher={isTeacher}
+            isTeacher={readOnly}
             points={story.points || 10}
             pageAudio={pageAudio}
             mode="spread"

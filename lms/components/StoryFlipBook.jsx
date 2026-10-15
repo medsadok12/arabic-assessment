@@ -71,6 +71,7 @@ function calcDims(mode) {
 ══════════════════════════════════════════════════════ */
 export default function StoryFlipBook({
   pages, accent = '#10b981', onComplete, read, loading, isTeacher, points,
+  backHref = '/library',
   pageAudio = [],
   mode = 'default',
 }) {
@@ -171,7 +172,7 @@ export default function StoryFlipBook({
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 9999, direction: 'rtl', background: '#fffdf5' }}>
 
-        <Link href="/library" style={{
+        <Link href={backHref} style={{
           position: 'absolute', top: 14, right: 14, zIndex: 30,
           background: 'rgba(0,0,0,.46)', backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',

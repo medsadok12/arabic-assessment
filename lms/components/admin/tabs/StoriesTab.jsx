@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import StoryAudioPanel from '../StoryAudioPanel';
+import StoryShareLink from '../StoryShareLink';
 import { splitStoryPages, normalizePageAudio } from '../../../lib/story-audio';
 
 /* عدد الصفحات وعدد الصفحات التي لها صوت */
@@ -16,6 +17,7 @@ export default function StoriesTab({ lang }) {
   const [deleting, setDeleting] = useState(null);
   const [toggling, setToggling] = useState(null);
   const [audioFor, setAudioFor] = useState(null); // id القصة المفتوحة لوحة صوتها
+  const [shareFor, setShareFor] = useState(null); // id القصة المفتوحة لوحة رابط مشاركتها
 
   useEffect(() => {
     fetch('/api/stories')
@@ -103,6 +105,7 @@ export default function StoriesTab({ lang }) {
                         }
                         <span style={{ background:'#f8fafc', color:'#64748b', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:700, border:'1px solid #e2e8f0' }}>مستوى {s.level || 1}</span>
                         <span style={{ background:'#f8fafc', color:'#64748b', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:700, border:'1px solid #e2e8f0' }}>⭐ {s.points || 10} نقطة</span>
+                        {s.share_token && <span style={{ background:'#eef2f7', color:'#1A2B4A', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:900, border:'1.5px solid #1A2B4A' }}>🔗 مشارَكة</span>}
                         {au.voiced > 0 && <span style={{ background:'#fdf6e3', color:'#1A2B4A', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:900, border:'1.5px solid #E8B84B' }}>🔊 {au.voiced}/{au.total} صفحات بصوت</span>}
                       </div>
                     </div>
@@ -113,6 +116,14 @@ export default function StoriesTab({ lang }) {
                         👁 عرض
                       </a>
                     )}
+                    <button
+                      className="mobile-stack-act"
+                      onClick={() => setShareFor(shareFor === s.id ? null : s.id)}
+                      aria-expanded={shareFor === s.id}
+                      style={{ background: shareFor === s.id ? '#1A2B4A' : '#fff', color: shareFor === s.id ? '#fff' : '#1A2B4A', border:'1.5px solid #1A2B4A', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:800, cursor:'pointer' }}
+                    >
+                      {shareFor === s.id ? '✖ إغلاق المشاركة' : '🔗 رابط مشاركة'}
+                    </button>
                     <button
                       className="mobile-stack-act"
                       onClick={() => setAudioFor(audioFor === s.id ? null : s.id)}
@@ -139,6 +150,12 @@ export default function StoriesTab({ lang }) {
                     </button>
                   </div>
                 </div>
+                {shareFor === s.id && (
+                  <StoryShareLink
+                    story={s}
+                    onChanged={(token) => setStories(p => p.map(x => x.id === s.id ? { ...x, share_token: token } : x))}
+                  />
+                )}
                 {audioFor === s.id && (
                   <StoryAudioPanel
                     story={s}
