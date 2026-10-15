@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { getRole } from '../../../../lib/auth-role';
-import { childFetch } from '../../../../lib/child-fetch';
+import { childFetch, getActiveChildTab } from '../../../../lib/child-fetch';
+import { LC_DEFAULT_SETTINGS, LEN_NO_LIMIT, normalizeLcSettings, roundSize, pickRotation, markSeen } from '../../../../lib/letter-catcher';
 import { freshFetch } from '../../../../lib/fresh-fetch';
 
 /* teacher-only panel loads only when the teacher opens it — not in students' bundle */
@@ -39,6 +40,27 @@ function getCachedWords() {
 
 function setCachedWords(words) {
   try { localStorage.setItem(LC_CACHE_KEY, JSON.stringify({ words, ts: Date.now() })); } catch {}
+}
+
+/* إعدادات الجولة التي يحفظها المعلم (عدد الكلمات والخيارات) — تصل مع الكلمات،
+   وتُحفظ محلياً كي تظهر الأرقام الصحيحة فوراً عند الفتح */
+const LC_SETTINGS_KEY = 'lc_round_settings_v1';
+function getCachedSettings() {
+  try { return normalizeLcSettings(JSON.parse(localStorage.getItem(LC_SETTINGS_KEY) || 'null')); }
+  catch { return { ...LC_DEFAULT_SETTINGS }; }
+}
+
+/* ذاكرة التدوير: الكلمات التي أجاب عنها الطفل في الدورة الحالية لكل مجموعة.
+   منفصلة لكل حساب ولكل طفل في حساب العائلة (القسم 13.9) */
+function seenKey(userId, catKey) {
+  return `lc_seen_v1:${userId || 'guest'}:${getActiveChildTab() || 'self'}:${catKey}`;
+}
+function readSeen(key) {
+  try { const v = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(v) ? v : []; }
+  catch { return []; }
+}
+function writeSeen(key, ids) {
+  try { localStorage.setItem(key, JSON.stringify(ids)); } catch {}
 }
 
 /* ────────────────────────── helpers ────────────────────────── */
@@ -159,14 +181,16 @@ export default function LetterCatcherGame() {
   const [loadProgress,     setLoadProgress]     = useState(0);
   const [pendingCategory,  setPendingCategory]  = useState(undefined); // undefined=grid shown; string/'__all__'=modal open
   const [selectedCategory, setSelectedCategory] = useState(null);
+  /* فلاتر معاينة للمعلم فقط (لا تُحفظ ولا تؤثر على الطلاب) — بلا حد للطول افتراضياً */
   const [cfg, setCfg] = useState({
-    questionsPerRound: 10,
-    optionsCount: 5,
     topic: '',
     grade: 0,
     minLen: 2,
-    maxLen: 12,
+    maxLen: LEN_NO_LIMIT,
   });
+  /* إعدادات الجولة المحفوظة لكل الطلاب */
+  const [settings, setSettings] = useState(() => (typeof window === 'undefined' ? { ...LC_DEFAULT_SETTINGS } : getCachedSettings()));
+  const roundRef = useRef({ key: null, ids: [] });
   const [totalPoints,   setTotalPoints]   = useState(0);
   const [ptPopupKey,    setPtPopupKey]    = useState(0);
   const [ptPopupActive, setPtPopupActive] = useState(false);
@@ -219,11 +243,16 @@ export default function LetterCatcherGame() {
       const p = new URLSearchParams();
       if (cfg.topic)     p.set('topic',  cfg.topic);
       if (cfg.grade > 0) p.set('grade',  String(cfg.grade));
-      p.set('minLen', String(cfg.minLen));
-      p.set('maxLen', String(cfg.maxLen));
+      if (cfg.minLen > 2) p.set('minLen', String(cfg.minLen));
+      if (cfg.maxLen < LEN_NO_LIMIT) p.set('maxLen', String(cfg.maxLen));
       if (!quiet) setLoadProgress(50);
       const res  = await freshFetch(`/api/games/letter-catcher?${p}`);
       const json = await res.json();
+      if (json.settings) {
+        const st = normalizeLcSettings(json.settings);
+        setSettings(st);
+        try { localStorage.setItem(LC_SETTINGS_KEY, JSON.stringify(st)); } catch {}
+      }
       const fresh = (json.words || []).filter(isValid);
       if (fresh.length > 0) {
         setGameWords(fresh);
@@ -298,8 +327,8 @@ export default function LetterCatcherGame() {
   }, [phase]);
 
   /* ── build round queue ── */
-  const buildQueue = useCallback((words, count, optCount) => {
-    return shuffle(words).slice(0, count).map(w => {
+  const buildQueue = useCallback((words, optCount) => {
+    return words.map(w => {
       const correctLetter = stripDia(w.missing_letter);
       const strippedW     = stripDia(w.word);
       const missingIdx    = strippedW.indexOf(correctLetter);
@@ -311,26 +340,36 @@ export default function LetterCatcherGame() {
     });
   }, []);
 
+  /* ── كلمات الجولة بالتدوير: ما لم يُجب عنه الطفل بعد في هذه المجموعة أولاً ── */
+  const pickRoundWords = useCallback((words, catKey) => {
+    const ids = words.map(w => String(w.id));
+    const key = seenKey(currentUser?.id, catKey);
+    const { picked } = pickRotation(ids, readSeen(key), roundSize(words.length, settings.words_per_round));
+    roundRef.current = { key, ids };
+    const byId = new Map(words.map(w => [String(w.id), w]));
+    return picked.map(id => byId.get(id));
+  }, [currentUser, settings.words_per_round]);
+
   /* ── start game (catFilter = null → all words) ── */
   const startGame = useCallback((catFilter) => {
     const filtered = catFilter === null
       ? gameWords
       : gameWords.filter(w => w.category === catFilter);
     if (filtered.length === 0) return;
-    const count = isTeacher
-      ? Math.min(filtered.length, cfg.questionsPerRound)
-      : Math.min(filtered.length, 20);
     setSelectedCategory(catFilter);
-    setQueue(buildQueue(filtered, count, cfg.optionsCount));
+    setQueue(buildQueue(pickRoundWords(filtered, catFilter ?? '__all__'), settings.options_count));
     setCur(0); setScore(0); setChosen(null); setCorrect(null);
     setPhase('playing');
-  }, [gameWords, buildQueue, cfg, isTeacher]);
+  }, [gameWords, buildQueue, pickRoundWords, settings.options_count]);
 
   const pick = useCallback((opt) => {
     if (chosen !== null) return;
     const w       = queue[cur];
     const isRight = stripDia(opt) === stripDia(w.missing_letter);
     setChosen(opt); setCorrect(isRight);
+    // الكلمة تُحسب «مرّ عليها» عند الإجابة فقط — ما لم يصله الطفل يبقى للجولة القادمة
+    const { key, ids } = roundRef.current;
+    if (key) writeSeen(key, markSeen(ids, readSeen(key), String(w.id)));
     if (isRight) {
       setScore(s => s + 1);
       setPtPopupKey(k => k + 1);
@@ -355,15 +394,11 @@ export default function LetterCatcherGame() {
     const filtered = selectedCategory === null
       ? gameWords
       : gameWords.filter(w => w.category === selectedCategory);
-    const count = isTeacher
-      ? Math.min(filtered.length, cfg.questionsPerRound)
-      : Math.min(filtered.length, 20);
-    setQueue(buildQueue(filtered, count, cfg.optionsCount));
+    if (filtered.length === 0) return;
+    setQueue(buildQueue(pickRoundWords(filtered, selectedCategory ?? '__all__'), settings.options_count));
     setCur(0); setScore(0); setChosen(null); setCorrect(null);
     setPhase('playing');
-  }, [selectedCategory, gameWords, buildQueue, cfg, isTeacher]);
-
-  const notEnough = isTeacher && gameWords.length > 0 && gameWords.length < cfg.questionsPerRound;
+  }, [selectedCategory, gameWords, buildQueue, pickRoundWords, settings.options_count]);
 
   /* ══════════════════════ RENDER: START ══════════════════════ */
   if (phase === 'start') {
@@ -374,7 +409,7 @@ export default function LetterCatcherGame() {
     const modalWords    = pendingCategory === '__all__' || pendingCategory === undefined
       ? gameWords
       : gameWords.filter(w => w.category === pendingCategory);
-    const modalCount    = Math.min(modalWords.length, isTeacher ? cfg.questionsPerRound : 20);
+    const modalCount    = roundSize(modalWords.length, settings.words_per_round);
     const modalCatObj   = pendingCategory !== '__all__' ? catMeta[pendingCategory] : null;
     const modalCatStyle = pendingCategory !== '__all__' && pendingCategory !== undefined
       ? getCatStyle(pendingCategory, categories.indexOf(pendingCategory))
@@ -413,7 +448,7 @@ export default function LetterCatcherGame() {
         `}</style>
 
         {isTeacher && showCfg && (
-          <SettingsPanel cfg={cfg} onChange={setCfg} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={refreshAfterEdit} catMeta={catMeta} onCatMetaRefresh={loadCatMeta} />
+          <SettingsPanel cfg={cfg} onChange={setCfg} settings={settings} onSettingsSaved={(st) => { setSettings(st); try { localStorage.setItem(LC_SETTINGS_KEY, JSON.stringify(st)); } catch {} }} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={refreshAfterEdit} catMeta={catMeta} onCatMetaRefresh={loadCatMeta} />
         )}
 
         {/* ── STEP 2 MODAL: settings + start button ── */}
@@ -461,7 +496,7 @@ export default function LetterCatcherGame() {
                 </div>
                 <div style={S.statDiv} />
                 <div style={S.statBox}>
-                  <span style={S.statNum}>{cfg.optionsCount}</span>
+                  <span style={S.statNum}>{settings.options_count}</span>
                   <span style={S.statLbl}>خيارات</span>
                 </div>
               </div>

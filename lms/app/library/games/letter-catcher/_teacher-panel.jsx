@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
+import { WORDS_PER_ROUND_CHOICES, OPTIONS_COUNT_CHOICES, LEN_NO_LIMIT } from '../../../../lib/letter-catcher';
 
 /* ── constants (duplicated here so this chunk loads independently) ── */
 const TOPICS = ['الحيوانات', 'الأشكال', 'الأسرة', 'الألوان', 'الفواكه', 'المدرسة', 'الطقس', 'الأرقام'];
@@ -498,8 +499,32 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
 }
 
 /* ════════════════════════ SettingsPanel (default export) ════════════════════════ */
-export default function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
+export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved, onClose, dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
   const [cfgOpen, setCfgOpen] = useState(false);
+  const [draft,   setDraft]   = useState(settings);
+  const [stSaving, setStSaving] = useState(false);
+  const [stMsg,   setStMsg]   = useState(null);
+  const dirty = draft.words_per_round !== settings.words_per_round || draft.options_count !== settings.options_count;
+
+  const saveSettings = async () => {
+    setStSaving(true); setStMsg(null);
+    try {
+      const res  = await fetch('/api/games/letter-catcher/settings', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'فشل الحفظ');
+      onSettingsSaved?.(json.settings);
+      setStMsg({ ok: true, text: '✅ حُفظت — تُطبَّق على كل الطلاب من جولتهم القادمة' });
+    } catch (e) { setStMsg({ ok: false, text: `❌ ${e.message}` }); }
+    setStSaving(false);
+  };
+
+  const chip = (active) => ({
+    border: `2px solid ${active ? '#E8B84B' : '#e5e7eb'}`, background: active ? '#fdf6e3' : '#fff',
+    color: '#1A2B4A', borderRadius: 10, padding: '9px 12px', minHeight: 44, cursor: 'pointer',
+    fontFamily: 'inherit', fontSize: '.92rem', fontWeight: active ? 800 : 600,
+  });
 
   return (
     <div style={P.overlay} onClick={onClose}>
@@ -510,25 +535,60 @@ export default function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefre
           <button onClick={onClose} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:'1rem', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
         </div>
 
-        <div style={{ marginBottom:16, borderRadius:12, border:'1.5px solid #e5e7eb', overflow:'hidden' }}>
+        {/* flexShrink:0 — النافذة عمود flex قابل للتمرير، فبدونه ينضغط القسم ويُقصّ محتواه */}
+        <div style={{ marginBottom:16, borderRadius:12, border:'1.5px solid #e5e7eb', overflow:'hidden', flexShrink:0 }}>
           <button onClick={() => setCfgOpen(o => !o)} style={{ width:'100%', background: cfgOpen ? '#f5f3ff' : '#f9fafb', border:'none', padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:'inherit' }}>
-            <span style={{ fontWeight:700, color:'#5b4fc4', fontSize:'.9rem' }}>⚙️ إعدادات الجولة</span>
+            <span style={{ fontWeight:700, color:'#5b4fc4', fontSize:'.9rem' }}>
+              ⚙️ إعدادات الجولة — {settings.words_per_round === 0 ? 'كل كلمات المجموعة' : `${settings.words_per_round} كلمة`}
+            </span>
             <span style={{ color:'#9ca3af', fontSize:'.78rem' }}>{cfgOpen ? '▲ طي' : '▼ توسيع'}</span>
           </button>
           {cfgOpen && (
             <div style={{ padding:'14px', borderTop:'1px solid #e5e7eb' }}>
-              <label style={P.label}>
-                عدد الأسئلة في الجولة
-                <input type="number" min={1} value={cfg.questionsPerRound}
-                  onChange={e => onChange({ ...cfg, questionsPerRound: Math.max(1, Number(e.target.value) || 1) })}
-                  style={P.select} />
-              </label>
-              <label style={P.label}>
-                عدد الخيارات لكل سؤال
-                <select value={cfg.optionsCount} onChange={e => onChange({ ...cfg, optionsCount: Number(e.target.value) })} style={P.select}>
-                  {[3, 4, 5].map(v => <option key={v} value={v}>{v} خيارات</option>)}
-                </select>
-              </label>
+
+              {/* ── يُحفظ ويُطبَّق على كل الطلاب ── */}
+              <div style={{ background:'#fffbeb', border:'1.5px solid #E8B84B', borderRadius:12, padding:'12px 12px 14px', marginBottom:14 }}>
+                <div style={{ fontWeight:800, color:'#1A2B4A', fontSize:'.9rem', marginBottom:10 }}>👥 تُطبَّق على كل الطلاب</div>
+
+                <div style={{ fontSize:'.88rem', fontWeight:700, color:'#374151', marginBottom:6 }}>عدد كلمات الجولة</div>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
+                  {WORDS_PER_ROUND_CHOICES.map(n => (
+                    <button key={n} type="button" style={chip(draft.words_per_round === n)}
+                      onClick={() => { setDraft(d => ({ ...d, words_per_round: n })); setStMsg(null); }}>
+                      {n === 0 ? 'كل كلمات المجموعة' : n}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ fontSize:'.88rem', fontWeight:700, color:'#374151', marginBottom:6 }}>عدد الخيارات لكل سؤال</div>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
+                  {OPTIONS_COUNT_CHOICES.map(n => (
+                    <button key={n} type="button" style={chip(draft.options_count === n)}
+                      onClick={() => { setDraft(d => ({ ...d, options_count: n })); setStMsg(null); }}>
+                      {n} خيارات
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ fontSize:'.78rem', color:'#6b7280', marginBottom:10, lineHeight:1.6 }}>
+                  🔄 الكلمات تُختار بالتدوير: لا تتكرر كلمة على الطفل حتى يمرّ على كل كلمات المجموعة، ثم تبدأ دورة جديدة.
+                </div>
+
+                {stMsg && (
+                  <div style={{ marginBottom:8, padding:'8px 12px', borderRadius:8, fontSize:'.85rem', fontWeight:700, background: stMsg.ok ? '#d4edda' : '#f8d7da', color: stMsg.ok ? '#155724' : '#721c24' }}>
+                    {stMsg.text}
+                  </div>
+                )}
+                <button type="button" onClick={saveSettings} disabled={stSaving || !dirty}
+                  style={{ width:'100%', minHeight:48, border:'none', borderRadius:12, fontFamily:'inherit', fontSize:'1rem', fontWeight:800,
+                    background:'#E8B84B', color:'#1A2B4A', cursor: (stSaving || !dirty) ? 'not-allowed' : 'pointer', opacity: (stSaving || !dirty) ? 0.55 : 1 }}>
+                  {stSaving ? 'جارٍ الحفظ…' : '💾 حفظ لكل الطلاب'}
+                </button>
+              </div>
+
+              {/* ── معاينة عندك فقط ── */}
+              <div style={{ fontWeight:800, color:'#374151', fontSize:'.88rem', marginBottom:4 }}>👁️ تصفية للمعاينة عندك فقط</div>
+              <div style={{ fontSize:'.76rem', color:'#9ca3af', marginBottom:12 }}>لا تُحفظ ولا تغيّر ما يراه الطلاب</div>
               <label style={P.label}>
                 الموضوع
                 <select value={cfg.topic} onChange={e => onChange({ ...cfg, topic: e.target.value })} style={P.select}>
@@ -544,23 +604,23 @@ export default function SettingsPanel({ cfg, onChange, onClose, dbWords, onRefre
                 </select>
               </label>
               <label style={P.label}>
-                طول الكلمة: {cfg.minLen} – {cfg.maxLen} حرفاً
+                طول الكلمة بالحروف (المسافة لا تُحسب): {cfg.minLen} – {cfg.maxLen >= LEN_NO_LIMIT ? 'بلا حد' : cfg.maxLen}
                 <div style={{ display:'flex', gap:16, marginTop:4 }}>
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:'.75rem', color:'#9ca3af', marginBottom:4, textAlign:'center' }}>أدنى: {cfg.minLen}</div>
-                    <input type="range" min={2} max={cfg.maxLen} value={cfg.minLen}
+                    <input type="range" min={2} max={Math.min(cfg.maxLen, LEN_NO_LIMIT - 1)} value={cfg.minLen}
                       onChange={e => onChange({ ...cfg, minLen: Number(e.target.value) })}
                       style={{ width:'100%', accentColor:'#7c3aed' }} />
                   </div>
                   <div style={{ flex:1 }}>
-                    <div style={{ fontSize:'.75rem', color:'#9ca3af', marginBottom:4, textAlign:'center' }}>أقصى: {cfg.maxLen}</div>
-                    <input type="range" min={cfg.minLen} max={12} value={cfg.maxLen}
+                    <div style={{ fontSize:'.75rem', color:'#9ca3af', marginBottom:4, textAlign:'center' }}>أقصى: {cfg.maxLen >= LEN_NO_LIMIT ? 'بلا حد' : cfg.maxLen}</div>
+                    <input type="range" min={cfg.minLen} max={LEN_NO_LIMIT} value={cfg.maxLen}
                       onChange={e => onChange({ ...cfg, maxLen: Number(e.target.value) })}
                       style={{ width:'100%', accentColor:'#7c3aed' }} />
                   </div>
                 </div>
               </label>
-              <button style={P.btnGold} onClick={() => { setCfgOpen(false); onClose(); }}>حفظ الإعدادات ✓</button>
+              <button style={P.btnGold} onClick={() => setCfgOpen(false)}>تم ✓</button>
             </div>
           )}
         </div>

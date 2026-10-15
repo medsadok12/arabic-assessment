@@ -3,6 +3,7 @@ import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/auth-role';
 import { storableAudioUrl, healAudioRows } from '../../../../lib/game-audio';
+import { LC_GAME_ID, letterCount, normalizeLcSettings } from '../../../../lib/letter-catcher';
 
 export const runtime = 'edge';
 // المعلم يعدّل الكلمات من لوحة اللعبة، فالقراءة حيّة دائماً (القسم 9.5):
@@ -47,10 +48,15 @@ export async function GET(request) {
     if (grade > 0) query = query.eq('grade_level', grade);
     if (category) query = query.eq('category', category);
 
-    const { data, error } = await query;
+    // إعدادات الجولة (عدد الكلمات والخيارات) تصل مع الكلمات في نفس الطلب
+    const [{ data, error }, { data: settingsRow }] = await Promise.all([
+      query,
+      admin.from('game_settings').select('settings').eq('game_id', LC_GAME_ID).maybeSingle(),
+    ]);
+    const settings = normalizeLcSettings(settingsRow?.settings);
 
     if (error || !data) {
-      return NextResponse.json({ words: [], source: 'error' }, { headers: NO_STORE });
+      return NextResponse.json({ words: [], settings, source: 'error' }, { headers: NO_STORE });
     }
 
     await healAudioRows(admin, 'letter_catcher_words', 'letter-catcher', data);
@@ -58,7 +64,7 @@ export async function GET(request) {
     const valid = data.filter(w => {
       if (!w.word || !w.missing_letter) return false;
       if (!Array.isArray(w.options) || w.options.filter(Boolean).length === 0) return false;
-      const len = w.word.replace(DIACRITICS, '').length;
+      const len = letterCount(w.word); // الحروف فقط — المسافة بين كلمتين لا تُحسب
       if (minLen > 0 && len < minLen) return false;
       if (maxLen < 99 && len > maxLen) return false;
       return true;
@@ -66,12 +72,12 @@ export async function GET(request) {
 
     const words = valid.length > 0 ? valid : FALLBACK_WORDS;
     return NextResponse.json(
-      { words, source: valid.length > 0 ? 'database' : 'fallback' },
+      { words, settings, source: valid.length > 0 ? 'database' : 'fallback' },
       { headers: NO_STORE }
     );
   } catch {
     return NextResponse.json(
-      { words: FALLBACK_WORDS, source: 'fallback' },
+      { words: FALLBACK_WORDS, settings: normalizeLcSettings(null), source: 'fallback' },
       { headers: NO_STORE }
     );
   }
