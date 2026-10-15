@@ -577,6 +577,16 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         .story-card.s-locked { opacity:.75; cursor:default; }
 
         .story-icon { font-size:2.6rem; line-height:1; }
+
+        /* صورة الغلاف التي يرفعها المعلم من محرر القصص — تحل محل الأيقونة */
+        .story-card.has-cover { width:156px; padding:10px 10px 14px; }
+        .story-cover {
+          width:100%; aspect-ratio:3 / 4; border-radius:12px; overflow:hidden;
+          background:#fff; box-shadow:0 3px 10px rgba(0,0,0,.15);
+        }
+        .story-cover img { width:100%; height:100%; object-fit:cover; display:block; }
+        .story-card.has-cover .story-title { font-size:.9rem; }
+        .story-card .story-read-btn { margin-top:auto; }
         .story-level-badge {
           border-radius:20px; padding:2px 9px;
           font-size:.59rem; font-weight:800;
@@ -871,12 +881,14 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
                   const cardEl = (
                     <>
                       <span style={{
-                        position:'absolute', top:8, left:8,
+                        position:'absolute', top:8, left:8, zIndex:1,
                         background: accent, color:'#fff',
                         borderRadius:20, padding:'2px 7px',
                         fontSize:'.56rem', fontWeight:900,
                       }}>جديد ✨</span>
-                      <div className="story-icon">{s.icon || '📖'}</div>
+                      {s.cover_image_url
+                        ? <div className="story-cover"><img src={s.cover_image_url} alt={s.title} loading="lazy" /></div>
+                        : <div className="story-icon">{s.icon || '📖'}</div>}
                       <div className="story-level-badge" style={{ color: accent }}>{level}</div>
                       <p className="story-title">{s.title}</p>
                       <div className="story-length">⏱ {s.length || 'قصيرة'}</div>
@@ -889,7 +901,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
                     <Link
                       key={s.id}
                       href={`/library/stories/${s.slug}`}
-                      className="story-card s-ready"
+                      className={`story-card s-ready${s.cover_image_url ? ' has-cover' : ''}`}
                       style={{
                         background:    s.bg || '#ecfdf5',
                         borderColor:   s.border_color || '#6ee7b7',

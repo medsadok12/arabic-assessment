@@ -3,6 +3,7 @@ import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient }      from '../../../lib/supabase-server';
 import { getRole } from '../../../lib/auth-role';
 import { splitStoryPages, normalizePageAudio, pageAudioError } from '../../../lib/story-audio';
+import { resolveStoryCover } from '../../../lib/story-cover';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ export async function POST(req) {
     if (!user || !isTeacher) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
 
     const body = await req.json();
-    const { title, icon, level, length, content, status, points, accent, bg, border_color, page_audio } = body;
+    const { title, icon, level, length, content, status, points, accent, bg, border_color, page_audio, cover_image_url } = body;
 
     if (!title?.trim()) return NextResponse.json({ error: 'العنوان مطلوب' }, { status: 400 });
     const audioErr = page_audio !== undefined ? pageAudioError(page_audio) : null;
@@ -52,6 +53,10 @@ export async function POST(req) {
       + '-' + Date.now().toString(36);
 
     const admin = createAdminClient();
+    // صورة الغلاف (اختيارية): تُرفع إلى Storage ويُحفظ رابطها فقط
+    const cover = await resolveStoryCover(admin, cover_image_url, 'new');
+    if (cover.error) return NextResponse.json({ error: cover.error }, { status: 400 });
+
     const { data, error } = await admin
       .from('stories')
       .insert({
@@ -67,6 +72,7 @@ export async function POST(req) {
         bg:           bg || '#ecfdf5',
         border_color: border_color || '#6ee7b7',
         page_audio:   normalizePageAudio(page_audio, splitStoryPages(content).length),
+        cover_image_url: cover.value || null,
         created_at:   new Date().toISOString(),
         updated_at:   new Date().toISOString(),
       })

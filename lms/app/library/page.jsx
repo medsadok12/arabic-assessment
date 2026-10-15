@@ -42,7 +42,7 @@ export default async function LibraryPage() {
   try {
     const { data } = await admin
       .from('stories')
-      .select('id, slug, title, icon, level, length, status, points, accent, bg, border_color')
+      .select('id, slug, title, icon, cover_image_url, level, length, status, points, accent, bg, border_color')
       .eq('status', 'published')
       .order('created_at', { ascending: true });
     initialStories = data || [];

@@ -12,7 +12,7 @@ import StoryReader from '../../library/stories/[slug]/StoryReader';
 export const dynamic = 'force-dynamic';
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{10,64}$/;
-const COLUMNS  = 'id, title, icon, level, length, content, accent, bg, border_color, page_audio';
+const COLUMNS  = 'id, title, icon, cover_image_url, level, length, content, accent, bg, border_color, page_audio';
 
 async function loadStory(token) {
   if (!TOKEN_RE.test(token || '')) return null;
@@ -29,7 +29,8 @@ export async function generateMetadata({ params }) {
   const story = await loadStory(params.token);
   if (!story) return { title: 'أكاديمية عارم', robots: { index: false, follow: false } };
   const title = `${story.title} — قصة من أكاديمية عارم`;
-  const image = (story.content || '').match(/<img[^>]+src="([^"]+)"/i)?.[1];
+  // صورة المعاينة في واتساب: صورة الغلاف إن وُجدت، وإلا أول صورة في القصة
+  const image = story.cover_image_url || (story.content || '').match(/<img[^>]+src="([^"]+)"/i)?.[1];
   return {
     title,
     description: 'اقرأ واستمع إلى قصة مصوّرة للأطفال من مكتبة أكاديمية عارم 📖🔊',

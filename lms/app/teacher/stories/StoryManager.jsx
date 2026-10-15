@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import Link from 'next/link';
 import StoryPageEditor from '../../../components/StoryPageEditor';
+import StoryCoverField from '../../../components/StoryCoverField';
 
 const ACCENTS = [
   { label: 'أخضر',   accent: '#10b981', bg: '#ecfdf5', border: '#6ee7b7' },
@@ -20,6 +21,7 @@ const EMPTY_FORM = {
   title: '', icon: '📖', level: 1, length: 'قصيرة',
   content: '', status: 'draft', points: 10,
   accent: '#10b981', bg: '#ecfdf5', border_color: '#6ee7b7',
+  cover_image_url: null,
 };
 
 /* ══════════════════════════════════════════════════════
@@ -291,6 +293,7 @@ export default function StoryManager({ initialStories }) {
       accent:       s.accent || '#10b981',
       bg:           s.bg || '#ecfdf5',
       border_color: s.border_color || '#6ee7b7',
+      cover_image_url: s.cover_image_url || null,
     });
     setPageAudio(Array.isArray(s.page_audio) ? s.page_audio : []);
     setEditId(s.id);
@@ -561,8 +564,10 @@ export default function StoryManager({ initialStories }) {
                 {stories.map(s => (
                   <div key={s.id} className="sm-story-row mobile-stack">
                     <div className="sm-story-main mobile-stack-main">
-                      <div className="sm-story-icon" style={{ background: s.bg || '#ecfdf5', border: `2px solid ${s.border_color || '#6ee7b7'}` }}>
-                        {s.icon || '📖'}
+                      <div className="sm-story-icon" style={{ background: s.bg || '#ecfdf5', border: `2px solid ${s.border_color || '#6ee7b7'}`, overflow:'hidden' }}>
+                        {s.cover_image_url
+                          ? <img src={s.cover_image_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                          : (s.icon || '📖')}
                       </div>
                       <div className="sm-story-info">
                         <p className="sm-story-name">{s.title}</p>
@@ -618,7 +623,9 @@ export default function StoryManager({ initialStories }) {
               <div style={{ marginBottom:24 }}>
                 <p style={{ textAlign:'center', fontSize:'.8rem', color:'#64748b', fontWeight:700, marginBottom:14 }}>معاينة البطاقة في المكتبة</p>
                 <div className="sm-preview-card" style={{ background: form.bg, borderColor: form.border_color, boxShadow: `0 4px 18px ${form.accent}20` }}>
-                  <span style={{ fontSize:'2.8rem', lineHeight:1 }}>{form.icon || '📖'}</span>
+                  {form.cover_image_url
+                    ? <img src={form.cover_image_url} alt="" style={{ width:'100%', aspectRatio:'3 / 4', objectFit:'cover', borderRadius:12, display:'block', boxShadow:'0 3px 10px rgba(0,0,0,.15)' }} />
+                    : <span style={{ fontSize:'2.8rem', lineHeight:1 }}>{form.icon || '📖'}</span>}
                   <span style={{ background: `${form.accent}20`, color: form.accent, borderRadius:20, padding:'2px 9px', fontSize:'.62rem', fontWeight:800 }}>مستوى {form.level}</span>
                   <p style={{ fontSize:'.8rem', fontWeight:800, color:'#1e293b', margin:0 }}>{form.title || 'عنوان القصة'}</p>
                   <span style={{ fontSize:'.65rem', color:'#64748b' }}>⏱ {form.length}</span>
@@ -636,8 +643,21 @@ export default function StoryManager({ initialStories }) {
                     <input className="sm-input" value={form.title} onChange={e => f('title', e.target.value)} placeholder="مثال: الأرنب الشجاع" />
                   </div>
 
+                  {/* صورة الغلاف — تظهر على بطاقة القصة في المكتبة مع العنوان */}
+                  <div className="sm-field" style={{ gridColumn:'1/-1' }}>
+                    <label className="sm-label">🖼️ صورة الغلاف <span style={{ fontSize:'.7rem', color:'#94a3b8', fontWeight:600 }}>(اختيارية)</span></label>
+                    <StoryCoverField
+                      value={form.cover_image_url}
+                      onChange={v => f('cover_image_url', v)}
+                      title={form.title}
+                      icon={form.icon}
+                      bg={form.bg}
+                      border={form.border_color}
+                    />
+                  </div>
+
                   <div className="sm-field">
-                    <label className="sm-label">الأيقونة (إيموجي)</label>
+                    <label className="sm-label">الأيقونة (إيموجي) <span style={{ fontSize:'.7rem', color:'#94a3b8', fontWeight:600 }}>— تظهر إن لم تكن هناك صورة غلاف</span></label>
                     <input className="sm-input" value={form.icon} onChange={e => f('icon', e.target.value)} placeholder="مثال: 🦁" maxLength={4} style={{ fontSize:'1.3rem', textAlign:'center' }} />
                   </div>
 

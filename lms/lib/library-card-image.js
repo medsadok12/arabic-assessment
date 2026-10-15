@@ -15,15 +15,21 @@ const DATA_URL_RE = /^data:(image\/[a-z]+);base64,([A-Za-z0-9+/=\s]+)$/;
 
 export const isDataImage = (v) => typeof v === 'string' && v.startsWith('data:image/');
 
-/* يرفع صورة data URL إلى التخزين ويُرجع رابطها العام، أو null إن تعذّر */
-export async function moveCardImageToStorage(admin, cardKey, dataUrl) {
+/* يرفع صورة data URL إلى مجلد prefix في bucket ‎media‎ ويُرجع رابطها العام، أو null
+   إن تعذّر — مشترك بين بطاقات المكتبة وأغلفة القصص */
+export async function moveImageToStorage(admin, prefix, key, dataUrl) {
   const m = DATA_URL_RE.exec(dataUrl || '');
   const ext = m && TYPES[m[1]];
   if (!ext) return null;
   const buf = Buffer.from(m[2], 'base64');
   if (!buf.length || buf.length > MAX_BYTES) return null;
-  const safeKey = String(cardKey).replace(/[^a-z0-9_-]/gi, '').slice(0, 40) || 'card';
-  const path = `${CARD_IMAGE_PREFIX}${safeKey}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+  const safeKey = String(key).replace(/[^a-z0-9_-]/gi, '').slice(0, 40) || 'img';
+  const path = `${prefix}${safeKey}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
   const { error } = await admin.storage.from('media').upload(path, buf, { contentType: m[1], upsert: false });
   return error ? null : mediaPublicUrl(path);
+}
+
+/* يرفع صورة بطاقة مكتبة (data URL) ويُرجع رابطها العام، أو null إن تعذّر */
+export function moveCardImageToStorage(admin, cardKey, dataUrl) {
+  return moveImageToStorage(admin, CARD_IMAGE_PREFIX, cardKey || 'card', dataUrl);
 }

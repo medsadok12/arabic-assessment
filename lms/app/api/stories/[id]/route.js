@@ -5,6 +5,7 @@ import { getRole } from '../../../../lib/auth-role';
 import {
   STORY_AUDIO_BUCKET, storyAudioPathFromUrl, splitStoryPages, normalizePageAudio, pageAudioError,
 } from '../../../../lib/story-audio';
+import { resolveStoryCover, removeStoryCover } from '../../../../lib/story-cover';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,7 @@ export async function PUT(req, { params }) {
 
     const { id } = params;
     const body = await req.json();
-    const { title, icon, level, length, content, status, points, accent, bg, border_color, page_audio } = body;
+    const { title, icon, level, length, content, status, points, accent, bg, border_color, page_audio, cover_image_url } = body;
 
     const admin = createAdminClient();
     const updates = {
@@ -80,6 +81,21 @@ export async function PUT(req, { params }) {
       droppedAudio = (Array.isArray(current.page_audio) ? current.page_audio : [])
         .filter(u => u && !kept.has(u));
     }
+    // صورة الغلاف: data URL جديد يُرفع، null يزيلها، والرابط الحالي يبقى كما هو.
+    // الغلاف القديم يُحذف من التخزين بعد نجاح الحفظ فقط.
+    let oldCover = null;
+    let newUpload = null;
+    if (cover_image_url !== undefined) {
+      const { data: cur, error: coverErr } = await admin
+        .from('stories').select('cover_image_url').eq('id', id).maybeSingle();
+      if (coverErr) throw coverErr;
+      if (!cur) return NextResponse.json({ error: 'القصة غير موجودة' }, { status: 404 });
+      const cover = await resolveStoryCover(admin, cover_image_url, id);
+      if (cover.error) return NextResponse.json({ error: cover.error }, { status: 400 });
+      oldCover = cur.cover_image_url || null;
+      updates.cover_image_url = cover.value;
+      if (cover.value && cover.value !== cover_image_url) newUpload = cover.value;
+    }
     if (title       !== undefined) updates.title        = title;
     if (icon        !== undefined) updates.icon         = icon;
     if (level       !== undefined) updates.level        = parseInt(level);
@@ -98,8 +114,12 @@ export async function PUT(req, { params }) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (newUpload) await removeStoryCover(admin, newUpload);
+      throw error;
+    }
     if (droppedAudio.length) await removeStoryAudio(admin, droppedAudio);
+    if (oldCover && oldCover !== updates.cover_image_url) await removeStoryCover(admin, oldCover);
     return NextResponse.json({ story: data });
   } catch (e) {
     return NextResponse.json({ error: e.message || 'فشل التحديث' }, { status: 500 });
@@ -114,10 +134,11 @@ export async function DELETE(req, { params }) {
 
     const { id } = params;
     const admin = createAdminClient();
-    const { data: current } = await admin.from('stories').select('page_audio').eq('id', id).maybeSingle();
+    const { data: current } = await admin.from('stories').select('page_audio, cover_image_url').eq('id', id).maybeSingle();
     const { error } = await admin.from('stories').delete().eq('id', id);
     if (error) throw error;
     if (Array.isArray(current?.page_audio)) await removeStoryAudio(admin, current.page_audio.filter(Boolean));
+    if (current?.cover_image_url) await removeStoryCover(admin, current.cover_image_url);
     return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json({ error: e.message || 'فشل الحذف' }, { status: 500 });

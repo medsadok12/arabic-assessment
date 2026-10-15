@@ -93,8 +93,10 @@ export default function StoriesTab({ lang }) {
                   border:'1.5px solid #f1f5f9', boxShadow:'0 2px 10px rgba(0,0,0,.05)',
                 }}>
                   <div className="mobile-stack-main" style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:0 }}>
-                    <div style={{ width:48, height:48, borderRadius:12, background: s.bg || '#ecfdf5', border:`2px solid ${s.border_color || '#6ee7b7'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.7rem', flexShrink:0 }}>
-                      {s.icon || '📖'}
+                    <div style={{ width:48, height:48, borderRadius:12, background: s.bg || '#ecfdf5', border:`2px solid ${s.border_color || '#6ee7b7'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.7rem', flexShrink:0, overflow:'hidden' }}>
+                      {s.cover_image_url
+                        ? <img src={s.cover_image_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                        : (s.icon || '📖')}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontWeight:800, color:'#1e293b', fontSize:'.92rem', marginBottom:5, wordBreak:'break-word' }}>{s.title}</div>
