@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import DOMPurify from 'isomorphic-dompurify';
 import StoryFlipBook from '../../../../components/StoryFlipBook';
-import StoryAudioPlayer from '../../../../components/StoryAudioPlayer';
+import { useStoryNarration, PageListenButton } from '../../../../components/StoryNarration';
 import { childFetch } from '../../../../lib/child-fetch';
 import { splitStoryPages, normalizePageAudio } from '../../../../lib/story-audio';
 
@@ -24,6 +24,9 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
   const [isMobile,   setIsMobile]   = useState(false);
   const [srFontIdx,  setSrFontIdx]  = useState(3); // 1.12rem — matches .sr-scroll-box default
   const contentRef = useRef(null);
+
+  /* قصة بصفحة واحدة: زر استماع تحت النص (المتعددة الصفحات يتولاها StoryFlipBook) */
+  const narr = useStoryNarration({ pageAudio: isMultiPage ? [] : pageAudio, visiblePages: [0] });
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -166,7 +169,6 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
               )}
             </div>
           </div>
-          {pageAudio[0] && <StoryAudioPlayer tracks={[{ page: 0, src: pageAudio[0] }]} style={{ maxWidth:760, margin:'0 auto 18px' }} />}
           <div className="sr-prog-bar"><div className="sr-prog-fill" style={{ width:`${scrollPct}%`, background:accent }} /></div>
           <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:8, maxWidth:760, margin:'0 auto 10px' }}>
             <span style={{ color:'#94a3b8', fontSize:'.72rem', fontWeight:700 }}>حجم الخط</span>
@@ -189,6 +191,12 @@ export default function StoryReader({ story, alreadyRead, isTeacher }) {
               : <p style={{ color:'#94a3b8', textAlign:'center', padding:'40px 0' }}>محتوى القصة سيضاف قريباً...</p>
             }
           </div>
+          {narr.audioElement}
+          {narr.hasAudio && (
+            <div style={{ display:'flex', justifyContent:'center', margin:'24px auto 8px' }}>
+              <PageListenButton state={narr.stateOf(0)} onClick={() => narr.toggle(0)} pageNumber={1} />
+            </div>
+          )}
           {!isTeacher && (read ? (
             <div className="sr-done-card">
               <span style={{ fontSize:'2.4rem' }}>✅</span>

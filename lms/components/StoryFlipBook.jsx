@@ -3,7 +3,7 @@ import { useRef, useState, useCallback, forwardRef, useEffect } from 'react';
 import Link from 'next/link';
 import HTMLFlipBook from 'react-pageflip';
 import DOMPurify from 'isomorphic-dompurify';
-import StoryAudioPlayer from './StoryAudioPlayer';
+import { useStoryNarration, PageListenButton, AutoFlipToggle } from './StoryNarration';
 
 /* ── صفحة واحدة ── */
 const StoryPage = forwardRef(function StoryPage({ html, pageNum, total, isRight, mirrorX }, ref) {
@@ -159,16 +159,17 @@ export default function StoryFlipBook({
   const onFlip        = useCallback((e) => setCurrent(e.data), []);
   const onChangeState = useCallback((e) => { if (e.data === 'read') isFlipping.current = false; }, []);
 
-  /* ── صوت الصفحات: أصوات الصفحات الظاهرة الآن فقط (صفحتان متقابلتان في وضع الحاسوب) ── */
-  const hasAudio  = pageAudio.some(Boolean);
-  const audioTracks = Array.from({ length: step }, (_, k) => current + k)
-    .filter(i => i < totalPages && pageAudio[i])
-    .map(i => ({ page: i, src: pageAudio[i] }));
-  const audioProps = {
-    tracks: audioTracks,
+  /* ── صوت الصفحات: زر مستقل تحت كل صفحة ظاهرة، يشغّل صوت صفحته فقط ── */
+  const visiblePages = Array.from({ length: step }, (_, k) => current + k).filter(i => i < totalPages);
+  const narr = useStoryNarration({
+    pageAudio,
+    visiblePages,
     hasNext: current + step < totalPages,
     onAdvance: () => safeFlip('next'),
-  };
+  });
+  const listenBtn = (p, variant) => (
+    <PageListenButton state={narr.stateOf(p)} onClick={() => narr.toggle(p)} pageNumber={p + 1} variant={variant} />
+  );
 
   /* لوحة المفاتيح */
   useEffect(() => {
@@ -269,13 +270,13 @@ export default function StoryFlipBook({
           </HTMLFlipBook>
         </div>
 
-        {/* زر الاستماع لصوت الصفحة الحالية — عائم في الزاوية السفلى اليمنى (خارج منطقة قلب الصفحات) */}
-        {hasAudio && (
-          <StoryAudioPlayer
-            {...audioProps}
-            variant="fab"
-            style={{ position: 'absolute', bottom: 22, right: 14, zIndex: 30 }}
-          />
+        {/* زر الاستماع لهذه الصفحة — عائم أسفل يمين الشاشة (خارج منطقة قلب الصفحات) */}
+        {narr.audioElement}
+        {narr.stateOf(current).hasAudio && (
+          <div style={{ position: 'absolute', bottom: 22, right: 14, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            {current + 1 < totalPages && <AutoFlipToggle on={narr.autoFlip} onToggle={narr.toggleAuto} />}
+            {listenBtn(current, 'round')}
+          </div>
         )}
 
         {isLastPage && !isTeacher && (
@@ -329,14 +330,6 @@ export default function StoryFlipBook({
             }} />
           ))}
         </div>
-
-        {/* صوت الصفحتين الظاهرتين */}
-        {hasAudio && (
-          <StoryAudioPlayer
-            {...audioProps}
-            style={{ width: bookW, maxWidth: 'calc(100vw - 48px)', boxSizing: 'border-box', marginBottom: 18 }}
-          />
-        )}
 
         {/* غلاف الكتاب المفتوح */}
         {dims && (
@@ -392,6 +385,18 @@ export default function StoryFlipBook({
           </div>
         )}
 
+        {/* زر استماع تحت كل صفحة — الأول يميناً تحت الصفحة اليمنى (اتجاه العربية) */}
+        {narr.audioElement}
+        {narr.hasAudio && dims && (
+          <div style={{ display: 'flex', width: bookW, maxWidth: 'calc(100vw - 48px)', marginTop: 26, direction: 'rtl', gap: 12 }}>
+            {visiblePages.concat(visiblePages.length < 2 ? [null] : []).map((p, k) => (
+              <div key={p ?? `empty-${k}`} style={{ flex: 1, display: 'flex', justifyContent: 'center', minHeight: 64 }}>
+                {p !== null && listenBtn(p)}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* أزرار التنقل */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -422,6 +427,7 @@ export default function StoryFlipBook({
               style={{ ...FONT_BTN_LIGHT, opacity: fontIdx === FONT_STEPS.length - 1 ? .3 : 1 }}
               aria-label="تكبير الخط" title="تكبير الخط"
             >أ+</button>
+            {narr.hasAudio && <AutoFlipToggle on={narr.autoFlip} onToggle={narr.toggleAuto} />}
           </span>
 
           {isLastPage ? (
@@ -471,9 +477,7 @@ export default function StoryFlipBook({
         ))}
       </div>
 
-      {hasAudio && dims && (
-        <StoryAudioPlayer {...audioProps} style={{ width: dims.w, boxSizing: 'border-box', marginBottom: 14 }} />
-      )}
+      {narr.audioElement}
 
       {dims && (
         <div
@@ -494,6 +498,10 @@ export default function StoryFlipBook({
             ))}
           </HTMLFlipBook>
         </div>
+      )}
+
+      {narr.stateOf(current).hasAudio && dims && (
+        <div style={{ marginTop: 22 }}>{listenBtn(current)}</div>
       )}
 
       {dims && (
