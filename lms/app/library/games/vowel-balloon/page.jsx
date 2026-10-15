@@ -6,6 +6,7 @@ import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
 import { freshFetch } from '../../../../lib/fresh-fetch';
 import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
+import AudioUploadButton from '../../../../components/AudioUploadButton';
 
 /* ─── balloon colors by position ─── */
 const BALLOON_COLORS = [
@@ -254,13 +255,6 @@ function WordManager({ user }) {
     } catch { flash('تعذّر الوصول للميكروفون', false); }
   }
 
-  function handleFileAudio(e) {
-    const f = e.target.files[0]; if (!f) return;
-    const reader = new FileReader();
-    reader.onload = ev => setAudioB64(ev.target.result);
-    reader.readAsDataURL(f);
-  }
-
   if (!allowed) return null;
 
   const S = {
@@ -351,10 +345,9 @@ function WordManager({ user }) {
             <button style={{ ...S.btn(recording?'red':'gray'), padding:'8px 14px' }} onClick={toggleRecord}>
               {recording ? '⏹ إيقاف التسجيل' : '🎙 تسجيل صوت'}
             </button>
-            <label style={{ ...S.btn('gray'), padding:'8px 14px', cursor:'pointer' }}>
-              📂 رفع ملف
-              <input type="file" accept="audio/*" style={{ display:'none' }} onChange={handleFileAudio} />
-            </label>
+            <AudioUploadButton label="📁 رفع ملف صوتي" disabled={recording}
+              onPick={setAudioB64} onError={(text) => flash(text, false)}
+              style={{ ...S.btn('gray'), padding:'8px 14px' }} />
             {audioB64 && (
               <>
                 <audio src={audioB64} controls style={{ height:34 }} />

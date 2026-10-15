@@ -6,6 +6,7 @@ import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
 import { freshFetch } from '../../../../lib/fresh-fetch';
 import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
+import AudioUploadButton from '../../../../components/AudioUploadButton';
 import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useElementWidth } from '../../../../lib/fit-tiles';
 import { LEN_NO_LIMIT } from '../../../../lib/letter-catcher';
 
@@ -229,35 +230,47 @@ function WordManager({ dbWords, onRefresh }) {
         </div>
         <input ref={fileRef} type="file" accept="image/*" onChange={handleImg} style={{ display: 'none' }} />
 
-        {/* audio recorder */}
+        {/* صوت الكلمة: تسجيل من الميكروفون أو رفع ملف جاهز (مثل ElevenLabs) */}
         <div style={{ marginTop: 8 }}>
           {!audioUrl ? (
-            <button type="button" onClick={recording ? stopRecording : startRecording}
-              style={{
-                width: '100%', border: 'none', borderRadius: 10, padding: '11px',
-                fontSize: '.88rem', fontWeight: 700, cursor: 'pointer',
-                fontFamily: "'Tajawal', sans-serif",
-                background: recording ? '#fee2e2' : '#f0fdf4',
-                color:      recording ? '#dc2626' : '#16a34a',
-              }}>
-              {recording ? `⏹️ إيقاف التسجيل (${recSecs}ث)` : '🎙️ تسجيل صوت الكلمة (اختياري)'}
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={recording ? stopRecording : startRecording}
+                style={{
+                  flex: 1, minHeight: 44, border: 'none', borderRadius: 10, padding: '10px 8px',
+                  fontSize: '.86rem', fontWeight: 700, cursor: 'pointer',
+                  fontFamily: "'Tajawal', sans-serif",
+                  background: recording ? '#fee2e2' : '#f0fdf4',
+                  color:      recording ? '#dc2626' : '#16a34a',
+                }}>
+                {recording ? `⏹️ إيقاف التسجيل (${recSecs}ث)` : '🎙️ تسجيل صوت الكلمة'}
+              </button>
+              <AudioUploadButton disabled={recording}
+                onPick={(url) => { setAudioUrl(url); setMsg(null); }}
+                onError={(text) => setMsg({ ok: false, text: `❌ ${text}` })}
+                style={{ flex: 1, minHeight: 44, borderRadius: 10, padding: '10px 8px', fontSize: '.86rem', fontWeight: 700,
+                  fontFamily: "'Tajawal', sans-serif", background: '#eff6ff', color: '#1d4ed8', border: 'none' }} />
+            </div>
           ) : (
             <div style={{ background: '#f0fdf4', borderRadius: 10, padding: 10, border: '1.5px solid #86efac' }}>
               <div style={{ fontSize: '.78rem', color: '#16a34a', fontWeight: 700, marginBottom: 6, textAlign: 'right' }}>
-                ✅ التسجيل جاهز — سيُحفظ مع الكلمة
+                ✅ الصوت جاهز — سيُحفظ مع الكلمة
               </div>
               <audio src={audioUrl} controls style={{ width: '100%', height: 36, display: 'block', borderRadius: 6 }} />
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                 <button type="button" onClick={recording ? stopRecording : startRecording}
-                  style={{ flex: 1, border: 'none', borderRadius: 8, padding: '7px', fontSize: '.8rem',
+                  style={{ flex: 1, minHeight: 38, border: 'none', borderRadius: 8, padding: '7px', fontSize: '.8rem',
                     fontWeight: 700, cursor: 'pointer', fontFamily: "'Tajawal', sans-serif",
                     background: recording ? '#fee2e2' : '#ede9fe',
                     color:      recording ? '#dc2626' : '#7c3aed' }}>
                   {recording ? `⏹️ إيقاف (${recSecs}ث)` : '🔄 إعادة التسجيل'}
                 </button>
+                <AudioUploadButton label="📁 استبدال بملف" disabled={recording}
+                  onPick={(url) => { setAudioUrl(url); setMsg(null); }}
+                  onError={(text) => setMsg({ ok: false, text: `❌ ${text}` })}
+                  style={{ flex: 1, minHeight: 38, borderRadius: 8, padding: '7px', fontSize: '.8rem', fontWeight: 700,
+                    fontFamily: "'Tajawal', sans-serif", background: '#eff6ff', color: '#1d4ed8', border: 'none' }} />
                 <button type="button" onClick={() => setAudioUrl(null)}
-                  style={{ border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: '.8rem',
+                  style={{ minHeight: 38, border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: '.8rem',
                     fontWeight: 700, cursor: 'pointer', fontFamily: "'Tajawal', sans-serif",
                     background: '#fee2e2', color: '#dc2626' }}>
                   🗑️ حذف

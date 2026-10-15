@@ -5,6 +5,7 @@ import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
 import { freshFetch } from '../../../../lib/fresh-fetch';
 import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
+import AudioUploadButton from '../../../../components/AudioUploadButton';
 
 /* ─────────────── helpers ─────────────── */
 function shuffle(arr) {
@@ -36,14 +37,6 @@ function playAudio(audioUrl, text) {
   else speak(text);
 }
 
-function fileToBase64(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result);
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
-}
 
 /* resize/compress a pair image to the actual in-game display size (140×140) before upload */
 async function resizeImage(file, maxSize = 140, quality = 0.85) {
@@ -180,16 +173,25 @@ function PairManager({ allPairs, onRefresh }) {
         <div style={{ marginBottom:10 }}>
           <label style={S.label}>الصوت (اختياري)</label>
           {!audioUrl ? (
-            <button onClick={() => recording ? stopRecording() : startRecording(url => setAudioUrl(url))} style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:`1.5px solid ${recording?'#fca5a5':'#86efac'}`, background:recording?'#fee2e2':'#f0fdf4', cursor:'pointer', fontFamily:'inherit', fontSize:'.88rem' }}>
-              {recording ? `⏹️ إيقاف (${recSecs}ث)` : '🎙️ تسجيل صوت'}
-            </button>
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={() => recording ? stopRecording() : startRecording(url => setAudioUrl(url))} style={{ flex:1, minHeight:44, padding:'8px 12px', borderRadius:8, border:`1.5px solid ${recording?'#fca5a5':'#86efac'}`, background:recording?'#fee2e2':'#f0fdf4', cursor:'pointer', fontFamily:'inherit', fontSize:'.88rem' }}>
+                {recording ? `⏹️ إيقاف (${recSecs}ث)` : '🎙️ تسجيل صوت'}
+              </button>
+              <AudioUploadButton disabled={recording}
+                onPick={(url) => { setAudioUrl(url); setMsg(null); }}
+                onError={(text) => setMsg({ ok:false, text })}
+                style={{ flex:1, minHeight:44, padding:'8px 12px', borderRadius:8, border:'1.5px solid #bfdbfe', background:'#eff6ff', color:'#1d4ed8', fontFamily:'inherit', fontSize:'.88rem' }} />
+            </div>
           ) : (
             <div style={{ background:'#f0fdf4', border:'1.5px solid #86efac', borderRadius:8, padding:8 }}>
               <div style={{ fontSize:'.78rem', color:'#15803d', marginBottom:4 }}>✅ تسجيل جاهز</div>
               <audio src={audioUrl} controls style={{ width:'100%', height:32 }} />
               <div style={{ display:'flex', gap:6, marginTop:6 }}>
                 <button onClick={() => setAudioUrl('')} style={{ ...S.btnSm, background:'#fef2f2', color:'#dc2626', border:'1px solid #fca5a5' }}>🗑️ حذف</button>
-                <input type="file" accept="audio/*" onChange={async e => { const f=e.target.files?.[0]; if(f) setAudioUrl(await fileToBase64(f)); }} style={{ fontSize:'.75rem' }} />
+                <AudioUploadButton label="📁 استبدال بملف" disabled={recording}
+                  onPick={(url) => { setAudioUrl(url); setMsg(null); }}
+                  onError={(text) => setMsg({ ok:false, text })}
+                  style={{ ...S.btnSm, background:'#eff6ff', color:'#1d4ed8', border:'1px solid #bfdbfe' }} />
               </div>
             </div>
           )}

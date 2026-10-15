@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
+import AudioUploadButton from '../../../../components/AudioUploadButton';
 import { WORDS_PER_ROUND_CHOICES, OPTIONS_COUNT_CHOICES, LEN_NO_LIMIT } from '../../../../lib/letter-catcher';
 
 /* ── constants (duplicated here so this chunk loads independently) ── */
@@ -46,14 +47,6 @@ function speak(text) {
   else { window.speechSynthesis.addEventListener('voiceschanged', go, { once: true }); setTimeout(go, 500); }
 }
 
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
 
 /* resize/compress a word image to the actual in-game display size (140×140, see S.wordImg) before upload */
 async function resizeImage(file, maxSize = 140, quality = 0.85) {
@@ -333,32 +326,44 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
         </div>
         <input ref={fileRef} type="file" accept="image/*" onChange={handleImg} style={{ display:'none' }} />
 
-        {/* audio recorder */}
+        {/* صوت الكلمة: تسجيل من الميكروفون أو رفع ملف جاهز (مثل ElevenLabs) */}
         <div style={{ marginTop:8 }}>
           {!audioUrl ? (
-            <button type="button" onClick={recording ? stopRecording : startRecording} style={{
-              width:'100%', border:'none', borderRadius:10, padding:'11px',
-              fontSize:'.88rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit',
-              background: recording ? '#fee2e2' : '#f0fdf4',
-              color: recording ? '#dc2626' : '#16a34a',
-            }}>
-              {recording ? `⏹️ إيقاف التسجيل (${recSecs}ث)` : '🎙️ تسجيل صوت الكلمة (اختياري)'}
-            </button>
+            <div style={{ display:'flex', gap:8 }}>
+              <button type="button" onClick={recording ? stopRecording : startRecording} style={{
+                flex:1, minHeight:44, border:'none', borderRadius:10, padding:'10px 8px',
+                fontSize:'.86rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                background: recording ? '#fee2e2' : '#f0fdf4',
+                color: recording ? '#dc2626' : '#16a34a',
+              }}>
+                {recording ? `⏹️ إيقاف التسجيل (${recSecs}ث)` : '🎙️ تسجيل صوت الكلمة'}
+              </button>
+              <AudioUploadButton disabled={recording}
+                onPick={(url) => { setAudioUrl(url); setMsg(null); }}
+                onError={(text) => setMsg({ ok: false, text: `❌ ${text}` })}
+                style={{ flex:1, minHeight:44, borderRadius:10, padding:'10px 8px', fontSize:'.86rem', fontWeight:700,
+                  fontFamily:'inherit', background:'#eff6ff', color:'#1d4ed8', border:'none' }} />
+            </div>
           ) : (
             <div style={{ background:'#f0fdf4', borderRadius:10, padding:10, border:'1.5px solid #86efac' }}>
               <div style={{ fontSize:'.78rem', color:'#16a34a', fontWeight:700, marginBottom:6, textAlign:'right' }}>
-                ✅ التسجيل جاهز — سيُحفظ مع الكلمة عند الضغط على زر الحفظ
+                ✅ الصوت جاهز — سيُحفظ مع الكلمة عند الضغط على زر الحفظ
               </div>
               <audio src={audioUrl} controls style={{ width:'100%', height:36, display:'block', borderRadius:6 }} />
-              <div style={{ display:'flex', gap:8, marginTop:8 }}>
+              <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
                 <button type="button" onClick={recording ? stopRecording : startRecording} style={{
-                  flex:1, border:'none', borderRadius:8, padding:'7px', fontSize:'.8rem',
+                  flex:1, minHeight:38, border:'none', borderRadius:8, padding:'7px', fontSize:'.8rem',
                   fontWeight:700, cursor:'pointer', fontFamily:'inherit',
                   background: recording ? '#fee2e2' : '#ede9fe',
                   color: recording ? '#dc2626' : '#7c3aed',
                 }}>{recording ? `⏹️ إيقاف (${recSecs}ث)` : '🔄 إعادة التسجيل'}</button>
+                <AudioUploadButton label="📁 استبدال بملف" disabled={recording}
+                  onPick={(url) => { setAudioUrl(url); setMsg(null); }}
+                  onError={(text) => setMsg({ ok: false, text: `❌ ${text}` })}
+                  style={{ flex:1, minHeight:38, borderRadius:8, padding:'7px', fontSize:'.8rem', fontWeight:700,
+                    fontFamily:'inherit', background:'#eff6ff', color:'#1d4ed8', border:'none' }} />
                 <button type="button" onClick={() => setAudioUrl(null)} style={{
-                  border:'none', borderRadius:8, padding:'7px 14px', fontSize:'.8rem',
+                  minHeight:38, border:'none', borderRadius:8, padding:'7px 14px', fontSize:'.8rem',
                   fontWeight:700, cursor:'pointer', fontFamily:'inherit',
                   background:'#fee2e2', color:'#dc2626',
                 }}>🗑️ حذف</button>
