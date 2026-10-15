@@ -17,6 +17,10 @@ const WHATSAPP_HREF = 'https://api.whatsapp.com/send/?phone=447400755914&text&ty
 const FEATURE_ICONS = [Target, FileBarChart, Globe, Smartphone, Lock, Zap];
 const FEATURE_COLORS = ['gold', 'purple', 'green', 'gold', 'purple', 'green'];
 
+/* فصل «فهيم معك في كل خطوة» البنفسجي — مخفي بطلب الأستاذ محمد (2026-10-15).
+   لإعادته: true فقط (النصوص في translations/index.js باقية كما هي). */
+const SHOW_FAHEEM_CHAPTER = false;
+
 export default function LandingPage() {
   const router = useRouter();
   const { t } = useLanguage();
@@ -92,11 +96,12 @@ export default function LandingPage() {
 
         <svg className="hero-wave" xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 1440 80" preserveAspectRatio="none">
-          <path d="M0,80 L0,44 C240,80 480,8 720,44 C960,80 1200,8 1440,44 L1440,80 Z" fill="#FAF7F2" />
+          <path d="M0,80 L0,44 C240,80 480,8 720,44 C960,80 1200,8 1440,44 L1440,80 Z" fill={SHOW_FAHEEM_CHAPTER ? '#FAF7F2' : '#EDE5D8'} />
         </svg>
       </section>
 
       {/* ── Faheem chapter ── */}
+      {SHOW_FAHEEM_CHAPTER && (
       <section className="faheem-chapter">
         <style>{`
           .faheem-chapter{ background:linear-gradient(165deg,#7C5CD9,#5f3fc4); padding:72px 0; }
@@ -135,6 +140,7 @@ export default function LandingPage() {
           <p className="faheem-fact">{t('landing.faheemFact')}</p>
         </div>
       </section>
+      )}
 
       {/* ── Features + About Video (combined) ── */}
       <section id="about" className="features-about">
