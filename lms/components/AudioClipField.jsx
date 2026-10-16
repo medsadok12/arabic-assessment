@@ -5,8 +5,11 @@ import {
 } from '../lib/story-audio-client';
 
 /* ════════════════════════════════════════════════════════════════
-   حقل صوت عام: تسجيل من الميكروفون أو رفع ملف ← معاينة ← «اعتمد» يرفع
-   الملف (upload) ويمرّر رابطه لـonChange ← يُحفظ مع النموذج الأب.
+   حقل صوت عام: تسجيل من الميكروفون أو رفع ملف ← يُرفع فوراً تلقائياً
+   (upload) ويمرّر رابطه لـonChange ← يُحفظ مع النموذج الأب.
+   لا خطوة «اعتمد» يدوية: كانت تُفقد التسجيل بصمت إن انتقل المعلم لصفحة
+   أخرى أو حفظ القصة قبل الضغط عليها (ضاعت تسجيلات قصة «فَهيم» كلها هكذا،
+   2026-10-16). إن فشل الرفع يبقى التسجيل ظاهراً مع «أعد محاولة الحفظ».
    يستخدمه حقل صوت صفحة القصة (StoryPageAudioField) وصوتا الحرف والجملة
    في محرر الحروف الهجائية (LetterEditor) — نصوص الواجهة تأتي من texts.
    يُركَّب بـ key: تغيير المفتاح (صفحة/حرف آخر) يوقف أي تسجيل جارٍ.
@@ -43,12 +46,29 @@ export default function AudioClipField({ audioUrl, onChange, upload, texts: T, m
     if (pendingRef.current?.url) URL.revokeObjectURL(pendingRef.current.url);
   }, []);
 
+  /* يرفع التسجيل/الملف فوراً — يُستدعى أيضاً بعد انتقال المعلم لصفحة أخرى أثناء
+     التسجيل (الحقل أُغلق)، وonChange هنا من لحظة البدء فيُربط الصوت بصفحته هو */
+  const uploadClip = async (clip) => {
+    setPendingClip(clip);
+    setBusy(true); setMsg(null); setProgress(0);
+    try {
+      const url = await upload(clip.blob, setProgress);
+      onChange(url);
+      setPendingClip(null);
+      setMsg({ ok: true, text: T.added });
+    } catch (e) {
+      setMsg({ ok: false, text: `❌ ${e.message || 'فشل الرفع'} — التسجيل ما زال هنا، اضغط «أعد محاولة الحفظ»` });
+    }
+    setProgress(null);
+    setBusy(false);
+  };
+
   const startRecording = async () => {
     setMsg(null);
     setPendingClip(null);
     const err = await rec.start((blob) => {
       if (!blob) { setMsg({ ok: false, text: 'لم يُلتقط أي صوت — تأكد من الميكروفون وأعد التسجيل' }); return; }
-      setPendingClip({ blob, url: URL.createObjectURL(blob), name: T.clipName });
+      uploadClip({ blob, url: URL.createObjectURL(blob), name: T.clipName });
     });
     if (err) setMsg({ ok: false, text: err });
   };
@@ -60,24 +80,10 @@ export default function AudioClipField({ audioUrl, onChange, upload, texts: T, m
     const err = checkStoryAudioFile(file)
       || (maxMb && file.size > maxMb * 1024 * 1024 ? `«${file.name}» أكبر من ${maxMb}MB` : null);
     if (err) { setMsg({ ok: false, text: err }); return; }
-    setMsg(null);
-    setPendingClip({ blob: file, url: URL.createObjectURL(file), name: file.name });
+    uploadClip({ blob: file, url: URL.createObjectURL(file), name: file.name });
   };
 
-  const accept = async () => {
-    if (!pending || busy) return;
-    setBusy(true); setMsg(null); setProgress(0);
-    try {
-      const url = await upload(pending.blob, setProgress);
-      onChange(url);
-      setPendingClip(null);
-      setMsg({ ok: true, text: T.added });
-    } catch (e) {
-      setMsg({ ok: false, text: `❌ ${e.message || 'فشل الرفع'} — حاول مرة أخرى` });
-    }
-    setProgress(null);
-    setBusy(false);
-  };
+  const retry = () => { if (pending && !busy) uploadClip(pending); };
 
   const remove = () => {
     if (!confirm(T.removeConfirm)) return;
@@ -133,23 +139,25 @@ export default function AudioClipField({ audioUrl, onChange, upload, texts: T, m
         </div>
       )}
 
-      {/* معاينة قبل الاعتماد */}
+      {/* يُحفظ الآن تلقائياً — أو فشل الحفظ فيبقى التسجيل مع إعادة المحاولة */}
       {pending && !rec.recording && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#fff', border: `2px solid ${GOLD}`, borderRadius: 12, padding: 12 }}>
-          <div style={{ fontWeight: 800, color: NAVY, fontSize: '.85rem' }}>👂 استمع قبل الاعتماد: {pending.name}</div>
+          <div style={{ fontWeight: 800, color: NAVY, fontSize: '.85rem' }}>
+            {busy ? `⏳ جارٍ حفظ «${pending.name}» ${progress ?? 0}%` : `🎙️ ${pending.name} — لم يُحفظ بعد`}
+          </div>
           <audio controls src={pending.url} style={{ width: '100%' }} />
           {progress !== null && (
             <div style={{ height: 10, borderRadius: 99, background: SAND, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${progress}%`, background: NAVY, transition: 'width .2s' }} />
             </div>
           )}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" onClick={accept} disabled={busy} style={{ ...BTN_GOLD, flex: '1 1 180px', opacity: busy ? .7 : 1 }}>
-              {busy ? `⏳ جارٍ الرفع ${progress ?? 0}%` : T.accept}
-            </button>
-            <button type="button" onClick={startRecording} disabled={busy} style={BTN_LIGHT}>🎙️ أعد التسجيل</button>
-            <button type="button" onClick={() => { setPendingClip(null); setMsg(null); }} disabled={busy} style={BTN_LIGHT}>✖ إلغاء</button>
-          </div>
+          {!busy && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" onClick={retry} style={{ ...BTN_GOLD, flex: '1 1 180px' }}>🔁 أعد محاولة الحفظ</button>
+              <button type="button" onClick={startRecording} style={BTN_LIGHT}>🎙️ أعد التسجيل</button>
+              <button type="button" onClick={() => { setPendingClip(null); setMsg(null); }} style={BTN_LIGHT}>✖ إلغاء</button>
+            </div>
+          )}
         </div>
       )}
 

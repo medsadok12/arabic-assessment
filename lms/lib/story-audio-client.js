@@ -80,13 +80,12 @@ export function useStoryAudioRecorder(maxSecs = 10 * 60) {
     setRecording(false);
   }, []);
 
+  /* إغلاق الحقل أثناء التسجيل (الانتقال لصفحة أخرى مثلاً): يُوقف التسجيل ويُسلَّم
+     كما هو فيُحفظ تلقائياً — كان يُرمى بصمت (onstop = null) فيضيع عمل المعلم */
   useEffect(() => () => {
     clearInterval(timerRef.current);
-    if (recorderRef.current?.state === 'recording') {
-      recorderRef.current.onstop = null;
-      recorderRef.current.stop();
-    }
-    streamRef.current?.getTracks().forEach(t => t.stop());
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop(); // onstop يغلق الميكروفون
+    else streamRef.current?.getTracks().forEach(t => t.stop());
   }, []);
 
   const start = async (onDone) => {

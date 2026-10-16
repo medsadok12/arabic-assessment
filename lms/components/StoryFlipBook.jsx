@@ -1,10 +1,9 @@
 'use client';
-import { useRef, useState, useCallback, forwardRef, useEffect, useMemo } from 'react';
+import { useRef, useState, useCallback, forwardRef, useEffect } from 'react';
 import Link from 'next/link';
 import HTMLFlipBook from 'react-pageflip';
 import DOMPurify from 'isomorphic-dompurify';
 import { useStoryNarration, PageListenButton, AutoFlipToggle } from './StoryNarration';
-import { storyPageText } from '../lib/story-speech';
 
 /* ── صفحة واحدة ── */
 const StoryPage = forwardRef(function StoryPage({ html, pageNum, total, isRight, mirrorX }, ref) {
@@ -142,14 +141,10 @@ export default function StoryFlipBook({
   const onFlip        = useCallback((e) => setCurrent(e.data), []);
   const onChangeState = useCallback((e) => { if (e.data === 'read') isFlipping.current = false; }, []);
 
-  /* ── صوت الصفحات: زر مستقل تحت كل صفحة ظاهرة، يشغّل صوت صفحته فقط —
-        تسجيل المعلم إن وُجد، وإلا نص الصفحة بصوت الجهاز ── */
+  /* ── صوت الصفحات: زر مستقل تحت كل صفحة ظاهرة، يشغّل صوت صفحته فقط ── */
   const visiblePages = Array.from({ length: step }, (_, k) => current + k).filter(i => i < totalPages);
-  const pagesKey  = pages.join('\u0000');
-  const pageTexts = useMemo(() => pages.map(storyPageText), [pagesKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const narr = useStoryNarration({
     pageAudio,
-    pageTexts,
     visiblePages,
     hasNext: current + step < totalPages,
     onAdvance: () => safeFlip('next'),

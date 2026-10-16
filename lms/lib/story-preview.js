@@ -1,11 +1,12 @@
 import { splitStoryPages, storyAudioPathFromUrl } from './story-audio';
-import { storyPageText } from './story-speech';
 
 /* ════════════════════════════════════════════════════════════════
    معاينة قصة حقيقية في الصفحة الرئيسية (قسم «معاينة من داخل المنصة») — خادم فقط
    تُؤخذ الصفحة الأولى من قصة لها رابط مشاركة عام (share_token)، أي قصة سمح
    المشرف صراحةً بفتحها للجميع: نص الصفحة وصورتها وصوت قراءتها الحقيقي.
 ════════════════════════════════════════════════════════════════ */
+
+const ENTITIES = { '&nbsp;': ' ', '&amp;': '&', '&quot;': '"', '&#39;': "'", '&lt;': '<', '&gt;': '>' };
 
 export function publicMediaBase() {
   return `${(process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '')}/storage/v1/object/public/`;
@@ -18,7 +19,14 @@ export function storyPagePreview(pageHtml) {
   const src = /<img[^>]+src="([^"]+)"/i.exec(html)?.[1] || null;
   const base = publicMediaBase();
   const image = src && base.length > 30 && src.startsWith(base) ? src : null;
-  return { text: storyPageText(html), image };
+  const text = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6]|li)>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&[a-z#0-9]+;/gi, m => ENTITIES[m] ?? ' ')
+    .split('\n').map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean)
+    .join('\n');
+  return { text, image };
 }
 
 /* يختار من القصص المشارَكة أوّل قصة لصفحتها الأولى نص وصوت حقيقي، ويُرجع

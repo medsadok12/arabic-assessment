@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { speechChunks, pickArabicVoice } from '../lib/story-speech';
 
 /* ════════════════════════════════════════════════════════════════
    صوت قراءة القصة — زر مستقل تحت كل صفحة
@@ -10,11 +9,8 @@ import { speechChunks, pickArabicVoice } from '../lib/story-speech';
      ويُستدعى play() داخل معالج اللمسة نفسه.
    • كل زر يشغّل صوت صفحته فقط — لا قراءة لصفحتين معاً.
    • قلب الصفحة يوقف صوت أي صفحة لم تعد ظاهرة.
-   • صفحة بلا تسجيل من المعلم تُقرأ بصوت الجهاز (speechSynthesis) جملةً جملة،
-     فيظهر الزر تحت كل صفحة في كل قصة تلقائياً. يختفي فقط إن لم يكن في الجهاز
-     صوت عربي (بدل أن يقرأها صوت إنجليزي بلا معنى). lib/story-speech.js
    • «قلب تلقائي» (اختياري، محفوظ في localStorage): بعد انتهاء صوت صفحة يكمل
-     التالية، ويقلب الكتاب عند الحاجة، ويتوقف عند صفحة ليس لها ما يُسمَع.
+     التالية، ويقلب الكتاب عند الحاجة، ويتوقف عند صفحة بلا صوت.
 ════════════════════════════════════════════════════════════════ */
 
 const AUTO_KEY = 'aarem-story-autoflip';
@@ -45,13 +41,10 @@ const CSS = `
   .snb-auto.on { border-color:#1A2B4A; background:#1A2B4A; color:#fff; }
 `;
 
-export function useStoryNarration({ pageAudio = [], pageTexts = [], visiblePages = [], hasNext = false, onAdvance }) {
+export function useStoryNarration({ pageAudio = [], visiblePages = [], hasNext = false, onAdvance }) {
   const audioRef = useRef(null);
-  const pageRef  = useRef(null);  // الصفحة المحمَّلة الآن (متزامن فوراً بلا انتظار رسم)
+  const pageRef  = useRef(null);  // الصفحة المحمَّلة في العنصر الآن (متزامن فوراً بلا انتظار رسم)
   const autoRef  = useRef(false); // شغّل أول صفحة ظاهرة تلقائياً بعد القلب
-  const modeRef  = useRef(null);  // 'audio' تسجيل المعلم | 'tts' صوت الجهاز
-  const ttsRef   = useRef({ token: 0, chunks: [], idx: 0, timer: null });
-  const finishRef = useRef(null); // أحدث نسخة من finishPage لاستدعاءات صوت الجهاز
 
   const [page,      setPage]      = useState(null);
   const [playing,   setPlaying]   = useState(false);
@@ -60,144 +53,51 @@ export function useStoryNarration({ pageAudio = [], pageTexts = [], visiblePages
   const [endedPage, setEndedPage] = useState(null);
   const [failedPage,setFailedPage]= useState(null);
   const [autoFlip,  setAutoFlip]  = useState(false);
-  const [voice,     setVoice]     = useState(null); // صوت عربي في الجهاز (null = لا يوجد)
 
-  /* للصفحة ما يُسمَع: تسجيل المعلم، أو نصها مع صوت عربي في الجهاز */
-  const canPlay  = (p) => !!pageAudio[p] || (!!voice && !!pageTexts[p]);
-  const count    = Math.max(pageAudio.length, pageTexts.length);
-  const hasAudio = Array.from({ length: count }, (_, i) => i).some(canPlay);
+  const hasAudio = pageAudio.some(Boolean);
 
   useEffect(() => {
     try { setAutoFlip(localStorage.getItem(AUTO_KEY) === '1'); } catch {}
   }, []);
 
-  /* الأصوات تُحمَّل متأخرة في بعض المتصفحات — نعيد الاختيار عند وصولها */
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    const synth = window.speechSynthesis;
-    const pick = () => setVoice(pickArabicVoice(synth.getVoices()));
-    pick();
-    synth.addEventListener?.('voiceschanged', pick);
-    return () => synth.removeEventListener?.('voiceschanged', pick);
-  }, []);
-
   useEffect(() => {
     const el = audioRef.current;
-    return () => { el?.pause(); stopTts(); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { el?.pause(); };
+  }, []);
 
-  /* إيقاف صوت الجهاز: رقم جديد يُسكت كل الاستدعاءات القديمة قبل cancel() */
-  function stopTts() {
-    const t = ttsRef.current;
-    t.token += 1;
-    clearTimeout(t.timer);
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
-  }
-
-  /* قراءة صفحة بصوت الجهاز من الجملة idx — كل الجمل تُضاف لطابور القراءة
-     داخل اللمسة نفسها (شرط سفاري على آيفون وآيباد) */
-  function speakPage(p, idx) {
-    const synth = window.speechSynthesis;
-    const t = ttsRef.current;
-    if (pageRef.current !== p || !t.chunks.length) t.chunks = speechChunks(pageTexts[p]);
-    const chunks = t.chunks;
-    if (!chunks.length || idx >= chunks.length) { finishRef.current?.(p); return; }
-    const token = t.token;
-    const n = chunks.length;
-    let started = false;
-    t.idx = idx;
-    synth.resume(); // كروم يعلق أحياناً في حالة «إيقاف مؤقت» فيبتلع القراءة
-    for (let i = idx; i < n; i++) {
-      const u = new SpeechSynthesisUtterance(chunks[i]);
-      u.lang  = voice?.lang || 'ar-SA';
-      if (voice) u.voice = voice;
-      u.rate  = 0.85;
-      u.onstart = () => {
-        if (ttsRef.current.token !== token) return;
-        started = true;
-        clearTimeout(ttsRef.current.timer);
-        ttsRef.current.idx = i;
-        setWaiting(false); setPlaying(true);
-        setProgress(i / n);
-      };
-      u.onboundary = (e) => {
-        if (ttsRef.current.token !== token || typeof e.charIndex !== 'number') return;
-        setProgress((i + Math.min(1, e.charIndex / chunks[i].length)) / n);
-      };
-      u.onend = () => {
-        if (ttsRef.current.token !== token) return;
-        ttsRef.current.idx = i + 1;
-        setProgress((i + 1) / n);
-        if (i === n - 1) finishRef.current?.(p);
-      };
-      u.onerror = (e) => {
-        if (ttsRef.current.token !== token || e?.error === 'interrupted' || e?.error === 'canceled') return;
-        stopTts();
-        setPlaying(false); setWaiting(false); setFailedPage(p);
-      };
-      synth.speak(u);
-    }
-    /* متصفح منع القراءة بصمت (بلا خطأ ولا بداية) ← رسالة «جرّب مرة ثانية» لا انتظار أبدي */
-    t.timer = setTimeout(() => {
-      if (ttsRef.current.token !== token || started) return;
-      stopTts();
-      setPlaying(false); setWaiting(false); setFailedPage(p);
-    }, 8000);
-  }
-
-  /* تشغيل صفحة — يُستدعى مباشرة داخل معالج اللمسة (أو بعد انتهاء صفحة سابقة) */
+  /* تشغيل صوت صفحة — يُستدعى مباشرة داخل معالج اللمسة (أو بعد انتهاء صوت سابق) */
   const start = (p, fromStart) => {
     const el  = audioRef.current;
     const src = pageAudio[p];
-    if (!canPlay(p)) return;
-    const changed = pageRef.current !== p;
-    if (changed) {
+    if (!el || !src) return;
+    if (pageRef.current !== p) {
+      el.src = src;
       pageRef.current = p;
-      ttsRef.current.chunks = [];
       setPage(p);
       setProgress(0);
     } else if (fromStart) {
+      el.currentTime = 0;
       setProgress(0);
     }
     setEndedPage(null);
     setFailedPage(null);
     setWaiting(true);
-
-    if (src) {
-      if (!el) return;
-      stopTts();
-      modeRef.current = 'audio';
-      if (changed || el.getAttribute('src') !== src) el.src = src;
-      else if (fromStart) el.currentTime = 0;
-      el.play()
-        .then(() => setWaiting(false))
-        .catch((e) => { setWaiting(false); if (e?.name !== 'AbortError') setFailedPage(p); });
-      return;
-    }
-
-    modeRef.current = 'tts';
-    el?.pause();
-    const resumeAt = changed || fromStart ? 0 : ttsRef.current.idx;
-    stopTts();
-    speakPage(p, resumeAt);
+    el.play()
+      .then(() => setWaiting(false))
+      .catch((e) => { setWaiting(false); if (e?.name !== 'AbortError') setFailedPage(p); });
   };
 
   const toggle = (p) => {
-    autoRef.current = false;
     const el = audioRef.current;
-    if (pageRef.current === p && modeRef.current === 'audio' && el && !el.paused) { el.pause(); return; }
-    if (pageRef.current === p && modeRef.current === 'tts' && (playing || waiting)) {
-      stopTts(); setPlaying(false); setWaiting(false);   // «أكمل الاستماع» يبدأ من نفس الجملة
-      return;
-    }
+    if (!el) return;
+    autoRef.current = false;
+    if (pageRef.current === p && !el.paused) { el.pause(); return; }
     start(p, endedPage === p || failedPage === p);
   };
 
   const stop = () => {
     audioRef.current?.pause();
-    stopTts();
     pageRef.current = null;
-    modeRef.current = null;
     setPage(null); setPlaying(false); setWaiting(false); setProgress(0);
     setEndedPage(null); setFailedPage(null);
   };
@@ -208,26 +108,24 @@ export function useStoryNarration({ pageAudio = [], pageTexts = [], visiblePages
     if (autoRef.current) {
       autoRef.current = false;
       const first = visiblePages[0];
-      if (first !== undefined && canPlay(first)) { start(first, true); return; }
+      if (first !== undefined && pageAudio[first]) { start(first, true); return; }
     }
     if (pageRef.current !== null && !visiblePages.includes(pageRef.current)) stop();
   }, [visKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* انتهت قراءة صفحة (تسجيلاً أو بصوت الجهاز) */
-  const finishPage = (p) => {
+  const handleEnded = () => {
+    const p = pageRef.current;
     setPlaying(false);
-    setWaiting(false);
     setProgress(1);
     if (autoFlip && p !== null) {
       const next = p + 1;
-      if (next < count && canPlay(next)) {
+      if (next < pageAudio.length && pageAudio[next]) {
         if (visiblePages.includes(next)) { start(next, true); return; }  // الصفحة المقابلة
         if (hasNext && onAdvance) { autoRef.current = true; onAdvance(); return; }
       }
     }
     setEndedPage(p);
   };
-  useEffect(() => { finishRef.current = finishPage; });
 
   const toggleAuto = () => {
     setAutoFlip(v => {
@@ -236,36 +134,33 @@ export function useStoryNarration({ pageAudio = [], pageTexts = [], visiblePages
     });
   };
 
-  /* أحداث عنصر الصوت تخص تسجيل المعلم فقط — تُهمَل أثناء القراءة بصوت الجهاز */
-  const onAudio = (fn) => (e) => { if (modeRef.current === 'audio') fn(e); };
-
   // عنصر الصوت المشترك + أنماط الأزرار (مرة واحدة) — يُرسَم مرة واحدة بجانب الأزرار
   const audioElement = hasAudio ? (
     <>
-    <style dangerouslySetInnerHTML={{ __html: CSS }} />
+    <style>{CSS}</style>
     <audio
       ref={audioRef}
       preload="none"
-      onPlay={onAudio(() => { setPlaying(true); setEndedPage(null); })}
-      onPause={onAudio(() => setPlaying(false))}
-      onEmptied={onAudio(() => setPlaying(false))}
-      onWaiting={onAudio(() => setWaiting(true))}
-      onPlaying={onAudio(() => setWaiting(false))}
-      onEnded={onAudio(() => finishPage(pageRef.current))}
-      onError={onAudio(() => { if (pageRef.current !== null) { setPlaying(false); setWaiting(false); setFailedPage(pageRef.current); } })}
-      onTimeUpdate={onAudio((e) => {
+      onPlay={() => { setPlaying(true); setEndedPage(null); }}
+      onPause={() => setPlaying(false)}
+      onEmptied={() => setPlaying(false)}
+      onWaiting={() => setWaiting(true)}
+      onPlaying={() => setWaiting(false)}
+      onEnded={handleEnded}
+      onError={() => { if (pageRef.current !== null) { setPlaying(false); setWaiting(false); setFailedPage(pageRef.current); } }}
+      onTimeUpdate={(e) => {
         const { currentTime, duration } = e.currentTarget;
         if (Number.isFinite(duration) && duration > 0) setProgress(currentTime / duration);
-      })}
+      }}
     />
     </>
   ) : null;
 
-  /* حالة زر صفحة بعينها — hasAudio: للصفحة ما يُسمَع (تسجيل أو صوت الجهاز) */
+  /* حالة زر صفحة بعينها */
   const stateOf = (p) => {
     const active = page === p;
     return {
-      hasAudio: canPlay(p),
+      hasAudio: !!pageAudio[p],
       playing:  active && playing,
       waiting:  active && waiting,
       progress: active ? progress : 0,

@@ -8,7 +8,7 @@ import {
 
 /* ════════════════════════════════════════════════════════════════
    لوحة أصوات صفحات القصة (تبويب القصص في bogga) — صوت مستقل لكل صفحة
-   • لكل صفحة: تسجيل مباشر (مع عرض نص الصفحة لقراءته) أو رفع ملف، معاينة، حذف
+   • لكل صفحة: تسجيل مباشر (مع عرض نص الصفحة لقراءته) أو رفع ملف يُحفظ فوراً، حذف
    • بعد حفظ تسجيل صفحة: زر «سجّل الصفحة التالية» لمتابعة القصة بلا توقف
    • رفع ملفات عدة صفحات دفعة واحدة: تُرتَّب بأسمائها (1، 2، 3…) وتُربط بالترتيب
    التسجيل والرفع من lib/story-audio-client.js (مشترك مع محرر القصص الكامل)،
@@ -60,6 +60,8 @@ export default function StoryAudioPanel({ story, onSaved }) {
   const bulkRef     = useRef(null);
   const filePageRef = useRef(null);
   const pendingRef  = useRef(null);
+  const audioRef    = useRef(audio);  // أحدث أصوات القصة عند الحفظ (بعد انتهاء تسجيل طويل)
+  useEffect(() => { audioRef.current = audio; });
 
   /* تحرير رابط المعاينة القديم كلما تغيّر الملف المعلَّق */
   const setPendingClip = (clip) => {
@@ -100,9 +102,7 @@ export default function StoryAudioPanel({ story, onSaved }) {
     if (!file || page === null) return;
     const err = checkStoryAudioFile(file);
     if (err) { setMsg({ ok: false, text: err }); return; }
-    setMsg(null);
-    setActive(page);
-    setPendingClip({ blob: file, url: URL.createObjectURL(file), name: file.name });
+    savePageClip(page, { blob: file, url: URL.createObjectURL(file), name: file.name });
   };
 
   /* ── التسجيل ── */
@@ -116,29 +116,34 @@ export default function StoryAudioPanel({ story, onSaved }) {
         setActive(null);
         return;
       }
-      setPendingClip({ blob, url: URL.createObjectURL(blob), name: `تسجيل الصفحة ${page + 1}` });
+      savePageClip(page, { blob, url: URL.createObjectURL(blob), name: `تسجيل الصفحة ${page + 1}` });
     });
     if (err) { setMsg({ ok: false, text: err }); setActive(null); }
   };
 
-  /* ── حفظ الصوت المعلَّق للصفحة المفتوحة ── */
-  const handleSavePending = async () => {
-    if (!pending || active === null || busy) return;
-    const page = active;
+  /* ── حفظ تسجيل/ملف صفحة فوراً (رفع + حفظ في القصة) — بلا خطوة «حفظ» يدوية
+        كانت تُفقد التسجيل بصمت إن أُغلقت اللوحة أو فُتحت صفحة أخرى قبلها ── */
+  const savePageClip = async (page, clip) => {
+    setActive(page);
+    setPendingClip(clip);
     setBusy(true); setMsg(null); setProgress(0);
     try {
-      const url = await uploadStoryPageAudio(story.id, page, pending.blob, setProgress);
-      const next = [...audio];
+      const url = await uploadStoryPageAudio(story.id, page, clip.blob, setProgress);
+      const next = [...audioRef.current];
       next[page] = url;
       await saveAudio(next);
       closeActive();
       const nextPage = page + 1 < pages.length ? page + 1 : null;
-      setMsg({ ok: true, page, next: nextPage, text: `✅ أُضيف صوت الصفحة ${page + 1}` });
+      setMsg({ ok: true, page, next: nextPage, text: `✅ حُفظ صوت الصفحة ${page + 1} — يسمعه الطلاب الآن` });
     } catch (e) {
-      setMsg({ ok: false, text: `❌ ${e.message || 'فشل الحفظ'} — حاول مرة أخرى` });
+      setMsg({ ok: false, text: `❌ ${e.message || 'فشل الحفظ'} — التسجيل ما زال هنا، اضغط «أعد محاولة الحفظ»` });
     }
     setProgress(null);
     setBusy(false);
+  };
+
+  const handleSavePending = () => {
+    if (pending && active !== null && !busy) savePageClip(active, pending);
   };
 
   const handleRemove = async (page) => {
@@ -301,27 +306,31 @@ export default function StoryAudioPanel({ story, onSaved }) {
               </>
             )}
 
-            {/* معاينة قبل الحفظ */}
+            {/* يُحفظ الآن تلقائياً — أو فشل الحفظ فيبقى التسجيل مع إعادة المحاولة */}
             {isActive && !rec.recording && pending && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ fontWeight: 800, color: NAVY, fontSize: '.85rem' }}>👂 استمع قبل الحفظ: {pending.name}</div>
+                <div style={{ fontWeight: 800, color: NAVY, fontSize: '.85rem' }}>
+                  {busy ? `⏳ جارٍ حفظ «${pending.name}» ${progress ?? 0}%` : `🎙️ ${pending.name} — لم يُحفظ بعد`}
+                </div>
                 <audio controls src={pending.url} style={{ width: '100%' }} />
                 {progress !== null && (
                   <div style={{ height: 10, borderRadius: 99, background: SAND, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${progress}%`, background: NAVY, transition: 'width .2s' }} />
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button type="button" onClick={handleSavePending} disabled={busy} style={{ ...BTN_GOLD, flex: '1 1 180px', opacity: busy ? .7 : 1 }}>
-                    {busy ? `⏳ جارٍ الرفع ${progress ?? 0}%` : `💾 حفظ صوت الصفحة ${i + 1}`}
-                  </button>
-                  <button type="button" onClick={() => startRecording(i)} disabled={busy} style={BTN_LIGHT}>
-                    🎙️ أعد التسجيل
-                  </button>
-                  <button type="button" onClick={() => { closeActive(); setMsg(null); }} disabled={busy} style={BTN_LIGHT}>
-                    ✖ إلغاء
-                  </button>
-                </div>
+                {!busy && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button type="button" onClick={handleSavePending} style={{ ...BTN_GOLD, flex: '1 1 180px' }}>
+                      🔁 أعد محاولة الحفظ
+                    </button>
+                    <button type="button" onClick={() => startRecording(i)} style={BTN_LIGHT}>
+                      🎙️ أعد التسجيل
+                    </button>
+                    <button type="button" onClick={() => { closeActive(); setMsg(null); }} style={BTN_LIGHT}>
+                      ✖ إلغاء
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
