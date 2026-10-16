@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
-import { DEFAULT_CATALOG } from './catalog/route';
+import { DEFAULT_CATALOG } from '../../../lib/word-wheel';
 
 export const dynamic = 'force-dynamic';
 

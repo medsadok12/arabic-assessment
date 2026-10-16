@@ -3,13 +3,16 @@ import { useEffect, useRef, useState } from 'react';
 import { SAMPLE_GAME_WORDS, SAMPLE_REPORT_SKILLS } from './content';
 import { stripDia, getLetterForm, toContextual } from '../../lib/letter-forms';
 import { speakArabic } from '../../lib/speak-arabic';
+import { calcScore, WHEEL_PREVIEW_TARGET } from '../../lib/word-wheel';
+import WheelSVG from '../../components/WordWheelSVG';
 
 /* ════════════════════════════════════════════════════════════════
    «معاينة من داخل المنصة» — ثلاث معاينات حيّة لا صور ثابتة:
    1) الصفحة الأولى من قصة حقيقية مشارَكة بصوتها المسجَّل فعلاً
    2) جولة مصغّرة من لعبة صيّاد الحروف بكلماتها وصورها وأصواتها الحقيقية،
       وبنفس شكلها: سماع الكلمة عند حلّها، وكشفها بألوان قوس قزح ونجوم
-   3) نموذج مصغّر من تقرير PDF بنفس تصميمه ومهاراته (أرقام توضيحية)
+   3) عجلة حقيقية من المرحلة الأولى في «عجلة الكلمات» بنفس رسمها
+   4) نموذج مصغّر من تقرير PDF بنفس تصميمه ومهاراته (أرقام توضيحية)
 ════════════════════════════════════════════════════════════════ */
 
 function StoryPreview({ story, c }) {
@@ -248,6 +251,153 @@ function GamePreview({ c, words }) {
   );
 }
 
+/* ألوان مبهجة لكلمات العجلة المكتشفة */
+const CHIP_COLORS = [
+  { bg: '#e0f2fe', bd: '#7dd3fc', fg: '#075985' },
+  { bg: '#fce7f3', bd: '#f9a8d4', fg: '#9d174d' },
+  { bg: '#dcfce7', bd: '#86efac', fg: '#166534' },
+  { bg: '#ede9fe', bd: '#c4b5fd', fg: '#5b21b6' },
+];
+
+function WheelPreview({ c, wheels }) {
+  const [wi, setWi] = useState(0);
+  const [picked, setPicked] = useState([]);
+  const [found, setFound] = useState([]);
+  const [score, setScore] = useState(0);
+  const [msg, setMsg] = useState(null);           // { text, type: good | tip | hint }
+  const [shakeKey, setShakeKey] = useState(0);
+  const [fly, setFly] = useState(null);           // { word, key }
+  const [done, setDone] = useState(false);
+  const msgTimer = useRef(null);
+  const doneTimer = useRef(null);
+
+  useEffect(() => () => {
+    clearTimeout(msgTimer.current); clearTimeout(doneTimer.current);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+  }, []);
+
+  const w = wheels[wi % wheels.length];
+  const all = [...w.letters, w.center];
+  const target = Math.min(WHEEL_PREVIEW_TARGET, w.words.length);
+
+  const say = (text, type, ms = 2200) => {
+    clearTimeout(msgTimer.current);
+    setMsg({ text, type });
+    if (ms) msgTimer.current = setTimeout(() => setMsg(null), ms);
+  };
+  const nudge = (text) => { setShakeKey(k => k + 1); say(text, 'tip'); };
+
+  const tap = (letter) => { if (!done) setPicked(p => [...p, letter]); };
+
+  const submit = () => {
+    if (done) return;
+    const word = picked.join('');
+    if (word.length < 3) return nudge(c.short);
+    if (!word.includes(w.center)) return nudge(c.needCenter.replace('{c}', w.center));
+    if (found.includes(word)) return nudge(c.dup);
+    if (!w.words.includes(word)) return nudge(c.notInList);
+    const pts = calcScore(word, all);
+    const next = [...found, word];
+    setFound(next); setScore(s => s + pts); setPicked([]);
+    setFly({ word, key: Date.now() });
+    speakArabic(word);                       // داخل اللمسة نفسها — كما في اللعبة
+    say(c.good.replace('{p}', pts), 'good');
+    if (next.length >= target) doneTimer.current = setTimeout(() => setDone(true), 1300);
+  };
+
+  // تلميح: أول حرف من أقصر كلمة لم تُكتشف بعد
+  const hint = () => {
+    const left = w.words.filter(x => !found.includes(x)).sort((a, b) => a.length - b.length);
+    if (!left.length) return;
+    const h = left[0];
+    say(`${c.hintText} ${h[0]} ${Array(h.length - 1).fill('_').join(' ')}`, 'hint', 4500);
+  };
+
+  const nextWheel = () => {
+    clearTimeout(doneTimer.current);
+    setWi(i => i + 1); setPicked([]); setFound([]); setScore(0); setMsg(null); setFly(null); setShakeKey(0); setDone(false);
+  };
+
+  const head = (
+    <div className="v2w-head">
+      <span className="v2w-title">🎡 {c.title}</span>
+      <span className="v2w-score">✨ {score}</span>
+    </div>
+  );
+
+  if (done) {
+    return (
+      <div className="v2w">
+        {head}
+        <div className="v2w-card v2w-done">
+          <div className="v2g-trophy" aria-hidden="true">🏆</div>
+          <div className="v2g-stars" aria-hidden="true">⭐⭐⭐</div>
+          <p className="v2w-done-title">{c.doneTitle.replace('{n}', found.length)}</p>
+          <div className="v2w-chips">
+            {found.map((f, i) => {
+              const col = CHIP_COLORS[i % CHIP_COLORS.length];
+              return <span key={f} className="v2w-chip" style={{ background: col.bg, borderColor: col.bd, color: col.fg }}>{f}</span>;
+            })}
+          </div>
+          <p className="v2w-done-score"><small>{c.points}</small>✨ {score}</p>
+          <p className="v2w-done-more">{c.doneMore}</p>
+          <button type="button" className="v2g-again" onClick={nextWheel}>{c.again}</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="v2w">
+      {head}
+      <div className="v2w-card">
+        <div className="v2w-goal">
+          <span>{c.goal.replace('{n}', target)}</span>
+          <span className="v2w-goal-stars" aria-label={`${found.length} / ${target}`}>
+            {Array.from({ length: target }, (_, i) => (
+              <span key={i} className={i < found.length ? 'on' : ''}>{i < found.length ? '⭐' : '☆'}</span>
+            ))}
+          </span>
+        </div>
+
+        <div className="v2w-wheel">
+          {fly && (
+            <div key={fly.key} className="v2w-fly-wrap" aria-hidden="true">
+              {SPARKS.map((p, i) => (
+                <span key={i} className="v2g-spark" style={{ fontSize: p.fs, animation: `${p.an} .9s ${p.delay} cubic-bezier(.25,.46,.45,.94) both` }}>{p.em}</span>
+              ))}
+              <span className="v2w-fly">{fly.word}</span>
+            </div>
+          )}
+          <WheelSVG letters={w.letters} center={w.center} selectedLetters={picked} onLetterClick={tap} />
+        </div>
+
+        <div key={shakeKey} className={`v2w-input${shakeKey ? ' v2w-shake' : ''}${picked.length ? '' : ' empty'}`} aria-live="polite">
+          {picked.length ? picked.join('') : c.placeholder}
+        </div>
+
+        <p className={`v2w-msg ${msg?.type || ''}`} aria-live="polite">{msg?.text || ' '}</p>
+
+        <div className="v2w-controls">
+          <button type="button" className="v2w-ctrl" onClick={() => setPicked(p => p.slice(0, -1))}>{c.del}</button>
+          <button type="button" className="v2w-ctrl v2w-confirm" onClick={submit}>{c.confirm}</button>
+          <button type="button" className="v2w-ctrl" onClick={() => setPicked([])}>{c.clear}</button>
+        </div>
+
+        <div className="v2w-foot">
+          <button type="button" className="v2w-hint" onClick={hint}>{c.hint}</button>
+          <div className="v2w-chips">
+            {found.map((f, i) => {
+              const col = CHIP_COLORS[i % CHIP_COLORS.length];
+              return <span key={f} className="v2w-chip" style={{ background: col.bg, borderColor: col.bd, color: col.fg }}>{f}</span>;
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ReportPreview({ c }) {
   const overall = Math.round(SAMPLE_REPORT_SKILLS.reduce((s, k) => s + k.pct, 0) / SAMPLE_REPORT_SKILLS.length);
   return (
@@ -285,10 +435,11 @@ function ReportPreview({ c }) {
   );
 }
 
-export default function Showcase({ c, story, gameWords }) {
+export default function Showcase({ c, story, gameWords, wheels }) {
   const items = [
     { key: 'story',  meta: c.story,  body: <StoryPreview story={story} c={c.story} /> },
     { key: 'game',   meta: c.game,   body: <GamePreview c={c.game} words={gameWords?.length ? gameWords : SAMPLE_GAME_WORDS} /> },
+    ...(wheels?.length ? [{ key: 'wheel', meta: c.wheel, body: <WheelPreview c={c.wheel} wheels={wheels} /> }] : []),
     { key: 'report', meta: c.report, body: <ReportPreview c={c.report} /> },
   ];
 
@@ -314,7 +465,7 @@ export default function Showcase({ c, story, gameWords }) {
 
 const SHOWCASE_CSS = `
   .v2-show{ background:#F4EFE6; padding:80px 0; }
-  .v2s-grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; align-items:stretch; }
+  .v2s-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; align-items:stretch; max-width:1040px; margin:0 auto; }
   .v2s-card{ margin:0; background:#fff; border-radius:22px; padding:18px 18px 20px; display:flex; flex-direction:column; gap:14px;
     border:1.5px solid rgba(26,43,74,.08); box-shadow:0 2px 6px rgba(26,43,74,.05),0 10px 30px rgba(26,43,74,.08); min-width:0; }
   .v2s-tag{ align-self:flex-start; background:#FAF7F2; border:1.5px solid #EDE5D8; color:#1A2B4A; font-weight:800; font-size:.82rem; border-radius:999px; padding:5px 12px; }
@@ -322,7 +473,7 @@ const SHOWCASE_CSS = `
   .v2s-caption{ font-size:.86rem; color:var(--muted); line-height:1.7; margin:0; }
 
   /* القصة */
-  .v2s-story{ display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; }
+  .v2s-story{ display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; width:100%; max-width:420px; margin:0 auto; }
   .v2s-story-img{ width:100%; max-height:170px; object-fit:cover; border-radius:14px; display:block; }
   .v2s-story-emoji{ height:150px; display:flex; align-items:center; justify-content:center; font-size:4rem; background:#EDE5D8; }
   .v2s-story-title{ margin:0; font-weight:800; color:#1A2B4A; font-size:.95rem; }
@@ -338,7 +489,7 @@ const SHOWCASE_CSS = `
 
   /* اللعبة — بنفس شكل «صيّاد الحروف»: خلفية بنفسجية مبهجة وبطاقة بيضاء */
   .v2s-frame--game{ background:linear-gradient(135deg,#5b4fc4 0%,#7c3aed 50%,#9c3ec4 100%); padding:12px; }
-  .v2g{ display:flex; flex-direction:column; gap:10px; }
+  .v2g{ display:flex; flex-direction:column; gap:10px; width:100%; max-width:420px; margin:0 auto; }
   .v2g-head{ display:flex; align-items:center; gap:8px; color:#fff; }
   .v2g-score{ position:relative; flex-shrink:0; background:rgba(255,255,255,.2); border-radius:20px; padding:3px 12px; font-weight:800; font-size:.9rem; }
   .v2g-pop{ position:absolute; top:-26px; left:50%; transform:translateX(-50%); color:#fbbf24; font-weight:900; font-size:1rem; white-space:nowrap;
@@ -408,8 +559,48 @@ const SHOWCASE_CSS = `
   @keyframes v2gSpark5{ 0%{opacity:0;transform:translate(0,0) scale(0)} 50%{opacity:1;transform:translate(-30px,50px) scale(1.2)} 100%{opacity:0;transform:translate(-44px,72px) scale(0)} }
   @media (prefers-reduced-motion: reduce){ .v2g *{ animation:none !important; } .v2g-spark{ display:none; } }
 
+  /* عجلة الكلمات — بنفس ألوان اللعبة الذهبية البرتقالية */
+  .v2s-frame--wheel{ background:linear-gradient(135deg,#92400E 0%,#B45309 40%,#D97706 100%); padding:12px; }
+  .v2w{ display:flex; flex-direction:column; gap:10px; width:100%; max-width:420px; margin:0 auto; }
+  .v2w-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; color:#fff; }
+  .v2w-title{ font-weight:900; font-size:.95rem; }
+  .v2w-score{ background:rgba(255,255,255,.2); border-radius:20px; padding:3px 12px; font-weight:800; font-size:.9rem; }
+  .v2w-card{ background:#fff; border-radius:20px; padding:12px 12px 14px; display:flex; flex-direction:column; align-items:center; gap:9px;
+    box-shadow:0 14px 34px rgba(0,0,0,.25); text-align:center; }
+  .v2w-goal{ display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; font-weight:800; color:#92400E; font-size:.9rem; }
+  .v2w-goal-stars{ display:flex; gap:3px; font-size:1.15rem; line-height:1; color:#F59E0B; }
+  .v2w-goal-stars .on{ animation:v2gPop .45s cubic-bezier(.34,1.56,.64,1); }
+  .v2w-wheel{ position:relative; width:100%; max-width:270px; }
+  .v2w-fly-wrap{ position:absolute; top:46%; left:50%; z-index:2; pointer-events:none; }
+  .v2w-fly{ position:absolute; top:0; left:0; white-space:nowrap; font-size:1.9rem; font-weight:900; color:#059669;
+    text-shadow:0 2px 0 #fff, 0 0 12px #fff; animation:v2wFly .95s ease-out forwards; }
+  .v2w-input{ width:100%; min-height:54px; display:flex; align-items:center; justify-content:center; padding:4px 12px;
+    border:2.5px solid #FDE68A; border-radius:14px; font-size:1.8rem; font-weight:900; color:#92400E; line-height:1.2; }
+  .v2w-input.empty{ font-size:1rem; font-weight:700; color:#B9A27A; }
+  .v2w-shake{ animation:v2gShake .45s cubic-bezier(.36,.07,.19,.97) both; }
+  .v2w-msg{ margin:0; min-height:1.6em; font-weight:800; font-size:.88rem; line-height:1.6; }
+  .v2w-msg.good{ color:#059669; } .v2w-msg.tip{ color:#b45309; } .v2w-msg.hint{ color:#0369a1; }
+  .v2w-controls{ display:flex; gap:8px; width:100%; }
+  .v2w-ctrl{ flex:1; min-height:46px; border:1.5px solid #E5E7EB; border-radius:12px; background:#F9FAFB; color:#374151;
+    font:inherit; font-weight:800; font-size:.9rem; cursor:pointer; }
+  .v2w-confirm{ flex:1.6; border:none; color:#fff; background:linear-gradient(135deg,#F59E0B,#D97706); box-shadow:0 4px 0 #B45309; }
+  .v2w-ctrl:active{ transform:translateY(2px); }
+  .v2w-confirm:active{ box-shadow:0 1px 0 #B45309; }
+  .v2w-foot{ display:flex; align-items:center; gap:8px; width:100%; flex-wrap:wrap; }
+  .v2w-hint{ border:none; cursor:pointer; min-height:40px; padding:0 14px; border-radius:12px; background:#e0f2fe; color:#075985;
+    font:inherit; font-weight:800; font-size:.85rem; box-shadow:0 3px 0 #7dd3fc; }
+  .v2w-chips{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; flex:1; }
+  .v2w-chip{ border:1.5px solid; border-radius:20px; padding:3px 12px; font-weight:800; font-size:.95rem; animation:v2gPop .4s ease-out; }
+  .v2w-done{ padding:22px 14px; gap:8px; }
+  .v2w-done-title{ margin:0; font-size:1.2rem; font-weight:900; color:#1a1a2e; }
+  .v2w-done-score{ margin:0; font-size:2rem; font-weight:900; color:#D97706; line-height:1.2; }
+  .v2w-done-score small{ display:block; font-size:.82rem; font-weight:800; color:#92400E; }
+  .v2w-done-more{ margin:0 0 6px; font-weight:700; color:#475569; font-size:.88rem; }
+  @keyframes v2wFly{ 0%{ opacity:1; transform:translate(-50%,-50%) scale(1) } 100%{ opacity:0; transform:translate(-50%,-130%) scale(1.35) } }
+  @media (prefers-reduced-motion: reduce){ .v2w *{ animation:none !important; } .v2w .v2g-spark, .v2w-fly-wrap{ display:none; } }
+
   /* التقرير */
-  .v2s-report{ position:relative; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 6px 22px rgba(26,43,74,.14); font-family:'Tajawal',sans-serif; }
+  .v2s-report{ width:100%; max-width:400px; margin:0 auto; position:relative; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 6px 22px rgba(26,43,74,.14); font-family:'Tajawal',sans-serif; }
   .v2s-sample{ display:block; text-align:center; background:#FFFBF0; color:#8a6a1e; font-size:.7rem; font-weight:800; padding:5px 8px; border-bottom:1px solid #E8B84B; }
   .v2s-rep-head{ background:linear-gradient(135deg,#1a1052,#2d1b69); color:#fff; padding:14px; display:flex; flex-direction:column; align-items:center; gap:4px; font-weight:800; font-size:.82rem; }
   .v2s-rep-logo{ color:#d4952a; font-size:1.6rem; font-family:serif; line-height:1; }
@@ -425,7 +616,6 @@ const SHOWCASE_CSS = `
   .v2s-rep-rec{ background:#e8f5e9; border-right:3px solid #2e7d32; border-radius:8px; padding:7px 9px; margin-top:3px; }
   .v2s-rep-rec b{ color:#2e7d32; font-size:.7rem; } .v2s-rep-rec p{ margin:2px 0 0; font-size:.66rem; line-height:1.6; color:#333; }
 
-  @media (max-width:1023px){ .v2s-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
   @media (max-width:640px){
     .v2-show{ padding:56px 0; }
     .v2s-grid{ grid-template-columns:minmax(0,1fr); gap:18px; }

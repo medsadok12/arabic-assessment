@@ -30,7 +30,7 @@ const FEATURE_COLORS = ['gold', 'purple', 'green', 'gold', 'purple', 'green', 'g
 const TRUST_ICONS    = [Lock, Target, MonitorSmartphone];
 const STEP_ICONS     = [Sparkles, FileText, BookOpen];
 
-export default function LandingV2({ storyPreview, gameWords }) {
+export default function LandingV2({ storyPreview, gameWords, wheels }) {
   const { t, lang } = useLanguage();
   const c = V2_CONTENT[lang] || V2_CONTENT.ar;
   const [videoOk, setVideoOk] = useState(true);
@@ -157,7 +157,7 @@ export default function LandingV2({ storyPreview, gameWords }) {
       </section>
 
       {/* ── 4. معاينة من داخل المنصة ── */}
-      <Showcase c={c} story={storyPreview} gameWords={gameWords} />
+      <Showcase c={c} story={storyPreview} gameWords={gameWords} wheels={wheels} />
 
       {/* ── 5. الأسعار ── */}
       <PricingSection />

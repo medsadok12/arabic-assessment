@@ -1,11 +1,13 @@
 import { createAdminClient } from '../../lib/supabase-admin';
 import { pickStoryPreview } from '../../lib/story-preview';
 import { pickGamePreviewWords } from '../../lib/game-preview';
+import { pickPreviewWheels } from '../../lib/word-wheel';
 import LandingV2 from './LandingV2';
 
 /* نسخة معاينة للصفحة الرئيسية الجديدة — لا تُفهرَس ولا يرتبط بها الموقع.
    تجلب قصة مشارَكة (لها رابط مشاركة عام) لتُعرض صفحتها الأولى بصوتها الحقيقي،
-   وكلمات حقيقية من «صيّاد الحروف» بصورها وأصواتها المسجَّلة. */
+   وكلمات حقيقية من «صيّاد الحروف» بصورها وأصواتها المسجَّلة، وعجلات المرحلة
+   الأولى من «عجلة الكلمات» بتعديلات المعلم إن وُجدت. */
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +46,20 @@ async function loadGameWords() {
   }
 }
 
+async function loadWheels() {
+  let overrides = [];
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from('word_wheel_catalog')
+      .select('level, wheel_index, center_letter, outer_letters, valid_words')
+      .eq('level', 1);
+    overrides = data || [];
+  } catch { /* العجلات الافتراضية تكفي */ }
+  return pickPreviewWheels(overrides);
+}
+
 export default async function LandingV2Page() {
-  const [storyPreview, gameWords] = await Promise.all([loadStoryPreview(), loadGameWords()]);
-  return <LandingV2 storyPreview={storyPreview} gameWords={gameWords} />;
+  const [storyPreview, gameWords, wheels] = await Promise.all([loadStoryPreview(), loadGameWords(), loadWheels()]);
+  return <LandingV2 storyPreview={storyPreview} gameWords={gameWords} wheels={wheels} />;
 }

@@ -5,46 +5,17 @@ import Link from 'next/link';
 import { createClient } from '../../../../lib/supabase';
 import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
+import { stripWheel as strip, isArabicWord as isArabic, letterCounts, canFormFrom, calcScore } from '../../../../lib/word-wheel';
+import { speakArabic as speak } from '../../../../lib/speak-arabic';
+import WheelSVG from '../../../../components/WordWheelSVG';
 
 /* ─── Constants ─────────────────────────────────────────────────────────── */
-const STRIP_RE = /[ً-ْٰـ]/g;
-const ARABIC_RE = /^[ء-ي]+$/;
-
 const LEVEL_COLORS = {
   1: { bg: '#f0fdf4', border: '#86efac', accent: '#16a34a' },
   2: { bg: '#fefce8', border: '#fde047', accent: '#ca8a04' },
   3: { bg: '#fff7ed', border: '#fdba74', accent: '#ea580c' },
   4: { bg: '#fef2f2', border: '#fca5a5', accent: '#dc2626' },
 };
-
-/* ─── Pure helpers ───────────────────────────────────────────────────────── */
-function strip(w) { return w.replace(STRIP_RE, ''); }
-function isArabic(w) { return ARABIC_RE.test(w); }
-function letterCounts(w) { const c={}; for(const ch of w) c[ch]=(c[ch]||0)+1; return c; }
-function canFormFrom(word, wc) {
-  const m = letterCounts(word);
-  for(const [ch,n] of Object.entries(m)) if((wc[ch]||0)<n) return false;
-  return true;
-}
-function calcScore(word, allLetters) {
-  const len = word.length;
-  const base = len>=7?12:len===6?8:len===5?4:len===4?2:1;
-  const unique = [...new Set(allLetters)];
-  return unique.every(ch=>word.includes(ch)) ? base*2 : base;
-}
-function speak(text) {
-  if(typeof window==='undefined'||!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang='ar-SA'; u.rate=0.82;
-  function go() {
-    const ar = window.speechSynthesis.getVoices().find(v=>v.lang.startsWith('ar'));
-    if(ar) u.voice=ar;
-    window.speechSynthesis.speak(u);
-  }
-  if(window.speechSynthesis.getVoices().length>0) go();
-  else { window.speechSynthesis.addEventListener('voiceschanged',go,{once:true}); setTimeout(go,500); }
-}
 
 /* ─── Progress helpers ───────────────────────────────────────────────────── */
 const PROG_KEY = 'ww_progress';
@@ -72,52 +43,6 @@ function Stars({ count, size=18 }) {
     <span style={{fontSize:size,lineHeight:1}}>
       {'⭐'.repeat(count)}{'☆'.repeat(3-count)}
     </span>
-  );
-}
-
-/* ─── WheelSVG ──────────────────────────────────────────────────────────── */
-function WheelSVG({ letters, center, selectedLetters, onLetterClick }) {
-  const cx=160, cy=160, outerR=105, circleR=28, centerR=46;
-  const n=letters.length;
-  return (
-    <svg viewBox="0 0 320 320" width="100%" style={{maxWidth:320,userSelect:'none'}}>
-      <defs>
-        <radialGradient id="ww-gold" cx="40%" cy="35%" r="65%">
-          <stop offset="0%" stopColor="#FDE68A"/>
-          <stop offset="100%" stopColor="#D97706"/>
-        </radialGradient>
-        <radialGradient id="ww-center" cx="40%" cy="35%" r="65%">
-          <stop offset="0%" stopColor="#FEF3C7"/>
-          <stop offset="100%" stopColor="#F59E0B"/>
-        </radialGradient>
-        <filter id="ww-shadow"><feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.18"/></filter>
-      </defs>
-      {letters.map((_,i)=>{
-        const angle=i*(2*Math.PI/n)-Math.PI/2;
-        const ox=cx+outerR*Math.cos(angle), oy=cy+outerR*Math.sin(angle);
-        return <line key={`l${i}`} x1={cx} y1={cy} x2={ox} y2={oy} stroke="#FDE68A" strokeWidth="1.5" opacity="0.6"/>;
-      })}
-      {letters.map((letter,i)=>{
-        const angle=i*(2*Math.PI/n)-Math.PI/2;
-        const ox=cx+outerR*Math.cos(angle), oy=cy+outerR*Math.sin(angle);
-        const used=selectedLetters.filter(l=>l===letter).length;
-        const total=letters.filter(l=>l===letter).length;
-        const usedUp=used>=total;
-        return (
-          <g key={`o${i}`} onClick={()=>!usedUp&&onLetterClick(letter)} style={{cursor:usedUp?'not-allowed':'pointer'}}>
-            <circle cx={ox} cy={oy} r={circleR+4} fill="transparent"/>
-            <circle cx={ox} cy={oy} r={circleR} fill={usedUp?'#E5E7EB':'url(#ww-gold)'} stroke={usedUp?'#D1D5DB':'#F59E0B'} strokeWidth="2" filter="url(#ww-shadow)" style={{transition:'all 0.15s'}}/>
-            <text x={ox} y={oy+1} textAnchor="middle" dominantBaseline="middle" fontSize="18" fontWeight="800" fill={usedUp?'#9CA3AF':'#92400E'} fontFamily="'Cairo','Tajawal',sans-serif" style={{pointerEvents:'none'}}>{letter}</text>
-          </g>
-        );
-      })}
-      <g onClick={()=>onLetterClick(center)} style={{cursor:'pointer'}}>
-        <circle cx={cx} cy={cy} r={centerR+6} fill="transparent"/>
-        <circle cx={cx} cy={cy} r={centerR} fill="url(#ww-center)" stroke="#D97706" strokeWidth="3" filter="url(#ww-shadow)"/>
-        <text x={cx} y={cy+2} textAnchor="middle" dominantBaseline="middle" fontSize="26" fontWeight="900" fill="#78350F" fontFamily="'Cairo','Tajawal',sans-serif" style={{pointerEvents:'none'}}>{center}</text>
-        <text x={cx} y={cy+centerR-10} textAnchor="middle" dominantBaseline="middle" fontSize="8" fontWeight="700" fill="#B45309" opacity="0.75" fontFamily="'Cairo','Tajawal',sans-serif" style={{pointerEvents:'none'}}>إلزامي</text>
-      </g>
-    </svg>
   );
 }
 
@@ -169,7 +94,7 @@ export default function WordWheelGame() {
       .then(j=>setCustomConfigs(j.configs||[]))
       .catch(()=>{});
     createClient().auth.getUser()
-      .then(({data})=>setUserRole(data?.getRole(user)||null))
+      .then(({data})=>setUserRole(getRole(data?.user)||null))
       .catch(()=>{});
     childFetch('/api/points').then(r=>r.json()).then(j=>setTotalPoints(j.points??0)).catch(()=>{});
   }, []);
