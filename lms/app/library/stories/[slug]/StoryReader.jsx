@@ -6,6 +6,7 @@ import StoryFlipBook from '../../../../components/StoryFlipBook';
 import { useStoryNarration, PageListenButton } from '../../../../components/StoryNarration';
 import { childFetch } from '../../../../lib/child-fetch';
 import { splitStoryPages, normalizePageAudio } from '../../../../lib/story-audio';
+import { storyPageText } from '../../../../lib/story-speech';
 
 const LEVEL_LABELS = { 1: 'مستوى 1', 2: 'مستوى 2', 3: 'مستوى 3' };
 
@@ -27,8 +28,13 @@ export default function StoryReader({ story, alreadyRead, isTeacher, isPublic = 
   const [isMobile,   setIsMobile]   = useState(false);
   const contentRef = useRef(null);
 
-  /* قصة بصفحة واحدة: زر استماع تحت النص (المتعددة الصفحات يتولاها StoryFlipBook) */
-  const narr = useStoryNarration({ pageAudio: isMultiPage ? [] : pageAudio, visiblePages: [0] });
+  /* قصة بصفحة واحدة: زر استماع تحت النص — تسجيل المعلم أو صوت الجهاز
+     (المتعددة الصفحات يتولاها StoryFlipBook) */
+  const narr = useStoryNarration({
+    pageAudio: isMultiPage ? [] : pageAudio,
+    pageTexts: isMultiPage ? [] : [storyPageText(pages[0])],
+    visiblePages: [0],
+  });
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
