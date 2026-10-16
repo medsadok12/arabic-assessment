@@ -1,4 +1,4 @@
-import { createAdminClient } from '../lib/supabase-admin';
+import { createCachedReadClient } from '../lib/supabase-admin';
 import { pickStoryPreview } from '../lib/story-preview';
 import { pickGamePreviewWords } from '../lib/game-preview';
 import { pickPreviewWheels } from '../lib/word-wheel';
@@ -11,14 +11,14 @@ import LandingPage from '../components/landing/LandingPage';
 
    السرعة: الصفحة تُخدم جاهزة من ذاكرة Vercel المؤقتة (كما كانت الصفحة السابقة
    الثابتة) وتُجدَّد في الخلفية كل دقيقة، فيظهر أي تعديل خلال دقيقة على الأكثر.
-   fetchCache لازم لأن عميل الإدارة يطلب no-store في كل نداء (lib/supabase-admin.js)
-   وهذا كان سيجعل الصفحة تُبنى من جديد لكل زائر. */
+   القراءات عبر createCachedReadClient (لا createAdminClient الذي يفرض no-store
+   فيجعل الصفحة تُبنى لكل زائر). */
 export const revalidate = 60;
-export const fetchCache = 'force-cache';
+const READ_REVALIDATE = 60;
 
 async function loadStoryPreview() {
   try {
-    const admin = createAdminClient();
+    const admin = createCachedReadClient(READ_REVALIDATE);
     const { data } = await admin
       .from('stories')
       .select('title, content, page_audio, share_token, cover_image_url')
@@ -33,7 +33,7 @@ async function loadStoryPreview() {
 
 async function loadGameWords() {
   try {
-    const admin = createAdminClient();
+    const admin = createCachedReadClient(READ_REVALIDATE);
     const { data } = await admin
       .from('letter_catcher_words')
       .select('word, missing_letter, options, emoji, image_url, audio_url')
@@ -49,7 +49,7 @@ async function loadGameWords() {
 async function loadWheels() {
   let overrides = [];
   try {
-    const admin = createAdminClient();
+    const admin = createCachedReadClient(READ_REVALIDATE);
     const { data } = await admin
       .from('word_wheel_catalog')
       .select('level, wheel_index, center_letter, outer_letters, valid_words')
