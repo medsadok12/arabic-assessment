@@ -3,6 +3,12 @@ import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import Link from 'next/link';
 import StoryPageEditor from '../../../components/StoryPageEditor';
 import StoryCoverField from '../../../components/StoryCoverField';
+import { readStoryDraft, writeStoryDraft, clearStoryDraft, draftSnapshot, draftDiffers } from '../../../lib/story-draft';
+
+// localStorage قد يكون محجوباً (تصفّح خاص صارم) — النسخة الاحتياطية عندها تتعطل بصمت فقط
+function draftStore() {
+  try { return window.localStorage; } catch { return null; }
+}
 
 const ACCENTS = [
   { label: 'أخضر',   accent: '#10b981', bg: '#ecfdf5', border: '#6ee7b7' },
@@ -260,11 +266,6 @@ export default function StoryManager({ initialStories }) {
     fetch('/api/stories').then(r => r.json()).then(j => setStories(j.stories || [])).catch(() => setStories([]));
   }, []);
 
-  if (stories === null) return (
-    <div style={{ textAlign:'center', padding:'60px 0', color:'#94a3b8', fontFamily:'Cairo,Tajawal,sans-serif', fontWeight:700 }}>
-      ⏳ جارٍ تحميل القصص...
-    </div>
-  );
   const [view,      setView]      = useState('list');   // 'list' | 'create' | 'edit'
   const [form,      setForm]      = useState(EMPTY_FORM);
   const [editId,    setEditId]    = useState(null);
@@ -273,16 +274,67 @@ export default function StoryManager({ initialStories }) {
   const [msg,       setMsg]       = useState(null);
   const [preview,   setPreview]   = useState(false);
   const [pageAudio, setPageAudio] = useState([]);  // صوت كل صفحة — يتحرك مع صفحته داخل StoryPageEditor
+  const [draftOffer, setDraftOffer] = useState(null); // نسخة محلية غير محفوظة وُجدت عند فتح القصة
+  const [editorRev,  setEditorRev]  = useState(0);    // يعيد تهيئة محرر الصفحات بعد الاسترجاع
+  const baselineRef = useRef('');                      // لقطة القصة كما فُتحت (أو كما حُفظت آخر مرة)
 
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const editing = view === 'create' || view === 'edit';
+
+  // عند فتح المحرر: هل على هذا الجهاز تعديلات لم تُحفظ لهذه القصة؟
+  const beginEditing = (storyId, baseForm, baseAudio) => {
+    baselineRef.current = draftSnapshot(baseForm, baseAudio);
+    const store = draftStore();
+    const draft = readStoryDraft(store, storyId);
+    if (draftDiffers(draft, baseForm, baseAudio)) setDraftOffer(draft);
+    else { if (draft) clearStoryDraft(store, storyId); setDraftOffer(null); }
+  };
+  const restoreDraft = () => {
+    if (!draftOffer) return;
+    setForm({ ...EMPTY_FORM, ...draftOffer.form });
+    setPageAudio(draftOffer.pageAudio || []);
+    setEditorRev(r => r + 1);
+    setPreview(false);
+    setDraftOffer(null);
+  };
+  const discardDraft = () => {
+    clearStoryDraft(draftStore(), editId);
+    setDraftOffer(null);
+  };
+
+  // كل تعديل يُنسخ محلياً بعد لحظة من التوقف عن الكتابة — يتوقف مؤقتاً ما دام عرض
+  // الاسترجاع قائماً كي لا تُكتب فوق النسخة القديمة قبل أن يقرر المعلم
+  useEffect(() => {
+    if (!editing || draftOffer) return;
+    const snap = draftSnapshot(form, pageAudio);
+    if (snap === baselineRef.current) return;
+    const t = setTimeout(() => {
+      if (snap !== baselineRef.current) writeStoryDraft(draftStore(), editId, form, pageAudio);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [editing, draftOffer, editId, form, pageAudio]);
+
+  // إغلاق الصفحة أو إعادة تحميلها وفيها تعديلات غير محفوظة: نسخ فوري + تنبيه المتصفح
+  useEffect(() => {
+    if (!editing) return;
+    const onLeave = (e) => {
+      if (draftOffer || draftSnapshot(form, pageAudio) === baselineRef.current) return;
+      writeStoryDraft(draftStore(), editId, form, pageAudio);
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onLeave);
+    return () => window.removeEventListener('beforeunload', onLeave);
+  }, [editing, draftOffer, editId, form, pageAudio]);
 
   const openCreate = () => {
     setForm(EMPTY_FORM);
     setPageAudio([]);
     setEditId(null); setMsg(null); setPreview(false); setView('create');
+    beginEditing(null, EMPTY_FORM, []);
   };
   const openEdit   = (s) => {
-    setForm({
+    const baseForm = {
       title:        s.title,
       icon:         s.icon || '📖',
       level:        s.level || 1,
@@ -294,8 +346,11 @@ export default function StoryManager({ initialStories }) {
       bg:           s.bg || '#ecfdf5',
       border_color: s.border_color || '#6ee7b7',
       cover_image_url: s.cover_image_url || null,
-    });
-    setPageAudio(Array.isArray(s.page_audio) ? s.page_audio : []);
+    };
+    const baseAudio = Array.isArray(s.page_audio) ? s.page_audio : [];
+    setForm(baseForm);
+    setPageAudio(baseAudio);
+    beginEditing(s.id, baseForm, baseAudio);
     setEditId(s.id);
     setMsg(null);
     setPreview(false);
@@ -324,6 +379,9 @@ export default function StoryManager({ initialStories }) {
         return;
       }
       if (!res.ok || json.error) throw new Error(json.error || 'فشل الحفظ');
+      // وصل الحفظ للخادم: النسخة المحلية لم تعد لازمة
+      baselineRef.current = draftSnapshot(form, pageAudio);
+      clearStoryDraft(draftStore(), editId);
       if (view === 'edit') {
         setStories(p => p.map(s => s.id === editId ? json.story : s));
         setMsg({ ok: true, text: '✅ تم الحفظ' });
@@ -363,6 +421,12 @@ export default function StoryManager({ initialStories }) {
   };
 
   const selectedAccent = ACCENTS.find(a => a.accent === form.accent) || ACCENTS[0];
+
+  if (stories === null) return (
+    <div style={{ textAlign:'center', padding:'60px 0', color:'#94a3b8', fontFamily:'Cairo,Tajawal,sans-serif', fontWeight:700 }}>
+      ⏳ جارٍ تحميل القصص...
+    </div>
+  );
 
   return (
     <>
@@ -492,6 +556,10 @@ export default function StoryManager({ initialStories }) {
         .sm-msg { padding:10px 14px; border-radius:10px; font-size:.85rem; font-weight:700; margin-bottom:14px; }
         .sm-msg.ok  { background:#d4edda; color:#155724; }
         .sm-msg.err { background:#f8d7da; color:#721c24; }
+        .sm-draft { background:#fff7e0; border:2px solid #E8B84B; border-radius:14px; padding:14px 16px; margin-bottom:18px; color:#1A2B4A; font-weight:700; font-size:.88rem; line-height:1.8; }
+        .sm-draft-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+        .sm-draft-restore { background:#E8B84B; color:#1A2B4A; border:none; border-radius:10px; padding:11px 18px; font-weight:800; font-family:inherit; font-size:.88rem; cursor:pointer; }
+        .sm-draft-discard { background:#fff; color:#64748b; border:1.5px solid #e2e8f0; border-radius:10px; padding:11px 18px; font-weight:700; font-family:inherit; font-size:.85rem; cursor:pointer; }
         .sm-login-btn { display:block; width:fit-content; margin-top:10px; background:#E8B84B; color:#1A2B4A; border-radius:10px; padding:10px 18px; font-weight:800; text-decoration:none; }
 
         .sm-empty { text-align:center; padding:60px 20px; color:#94a3b8; font-weight:700; }
@@ -621,6 +689,17 @@ export default function StoryManager({ initialStories }) {
         {/* ── نموذج إنشاء / تعديل ── */}
         {(view === 'create' || view === 'edit') && (
           <div className="sm-form">
+            {draftOffer && (
+              <div className="sm-draft" role="alert">
+                📝 وجدنا تعديلات لم تُحفظ على هذه القصة في هذا الجهاز
+                (آخر تعديل: {new Date(draftOffer.savedAt).toLocaleString('ar-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })}).
+                <div className="sm-draft-actions">
+                  <button className="sm-draft-restore" onClick={restoreDraft}>↩️ استرجاع التعديلات</button>
+                  <button className="sm-draft-discard" onClick={discardDraft}>تجاهلها</button>
+                </div>
+              </div>
+            )}
+
             {/* معاينة البطاقة */}
             {preview && (
               <div style={{ marginBottom:24 }}>
@@ -721,7 +800,7 @@ export default function StoryManager({ initialStories }) {
                   </label>
                   <div style={{ border:'1.5px solid #e5e7eb', borderRadius:16, padding:'20px 18px', background:'#fafbff' }}>
                     <StoryPageEditor
-                      key={editId || 'new'}
+                      key={`${editId || 'new'}-${editorRev}`}
                       value={form.content}
                       onChange={v => f('content', v)}
                       audio={pageAudio}
