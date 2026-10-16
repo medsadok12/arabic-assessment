@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
 import { requireStoryEditor } from '../../../../lib/story-auth';
+import { isOutdatedEditorSave, EDITOR_OUTDATED_MSG, EDITOR_OUTDATED_CODE } from '../../../../lib/story-editor-version';
 import {
   STORY_AUDIO_BUCKET, storyAudioPathFromUrl, splitStoryPages, normalizePageAudio, pageAudioError,
 } from '../../../../lib/story-audio';
@@ -49,6 +50,10 @@ export async function PUT(req, { params }) {
 
     const { id } = params;
     const body = await req.json();
+    // محرر فُتح قبل التحديث يحفظ بلا أصواته — يُرفض برسالة «أعد تحميل الصفحة» بدل حفظ ناقص صامت
+    if (isOutdatedEditorSave(req.headers, body)) {
+      return NextResponse.json({ error: EDITOR_OUTDATED_MSG, code: EDITOR_OUTDATED_CODE }, { status: 409 });
+    }
     const { title, icon, level, length, content, status, points, accent, bg, border_color, page_audio, cover_image_url } = body;
 
     const admin = createAdminClient();

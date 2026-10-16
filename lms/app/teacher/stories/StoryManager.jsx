@@ -4,6 +4,7 @@ import Link from 'next/link';
 import StoryPageEditor from '../../../components/StoryPageEditor';
 import StoryCoverField from '../../../components/StoryCoverField';
 import { readStoryDraft, writeStoryDraft, clearStoryDraft, draftSnapshot, draftDiffers } from '../../../lib/story-draft';
+import { editorVersionHeaders, EDITOR_OUTDATED_CODE } from '../../../lib/story-editor-version';
 
 // localStorage قد يكون محجوباً (تصفّح خاص صارم) — النسخة الاحتياطية عندها تتعطل بصمت فقط
 function draftStore() {
@@ -368,13 +369,19 @@ export default function StoryManager({ initialStories }) {
       // ومعه أصوات الصفحات بترتيبها الحالي حتى يبقى كل صوت مع صفحته
       const res  = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...editorVersionHeaders() },
         body: JSON.stringify({ ...form, page_audio: pageAudio }),
       });
       const json = await res.json().catch(() => ({}));
       // انتهت جلسة الدخول: لا نغادر المحرر — الدخول في نافذة جديدة ثم «حفظ» مرة أخرى
       if (res.status === 401 || json.code === 'session_expired') {
         setMsg({ ok: false, login: true, text: `🔑 ${json.error || 'انتهت جلسة الدخول'}` });
+        setSaving(false);
+        return;
+      }
+      // صفحة المحرر أقدم من آخر تحديث للمنصة: إعادة التحميل ثم الحفظ (التعديلات محفوظة محلياً)
+      if (json.code === EDITOR_OUTDATED_CODE) {
+        setMsg({ ok: false, reload: true, text: `🔄 ${json.error}` });
         setSaving(false);
         return;
       }
@@ -820,6 +827,12 @@ export default function StoryManager({ initialStories }) {
                   <a href="/auth/login" target="_blank" rel="noopener noreferrer" className="sm-login-btn">
                     🔑 تسجيل الدخول في نافذة جديدة
                   </a>
+                )}
+                {msg.reload && (
+                  <button type="button" className="sm-login-btn" style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                    onClick={() => window.location.reload()}>
+                    🔄 إعادة تحميل الصفحة
+                  </button>
                 )}
               </div>
             )}

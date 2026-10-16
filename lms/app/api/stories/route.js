@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient }      from '../../../lib/supabase-server';
 import { canEditStories, requireStoryEditor } from '../../../lib/story-auth';
+import { isOutdatedEditorSave, EDITOR_OUTDATED_MSG, EDITOR_OUTDATED_CODE } from '../../../lib/story-editor-version';
 import { splitStoryPages, normalizePageAudio, pageAudioError } from '../../../lib/story-audio';
 import { resolveStoryCover } from '../../../lib/story-cover';
 
@@ -38,6 +39,9 @@ export async function POST(req) {
     if (authError) return authError;
 
     const body = await req.json();
+    if (isOutdatedEditorSave(req.headers, body)) {
+      return NextResponse.json({ error: EDITOR_OUTDATED_MSG, code: EDITOR_OUTDATED_CODE }, { status: 409 });
+    }
     const { title, icon, level, length, content, status, points, accent, bg, border_color, page_audio, cover_image_url } = body;
 
     if (!title?.trim()) return NextResponse.json({ error: 'العنوان مطلوب' }, { status: 400 });
