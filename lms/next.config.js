@@ -51,6 +51,9 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig = {
+  // نسخة هذه النشرة داخل كود المتصفح — تُقارَن بـ/api/version لاكتشاف نشرة أحدث
+  env: { NEXT_PUBLIC_BUILD_SHA: process.env.VERCEL_GIT_COMMIT_SHA || '' },
+
   images: {
     // Serve modern formats: AVIF first (40% smaller), WebP fallback
     formats: ['image/avif', 'image/webp'],

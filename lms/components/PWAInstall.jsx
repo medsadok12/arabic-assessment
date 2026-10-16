@@ -41,9 +41,25 @@ export default function PWAInstall() {
       }).catch(() => {});
     }
 
+    // نشرة جديدة على Vercel لا تغيّر sw.js، فلا يكتشفها الـSW — تبويب مفتوح منذ
+    // ما قبل النشر يبقى على الكود القديم. نقارن نسخة التبويب بنسخة الخادم
+    // (/api/version ملف ثابت من CDN) كل 5 دقائق وعند العودة للتبويب.
+    const BUILD = process.env.NEXT_PUBLIC_BUILD_SHA;
+    const checkVersion = () => {
+      if (!BUILD || document.visibilityState !== 'visible') return;
+      fetch('/api/version', { cache: 'no-store' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(j => { if (j?.v && j.v !== BUILD) setShowUpdate(true); })
+        .catch(() => {});
+    };
+    const versionInterval = BUILD ? setInterval(checkVersion, 5 * 60_000) : null;
+    if (BUILD) document.addEventListener('visibilitychange', checkVersion);
+
     const baseCleanup = () => {
       window.removeEventListener('resize', checkMobile);
       if (swInterval) clearInterval(swInterval);
+      if (versionInterval) clearInterval(versionInterval);
+      document.removeEventListener('visibilitychange', checkVersion);
     };
 
     // Already installed as standalone — don't show the install UI
