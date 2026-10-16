@@ -1,19 +1,14 @@
 import { NextResponse }       from 'next/server';
-import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
-import { getRole }           from '../../../../lib/auth-role';
+import { requireStoryEditor } from '../../../../lib/story-auth';
 
 export const dynamic = 'force-dynamic';
 
 const MAX_MB    = 5;
-const ALLOWED   = ['teacher', 'admin', 'super_admin'];
 
 export async function POST(req) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const role = getRole(user) ?? '';
-  if (!user || !ALLOWED.includes(role))
-    return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
+  const { error: authError } = await requireStoryEditor();
+  if (authError) return authError;
 
   let form;
   try { form = await req.formData(); }

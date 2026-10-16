@@ -1,7 +1,6 @@
 import { NextResponse }       from 'next/server';
-import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
-import { getRole }           from '../../../../lib/auth-role';
+import { requireStoryEditor } from '../../../../lib/story-auth';
 import {
   STORY_AUDIO_BUCKET, STORY_AUDIO_PREFIX, STORY_AUDIO_TYPES, STORY_MAX_PAGES,
   normalizeStoryAudioType, storyAudioPublicUrl,
@@ -9,17 +8,14 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED = ['teacher', 'admin', 'super_admin'];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // POST — رابط رفع موقَّع لصوت قراءة صفحة من قصة: المتصفح يرفع الملف مباشرة
 // إلى Supabase Storage (بلا مرور بدالة Vercel وحدّها 4.5MB)، ثم يحفظ الرابط
 // العام في موضع الصفحة عبر PUT /api/stories/[id] { page_audio }.
 export async function POST(req) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !ALLOWED.includes(getRole(user) ?? ''))
-    return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
+  const { error: authError } = await requireStoryEditor();
+  if (authError) return authError;
 
   let body;
   try { body = await req.json(); }

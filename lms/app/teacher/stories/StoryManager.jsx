@@ -316,7 +316,13 @@ export default function StoryManager({ initialStories }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, page_audio: pageAudio }),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
+      // انتهت جلسة الدخول: لا نغادر المحرر — الدخول في نافذة جديدة ثم «حفظ» مرة أخرى
+      if (res.status === 401 || json.code === 'session_expired') {
+        setMsg({ ok: false, login: true, text: `🔑 ${json.error || 'انتهت جلسة الدخول'}` });
+        setSaving(false);
+        return;
+      }
       if (!res.ok || json.error) throw new Error(json.error || 'فشل الحفظ');
       if (view === 'edit') {
         setStories(p => p.map(s => s.id === editId ? json.story : s));
@@ -360,7 +366,7 @@ export default function StoryManager({ initialStories }) {
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes smFadeIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
         .sm-wrap { direction:rtl; font-family:'Cairo','Tajawal',sans-serif; padding:20px 0 60px; animation:smFadeIn .35s ease both; }
         .sm-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
@@ -486,6 +492,7 @@ export default function StoryManager({ initialStories }) {
         .sm-msg { padding:10px 14px; border-radius:10px; font-size:.85rem; font-weight:700; margin-bottom:14px; }
         .sm-msg.ok  { background:#d4edda; color:#155724; }
         .sm-msg.err { background:#f8d7da; color:#721c24; }
+        .sm-login-btn { display:block; width:fit-content; margin-top:10px; background:#E8B84B; color:#1A2B4A; border-radius:10px; padding:10px 18px; font-weight:800; text-decoration:none; }
 
         .sm-empty { text-align:center; padding:60px 20px; color:#94a3b8; font-weight:700; }
         .sm-empty span { display:block; font-size:3.5rem; margin-bottom:12px; }
@@ -498,7 +505,7 @@ export default function StoryManager({ initialStories }) {
         }
         .sm-tab.active { background:linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 4px 14px rgba(16,185,129,.3); }
         .sm-tab:not(.active) { background:#f0fdf4; color:#065f46; border:1.5px solid #86efac; }
-      `}</style>
+      ` }} />
 
       <div className="sm-wrap">
 
@@ -614,10 +621,6 @@ export default function StoryManager({ initialStories }) {
         {/* ── نموذج إنشاء / تعديل ── */}
         {(view === 'create' || view === 'edit') && (
           <div className="sm-form">
-            {msg && (
-              <div className={`sm-msg ${msg.ok ? 'ok' : 'err'}`}>{msg.text}</div>
-            )}
-
             {/* معاينة البطاقة */}
             {preview && (
               <div style={{ marginBottom:24 }}>
@@ -728,6 +731,18 @@ export default function StoryManager({ initialStories }) {
                   </div>
                 </div>
               </>
+            )}
+
+            {/* رسالة الحفظ بجانب زر الحفظ مباشرة كي تُرى فور الضغط */}
+            {msg && (
+              <div className={`sm-msg ${msg.ok ? 'ok' : 'err'}`}>
+                {msg.text}
+                {msg.login && (
+                  <a href="/auth/login" target="_blank" rel="noopener noreferrer" className="sm-login-btn">
+                    🔑 تسجيل الدخول في نافذة جديدة
+                  </a>
+                )}
+              </div>
             )}
 
             <div className="sm-form-footer">

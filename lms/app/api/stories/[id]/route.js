@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient }      from '../../../../lib/supabase-server';
-import { getRole } from '../../../../lib/auth-role';
+import { requireStoryEditor } from '../../../../lib/story-auth';
 import {
   STORY_AUDIO_BUCKET, storyAudioPathFromUrl, splitStoryPages, normalizePageAudio, pageAudioError,
 } from '../../../../lib/story-audio';
@@ -14,13 +14,6 @@ async function removeStoryAudio(admin, urls) {
   const paths = urls.map(storyAudioPathFromUrl).filter(Boolean);
   if (!paths.length) return;
   try { await admin.storage.from(STORY_AUDIO_BUCKET).remove(paths); } catch {}
-}
-
-async function getTeacher() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const role = getRole(user) ?? '';
-  return { user, isTeacher: ['super_admin', 'admin', 'teacher'].includes(role) };
 }
 
 // GET — single story by id or slug
@@ -51,8 +44,8 @@ export async function GET(req, { params }) {
 // PUT — update story (teachers only)
 export async function PUT(req, { params }) {
   try {
-    const { user, isTeacher } = await getTeacher();
-    if (!user || !isTeacher) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
+    const { error: authError } = await requireStoryEditor();
+    if (authError) return authError;
 
     const { id } = params;
     const body = await req.json();
@@ -129,8 +122,8 @@ export async function PUT(req, { params }) {
 // DELETE — delete story (teachers only)
 export async function DELETE(req, { params }) {
   try {
-    const { user, isTeacher } = await getTeacher();
-    if (!user || !isTeacher) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
+    const { error: authError } = await requireStoryEditor();
+    if (authError) return authError;
 
     const { id } = params;
     const admin = createAdminClient();

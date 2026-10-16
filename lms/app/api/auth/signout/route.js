@@ -32,7 +32,10 @@ export async function GET(request) {
     // Non-blocking — proceed with signout even if recording fails
   }
 
-  await supabase.auth.signOut();
+  // local: يُنهي جلسة هذا المتصفح فقط. الافتراضي (global) كان يُنهي جلسات الحساب
+  // على كل الأجهزة — خروج من الجوال كان يُسقط محرّر القصص المفتوح على الحاسوب
+  // فيُرفض الحفظ (2026-10-16).
+  await supabase.auth.signOut({ scope: 'local' });
   cookieStore.delete('active_child');
 
   return NextResponse.redirect(new URL('/', request.url));

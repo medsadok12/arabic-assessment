@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient }      from '../../../lib/supabase-server';
-import { getRole } from '../../../lib/auth-role';
+import { canEditStories, requireStoryEditor } from '../../../lib/story-auth';
 import { splitStoryPages, normalizePageAudio, pageAudioError } from '../../../lib/story-audio';
 import { resolveStoryCover } from '../../../lib/story-cover';
 
@@ -10,9 +10,7 @@ export const dynamic = 'force-dynamic';
 async function getUser() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const role = getRole(user) ?? '';
-  const isTeacher = ['super_admin', 'admin', 'teacher'].includes(role);
-  return { user, isTeacher };
+  return { user, isTeacher: canEditStories(user) };
 }
 
 // GET — list stories (published for students, all for teachers)
@@ -36,8 +34,8 @@ export async function GET() {
 // POST — create story (teachers only)
 export async function POST(req) {
   try {
-    const { user, isTeacher } = await getUser();
-    if (!user || !isTeacher) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
+    const { error: authError } = await requireStoryEditor();
+    if (authError) return authError;
 
     const body = await req.json();
     const { title, icon, level, length, content, status, points, accent, bg, border_color, page_audio, cover_image_url } = body;
