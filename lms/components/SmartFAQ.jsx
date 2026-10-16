@@ -55,8 +55,7 @@ function useIsNarrow(enabled) {
 
 const ASSESSMENT_URL = 'https://assessment.aarem.net';
 
-/* الخصائص اختيارية وتستخدمها صفحة المعاينة /landing-v2 فقط — بدونها يبقى
-   المكوّن كما هو في الصفحة الحالية:
+/* الخصائص اختيارية وتمررها الصفحة الرئيسية (components/landing/LandingPage.jsx):
    extraItems        أسئلة إضافية تُدرج بعد سؤال «نظام التقييم الذكي»
    mobilePlaceholder نص توضيحي أقصر للحقل على الجوال كي لا يُقطع
    standardSendIcon  أيقونة إرسال قياسية (سهم) بدل ✈️ */

@@ -75,6 +75,11 @@ const nextConfig = {
     ];
   },
 
+  // صفحة المعاينة صارت هي الصفحة الرئيسية (2026-10-16) — الرابط القديم يقود إليها
+  async redirects() {
+    return [{ source: '/landing-v2', destination: '/', permanent: true }];
+  },
+
   async rewrites() {
     return [
       // Proxy the assessment SPA and all its static assets

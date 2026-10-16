@@ -59,18 +59,6 @@ const t = {
       faheemTitle: 'فهيم معك في كل خطوة',
       faheemFact: 'نظام تكيّفي حقيقي: نتيجة 85% فأكثر ترفع طفلك مستوى، وأقل من 70% تمنحه مزيداً من التدريب قبل التقدّم — لا اختبار واحد يناسب الجميع.',
       faheemSkills: ['قراءة', 'كتابة', 'استماع', 'تحدث'],
-      // البطاقات التسع — نصوص معتمدة من الأستاذ محمد (2026-10-15): ميزات موجودة فعلاً بلا أرقام أو ادعاءات
-      features: [
-        { title: 'تقييم تشخيصي شامل',       desc: 'قياس المهارات الأساسية (الاستماع، القراءة، القواعد، النطق، والمفردات) لتقديم صورة دقيقة وعلمية عن مستوى الطالب.' },
-        { title: 'مكتبة قصصية تفاعلية',      desc: 'قصص مصورة ومسموعة بأسلوب شائق لتنمية مهارات القراءة والاستماع والفهم لدى الطالب.' },
-        { title: 'ألعاب تعليمية ممتعة',      desc: 'ألعاب تفاعلية هادفة لترسيخ الحروف، المفردات، والمفاهيم الأساسية عبر التعلم باللعب.' },
-        { title: 'تقارير تفصيلية (PDF)',     desc: 'تقارير فورية توضح النتيجة الإجمالية ونسبة الإتقان في كل مهارة لمتابعة ولي الأمر والمعلم بسهولة.' },
-        { title: 'تحديد المستوى الفعلي',     desc: 'توجيه الطالب إلى المسار والمحتوى المناسبين لقدراته الحالية بناءً على نتائج التقييم التشخيصي.' },
-        { title: 'تغطية المهارات اللغوية',   desc: 'العناية بجوانب الفهم القرائي والسمعي، التعبير الشفوي، والتطبيق النحوي لبناء لغوي متكامل.' },
-        { title: 'واجهة سهلة وسريعة',        desc: 'تجربة استخدام مرنة وبسيطة تمكّن الطالب والمعلم من التنقل وإجراء التقييمات دون تعقيد.' },
-        { title: 'يعمل على جميع الأجهزة',    desc: 'تصميم متجاوب يعمل بسلاسة على الحاسوب، الأجهزة اللوحية، والهواتف الذكية.' },
-        { title: 'بيئة آمنة وخاصة',          desc: 'حماية كاملة لبيانات الطلاب وتأمين حساباتهم لضمان بيئة تعلم آمنة وموثوقة.' },
-      ],
     },
 
     // ── تسجيل الدخول ─────────────────────────────────────────────────────────
@@ -443,17 +431,6 @@ const t = {
       faheemTitle: 'Faheem Is With You Every Step',
       faheemFact: 'A truly adaptive system: scoring 85% or higher moves your child up a level, and below 70% gives extra practice before advancing — no one-size-fits-all test.',
       faheemSkills: ['Reading', 'Writing', 'Listening', 'Speaking'],
-      features: [
-        { title: 'Comprehensive Diagnostic Assessment', desc: 'Measures core skills (listening, reading, grammar, pronunciation, and vocabulary) to give an accurate, evidence-based picture of the student\'s level.' },
-        { title: 'Interactive Story Library',  desc: 'Illustrated, narrated stories told in an engaging way to build reading, listening, and comprehension skills.' },
-        { title: 'Fun Learning Games',         desc: 'Purposeful interactive games that reinforce letters, vocabulary, and core concepts through learning by play.' },
-        { title: 'Detailed Reports (PDF)',     desc: 'Instant reports showing the overall result and the mastery level in each skill, so parents and teachers can follow progress easily.' },
-        { title: 'Finding the Right Level',    desc: 'Guides the student to the path and content that suit their current abilities, based on the diagnostic results.' },
-        { title: 'Covering Language Skills',   desc: 'Attention to reading and listening comprehension, oral expression, and applied grammar for well-rounded language development.' },
-        { title: 'Simple, Fast Interface',     desc: 'A flexible, simple experience that lets students and teachers navigate and run assessments without complications.' },
-        { title: 'Works on All Devices',       desc: 'Responsive design that runs smoothly on computers, tablets, and smartphones.' },
-        { title: 'Safe & Private Environment', desc: 'Full protection of student data and secure accounts for a safe, trustworthy learning environment.' },
-      ],
     },
 
     // ── Login ─────────────────────────────────────────────────────────────────

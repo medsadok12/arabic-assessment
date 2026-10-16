@@ -1,7 +1,7 @@
 'use client';
 
 /* عجلة الحروف المرسومة — نفس الرسم في لعبة «عجلة الكلمات» ومعاينتها في
-   الصفحة الرئيسية الجديدة. الحرف الذي استُعمل بعدد مرات وجوده يصير رمادياً. */
+   الصفحة الرئيسية. الحرف الذي استُعمل بعدد مرات وجوده يصير رمادياً. */
 export default function WheelSVG({ letters, center, selectedLetters, onLetterClick }) {
   const cx=160, cy=160, outerR=105, circleR=28, centerR=46;
   const n=letters.length;

@@ -4,7 +4,7 @@ import { SAMPLE_GAME_WORDS, SAMPLE_REPORT_SKILLS } from './content';
 import { stripDia, getLetterForm, toContextual } from '../../lib/letter-forms';
 import { speakArabic } from '../../lib/speak-arabic';
 import { calcScore, WHEEL_PREVIEW_TARGET } from '../../lib/word-wheel';
-import WheelSVG from '../../components/WordWheelSVG';
+import WheelSVG from '../WordWheelSVG';
 
 /* ════════════════════════════════════════════════════════════════
    «معاينة من داخل المنصة» — ثلاث معاينات حيّة لا صور ثابتة:

@@ -1,23 +1,26 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
   ClipboardCheck, BookOpen, Gamepad2, FileBarChart, Target, Languages, Zap, MonitorSmartphone, ShieldCheck,
   Lock, Sparkles, FileText,
 } from 'lucide-react';
-import Navbar from '../../components/Navbar';
-import FloatingSidebar from '../../components/FloatingSidebar';
-import SmartFAQ from '../../components/SmartFAQ';
-import PricingSection from '../../components/PricingSection';
+import Navbar from '../Navbar';
+import FloatingSidebar from '../FloatingSidebar';
+import SmartFAQ from '../SmartFAQ';
+import PricingSection from '../PricingSection';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { createClient } from '../../lib/supabase';
+import { getRole } from '../../lib/auth-role';
 import { V2_CONTENT, V2_FAQ_EXTRA, V2_FAQ_MOBILE_PLACEHOLDER } from './content';
 import Showcase from './Showcase';
+import FaheemChapter from './FaheemChapter';
 
 /* ════════════════════════════════════════════════════════════════
-   الصفحة الرئيسية الجديدة — نسخة معاينة على /landing-v2 قبل الاعتماد.
-   الصفحة الحيّة (app/page.jsx) لم تُمَس. عند الاعتماد: يُنقل هذا التكوين
-   إلى app/page.jsx (مع تحويل المسجَّلين إلى لوحاتهم كما هناك) ويُحذف هذا المجلد.
+   الصفحة الرئيسية (app/page.jsx يجلب بيانات المعاينات ويعرض هذا المكوّن).
+   اعتمدها الأستاذ محمد بعد تجربتها على /landing-v2 (2026-10-16).
    الترتيب: البداية + شريط الطمأنينة ← لماذا عارم (9 + الفيديو) ← كيف تعمل
    ← معاينة من داخل المنصة ← الأسعار ← الأسئلة الشائعة + فهيم.
 ════════════════════════════════════════════════════════════════ */
@@ -30,17 +33,33 @@ const FEATURE_COLORS = ['gold', 'purple', 'green', 'gold', 'purple', 'green', 'g
 const TRUST_ICONS    = [Lock, Target, MonitorSmartphone];
 const STEP_ICONS     = [Sparkles, FileText, BookOpen];
 
-export default function LandingV2({ storyPreview, gameWords, wheels }) {
+/* فصل «فهيم معك في كل خطوة» البنفسجي — مخفي بطلب الأستاذ محمد (2026-10-15).
+   لإعادته: true فقط (النصوص في translations/index.js باقية كما هي). */
+const SHOW_FAHEEM_CHAPTER = false;
+
+export default function LandingPage({ storyPreview, gameWords, wheels }) {
+  const router = useRouter();
   const { t, lang } = useLanguage();
   const c = V2_CONTENT[lang] || V2_CONTENT.ar;
   const [videoOk, setVideoOk] = useState(true);
+
+  // المسجَّل دخوله يذهب للوحته مباشرة (كما كانت الصفحة الرئيسية السابقة)
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      const role = getRole(user);
+      if (role === 'super_admin' || role === 'admin') router.replace('/bogga');
+      else if (role === 'teacher') router.replace('/teacher');
+      else if (role === 'supervisor') router.replace('/supervisor');
+      else router.replace('/dashboard');
+    }).catch(() => {});
+  }, [router]);
   const videoUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/promo.mp4`;
 
   return (
     <>
       {/* dangerouslySetInnerHTML: يتفادى اختلاف تهريب علامات الاقتباس في CSS بين الخادم والمتصفح (تحذير hydration) */}
       <style dangerouslySetInnerHTML={{ __html: V2_CSS }} />
-      <div className="v2-preview-banner" role="note">{c.previewBanner}</div>
       <Navbar />
       <FloatingSidebar compact />
 
@@ -103,6 +122,8 @@ export default function LandingV2({ storyPreview, gameWords, wheels }) {
           </ul>
         </div>
       </div>
+
+      {SHOW_FAHEEM_CHAPTER && <FaheemChapter />}
 
       {/* ── 2. لماذا أكاديمية عارم؟ ── */}
       <section id="about" className="v2-why">
@@ -185,7 +206,6 @@ export default function LandingV2({ storyPreview, gameWords, wheels }) {
 }
 
 const V2_CSS = `
-  .v2-preview-banner{ background:#E8B84B; color:#1A2B4A; text-align:center; font-weight:800; font-size:.82rem; padding:7px 14px; }
   .v2-h2{ text-align:center; font-size:1.9rem; font-weight:800; color:var(--primary); margin:0 0 12px; }
   .v2-sub{ text-align:center; color:var(--muted); font-size:.97rem; margin:0 0 44px; }
 

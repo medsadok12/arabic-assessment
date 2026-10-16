@@ -1,276 +1,65 @@
-'use client';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import Image from 'next/image';
-import Navbar from '../components/Navbar';
-import FloatingSidebar from '../components/FloatingSidebar';
-import SmartFAQ from '../components/SmartFAQ';
-import TeamShowcase from '../components/TeamShowcase';
-import PricingSection from '../components/PricingSection';
-import {
-  ClipboardCheck, BookOpen, Gamepad2, FileBarChart, Target, Languages, Zap, MonitorSmartphone, ShieldCheck,
-} from 'lucide-react';
-import { createClient } from '../lib/supabase';
-import { useLanguage } from '../contexts/LanguageContext';
-import { getRole } from '../lib/auth-role';
+import { createAdminClient } from '../lib/supabase-admin';
+import { pickStoryPreview } from '../lib/story-preview';
+import { pickGamePreviewWords } from '../lib/game-preview';
+import { pickPreviewWheels } from '../lib/word-wheel';
+import LandingPage from '../components/landing/LandingPage';
 
-const WHATSAPP_HREF = 'https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0';
-/* أيقونة ولون لكل بطاقة من البطاقات التسع في landing.features — بنفس الترتيب */
-const FEATURE_ICONS = [ClipboardCheck, BookOpen, Gamepad2, FileBarChart, Target, Languages, Zap, MonitorSmartphone, ShieldCheck];
-const FEATURE_COLORS = ['gold', 'purple', 'green', 'gold', 'purple', 'green', 'gold', 'purple', 'green'];
+/* الصفحة الرئيسية — تجلب على الخادم محتوى «معاينة من داخل المنصة»: قصة مشارَكة
+   (لها رابط مشاركة عام) بصفحتها الأولى وصوتها الحقيقي، وكلمات حقيقية من
+   «صيّاد الحروف» بصورها وأصواتها المسجَّلة، وعجلات المرحلة الأولى من
+   «عجلة الكلمات» بتعديلات المعلم. أي فشل في الجلب = بطاقات احتياطية بصمت.
 
-/* فصل «فهيم معك في كل خطوة» البنفسجي — مخفي بطلب الأستاذ محمد (2026-10-15).
-   لإعادته: true فقط (النصوص في translations/index.js باقية كما هي). */
-const SHOW_FAHEEM_CHAPTER = false;
+   السرعة: الصفحة تُخدم جاهزة من ذاكرة Vercel المؤقتة (كما كانت الصفحة السابقة
+   الثابتة) وتُجدَّد في الخلفية كل دقيقة، فيظهر أي تعديل خلال دقيقة على الأكثر.
+   fetchCache لازم لأن عميل الإدارة يطلب no-store في كل نداء (lib/supabase-admin.js)
+   وهذا كان سيجعل الصفحة تُبنى من جديد لكل زائر. */
+export const revalidate = 60;
+export const fetchCache = 'force-cache';
 
-export default function LandingPage() {
-  const router = useRouter();
-  const { t } = useLanguage();
+async function loadStoryPreview() {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from('stories')
+      .select('title, content, page_audio, share_token, cover_image_url')
+      .not('share_token', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(10);
+    return pickStoryPreview(data);
+  } catch {
+    return null;
+  }
+}
 
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      const role = getRole(user);
-      if (role === 'super_admin' || role === 'admin') router.replace('/bogga');
-      else if (role === 'teacher') router.replace('/teacher');
-      else if (role === 'supervisor') router.replace('/supervisor');
-      else router.replace('/dashboard');
-    });
-  }, [router]);
+async function loadGameWords() {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from('letter_catcher_words')
+      .select('word, missing_letter, options, emoji, image_url, audio_url')
+      .not('image_url', 'is', null)
+      .order('audio_url', { ascending: true, nullsFirst: false })
+      .limit(40);
+    return pickGamePreviewWords(data);
+  } catch {
+    return null;
+  }
+}
 
-  const features = t('landing.features').map((f, i) => ({ ...f, icon: FEATURE_ICONS[i], color: FEATURE_COLORS[i] }));
+async function loadWheels() {
+  let overrides = [];
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from('word_wheel_catalog')
+      .select('level, wheel_index, center_letter, outer_letters, valid_words')
+      .eq('level', 1);
+    overrides = data || [];
+  } catch { /* العجلات الافتراضية تكفي */ }
+  return pickPreviewWheels(overrides);
+}
 
-  const videoUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/promo.mp4`;
-
-  return (
-    <>
-      <Navbar />
-      <FloatingSidebar />
-
-      {/* ── Hero ── */}
-      <section className="hero" id="register-section">
-
-        {/* Contact strip — integrated inside hero */}
-        <div className="hero-topbar">
-          <div className="hero-topbar-inner">
-            <span className="hero-topbar-label">{t('landing.contactStrip')}</span>
-            <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className="hero-topbar-link">
-              <span aria-hidden="true">💬</span>
-              <span>{t('landing.whatsappDirect')}</span>
-              <bdi dir="ltr">+44 7400 755914</bdi>
-            </a>
-          </div>
-        </div>
-
-        {/* Main content */}
-        <div className="hero-main">
-          <div className="container">
-            <div className="hero-content">
-              <h1>{t('landing.heroTitle')}</h1>
-              <p>
-                {t('landing.heroSub').split('\n').map((line, i) => (
-                  <span key={i}>{line}{i === 0 && <br />}</span>
-                ))}
-              </p>
-              <div className="hero-btns">
-                <a href="https://assessment.aarem.net"
-                  className="btn btn-accent btn-lg"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  {t('landing.heroCta')}
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="hero-image">
-          <Image
-            src="/teacher-student-hero.png"
-            alt="معلم وطالب يستخدمان التطبيق مع الفيل فهيم"
-            width={1894}
-            height={1414}
-            priority
-            sizes="(max-width: 768px) 92vw, 64vw"
-            className="hero-photo"
-          />
-        </div>
-
-        <svg className="hero-wave" xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 1440 80" preserveAspectRatio="none">
-          <path d="M0,80 L0,44 C240,80 480,8 720,44 C960,80 1200,8 1440,44 L1440,80 Z" fill={SHOW_FAHEEM_CHAPTER ? '#FAF7F2' : '#EDE5D8'} />
-        </svg>
-      </section>
-
-      {/* ── Faheem chapter ── */}
-      {SHOW_FAHEEM_CHAPTER && (
-      <section className="faheem-chapter">
-        <style>{`
-          .faheem-chapter{ background:linear-gradient(165deg,#7C5CD9,#5f3fc4); padding:72px 0; }
-          .faheem-chapter .container{ display:flex; flex-direction:column; align-items:center; gap:24px; text-align:center; }
-          .faheem-tag{ color:#E8B84B; font-weight:800; font-size:.85rem; letter-spacing:.3px; }
-          .faheem-chapter h2{ color:#fff; font-size:1.9rem; font-weight:900; max-width:18ch; margin:0; }
-          .faheem-pic{
-            width:auto; height:188px; flex-shrink:0;
-            filter:drop-shadow(0 14px 22px rgba(0,0,0,.25));
-          }
-          .faheem-skills{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
-          .faheem-pill{
-            background:rgba(255,255,255,.22); border:1.5px solid rgba(255,255,255,.4);
-            color:#fff; font-size:.85rem; font-weight:700; border-radius:999px; padding:9px 18px;
-          }
-          .faheem-fact{
-            background:#fff; border-radius:18px; padding:20px 24px; max-width:48ch;
-            color:#475569; font-size:.92rem; line-height:1.9;
-          }
-          .faheem-fact b{ color:#1A2B4A; }
-          @media (max-width:480px){
-            .faheem-chapter{ padding:52px 0; }
-            .faheem-chapter h2{ font-size:1.5rem; }
-            .faheem-pic{ height:148px; }
-          }
-        `}</style>
-        <div className="container">
-          <span className="faheem-tag">{t('landing.faheemTag')}</span>
-          <h2>{t('landing.faheemTitle')}</h2>
-          <Image src="/faheem.png" alt="فهيم" width={555} height={707} className="faheem-pic" />
-          <div className="faheem-skills">
-            {t('landing.faheemSkills').map(s => (
-              <span key={s} className="faheem-pill">{s}</span>
-            ))}
-          </div>
-          <p className="faheem-fact">{t('landing.faheemFact')}</p>
-        </div>
-      </section>
-      )}
-
-      {/* ── Features + About Video (combined) ── */}
-      <section id="about" className="features-about">
-        <style>{`
-          .features-about{ background:#EDE5D8; padding:80px 0; }
-          .features-about h2{ text-align:center; font-size:1.9rem; font-weight:800; color:var(--primary); margin-bottom:12px; }
-          .features-about .fa-sub{ text-align:center; color:var(--muted); font-size:.97rem; margin-bottom:48px; }
-          .fa-grid{ display:flex; gap:52px; align-items:flex-start; flex-wrap:wrap; }
-          .fa-cards{ flex:1 1 380px; min-width:0; display:flex; flex-direction:column; gap:14px; }
-          .fa-card{
-            display:flex; align-items:center; gap:16px;
-            background:#fff; border-radius:16px; padding:16px 20px;
-            box-shadow:0 1px 4px rgba(26,43,74,.06), 0 4px 16px rgba(26,43,74,.07);
-            border:1.5px solid rgba(26,43,74,.08);
-          }
-          .fa-icon{
-            width:48px; height:48px; flex-shrink:0; border-radius:14px;
-            display:flex; align-items:center; justify-content:center;
-          }
-          .fa-icon.gold   { background:linear-gradient(135deg,#FDF1DB,#FBE8C4); color:#C9962E; }
-          .fa-icon.purple { background:linear-gradient(135deg,#EFE9FB,#E3D9F9); color:#5f3fc4; }
-          .fa-icon.green  { background:linear-gradient(135deg,#E6F7EF,#D7F2E4); color:#1f9a63; }
-          .fa-card-text{ min-width:0; text-align:right; }
-          .fa-card-text h3{ font-size:.98rem; font-weight:700; color:var(--text); margin:0 0 3px; }
-          .fa-card-text p{ font-size:.82rem; color:var(--muted); line-height:1.6; margin:0; }
-          .fa-video{ flex:0 1 380px; min-width:260px; }
-          @media (max-width:640px){
-            .features-about{ padding:56px 0; }
-            .features-about .fa-sub{ margin-bottom:32px; }
-            .fa-grid{ gap:28px; }
-          }
-        `}</style>
-        <div className="container">
-          <h2>{t('landing.whyTitle')}</h2>
-          <p className="fa-sub">{t('landing.whySub')}</p>
-          <div className="fa-grid">
-
-            {/* Right — feature cards stack */}
-            <div className="fa-cards">
-              {features.map(f => (
-                <div key={f.title} className="fa-card">
-                  <span className={`fa-icon ${f.color}`}>
-                    <f.icon size={22} strokeWidth={1.8} />
-                  </span>
-                  <div className="fa-card-text">
-                    <h3>{f.title}</h3>
-                    <p>{f.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Left — promo video */}
-            <div id="promo-video" className="fa-video">
-              <video
-                src={videoUrl}
-                controls
-                playsInline
-                style={{ width: '100%', borderRadius: 16, display: 'block', boxShadow: '0 6px 28px rgba(13,79,161,.12)' }}
-                onError={() => {
-                  const el = document.getElementById('promo-video');
-                  if (el) el.style.display = 'none';
-                }}
-              />
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ── Team ── */}
-      <TeamShowcase />
-
-      {/* ── Pricing ── */}
-      <PricingSection />
-
-      {/* ── Smart FAQ ── */}
-      <SmartFAQ />
-
-      <footer style={{ background: '#0d1f38', color: 'rgba(255,255,255,.55)', textAlign: 'center', padding: '24px 20px', fontSize: '.88rem' }}>
-        <style>{`
-          .footer-tlink {
-            color: rgba(255,255,255,.65);
-            text-decoration: none;
-            margin: 0 6px;
-            display: inline-block;
-            position: relative;
-            padding-bottom: 3px;
-            transition: color .25s, transform .28s cubic-bezier(.34,1.56,.64,1), letter-spacing .25s;
-          }
-          .footer-tlink::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            width: 100%;
-            height: 1.5px;
-            background: linear-gradient(90deg, transparent, #E8B84B, transparent);
-            border-radius: 2px;
-            transform: translateX(-50%) scaleX(0);
-            transition: transform .32s cubic-bezier(.4,0,.2,1);
-          }
-          .footer-tlink:hover {
-            color: #fff;
-            transform: scale(1.12);
-            letter-spacing: .03em;
-          }
-          .footer-tlink:hover::after {
-            transform: translateX(-50%) scaleX(1);
-          }
-        `}</style>
-        <p>{t('landing.footer')}</p>
-        <p style={{ marginTop: 10, fontSize: '.8rem' }}>
-          <span style={{ opacity: .6 }}>للمعلمين: </span>
-          <Link href="/auth/login?for=teacher" className="footer-tlink">
-            {t('landing.ctaLogin')}
-          </Link>
-          ·
-          <Link href="/auth/register/teacher" className="footer-tlink">
-            {t('landing.ctaRegister')}
-          </Link>
-          ·
-          <Link href="/apply" className="footer-tlink">
-            {t('landing.ctaApplyLink')}
-          </Link>
-        </p>
-      </footer>
-    </>
-  );
+export default async function HomePage() {
+  const [storyPreview, gameWords, wheels] = await Promise.all([loadStoryPreview(), loadGameWords(), loadWheels()]);
+  return <LandingPage storyPreview={storyPreview} gameWords={gameWords} wheels={wheels} />;
 }
