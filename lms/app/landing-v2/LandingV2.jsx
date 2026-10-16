@@ -11,7 +11,7 @@ import FloatingSidebar from '../../components/FloatingSidebar';
 import SmartFAQ from '../../components/SmartFAQ';
 import PricingSection from '../../components/PricingSection';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { V2_CONTENT } from './content';
+import { V2_CONTENT, V2_FAQ_EXTRA, V2_FAQ_MOBILE_PLACEHOLDER } from './content';
 import Showcase from './Showcase';
 
 /* ════════════════════════════════════════════════════════════════
@@ -163,7 +163,11 @@ export default function LandingV2({ storyPreview }) {
       <PricingSection />
 
       {/* ── 6. الأسئلة الشائعة + فهيم ── */}
-      <SmartFAQ />
+      <SmartFAQ
+        extraItems={V2_FAQ_EXTRA}
+        mobilePlaceholder={V2_FAQ_MOBILE_PLACEHOLDER}
+        standardSendIcon
+      />
 
       <footer className="v2-footer">
         <p>{t('landing.footer')}</p>

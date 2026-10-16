@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { SendHorizontal } from 'lucide-react';
 
 // إجابة "نظام التقييم الذكي" تُبنى ديناميكياً من /api/assessment-meta (ترجع
 // مستوى بروكسي بنفس الأصل لمشروع arabic-assessment المنفصل) — لا رقماً
@@ -13,8 +14,8 @@ function buildAssessmentAnswer(meta) {
   return 'نظام التقييم التشخيصي يقيس مستوى طفلك في القراءة والكتابة والاستماع والتحدث عبر تدريبات تفاعلية متدرجة، ثم يُرسل تقريراً تفصيلياً فورياً لولي الأمر — مجاناً وبدون تسجيل.';
 }
 
-function buildFaqItems(meta) {
-  return [
+function buildFaqItems(meta, extraItems = []) {
+  const items = [
     {
       q: 'ما هي أسعار الاشتراك في الأكاديمية؟',
       a: 'نقدّم حصصاً فردية ومجموعات بأسعار تنافسية مناسبة لجميع الأسر. تواصل معنا عبر واتساب للحصول على باقة تناسب طفلك وجدولك.',
@@ -27,16 +28,39 @@ function buildFaqItems(meta) {
       q: 'كيف يعمل نظام التقييم الذكي؟',
       a: buildAssessmentAnswer(meta),
     },
+    ...extraItems,
     {
       q: 'هل يوجد نادٍ صيفي أو برامج موسمية؟',
       a: 'نعم! نُنظّم برامج صيفية مكثفة وممتعة تجمع بين تعلم اللغة والأنشطة الإبداعية. تابع صفحاتنا أو تواصل معنا لمعرفة مواعيد البرنامج القادم.',
     },
   ];
+  return items;
+}
+
+const DEFAULT_PLACEHOLDER = 'مثال: كم سعر الاشتراك؟ أو كيف يساعدني فهيم؟';
+
+// يصبح true على الجوال فقط — يبدأ false في الخادم والعميل معاً فلا اختلاف عند أول رسم
+function useIsNarrow(enabled) {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    if (!enabled || typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(max-width: 640px)');
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener?.('change', update);
+    return () => mq.removeEventListener?.('change', update);
+  }, [enabled]);
+  return narrow;
 }
 
 const ASSESSMENT_URL = 'https://assessment.aarem.net';
 
-export default function SmartFAQ() {
+/* الخصائص اختيارية وتستخدمها صفحة المعاينة /landing-v2 فقط — بدونها يبقى
+   المكوّن كما هو في الصفحة الحالية:
+   extraItems        أسئلة إضافية تُدرج بعد سؤال «نظام التقييم الذكي»
+   mobilePlaceholder نص توضيحي أقصر للحقل على الجوال كي لا يُقطع
+   standardSendIcon  أيقونة إرسال قياسية (سهم) بدل ✈️ */
+export default function SmartFAQ({ extraItems, mobilePlaceholder, standardSendIcon = false } = {}) {
   const [openIdx, setOpenIdx]   = useState(null);
   const [question, setQuestion] = useState('');
   const [answer, setAnswer]     = useState('');
@@ -46,7 +70,9 @@ export default function SmartFAQ() {
   const inputRef  = useRef(null);
   const timerRef  = useRef(null);
 
-  const faqItems = buildFaqItems(assessmentMeta);
+  const faqItems = buildFaqItems(assessmentMeta, extraItems);
+  const isNarrow = useIsNarrow(!!mobilePlaceholder);
+  const placeholder = isNarrow && mobilePlaceholder ? mobilePlaceholder : DEFAULT_PLACEHOLDER;
 
   // بيانات حيّة لعدد أسئلة التقييم — تفشل بصمت لصياغة عامة إن تعذّر الوصول
   useEffect(() => {
@@ -251,7 +277,7 @@ export default function SmartFAQ() {
                     ref={inputRef}
                     value={question}
                     onChange={e => setQuestion(e.target.value)}
-                    placeholder="مثال: كم سعر الاشتراك؟ أو كيف يساعدني فهيم؟"
+                    placeholder={placeholder}
                     disabled={loading}
                     style={{
                       flex: 1,
@@ -288,6 +314,9 @@ export default function SmartFAQ() {
                   >
                     {loading ? (
                       <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⏳</span>
+                    ) : standardSendIcon ? (
+                      // السهم يتجه يساراً — اتجاه «إلى الأمام» في الواجهة العربية
+                      <SendHorizontal size={20} strokeWidth={2.4} color="#1A2B4A" style={{ transform: 'scaleX(-1)' }} aria-hidden="true" />
                     ) : '✈️'}
                   </button>
                 </div>
