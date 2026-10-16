@@ -45,10 +45,13 @@ export const V2_CONTENT = {
     },
     game: {
       tag: '🎮 لعبة تعليمية',
-      caption: 'من لعبة «صيّاد الحروف»: اختر الحرف الناقص لتكتمل الكلمة.',
+      caption: 'من لعبة «صيّاد الحروف»: اختر الحرف الناقص، واسمع الكلمة حين تكتمل.',
       prompt: 'ما الحرف الناقص؟',
-      right: 'أحسنت! 🎉', wrong: 'قريب! جرّب حرفاً آخر 💪',
-      done: 'رائع! أكملت الكلمات الثلاث ⭐', again: 'العب مرة أخرى',
+      right: '✅ أحسنت! 🎉', wrong: 'قريب! جرّب حرفاً آخر 💪',
+      replay: '🔊 اسمع الكلمة', next: 'التالي ←', finish: '🏁 النتيجة',
+      doneTitle: 'أحسنت!',
+      doneMsg: ['لا تيأس! المحاولة مفتاح النجاح 🌟', 'جيد! تستطيع أن تتحسن أكثر 💪', 'ممتاز! أنت صياد حروف بارع 🏆'],
+      again: '🔄 العب مرة أخرى',
     },
     report: {
       tag: '📄 تقرير PDF',
@@ -103,10 +106,13 @@ export const V2_CONTENT = {
     },
     game: {
       tag: '🎮 Learning game',
-      caption: 'From the "Letter Catcher" game: choose the missing letter to complete the word.',
+      caption: 'From the "Letter Catcher" game: pick the missing letter, then hear the word once it\'s complete.',
       prompt: 'Which letter is missing?',
-      right: 'Well done! 🎉', wrong: 'Close! Try another letter 💪',
-      done: 'Great! You completed all three words ⭐', again: 'Play again',
+      right: '✅ Well done! 🎉', wrong: 'Close! Try another letter 💪',
+      replay: '🔊 Hear the word', next: 'Next →', finish: '🏁 Results',
+      doneTitle: 'Well done!',
+      doneMsg: ['Keep going! Practice is the key 🌟', 'Good! You can do even better 💪', 'Excellent! You\'re a letter-catching pro 🏆'],
+      again: '🔄 Play again',
     },
     report: {
       tag: '📄 PDF report',
@@ -143,11 +149,10 @@ export const SAMPLE_REPORT_SKILLS = [
   { name: 'الكتابة والتعبير',        pct: 62 },
 ];
 
-/* كلمات لعبة المعاينة بنمط صيّاد الحروف: الحروف بأشكالها المتصلة (ZWJ) */
-const ZWJ = '‍';
+/* كلمات احتياطية للعبة المعاينة — تظهر فقط إن تعذّر جلب كلمات اللعبة الحقيقية
+   (lib/game-preview.js). بلا تسجيل صوتي: تُنطق بصوت الجهاز كما في اللعبة. */
 export const SAMPLE_GAME_WORDS = [
-  { emoji: '🐘', word: 'فيل', before: `ف${ZWJ}`, after: `${ZWJ}ل`, answer: 'ي', options: ['ب', 'ي', 'ن'] },
-  { emoji: '🌙', word: 'قمر', before: `ق${ZWJ}`, after: `${ZWJ}ر`, answer: 'م', options: ['م', 'ك', 'ت'] },
-  { emoji: '✏️', word: 'قلم', before: `ق${ZWJ}`, after: `${ZWJ}م`, answer: 'ل', options: ['ف', 'ج', 'ل'] },
+  { word: 'ف_ل', missing: 'ي', options: ['ب', 'ي', 'ن'], emoji: '🐘', image: null, audio: null },
+  { word: 'ق_ر', missing: 'م', options: ['م', 'ك', 'ت'], emoji: '🌙', image: null, audio: null },
+  { word: 'ق_م', missing: 'ل', options: ['ف', 'ج', 'ل'], emoji: '✏️', image: null, audio: null },
 ];
-export const MEDIAL = (letter) => `${ZWJ}${letter}${ZWJ}`;

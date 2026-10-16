@@ -8,6 +8,8 @@ import { childFetch, getActiveChildTab } from '../../../../lib/child-fetch';
 import { LC_DEFAULT_SETTINGS, LEN_NO_LIMIT, normalizeLcSettings, roundSize, pickRotation, markSeen } from '../../../../lib/letter-catcher';
 import { freshFetch } from '../../../../lib/fresh-fetch';
 import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useElementWidth } from '../../../../lib/fit-tiles';
+import { stripDia, isGap, getLetterForm, toContextual } from '../../../../lib/letter-forms';
+import { speakArabic } from '../../../../lib/speak-arabic';
 
 /* teacher-only panel loads only when the teacher opens it — not in students' bundle */
 const SettingsPanel = dynamic(() => import('./_teacher-panel'), { ssr: false, loading: () => null });
@@ -65,10 +67,6 @@ function writeSeen(key, ids) {
 }
 
 /* ────────────────────────── helpers ────────────────────────── */
-const DIACRITICS = /[ً-ْٰ]/g;
-function stripDia(s) { return (s || '').replace(DIACRITICS, ''); }
-
-
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -76,37 +74,6 @@ function shuffle(arr) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
-}
-
-/* ── contextual Arabic letter forms ─────────────────────────── */
-const NON_CONNECTORS = new Set('اأإآءوردذزىة');
-
-// المسافة بين كلمتين (مثل «حمار وحشي») حدّ كلمة: الحرف قبلها وبعدها لا يتصل بها
-const isGap = (ch) => ch == null || /\s/.test(ch);
-
-function getLetterForm(stripped, idx) {
-  const letter    = stripped[idx];
-  if (isGap(letter)) return 'isolated';
-  const prev      = idx > 0                   ? stripped[idx - 1] : null;
-  const next      = idx < stripped.length - 1 ? stripped[idx + 1] : null;
-  const joinsPrev = !isGap(prev) && !NON_CONNECTORS.has(prev);
-  const joinsNext = !isGap(next) && !NON_CONNECTORS.has(letter);
-  if (joinsPrev && joinsNext) return 'medial';
-  if (joinsPrev)              return 'final';
-  if (joinsNext)              return 'initial';
-  return 'isolated';
-}
-
-const ZWJ = '‍'; // U+200D zero-width joiner
-
-function toContextual(letter, form) {
-  const base = (letter || '').replace(DIACRITICS, '');
-  switch (form) {
-    case 'initial': return base + ZWJ;
-    case 'medial':  return ZWJ + base + ZWJ;
-    case 'final':   return ZWJ + base;
-    default:        return base;
-  }
 }
 
 const TOPICS = ['الحيوانات', 'الأشكال', 'الأسرة', 'الألوان', 'الفواكه', 'المدرسة', 'الطقس', 'الأرقام'];
@@ -133,25 +100,6 @@ const FALLBACK_CAT_STYLES = [
 ];
 function getCatStyle(cat, idx) {
   return CAT_META[cat] || FALLBACK_CAT_STYLES[idx % FALLBACK_CAT_STYLES.length];
-}
-
-/* ── Arabic TTS ─────────────────────────────────────────────── */
-function speak(text) {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'ar-SA';
-  u.rate = 0.82;
-  function go() {
-    window.speechSynthesis.cancel();
-    // prefer Arabic voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const ar = voices.find(v => v.lang.startsWith('ar'));
-    if (ar) u.voice = ar;
-    window.speechSynthesis.speak(u);
-  }
-  if (window.speechSynthesis.getVoices().length > 0) go();
-  else { window.speechSynthesis.addEventListener('voiceschanged', go, { once: true }); setTimeout(go, 500); }
 }
 
 /* ────────────────────── image with fallback ─────────────────── */
@@ -381,7 +329,7 @@ export default function LetterCatcherGame() {
       setTimeout(() => setPtPopupActive(false), 1200);
       childFetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'letter_catcher' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
       if (w.audio_url) { try { new Audio(w.audio_url).play(); } catch {} }
-      else speak(w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word);
+      else speakArabic(w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word);
     } else {
       const fullWord = w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word;
       childFetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: fullWord, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});

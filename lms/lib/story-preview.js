@@ -8,7 +8,7 @@ import { splitStoryPages, storyAudioPathFromUrl } from './story-audio';
 
 const ENTITIES = { '&nbsp;': ' ', '&amp;': '&', '&quot;': '"', '&#39;': "'", '&lt;': '<', '&gt;': '>' };
 
-function publicMediaBase() {
+export function publicMediaBase() {
   return `${(process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '')}/storage/v1/object/public/`;
 }
 
