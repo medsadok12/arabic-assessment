@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
+import { useTTSPlayer } from '../hooks/useTTSPlayer.js';
+import { shuffle } from '../data/questions.js';
 
 const MAX_PLAYS = 3;
 
@@ -9,46 +11,26 @@ const RANK_STYLES = [
   { bg: '#e8f5e9', border: '#388e3c', badge: '#388e3c' }, // 3 — أخضر
 ];
 
-function doShuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 export default function ListenChoose({ question, onAnswer }) {
   const opts = question.options || [];
   const n    = opts.length;
 
   /* buttonOrder[i] = فهرس الكلمة التي يشغّلها الزر i — مخفي عن الطفل */
-  const [buttonOrder] = useState(() => doShuffle(opts.map((_, i) => i)));
+  const [buttonOrder] = useState(() => shuffle(opts.map((_, i) => i)));
 
   const [playCounts, setPlayCounts] = useState(() => Array(n).fill(0));
-  const [playing,    setPlaying]    = useState(null);
+  const [playing,    setPlaying]    = useState(null); // فهرس الزر الذي يُشغَّل حالياً
   const [rankOrder,  setRankOrder]  = useState([]); // فهارس الكلمات بترتيب الاختيار
 
-  const ttsRef = useRef(null);
+  const { audioError, playOnce, stop, resetError } = useTTSPlayer();
 
-  useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
-
-  function handlePlay(btnIdx) {
+  async function handlePlay(btnIdx) {
     if (playCounts[btnIdx] >= MAX_PLAYS) return;
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    synth.cancel();
-    if (ttsRef.current) ttsRef.current.onend = null;
     setPlaying(btnIdx);
-    const wordIdx = buttonOrder[btnIdx];
-    const u = new SpeechSynthesisUtterance(opts[wordIdx]);
-    u.lang = 'ar-SA'; u.rate = 0.88; u.pitch = 1; u.volume = 1;
-    u.onend = () => setPlaying(null);
-    u.onerror = () => setPlaying(null);
-    ttsRef.current = u;
     setPlayCounts(prev => prev.map((c, i) => i === btnIdx ? c + 1 : c));
-    const go = () => synth.speak(u);
-    if (synth.getVoices().length > 0) { go(); } else { synth.onvoiceschanged = go; }
+    const wordIdx = buttonOrder[btnIdx];
+    await playOnce(opts[wordIdx]);
+    setPlaying(null);
   }
 
   /* ضغطة على كلمة: إضافة إن لم تكن مختارة، إلغاء إن كانت */
@@ -60,8 +42,9 @@ export default function ListenChoose({ question, onAnswer }) {
   }
 
   function handleReset() {
-    window.speechSynthesis?.cancel();
+    stop();
     setPlaying(null);
+    resetError();
     setPlayCounts(Array(n).fill(0));
     setRankOrder([]);
   }
@@ -72,6 +55,8 @@ export default function ListenChoose({ question, onAnswer }) {
       skill:      question.skill ?? 'listening',
       answer:     rankOrder,
       isCorrect:  rankOrder[0] === question.correct,
+      answerText:  rankOrder.map(i => opts[i]).join('، '),
+      correctText: opts[question.correct],
     });
   }
 
@@ -91,6 +76,11 @@ export default function ListenChoose({ question, onAnswer }) {
       {/* ── أزرار الصوت ── */}
       <div className="lc-audio-zone">
         <p className="lc-zone-label">أزرار الاستماع</p>
+        {audioError && (
+          <p style={{ color: '#c62828', fontSize: 12, fontFamily: 'Tajawal, sans-serif', margin: '2px 0 8px' }}>
+            ⚠️ تعذّر تشغيل الصوت، جرّب مرة أخرى
+          </p>
+        )}
         <div className="lc-audio-btns">
           {Array.from({ length: n }, (_, i) => {
             const isPlaying = playing === i;

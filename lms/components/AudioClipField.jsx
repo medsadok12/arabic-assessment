@@ -1,0 +1,178 @@
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import {
+  STORY_AUDIO_ACCEPT, checkStoryAudioFile, useStoryAudioRecorder, formatRecSecs,
+} from '../lib/story-audio-client';
+
+/* ════════════════════════════════════════════════════════════════
+   حقل صوت عام: تسجيل من الميكروفون أو رفع ملف ← يُرفع فوراً تلقائياً
+   (upload) ويمرّر رابطه لـonChange ← يُحفظ مع النموذج الأب.
+   لا خطوة «اعتمد» يدوية: كانت تُفقد التسجيل بصمت إن انتقل المعلم لصفحة
+   أخرى أو حفظ القصة قبل الضغط عليها (ضاعت تسجيلات قصة «فَهيم» كلها هكذا،
+   2026-10-16). إن فشل الرفع يبقى التسجيل ظاهراً مع «أعد محاولة الحفظ».
+   يستخدمه حقل صوت صفحة القصة (StoryPageAudioField) وصوتا الحرف والجملة
+   في محرر الحروف الهجائية (LetterEditor) — نصوص الواجهة تأتي من texts.
+   يُركَّب بـ key: تغيير المفتاح (صفحة/حرف آخر) يوقف أي تسجيل جارٍ.
+════════════════════════════════════════════════════════════════ */
+
+const GOLD = '#E8B84B';
+const NAVY = '#1A2B4A';
+const SAND = '#EDE5D8';
+
+const BTN = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+  minHeight: 44, borderRadius: 12, padding: '8px 14px',
+  fontSize: '.85rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+};
+const BTN_GOLD  = { ...BTN, border: 'none', background: GOLD, color: NAVY, boxShadow: '0 3px 10px rgba(232,184,75,.35)' };
+const BTN_LIGHT = { ...BTN, border: `2px solid ${SAND}`, background: '#fff', color: NAVY };
+const BTN_RED   = { ...BTN, border: 'none', background: '#fee2e2', color: '#b91c1c' };
+
+export default function AudioClipField({ audioUrl, onChange, upload, texts: T, maxSecs = 10 * 60, maxMb }) {
+  const rec = useStoryAudioRecorder(maxSecs);
+  const [pending,  setPending]  = useState(null);  // { blob, url, name }
+  const [busy,     setBusy]     = useState(false);
+  const [progress, setProgress] = useState(null);
+  const [msg,      setMsg]      = useState(null);  // { ok, text }
+  const fileRef    = useRef(null);
+  const pendingRef = useRef(null);
+
+  const setPendingClip = (clip) => {
+    if (pendingRef.current?.url) URL.revokeObjectURL(pendingRef.current.url);
+    pendingRef.current = clip;
+    setPending(clip);
+  };
+  useEffect(() => () => {
+    if (pendingRef.current?.url) URL.revokeObjectURL(pendingRef.current.url);
+  }, []);
+
+  /* يرفع التسجيل/الملف فوراً — يُستدعى أيضاً بعد انتقال المعلم لصفحة أخرى أثناء
+     التسجيل (الحقل أُغلق)، وonChange هنا من لحظة البدء فيُربط الصوت بصفحته هو */
+  const uploadClip = async (clip) => {
+    setPendingClip(clip);
+    setBusy(true); setMsg(null); setProgress(0);
+    try {
+      // upload يُرجع الرابط، أو { url, message } لرسالة نجاح تخص ما حدث فعلاً
+      const result = await upload(clip.blob, setProgress);
+      onChange(typeof result === 'string' ? result : result.url);
+      setPendingClip(null);
+      setMsg({ ok: true, text: result?.message || T.added });
+    } catch (e) {
+      setMsg({ ok: false, text: `❌ ${e.message || 'فشل الرفع'} — التسجيل ما زال هنا، اضغط «أعد محاولة الحفظ»` });
+    }
+    setProgress(null);
+    setBusy(false);
+  };
+
+  const startRecording = async () => {
+    setMsg(null);
+    setPendingClip(null);
+    const err = await rec.start((blob) => {
+      if (!blob) { setMsg({ ok: false, text: 'لم يُلتقط أي صوت — تأكد من الميكروفون وأعد التسجيل' }); return; }
+      uploadClip({ blob, url: URL.createObjectURL(blob), name: T.clipName });
+    });
+    if (err) setMsg({ ok: false, text: err });
+  };
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const err = checkStoryAudioFile(file)
+      || (maxMb && file.size > maxMb * 1024 * 1024 ? `«${file.name}» أكبر من ${maxMb}MB` : null);
+    if (err) { setMsg({ ok: false, text: err }); return; }
+    uploadClip({ blob: file, url: URL.createObjectURL(file), name: file.name });
+  };
+
+  const retry = () => { if (pending && !busy) uploadClip(pending); };
+
+  const remove = () => {
+    if (!confirm(T.removeConfirm)) return;
+    onChange(null);
+    setMsg({ ok: true, text: T.removed });
+  };
+
+  const locked = busy || rec.recording;
+
+  return (
+    <div style={{
+      direction: 'rtl', background: '#FAF7F2', border: `2px dashed ${SAND}`, borderRadius: 14,
+      padding: 14, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10,
+      fontFamily: "'Cairo','Tajawal',sans-serif",
+    }}>
+      <style>{`@keyframes spaPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}`}</style>
+      <input ref={fileRef} type="file" accept={STORY_AUDIO_ACCEPT} onChange={handleFile} style={{ display: 'none' }} />
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 900, color: NAVY, fontSize: '.88rem' }}>{T.title}</span>
+        <span style={{ fontSize: '.75rem', fontWeight: 800, color: audioUrl ? '#047857' : '#94a3b8' }}>
+          {audioUrl ? T.has : 'لا يوجد صوت بعد'}
+        </span>
+      </div>
+
+      {/* الصوت الحالي */}
+      {audioUrl && !pending && !rec.recording && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <audio controls preload="none" src={audioUrl} style={{ flex: '1 1 220px', minWidth: 0, maxWidth: '100%', height: 40 }} />
+          <button type="button" onClick={remove} disabled={locked} style={BTN_RED}>🗑 إزالة الصوت</button>
+        </div>
+      )}
+
+      {/* أزرار الإضافة */}
+      {!pending && !rec.recording && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" onClick={startRecording} disabled={locked} style={{ ...BTN_GOLD, flex: '1 1 170px' }}>
+            🎙️ {audioUrl ? T.rerecord : T.record}
+          </button>
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={locked} style={{ ...BTN_LIGHT, flex: '1 1 170px' }}>
+            📁 {audioUrl ? 'استبدال بملف صوتي' : 'ارفع ملفاً صوتياً'}
+          </button>
+        </div>
+      )}
+
+      {/* أثناء التسجيل — النص المطلوب قراءته ظاهر في النموذج الأب */}
+      {rec.recording && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: '#fff', border: '2px solid #fecaca', borderRadius: 12, padding: '8px 12px' }}>
+          <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#dc2626', animation: 'spaPulse 1.1s ease infinite', flexShrink: 0 }} />
+          <span style={{ fontWeight: 900, color: '#b91c1c', fontSize: '1rem', direction: 'ltr' }}>{formatRecSecs(rec.secs)}</span>
+          <span style={{ color: '#64748b', fontSize: '.82rem', flex: 1 }}>{T.recordingHint}</span>
+          <button type="button" onClick={rec.stop} style={{ ...BTN, border: 'none', background: '#dc2626', color: '#fff' }}>⏹ إيقاف</button>
+        </div>
+      )}
+
+      {/* يُحفظ الآن تلقائياً — أو فشل الحفظ فيبقى التسجيل مع إعادة المحاولة */}
+      {pending && !rec.recording && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#fff', border: `2px solid ${GOLD}`, borderRadius: 12, padding: 12 }}>
+          <div style={{ fontWeight: 800, color: NAVY, fontSize: '.85rem' }}>
+            {busy ? `⏳ جارٍ حفظ «${pending.name}» ${progress ?? 0}%` : `🎙️ ${pending.name} — لم يُحفظ بعد`}
+          </div>
+          <audio controls src={pending.url} style={{ width: '100%' }} />
+          {progress !== null && (
+            <div style={{ height: 10, borderRadius: 99, background: SAND, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${progress}%`, background: NAVY, transition: 'width .2s' }} />
+            </div>
+          )}
+          {!busy && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" onClick={retry} style={{ ...BTN_GOLD, flex: '1 1 180px' }}>🔁 أعد محاولة الحفظ</button>
+              <button type="button" onClick={startRecording} style={BTN_LIGHT}>🎙️ أعد التسجيل</button>
+              <button type="button" onClick={() => { setPendingClip(null); setMsg(null); }} style={BTN_LIGHT}>✖ إلغاء</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {msg && (
+        <div style={{
+          borderRadius: 10, padding: '8px 12px', fontSize: '.82rem', fontWeight: 700,
+          background: msg.ok ? '#ecfdf5' : '#fef2f2', color: msg.ok ? '#065f46' : '#b91c1c',
+          border: `1.5px solid ${msg.ok ? '#86efac' : '#fecaca'}`,
+        }}>
+          {msg.text}
+        </div>
+      )}
+
+      {T.footer && <span style={{ color: '#94a3b8', fontSize: '.72rem', lineHeight: 1.6 }}>{T.footer}</span>}
+    </div>
+  );
+}

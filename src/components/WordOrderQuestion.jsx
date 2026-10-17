@@ -31,7 +31,11 @@ export default function WordOrderQuestion({ question, onAnswer }) {
     const isCorrect = submitted === expected;
     setChecked(true);
     setCorrect(isCorrect);
-    setTimeout(() => onAnswer({ questionId: question.id, skill: question.skill, answer: submitted, isCorrect }), 1400);
+    setTimeout(() => onAnswer({
+      questionId: question.id, skill: question.skill, answer: submitted, isCorrect,
+      answerText:  placed.map(x => x.w).join(' '),
+      correctText: question.answer.join(' '),
+    }), 1400);
   }
 
   return (

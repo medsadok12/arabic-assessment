@@ -51,7 +51,8 @@ export default function WritingQuestion({ question, studentInfo, onAnswer }) {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        setUploadError(data.error || 'فشل رفع الصورة');
+        console.error('[WritingQuestion] رفع الصورة فشل:', data.error);
+        setUploadError(true);
         setRetryCount(c => c + 1);
         setUploading(false);
         return;
@@ -59,9 +60,14 @@ export default function WritingQuestion({ question, studentInfo, onAnswer }) {
 
       setUploading(false);
       setUploaded(true);
-      setTimeout(() => onAnswer({ questionId: question.id, skill: question.skill, answer: 0, isCorrect: true }), 2000);
+      setTimeout(() => onAnswer({
+        questionId: question.id, skill: question.skill, answer: 0, isCorrect: true,
+        answerText:  'صورة الكتابة مُرسلة للمعلم',
+        correctText: 'تُقيَّم من المعلم',
+      }), 2000);
     } catch (err) {
-      setUploadError(err.message || 'تعذّر الاتصال بالخادم');
+      console.error('[WritingQuestion] رفع الصورة فشل:', err.message);
+      setUploadError(true);
       setUploading(false);
     }
   }
@@ -98,13 +104,13 @@ export default function WritingQuestion({ question, studentInfo, onAnswer }) {
 
       {uploadError && (
         <div style={{ marginTop: 10 }}>
-          <p className="aq-error">⚠️ {uploadError}</p>
+          <p className="aq-error">⚠️ عذراً، حدث خطأ أثناء الاتصال. يرجى المحاولة مرة أخرى</p>
           <button className="btn-primary" onClick={handleSubmit} style={{ marginTop: 6 }}>
             🔄 إعادة المحاولة
           </button>
           {retryCount >= 2 && (
             <button
-              onClick={() => onAnswer({ questionId: question.id, skill: question.skill, answer: 0, isCorrect: true })}
+              onClick={() => onAnswer({ questionId: question.id, skill: question.skill, answer: 0, isCorrect: false, answerText: 'تم التخطي بسبب مشكلة تقنية في الرفع', correctText: 'تُقيَّم من المعلم' })}
               style={{ marginTop: 8, width: '100%', padding: '10px', background: 'transparent', border: '1px solid #aaa', borderRadius: 8, color: '#666', cursor: 'pointer', fontSize: 14 }}
             >
               تخطي هذا السؤال ←
