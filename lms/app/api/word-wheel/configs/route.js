@@ -1,64 +1,45 @@
-import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
-import { createClient }      from '../../../../lib/supabase-server';
-import { getRole } from '../../../../lib/auth-role';
+import {
+  json, requireWwStaff, isMissingSchema, schemaResponse, WHEEL_COLUMNS, canEditWheel, canDeleteWheel,
+} from '../../../../lib/word-wheel-server';
+import { sanitizeWheelInput, sortWheels } from '../../../../lib/word-wheel';
 
 export const dynamic = 'force-dynamic';
 
-function isTeacherOrAdmin(role) {
-  return ['teacher', 'admin', 'super_admin'].includes(role);
-}
-
+// GET — كل العجلات للوحة الإدارة (الظاهرة والمخفية) مع صلاحية كل عجلة للمستخدم
 export async function GET() {
+  const { user, error: denied } = await requireWwStaff();
+  if (denied) return denied;
   try {
     const admin = createAdminClient();
-    const { data, error } = await admin
-      .from('word_wheel_configs')
-      .select('id, name, center_letter, outer_letters, valid_words, time_seconds, is_active, created_at')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      if (error.code === '42P01') return NextResponse.json({ configs: [] });
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    return NextResponse.json({ configs: data ?? [] });
+    const { data, error } = await admin.from('word_wheel_configs').select(WHEEL_COLUMNS);
+    if (error) return isMissingSchema(error) ? schemaResponse() : json({ error: error.message }, 500);
+    const configs = sortWheels(data || []).map(r => ({ ...r, can_edit: canEditWheel(user, r), can_delete: canDeleteWheel(user, r) }));
+    return json({ configs });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return json({ error: e.message || 'تعذّر تحميل العجلات' }, 500);
   }
 }
 
+// POST — عجلة جديدة بأي نمط
 export async function POST(req) {
+  const { user, error: denied } = await requireWwStaff();
+  if (denied) return denied;
   try {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !isTeacherOrAdmin(getRole(user)))
-      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-
-    const body = await req.json();
-    const { name, center_letter, outer_letters, valid_words, time_seconds } = body;
-
-    if (!name?.trim())           return NextResponse.json({ error: 'اسم العجلة مطلوب' }, { status: 400 });
-    if (!center_letter)          return NextResponse.json({ error: 'الحرف الأوسط مطلوب' }, { status: 400 });
-    if (!outer_letters?.length)  return NextResponse.json({ error: 'الحروف الخارجية مطلوبة' }, { status: 400 });
-
+    const { data, error: invalid } = sanitizeWheelInput(await req.json().catch(() => null));
+    if (invalid) return json({ error: invalid }, 400);
     const admin = createAdminClient();
-    const { data, error } = await admin
+    const { data: row, error } = await admin
       .from('word_wheel_configs')
       .insert({
-        name:          name.trim(),
-        center_letter,
-        outer_letters: outer_letters.slice(0, 8),
-        valid_words:   valid_words ?? [],
-        time_seconds:  time_seconds ?? 90,
-        created_by:    user.id,
+        time_seconds: 90, level: 1, sort_order: 0, is_active: true,
+        ...data, created_by: user.id, updated_at: new Date().toISOString(),
       })
-      .select()
+      .select(WHEEL_COLUMNS)
       .single();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ config: data });
+    if (error) return isMissingSchema(error) ? schemaResponse() : json({ error: error.message }, 500);
+    return json({ config: { ...row, can_edit: true, can_delete: true } });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return json({ error: e.message || 'تعذّر حفظ العجلة' }, 500);
   }
 }

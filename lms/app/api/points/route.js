@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient } from '../../../lib/supabase-server';
 import { resolveActiveIdentity } from '../../../lib/active-child';
+import { WW_GAME_ID, normalizeWwSettings } from '../../../lib/word-wheel';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,8 @@ const POINT_EVENTS = {
   word_image_match:    5,
   word_scramble:       5,
   word_smash:          5,
-  word_wheel:          10,  // capped; was variable from client
+  word_wheel:          10,  // لكل كلمة — القيمة الفعلية من إعدادات اللعبة (gameConfiguredAmount)
+  word_wheel_win:      10,  // إنهاء عجلة — القيمة الفعلية من إعدادات اللعبة
 
   // Unique events — reason must be "prefix:uniqueId", dedup prevents replays
   huroof_letter:       2,   // e.g. "huroof_letter:ب"
@@ -39,6 +41,16 @@ const DEDUP_PREFIXES = new Set([
   'challenge_win', 'challenge_draw', 'challenge_loss',
   'daily_login', 'story', 'session_attend', 'homework_done', 'daily_word',
 ]);
+
+async function wordWheelAmount(admin, prefix, fallback) {
+  try {
+    const { data } = await admin.from('game_settings').select('settings').eq('game_id', WW_GAME_ID).maybeSingle();
+    const s = normalizeWwSettings(data?.settings);
+    return prefix === 'word_wheel' ? s.points_per_word : s.win_points;
+  } catch {
+    return fallback;
+  }
+}
 
 export async function GET(req) {
   try {
@@ -71,12 +83,17 @@ export async function POST(req) {
 
     // Resolve server-side amount from reason prefix
     const prefix = reason.split(':')[0];
-    const amount = POINT_EVENTS[prefix] ?? POINT_EVENTS[reason];
+    let amount = POINT_EVENTS[prefix] ?? POINT_EVENTS[reason];
     if (!amount) {
       return NextResponse.json({ error: 'حدث غير معروف' }, { status: 400 });
     }
 
     const admin = createAdminClient();
+    // نقاط «عجلة الكلمات» يحدّدها المعلم/المدير من لوحة اللعبة — والخادم وحده يقرؤها
+    if (prefix === 'word_wheel' || prefix === 'word_wheel_win') {
+      amount = await wordWheelAmount(admin, prefix, amount);
+      if (!amount) return NextResponse.json({ skipped: true, disabled: true });
+    }
     const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
 
     // Dedup check for unique events

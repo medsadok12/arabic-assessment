@@ -48,17 +48,20 @@ async function loadGameWords() {
   }
 }
 
+// عجلات «التحدي المفتوح» الظاهرة في المرحلة الأولى كما يديرها المعلم من لوحة اللعبة
 async function loadWheels() {
-  let overrides = [];
+  let rows = [];
   try {
     const admin = createCachedReadClient(READ_REVALIDATE);
-    const { data } = await admin
-      .from('word_wheel_catalog')
-      .select('level, wheel_index, center_letter, outer_letters, valid_words')
-      .eq('level', 1);
-    overrides = data || [];
+    const { data, error } = await admin
+      .from('word_wheel_configs')
+      .select('mode, level, is_active, center_letter, outer_letters, valid_words')
+      .eq('mode', 'challenge')
+      .eq('level', 1)
+      .eq('is_active', true);
+    if (!error) rows = data || [];
   } catch { /* العجلات الافتراضية تكفي */ }
-  return pickPreviewWheels(overrides);
+  return pickPreviewWheels(rows);
 }
 
 export default async function HomePage() {
