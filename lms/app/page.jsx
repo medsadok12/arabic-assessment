@@ -4,8 +4,9 @@ import { pickGamePreviewWords } from '../lib/game-preview';
 import { pickPreviewWheels } from '../lib/word-wheel';
 import LandingPage from '../components/landing/LandingPage';
 
-/* الصفحة الرئيسية — تجلب على الخادم محتوى «معاينة من داخل المنصة»: قصة مشارَكة
-   (لها رابط مشاركة عام) بصفحتها الأولى وصوتها الحقيقي، وكلمات حقيقية من
+/* الصفحة الرئيسية — تجلب على الخادم محتوى «معاينة من داخل المنصة»: القصة التي
+   اختارها المشرف للصفحة الرئيسية (featured_home، وإلا أحدث قصة مشارَكة) بصفحتها
+   الأولى وصوتها الحقيقي، وكلمات حقيقية من
    «صيّاد الحروف» بصورها وأصواتها المسجَّلة، وعجلات المرحلة الأولى من
    «عجلة الكلمات» بتعديلات المعلم. أي فشل في الجلب = بطاقات احتياطية بصمت.
 
@@ -21,8 +22,9 @@ async function loadStoryPreview() {
     const admin = createCachedReadClient(READ_REVALIDATE);
     const { data } = await admin
       .from('stories')
-      .select('title, content, page_audio, share_token, cover_image_url')
+      .select('title, content, page_audio, share_token, cover_image_url, featured_home')
       .not('share_token', 'is', null)
+      .order('featured_home', { ascending: false })
       .order('updated_at', { ascending: false })
       .limit(10);
     return pickStoryPreview(data);

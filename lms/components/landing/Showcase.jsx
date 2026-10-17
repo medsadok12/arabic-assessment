@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { SAMPLE_GAME_WORDS, SAMPLE_REPORT_SKILLS } from './content';
 import { stripDia, getLetterForm, toContextual } from '../../lib/letter-forms';
 import { speakArabic } from '../../lib/speak-arabic';
@@ -15,7 +16,16 @@ import WheelSVG from '../WordWheelSVG';
    4) نموذج مصغّر من تقرير PDF بنفس تصميمه ومهاراته (أرقام توضيحية)
 ════════════════════════════════════════════════════════════════ */
 
-function StoryPreview({ story, c }) {
+/* قصة بطلها فهيم (ماسكوت الأكاديمية) تُقدَّم بهويته البنفسجية: شارة بوجهه على
+   الصورة، والعنوان واسم البطل بلونه — القسم 2.4 في CLAUDE.md */
+export function isFaheemStory(title) {
+  return stripDia(title).replace(/ـ/g, '').includes('فهيم');
+}
+
+// صفحة أولى طويلة تُقرأ كصفحة كتاب: نص أصغر قليلاً بمحاذاة السطر، فوق ورقة بيضاء
+const LONG_PAGE_CHARS = 110;
+
+function StoryPreview({ story, c, faheem }) {
   const audioRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -38,15 +48,29 @@ function StoryPreview({ story, c }) {
   };
 
   const title = story?.title || c.fallbackTitle;
-  const text  = story?.text  || c.fallbackText;
+  // المقاطع العريضة في المحرر (اسم البطل مثلاً) تُبرَز هنا كما أرادها المعلم
+  const parts = story?.parts?.length ? story.parts : [{ t: story?.text || c.fallbackText, em: false }];
+  const long  = parts.reduce((n, p) => n + p.t.length, 0) > LONG_PAGE_CHARS;
 
   return (
     <div className="v2s-story">
-      {story?.image
-        ? <img src={story.image} alt="" className="v2s-story-img" loading="lazy" />
-        : <div className="v2s-story-img v2s-story-emoji" aria-hidden="true">🐱</div>}
+      <div className="v2s-story-media">
+        {story?.image
+          ? <img src={story.image} alt="" className="v2s-story-img" loading="lazy" />
+          : <div className="v2s-story-img v2s-story-emoji" aria-hidden="true">🐱</div>}
+        {faheem && (
+          <span className="v2s-hero">
+            <Image src="/faheem.png" alt="" width={80} height={102} className="v2s-hero-pic" />
+            {c.heroBadge}
+          </span>
+        )}
+      </div>
       <p className="v2s-story-title">{title}</p>
-      <p className="v2s-story-text" lang="ar" dir="rtl">{text}</p>
+      <p className={`v2s-story-text${long ? ' long' : ''}`} lang="ar" dir="rtl">
+        {parts.map((p, i) => (p.em
+          ? <mark key={i} className="v2s-em">{p.t}</mark>
+          : <Fragment key={i}>{p.t}</Fragment>))}
+      </p>
       {story?.audio && (
         <button type="button" className={`v2s-listen${playing ? ' playing' : ''}`} onClick={toggle}>
           <span className="v2s-listen-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
@@ -436,8 +460,9 @@ function ReportPreview({ c }) {
 }
 
 export default function Showcase({ c, story, gameWords, wheels }) {
+  const faheem = !!story && isFaheemStory(story.title);
   const items = [
-    { key: 'story',  meta: c.story,  body: <StoryPreview story={story} c={c.story} /> },
+    { key: 'story',  meta: c.story,  body: <StoryPreview story={story} c={c.story} faheem={faheem} />, variant: faheem ? 'faheem' : null },
     { key: 'game',   meta: c.game,   body: <GamePreview c={c.game} words={gameWords?.length ? gameWords : SAMPLE_GAME_WORDS} /> },
     ...(wheels?.length ? [{ key: 'wheel', meta: c.wheel, body: <WheelPreview c={c.wheel} wheels={wheels} /> }] : []),
     { key: 'report', meta: c.report, body: <ReportPreview c={c.report} /> },
@@ -453,7 +478,7 @@ export default function Showcase({ c, story, gameWords, wheels }) {
           {items.map(it => (
             <figure key={it.key} className="v2s-card">
               <span className="v2s-tag">{it.meta.tag}</span>
-              <div className={`v2s-frame v2s-frame--${it.key}`}>{it.body}</div>
+              <div className={`v2s-frame v2s-frame--${it.key}${it.variant ? ` v2s-frame--${it.variant}` : ''}`}>{it.body}</div>
               <figcaption className="v2s-caption">{it.meta.caption}</figcaption>
             </figure>
           ))}
@@ -474,10 +499,26 @@ const SHOWCASE_CSS = `
 
   /* القصة */
   .v2s-story{ display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; width:100%; max-width:420px; margin:0 auto; }
+  .v2s-story-media{ position:relative; width:100%; }
   .v2s-story-img{ width:100%; max-height:170px; object-fit:cover; border-radius:14px; display:block; }
   .v2s-story-emoji{ height:150px; display:flex; align-items:center; justify-content:center; font-size:4rem; background:#EDE5D8; }
   .v2s-story-title{ margin:0; font-weight:800; color:#1A2B4A; font-size:.95rem; }
   .v2s-story-text{ margin:0; white-space:pre-line; font-size:1.35rem; line-height:1.9; color:#1e293b; font-weight:600; }
+  /* صفحة أولى طويلة: ورقة كتاب بيضاء، نص بمحاذاة السطر وحجم مريح لقراءة الطفل */
+  .v2s-story-text.long{ width:100%; box-sizing:border-box; text-align:start; font-size:1.06rem; line-height:1.95;
+    background:#fff; border:1.5px solid #EDE5D8; border-radius:16px; padding:10px 16px; box-shadow:0 2px 8px rgba(26,43,74,.05); }
+  .v2s-em{ color:#1A2B4A; font-weight:900; background:linear-gradient(transparent 58%, #FBE8C4 58%); border-radius:3px; padding:0 2px; }
+
+  /* قصة فهيم — هويته البنفسجية (#7C5CD9): ظل خلفية لطيف، شارة بوجهه، والعنوان واسمه بلونه */
+  .v2s-frame--faheem{ background:linear-gradient(165deg,#F3EEFF 0%,#FAF7F2 62%); }
+  .v2s-frame--faheem .v2s-story-img{ aspect-ratio:16/10; max-height:210px; border-radius:16px; box-shadow:0 10px 24px rgba(95,63,196,.18); }
+  .v2s-hero{ position:absolute; bottom:-16px; inset-inline-start:14px; display:inline-flex; align-items:center; gap:7px;
+    background:#7C5CD9; color:#fff; border:3px solid #fff; border-radius:999px; padding-block:3px; padding-inline:3px 14px;
+    font-weight:800; font-size:.85rem; line-height:1; box-shadow:0 6px 16px rgba(124,92,217,.35); }
+  .v2s-hero-pic{ width:34px; height:34px; border-radius:50%; background:#EFE9FB; object-fit:cover; object-position:50% 14%; }
+  .v2s-frame--faheem .v2s-story-title{ margin-top:12px; color:#5f3fc4; font-weight:900; font-size:1.02rem; }
+  .v2s-frame--faheem .v2s-story-text.long{ border-color:#E3D9F9; }
+  .v2s-frame--faheem .v2s-em{ color:#5f3fc4; background:linear-gradient(transparent 58%, #E3D9F9 58%); }
   .v2s-listen{ position:relative; overflow:hidden; border:none; cursor:pointer; min-height:50px; min-width:170px; padding:0 24px;
     border-radius:16px; background:#E8B84B; color:#1A2B4A; font:inherit; font-weight:800; font-size:1rem;
     box-shadow:0 5px 0 #b8892a, 0 8px 18px rgba(26,43,74,.18); transition:transform .1s, box-shadow .1s; }

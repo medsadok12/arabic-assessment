@@ -1,5 +1,6 @@
 import { randomBytes }      from 'crypto';
 import { NextResponse }     from 'next/server';
+import { revalidatePath }   from 'next/cache';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
 import { requireStoryEditor } from '../../../../../lib/story-auth';
 
@@ -26,15 +27,17 @@ export async function POST(req, { params }) {
   }
 }
 
-// DELETE — يلغي رابط المشاركة فيتوقف الرابط القديم فوراً
+// DELETE — يلغي رابط المشاركة فيتوقف الرابط القديم فوراً. قصة بلا رابط لا تُعرض
+// في الصفحة الرئيسية، فتخرج منها أيضاً (featured_home) وتُحدَّث الصفحة فوراً
 export async function DELETE(req, { params }) {
   const { error: authError } = await requireStoryEditor();
   if (authError) return authError;
   try {
     const admin = createAdminClient();
-    const { error } = await admin.from('stories').update({ share_token: null }).eq('id', params.id);
+    const { error } = await admin.from('stories').update({ share_token: null, featured_home: false }).eq('id', params.id);
     if (error) throw error;
-    return NextResponse.json({ share_token: null });
+    revalidatePath('/');
+    return NextResponse.json({ share_token: null, featured_home: false });
   } catch (e) {
     return NextResponse.json({ error: e.message || 'تعذّر إلغاء الرابط' }, { status: 500 });
   }

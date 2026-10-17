@@ -107,6 +107,7 @@ export default function StoriesTab({ lang }) {
                         }
                         <span style={{ background:'#f8fafc', color:'#64748b', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:700, border:'1px solid #e2e8f0' }}>مستوى {s.level || 1}</span>
                         <span style={{ background:'#f8fafc', color:'#64748b', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:700, border:'1px solid #e2e8f0' }}>⭐ {s.points || 10} نقطة</span>
+                        {s.featured_home && <span style={{ background:'#FDF6E3', color:'#1A2B4A', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:900, border:'1.5px solid #E8B84B' }}>🏠 في الصفحة الرئيسية</span>}
                         {s.share_token && <span style={{ background:'#eef2f7', color:'#1A2B4A', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:900, border:'1.5px solid #1A2B4A' }}>🔗 مشارَكة</span>}
                         {au.voiced > 0 && <span style={{ background:'#fdf6e3', color:'#1A2B4A', borderRadius:20, padding:'2px 9px', fontSize:'.65rem', fontWeight:900, border:'1.5px solid #E8B84B' }}>🔊 {au.voiced}/{au.total} صفحات بصوت</span>}
                       </div>
@@ -124,7 +125,7 @@ export default function StoriesTab({ lang }) {
                       aria-expanded={shareFor === s.id}
                       style={{ background: shareFor === s.id ? '#1A2B4A' : '#fff', color: shareFor === s.id ? '#fff' : '#1A2B4A', border:'1.5px solid #1A2B4A', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:800, cursor:'pointer' }}
                     >
-                      {shareFor === s.id ? '✖ إغلاق المشاركة' : '🔗 رابط مشاركة'}
+                      {shareFor === s.id ? '✖ إغلاق المشاركة' : '🔗 المشاركة والصفحة الرئيسية'}
                     </button>
                     <button
                       className="mobile-stack-act"
@@ -155,7 +156,10 @@ export default function StoriesTab({ lang }) {
                 {shareFor === s.id && (
                   <StoryShareLink
                     story={s}
-                    onChanged={(token) => setStories(p => p.map(x => x.id === s.id ? { ...x, share_token: token } : x))}
+                    onChanged={(token) => setStories(p => p.map(x => x.id === s.id
+                      ? { ...x, share_token: token, featured_home: token ? x.featured_home : false } : x))}
+                    onStoryChanged={(updated) => setStories(p => p.map(x =>
+                      x.id === updated.id ? updated : (updated.featured_home ? { ...x, featured_home: false } : x)))}
                   />
                 )}
                 {audioFor === s.id && (
