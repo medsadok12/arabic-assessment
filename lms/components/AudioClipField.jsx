@@ -52,10 +52,11 @@ export default function AudioClipField({ audioUrl, onChange, upload, texts: T, m
     setPendingClip(clip);
     setBusy(true); setMsg(null); setProgress(0);
     try {
-      const url = await upload(clip.blob, setProgress);
-      onChange(url);
+      // upload يُرجع الرابط، أو { url, message } لرسالة نجاح تخص ما حدث فعلاً
+      const result = await upload(clip.blob, setProgress);
+      onChange(typeof result === 'string' ? result : result.url);
       setPendingClip(null);
-      setMsg({ ok: true, text: T.added });
+      setMsg({ ok: true, text: result?.message || T.added });
     } catch (e) {
       setMsg({ ok: false, text: `❌ ${e.message || 'فشل الرفع'} — التسجيل ما زال هنا، اضغط «أعد محاولة الحفظ»` });
     }

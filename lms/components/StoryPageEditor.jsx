@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { splitStoryPages } from '../lib/story-audio';
+import { uploadStoryPageAudio } from '../lib/story-audio-client';
 import StoryPageAudioField from './StoryPageAudioField';
 
 /* ─── تعريف التخطيطات ─────────────────────────────────────────── */
@@ -14,8 +15,14 @@ const LAYOUTS = [
   { key: 'img-bg',     label: 'خلفية+نص', hasImg: true  },
 ];
 
-// audio: رابط صوت قراءة الصفحة (يُدار من bogga) — يتحرك مع صفحته عند التقديم/التأخير ويُحذف معها
+// audio: رابط صوت قراءة الصفحة — يتحرك مع صفحته عند التقديم/التأخير ويُحذف معها
 const BLANK = { layout: 'text-only', imageUrl: '', fit: 'cover', text: '', audio: null };
+
+/* كل صفحة تحمل uid ثابتاً لا يتغيّر بالتقديم/التأخير (رفع يكتمل بعد انتقال المعلم
+   يصل لصفحته هو)، وsavedIdx: موضعها في المحتوى المحفوظ على الخادم أو null لصفحة
+   لم تُحفظ بعد — به يُحفظ صوتها في القصة فوراً بلا انتظار «حفظ التغييرات». */
+let pageUidSeq = 0;
+const newPage = (fields = {}) => ({ ...BLANK, ...fields, uid: ++pageUidSeq, savedIdx: null });
 
 /* ─── تحويل بيانات الصفحة → HTML للحفظ ────────────────────────── */
 function pageToHtml({ layout, imageUrl, fit = 'cover', text = '' }) {
@@ -87,8 +94,14 @@ function LayoutSvg({ type }) {
 /* ══════════════════════════════════════════════════════════════════
    المكوّن الرئيسي
 ══════════════════════════════════════════════════════════════════ */
-export default function StoryPageEditor({ value = '', onChange, audio = [], onAudioChange, storyId = null }) {
-  const [pages,     setPages]     = useState([{ ...BLANK }]);
+/* savedContent: محتوى القصة كما هو محفوظ على الخادم (null لقصة جديدة).
+   onAudioBusy(bool): هل يُرفع/يُحفظ صوت صفحة الآن — يمنع الأب «حفظ التغييرات» حتى يكتمل.
+   onAudioSaved(story): حُفظ صوت صفحة في القصة على الخادم فوراً. */
+export default function StoryPageEditor({
+  value = '', onChange, audio = [], onAudioChange, storyId = null,
+  savedContent = null, onAudioBusy, onAudioSaved,
+}) {
+  const [pages,     setPages]     = useState(() => [newPage()]);
   const [sel,       setSel]       = useState(0);
   const [uploading, setUploading] = useState(false);
   const [dragOver,  setDragOver]  = useState(false);
@@ -96,13 +109,26 @@ export default function StoryPageEditor({ value = '', onChange, audio = [], onAu
   const textRef = useRef(null);
   const fileRef = useRef(null);
   const selRef  = useRef(0); // ref للـ sel لتجنب stale closure في async
+  const pagesRef     = useRef(pages);              // أحدث الصفحات دائماً — كل تعديل يمر عبر commit
+  const audioJobsRef = useRef(0);                  // أصوات قيد الرفع/الحفظ الآن
+  const saveChainRef = useRef(Promise.resolve());  // حفظ أصوات الصفحات بالتتابع، لا متزامناً
+  const mountedRef   = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   /* ── تهيئة الصفحات من القيمة الأولية ── */
   useEffect(() => {
     const parts  = splitStoryPages(value);
+    // الصفحة i هنا هي الصفحة i على الخادم فقط إن كان المحتوى المفتوح هو المحفوظ نفسه
+    // (لا نسخة محلية مسترجَعة ولا تعديلات سابقة)، وإلا يُحفظ الصوت مع «حفظ التغييرات»
+    const pristine = !!storyId && savedContent !== null && value === savedContent;
     const parsed = parts.length
-      ? parts.map((html, i) => ({ ...htmlToPage(html), audio: audio[i] || null }))
-      : [{ ...BLANK }];
+      ? parts.map((html, i) => ({ ...newPage(htmlToPage(html)), audio: audio[i] || null, savedIdx: pristine ? i : null }))
+      : [newPage()];
+    pagesRef.current = parsed;
     setPages(parsed);
     setSel(0);
     selRef.current = 0;
@@ -122,20 +148,72 @@ export default function StoryPageEditor({ value = '', onChange, audio = [], onAu
     if (textRef.current) textRef.current.innerHTML = pages[sel]?.text || '';
   }, [sel, txtVisible, loaded]); // eslint-disable-line
 
-  /* ── إرسال المحتوى المحدَّث للأب (يُستدعى خارج setPages) ── */
+  /* ── إرسال المحتوى المحدَّث للأب ── */
   function emit(newPages) {
     const content = newPages.map(pageToHtml).join('\n<!-- PAGE -->\n');
     onChange?.(content);
     onAudioChange?.(newPages.map(p => p.audio || null)); // أصوات الصفحات بترتيبها الجديد
   }
 
+  /* كل تعديل على الصفحات يمر من هنا: المرجع والحالة والأب معاً وفوراً — فلا يرى
+     «حفظ التغييرات» نسخة أقدم من آخر صوت رُفع */
+  function commit(next) {
+    pagesRef.current = next;
+    // رفع اكتمل بعد إغلاق المحرر: صوته يُحفظ في قصته على الخادم (saveAudioToStory)،
+    // لكن لا يُكتب في النموذج — قد يكون مفتوحاً الآن على قصة أخرى
+    if (!mountedRef.current) return;
+    setPages(next);
+    emit(next);
+  }
+
   function patchPage(idx, patch) {
-    setPages(prev => {
-      const next = prev.map((p, i) => i === idx ? { ...p, ...patch } : p);
-      // emit خارج الـ updater لتجنب آثار جانبية داخل React
-      Promise.resolve().then(() => emit(next));
-      return next;
-    });
+    commit(pagesRef.current.map((p, i) => i === idx ? { ...p, ...patch } : p));
+  }
+
+  function patchPageByUid(uid, patch) {
+    commit(pagesRef.current.map(p => p.uid === uid ? { ...p, ...patch } : p));
+  }
+
+  /* ── صوت الصفحة: رفع ← يوضع في صفحته ← يُحفظ في القصة على الخادم فوراً ── */
+  function trackAudioJob(delta) {
+    audioJobsRef.current += delta;
+    onAudioBusy?.(audioJobsRef.current > 0);
+  }
+
+  // يُرجع true إن وصل الصوت للقصة على الخادم (يسمعه الطلاب الآن)
+  function saveAudioToStory(uid, url) {
+    const run = async () => {
+      const page = pagesRef.current.find(p => p.uid === uid);
+      if (!storyId || page?.savedIdx == null) return false; // صفحة/قصة جديدة: تُحفظ مع «حفظ التغييرات»
+      try {
+        const res = await fetch(`/api/stories/${storyId}/page-audio`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ page: page.savedIdx, url }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.story) return false;
+        onAudioSaved?.(json.story);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    const job = saveChainRef.current.then(run);
+    saveChainRef.current = job;
+    return job;
+  }
+
+  async function uploadPageAudio(uid, pageIdx, blob, onProgress) {
+    trackAudioJob(1);
+    try {
+      const url = await uploadStoryPageAudio(storyId, pageIdx, blob, onProgress);
+      patchPageByUid(uid, { audio: url }); // في صفحته قبل أي شيء: «حفظ التغييرات» يحمله حتماً
+      const live = await saveAudioToStory(uid, url);
+      return { url, live };
+    } finally {
+      trackAudioJob(-1);
+    }
   }
 
   function onTextInput() {
@@ -156,37 +234,26 @@ export default function StoryPageEditor({ value = '', onChange, audio = [], onAu
   }
 
   function addPage() {
-    const blank  = { ...BLANK };
-    const newIdx = pages.length; // index الصفحة الجديدة = الطول الحالي
-    setPages(prev => {
-      const next = [...prev, blank];
-      Promise.resolve().then(() => emit(next));
-      return next;
-    });
+    const next   = [...pagesRef.current, newPage()];
+    const newIdx = next.length - 1;
+    commit(next);
     setSel(newIdx);
     selRef.current = newIdx;
   }
 
   function removePage(idx) {
-    if (pages.length <= 1) return;
-    setPages(prev => {
-      const next = prev.filter((_, i) => i !== idx);
-      Promise.resolve().then(() => emit(next));
-      return next;
-    });
+    if (pagesRef.current.length <= 1) return;
+    commit(pagesRef.current.filter((_, i) => i !== idx));
     // اجعل sel يشير للصفحة الصحيحة بعد الحذف
     setSel(s => idx < s ? s - 1 : idx === s ? Math.max(0, s - 1) : s);
   }
 
   function movePage(idx, dir) {
     const to = idx + dir;
-    if (to < 0 || to >= pages.length) return;
-    setPages(prev => {
-      const next = [...prev];
-      [next[idx], next[to]] = [next[to], next[idx]];
-      Promise.resolve().then(() => emit(next));
-      return next;
-    });
+    if (to < 0 || to >= pagesRef.current.length) return;
+    const next = [...pagesRef.current];
+    [next[idx], next[to]] = [next[to], next[idx]];
+    commit(next);
     setSel(to);
     selRef.current = to;
   }
@@ -450,11 +517,11 @@ export default function StoryPageEditor({ value = '', onChange, audio = [], onAu
 
         {/* ══ صوت قراءة هذه الصفحة ══ */}
         <StoryPageAudioField
-          key={sel}
-          storyId={storyId}
+          key={cur.uid}
           page={sel}
           audioUrl={cur.audio || null}
-          onChange={(url) => patchPage(sel, { audio: url })}
+          upload={(blob, onProgress) => uploadPageAudio(cur.uid, sel, blob, onProgress)}
+          onChange={(url) => patchPageByUid(cur.uid, { audio: url })}
         />
 
         {/* ══ معاينة مباشرة ══ */}

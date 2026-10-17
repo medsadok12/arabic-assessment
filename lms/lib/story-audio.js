@@ -28,6 +28,16 @@ export function normalizePageAudio(list, pageCount) {
     (typeof src[i] === 'string' && src[i]) ? src[i] : null);
 }
 
+/* يضع صوت صفحة واحدة في أصوات القصة المحفوظة — للحفظ الفوري لحظة اكتمال الرفع
+   من المحرر الكامل. page = فهرس الصفحة في المحتوى المحفوظ على الخادم.
+   يُرجع مصفوفة بطول عدد الصفحات، أو null إن كانت الصفحة خارج القصة. */
+export function setPageAudioAt(list, pageCount, page, url) {
+  if (!Number.isInteger(page) || page < 0 || page >= pageCount) return null;
+  const next = normalizePageAudio(list, pageCount);
+  next[page] = (typeof url === 'string' && url) ? url : null;
+  return next;
+}
+
 /* الأنواع المقبولة ← الامتداد المحفوظ */
 export const STORY_AUDIO_TYPES = {
   'audio/mpeg':  'mp3',

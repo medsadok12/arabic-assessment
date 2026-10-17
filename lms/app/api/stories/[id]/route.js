@@ -63,21 +63,20 @@ export async function PUT(req, { params }) {
 
     // أصوات الصفحات: مصفوفة بفهرس الصفحة، كل عنصر رابط من مجلد صوت القصص
     // في تخزيننا أو null. تُضبط على عدد صفحات المحتوى (الجديد إن أُرسل).
-    let droppedAudio = [];
+    // صوت يغيب عن المصفوفة الجديدة لا يُحذف ملفه من التخزين: حفظٌ بمصفوفة قديمة
+    // (تبويب آخر، خلل في الواجهة) كان سيمحو تسجيل المعلم نهائياً، وبقاؤه يسمح
+    // باسترجاعه (كما استُرجع صوت الصفحة 1 من «فَهيم»). الملفات تُحذف مع القصة فقط.
     if (page_audio !== undefined) {
       const audioErr = pageAudioError(page_audio);
       if (audioErr) return NextResponse.json({ error: audioErr }, { status: 400 });
 
       const { data: current, error: curErr } = await admin
-        .from('stories').select('content, page_audio').eq('id', id).maybeSingle();
+        .from('stories').select('content').eq('id', id).maybeSingle();
       if (curErr) throw curErr;
       if (!current) return NextResponse.json({ error: 'القصة غير موجودة' }, { status: 404 });
 
       const pageCount = splitStoryPages(content !== undefined ? content : current.content).length;
       updates.page_audio = normalizePageAudio(page_audio, pageCount);
-      const kept = new Set(updates.page_audio.filter(Boolean));
-      droppedAudio = (Array.isArray(current.page_audio) ? current.page_audio : [])
-        .filter(u => u && !kept.has(u));
     }
     // صورة الغلاف: data URL جديد يُرفع، null يزيلها، والرابط الحالي يبقى كما هو.
     // الغلاف القديم يُحذف من التخزين بعد نجاح الحفظ فقط.
@@ -116,7 +115,6 @@ export async function PUT(req, { params }) {
       if (newUpload) await removeStoryCover(admin, newUpload);
       throw error;
     }
-    if (droppedAudio.length) await removeStoryAudio(admin, droppedAudio);
     if (oldCover && oldCover !== updates.cover_image_url) await removeStoryCover(admin, oldCover);
     return NextResponse.json({ story: data });
   } catch (e) {

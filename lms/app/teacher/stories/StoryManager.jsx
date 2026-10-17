@@ -274,10 +274,14 @@ export default function StoryManager({ initialStories }) {
   const [deleting,  setDeleting]  = useState(null);
   const [msg,       setMsg]       = useState(null);
   const [preview,   setPreview]   = useState(false);
-  const [pageAudio, setPageAudio] = useState([]);  // صوت كل صفحة — يتحرك مع صفحته داخل StoryPageEditor
+  const [pageAudio, setPageAudioState] = useState([]);  // صوت كل صفحة — يتحرك مع صفحته داخل StoryPageEditor
+  const [audioBusy, setAudioBusy] = useState(false);    // صوت صفحة يُرفع/يُحفظ الآن — الحفظ ينتظره
   const [draftOffer, setDraftOffer] = useState(null); // نسخة محلية غير محفوظة وُجدت عند فتح القصة
   const [editorRev,  setEditorRev]  = useState(0);    // يعيد تهيئة محرر الصفحات بعد الاسترجاع
   const baselineRef = useRef('');                      // لقطة القصة كما فُتحت (أو كما حُفظت آخر مرة)
+  // أحدث أصوات الصفحات فوراً (لا عبر إعادة الرسم) — «حفظ التغييرات» يقرأ منه
+  const pageAudioRef = useRef([]);
+  const setPageAudio = (list) => { pageAudioRef.current = list; setPageAudioState(list); };
 
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const editing = view === 'create' || view === 'edit';
@@ -359,9 +363,18 @@ export default function StoryManager({ initialStories }) {
   };
   const backToList = () => { setView('list'); setMsg(null); };
 
+  // صوت صفحة حُفظ في القصة فوراً لحظة اكتمال رفعه — القائمة تعرفه حتى لو خرج المعلم
+  // من المحرر قبل اكتماله، فلا يفتح القصة لاحقاً بأصوات قديمة ثم يحفظها فوقه
+  const handleAudioSaved = (story) => {
+    setStories(p => p.map(s => s.id === story.id ? story : s));
+  };
+
   const handleSave = async () => {
     if (!form.title.trim()) { setMsg({ ok: false, text: 'العنوان مطلوب' }); return; }
+    // الزر معطَّل أثناء رفع صوت — حفظ القصة قبل اكتماله كان يحفظها بلا الصوت (قصة «فَهيم»)
+    if (audioBusy) { setMsg({ ok: false, text: '⏳ انتظر لحظة حتى يكتمل حفظ الصوت ثم احفظ' }); return; }
     setSaving(true); setMsg(null);
+    const savedAudio = pageAudioRef.current;
     try {
       const method  = view === 'edit' ? 'PUT' : 'POST';
       const url     = view === 'edit' ? `/api/stories/${editId}` : '/api/stories';
@@ -370,7 +383,7 @@ export default function StoryManager({ initialStories }) {
       const res  = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json', ...editorVersionHeaders() },
-        body: JSON.stringify({ ...form, page_audio: pageAudio }),
+        body: JSON.stringify({ ...form, page_audio: savedAudio }),
       });
       const json = await res.json().catch(() => ({}));
       // انتهت جلسة الدخول: لا نغادر المحرر — الدخول في نافذة جديدة ثم «حفظ» مرة أخرى
@@ -387,7 +400,7 @@ export default function StoryManager({ initialStories }) {
       }
       if (!res.ok || json.error) throw new Error(json.error || 'فشل الحفظ');
       // وصل الحفظ للخادم: النسخة المحلية لم تعد لازمة
-      baselineRef.current = draftSnapshot(form, pageAudio);
+      baselineRef.current = draftSnapshot(form, savedAudio);
       clearStoryDraft(draftStore(), editId);
       if (view === 'edit') {
         setStories(p => p.map(s => s.id === editId ? json.story : s));
@@ -607,8 +620,9 @@ export default function StoryManager({ initialStories }) {
             )}
             {view !== 'list' && (
               <button
-                style={{ background:preview?'#4f46e5':'#eef2ff', color:preview?'#fff':'#4f46e5', border:'none', borderRadius:12, padding:'9px 18px', fontSize:'.85rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}
+                style={{ background:preview?'#4f46e5':'#eef2ff', color:preview?'#fff':'#4f46e5', border:'none', borderRadius:12, padding:'9px 18px', fontSize:'.85rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit', opacity: audioBusy ? .5 : 1 }}
                 onClick={() => setPreview(p => !p)}
+                disabled={audioBusy} /* المعاينة تُغلق محرر الصفحات — لا أثناء رفع صوت */
               >
                 {preview ? '✏️ محرر' : '👁 معاينة'}
               </button>
@@ -701,7 +715,7 @@ export default function StoryManager({ initialStories }) {
                 📝 وجدنا تعديلات لم تُحفظ على هذه القصة في هذا الجهاز
                 (آخر تعديل: {new Date(draftOffer.savedAt).toLocaleString('ar-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })}).
                 <div className="sm-draft-actions">
-                  <button className="sm-draft-restore" onClick={restoreDraft}>↩️ استرجاع التعديلات</button>
+                  <button className="sm-draft-restore" onClick={restoreDraft} disabled={audioBusy}>↩️ استرجاع التعديلات</button>
                   <button className="sm-draft-discard" onClick={discardDraft}>تجاهلها</button>
                 </div>
               </div>
@@ -813,6 +827,9 @@ export default function StoryManager({ initialStories }) {
                       audio={pageAudio}
                       onAudioChange={setPageAudio}
                       storyId={editId}
+                      savedContent={editId ? (stories.find(s => s.id === editId)?.content ?? null) : null}
+                      onAudioBusy={setAudioBusy}
+                      onAudioSaved={handleAudioSaved}
                     />
                   </div>
                 </div>
@@ -839,8 +856,10 @@ export default function StoryManager({ initialStories }) {
 
             <div className="sm-form-footer">
               <button className="sm-cancel-btn" onClick={backToList}>إلغاء</button>
-              <button className="sm-save-btn" onClick={handleSave} disabled={saving}>
-                {saving ? 'جارٍ الحفظ...' : view === 'edit' ? '💾 حفظ التغييرات' : '✅ إنشاء القصة'}
+              <button className="sm-save-btn" onClick={handleSave} disabled={saving || audioBusy}>
+                {saving ? 'جارٍ الحفظ...'
+                  : audioBusy ? '⏳ جارٍ حفظ الصوت... لحظة'
+                  : view === 'edit' ? '💾 حفظ التغييرات' : '✅ إنشاء القصة'}
               </button>
             </div>
           </div>

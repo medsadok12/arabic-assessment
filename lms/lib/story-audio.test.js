@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
   normalizeStoryAudioType, storyAudioPathFromUrl, storyAudioPublicUrl,
-  splitStoryPages, normalizePageAudio,
+  splitStoryPages, normalizePageAudio, setPageAudioAt,
 } from './story-audio.js';
 
 const SUPA = 'https://proj.supabase.co';
@@ -57,5 +57,27 @@ describe('normalizePageAudio', () => {
     expect(normalizePageAudio(['a', 'b', 'c'], 2)).toEqual(['a', 'b']);
     expect(normalizePageAudio(null, 2)).toEqual([null, null]);
     expect(normalizePageAudio([{ x: 1 }, 5], 2)).toEqual([null, null]);
+  });
+});
+
+describe('setPageAudioAt', () => {
+  it('يضع صوت صفحة واحدة ويُبقي أصوات بقية الصفحات كما هي', () => {
+    expect(setPageAudioAt(['a', null, 'c'], 3, 1, 'b')).toEqual(['a', 'b', 'c']);
+    expect(setPageAudioAt([], 6, 0, 'p1')).toEqual(['p1', null, null, null, null, null]);
+    expect(setPageAudioAt(['a', 'b'], 2, 0, 'new')).toEqual(['new', 'b']);
+  });
+
+  it('لا يغيّر المصفوفة الأصلية', () => {
+    const list = ['a', null];
+    setPageAudioAt(list, 2, 1, 'b');
+    expect(list).toEqual(['a', null]);
+  });
+
+  it('يرفض صفحة خارج القصة المحفوظة', () => {
+    expect(setPageAudioAt(['a'], 2, 2, 'x')).toBeNull();
+    expect(setPageAudioAt(['a'], 2, -1, 'x')).toBeNull();
+    expect(setPageAudioAt(['a'], 2, 1.5, 'x')).toBeNull();
+    expect(setPageAudioAt(['a'], 2, '1', 'x')).toBeNull();
+    expect(setPageAudioAt([], 0, 0, 'x')).toBeNull();
   });
 });
