@@ -3,6 +3,7 @@ import { createAdminClient } from '../../../../lib/supabase-admin';
 import { sendVerificationEmail } from '../../../../lib/email';
 import { getClientIP, ipRateCheck } from '../../../../lib/ip-rate-check';
 import { loadSignupCodes } from '../../../../lib/signup-codes';
+import { buildConfirmUrl } from '../../../../lib/email-confirm';
 
 /**
  * POST /api/auth/register
@@ -118,7 +119,7 @@ export async function POST(req) {
     // route (which calls verifyOtp) instead of using GoTrue's action_link directly.
     // GoTrue's action_link redirects with hash tokens (#access_token=...) which
     // a server-side callback route cannot read — this is why it was failing.
-    const confirmUrl = `${proto}://${host}/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}&type=signup`;
+    const confirmUrl = buildConfirmUrl(`${proto}://${host}`, { hashedToken, type: 'signup', userId });
 
     // ── Step 3: consume code atomically ──────────────────────────────────────
     if (codeRequired) {

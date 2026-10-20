@@ -3,6 +3,7 @@ import { createAdminClient, fetchAllUsers } from '../../../../lib/supabase-admin
 import { sendVerificationEmail } from '../../../../lib/email';
 import { getClientIP, ipRateCheck } from '../../../../lib/ip-rate-check';
 import { getRole } from '../../../../lib/auth-role';
+import { buildConfirmUrl } from '../../../../lib/email-confirm';
 
 /**
  * POST /api/auth/resend-verification
@@ -68,7 +69,7 @@ export async function POST(req) {
 
     const name        = target.user_metadata?.full_name ?? '';
     const hashedToken = linkData.properties.hashed_token;
-    const confirmUrl  = `${proto}://${host}/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}&type=magiclink`;
+    const confirmUrl  = buildConfirmUrl(`${proto}://${host}`, { hashedToken, type: 'magiclink', userId: target.id });
 
     await sendVerificationEmail({ to: lowerEmail, name, link: confirmUrl });
 

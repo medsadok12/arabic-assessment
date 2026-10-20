@@ -5,11 +5,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
    التفعيل يعيد السلوك الأصلي كما هو (تحقق + استهلاك + تحرير عند التراجع). */
 
 const state = vi.hoisted(() => ({ db: null, user: null, notify: [], emails: [] }));
+const NEW_ID = 'f4db077e-8016-4abc-94b7-1f53e8b040b6';
 
 function makeDb({ settings, settingsError = null, codeExists = true, consumeOk = true }) {
   const ops = [];
   const auth = {
-    generateLink: vi.fn(async () => ({ data: { user: { id: 'new-user' }, properties: { hashed_token: 'tok' } }, error: null })),
+    generateLink: vi.fn(async () => ({ data: { user: { id: NEW_ID }, properties: { hashed_token: 'tok' } }, error: null })),
     updateUserById: vi.fn(async () => ({ error: null })),
     deleteUser: vi.fn(async () => ({ error: null })),
   };
@@ -66,8 +67,13 @@ describe('POST /api/auth/register', () => {
     const res = await register(req({ ...student, code: '' }));
     expect(res.status).toBe(200);
     expect(state.db.codeOps()).toHaveLength(0);
-    expect(state.db.auth.admin.updateUserById).toHaveBeenCalledWith('new-user', { app_metadata: { role: 'student' } });
+    expect(state.db.auth.admin.updateUserById).toHaveBeenCalledWith(NEW_ID, { app_metadata: { role: 'student' } });
     expect(state.emails).toHaveLength(1);
+    // رابط التأكيد يحمل معرّف الحساب (لفتحه مرتين بلا «فشل»)
+    const link = new URL(state.emails[0].link);
+    expect(link.pathname).toBe('/auth/confirm');
+    expect(link.searchParams.get('uid')).toBe(NEW_ID);
+    expect(link.searchParams.get('type')).toBe('signup');
   });
 
   it('الكود ظاهر وغائب: رفض مع need_code، ولا حساب يُنشأ', async () => {
@@ -91,7 +97,7 @@ describe('POST /api/auth/register', () => {
     state.failEmail = true;
     const res = await register(req({ ...student, code: 'AAREM-AB12' }));
     expect(res.status).toBe(500);
-    expect(state.db.auth.admin.deleteUser).toHaveBeenCalledWith('new-user');
+    expect(state.db.auth.admin.deleteUser).toHaveBeenCalledWith(NEW_ID);
     expect(state.db.codeOps().some(o => o.steps.some(s => s[0] === 'update' && s[1].is_used === false))).toBe(true);
   });
 
@@ -100,7 +106,7 @@ describe('POST /api/auth/register', () => {
     state.failEmail = true;
     const res = await register(req({ ...student }));
     expect(res.status).toBe(500);
-    expect(state.db.auth.admin.deleteUser).toHaveBeenCalledWith('new-user');
+    expect(state.db.auth.admin.deleteUser).toHaveBeenCalledWith(NEW_ID);
     expect(state.db.codeOps()).toHaveLength(0);
   });
 

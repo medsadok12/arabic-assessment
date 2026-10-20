@@ -38,7 +38,7 @@ function resolveError(code, fallback) {
   const MAP = {
     students_blocked:     'هذا الحساب طالب — استخدم بوابة الطالب.',
     teachers_blocked:     'هذا حساب معلم/إداري — استخدم بوابة المعلم.',
-    confirmation_failed:  'فشل تسجيل الدخول، يرجى المحاولة مجدداً.',
+    confirmation_failed:  'رابط التأكيد استُعمل من قبل أو انتهت صلاحيته — إن كنت أكّدت بريدك فسجّل الدخول مباشرة، وإلا اطلب رابطاً جديداً.',
     network_error:        'تعذَّر الاتصال بالخادم — تحقق من الإنترنت وأعد المحاولة.',
     oauth_error:          'تعذَّر فتح نافذة جوجل — تأكد من أن المتصفح لا يحجب النوافذ المنبثقة.',
     invalid_credentials:  'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
@@ -50,15 +50,18 @@ function resolveError(code, fallback) {
 }
 
 function LoginForm() {
-  const [view,     setView]     = useState('choose'); // 'choose' | 'login' | 'register'
-  const [email,    setEmail]    = useState('');
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  // ?confirmed=1&email= — رابط التأكيد فُتح من جديد بعد نجاحه (أو أكّد الطالب من جهاز آخر):
+  // نموذج الدخول مباشرة والبريد مكتوب كما سُجِّل، فلا يُدخل بريداً آخر بالخطأ
+  const justConfirmed = searchParams.get('confirmed') === '1';
+  const [view,     setView]     = useState(justConfirmed ? 'login' : 'choose'); // 'choose' | 'login' | 'register'
+  const [email,    setEmail]    = useState(() => searchParams.get('email') ?? '');
   const [password, setPassword] = useState('');
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
   const [gLoading, setGLoading] = useState(false);
 
-  const router       = useRouter();
-  const searchParams = useSearchParams();
   const forTeacher   = searchParams.get('for') === 'teacher';
   const urlError     = searchParams.get('error');
   const { t } = useLanguage();
@@ -79,7 +82,7 @@ function LoginForm() {
       if (authError) {
         const msg = authError.message?.toLowerCase() ?? '';
         if (msg.includes('email not confirmed') || msg.includes('confirmation') || authError.code === 'email_not_confirmed') {
-          router.push(`/auth/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`);
+          router.push(`/auth/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}&from=login`);
           return;
         }
         setError(resolveError('invalid_credentials'));
@@ -261,6 +264,12 @@ function LoginForm() {
             >
               ← رجوع
             </button>
+
+            {justConfirmed && !error && (
+              <div className="alert alert-success" style={{ marginBottom: 16 }}>
+                ✅ تم تأكيد بريدك — أدخل كلمة المرور للدخول
+              </div>
+            )}
 
             {error && (
               <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>

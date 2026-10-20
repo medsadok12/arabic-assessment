@@ -7,6 +7,18 @@ import { useSearchParams } from 'next/navigation';
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const email        = searchParams.get('email') ?? '';
+  // سبب الوصول: بعد التسجيل (الافتراضي)، أو دخول بحساب لم يُؤكَّد (from=login)،
+  // أو رابط تأكيد قديم لحساب لم يُؤكَّد (reason=expired) — لكلٍّ نصّه الصادق
+  const mode = searchParams.get('reason') === 'expired' ? 'expired'
+    : searchParams.get('from') === 'login' ? 'login' : 'signup';
+  const TEXT = {
+    signup:  { title: 'تحقق من بريدك الإلكتروني', lead: <>تم إنشاء حسابك بنجاح!<br />أرسلنا رابط التأكيد إلى:</>,
+               body: <>افتح بريدك الإلكتروني واضغط على رابط التحقق لتفعيل حسابك.<br />إذا لم تجد الرسالة، تحقق من مجلد البريد المزعج (Spam).</> },
+    login:   { title: 'بريدك لم يُؤكَّد بعد', lead: <>هذا الحساب لم يُفعَّل بعد:</>,
+               body: <>اضغط «إعادة إرسال رابط التحقق» ثم افتح الرسالة الجديدة واضغط الرابط.<br />تأكّد أيضاً أن هذا هو البريد نفسه الذي سجّلت به.</> },
+    expired: { title: 'انتهت صلاحية رابط التأكيد', lead: <>اطلب رابطاً جديداً لتفعيل الحساب:</>,
+               body: <>اضغط «إعادة إرسال رابط التحقق» ثم افتح أحدث رسالة واضغط الرابط مرة واحدة.</> },
+  }[mode];
   const [status,  setStatus]  = useState('idle'); // 'idle' | 'sending' | 'sent' | 'error'
   const [message, setMessage] = useState('');
 
@@ -56,13 +68,11 @@ function VerifyEmailContent() {
         </div>
 
         <h1 style={{ fontSize: '1.3rem', fontWeight: 900, color: '#1A2B4A', marginBottom: 10 }}>
-          تحقق من بريدك الإلكتروني
+          {TEXT.title}
         </h1>
 
         <p style={{ color: '#475569', fontSize: '.93rem', lineHeight: 1.8, marginBottom: email ? 6 : 20 }}>
-          تم إنشاء حسابك بنجاح!
-          <br />
-          أرسلنا رابط التأكيد إلى:
+          {TEXT.lead}
         </p>
 
         {email && (
@@ -76,9 +86,7 @@ function VerifyEmailContent() {
         )}
 
         <p style={{ color: '#64748b', fontSize: '.85rem', lineHeight: 1.7, marginBottom: 24 }}>
-          افتح بريدك الإلكتروني واضغط على رابط التحقق لتفعيل حسابك.
-          <br />
-          إذا لم تجد الرسالة، تحقق من مجلد البريد المزعج (Spam).
+          {TEXT.body}
         </p>
 
         {/* رسالة نجاح / خطأ إعادة الإرسال */}
@@ -112,7 +120,7 @@ function VerifyEmailContent() {
         )}
 
         <Link
-          href="/auth/login"
+          href={email ? `/auth/login?email=${encodeURIComponent(email)}` : '/auth/login'}
           style={{
             display: 'block', width: '100%', padding: '13px', borderRadius: 12,
             background: '#1A2B4A', color: '#E8B84B',
@@ -122,6 +130,12 @@ function VerifyEmailContent() {
         >
           العودة لصفحة الدخول
         </Link>
+
+        {mode === 'signup' && (
+          <p style={{ color: '#94a3b8', fontSize: '.8rem', lineHeight: 1.7, marginTop: 14, marginBottom: 0 }}>
+            أكّدت بريدك من تطبيق أو جهاز آخر؟ اضغط «العودة لصفحة الدخول» وادخل بالبريد نفسه.
+          </p>
+        )}
 
       </div>
     </div>
