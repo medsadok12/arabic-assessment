@@ -6,6 +6,7 @@ import Navbar from '../../components/Navbar';
 import TeacherSpace from '../../components/TeacherSpace';
 import LifeSceneSimulator from '../../components/LifeSceneSimulator';
 import NotificationBell from '../../components/NotificationBell';
+import SceneInboxButton from '../../components/SceneInboxButton';
 import StudentProfilePanel from '../../components/StudentProfilePanel';
 import { getRole } from '../../lib/auth-role';
 
@@ -545,8 +546,9 @@ export default function TeacherPage() {
             <h1 style={{ fontSize:'1.5rem', fontWeight:800, color:'var(--primary)', marginBottom:4 }}>👨‍🏫 لوحة المعلم</h1>
             <p style={{ color:'var(--muted)', fontSize:'.88rem' }}>مرحباً {displayName}</p>
           </div>
-          <div style={{ marginRight:'auto', display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ marginRight:'auto', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
             <NotificationBell userId={user?.id} role={getRole(user)} lang="ar" />
+            <SceneInboxButton />
             <button onClick={openCreate} className="btn btn-accent">
               + جدولة حصة جديدة
             </button>

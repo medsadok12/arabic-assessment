@@ -217,4 +217,27 @@ describe('GET /api/scenes و /api/scenes/inbox', () => {
     r = await out(await inboxRoute.GET(req('/api/scenes/inbox?status=submitted', undefined, 'GET')));
     expect(r.body.responses).toHaveLength(3);
   });
+
+  it('?count=1: عدد ما ينتظر التقييم مما يحق لكل حساب رؤيته، بلا نصوص', async () => {
+    await submit({ text: 'حكاية سارة' });
+    db.tables.scene_responses.push({ id: 'r-other', scene_id: SCENE, student_id: OTHER_KID, student_email: 'other@x.com', status: 'submitted' });
+    db.tables.scene_responses.push({ id: 'r-own', scene_id: PRIVATE, student_id: OTHER_KID, student_email: 'other@x.com', status: 'submitted' });
+    db.tables.scene_responses.push({ id: 'r-done', scene_id: SCENE, student_id: OTHER_KID, student_email: 'kid@x.com', status: 'reviewed' });
+    const count = async () => out(await inboxRoute.GET(req('/api/scenes/inbox?count=1', undefined, 'GET')));
+    db.user = as(T1, 'teacher');
+    expect((await count()).body).toEqual({ pending: 1 });
+    db.user = as(T2, 'teacher');
+    expect((await count()).body).toEqual({ pending: 1 });
+    db.user = as(ADMIN, 'admin');
+    expect((await count()).body).toEqual({ pending: 3 });
+    db.user = kid;
+    expect((await count()).status).toBe(403);
+  });
+
+  it('قائمة الطالب تحمل وقت التقييم لإبراز النجوم الجديدة', async () => {
+    await submit({ text: 'حكايتي' });
+    Object.assign(db.tables.scene_responses[0], { status: 'reviewed', review: { idea: 3, words: 3, order: 2 }, reviewed_at: '2026-10-20T16:00:00Z' });
+    const r = await out(await listRoute.GET(req('/api/scenes', undefined, 'GET')));
+    expect(r.body.scenes[0].mine).toMatchObject({ status: 'reviewed', stars: 8, reviewed_at: '2026-10-20T16:00:00Z' });
+  });
 });

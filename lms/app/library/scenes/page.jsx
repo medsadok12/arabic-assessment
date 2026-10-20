@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { childFetch } from '../../../lib/child-fetch';
-import { sceneApi } from '../../../lib/scene-story-client';
+import { sceneApi, readSeenReviews, isNewReview } from '../../../lib/scene-story-client';
 import { MODE_INFO } from '../../../lib/scene-story';
 import { SC_CSS } from './_ui';
 
@@ -13,8 +13,9 @@ import { SC_CSS } from './_ui';
    العودة للتبويب (القسم 9.5). الطاقم يرى رابط «لوحة المشاهد».
 ════════════════════════════════════════════════════════════════ */
 
-function statusChip(s) {
+function statusChip(s, fresh) {
   if (s.scheduled) return <span className="sc-chip soon">🕒 مجدول</span>;
+  if (fresh) return <span className="sc-chip star">🌟 نجوم جديدة من معلمك!</span>;
   if (!s.mine) return <span className="sc-chip new">✨ جديد</span>;
   if (s.mine.status === 'reviewed') return <span className="sc-chip done">⭐ {s.mine.stars}/9 من معلمك</span>;
   return <span className="sc-chip sent">📨 وصلت لمعلمك</span>;
@@ -24,10 +25,11 @@ export default function ScenesPage() {
   const [data, setData]     = useState(null);
   const [failed, setFailed] = useState(null);
   const [points, setPoints] = useState(null);
+  const [seen, setSeen]     = useState({});
 
   const load = useCallback(async () => {
     const { ok, data: d } = await sceneApi(`/api/scenes?t=${Date.now()}`);
-    if (ok && Array.isArray(d.scenes)) { setData(d); setFailed(null); }
+    if (ok && Array.isArray(d.scenes)) { setData(d); setFailed(null); setSeen(readSeenReviews()); }
     else setFailed(d.error || 'تعذّر تحميل المشاهد');
   }, []);
 
@@ -42,6 +44,7 @@ export default function ScenesPage() {
   const scenes = data?.scenes || [];
   const staff = !!data?.is_staff;
   const fresh = scenes.filter(s => !s.mine && !s.scheduled).length;
+  const starred = staff ? [] : scenes.filter(s => isNewReview(s.mine, seen, s.id));
 
   return (
     <div className="sc">
@@ -64,6 +67,10 @@ export default function ScenesPage() {
             <p>
               {staff
                 ? 'هكذا يرى طلابك المشاهد. افتح أي مشهد لمعاينته، أو أضف مشهداً جديداً من لوحة المشاهد.'
+                : starred.length
+                  ? (starred.length === 1
+                    ? `🌟 قرأ معلمك حكايتك «${starred[0].title}» وأرسل لك نجومه — افتحها لتراها!`
+                    : `🌟 قرأ معلمك ${starred.length === 2 ? 'حكايتين' : `${starred.length} حكايات`} من حكاياتك — افتحها لترى نجومك!`)
                 : fresh
                   ? `ينتظرك ${fresh === 1 ? 'مشهد جديد' : fresh === 2 ? 'مشهدان جديدان' : `${fresh} مشاهد جديدة`} — اختر صورة واحكِ حكايتها بالكتابة أو بصوتك أو بصورة ورقتك ✨`
                   : 'اختر صورة واحكِ حكايتها بالكتابة أو بصوتك أو بصورة ورقتك ✨'}
@@ -106,7 +113,7 @@ export default function ScenesPage() {
                 <div className="sc-card-img">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={s.image_url} alt="" loading="lazy" />
-                  {statusChip(s)}
+                  {statusChip(s, starred.includes(s))}
                 </div>
                 <div className="sc-card-body">
                   <h3>{s.title}</h3>

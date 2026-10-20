@@ -118,6 +118,7 @@ export const SC_CSS = `
   .sc-chip.sent{ background:#DDF3EF; color:#1F6E62; }
   .sc-chip.done{ background:#1A2B4A; color:#FFE6A6; }
   .sc-chip.soon{ background:#EEF2FF; color:#3730A3; }
+  .sc-chip.star{ background:#E8B84B; color:#1A2B4A; animation:scBeat 1.6s ease-in-out infinite; }
   .sc-modes{ display:flex; gap:6px; flex-wrap:wrap; margin-top:auto; }
   .sc-mode-tag{ font-size:.78rem; font-weight:800; border-radius:999px; padding:2px 10px; background:#F4EFE6; }
   .sc-empty{ background:#fff; border-radius:24px; padding:32px 20px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:10px;

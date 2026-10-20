@@ -18,6 +18,7 @@ import OverviewTab      from '../../components/admin/tabs/OverviewTab';
 const GroupsManager     = dynamic(() => import('../../components/GroupsManager'));
 const TeacherSpace      = dynamic(() => import('../../components/TeacherSpace'));
 const NotificationBell  = dynamic(() => import('../../components/NotificationBell'));
+const SceneInboxButton  = dynamic(() => import('../../components/SceneInboxButton'));
 const QuickLinksMenu    = dynamic(() => import('../../components/QuickLinksMenu'));
 const FinancialsTab     = dynamic(() => import('../../components/FinancialsTab'));
 const LifeSceneSimulator = dynamic(() => import('../../components/LifeSceneSimulator'));
@@ -1189,11 +1190,13 @@ export default function BoggarAdminPage() {
                 {isSuperAdmin ? tr('admin.superRole') : tr('admin.assistantRole')}
               </p>
             </div>
-            <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               {/* ── Notification Bell ── */}
               <NotificationBell userId={user?.id} role={role} lang={lang} />
               {/* ── روابط المنصة السريعة ── */}
               <QuickLinksMenu lang={lang} />
+              {/* ── صندوق «مشهدٌ وحكاية» بعدد ما ينتظر التقييم ── */}
+              <SceneInboxButton />
               <Link href="/bogga/lexicon" className="btn btn-outline btn-sm">📖 {lang === 'ar' ? 'بنك الكلمات' : 'Word Bank'}</Link>
             </div>
           </div>

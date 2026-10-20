@@ -27,10 +27,14 @@ export async function GET(req) {
   const mine = {};
   if (scenes.length && viewer.canSubmit) {
     const { data } = await admin.from('scene_responses')
-      .select('scene_id, status, review, updated_at')
+      .select('scene_id, status, review, reviewed_at, updated_at')
       .eq('student_id', viewer.identity.effectiveUserId)
       .in('scene_id', scenes.map(s => s.id));
-    for (const r of data || []) mine[r.scene_id] = { status: r.status, stars: r.status === 'reviewed' ? reviewStars(r.review) : null, updated_at: r.updated_at };
+    for (const r of data || []) {
+      mine[r.scene_id] = r.status === 'reviewed'
+        ? { status: r.status, stars: reviewStars(r.review), reviewed_at: r.reviewed_at, updated_at: r.updated_at }
+        : { status: r.status, stars: null, updated_at: r.updated_at };
+    }
   }
 
   return json({

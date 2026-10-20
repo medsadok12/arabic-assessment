@@ -14,6 +14,8 @@ const ICONS = {
   lesson_feedback:   '📓',
   parent_message:    '📩',
   missing_recording: '⚠️',
+  scene_story:       '🖼️',
+  scene_review:      '⭐',
 };
 
 // أنواع الإشعارات الحرجة — تُعرض باللون الأحمر

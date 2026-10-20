@@ -8,7 +8,7 @@ import { speakArabic } from '../../../../lib/speak-arabic';
 import { resizeImageToWebp } from '../../../../lib/image-resize';
 import { useStoryAudioRecorder, formatRecSecs } from '../../../../lib/story-audio-client';
 import {
-  sceneApi, uploadSceneFile, readSceneDraft, writeSceneDraft,
+  sceneApi, uploadSceneFile, readSceneDraft, writeSceneDraft, markReviewSeen,
 } from '../../../../lib/scene-story-client';
 import {
   MODE_INFO, BAND_INFO, STORY_MAP, DEFAULT_STARTERS, DEFAULT_WHAT_IF, FEELINGS,
@@ -107,6 +107,11 @@ export default function ScenePage() {
     document.addEventListener('visibilitychange', onBack);
     return () => document.removeEventListener('visibilitychange', onBack);
   }, [id, response, reviewed, fillFrom, loadPoints]);
+
+  // رأى الطفل نجوم معلمه ← لا تُبرَز الحكاية في القائمة بعد الآن
+  useEffect(() => {
+    if (reviewed && !preview) markReviewSeen(scene?.id, response?.reviewed_at);
+  }, [reviewed, preview, scene?.id, response?.reviewed_at]);
 
   // مسودة النص والشعور في الجهاز
   useEffect(() => {

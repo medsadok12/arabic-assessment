@@ -50,6 +50,24 @@ export function writeSceneDraft(sceneId, draft) {
   } catch {}
 }
 
+/* نجوم المعلم الجديدة: آخر تقييم رآه الطفل لكل مشهد في هذا الجهاز.
+   الطلاب بلا جرس إشعارات، فتُبرَز الحكاية المُقيَّمة حديثاً في قائمة المشاهد
+   حتى يفتحها (وتعديل المعلم لتقييمه يُبرزها من جديد) */
+const seenKey = () => `scene_seen_reviews:${getActiveChildTab() || 'self'}`;
+export function readSeenReviews() {
+  try { return JSON.parse(localStorage.getItem(seenKey()) || '{}') || {}; } catch { return {}; }
+}
+export function markReviewSeen(sceneId, reviewedAt) {
+  if (!sceneId || !reviewedAt) return;
+  try {
+    const seen = readSeenReviews();
+    if (seen[sceneId] === reviewedAt) return;
+    localStorage.setItem(seenKey(), JSON.stringify({ ...seen, [sceneId]: reviewedAt }));
+  } catch {}
+}
+export const isNewReview = (mine, seen, sceneId) =>
+  mine?.status === 'reviewed' && !!mine.reviewed_at && seen?.[sceneId] !== mine.reviewed_at;
+
 /* «قبل ساعة» — وقت نسبي ودود */
 export function timeAgo(iso) {
   const t = Date.parse(iso);

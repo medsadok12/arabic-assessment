@@ -7,12 +7,29 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+/* ?count=1 — عدد الحكايات التي تنتظر التقييم فقط (زر «حكايات الطلاب» في bogga
+   ولوحة المعلم): بلا نصوص ولا روابط ملفات */
+async function pendingCount(admin, user) {
+  const { data, error } = await admin.from('scene_responses')
+    .select('scene_id, student_email').eq('status', 'submitted').limit(2000);
+  if (error) return isMissingSchema(error) ? json({ pending: 0, need_sql: true }) : json({ error: error.message }, 500);
+  if (isAdmin(user)) return json({ pending: (data || []).length });
+  const sceneIds = [...new Set((data || []).map(r => r.scene_id))];
+  const { data: scenes } = sceneIds.length
+    ? await admin.from('scenes').select('id, created_by').in('id', sceneIds)
+    : { data: [] };
+  const byId = Object.fromEntries((scenes || []).map(s => [s.id, s]));
+  const myEmails = await studentEmailsOf(admin, user.id);
+  return json({ pending: (data || []).filter(r => canReviewResponse(user, r, byId[r.scene_id], myEmails)).length });
+}
+
 // GET ?status=submitted|reviewed|all&scene=<id> — صندوق الحكايات:
 // المشرف كل الردود، والمعلم ردود طلابه وردود مشاهده. الملفات بروابط موقَّعة لساعة.
 export async function GET(req) {
   const { user, error: denied } = await requireSceneStaff();
   if (denied) return denied;
   const url = new URL(req.url);
+  if (url.searchParams.get('count') === '1') return pendingCount(createAdminClient(), user);
   const status = ['submitted', 'reviewed'].includes(url.searchParams.get('status')) ? url.searchParams.get('status') : null;
   const sceneId = url.searchParams.get('scene');
 
