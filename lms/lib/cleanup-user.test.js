@@ -18,6 +18,7 @@ const UUID_TABLES = [
   ['student_group_assignments',     'user_id'],
   ['attendance_logs',               'student_id'],
   ['notifications',                 'recipient_id'],
+  ['scene_responses',               'student_id'],
   ['students',                      'id'],
 ];
 
@@ -31,11 +32,15 @@ const EMAIL_TABLES = [
  * عميل Supabase وهمي يسجّل كل نداء .from(table).delete().eq(col, val)،
  * مع إمكانية جعل جدول معيّن يفشل عمداً لاختبار أن باقي الجداول لا تتأثر.
  */
-function makeAdmin({ failingTables = [] } = {}) {
+function makeAdmin({ failingTables = [], sceneRows = [] } = {}) {
   const calls = [];
+  const removed = [];
   return {
     _calls: calls,
+    _removed: removed,
+    storage: { from: (bucket) => ({ remove: async (paths) => { removed.push([bucket, paths]); return { error: null }; } }) },
     from: (table) => ({
+      select: () => ({ eq: async () => ({ data: table === 'scene_responses' ? sceneRows : [] }) }),
       delete: () => ({
         eq: (col, val) => {
           calls.push([table, col, val]);
@@ -98,6 +103,21 @@ describe('cleanupUserData', () => {
     const admin = makeAdmin();
     await cleanupUserData(USER_ID, USER_EMAIL, admin);
     expect(admin._calls.length).toBe(UUID_TABLES.length + EMAIL_TABLES.length);
+  });
+
+  it('«مشهدٌ وحكاية»: تسجيلات الطفل وصوره تُحذف من الدلو الخاص', async () => {
+    const admin = makeAdmin({ sceneRows: [
+      { audio_path: `${USER_ID}/s1/audio-1-abc123.webm`, photo_path: null },
+      { audio_path: null, photo_path: `${USER_ID}/s2/photo-2-def456.webp` },
+    ] });
+    await cleanupUserData(USER_ID, USER_EMAIL, admin);
+    expect(admin._removed).toEqual([['student-work', [`${USER_ID}/s1/audio-1-abc123.webm`, `${USER_ID}/s2/photo-2-def456.webp`]]]);
+  });
+
+  it('بلا ردود مشاهد ← لا نداء للتخزين', async () => {
+    const admin = makeAdmin();
+    await cleanupUserData(USER_ID, USER_EMAIL, admin);
+    expect(admin._removed).toEqual([]);
   });
 
   it('استمرار حذف بقية الجداول حتى لو فشل جدول واحد (كل حذف مستقل)', async () => {

@@ -77,6 +77,7 @@ export default async function LibraryPage() {
         'flashcards':       (flashRes.count ?? 0) > 0,
         'puzzle':           (puzzleRes.count ?? 0) > 0,
         'challenge':        [...reasons].some(r => r.startsWith('challenge_')),
+        'literature':       [...reasons].some(r => r.startsWith('scene_story:')),
       };
     } catch {}
   }

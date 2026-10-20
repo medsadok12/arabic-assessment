@@ -1,8 +1,24 @@
 // يُستدعى قبل admin.auth.admin.deleteUser() لمسح جميع بيانات المستخدم من كل الجداول
 // كل حذف مستقل — إذا فشل جدول لا يوقف البقية
 
+// «مشهدٌ وحكاية»: مسارات تسجيلات الطفل وصوره في الدلو الخاص student-work —
+// تُجمع قبل حذف صفوفها لأن الملفات لا تُحذف مع الصف تلقائياً
+async function sceneMediaPaths(userId, admin) {
+  try {
+    const { data } = await admin.from('scene_responses').select('audio_path, photo_path').eq('student_id', userId);
+    return (data || []).flatMap(r => [r.audio_path, r.photo_path]).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 export async function cleanupUserData(userId, userEmail, admin) {
   const safe = (p) => Promise.resolve(p).then(() => null).catch(() => null);
+
+  const sceneFiles = await sceneMediaPaths(userId, admin);
+  if (sceneFiles.length) {
+    try { await safe(admin.storage.from('student-work').remove(sceneFiles)); } catch {}
+  }
 
   // ── جداول مرتبطة بـ UUID ──────────────────────────────────────────────
   await Promise.all([
@@ -19,6 +35,7 @@ export async function cleanupUserData(userId, userEmail, admin) {
     safe(admin.from('student_group_assignments').delete().eq('user_id',userId)),
     safe(admin.from('attendance_logs').delete().eq('student_id',       userId)),
     safe(admin.from('notifications').delete().eq('recipient_id',       userId)),
+    safe(admin.from('scene_responses').delete().eq('student_id',       userId)),
     // حساب طفل عائلي (api/family/add-child): students.id مطابق عمداً لهذا
     // الـuserId نفسه — حذفه هنا يُسقط تلقائياً (ON DELETE CASCADE) أي صف
     // family_links مرتبط به، ويُصفّر (ON DELETE SET NULL) أي student_id في

@@ -3,6 +3,7 @@ import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient } from '../../../lib/supabase-server';
 import { resolveActiveIdentity } from '../../../lib/active-child';
 import { WW_GAME_ID, normalizeWwSettings } from '../../../lib/word-wheel';
+import { awardPoints } from '../../../lib/points-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,46 +97,11 @@ export async function POST(req) {
     }
     const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
 
-    // Dedup check for unique events
-    if (DEDUP_PREFIXES.has(prefix)) {
-      const { data: dup } = await admin
-        .from('points_log')
-        .select('id')
-        .eq('user_id', effectiveUserId)
-        .eq('reason', reason)
-        .maybeSingle();
-      if (dup) {
-        const { data: balRow } = await admin
-          .from('user_points').select('total').eq('user_id', effectiveUserId).maybeSingle();
-        return NextResponse.json({ skipped: true, points: balRow?.total ?? 0 });
-      }
-    }
-
-    const { data: current } = await admin
-      .from('user_points').select('total').eq('user_id', effectiveUserId).maybeSingle();
-    const prevTotal = current?.total ?? 0;
-    const newTotal  = prevTotal + amount;
-
-    if (current) {
-      // Optimistic lock — UPDATE only if total hasn't changed since we read it
-      const { data: updated } = await admin
-        .from('user_points')
-        .update({ total: newTotal, updated_at: new Date().toISOString() })
-        .eq('user_id', effectiveUserId)
-        .eq('total', prevTotal)
-        .select('total')
-        .maybeSingle();
-      if (!updated)
-        return NextResponse.json({ error: 'تعارض في العملية، يرجى المحاولة مجدداً' }, { status: 409 });
-    } else {
-      await admin.from('user_points').insert(
-        { user_id: effectiveUserId, total: newTotal, updated_at: new Date().toISOString() }
-      );
-    }
-
-    await admin.from('points_log').insert({ user_id: effectiveUserId, delta: amount, reason });
-
-    return NextResponse.json({ success: true, points: newTotal });
+    const result = await awardPoints(admin, effectiveUserId, reason, amount, { dedup: DEDUP_PREFIXES.has(prefix) });
+    if (result.skipped) return NextResponse.json({ skipped: true, points: result.points });
+    if (result.conflict)
+      return NextResponse.json({ error: 'تعارض في العملية، يرجى المحاولة مجدداً' }, { status: 409 });
+    return NextResponse.json({ success: true, points: result.points });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

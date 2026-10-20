@@ -50,10 +50,11 @@ const RESOURCES = [
   },
   {
     key: 'literature',
-    icon: '📝', title: 'النصوص الأدبية',
-    desc: 'قصص رائعة تناسب عمرك وتشعل خيالك!',
-    tag: 'مستوى 3', link: '#', ready: false,
+    icon: '📝', title: 'مشهدٌ وحكاية',
+    desc: 'انظر إلى الصورة وتخيّل… ثم احكِ حكايتها بالكتابة أو بصوتك!',
+    tag: 'تعبيري', link: '/library/scenes', ready: true,
     accent: '#14B8A6', dark: '#0F766E', rot: -4, bg: '#F0FDFA', border: '#99F6E4', iconBg: '#CCFBF1',
+    btnBg: 'linear-gradient(135deg,#14B8A6,#0F766E)',
   },
   {
     key: 'letter-catcher',
