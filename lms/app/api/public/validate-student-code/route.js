@@ -1,6 +1,7 @@
 import { createClient }          from '@supabase/supabase-js';
 import { notify }                from '../../../../lib/notify';
 import { getClientIP, ipRateCheck } from '../../../../lib/ip-rate-check';
+import { loadSignupCodes } from '../../../../lib/signup-codes';
 export const dynamic = 'force-dynamic';
 
 const CORS = {
@@ -36,11 +37,17 @@ export async function POST(request) {
   const code = body.code?.trim().toUpperCase();
   const name = body.name?.trim() || null;
 
-  if (!code) {
-    return Response.json({ valid: false, error: 'الكود مطلوب' }, { status: 400, headers: CORS });
-  }
-
   const supabase = getClient();
+
+  if (!code) {
+    // كود التقييم مخفي من لوحة bogga ← يبدأ الطالب بلا كود، ويبقى إشعار المشرف
+    const { assessment_code_required } = await loadSignupCodes(supabase);
+    if (assessment_code_required) {
+      return Response.json({ valid: false, need_code: true, error: 'الكود مطلوب' }, { status: 400, headers: CORS });
+    }
+    await notify('assessment', '📝 طالب بدأ تقييماً', name ? `الطالب: ${name} (بلا كود)` : 'بلا كود', { code: null, name });
+    return Response.json({ valid: true, code_required: false }, { status: 200, headers: CORS });
+  }
 
   const { data, error } = await supabase
     .from('assessment_codes')

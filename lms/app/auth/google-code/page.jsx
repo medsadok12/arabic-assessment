@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../lib/supabase';
 
@@ -11,12 +11,21 @@ export default function GoogleCodePage() {
   const [grade,   setGrade]   = useState('');
   const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
+  // خانة كود الأكاديمية: يُظهرها أو يخفيها المشرف من bogga (تبويب الأكواد)
+  const [codeRequired, setCodeRequired] = useState(null);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch('/api/public/signup-settings', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(s => setCodeRequired(s.student_code_required !== false))
+      .catch(() => setCodeRequired(true));
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-    if (!code.trim()) { setError('يرجى إدخال كود الأكاديمية'); return; }
+    if (codeRequired && !code.trim()) { setError('يرجى إدخال كود الأكاديمية'); return; }
     if (!age.trim())  { setError('يرجى إدخال عمر الطالب');     return; }
 
     setLoading(true);
@@ -24,11 +33,12 @@ export default function GoogleCodePage() {
     const res = await fetch('/api/auth/complete-google', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ code: code.trim(), name: name.trim(), age: age.trim(), grade: grade || null }),
+      body:    JSON.stringify({ code: codeRequired ? code.trim() : '', name: name.trim(), age: age.trim(), grade: grade || null }),
     });
     const data = await res.json();
 
     if (!res.ok) {
+      if (data.need_code) setCodeRequired(true);
       setError(data.error ?? 'حدث خطأ — حاول مجدداً');
       setLoading(false);
       return;
@@ -76,28 +86,30 @@ export default function GoogleCodePage() {
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">
-              كود الأكاديمية <span style={{ color: '#dc2626' }}>*</span>
-            </label>
-            <input
-              className="form-input"
-              type="text"
-              value={code}
-              onChange={e => { setCode(e.target.value.toUpperCase()); setError(''); }}
-              placeholder="مثال: AAREM-XXXX"
-              dir="ltr"
-              required
-              disabled={loading}
-              style={{ letterSpacing: '.08em', fontWeight: 700, textAlign: 'center' }}
-            />
-            <p style={{ fontSize: '.8rem', color: '#888', marginTop: 4 }}>
-              يُوفَّر الكود من إدارة أكاديمية عارم —{' '}
-              <a href="https://api.whatsapp.com/send/?phone=447400755914"
-                target="_blank" rel="noopener noreferrer"
-                style={{ color: '#1a7c40', fontWeight: 700 }}>تواصل معنا</a>
-            </p>
-          </div>
+          {codeRequired && (
+            <div className="form-group">
+              <label className="form-label">
+                كود الأكاديمية <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input
+                className="form-input"
+                type="text"
+                value={code}
+                onChange={e => { setCode(e.target.value.toUpperCase()); setError(''); }}
+                placeholder="مثال: AAREM-XXXX"
+                dir="ltr"
+                required
+                disabled={loading}
+                style={{ letterSpacing: '.08em', fontWeight: 700, textAlign: 'center' }}
+              />
+              <p style={{ fontSize: '.8rem', color: '#888', marginTop: 4 }}>
+                يُوفَّر الكود من إدارة أكاديمية عارم —{' '}
+                <a href="https://api.whatsapp.com/send/?phone=447400755914"
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ color: '#1a7c40', fontWeight: 700 }}>تواصل معنا</a>
+              </p>
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">

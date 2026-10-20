@@ -1,5 +1,6 @@
 'use client';
 import CodesManager from '../../CodesManager';
+import CodeRequirementSwitch from '../CodeRequirementSwitch';
 
 /* هذا المكوّن استُخرج حرفياً من lms/app/bogga/page.jsx (تفكيك الملف الأحادي).
    الحالة والمعالجات بقيت في الصفحة الأم وتصل هنا كـprops — سلوك مطابق 100%. */
@@ -25,8 +26,8 @@ export default function CodesTab({ lang, codesTab, setCodesTab }) {
                   </button>
                 ))}
               </div>
-              {codesTab === 'assessment' && <CodesManager type="assessment" />}
-              {codesTab === 'students'   && <CodesManager type="student" />}
+              {codesTab === 'assessment' && <><CodeRequirementSwitch kind="assessment" lang={lang} /><CodesManager type="assessment" /></>}
+              {codesTab === 'students'   && <><CodeRequirementSwitch kind="student" lang={lang} /><CodesManager type="student" /></>}
               {codesTab === 'teachers'   && <CodesManager type="teacher" />}
             </div>
   );

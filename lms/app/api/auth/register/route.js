@@ -2,11 +2,14 @@ import { NextResponse }       from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { sendVerificationEmail } from '../../../../lib/email';
 import { getClientIP, ipRateCheck } from '../../../../lib/ip-rate-check';
+import { loadSignupCodes } from '../../../../lib/signup-codes';
 
 /**
  * POST /api/auth/register
  *
  * Atomic student self-registration with email verification:
+ *   0. Is the academy code required? (platform_settings 'signup_codes' — admin
+ *      switch in bogga). When hidden, steps 1 and 3 are skipped entirely.
  *   1. Validate academy code (read-only) — fail fast, no account created
  *   2. Create user via admin.generateLink({ type:'signup' }) — always unconfirmed
  *      regardless of Supabase project autoconfirm setting
@@ -14,7 +17,7 @@ import { getClientIP, ipRateCheck } from '../../../../lib/ip-rate-check';
  *   4. Send verification email via Resend (not Supabase SMTP)
  *      — if send fails, rollback user + code
  *
- * Body: { name, email, password, code, age, grade? }
+ * Body: { name, email, password, code?, age, grade? }
  * Response: { ok: true } — client must redirect to /auth/verify-email, NOT auto-login
  */
 export async function POST(req) {
@@ -33,26 +36,43 @@ export async function POST(req) {
     if (!email?.trim())          return NextResponse.json({ error: 'البريد الإلكتروني مطلوب' },            { status: 400 });
     if (!password || password.length < 6)
       return NextResponse.json({ error: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' }, { status: 400 });
-    if (!code?.trim())           return NextResponse.json({ error: 'كود الأكاديمية مطلوب' },              { status: 400 });
     if (!age?.toString().trim()) return NextResponse.json({ error: 'عمر الطالب مطلوب' },                  { status: 400 });
 
     const admin      = createAdminClient();
-    const normalized = code.trim().toUpperCase();
     const lowerEmail = email.trim().toLowerCase();
 
-    // ── Step 1: validate code (read-only — no account created yet) ────────────
-    const { data: codeRow } = await admin
-      .from('student_invitation_codes')
-      .select('id')
-      .eq('code', normalized)
-      .eq('is_used', false)
-      .maybeSingle();
+    // ── Step 0: هل الكود مطلوب الآن؟ (مخفي = لا تحقق ولا استهلاك) ─────────────
+    const { student_code_required: codeRequired } = await loadSignupCodes(admin);
+    if (codeRequired && !code?.trim()) {
+      // need_code: الصفحة تُظهر خانة الكود فوراً إن أُعيد تفعيلها بعد فتحها
+      return NextResponse.json({ error: 'كود الأكاديمية مطلوب', need_code: true }, { status: 400 });
+    }
+    const normalized = codeRequired ? code.trim().toUpperCase() : null;
 
-    if (!codeRow) {
-      return NextResponse.json(
-        { error: 'كود الأكاديمية غير صحيح أو غير مفعّل — تواصل مع إدارة الأكاديمية' },
-        { status: 400 }
-      );
+    // يحرّر الكود عند التراجع عن إنشاء الحساب — لا شيء إن لم يُطلب كود
+    const releaseCode = async () => {
+      if (!normalized) return;
+      await admin
+        .from('student_invitation_codes')
+        .update({ is_used: false, used_by: null, used_at: null, used_by_name: null, used_by_email: null })
+        .eq('code', normalized);
+    };
+
+    // ── Step 1: validate code (read-only — no account created yet) ────────────
+    if (codeRequired) {
+      const { data: codeRow } = await admin
+        .from('student_invitation_codes')
+        .select('id')
+        .eq('code', normalized)
+        .eq('is_used', false)
+        .maybeSingle();
+
+      if (!codeRow) {
+        return NextResponse.json(
+          { error: 'كود الأكاديمية غير صحيح أو غير مفعّل — تواصل مع إدارة الأكاديمية', need_code: true },
+          { status: 400 }
+        );
+      }
     }
 
     // ── Step 2: create user + generate verification link ─────────────────────
@@ -101,27 +121,29 @@ export async function POST(req) {
     const confirmUrl = `${proto}://${host}/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}&type=signup`;
 
     // ── Step 3: consume code atomically ──────────────────────────────────────
-    const { data: consumed } = await admin
-      .from('student_invitation_codes')
-      .update({
-        is_used:       true,
-        used_by:       userId,
-        used_at:       new Date().toISOString(),
-        used_by_name:  name.trim(),
-        used_by_email: lowerEmail,
-      })
-      .eq('code', normalized)
-      .eq('is_used', false)
-      .select('id')
-      .maybeSingle();
+    if (codeRequired) {
+      const { data: consumed } = await admin
+        .from('student_invitation_codes')
+        .update({
+          is_used:       true,
+          used_by:       userId,
+          used_at:       new Date().toISOString(),
+          used_by_name:  name.trim(),
+          used_by_email: lowerEmail,
+        })
+        .eq('code', normalized)
+        .eq('is_used', false)
+        .select('id')
+        .maybeSingle();
 
-    if (!consumed) {
-      // Race condition: another request consumed this code between steps 1 and 3
-      await admin.auth.admin.deleteUser(userId);
-      return NextResponse.json(
-        { error: 'كود الأكاديمية غير صحيح أو غير مفعّل — تواصل مع إدارة الأكاديمية' },
-        { status: 400 }
-      );
+      if (!consumed) {
+        // Race condition: another request consumed this code between steps 1 and 3
+        await admin.auth.admin.deleteUser(userId);
+        return NextResponse.json(
+          { error: 'كود الأكاديمية غير صحيح أو غير مفعّل — تواصل مع إدارة الأكاديمية', need_code: true },
+          { status: 400 }
+        );
+      }
     }
 
     // ── الدور في app_metadata حصراً (مصدر الحقيقة الآمن — لا يستطيع المستخدم تعديله) ──
@@ -133,10 +155,7 @@ export async function POST(req) {
     if (roleErr) {
       console.error('[register] app_metadata role write failed:', roleErr.message);
       await admin.auth.admin.deleteUser(userId);
-      await admin
-        .from('student_invitation_codes')
-        .update({ is_used: false, used_by: null, used_at: null, used_by_name: null, used_by_email: null })
-        .eq('code', normalized);
+      await releaseCode();
       return NextResponse.json(
         { error: 'حدث خطأ أثناء إنشاء الحساب — يرجى المحاولة مجدداً أو التواصل مع إدارة الأكاديمية' },
         { status: 500 }
@@ -150,10 +169,7 @@ export async function POST(req) {
       console.error('[register] sendVerificationEmail failed:', emailErr.message);
       // Rollback: delete user + free the invitation code so student can retry
       await admin.auth.admin.deleteUser(userId);
-      await admin
-        .from('student_invitation_codes')
-        .update({ is_used: false, used_by: null, used_at: null, used_by_name: null, used_by_email: null })
-        .eq('code', normalized);
+      await releaseCode();
       return NextResponse.json(
         { error: 'تعذّر إرسال بريد التحقق — يرجى المحاولة مجدداً أو التواصل مع إدارة الأكاديمية' },
         { status: 500 }

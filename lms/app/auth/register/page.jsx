@@ -55,7 +55,17 @@ export default function RegisterPage() {
   const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
   const [gLoading, setGLoading] = useState(false);
+  // خانة كود الأكاديمية: يُظهرها أو يخفيها المشرف من bogga (تبويب الأكواد).
+  // null أثناء القراءة = مخفية؛ وإن ردّ الخادم need_code تظهر فوراً.
+  const [codeRequired, setCodeRequired] = useState(null);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch('/api/public/signup-settings', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(s => setCodeRequired(s.student_code_required !== false))
+      .catch(() => setCodeRequired(true));
+  }, []);
 
   useEffect(() => {
     function onPageShow(e) { if (e.persisted) { setGLoading(false); setLoading(false); } }
@@ -92,11 +102,11 @@ export default function RegisterPage() {
     if (!form.age.toString().trim())    { setError('يرجى إدخال عمر الطالب'); return; }
     if (form.password !== form.confirm) { setError('كلمتا المرور غير متطابقتين'); return; }
     if (form.password.length < 6)       { setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; }
-    if (!form.code.trim())              { setError('يرجى إدخال كود الأكاديمية'); return; }
+    if (codeRequired && !form.code.trim()) { setError('يرجى إدخال كود الأكاديمية'); return; }
 
     setLoading(true);
 
-    // ── خطوة واحدة، ذرية تماماً: التحقق من الكود + إنشاء الحساب + استهلاك الكود ──
+    // ── خطوة واحدة، ذرية تماماً: (التحقق من الكود) + إنشاء الحساب + (استهلاك الكود) ──
     const res  = await fetch('/api/auth/register', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -104,7 +114,7 @@ export default function RegisterPage() {
         name:     form.name,
         email:    form.email,
         password: form.password,
-        code:     form.code,
+        code:     codeRequired ? form.code : '',
         age:      form.age,
         grade:    form.grade,
       }),
@@ -114,6 +124,7 @@ export default function RegisterPage() {
     setLoading(false);
 
     if (!res.ok) {
+      if (data.need_code) setCodeRequired(true);
       setError(data.error ?? 'حدث خطأ غير متوقع — يرجى المحاولة مجدداً');
       return;
     }
@@ -231,23 +242,25 @@ export default function RegisterPage() {
                     style={{ paddingRight: 38 }} />
                 </IconInput>
               </div>
-              <div className="form-group">
-                <label className="form-label">
-                  كود الأكاديمية <span style={{ color: '#e53935', fontSize: '0.85em' }}>*</span>
-                </label>
-                <IconInput icon="🎓">
-                  <input className="form-input" type="text" value={form.code}
-                    onChange={e => set('code', e.target.value)}
-                    placeholder="أدخل كود الأكاديمية" required dir="ltr"
-                    style={{ letterSpacing: 2, textTransform: 'uppercase', paddingRight: 38 }} />
-                </IconInput>
-                <p style={{ fontSize: '.8rem', color: '#888', marginTop: 4 }}>
-                  يُوفَّر الكود من إدارة أكاديمية عارم —{' '}
-                  <a href="https://api.whatsapp.com/send/?phone=447400755914"
-                    target="_blank" rel="noopener noreferrer"
-                    style={{ color: '#1a7c40', fontWeight: 700 }}>تواصل معنا</a>
-                </p>
-              </div>
+              {codeRequired && (
+                <div className="form-group">
+                  <label className="form-label">
+                    كود الأكاديمية <span style={{ color: '#e53935', fontSize: '0.85em' }}>*</span>
+                  </label>
+                  <IconInput icon="🎓">
+                    <input className="form-input" type="text" value={form.code}
+                      onChange={e => set('code', e.target.value)}
+                      placeholder="أدخل كود الأكاديمية" required dir="ltr"
+                      style={{ letterSpacing: 2, textTransform: 'uppercase', paddingRight: 38 }} />
+                  </IconInput>
+                  <p style={{ fontSize: '.8rem', color: '#888', marginTop: 4 }}>
+                    يُوفَّر الكود من إدارة أكاديمية عارم —{' '}
+                    <a href="https://api.whatsapp.com/send/?phone=447400755914"
+                      target="_blank" rel="noopener noreferrer"
+                      style={{ color: '#1a7c40', fontWeight: 700 }}>تواصل معنا</a>
+                  </p>
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">
                   عمر الطالب <span style={{ color: '#e53935', fontSize: '0.85em' }}>*</span>
