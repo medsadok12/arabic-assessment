@@ -129,8 +129,13 @@ export default function RegisterPage() {
       return;
     }
 
-    // أرسلنا رابط التحقق — لا نُسجِّل دخوله تلقائياً قبل تأكيد البريد
-    router.replace(`/auth/verify-email?email=${encodeURIComponent(form.email.trim().toLowerCase())}`);
+    // أرسلنا رابط التحقق — لا دخول قبل تأكيد البريد. تذكرة العبور تبقى في هذا التبويب
+    // فقط (sessionStorage) لتُدخله صفحة التحقق وحدها فور تأكيده (lib/login-handoff.js)
+    const lowerEmail = form.email.trim().toLowerCase();
+    try {
+      if (data.handoff) sessionStorage.setItem('aarem_handoff', JSON.stringify({ email: lowerEmail, token: data.handoff }));
+    } catch {}
+    router.replace(`/auth/verify-email?email=${encodeURIComponent(lowerEmail)}`);
   }
 
   return (

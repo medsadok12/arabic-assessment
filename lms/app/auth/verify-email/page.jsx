@@ -1,8 +1,85 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { createClient } from '../../../lib/supabase';
+import { dashboardPathFor } from '../../../lib/email-confirm';
+
+const HANDOFF_KEY = 'aarem_handoff';
+const WATCH_MS    = 60 * 60 * 1000;   // مدة صلاحية التذكرة نفسها
+const POLL_MS     = 4000;
+
+function readTicket(email) {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(HANDOFF_KEY) || 'null');
+    return v && v.email === email ? v.token : null;
+  } catch { return null; }
+}
+function clearTicket() { try { sessionStorage.removeItem(HANDOFF_KEY); } catch {} }
+
+/* الدخول التلقائي بعد تأكيد البريد (طلب الأستاذ محمد 2026-10-20): يؤكّد الطالب من
+   تطبيق البريد ثم يعود هنا فيدخل وحده. نتحقق فور العودة للصفحة وكل بضع ثوانٍ:
+   1) جلسة فُتحت في هذا المتصفح نفسه (أكّد من المتصفح أو من تطبيق يشاركه الكوكيز)
+   2) تذكرة العبور من التسجيل ← /api/auth/handoff يفتح الجلسة فور التأكيد */
+function useAutoEnter(email) {
+  const [state, setState] = useState('idle'); // idle | waiting | entering
+  useEffect(() => {
+    let stopped = false;
+    let busy = false;
+    let token = readTicket(email);
+    const startedAt = Date.now();
+    const supabase = createClient();
+    if (token) setState('waiting');
+
+    const enter = (path) => {
+      stopped = true;
+      clearTicket();
+      setState('entering');
+      window.location.replace(path);
+    };
+
+    async function check() {
+      if (stopped || busy || document.visibilityState !== 'visible') return;
+      if (Date.now() - startedAt > WATCH_MS) { stopped = true; setState('idle'); return; }
+      busy = true;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.email_confirmed_at) { enter(dashboardPathFor(user)); return; }
+        }
+        if (token) {
+          const res = await fetch('/api/auth/handoff', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }), cache: 'no-store',
+          });
+          const j = await res.json().catch(() => ({}));
+          if (j.ok && j.redirect) { enter(j.redirect); return; }
+          if (j.expired) { token = null; clearTicket(); setState('idle'); }
+        }
+      } catch {
+        // انقطاع مؤقت — نعيد المحاولة في الدورة التالية
+      } finally {
+        busy = false;
+      }
+    }
+
+    check();
+    const timer = setInterval(check, POLL_MS);
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('focus', check);
+    window.addEventListener('pageshow', check);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', check);
+      window.removeEventListener('focus', check);
+      window.removeEventListener('pageshow', check);
+    };
+  }, [email]);
+  return state;
+}
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -21,6 +98,7 @@ function VerifyEmailContent() {
   }[mode];
   const [status,  setStatus]  = useState('idle'); // 'idle' | 'sending' | 'sent' | 'error'
   const [message, setMessage] = useState('');
+  const auto = useAutoEnter(email);
 
   async function resend() {
     if (status === 'sending' || status === 'sent') return;
@@ -89,6 +167,25 @@ function VerifyEmailContent() {
           {TEXT.body}
         </p>
 
+        {/* الدخول التلقائي فور التأكيد */}
+        {auto !== 'idle' && (
+          <div role="status" style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            padding: '12px 14px', borderRadius: 12, marginBottom: 18, fontSize: '.88rem', fontWeight: 700,
+            background: auto === 'entering' ? '#dcfce7' : '#FAF7F2',
+            color:      auto === 'entering' ? '#166534' : '#1A2B4A',
+            border:     `1.5px solid ${auto === 'entering' ? '#bbf7d0' : '#EDE5D8'}`,
+          }}>
+            <style>{`@keyframes vePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.75)}}`}</style>
+            {auto === 'entering'
+              ? <span>✅ تم تأكيد بريدك! ندخلك الآن…</span>
+              : <>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#E8B84B', flexShrink: 0, animation: 'vePulse 1.2s ease infinite' }} />
+                  <span>بعد الضغط على الرابط عُد إلى هنا — سندخلك تلقائياً</span>
+                </>}
+          </div>
+        )}
+
         {/* رسالة نجاح / خطأ إعادة الإرسال */}
         {message && (
           <div style={{
@@ -131,7 +228,7 @@ function VerifyEmailContent() {
           العودة لصفحة الدخول
         </Link>
 
-        {mode === 'signup' && (
+        {mode === 'signup' && auto === 'idle' && (
           <p style={{ color: '#94a3b8', fontSize: '.8rem', lineHeight: 1.7, marginTop: 14, marginBottom: 0 }}>
             أكّدت بريدك من تطبيق أو جهاز آخر؟ اضغط «العودة لصفحة الدخول» وادخل بالبريد نفسه.
           </p>

@@ -3,7 +3,7 @@ import { cookies }           from 'next/headers';
 import { NextResponse }      from 'next/server';
 import { getRole } from '../../../lib/auth-role';
 import { createAdminClient } from '../../../lib/supabase-admin';
-import { isUuid, staleLinkRedirect } from '../../../lib/email-confirm';
+import { isUuid, staleLinkRedirect, dashboardPathFor as dashboardPath } from '../../../lib/email-confirm';
 
 /**
  * GET /auth/confirm?token_hash=xxx&type=signup|magiclink&uid=<account id>
@@ -70,13 +70,4 @@ export async function GET(request) {
   }
 
   return NextResponse.redirect(`${origin}${dashboardPath(user)}`);
-}
-
-// لوحة كل دور بعد تأكيد البريد
-function dashboardPath(user) {
-  const role = getRole(user);
-  if (role === 'super_admin' || role === 'admin') return '/bogga';
-  if (role === 'teacher')    return '/teacher';
-  if (role === 'supervisor') return '/supervisor';
-  return '/dashboard';
 }

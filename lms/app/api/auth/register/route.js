@@ -4,6 +4,7 @@ import { sendVerificationEmail } from '../../../../lib/email';
 import { getClientIP, ipRateCheck } from '../../../../lib/ip-rate-check';
 import { loadSignupCodes } from '../../../../lib/signup-codes';
 import { buildConfirmUrl } from '../../../../lib/email-confirm';
+import { issueHandoff } from '../../../../lib/login-handoff';
 
 /**
  * POST /api/auth/register
@@ -19,7 +20,8 @@ import { buildConfirmUrl } from '../../../../lib/email-confirm';
  *      — if send fails, rollback user + code
  *
  * Body: { name, email, password, code?, age, grade? }
- * Response: { ok: true } — client must redirect to /auth/verify-email, NOT auto-login
+ * Response: { ok: true, handoff } — client redirects to /auth/verify-email (no auto-login);
+ *   that page signs in by itself once the email is confirmed (/api/auth/handoff)
  */
 export async function POST(req) {
   try {
@@ -177,7 +179,8 @@ export async function POST(req) {
       );
     }
 
-    return NextResponse.json({ ok: true });
+    // تذكرة لهذا التبويب: يدخل وحده فور تأكيد البريد من تطبيق البريد (lib/login-handoff.js)
+    return NextResponse.json({ ok: true, handoff: issueHandoff(userId) });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

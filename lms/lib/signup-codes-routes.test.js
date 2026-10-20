@@ -48,7 +48,9 @@ vi.mock('./email', () => ({
   sendVerificationEmail: async (m) => { if (state.failEmail) throw new Error('smtp down'); state.emails.push(m); },
 }));
 
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key';
 const { POST: register } = await import('../app/api/auth/register/route.js');
+const { readHandoff } = await import('./login-handoff.js');
 const { POST: completeGoogle } = await import('../app/api/auth/complete-google/route.js');
 const { POST: validateCode } = await import('../app/api/public/validate-student-code/route.js');
 
@@ -70,6 +72,8 @@ describe('POST /api/auth/register', () => {
     expect(state.db.auth.admin.updateUserById).toHaveBeenCalledWith(NEW_ID, { app_metadata: { role: 'student' } });
     expect(state.emails).toHaveLength(1);
     // رابط التأكيد يحمل معرّف الحساب (لفتحه مرتين بلا «فشل»)
+    // تذكرة العبور للدخول التلقائي بعد التأكيد — لهذا الحساب نفسه
+    expect(readHandoff((await res.json()).handoff)?.userId).toBe(NEW_ID);
     const link = new URL(state.emails[0].link);
     expect(link.pathname).toBe('/auth/confirm');
     expect(link.searchParams.get('uid')).toBe(NEW_ID);
