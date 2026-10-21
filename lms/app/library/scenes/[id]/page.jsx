@@ -12,7 +12,7 @@ import {
 } from '../../../../lib/scene-story-client';
 import {
   MODE_INFO, BAND_INFO, STORY_MAP, DEFAULT_STARTERS, DEFAULT_WHAT_IF, FEELINGS,
-  AUDIO_MAX_SECS, countWords, goldUsed, plainArabic, wordNoun,
+  AUDIO_MAX_SECS, countWords, goldUsed, plainArabic, wordNoun, LISTEN_TITLE, LISTEN_FALLBACK,
 } from '../../../../lib/scene-story';
 import { SC_CSS, SceneImage, ReviewCard, StarRow, feelingOf } from '../_ui';
 
@@ -185,7 +185,7 @@ export default function ScenePage() {
     });
   };
 
-  /* ── سؤال المعلم بصوته، وإلا بصوت الجهاز (داخل اللمسة نفسها لسفاري) ── */
+  /* ── سؤال المعلم بصوته، وإلا عبارة عامة بصوت الجهاز (داخل اللمسة نفسها لسفاري) ── */
   const listen = () => {
     if (playing) {
       audioRef.current?.pause();
@@ -193,7 +193,7 @@ export default function ScenePage() {
       setPlaying(false);
       return;
     }
-    const say = () => speakArabic(scene.prompt, { onStart: () => setPlaying(true), onEnd: () => setPlaying(false) });
+    const say = () => speakArabic(LISTEN_FALLBACK, { onStart: () => setPlaying(true), onEnd: () => setPlaying(false) });
     if (!scene.prompt_audio_url) { say(); return; }
     const a = audioRef.current || (audioRef.current = new Audio());
     a.src = scene.prompt_audio_url;
@@ -340,11 +340,11 @@ export default function ScenePage() {
         <div className="sc-layout">
           <div className="sc-col stick">
             <SceneImage scene={scene} />
-            {/* سؤال المعلم يُسمَع بـ🔊 (بصوته، وإلا بصوت الجهاز) — والعنوان الظاهر ثابت */}
+            {/* سؤال المعلم يُسمَع بـ🔊 (تسجيله، وإلا عبارة عامة بصوت الجهاز) — والعنوان الظاهر ثابت */}
             <section className="sc-prompt">
-              <p>اسْتَمِعْ وَعَبِّرْ</p>
+              <p>{LISTEN_TITLE}</p>
               <button type="button" className={`sc-listen${playing ? ' playing' : ''}`} onClick={listen}
-                aria-label={playing ? 'أوقف الصوت' : `استمع للسؤال: ${scene.prompt}`}>{playing ? '⏸' : '🔊'}</button>
+                aria-label={playing ? 'أوقف الصوت' : 'استمع لسؤال المعلم'}>{playing ? '⏸' : '🔊'}</button>
             </section>
             {!reviewed && scene.hotspots?.length > 0 && (
               <p className="sc-small">🔍 المس العدسات الذهبية على الصورة — في كل واحدة سؤال صغير يساعدك</p>

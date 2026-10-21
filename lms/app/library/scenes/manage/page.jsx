@@ -261,7 +261,7 @@ export default function ScenesManage() {
                       </div>
                       <div className="sm-body">
                         <b>{s.title}</b>
-                        <p className="wa-sub">{s.prompt}</p>
+                        <p className="wa-sub">{s.prompt_audio_url ? '🔊 سؤالك مسجَّل بصوتك' : '🔇 بلا تسجيل — يسمع الطفل عبارة عامة بصوت الجهاز'}</p>
                         <div className="wa-badges">
                           <span className="wa-badge muted">{s.audience === 'all' ? '🌍 لكل الطلاب' : s.created_by && s.can_edit && !isAdmin ? '👥 لطلابي' : '👥 لطلاب المنشئ'}</span>
                           <span className="wa-badge muted">{BAND_INFO[s.band] ? `${BAND_INFO[s.band].icon} ${BAND_INFO[s.band].label}` : '🎯 حسب الصف'}</span>

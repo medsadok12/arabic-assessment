@@ -40,7 +40,7 @@ export async function GET(req) {
   return json({
     is_staff: viewer.staff,
     scenes: scenes.map(s => ({
-      id: s.id, title: s.title, image_url: s.image_url, prompt: s.prompt, modes: s.modes,
+      id: s.id, title: s.title, image_url: s.image_url, modes: s.modes,
       band: effectiveBand(s, viewer.grade), publish_at: s.publish_at,
       scheduled: Date.parse(s.publish_at) > Date.now(),
       mine: mine[s.id] || null,

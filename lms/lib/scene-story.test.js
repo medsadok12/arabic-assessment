@@ -53,6 +53,11 @@ describe('sanitizeSceneInput', () => {
     expect(data.audience).toBe('mine');
     expect(data.modes).toEqual(['write', 'photo']);
   });
+  it('بلا سؤال مكتوب: مقبول ويُحفظ فارغاً، والتعديل الجزئي لا يلمسه', () => {
+    const { prompt, ...noPrompt } = good;
+    expect(sanitizeSceneInput(noPrompt, okMedia).data.prompt).toBe('');
+    expect(sanitizeSceneInput({ title: 'جديد' }, okMedia, { partial: true }).data).toEqual({ title: 'جديد' });
+  });
   it('صورة من خارج تخزيننا مرفوضة', () => expect(sanitizeSceneInput({ ...good, image_url: 'https://evil.com/a.png' }, okMedia).error).toMatch(/صورة/));
   it('بلا طريقة تعبير مرفوض', () => expect(sanitizeSceneInput({ ...good, modes: [] }, okMedia).error).toMatch(/طريقة/));
   it('تعديل جزئي (إخفاء فقط)', () => expect(sanitizeSceneInput({ is_active: false }, okMedia, { partial: true }).data).toEqual({ is_active: false }));

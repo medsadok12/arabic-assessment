@@ -117,7 +117,6 @@ export default function ScenesPage() {
                 </div>
                 <div className="sc-card-body">
                   <h3>{s.title}</h3>
-                  <p>{s.prompt}</p>
                   <div className="sc-modes">
                     {(s.modes || []).map(m => MODE_INFO[m] && (
                       <span key={m} className="sc-mode-tag">{MODE_INFO[m].icon} {MODE_INFO[m].label}</span>

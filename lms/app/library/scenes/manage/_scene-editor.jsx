@@ -5,6 +5,7 @@ import { resizeImageToWebp } from '../../../../lib/image-resize';
 import { sceneApi, uploadSceneFile } from '../../../../lib/scene-story-client';
 import {
   SCENE_MODES, MODE_INFO, BAND_INFO, DEFAULT_STARTERS, DEFAULT_WHAT_IF, LIMITS, wordNoun,
+  LISTEN_TITLE, LISTEN_FALLBACK,
 } from '../../../../lib/scene-story';
 import { Modal, Toggle, Choice, Stepper, Notice } from '../../games/word-wheel/settings/_admin-ui';
 
@@ -30,7 +31,6 @@ function formFrom(scene) {
   return {
     title: s.title || '',
     image_url: s.image_url || '',
-    prompt: s.prompt || '',
     prompt_audio_url: s.prompt_audio_url || null,
     words: Array.isArray(s.words) ? s.words : [],
     tiles: (Array.isArray(s.tiles) ? s.tiles : []).join(' '),
@@ -154,13 +154,12 @@ export default function SceneEditor({ initial, isAdmin, onClose, onSaved }) {
   const save = async () => {
     if (!form.image_url) return setError('ارفع صورة المشهد أولاً 🖼️');
     if (!form.title.trim()) return setError('اكتب عنواناً للمشهد');
-    if (!form.prompt.trim()) return setError('اكتب سؤال المشهد للطفل');
     const emptyLens = form.hotspots.findIndex(h => !h.q.trim());
     if (emptyLens >= 0) { lensInputs.current[emptyLens]?.focus(); return setError(`اكتب سؤال العدسة رقم ${emptyLens + 1} أو احذفها`); }
     setSaving(true);
     setError(null);
     const body = {
-      title: form.title, image_url: form.image_url, prompt: form.prompt, prompt_audio_url: form.prompt_audio_url,
+      title: form.title, image_url: form.image_url, prompt_audio_url: form.prompt_audio_url,
       words: form.words, tiles: tilesPreview, starters: form.starters, what_if: form.what_if, hotspots: form.hotspots,
       feeling_q: form.feeling_on ? (form.feeling_q.trim() || DEFAULT_FEELING_Q) : '',
       modes: form.modes, band: form.band, is_active: form.is_active, sort_order: form.sort_order,
@@ -186,7 +185,7 @@ export default function SceneEditor({ initial, isAdmin, onClose, onSaved }) {
       {error && <Notice tone="error">{error}</Notice>}
 
       <section className="wa-section">
-        <h4>🖼️ الصورة والسؤال</h4>
+        <h4>🖼️ الصورة والعنوان</h4>
         {form.image_url ? (
           <div className="sm-editor-img">
             <div className={`sm-img-wrap${lensMode ? ' placing' : ''}`} onClick={placeLens}>
@@ -222,11 +221,10 @@ export default function SceneEditor({ initial, isAdmin, onClose, onSaved }) {
           <span className="wa-label">عنوان المشهد</span>
           <input className="wa-input" value={form.title} maxLength={LIMITS.title} placeholder="مثل: يومٌ على التلّة" onChange={e => set('title', e.target.value)} />
         </label>
-        <label className="wa-field">
-          <span className="wa-label">سؤال المشهد للطفل <small style={{ fontWeight: 600, color: '#64748B' }}>— يسمعه الطفل عند لمس 🔊 تحت عنوان «اسْتَمِعْ وَعَبِّرْ»، ويظهر وصفاً للمشهد في قائمة المشاهد</small></span>
-          <textarea className="wa-textarea" value={form.prompt} maxLength={LIMITS.prompt} placeholder="ماذا يحدث في هذه الصورة؟ احكِ لنا الحكاية!" onChange={e => set('prompt', e.target.value)} />
-          <span className="wa-count">{form.prompt.length}/{LIMITS.prompt}</span>
-        </label>
+      </section>
+
+      <section className="wa-section">
+        <h4>🎧 {LISTEN_TITLE} <small>هذا ما يراه الطفل تحت الصورة، ويسمع سؤالك حين يلمس 🔊</small></h4>
         <AudioClipField
           audioUrl={form.prompt_audio_url}
           onChange={url => set('prompt_audio_url', url)}
@@ -234,10 +232,10 @@ export default function SceneEditor({ initial, isAdmin, onClose, onSaved }) {
           maxSecs={90}
           maxMb={10}
           texts={{
-            title: '🔊 السؤال بصوتك (اختياري)', has: '✓ مسجَّل', record: 'سجّل السؤال بصوتك', rerecord: 'أعد التسجيل',
-            clipName: 'صوت السؤال', recordingHint: 'اقرأ سؤال المشهد بصوت واضح ومشجّع',
+            title: '🎙️ سؤالك للطفل بصوتك', has: '✓ مسجَّل', record: 'سجّل سؤالك بصوتك', rerecord: 'أعد التسجيل',
+            clipName: 'سؤالك للطفل', recordingHint: 'اطرح سؤالك بصوت واضح ومشجّع — مثل: ماذا ترى في الصورة؟ احكِ لنا الحكاية!',
             added: '✅ حُفظ الصوت — يُربط بالمشهد عند «احفظ»', removeConfirm: 'إزالة صوت السؤال؟', removed: 'أُزيل الصوت — احفظ المشهد لتثبيت ذلك',
-            footer: 'بلا تسجيل: يقرأ الجهاز السؤال للطفل عند لمس 🔊',
+            footer: `بلا تسجيل يسمع الطفل بصوت الجهاز عبارة عامة: «${LISTEN_FALLBACK}»`,
           }}
         />
       </section>

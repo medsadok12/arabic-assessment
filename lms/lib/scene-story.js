@@ -18,6 +18,11 @@ export const BAND_INFO = {
   '2': { icon: '🌿', label: 'الصف 3–4', goal: 15, help: 'starters', hint: 'اختر بداية جملة ثم أكمل حكايتك' },
   '3': { icon: '🌳', label: 'الصف 5–7', goal: 40, help: 'map',      hint: 'استعن بخريطة الحكاية واكتب نصّك' },
 };
+/* صندوق السؤال تحت الصورة: عنوان ثابت، وسؤال المعلم يُسمَع بتسجيله (لا نص مكتوب).
+   بلا تسجيل يقرأ صوت الجهاز عبارة عامة تناسب كل المشاهد */
+export const LISTEN_TITLE    = 'اسْتَمِعْ وَعَبِّرْ';
+export const LISTEN_FALLBACK = 'انْظُرْ إلى الصُّورَةِ جَيِّداً، ثُمَّ عَبِّرْ عَمَّا تَراهُ';
+
 export const STORY_MAP = ['👤 من؟', '📍 أين ومتى؟', '⚡ ماذا حدث؟', '🏁 كيف انتهت؟'];
 export const DEFAULT_STARTERS = ['في الصورةِ أرى…', 'كان الجوُّ…', 'شعرتُ بـ…', 'وفجأةً…', 'وفي النهايةِ…'];
 export const DEFAULT_WHAT_IF = ['ماذا لو تغيّر المكانُ فجأة؟', 'ماذا لو تكلّمتِ الأشياءُ في الصورة؟', 'ماذا لو جاءَ ضيفٌ غيرُ متوقَّع؟', 'ماذا لو بدأ المطرُ ينهمر؟'];
@@ -107,10 +112,9 @@ export function sanitizeSceneInput(body, isMediaUrl, { partial = false } = {}) {
     if (!b.image_url || !isMediaUrl(b.image_url)) return { error: 'ارفع صورة المشهد' };
     data.image_url = b.image_url;
   }
-  if (has('prompt')) {
-    data.prompt = str(b.prompt, LIMITS.prompt);
-    if (!data.prompt) return { error: 'اكتب سؤال المشهد للطفل' };
-  }
+  // السؤال المكتوب لم يعد يُعرض ولا يُطلب (القسم 21): العمود باقٍ للتوافق، ويُحفظ فارغاً للجديد
+  if (b.prompt !== undefined) data.prompt = str(b.prompt, LIMITS.prompt);
+  else if (!partial) data.prompt = '';
   if (b.prompt_audio_url !== undefined) {
     if (b.prompt_audio_url && !isMediaUrl(b.prompt_audio_url)) return { error: 'رابط صوت السؤال غير صالح — سجّله أو ارفعه من اللوحة' };
     data.prompt_audio_url = b.prompt_audio_url || null;
