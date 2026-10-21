@@ -11,7 +11,7 @@ import { RecordingPlayer } from '../_ui';
    بعدد النجوم ويصله إشعاراً. المعلم يرى ردود طلابه وردود مشاهده فقط.
 ════════════════════════════════════════════════════════════════ */
 
-const QUICK = ['أحسنت! حكاية جميلة 🌟', 'أعجبني خيالك الواسع 🎨', 'جرّب كلمات السلّة في المرة القادمة 🧺', 'انتبه لعلامات الترقيم في آخر الجملة ✏️', 'صوتك واضح ومعبّر 🎙️'];
+const QUICK = ['أحسنت! حكاية جميلة 🌟', 'أعجبني خيالك الواسع 🎨', 'استعن ببطاقات المساعدة في المرة القادمة 💡', 'انتبه لعلامات الترقيم في آخر الجملة ✏️', 'صوتك واضح ومعبّر 🎙️'];
 const FILTERS = [
   { id: 'submitted', label: '⏳ تنتظر تقييمك' },
   { id: 'reviewed', label: '⭐ قيّمتها' },
@@ -154,7 +154,6 @@ export default function Inbox({ scenes, sceneFilter, setSceneFilter, onReviewed,
               )}
               <div className="wa-badges">
                 {r.text && <span className="wa-badge">✍️ {r.word_count} {wordNoun(r.word_count)}</span>}
-                {r.gold_used > 0 && <span className="wa-badge warn">⭐ {r.gold_used} {r.gold_used === 1 ? 'كلمة ذهبية' : 'ذهبية'}</span>}
                 {r.audio_path && <span className="wa-badge">🎙️ صوت</span>}
                 {r.photo_path && <span className="wa-badge">📷 صورة</span>}
                 {f && <span className="wa-badge muted">{f.icon} {f.label}</span>}

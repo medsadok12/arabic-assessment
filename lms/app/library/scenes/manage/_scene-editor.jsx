@@ -1,18 +1,18 @@
 'use client';
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import AudioClipField from '../../../../components/AudioClipField';
 import { resizeImageToWebp } from '../../../../lib/image-resize';
 import { sceneApi, uploadSceneFile } from '../../../../lib/scene-story-client';
 import {
-  SCENE_MODES, MODE_INFO, BAND_INFO, DEFAULT_STARTERS, LIMITS, wordNoun,
-  LISTEN_TITLE, LISTEN_FALLBACK,
+  SCENE_MODES, MODE_INFO, BAND_INFO, LIMITS, wordNoun,
+  LISTEN_TITLE, LISTEN_FALLBACK, HELP_CARDS_TITLE,
 } from '../../../../lib/scene-story';
 import { Modal, Toggle, Choice, Stepper, Notice } from '../../games/word-wheel/settings/_admin-ui';
 
 /* ════════════════════════════════════════════════════════════════
    محرر المشهد — كل ما يراه الطفل بلا كود: الصورة وعدسات المحقّق عليها،
-   السؤال (مكتوباً وبصوت المعلم)، وجوه المشاعر، سلّة الكلمات والذهبية منها،
-   مساعدة الكتابة لكل فئة عمرية، طرق التعبير، والنشر.
+   سؤال «اسْتَمِعْ وَعَبِّرْ» بصوت المعلم، وجوه المشاعر، بطاقات المساعدة
+   (أفكار المعلم)، الفئة العمرية، طرق التعبير، والنشر.
 ════════════════════════════════════════════════════════════════ */
 
 const DEFAULT_FEELING_Q = 'كيف تشعر الشخصية في الصورة؟';
@@ -32,9 +32,7 @@ function formFrom(scene) {
     title: s.title || '',
     image_url: s.image_url || '',
     prompt_audio_url: s.prompt_audio_url || null,
-    words: Array.isArray(s.words) ? s.words : [],
-    tiles: (Array.isArray(s.tiles) ? s.tiles : []).join(' '),
-    starters: Array.isArray(s.starters) ? s.starters : [],
+    help_cards: Array.isArray(s.help_cards) ? s.help_cards : [],
     hotspots: Array.isArray(s.hotspots) ? s.hotspots : [],
     feeling_on: scene ? !!s.feeling_q : true,
     feeling_q: s.feeling_q || DEFAULT_FEELING_Q,
@@ -48,7 +46,7 @@ function formFrom(scene) {
 }
 
 /* قائمة نصوص قصيرة: شرائح بزر حذف + حقل إضافة */
-function ListEditor({ items, onChange, placeholder, max, maxLen = 80, defaults }) {
+function ListEditor({ items, onChange, placeholder, max, maxLen = 80, emptyHint }) {
   const [v, setV] = useState('');
   const add = () => {
     const t = v.replace(/\s+/g, ' ').trim().slice(0, maxLen);
@@ -67,8 +65,8 @@ function ListEditor({ items, onChange, placeholder, max, maxLen = 80, defaults }
             </span>
           ))}
         </div>
-      ) : defaults && (
-        <p className="wa-sub">فارغة = نستعمل الجاهزة: {defaults.join(' · ')}</p>
+      ) : emptyHint && (
+        <p className="wa-sub">{emptyHint}</p>
       )}
       {items.length < max && (
         <div className="sm-add">
@@ -83,7 +81,6 @@ function ListEditor({ items, onChange, placeholder, max, maxLen = 80, defaults }
 
 export default function SceneEditor({ initial, isAdmin, onClose, onSaved }) {
   const [form, setForm]       = useState(() => formFrom(initial));
-  const [wordIn, setWordIn]   = useState('');
   const [lensMode, setLensMode] = useState(false);
   const [imgBusy, setImgBusy] = useState(null);   // نسبة رفع الصورة
   const [saving, setSaving]   = useState(false);
@@ -93,7 +90,6 @@ export default function SceneEditor({ initial, isAdmin, onClose, onSaved }) {
   const editing = !!initial?.id;
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const dirty = JSON.stringify(form) !== start.current;
-  const tilesPreview = useMemo(() => form.tiles.split(/\s+/).filter(Boolean).slice(0, LIMITS.tiles), [form.tiles]);
 
   const close = () => {
     if (dirty && !saving && !confirm('لديك تعديلات لم تُحفظ — هل تغلق المحرر؟')) return;
@@ -131,18 +127,6 @@ export default function SceneEditor({ initial, isAdmin, onClose, onSaved }) {
   const setLens = (i, q) => set('hotspots', form.hotspots.map((h, j) => (j === i ? { ...h, q } : h)));
   const dropLens = (i) => set('hotspots', form.hotspots.filter((_, j) => j !== i));
 
-  /* ── سلّة الكلمات ── */
-  const addWords = () => {
-    const fresh = wordIn.split(/[,،\n]+/).map(w => w.replace(/\s+/g, ' ').trim().slice(0, LIMITS.word)).filter(Boolean);
-    const have = new Set(form.words.map(w => w.w));
-    const next = [...form.words];
-    for (const w of fresh) if (!have.has(w) && next.length < LIMITS.words) { next.push({ w, gold: false }); have.add(w); }
-    set('words', next);
-    setWordIn('');
-  };
-  const toggleGold = (w) => set('words', form.words.map(x => (x.w === w ? { ...x, gold: !x.gold } : x)));
-  const dropWord = (w) => set('words', form.words.filter(x => x.w !== w));
-
   const toggleMode = (m) => {
     const on = form.modes.includes(m);
     if (on && form.modes.length === 1) return;
@@ -159,7 +143,7 @@ export default function SceneEditor({ initial, isAdmin, onClose, onSaved }) {
     setError(null);
     const body = {
       title: form.title, image_url: form.image_url, prompt_audio_url: form.prompt_audio_url,
-      words: form.words, tiles: tilesPreview, starters: form.starters, hotspots: form.hotspots,
+      help_cards: form.help_cards, hotspots: form.hotspots,
       feeling_q: form.feeling_on ? (form.feeling_q.trim() || DEFAULT_FEELING_Q) : '',
       modes: form.modes, band: form.band, is_active: form.is_active, sort_order: form.sort_order,
       publish_at: fromLocalInput(form.publish_at),
@@ -262,52 +246,17 @@ export default function SceneEditor({ initial, isAdmin, onClose, onSaved }) {
       </section>
 
       <section className="wa-section">
-        <h4>🧺 سلّة الكلمات <small>اكتبها مشكولة · المس ⭐ لتصبح ذهبية (نجمة إضافية لمن يستعملها)</small></h4>
-        {form.words.length > 0 && (
-          <div className="sm-chips">
-            {form.words.map(w => (
-              <span key={w.w} className={`sm-chip word${w.gold ? ' gold' : ''}`}>
-                <button type="button" onClick={() => toggleGold(w.w)} aria-pressed={w.gold} aria-label={w.gold ? 'إلغاء الذهبية' : 'اجعلها ذهبية'}>{w.gold ? '⭐' : '☆'}</button>
-                {w.w}
-                <button type="button" onClick={() => dropWord(w.w)} aria-label={`حذف ${w.w}`}>✕</button>
-              </span>
-            ))}
-          </div>
-        )}
-        {form.words.length < LIMITS.words && (
-          <div className="sm-add">
-            <input className="wa-input" value={wordIn} placeholder="الرِّيحُ، فَرِحَ، طَائِرَةٌ — افصل بفاصلة"
-              onChange={e => setWordIn(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addWords(); } }} />
-            <button type="button" className="wa-btn ghost sm" onClick={addWords} disabled={!wordIn.trim()}>➕ أضف</button>
-          </div>
-        )}
+        <h4>💡 {HELP_CARDS_TITLE} <small>أفكار قصيرة تساعد الطفل على التعبير — يقرؤها كما هي ولا يلمسها</small></h4>
+        <ListEditor items={form.help_cards} onChange={v => set('help_cards', v)} max={LIMITS.helpCards} maxLen={LIMITS.helpCard}
+          placeholder="مثل: ولدٌ يقفز فوق أوراق الخريف" emptyHint="بلا بطاقات: لا يظهر للطفل هذا الصندوق" />
       </section>
 
       <section className="wa-section">
-        <h4>✍️ مساعدة الكتابة حسب العمر</h4>
+        <h4>🎯 الفئة العمرية <small>تحدد من يرى المشهد، وهدف عدد الكلمات في عدّاد الكتابة</small></h4>
         <Choice value={form.band} onChange={v => set('band', v)} options={[
-          { value: 'auto', label: '🎯 حسب صف الطالب', hint: 'كل طفل يرى مساعدة عمره' },
+          { value: 'auto', label: '🎯 حسب صف الطالب', hint: 'يظهر للجميع، والهدف حسب صف كل طفل' },
           ...Object.entries(BAND_INFO).map(([k, b]) => ({ value: k, label: `${b.icon} ${b.label} فقط`, hint: `هدف ${b.goal} ${wordNoun(b.goal)}` })),
         ]} />
-        {(form.band === 'auto' || form.band === '1') && (
-          <label className="wa-field">
-            <span className="wa-label">🧩 بطاقات جملة الصغار (الصف 1–2) — اكتب الجملة وسنقسمها بطاقات</span>
-            <input className="wa-input" value={form.tiles} placeholder="فهيم يُطَيِّرُ طائرةً على التلّة" onChange={e => set('tiles', e.target.value)} />
-            {tilesPreview.length > 0
-              ? <div className="sm-chips">{tilesPreview.map((t, i) => <span key={i} className="sm-chip tile">{t}</span>)}</div>
-              : <span className="wa-sub">فارغة = نستعمل كلمات السلّة بطاقاتٍ</span>}
-          </label>
-        )}
-        {(form.band === 'auto' || form.band === '2') && (
-          <div className="wa-field">
-            <span className="wa-label">🌿 بدايات جمل (الصف 3–4)</span>
-            <ListEditor items={form.starters} onChange={v => set('starters', v)} max={LIMITS.starters} maxLen={60}
-              placeholder="مثل: شعرَ فهيم بـ…" defaults={DEFAULT_STARTERS} />
-          </div>
-        )}
-        {(form.band === 'auto' || form.band === '3') && (
-          <p className="wa-sub">🌳 الصف 5–7: خريطة الحكاية (من؟ أين ومتى؟ ماذا حدث؟ كيف انتهت؟) تظهر تلقائياً.</p>
-        )}
       </section>
 
       <section className="wa-section">

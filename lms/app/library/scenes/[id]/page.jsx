@@ -11,24 +11,18 @@ import {
   sceneApi, uploadSceneFile, readSceneDraft, writeSceneDraft, markReviewSeen,
 } from '../../../../lib/scene-story-client';
 import {
-  MODE_INFO, BAND_INFO, STORY_MAP, DEFAULT_STARTERS, FEELINGS,
-  AUDIO_MAX_SECS, countWords, goldUsed, plainArabic, wordNoun, LISTEN_TITLE, LISTEN_FALLBACK,
+  MODE_INFO, BAND_INFO, FEELINGS, HELP_CARDS_TITLE,
+  AUDIO_MAX_SECS, countWords, wordNoun, LISTEN_TITLE, LISTEN_FALLBACK,
 } from '../../../../lib/scene-story';
 import { SC_CSS, SceneImage, ReviewCard, StarRow, RecordingPlayer, feelingOf } from '../_ui';
 
 /* ════════════════════════════════════════════════════════════════
    «مشهدٌ وحكاية» — شاشة الطفل: ينظر للمشهد، يفتح عدسات المحقّق، يختار
-   شعور الشخصية، ثم يحكي بالكتابة (بمساعدة تكبر مع عمره) أو بصوته أو بصورة
-   ورقته. ردّ واحد لكل مشهد يعدّله حتى يقرأه معلمه، ثم يرى نجومه وملصقاته.
+   شعور الشخصية، ويستعين ببطاقات المساعدة (أفكار المعلم)، ثم يحكي بالكتابة
+   أو بصوته أو بصورة ورقته. ردّ واحد لكل مشهد يعدّله حتى يقرأه معلمه، ثم يرى نجومه وملصقاته.
    التسجيل والصورة يبقيان في الجهاز حتى «أرسل» ثم يُرفعان لدلو خاص.
 ════════════════════════════════════════════════════════════════ */
 
-const MAP_HINTS = {
-  0: 'من أبطال حكايتك؟ صِفهم بكلمتين أو ثلاث',
-  1: 'أين تجري الحكاية؟ وفي أيّ وقت؟',
-  2: 'ما المفاجأة أو المشكلة التي حدثت؟',
-  3: 'كيف انتهت الحكاية؟ وبماذا شعر الأبطال؟',
-};
 const CONFETTI = ['#F59E0B', '#3FA796', '#7C5CD9', '#E8B84B', '#2ABB7A', '#EC4899'];
 
 export default function ScenePage() {
@@ -41,15 +35,12 @@ export default function ScenePage() {
   const [feeling, setFeeling] = useState(null);
   const [audio, setAudio]     = useState(null);   // { path?, url, blob? }
   const [photo, setPhoto]     = useState(null);   // { path?, url, blob? }
-  const [usedTiles, setUsedTiles] = useState([]);
-  const [mapHint, setMapHint] = useState(null);
   const [playing, setPlaying] = useState(false);
   const [sending, setSending] = useState(null);   // نص حالة الإرسال
   const [msg, setMsg]         = useState(null);   // { ok, text }
   const [done, setDone]       = useState(null);   // { first, points }
   const [restored, setRestored] = useState(false);
   const rec = useStoryAudioRecorder(AUDIO_MAX_SECS);
-  const textRef  = useRef(null);
   const audioRef = useRef(null);
 
   const scene    = data?.scene;
@@ -136,52 +127,11 @@ export default function ScenePage() {
     try { window.speechSynthesis?.cancel(); } catch {}
   }, []);
 
-  /* ── الكتابة ── */
-  const insert = (piece) => {
-    const el = textRef.current;
-    const s = el ? el.selectionStart ?? text.length : text.length;
-    const e = el ? el.selectionEnd ?? s : s;
-    const before = text.slice(0, s);
-    const after = text.slice(e);
-    const pad = before && !/\s$/.test(before) ? ' ' : '';
-    const next = `${before}${pad}${piece} ${after}`;
-    const pos = (before + pad + piece + ' ').length;
-    setText(next.slice(0, 3000));
-    requestAnimationFrame(() => {
-      if (!textRef.current) return;
-      textRef.current.focus();
-      textRef.current.setSelectionRange(pos, pos);
-    });
-  };
-  const tiles = useMemo(() => {
-    if (!scene) return [];
-    if (scene.tiles?.length) return scene.tiles;
-    return (scene.words || []).map(w => w.w).slice(0, 8);
-  }, [scene]);
-  const starters = scene?.starters?.length ? scene.starters : DEFAULT_STARTERS;
-  const words = scene?.words || [];
-  const plainText = plainArabic(text);
+  /* ── الكتابة: عدّاد الكلمات نحو هدف الفئة العمرية ── */
+  const helpCards = Array.isArray(scene?.help_cards) ? scene.help_cards : [];
   const n = countWords(text);
   const pct = Math.min(100, Math.round((n / info.goal) * 100));
   const meterStars = pct >= 100 ? 3 : pct >= 60 ? 2 : pct > 0 ? 1 : 0;
-  const gold = goldUsed(text, words);
-
-  const tapTile = (w, i) => {
-    if (usedTiles.includes(i)) return;
-    setUsedTiles(u => [...u, i]);
-    insert(w);
-  };
-  const clearTiles = () => { setText(''); setUsedTiles([]); textRef.current?.focus(); };
-  const tapMap = (i) => {
-    setMapHint(i);
-    if (text.trim() && !/\n\s*$/.test(text)) setText(t => `${t.trimEnd()}\n`);
-    requestAnimationFrame(() => {
-      const el = textRef.current;
-      if (!el) return;
-      el.focus();
-      el.setSelectionRange(el.value.length, el.value.length);
-    });
-  };
 
   /* ── سؤال المعلم بصوته، وإلا عبارة عامة بصوت الجهاز (داخل اللمسة نفسها لسفاري) ── */
   const listen = () => {
@@ -395,6 +345,16 @@ export default function ScenePage() {
                   </section>
                 )}
 
+                {/* أفكار المعلم — تُقرأ ولا تُلمس، وتساعد في الكتابة والحكي والرسم معاً */}
+                {helpCards.length > 0 && (
+                  <section className="sc-box" aria-label={HELP_CARDS_TITLE}>
+                    <h3>💡 {HELP_CARDS_TITLE}</h3>
+                    <ul className="sc-help-cards">
+                      {helpCards.map((c, i) => <li key={i}>{c}</li>)}
+                    </ul>
+                  </section>
+                )}
+
                 {modes.length > 1 && (
                   <div className="sc-tabs" role="tablist" aria-label="كيف تحكي حكايتك؟">
                     {modes.map(m => (
@@ -409,53 +369,13 @@ export default function ScenePage() {
 
                 {mode === 'write' && modes.includes('write') && (
                   <section className="sc-box" aria-label="أكتب حكايتي">
-                    <p className="sc-hint">{info.icon} {info.hint}</p>
-                    {info.help === 'tiles' && tiles.length > 0 && (
-                      <>
-                        <div className="sc-help sc-tiles">
-                          {tiles.map((w, i) => (
-                            <button key={i} type="button" className={`sc-tile${usedTiles.includes(i) ? ' used' : ''}`} onClick={() => tapTile(w, i)}>{w}</button>
-                          ))}
-                        </div>
-                        {(text || usedTiles.length > 0) && (
-                          <button type="button" className="sc-soft" onClick={clearTiles}>🧽 امسح وابدأ من جديد</button>
-                        )}
-                      </>
-                    )}
-                    {info.help === 'starters' && (
-                      <div className="sc-help">
-                        {starters.map(s => <button key={s} type="button" className="sc-starter" onClick={() => insert(s.replace(/…$/, ''))}>{s}</button>)}
-                      </div>
-                    )}
-                    {info.help === 'map' && (
-                      <>
-                        <div className="sc-map">
-                          {STORY_MAP.map((s, i) => <button key={s} type="button" onClick={() => tapMap(i)} aria-pressed={mapHint === i}>{s}</button>)}
-                        </div>
-                        {mapHint !== null && <p className="sc-msg">{STORY_MAP[mapHint]} {MAP_HINTS[mapHint]}</p>}
-                      </>
-                    )}
-                    <textarea ref={textRef} className="sc-text" value={text} lang="ar" dir="rtl" spellCheck={false}
+                    <textarea className="sc-text" value={text} lang="ar" dir="rtl" spellCheck={false}
                       onChange={e => setText(e.target.value.slice(0, 3000))} aria-label="حكايتي"
-                      placeholder={info.help === 'tiles' ? 'المس البطاقات أو اكتب جملتك هنا…' : 'اكتب حكايتك هنا…'} />
-                    {words.length > 0 && (
-                      <>
-                        <p className="sc-basket-title">🧺 سلّة الكلمات — المس الكلمة لتضيفها (الذهبية ⭐ نجمة إضافية)</p>
-                        <div className="sc-help">
-                          {words.map(w => (
-                            <button key={w.w} type="button" onClick={() => insert(w.w)}
-                              className={`sc-word${w.gold ? ' gold' : ''}${plainText.includes(plainArabic(w.w)) ? ' used' : ''}`}>
-                              {w.gold ? '⭐ ' : ''}{w.w}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
+                      placeholder="اكتب حكايتك هنا…" />
                     <div className="sc-meter" aria-live="polite">
                       <span>{n} من {info.goal} {wordNoun(info.goal)}</span>
                       <div className="sc-bar"><div style={{ width: `${pct}%` }} /></div>
                       <StarRow value={meterStars} />
-                      {gold > 0 && <span>+{gold}🌟</span>}
                     </div>
                   </section>
                 )}

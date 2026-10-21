@@ -184,23 +184,13 @@ export const SC_CSS = `
   .sc-tab i{ position:absolute; top:6px; left:8px; width:22px; height:22px; border-radius:50%; background:#2ABB7A; color:#fff; font-style:normal; font-size:.75rem;
     display:grid; place-items:center; border:2px solid #fff; }
 
-  .sc-help{ display:flex; flex-wrap:wrap; gap:8px; }
-  .sc-tiles{ min-height:56px; padding:8px; border-radius:16px; background:#FAF7F2; border:2px dashed #E3DACB; }
-  .sc-tile{ border:none; border-radius:14px; padding:10px 14px; font-weight:900; font-size:1.15rem; cursor:pointer; background:#fff; color:#1A2B4A;
-    box-shadow:0 3px 0 #E3DACB; min-height:48px; }
-  .sc-tile.used{ background:#3FA796; color:#fff; box-shadow:0 3px 0 #2B7E71; }
-  .sc-starter{ border:2px dashed #3FA796; background:#F3FBF9; color:#2B7E71; border-radius:14px; padding:8px 12px; font-weight:800; cursor:pointer; font-size:1rem; min-height:46px; }
-  .sc-map{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .sc-map button{ border:none; border-radius:14px; padding:10px; background:#FFF6DF; color:#7A5B12; font-weight:900; cursor:pointer; font-size:1rem; min-height:48px; }
-  .sc-hint{ margin:0; font-size:.88rem; color:#5D6B82; font-weight:700; }
+  .sc-help-cards{ list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px; }
+  .sc-help-cards li{ background:#FFF6DF; color:#7A5B12; border-radius:14px; padding:8px 14px; font-weight:800; font-size:1.08rem; line-height:1.7;
+    border-inline-start:4px solid #E8B84B; }
   .sc-text{ width:100%; min-height:170px; border:3px solid #E3DACB; border-radius:18px; padding:12px 14px; font-family:var(--font-tajawal),'Tajawal',var(--font-cairo),sans-serif;
     font-size:1.25rem; line-height:2; color:#1A2B4A; background:#FFFDF8; resize:vertical; outline:none; }
   .sc-text:focus{ border-color:#3FA796; box-shadow:0 0 0 4px rgba(63,167,150,.15); }
   .sc-text:disabled{ background:#FAF7F2; }
-  .sc-basket-title{ font-size:.88rem; font-weight:900; color:#5D6B82; margin:0; }
-  .sc-word{ border:none; border-radius:999px; padding:8px 14px; background:#FFF6DF; color:#7A5B12; font-weight:900; cursor:pointer; font-size:1.08rem; min-height:44px; }
-  .sc-word.gold{ background:#E8B84B; color:#1A2B4A; box-shadow:0 3px 0 #C99A2E; }
-  .sc-word.used{ outline:3px solid #2ABB7A; outline-offset:1px; }
   .sc-meter{ display:flex; align-items:center; gap:10px; font-size:.92rem; font-weight:800; color:#5D6B82; }
   .sc-bar{ flex:1; height:12px; border-radius:99px; background:#EDE5D8; overflow:hidden; }
   .sc-bar div{ height:100%; background:linear-gradient(90deg,#3FA796,#2ABB7A); transition:width .25s; }

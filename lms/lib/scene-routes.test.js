@@ -59,7 +59,7 @@ const as = (id, role, email = `${id.slice(0, 4)}@x.com`) => ({ id, email, app_me
 const kid = as(KID, 'student', 'kid@x.com');
 const sceneRow = (over = {}) => ({
   id: SCENE, title: 'يومٌ على التلّة', image_url: 'https://x/scenes/image/1.webp', prompt: 'ماذا يحدث؟', prompt_audio_url: null,
-  words: [{ w: 'فَرِحَ', gold: true }], tiles: [], starters: [], hotspots: [], feeling_q: null,
+  help_cards: ['ولدٌ يقفز'], hotspots: [], feeling_q: null,
   modes: ['write', 'speak', 'photo'], band: 'auto', audience: 'all', is_active: true, publish_at: '2026-01-01T00:00:00Z',
   sort_order: 0, created_by: ADMIN, ...over,
 });
@@ -90,7 +90,7 @@ describe('PUT /api/scenes/[id]/response', () => {
     const r = await submit({ text: 'فرح فهيم بالطائرة', audio_path: audioPath(1), feeling: 'happy' });
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ first: true, points: 15 });
-    expect(r.body.response).toMatchObject({ word_count: 3, gold_used: 1, status: 'submitted', student_name: 'سارة', audio_url: `https://signed/${audioPath(1)}` });
+    expect(r.body.response).toMatchObject({ word_count: 3, status: 'submitted', student_name: 'سارة', audio_url: `https://signed/${audioPath(1)}` });
     expect(db.points).toEqual([{ userId: KID, reason: `scene_story:${SCENE}`, amount: 15 }]);
     expect(db.notes.map(n => n[0]).sort()).toEqual([ADMIN, T1].sort());
   });

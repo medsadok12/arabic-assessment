@@ -54,10 +54,6 @@ const MANAGE_CSS = `
   .sm-chips{ display:flex; flex-wrap:wrap; gap:6px; }
   .sm-chip{ display:inline-flex; align-items:center; gap:6px; background:#F4EFE6; border-radius:999px; padding:4px 6px 4px 12px; font-weight:800; font-size:.95rem; }
   .sm-chip button{ border:none; background:#fff; color:#475569; border-radius:999px; width:30px; height:30px; cursor:pointer; font-family:inherit; font-size:.8rem; }
-  .sm-chip.word{ padding:4px 6px; font-size:1.05rem; }
-  .sm-chip.word button:first-child{ font-size:1rem; }
-  .sm-chip.gold{ background:#E8B84B; }
-  .sm-chip.tile{ background:#fff; border:2px solid #EDE5D8; padding:4px 12px; }
   .sm-add{ display:flex; gap:8px; align-items:center; }
   .sm-add .wa-input{ flex:1; min-width:0; }
   .sm-list{ display:flex; flex-direction:column; gap:8px; }
@@ -242,7 +238,7 @@ export default function ScenesManage() {
               <div className="wa-card" style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 48 }}>🖼️</div>
                 <h3>أضف أول مشهد</h3>
-                <p className="wa-sub">صورة فيها حكاية + سؤال للطفل. أضف عدسات المحقّق وسلّة كلمات لتساعده أكثر.</p>
+                <p className="wa-sub">صورة فيها حكاية + سؤال للطفل. أضف عدسات المحقّق وبطاقات مساعدة لتساعده أكثر.</p>
                 <button type="button" className="wa-btn" style={{ marginTop: 12 }} onClick={() => setEdit({ initial: null })}>➕ مشهد جديد</button>
               </div>
             )}

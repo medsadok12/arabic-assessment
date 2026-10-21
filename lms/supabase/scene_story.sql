@@ -85,4 +85,27 @@ VALUES ('student-work', 'student-work', false, 10485760,
               'audio/mpeg', 'audio/mp4', 'audio/aac', 'audio/wav', 'audio/webm', 'audio/ogg'])
 ON CONFLICT (id) DO NOTHING;
 
+-- ════════════════════════════════════════════════════════════════
+-- 2026-10-21 «💡 بطاقات المساعدة» (طلب الأستاذ محمد): أفكار يكتبها المعلم
+-- تُعرض للطفل كما هي ولا تُلمس. تحلّ محل سلّة الكلمات (words) وبطاقات الجملة
+-- (tiles) وبدايات الجمل (starters) — وهي و what_if أعمدة مهجورة باقية للتوافق.
+-- تعبئة لمرة واحدة: ما كتبه المعلم في الأعمدة القديمة يُنقل بترتيبه بلا تكرار.
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE public.scenes ADD COLUMN IF NOT EXISTS help_cards jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+UPDATE public.scenes s SET help_cards = COALESCE((
+  SELECT jsonb_agg(card ORDER BY first_pos) FROM (
+    SELECT card, min(pos) AS first_pos FROM (
+      SELECT btrim(w->>'w') AS card, ord AS pos FROM jsonb_array_elements(s.words) WITH ORDINALITY AS t(w, ord)
+      UNION ALL SELECT btrim(x), 100 + ord FROM jsonb_array_elements_text(s.tiles) WITH ORDINALITY AS t(x, ord)
+      UNION ALL SELECT btrim(x), 200 + ord FROM jsonb_array_elements_text(s.starters) WITH ORDINALITY AS t(x, ord)
+    ) all_cards
+    WHERE coalesce(card, '') <> ''
+    GROUP BY card
+    ORDER BY first_pos
+    LIMIT 8
+  ) uniq
+), '[]'::jsonb)
+WHERE s.help_cards = '[]'::jsonb;
+
 NOTIFY pgrst, 'reload schema';

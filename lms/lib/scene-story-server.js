@@ -14,8 +14,8 @@ import { SCENE_MEDIA_PREFIX, STUDENT_MEDIA_BUCKET } from './scene-story';
 
 export const SCENE_STAFF = ['teacher', 'admin', 'super_admin'];
 export const NON_STUDENT = ['teacher', 'admin', 'super_admin', 'supervisor'];
-export const SCENE_COLUMNS = 'id, title, image_url, prompt, prompt_audio_url, words, tiles, starters, hotspots, feeling_q, modes, band, audience, is_active, publish_at, sort_order, created_by, created_at, updated_at';
-export const RESPONSE_COLUMNS = 'id, scene_id, student_id, student_email, student_name, student_grade, text, audio_path, photo_path, feeling, word_count, gold_used, status, review, reviewed_by, reviewed_at, created_at, updated_at';
+export const SCENE_COLUMNS = 'id, title, image_url, prompt, prompt_audio_url, help_cards, hotspots, feeling_q, modes, band, audience, is_active, publish_at, sort_order, created_by, created_at, updated_at';
+export const RESPONSE_COLUMNS = 'id, scene_id, student_id, student_email, student_name, student_grade, text, audio_path, photo_path, feeling, word_count, status, review, reviewed_by, reviewed_at, created_at, updated_at';
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
 export const json = (body, status = 200) => NextResponse.json(body, { status, headers: NO_STORE });

@@ -1,20 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import {
-  countWords, goldUsed, wordNoun, bandForGrade, effectiveBand, sceneVisibleTo, sanitizeSceneInput,
+  countWords, wordNoun, bandForGrade, effectiveBand, sceneVisibleTo, sanitizeSceneInput,
   sanitizeResponseInput, sanitizeReview, reviewStars, reviewPoints, isStudentMediaPath, plainArabic,
 } from './scene-story';
 
 const SID = 'f4db077e-8016-4abc-94b7-1f53e8b040b6';
-const SCENE = { id: '11111111-2222-4333-8444-555555555555', modes: ['write', 'speak', 'photo'], words: [{ w: 'الرِّيحُ', gold: false }, { w: 'فَرِحَ', gold: true }] };
+const SCENE = { id: '11111111-2222-4333-8444-555555555555', modes: ['write', 'speak', 'photo'] };
 const okMedia = (u) => typeof u === 'string' && u.startsWith('https://x.supabase.co/storage/v1/object/public/media/scenes/');
 
 describe('الكلمات', () => {
   it('عدد الكلمات العربية', () => expect(countWords('في يومٍ مشمسٍ صعدَ فهيم إلى التلّة.')).toBe(7));
   it('تمييز العدد', () => expect([1, 4, 10, 15, 40].map(wordNoun)).toEqual(['كلمة', 'كلمات', 'كلمات', 'كلمة', 'كلمة']));
-  it('الذهبية تُحتسب بلا تشكيل', () => {
-    expect(goldUsed('وفرح فهيم كثيراً', SCENE.words)).toBe(1);
-    expect(goldUsed('هبّت الريح', SCENE.words)).toBe(0);
+  it('التشكيل لا يغيّر العدّ', () => {
     expect(plainArabic('فَرِحَ')).toBe('فرح');
+    expect(countWords('فَرِحَ فَهِيمٌ')).toBe(2);
   });
 });
 
@@ -44,10 +43,11 @@ describe('الفئة والظهور', () => {
 describe('sanitizeSceneInput', () => {
   const good = { title: ' يومٌ على التلّة ', image_url: 'https://x.supabase.co/storage/v1/object/public/media/scenes/image/1.webp', prompt: 'ماذا يحدث في الصورة؟', modes: ['write', 'photo'] };
   it('مشهد سليم', () => {
-    const { data, error } = sanitizeSceneInput({ ...good, words: ['الريح', { w: 'فرح', gold: true }, 'الريح'], hotspots: [{ x: 40.123, y: 30, q: 'ما لونها؟' }, { x: 140, y: 2, q: 'خارج' }], band: '9', audience: 'mine' }, okMedia);
+    const { data, error } = sanitizeSceneInput({ ...good, help_cards: [' ولدٌ يقفز ', 'بنتٌ سعيدة', 'ولدٌ يقفز', ''], words: [{ w: 'قديم' }], hotspots: [{ x: 40.123, y: 30, q: 'ما لونها؟' }, { x: 140, y: 2, q: 'خارج' }], band: '9', audience: 'mine' }, okMedia);
     expect(error).toBeUndefined();
     expect(data.title).toBe('يومٌ على التلّة');
-    expect(data.words).toEqual([{ w: 'الريح', gold: false }, { w: 'فرح', gold: true }]);
+    expect(data.help_cards).toEqual(['ولدٌ يقفز', 'بنتٌ سعيدة']);
+    expect(data.words).toBeUndefined();
     expect(data.hotspots).toEqual([{ x: 40.1, y: 30, q: 'ما لونها؟' }]);
     expect(data.band).toBe('auto');
     expect(data.audience).toBe('mine');
@@ -67,7 +67,7 @@ describe('sanitizeResponseInput', () => {
   const audio = `${SID}/${SCENE.id}/audio-1792500000000-abc123.webm`;
   it('نص + صوت + شعور', () => {
     const { data } = sanitizeResponseInput({ text: ' فرح فهيم بالطائرة ', audio_path: audio, feeling: 'happy', word_count: 999 }, SCENE, { studentId: SID });
-    expect(data).toMatchObject({ text: 'فرح فهيم بالطائرة', audio_path: audio, photo_path: null, feeling: 'happy', word_count: 3, gold_used: 1 });
+    expect(data).toEqual({ text: 'فرح فهيم بالطائرة', audio_path: audio, photo_path: null, feeling: 'happy', word_count: 3 });
   });
   it('مسار ملف طالب آخر مرفوض', () => {
     const other = `00000000-0000-4000-8000-000000000000/${SCENE.id}/audio-1792500000000-abc123.webm`;

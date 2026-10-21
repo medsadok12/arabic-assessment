@@ -11,20 +11,23 @@ export const MODE_INFO = {
   photo: { icon: '📷', label: 'أصوّر' },
 };
 
-/* سلّم الكتابة حسب العمر: المساعدة وهدف عدد الكلمات */
+/* الفئة العمرية: هدف عدد الكلمات في عدّاد الكتابة (والمشهد المخصَّص لفئة لا يظهر لغيرها) */
 export const BANDS = ['1', '2', '3'];
 export const BAND_INFO = {
-  '1': { icon: '🌱', label: 'الصف 1–2', goal: 4,  help: 'tiles',    hint: 'المس البطاقات بالترتيب لتصنع جملتك' },
-  '2': { icon: '🌿', label: 'الصف 3–4', goal: 15, help: 'starters', hint: 'اختر بداية جملة ثم أكمل حكايتك' },
-  '3': { icon: '🌳', label: 'الصف 5–7', goal: 40, help: 'map',      hint: 'استعن بخريطة الحكاية واكتب نصّك' },
+  '1': { icon: '🌱', label: 'الصف 1–2', goal: 4 },
+  '2': { icon: '🌿', label: 'الصف 3–4', goal: 15 },
+  '3': { icon: '🌳', label: 'الصف 5–7', goal: 40 },
 };
+
+/* «💡 بطاقات المساعدة»: أفكار يكتبها المعلم لتساعد الطفل على التعبير — تُعرض
+   كما هي ولا تُلمس (ليست تدريب ترتيب كلمات). حلّت محل سلّة الكلمات وبطاقات
+   الجملة وبدايات الجمل وخريطة الحكاية (2026-10-21) */
+export const HELP_CARDS_TITLE = 'بطاقات المساعدة';
 /* صندوق السؤال تحت الصورة: عنوان ثابت، وسؤال المعلم يُسمَع بتسجيله (لا نص مكتوب).
    بلا تسجيل يقرأ صوت الجهاز عبارة عامة تناسب كل المشاهد */
 export const LISTEN_TITLE    = 'اسْتَمِعْ وَعَبِّرْ';
 export const LISTEN_FALLBACK = 'انْظُرْ إلى الصُّورَةِ جَيِّداً، ثُمَّ عَبِّرْ عَمَّا تَراهُ';
 
-export const STORY_MAP = ['👤 من؟', '📍 أين ومتى؟', '⚡ ماذا حدث؟', '🏁 كيف انتهت؟'];
-export const DEFAULT_STARTERS = ['في الصورةِ أرى…', 'كان الجوُّ…', 'شعرتُ بـ…', 'وفجأةً…', 'وفي النهايةِ…'];
 export const FEELINGS = [
   { id: 'happy',    icon: '😄', label: 'فرحان' },
   { id: 'excited',  icon: '🤩', label: 'متحمّس' },
@@ -36,7 +39,7 @@ export const FEELINGS = [
 /* تقييم المعلم: ثلاثة معايير × 1–3 نجوم + ملصقات + تعليق */
 export const CRITERIA = [
   { id: 'idea',  icon: '💡', label: 'الفكرة' },
-  { id: 'words', icon: '🧺', label: 'الكلمات' },
+  { id: 'words', icon: '🔤', label: 'الكلمات' },
   { id: 'order', icon: '🧱', label: 'الترتيب' },
 ];
 export const STICKERS = [
@@ -53,7 +56,7 @@ export const STAR_POINTS   = 2;    // لكل نجمة من نجوم المعلم
 
 export const STUDENT_MEDIA_BUCKET = 'student-work';
 export const SCENE_MEDIA_PREFIX   = 'scenes/';
-export const LIMITS = { title: 80, prompt: 240, word: 30, words: 16, tiles: 10, starters: 8, hotspots: 6, q: 120, feelingQ: 80, text: 3000, comment: 500 };
+export const LIMITS = { title: 80, prompt: 240, helpCards: 8, helpCard: 120, hotspots: 6, q: 120, feelingQ: 80, text: 3000, comment: 500 };
 export const AUDIO_MAX_SECS = 120;
 
 const TASHKEEL_RE = /[ً-ْٰـ]/g;
@@ -66,11 +69,6 @@ export function countWords(text) {
 /* تمييز العدد: 3–10 كلمات، وما عداها كلمة (11 كلمة، 40 كلمة) */
 export const wordNoun = (n) => (n >= 3 && n <= 10 ? 'كلمات' : 'كلمة');
 
-/* عدد الكلمات الذهبية المستعملة في النص (تُقارن بلا تشكيل) */
-export function goldUsed(text, words) {
-  const t = plainArabic(text);
-  return (Array.isArray(words) ? words : []).filter(x => x?.gold && x.w && t.includes(plainArabic(x.w).trim())).length;
-}
 
 /* فئة الطالب من صفه، أو فئة المشهد إن حُدِّدت */
 export function bandForGrade(grade) {
@@ -118,15 +116,7 @@ export function sanitizeSceneInput(body, isMediaUrl, { partial = false } = {}) {
     if (b.prompt_audio_url && !isMediaUrl(b.prompt_audio_url)) return { error: 'رابط صوت السؤال غير صالح — سجّله أو ارفعه من اللوحة' };
     data.prompt_audio_url = b.prompt_audio_url || null;
   }
-  if (b.words !== undefined) {
-    const seen = new Set();
-    data.words = (Array.isArray(b.words) ? b.words : [])
-      .map(x => ({ w: str(typeof x === 'string' ? x : x?.w, LIMITS.word), gold: !!x?.gold }))
-      .filter(x => x.w && !seen.has(x.w) && seen.add(x.w))
-      .slice(0, LIMITS.words);
-  }
-  if (b.tiles !== undefined) data.tiles = (Array.isArray(b.tiles) ? b.tiles : []).map(x => str(x, LIMITS.word)).filter(Boolean).slice(0, LIMITS.tiles);
-  if (b.starters !== undefined) data.starters = strList(b.starters, LIMITS.starters, 60);
+  if (b.help_cards !== undefined) data.help_cards = strList(b.help_cards, LIMITS.helpCards, LIMITS.helpCard);
   if (b.hotspots !== undefined) {
     data.hotspots = (Array.isArray(b.hotspots) ? b.hotspots : [])
       .map(h => ({ x: Math.round(Number(h?.x) * 10) / 10, y: Math.round(Number(h?.y) * 10) / 10, q: str(h?.q, LIMITS.q) }))
@@ -160,8 +150,8 @@ export function isStudentMediaPath(path, studentId, sceneId, kind) {
   return path.startsWith(prefix) && new RegExp(`^${kind}-\\d+-[a-z0-9]{6}\\.[a-z0-9]{2,4}$`).test(path.slice(prefix.length));
 }
 
-/* ردّ الطالب ← { data } أو { error } (رسالة ودّية للطفل). word_count و gold_used
-   يحسبهما الخادم من النص نفسه، لا يُقبلان من العميل. */
+/* ردّ الطالب ← { data } أو { error } (رسالة ودّية للطفل). word_count يحسبه الخادم
+   من النص نفسه، لا يُقبل من العميل. */
 export function sanitizeResponseInput(body, scene, { studentId }) {
   const b = body && typeof body === 'object' ? body : {};
   const modes = Array.isArray(scene?.modes) && scene.modes.length ? scene.modes : SCENE_MODES;
@@ -183,7 +173,6 @@ export function sanitizeResponseInput(body, scene, { studentId }) {
       photo_path: photo,
       feeling,
       word_count: countWords(text),
-      gold_used: goldUsed(text, scene.words),
     },
   };
 }
