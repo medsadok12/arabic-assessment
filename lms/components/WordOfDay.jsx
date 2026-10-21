@@ -83,7 +83,7 @@ export default function WordOfDay() {
     const text = word.sentence ? `${word.word}. ${word.sentence}` : word.word;
     try {
       audioRef.current?.pause();
-      const a = new Audio(`/api/faheem/tts?t=${encodeURIComponent(text)}`);
+      const a = new Audio(`/api/faheem/tts?c=1&t=${encodeURIComponent(text)}`);
       audioRef.current = a;
       setPlaying(true);
       a.onended = () => setPlaying(false);

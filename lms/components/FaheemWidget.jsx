@@ -21,12 +21,14 @@ function cleanText(text) {
     .trim();
 }
 
+/* أول قطعة قصيرة (يبدأ الصوت بسرعة)، والباقي قطع كبيرة (نَفَس طبيعي وطلبات أقل).
+   الخادم يقبل حتى 700 حرف في الطلب. */
 function chunkText(text) {
   const chunks = [];
   const sentences = text.split(/(?<=[.!?،؛\n])\s*/);
   let cur = '';
   for (const s of sentences) {
-    if ((cur + s).length > 180) {
+    if ((cur + s).length > (chunks.length ? 600 : 220)) {
       if (cur) chunks.push(cur.trim());
       cur = s;
     } else {
@@ -34,7 +36,17 @@ function chunkText(text) {
     }
   }
   if (cur.trim()) chunks.push(cur.trim());
-  return chunks.length ? chunks : [text.slice(0, 180)];
+  // جملة طويلة جداً بلا علامات ترقيم ← تُقطع عند المسافات
+  const out = [];
+  for (let c of chunks) {
+    while (c.length > 650) {
+      const at = c.lastIndexOf(' ', 600);
+      out.push(c.slice(0, at > 200 ? at : 600).trim());
+      c = c.slice(at > 200 ? at : 600).trim();
+    }
+    if (c) out.push(c);
+  }
+  return out.length ? out : [text.slice(0, 600)];
 }
 
 /* ── Arabic voice picker — priority-ranked for best quality across platforms ──
@@ -61,11 +73,12 @@ function pickArabicVoice() {
   return voices.find(v => v.lang?.startsWith('ar')) ?? null;
 }
 
-/* ── TTS hook — browser Speech API (primary, cheerful & controllable),
-      Google Translate proxy (fallback when no Arabic voice exists) ── */
+/* ── TTS hook — server voice /api/faheem/tts (human voice: Azure / Gemini — see
+      lib/faheem-tts.js); the device's own Arabic voice only if the server audio fails ── */
 function useSpeech() {
-  const audioRef  = useRef(null);
-  const cancelRef = useRef(false);
+  const audioRef = useRef(null);   // القطعة التي تُشغَّل الآن
+  const nextRef  = useRef(null);   // القطعة التالية — تُحمَّل أثناء تشغيل الحالية
+  const runRef   = useRef(null);   // رمز القراءة الجارية؛ قراءة جديدة أو إيقاف يُبطل السابقة
 
   // Preload browser voices so they're available on first utterance
   useEffect(() => {
@@ -74,11 +87,18 @@ function useSpeech() {
     window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
   }, []);
 
-  useEffect(() => () => {
-    cancelRef.current = true;
+  // يوقف كل صوت ويلغي التحميل الجاري (بلا أحداث خطأ تُطلق صوت الجهاز)
+  function stopAll() {
+    for (const a of [audioRef.current, nextRef.current]) {
+      if (!a) continue;
+      a.onended = null; a.onerror = null;
+      a.pause(); a.removeAttribute('src'); a.load();
+    }
+    audioRef.current = null; nextRef.current = null;
     window.speechSynthesis?.cancel();
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-  }, []);
+  }
+
+  useEffect(() => () => { runRef.current = null; stopAll(); }, []);
 
   // Fallback: browser Speech API (system voice) — used only if the server audio fails
   function playBrowser(chunk, resolve) {
@@ -96,11 +116,14 @@ function useSpeech() {
     window.speechSynthesis.speak(u);
   }
 
-  function playChunk(chunk) {
+  function makeAudio(chunk) {
+    const a = new Audio(`/api/faheem/tts?t=${encodeURIComponent(chunk)}`);
+    a.preload = 'auto';
+    return a;
+  }
+
+  function playChunk(audio, chunk) {
     return new Promise(resolve => {
-      // Primary: server proxy → Azure Neural (realistic, human Arabic voice).
-      // Browser system voice is only a fallback if the audio stream fails.
-      const audio = new Audio(`/api/faheem/tts?t=${encodeURIComponent(chunk)}`);
       audioRef.current = audio;
       audio.onended = resolve;
       audio.onerror = () => playBrowser(chunk, resolve);
@@ -109,23 +132,24 @@ function useSpeech() {
   }
 
   const speak = useCallback(async (text, { onEnd } = {}) => {
-    cancelRef.current = true;
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    window.speechSynthesis?.cancel();
-    cancelRef.current = false;
+    stopAll();
+    const run = {};
+    runRef.current = run;
 
     const chunks = chunkText(cleanText(text));
-    for (const chunk of chunks) {
-      if (cancelRef.current) break;
-      await playChunk(chunk);
+    let audio = makeAudio(chunks[0]);
+    for (let i = 0; i < chunks.length; i++) {
+      if (runRef.current !== run) return;
+      nextRef.current = chunks[i + 1] ? makeAudio(chunks[i + 1]) : null;
+      await playChunk(audio, chunks[i]);
+      audio = nextRef.current;
     }
-    if (!cancelRef.current) onEnd?.();
+    if (runRef.current === run) onEnd?.();
   }, []);
 
   const cancel = useCallback(() => {
-    cancelRef.current = true;
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    window.speechSynthesis?.cancel();
+    runRef.current = null;
+    stopAll();
   }, []);
 
   return { speak, cancel };
