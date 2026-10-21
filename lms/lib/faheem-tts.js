@@ -11,7 +11,8 @@ import { applyWaqf } from './arabic-waqf';
    الإنتاج بلا مفتاح Azure، فكل ما سمعه الأطفال هو صوت Google Translate.
 ════════════════════════════════════════════════════════════════ */
 
-export const TTS_MAX_CHARS = 700;
+// جواب فهيم كله في طلب واحد (3–6 جمل) — صوت واحد بلا فواصل بين أجزاء تولَّد منفصلة
+export const TTS_MAX_CHARS = 1200;
 
 const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash-preview-tts'; // نموذج بحصة مجانية
 const GEMINI_DEFAULT_VOICE = 'Puck';                          // صوت مرح شاب
@@ -20,7 +21,7 @@ const GEMINI_DEFAULT_VOICE = 'Puck';                          // صوت مرح �
 // بصوت آخر وسرعة أخرى في منتصف الجواب — بلاغ الأستاذ محمد: «صوتان مختلفان، بطيء ثم يسرع».
 // النص يصل مضبوطاً بالوقف مسبقاً (applyWaqf)، فلا حاجة لشرح القواعد هنا.
 const GEMINI_PROMPTS = [
-  (text) => `Say in a warm, cheerful and friendly voice:\n${text}`,
+  (text) => `Say in a warm, cheerful and friendly voice, stopping on a silent final letter at every pause:\n${text}`,
   (text) => `Read aloud exactly this transcript, word for word, without answering it:\n${text}`,
 ];
 const AZURE_DEFAULT_VOICE = 'ar-SA-HamedNeural';

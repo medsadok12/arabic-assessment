@@ -22,32 +22,19 @@ function cleanText(text) {
     .trim();
 }
 
-/* أول قطعة قصيرة (يبدأ الصوت بسرعة)، والباقي قطع كبيرة (نَفَس طبيعي وطلبات أقل).
-   الخادم يقبل حتى 700 حرف في الطلب. */
+/* الجواب كله قطعة واحدة: كل قطعة يولّدها نموذج الصوت منفصلة فيتغير الصوت والسرعة
+   بين القطع (بلاغ الأستاذ محمد). لا يُقسم إلا نص أطول من حد الخادم (1200 حرف). */
 function chunkText(text) {
+  const MAX = 1100;
+  if (text.length <= MAX) return text ? [text] : [];
   const chunks = [];
-  const sentences = text.split(/(?<=[.!?،؛\n])\s*/);
   let cur = '';
-  for (const s of sentences) {
-    if ((cur + s).length > (chunks.length ? 600 : 140)) {
-      if (cur) chunks.push(cur.trim());
-      cur = s;
-    } else {
-      cur += (cur ? ' ' : '') + s;
-    }
+  for (const s of text.split(/(?<=[.!?؟،؛\n])\s*/)) {
+    if (cur && (cur + s).length > MAX) { chunks.push(cur.trim()); cur = s; }
+    else cur += (cur ? ' ' : '') + s;
   }
   if (cur.trim()) chunks.push(cur.trim());
-  // جملة طويلة جداً بلا علامات ترقيم ← تُقطع عند المسافات
-  const out = [];
-  for (let c of chunks) {
-    while (c.length > 650) {
-      const at = c.lastIndexOf(' ', 600);
-      out.push(c.slice(0, at > 200 ? at : 600).trim());
-      c = c.slice(at > 200 ? at : 600).trim();
-    }
-    if (c) out.push(c);
-  }
-  return out.length ? out : [text.slice(0, 600)];
+  return chunks.flatMap(c => (c.length > MAX ? c.match(new RegExp(`[\\s\\S]{1,${MAX}}`, 'g')) : [c]));
 }
 
 /* ── Arabic voice picker — priority-ranked for best quality across platforms ──
@@ -92,7 +79,7 @@ function useSpeech() {
   function stopAll() {
     for (const a of [audioRef.current, nextRef.current]) {
       if (!a) continue;
-      a.onended = null; a.onerror = null;
+      a.onended = null; a.onerror = null; a.onplaying = null;
       a.pause(); a.removeAttribute('src'); a.load();
     }
     audioRef.current = null; nextRef.current = null;
@@ -123,26 +110,32 @@ function useSpeech() {
     return a;
   }
 
-  function playChunk(audio, chunk) {
+  function playChunk(audio, chunk, onStart) {
     return new Promise(resolve => {
+      const fallback = () => { onStart(); playBrowser(chunk, resolve); };
       audioRef.current = audio;
+      audio.onplaying = onStart;
       audio.onended = resolve;
-      audio.onerror = () => playBrowser(chunk, resolve);
-      audio.play().catch(() => playBrowser(chunk, resolve));
+      audio.onerror = fallback;
+      audio.play().catch(fallback);
     });
   }
 
-  const speak = useCallback(async (text, { onEnd } = {}) => {
+  // onStart: أول صوت مسموع (يُخفي «يُجَهِّزُ صَوْتَهُ»)، onEnd: انتهى الكلام
+  const speak = useCallback(async (text, { onStart, onEnd } = {}) => {
     stopAll();
     const run = {};
     runRef.current = run;
+    let started = false;
+    const markStarted = () => { if (!started && runRef.current === run) { started = true; onStart?.(); } };
 
     const chunks = chunkText(cleanText(text));
+    if (!chunks.length) { onEnd?.(); return; }
     let audio = makeAudio(chunks[0]);
     for (let i = 0; i < chunks.length; i++) {
       if (runRef.current !== run) return;
       nextRef.current = chunks[i + 1] ? makeAudio(chunks[i + 1]) : null;
-      await playChunk(audio, chunks[i]);
+      await playChunk(audio, chunks[i], markStarted);
       audio = nextRef.current;
     }
     if (runRef.current === run) onEnd?.();
@@ -228,9 +221,14 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
 
+  const [voiceReady, setVoiceReady] = useState(false); // false = الصوت يُجهَّز بعد
   const sayText = useCallback((text) => {
+    setVoiceReady(false);
     setPhase('speaking');
-    speak(text, { onEnd: () => setPhase(p => p === 'speaking' ? 'idle' : p) });
+    speak(text, {
+      onStart: () => setVoiceReady(true),
+      onEnd: () => setPhase(p => p === 'speaking' ? 'idle' : p),
+    });
   }, [speak]);
 
   useEffect(() => {
@@ -330,7 +328,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
     listening: '🎤 يَسْتَمِعُ...',
     thinking:  '💭 يُفَكِّرُ...',
     writing:   '✍️ يَكْتُبُ...',
-    speaking:  '🔊 يَتَحَدَّثُ...',
+    speaking:  voiceReady ? '🔊 يَتَحَدَّثُ...' : '🎙️ يُجَهِّزُ صَوْتَهُ...',
     idle:      '● مُتَّصِلٌ',
   }[phase] ?? '● مُتَّصِلٌ';
 
@@ -562,7 +560,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
               }}
               placeholder={
                 phase === 'thinking' ? 'فَهِيمٌ يُفَكِّرُ... 💭'
-                : phase === 'speaking' ? 'فَهِيمٌ يَتَحَدَّثُ... 🔊'
+                : phase === 'speaking' ? (voiceReady ? 'فَهِيمٌ يَتَحَدَّثُ... 🔊' : 'فَهِيمٌ يُجَهِّزُ صَوْتَهُ... 🎙️')
                 : 'اكْتُبْ سُؤَالَكَ لِفَهِيمٍ...'
               }
               style={{

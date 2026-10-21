@@ -61,6 +61,9 @@ describe('معرفة فهيم', () => {
     expect(g).toContain('+20 per class');
     expect(g).toContain('NO notification bell');
     expect(g).not.toMatch(/\/dashboard\/profile|\/assessment|ماذا لو|سلة الكلمات/);
+    // قواعد الإعراب: المنصوب بعد «أَنْ» (الخطأ الذي لاحظه الأستاذ محمد: «أَنْ تَعْنِي»)
+    expect(K.FAHEEM_STATIC_PROMPT).toContain('أَنْ تَعْنِيَ');
+    expect(K.FAHEEM_STATIC_PROMPT).toContain("I'RAB CHECK");
   });
   it('القسم الثابت لا يتغيّر بين الطلبات (شرط التخزين المؤقت)، والمتغيّر يحمل الطالب والتاريخ', () => {
     expect(K.FAHEEM_STATIC_PROMPT).not.toMatch(/2026|Student name/);
@@ -69,6 +72,10 @@ describe('معرفة فهيم', () => {
     expect(girl).toContain('FEMALE');
     expect(girl).toContain('الأربعاء 21 أكتوبر 2026');
     expect(K.buildStudentContext({ studentName: 'يوسف' })).toContain('MALE');
+    // الاسم الأول فقط، ويُكتب بحروف عربية إن كان لاتينياً
+    const latin = K.buildStudentContext({ studentName: 'Mohamed Gandouzi' });
+    expect(latin).toContain('«يَا Mohamed الْبَطَلُ»');
+    expect(latin).toContain('Arabic letters with full harakat');
   });
   it('الكتالوج الحي: عناوين البطاقات المعدّلة والقصص المنشورة ومشاهد الجميع فقط', async () => {
     s.tables = {

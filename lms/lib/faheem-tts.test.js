@@ -83,7 +83,7 @@ describe('اختيار الصوت', () => {
     expect(g.url).toContain('gemini-2.5-flash-preview-tts:generateContent');
     expect(g.body.generationConfig.responseModalities).toEqual(['AUDIO']);
     expect(g.body.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName).toBe('Puck');
-    expect(g.body.contents[0].parts[0].text).toBe('Say in a warm, cheerful and friendly voice:\nأَهْلًا يَا بَطَلْ');
+    expect(g.body.contents[0].parts[0].text).toBe('Say in a warm, cheerful and friendly voice, stopping on a silent final letter at every pause:\nأَهْلًا يَا بَطَلْ');
     expect(googleCalls()).toHaveLength(0);
   });
   it('نفدت حصة Gemini ← صوت Google احتياطاً، ولا يُعاد طرق Gemini في الطلب التالي', async () => {
@@ -161,10 +161,10 @@ describe('GET /api/faheem/tts', () => {
     s.user = null;
     expect((await get('t=x')).status).toBe(401);
   });
-  it('يعيد نوع الملف الصحيح، يقصّ عند 700 حرف، ولا يُخزَّن إلا في متصفح الطفل', async () => {
-    const res = await get(`t=${encodeURIComponent('ب'.repeat(900))}`);
+  it('يعيد نوع الملف الصحيح، يقصّ عند 1200 حرف (جواب فهيم كله في طلب واحد)، ولا يُخزَّن إلا في متصفح الطفل', async () => {
+    const res = await get(`t=${encodeURIComponent('ب'.repeat(1500))}`);
     expect(res.headers.get('Content-Type')).toBe('audio/wav');
     expect(res.headers.get('Cache-Control')).toBe('private, max-age=86400');
-    expect(geminiCalls()[0].body.contents[0].parts[0].text.split('\n')[1]).toBe(`${'ب'.repeat(700)}\u0652`); // 700 + سكون الوقف
+    expect(geminiCalls()[0].body.contents[0].parts[0].text.split('\n')[1]).toBe(`${'ب'.repeat(1200)}\u0652`); // 1200 + سكون الوقف
   });
 });
