@@ -340,11 +340,14 @@ export default function ScenePage() {
         <div className="sc-layout">
           <div className="sc-col stick">
             <SceneImage scene={scene} />
-            <div className="sc-prompt">
-              <p>{scene.prompt}</p>
+            <section className="sc-prompt" aria-label="اسْتَمِعْ وَعَبِّرْ">
+              <div className="sc-prompt-text">
+                <h2>🎧 اسْتَمِعْ وَعَبِّرْ</h2>
+                <p>{scene.prompt}</p>
+              </div>
               <button type="button" className={`sc-listen${playing ? ' playing' : ''}`} onClick={listen}
                 aria-label={playing ? 'أوقف الصوت' : 'استمع للسؤال'}>{playing ? '⏸' : '🔊'}</button>
-            </div>
+            </section>
             {!reviewed && scene.hotspots?.length > 0 && (
               <p className="sc-small">🔍 المس العدسات الذهبية على الصورة — في كل واحدة سؤال صغير يساعدك</p>
             )}
@@ -516,7 +519,7 @@ export default function ScenePage() {
 
                 <button type="button" className="sc-send" onClick={send} disabled={!ready || !!sending || rec.recording || preview}>
                   {preview ? '🔒 الإرسال للطلاب فقط'
-                    : sending || (response ? '✨ حدّث حكايتي' : 'أرسل حكايتي لمعلمي ←')}
+                    : sending || 'أرسل لتقييم عملك ←'}
                 </button>
                 {!ready && !preview && (
                   <p className="sc-small">
@@ -540,8 +543,8 @@ export default function ScenePage() {
           )}
           <div className="sc-done-card">
             <span className="big" aria-hidden="true">{done.first ? '🌟' : '✨'}</span>
-            <h2>{done.first ? 'أحسنت يا حكّاءنا الصغير!' : 'حُدِّثت حكايتك!'}</h2>
-            <p>{done.first ? 'وصلت حكايتك لمعلمك، وسيرد عليك بنجومه قريباً' : 'سيقرأ معلمك النسخة الجديدة'}</p>
+            <h2>{done.first ? 'أحسنت يا حكّاءنا الصغير!' : 'وصل عملك لمعلمك من جديد!'}</h2>
+            <p>{done.first ? 'وصلت حكايتك لمعلمك، وسيرد عليك بنجومه قريباً' : 'سيقرأ معلمك عملك الجديد ويقيّمه قريباً'}</p>
             {done.first && done.points > 0 && <span className="pts">+{done.points} نقطة ⭐</span>}
             <Link href="/library/scenes" className="sc-send" style={{ display: 'grid', placeItems: 'center', textDecoration: 'none' }}>📚 مشاهد أخرى</Link>
             <button type="button" className="sc-soft" onClick={() => setDone(null)} autoFocus>👀 أبقى هنا</button>

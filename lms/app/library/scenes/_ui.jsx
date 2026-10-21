@@ -142,7 +142,9 @@ export const SC_CSS = `
   .sc-lens-tip{ position:absolute; left:10px; right:10px; bottom:10px; background:rgba(26,43,74,.95); color:#fff; border:none; border-radius:16px; padding:12px 14px;
     font-weight:800; font-size:1.05rem; line-height:1.6; text-align:center; cursor:pointer; animation:scFade .2s ease; }
   .sc-prompt{ display:flex; gap:10px; align-items:center; background:#fff; border-radius:20px; padding:12px 14px; box-shadow:0 3px 10px rgba(26,43,74,.06); }
-  .sc-prompt p{ margin:0; flex:1; font-weight:900; font-size:1.15rem; line-height:1.6; }
+  .sc-prompt-text{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .sc-prompt-text h2{ margin:0; font-size:.95rem; font-weight:900; color:#2B7E71; }
+  .sc-prompt p{ margin:0; font-weight:900; font-size:1.15rem; line-height:1.6; }
   .sc-listen{ width:54px; height:54px; border-radius:50%; border:none; background:#3FA796; color:#fff; font-size:1.4rem; cursor:pointer; flex-shrink:0;
     box-shadow:0 4px 0 #2B7E71; }
   .sc-listen.playing{ background:#E8B84B; box-shadow:0 4px 0 #C99A2E; animation:scBeat 1s ease-in-out infinite; }
