@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { applyWaqf } from './arabic-waqf';
 
 /* ════════════════════════════════════════════════════════════════
    صوت «فَهِيم» — نص عربي مشكول ← صوت بشري.
@@ -14,7 +15,7 @@ export const TTS_MAX_CHARS = 700;
 
 const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash-preview-tts'; // نموذج بحصة مجانية
 const GEMINI_DEFAULT_VOICE = 'Puck';                          // صوت مرح شاب
-const GEMINI_STYLE = 'Read the following Arabic text aloud exactly as written, following all of its vowel marks, in clear Modern Standard Arabic, with the warm, cheerful and gentle voice of a friendly young storyteller talking to a child, at a relaxed pace:';
+const GEMINI_STYLE = 'Read the following Arabic text aloud exactly as written, following all of its vowel marks, in clear Modern Standard Arabic, with the warm, cheerful and gentle voice of a friendly young storyteller talking to a child, at a relaxed pace. Before every pause, stop on a silent final letter (sukun) as native speakers do; never add a final vowel or tanwin that is not written:';
 const AZURE_DEFAULT_VOICE = 'ar-SA-HamedNeural';
 
 /* ── PCM خام (16-bit mono) ← ملف WAV يشغّله أي متصفح ── */
@@ -210,7 +211,8 @@ function voiceId() {
     ? `azure:${process.env.AZURE_SPEECH_VOICE || AZURE_DEFAULT_VOICE}`
     : `gemini:${process.env.GEMINI_TTS_VOICE || GEMINI_DEFAULT_VOICE}`;
 }
-export const cachePath = (text) => `tts-cache/${createHash('sha256').update(`${voiceId()}|${text}`).digest('hex')}`;
+// «w1» = نسخة قواعد الوقف — تُرفع عند تغيير applyWaqf كي لا يُخدم صوت قديم
+export const cachePath = (text) => `tts-cache/${createHash('sha256').update(`w1|${voiceId()}|${text}`).digest('hex')}`;
 
 async function readCache(admin, path) {
   try {
@@ -226,8 +228,9 @@ async function writeCache(admin, path, out) {
   } catch { /* التخزين تحسين فقط */ }
 }
 
-export async function synthesize(text, { admin = null, shared = false, budgetMs = 25000 } = {}) {
+export async function synthesize(rawText, { admin = null, shared = false, budgetMs = 25000 } = {}) {
   const deadline = Date.now() + budgetMs;
+  const text = applyWaqf(rawText); // الوقف بالسكون قبل أي مزوّد
   const path = shared && admin ? cachePath(text) : null;
   if (path) {
     const hit = await readCache(admin, path);

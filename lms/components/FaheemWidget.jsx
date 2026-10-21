@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { applyWaqf } from '../lib/arabic-waqf';
 
 /* ── TTS text cleaner — strips only non-speakable glyphs (emojis, flags, markdown)
       so the voice never reads "صاروخ" / "علم تونس". Arabic text + ALL harakat and
@@ -28,7 +29,7 @@ function chunkText(text) {
   const sentences = text.split(/(?<=[.!?،؛\n])\s*/);
   let cur = '';
   for (const s of sentences) {
-    if ((cur + s).length > (chunks.length ? 600 : 220)) {
+    if ((cur + s).length > (chunks.length ? 600 : 140)) {
       if (cur) chunks.push(cur.trim());
       cur = s;
     } else {
@@ -105,7 +106,7 @@ function useSpeech() {
     const voice = pickArabicVoice();
     if (!window.speechSynthesis || !voice) { resolve(); return; }
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(chunk);
+    const u = new SpeechSynthesisUtterance(applyWaqf(chunk)); // الوقف بالسكون كصوت الخادم
     u.voice  = voice;
     u.lang   = voice.lang || 'ar-SA';
     u.rate   = 0.94;   // articulate shadda/gemination

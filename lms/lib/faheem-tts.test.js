@@ -83,7 +83,7 @@ describe('اختيار الصوت', () => {
     expect(g.url).toContain('gemini-2.5-flash-preview-tts:generateContent');
     expect(g.body.generationConfig.responseModalities).toEqual(['AUDIO']);
     expect(g.body.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName).toBe('Puck');
-    expect(g.body.contents[0].parts[0].text).toMatch(/storyteller[\s\S]*\nأَهْلًا يَا بَطَل$/);
+    expect(g.body.contents[0].parts[0].text).toMatch(/storyteller[\s\S]*sukun[\s\S]*\nأَهْلًا يَا بَطَلْ$/);
     expect(googleCalls()).toHaveLength(0);
   });
   it('نفدت حصة Gemini ← صوت Google احتياطاً، ولا يُعاد طرق Gemini في الطلب التالي', async () => {
@@ -125,7 +125,7 @@ describe('تخزين النصوص المشتركة (كلمة اليوم)', () =>
   it('أول طالب يولّد الصوت ويُخزَّن، والتالي يُخدم من التخزين بلا طلب', async () => {
     await T.synthesize('قَمَرٌ', { admin, shared: true });
     expect(geminiCalls()).toHaveLength(1);
-    expect(s.store.has(T.cachePath('قَمَرٌ'))).toBe(true);
+    expect(s.store.has(T.cachePath('قَمَرْ'))).toBe(true); // يُخزَّن بعد الوقف
     const again = await T.synthesize('قَمَرٌ', { admin, shared: true });
     expect(geminiCalls()).toHaveLength(1);
     expect(again.type).toBe('audio/wav');
@@ -152,6 +152,6 @@ describe('GET /api/faheem/tts', () => {
     const res = await get(`t=${encodeURIComponent('ب'.repeat(900))}`);
     expect(res.headers.get('Content-Type')).toBe('audio/wav');
     expect(res.headers.get('Cache-Control')).toBe('private, max-age=86400');
-    expect(geminiCalls()[0].body.contents[0].parts[0].text.split('\n')[1]).toHaveLength(700);
+    expect(geminiCalls()[0].body.contents[0].parts[0].text.split('\n')[1]).toBe(`${'ب'.repeat(700)}\u0652`); // 700 + سكون الوقف
   });
 });
