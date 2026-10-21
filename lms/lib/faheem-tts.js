@@ -15,7 +15,14 @@ export const TTS_MAX_CHARS = 700;
 
 const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash-preview-tts'; // نموذج بحصة مجانية
 const GEMINI_DEFAULT_VOICE = 'Puck';                          // صوت مرح شاب
-const GEMINI_STYLE = 'Read the following Arabic text aloud exactly as written, following all of its vowel marks, in clear Modern Standard Arabic, with the warm, cheerful and gentle voice of a friendly young storyteller talking to a child, at a relaxed pace. Before every pause, stop on a silent final letter (sukun) as native speakers do; never add a final vowel or tanwin that is not written:';
+// تعليمات قصيرة بصيغة توثيق Google («Say cheerfully: …»). التعليمات الطويلة جعلت النموذج
+// يظن أن المطلوب ردّ مكتوب (HTTP 400 «Model tried to generate text») فيُنتقل لنموذج آخر
+// بصوت آخر وسرعة أخرى في منتصف الجواب — بلاغ الأستاذ محمد: «صوتان مختلفان، بطيء ثم يسرع».
+// النص يصل مضبوطاً بالوقف مسبقاً (applyWaqf)، فلا حاجة لشرح القواعد هنا.
+const GEMINI_PROMPTS = [
+  (text) => `Say in a warm, cheerful and friendly voice:\n${text}`,
+  (text) => `Read aloud exactly this transcript, word for word, without answering it:\n${text}`,
+];
 const AZURE_DEFAULT_VOICE = 'ar-SA-HamedNeural';
 
 /* ── PCM خام (16-bit mono) ← ملف WAV يشغّله أي متصفح ── */
@@ -130,47 +137,51 @@ export function blockMs(status, body = '') {
   return 0;
 }
 
+async function callGemini(apiKey, model, voice, prompt, timeoutMs) {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(timeoutMs),
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseModalities: ['AUDIO'],
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
+      },
+    }),
+  });
+  if (!res.ok) return { status: res.status, body: await res.text().catch(() => '') };
+  const json = await res.json().catch(() => null);
+  const audio = json?.candidates?.[0]?.content?.parts?.find(p => p.inlineData?.data)?.inlineData;
+  if (!audio) return { status: 200, body: `no audio finishReason=${json?.candidates?.[0]?.finishReason ?? 'unknown'}` };
+  const rate = Number(/rate=(\d+)/.exec(audio.mimeType || '')?.[1]) || 24000;
+  return { buf: pcmToWav(Buffer.from(audio.data, 'base64'), rate) };
+}
+
+/* صوت واحد للجواب كله: الفشل العابر يُعاد على النموذج نفسه بصيغة أخرى، ولا يُنتقل لنموذج
+   آخر (صوت آخر) إلا إذا كان النموذج غير متاح فعلاً (حصة نفدت، أو سُحب). */
 async function geminiTTS(text, deadline) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   const voice = process.env.GEMINI_TTS_VOICE || GEMINI_DEFAULT_VOICE;
   const models = (await geminiModels(apiKey)).filter(m => !(geminiState.blocked.get(m) > Date.now()));
   for (const model of models.slice(0, 2)) {
-    const left = deadline - Date.now();
-    if (left < 3000) break;
-    const t0 = Date.now();
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: 'POST',
-        signal: AbortSignal.timeout(left),
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `${GEMINI_STYLE}\n${text}` }] }],
-          generationConfig: {
-            responseModalities: ['AUDIO'],
-            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
-          },
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        const ms = blockMs(res.status, body);
-        if (ms) geminiState.blocked.set(model, Date.now() + ms);
-        console.error(`[tts] ✗ gemini ${model} HTTP ${res.status} (${Date.now() - t0}ms) blocked=${Math.round(ms / 1000)}s — ${body.slice(0, 200)}`);
-        continue;
+    for (const [i, prompt] of GEMINI_PROMPTS.entries()) {
+      const left = deadline - Date.now();
+      if (left < 3000) return null;
+      const t0 = Date.now();
+      try {
+        const r = await callGemini(apiKey, model, voice, prompt(text), left);
+        if (r.buf) {
+          console.log(`[tts] ✓ gemini ${model} ${voice} prompt=${i + 1} (${Date.now() - t0}ms) chars=${text.length} bytes=${r.buf.length}`);
+          return { buf: r.buf, type: 'audio/wav' };
+        }
+        const ms = blockMs(r.status, r.body);
+        console.error(`[tts] ✗ gemini ${model} prompt=${i + 1} HTTP ${r.status} (${Date.now() - t0}ms) blocked=${Math.round(ms / 1000)}s — ${r.body.slice(0, 200)}`);
+        if (ms) { geminiState.blocked.set(model, Date.now() + ms); break; } // غير متاح ← النموذج التالي
+      } catch (e) {
+        console.error(`[tts] ✗ gemini ${model} prompt=${i + 1} ${e?.name} (${Date.now() - t0}ms): ${e?.message}`);
       }
-      const json = await res.json().catch(() => null);
-      const audio = json?.candidates?.[0]?.content?.parts?.find(p => p.inlineData?.data)?.inlineData;
-      if (!audio) {
-        console.error(`[tts] ✗ gemini ${model} no audio finishReason=${json?.candidates?.[0]?.finishReason ?? 'unknown'} (${Date.now() - t0}ms)`);
-        continue;
-      }
-      const rate = Number(/rate=(\d+)/.exec(audio.mimeType || '')?.[1]) || 24000;
-      const buf = pcmToWav(Buffer.from(audio.data, 'base64'), rate);
-      console.log(`[tts] ✓ gemini ${model} ${voice} (${Date.now() - t0}ms) chars=${text.length} bytes=${buf.length}`);
-      return { buf, type: 'audio/wav' };
-    } catch (e) {
-      console.error(`[tts] ✗ gemini ${model} ${e?.name} (${Date.now() - t0}ms): ${e?.message}`);
     }
   }
   return null;

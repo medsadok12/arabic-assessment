@@ -83,7 +83,7 @@ describe('اختيار الصوت', () => {
     expect(g.url).toContain('gemini-2.5-flash-preview-tts:generateContent');
     expect(g.body.generationConfig.responseModalities).toEqual(['AUDIO']);
     expect(g.body.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName).toBe('Puck');
-    expect(g.body.contents[0].parts[0].text).toMatch(/storyteller[\s\S]*sukun[\s\S]*\nأَهْلًا يَا بَطَلْ$/);
+    expect(g.body.contents[0].parts[0].text).toBe('Say in a warm, cheerful and friendly voice:\nأَهْلًا يَا بَطَلْ');
     expect(googleCalls()).toHaveLength(0);
   });
   it('نفدت حصة Gemini ← صوت Google احتياطاً، ولا يُعاد طرق Gemini في الطلب التالي', async () => {
@@ -93,6 +93,19 @@ describe('اختيار الصوت', () => {
     await T.synthesize('نص آخر');
     expect(geminiCalls()).toHaveLength(1);
     expect(googleCalls()).toHaveLength(2);
+  });
+  it('«Model tried to generate text» ← يُعاد على النموذج نفسه بصيغة أخرى، لا ينتقل لصوت آخر', async () => {
+    s.models = [{ name: 'models/gemini-9-flash-tts', supportedGenerationMethods: ['generateContent'] }];
+    const ok = s.gemini;
+    let n = 0;
+    s.gemini = (u) => (n++ === 0 ? reply(400, '{"error":{"message":"Model tried to generate text, but it should only be used for TTS."}}') : ok(u));
+    const out = await T.synthesize('هَلْ تُرِيدُ أَنْ تَلْعَبَ؟');
+    expect(out.type).toBe('audio/wav');
+    const calls = geminiCalls();
+    expect(calls).toHaveLength(2);
+    expect(calls.every(c => c.url.includes('gemini-2.5-flash-preview-tts'))).toBe(true);
+    expect(calls[1].body.contents[0].parts[0].text).toMatch(/^Read aloud exactly this transcript[\s\S]*\nهَلْ تُرِيدُ أَنْ تَلْعَبْ؟$/);
+    expect(googleCalls()).toHaveLength(0);
   });
   it('النموذج الافتراضي مسحوب ← يُجرَّب نموذج TTS آخر يعلنه الحساب', async () => {
     s.models = [
