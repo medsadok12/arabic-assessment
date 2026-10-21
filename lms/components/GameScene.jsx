@@ -997,3 +997,15 @@ function GameSceneInner({ category, scene }) {
 
 const GameScene = memo(GameSceneInner);
 export default GameScene;
+
+/* صورة مصغّرة للعالم (بطاقات المجموعات ونافذة البدء): الرسم نفسه داخل إطاره */
+function SceneThumbInner({ category, scene }) {
+  const key = scene || sceneFor(category);
+  const Scene = SCENE_COMPONENTS[key] || Meadow;
+  return (
+    <svg aria-hidden="true" data-scene-thumb={key} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice" style={{ display: 'block', width: '100%', height: '100%', background: SCENE_TOP[key] || SCENE_TOP.meadow }}>
+      <Scene />
+    </svg>
+  );
+}
+export const SceneThumb = memo(SceneThumbInner);
