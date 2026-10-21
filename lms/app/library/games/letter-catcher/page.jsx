@@ -918,7 +918,7 @@ export default function LetterCatcherGame() {
             </div>
           )}
 
-          <div style={{ ...S.optRow, gridTemplateColumns: `repeat(${Math.min(opts.length, 5)}, 1fr)` }}>
+          <div style={{ ...S.optRow, gridTemplateColumns: `repeat(${Math.min(opts.length, 5)}, minmax(0, 1fr))` }}>
             {opts.filter(Boolean).map((opt, idx) => {
               const isRight  = stripDia(opt) === stripDia(w.missing_letter);
               const isTried  = tried.includes(opt);
@@ -1138,9 +1138,10 @@ const S = {
     background: '#FBF3DF', color: '#8A6212', border: '1.5px solid #F1DDA6',
   },
   optRow: { display: 'grid', gap: 9, width: '100%', boxSizing: 'border-box' },
+  // مربّع يملأ عموده فقط: لا حدّ أدنى للارتفاع — مع aspectRatio كان يوسّع الزر فيخرج الصف عن البطاقة
   optBtn: {
-    width: '100%', minHeight: 64, maxHeight: 92,
-    aspectRatio: '1',
+    width: '100%', maxHeight: 92,
+    aspectRatio: '1 / 1',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     borderRadius: 18, border: '2px solid #fff',
     background: '#fff', fontSize: '1.9rem', fontWeight: 800, cursor: 'pointer',
