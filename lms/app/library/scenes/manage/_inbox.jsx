@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { sceneApi, timeAgo } from '../../../../lib/scene-story-client';
 import { CRITERIA, STICKERS, FEELINGS, reviewStars, wordNoun } from '../../../../lib/scene-story';
 import { Modal, Notice } from '../../games/word-wheel/settings/_admin-ui';
+import { RecordingPlayer } from '../_ui';
 
 /* ════════════════════════════════════════════════════════════════
    صندوق الحكايات — يقرأ المعلم ويستمع ويكبّر الصورة، ثم يقيّم بثلاثة
@@ -159,7 +160,7 @@ export default function Inbox({ scenes, sceneFilter, setSceneFilter, onReviewed,
                 {f && <span className="wa-badge muted">{f.icon} {f.label}</span>}
               </div>
               {r.text && <p className="sm-sub-text">{r.text}</p>}
-              {r.audio_url && <audio controls preload="none" src={r.audio_url} className="sm-audio" />}
+              {r.audio_url && <RecordingPlayer src={r.audio_url} className="sm-audio" />}
               {r.photo_url && (
                 <button type="button" className="sm-photo" onClick={() => setZoom(r)} aria-label="كبّر الصورة">
                   {/* eslint-disable-next-line @next/next/no-img-element */}

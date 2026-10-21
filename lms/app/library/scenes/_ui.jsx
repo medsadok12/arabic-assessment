@@ -78,6 +78,25 @@ export function ReviewCard({ review }) {
 
 export const feelingOf = (id) => FEELINGS.find(f => f.id === id) || null;
 
+/* مشغّل تسجيلات المتصفح: ملفات MediaRecorder (webm) لا تحمل مدّتها، فيُظهر
+   المتصفح «0:00 /» كأنه فارغ. نقفز لنهاية الملف مرة واحدة ليحسب المدة ثم نعود */
+export function RecordingPlayer({ src, className }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const a = ref.current;
+    if (!a) return undefined;
+    const fix = () => {
+      if (Number.isFinite(a.duration)) return;
+      const back = () => { a.removeEventListener('timeupdate', back); a.currentTime = 0; };
+      a.addEventListener('timeupdate', back);
+      try { a.currentTime = 1e101; } catch { a.removeEventListener('timeupdate', back); }
+    };
+    a.addEventListener('loadedmetadata', fix);
+    return () => a.removeEventListener('loadedmetadata', fix);
+  }, [src]);
+  return <audio ref={ref} controls preload="metadata" src={src} className={className} />;
+}
+
 export const SC_CSS = `
   .sc{ min-height:100vh; background:#F4EFE6; direction:rtl; color:#1A2B4A; padding-bottom:calc(40px + env(safe-area-inset-bottom));
     font-family:var(--font-cairo),var(--font-tajawal),'Cairo','Tajawal',sans-serif; }
@@ -202,6 +221,7 @@ export const SC_CSS = `
   .sc-row{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
   .sc-soft{ border:2px solid #EDE5D8; background:#fff; color:#1A2B4A; border-radius:14px; padding:0 16px; min-height:48px; font-weight:800; font-size:.95rem; cursor:pointer; }
   .sc-soft:disabled, .sc-soft.off{ opacity:.5; cursor:not-allowed; }
+  .sc-soft.del{ background:#FFFBEB; border-color:#FDE68A; color:#92400E; }
   .sc-file-btn{ display:inline-flex; align-items:center; position:relative; }
   .sc-file{ position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; overflow:hidden; }
   .sc-photo-drop{ position:relative; }

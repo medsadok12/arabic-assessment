@@ -14,7 +14,7 @@ import {
   MODE_INFO, BAND_INFO, STORY_MAP, DEFAULT_STARTERS, DEFAULT_WHAT_IF, FEELINGS,
   AUDIO_MAX_SECS, countWords, goldUsed, plainArabic, wordNoun, LISTEN_TITLE, LISTEN_FALLBACK,
 } from '../../../../lib/scene-story';
-import { SC_CSS, SceneImage, ReviewCard, StarRow, feelingOf } from '../_ui';
+import { SC_CSS, SceneImage, ReviewCard, StarRow, RecordingPlayer, feelingOf } from '../_ui';
 
 /* ════════════════════════════════════════════════════════════════
    «مشهدٌ وحكاية» — شاشة الطفل: ينظر للمشهد، يفتح عدسات المحقّق، يختار
@@ -218,10 +218,27 @@ export default function ScenePage() {
     });
     if (err) setMsg({ ok: false, text: err });
   };
-  const dropAudio = () => {
-    if (!confirm('هل تريد حذف التسجيل والتسجيل من جديد؟')) return;
+  /* حذف ما أُضيف: إن كان قد وصل للمعلم سابقاً، يُحذف عنده عند «أرسل لتقييم عملك» */
+  const removedMsg = (what, saved) => ({
+    ok: true,
+    text: saved && response ? `🗑 حُذف ${what} — اضغط «أرسل لتقييم عملك» ليصل التعديل لمعلمك` : `🗑 حُذف ${what}`,
+  });
+  const deleteAudio = () => {
+    if (!confirm('هل تريد حذف التسجيل؟')) return;
+    const saved = !!audio?.path;
     setAudio(null);
-    setMsg(null);
+    setMsg(removedMsg('التسجيل', saved));
+  };
+  const reRecord = () => {
+    if (!confirm('هل تريد حذف هذا التسجيل والتسجيل من جديد؟')) return;
+    setAudio(null);
+    startRec();
+  };
+  const deletePhoto = () => {
+    if (!confirm('هل تريد حذف الصورة؟')) return;
+    const saved = !!photo?.path;
+    setPhoto(null);
+    setMsg(removedMsg('الصورة', saved));
   };
 
   /* ── الصورة: تُصغَّر في الجهاز قبل الرفع ── */
@@ -362,7 +379,7 @@ export default function ScenePage() {
               <section className="sc-box sc-mywork" aria-label="حكايتي">
                 <h3>📖 حكايتي {feelingLabel && <span className="sc-mode-tag">{feelingOf(feeling).icon} {feelingLabel}</span>}</h3>
                 {response.text && <p className="sc-mywork-text">{response.text}</p>}
-                {response.audio_url && <audio controls preload="none" src={response.audio_url} />}
+                {response.audio_url && <RecordingPlayer src={response.audio_url} />}
                 {response.photo_url && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img className="sc-photo-prev" src={response.photo_url} alt="صورة حكايتي" />
@@ -475,9 +492,10 @@ export default function ScenePage() {
                       )}
                       {audio && (
                         <>
-                          <audio controls preload="metadata" src={audio.url} />
+                          <RecordingPlayer src={audio.url} />
                           <div className="sc-row">
-                            <button type="button" className="sc-soft" onClick={dropAudio} disabled={!!sending}>🔁 سجّل من جديد</button>
+                            <button type="button" className="sc-soft" onClick={reRecord} disabled={!!sending}>🔁 سجّل من جديد</button>
+                            <button type="button" className="sc-soft del" onClick={deleteAudio} disabled={!!sending}>🗑 احذف التسجيل</button>
                           </div>
                         </>
                       )}
@@ -508,6 +526,7 @@ export default function ScenePage() {
                         🖼️ اختر من الصور
                         <input type="file" accept="image/*" onChange={pickPhoto} disabled={preview || !!sending} className="sc-file" />
                       </label>
+                      {photo && <button type="button" className="sc-soft del" onClick={deletePhoto} disabled={!!sending}>🗑 احذف الصورة</button>}
                     </div>
                     <p className="sc-small">لا يرى صورتك إلا معلمك 🔒</p>
                   </section>
