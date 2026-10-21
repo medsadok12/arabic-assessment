@@ -25,7 +25,6 @@ export const LISTEN_FALLBACK = 'انْظُرْ إلى الصُّورَةِ جَ�
 
 export const STORY_MAP = ['👤 من؟', '📍 أين ومتى؟', '⚡ ماذا حدث؟', '🏁 كيف انتهت؟'];
 export const DEFAULT_STARTERS = ['في الصورةِ أرى…', 'كان الجوُّ…', 'شعرتُ بـ…', 'وفجأةً…', 'وفي النهايةِ…'];
-export const DEFAULT_WHAT_IF = ['ماذا لو تغيّر المكانُ فجأة؟', 'ماذا لو تكلّمتِ الأشياءُ في الصورة؟', 'ماذا لو جاءَ ضيفٌ غيرُ متوقَّع؟', 'ماذا لو بدأ المطرُ ينهمر؟'];
 export const FEELINGS = [
   { id: 'happy',    icon: '😄', label: 'فرحان' },
   { id: 'excited',  icon: '🤩', label: 'متحمّس' },
@@ -54,7 +53,7 @@ export const STAR_POINTS   = 2;    // لكل نجمة من نجوم المعلم
 
 export const STUDENT_MEDIA_BUCKET = 'student-work';
 export const SCENE_MEDIA_PREFIX   = 'scenes/';
-export const LIMITS = { title: 80, prompt: 240, word: 30, words: 16, tiles: 10, starters: 8, hotspots: 6, q: 120, whatIf: 8, feelingQ: 80, text: 3000, comment: 500 };
+export const LIMITS = { title: 80, prompt: 240, word: 30, words: 16, tiles: 10, starters: 8, hotspots: 6, q: 120, feelingQ: 80, text: 3000, comment: 500 };
 export const AUDIO_MAX_SECS = 120;
 
 const TASHKEEL_RE = /[ً-ْٰـ]/g;
@@ -128,7 +127,6 @@ export function sanitizeSceneInput(body, isMediaUrl, { partial = false } = {}) {
   }
   if (b.tiles !== undefined) data.tiles = (Array.isArray(b.tiles) ? b.tiles : []).map(x => str(x, LIMITS.word)).filter(Boolean).slice(0, LIMITS.tiles);
   if (b.starters !== undefined) data.starters = strList(b.starters, LIMITS.starters, 60);
-  if (b.what_if !== undefined) data.what_if = strList(b.what_if, LIMITS.whatIf, LIMITS.q);
   if (b.hotspots !== undefined) {
     data.hotspots = (Array.isArray(b.hotspots) ? b.hotspots : [])
       .map(h => ({ x: Math.round(Number(h?.x) * 10) / 10, y: Math.round(Number(h?.y) * 10) / 10, q: str(h?.q, LIMITS.q) }))

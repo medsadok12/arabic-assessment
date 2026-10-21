@@ -4,7 +4,7 @@ import AudioClipField from '../../../../components/AudioClipField';
 import { resizeImageToWebp } from '../../../../lib/image-resize';
 import { sceneApi, uploadSceneFile } from '../../../../lib/scene-story-client';
 import {
-  SCENE_MODES, MODE_INFO, BAND_INFO, DEFAULT_STARTERS, DEFAULT_WHAT_IF, LIMITS, wordNoun,
+  SCENE_MODES, MODE_INFO, BAND_INFO, DEFAULT_STARTERS, LIMITS, wordNoun,
   LISTEN_TITLE, LISTEN_FALLBACK,
 } from '../../../../lib/scene-story';
 import { Modal, Toggle, Choice, Stepper, Notice } from '../../games/word-wheel/settings/_admin-ui';
@@ -12,7 +12,7 @@ import { Modal, Toggle, Choice, Stepper, Notice } from '../../games/word-wheel/s
 /* ════════════════════════════════════════════════════════════════
    محرر المشهد — كل ما يراه الطفل بلا كود: الصورة وعدسات المحقّق عليها،
    السؤال (مكتوباً وبصوت المعلم)، وجوه المشاعر، سلّة الكلمات والذهبية منها،
-   مساعدة الكتابة لكل فئة عمرية، بطاقات «ماذا لو؟»، طرق التعبير، والنشر.
+   مساعدة الكتابة لكل فئة عمرية، طرق التعبير، والنشر.
 ════════════════════════════════════════════════════════════════ */
 
 const DEFAULT_FEELING_Q = 'كيف تشعر الشخصية في الصورة؟';
@@ -35,7 +35,6 @@ function formFrom(scene) {
     words: Array.isArray(s.words) ? s.words : [],
     tiles: (Array.isArray(s.tiles) ? s.tiles : []).join(' '),
     starters: Array.isArray(s.starters) ? s.starters : [],
-    what_if: Array.isArray(s.what_if) ? s.what_if : [],
     hotspots: Array.isArray(s.hotspots) ? s.hotspots : [],
     feeling_on: scene ? !!s.feeling_q : true,
     feeling_q: s.feeling_q || DEFAULT_FEELING_Q,
@@ -160,7 +159,7 @@ export default function SceneEditor({ initial, isAdmin, onClose, onSaved }) {
     setError(null);
     const body = {
       title: form.title, image_url: form.image_url, prompt_audio_url: form.prompt_audio_url,
-      words: form.words, tiles: tilesPreview, starters: form.starters, what_if: form.what_if, hotspots: form.hotspots,
+      words: form.words, tiles: tilesPreview, starters: form.starters, hotspots: form.hotspots,
       feeling_q: form.feeling_on ? (form.feeling_q.trim() || DEFAULT_FEELING_Q) : '',
       modes: form.modes, band: form.band, is_active: form.is_active, sort_order: form.sort_order,
       publish_at: fromLocalInput(form.publish_at),
@@ -309,11 +308,6 @@ export default function SceneEditor({ initial, isAdmin, onClose, onSaved }) {
         {(form.band === 'auto' || form.band === '3') && (
           <p className="wa-sub">🌳 الصف 5–7: خريطة الحكاية (من؟ أين ومتى؟ ماذا حدث؟ كيف انتهت؟) تظهر تلقائياً.</p>
         )}
-        <div className="wa-field">
-          <span className="wa-label">🎲 بطاقات «ماذا لو؟» للطفل المحتار</span>
-          <ListEditor items={form.what_if} onChange={v => set('what_if', v)} max={LIMITS.whatIf} maxLen={LIMITS.q}
-            placeholder="مثل: ماذا لو انقطعَ خيطُ الطائرة؟" defaults={DEFAULT_WHAT_IF.slice(0, 2)} />
-        </div>
       </section>
 
       <section className="wa-section">

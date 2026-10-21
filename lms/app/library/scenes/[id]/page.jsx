@@ -11,7 +11,7 @@ import {
   sceneApi, uploadSceneFile, readSceneDraft, writeSceneDraft, markReviewSeen,
 } from '../../../../lib/scene-story-client';
 import {
-  MODE_INFO, BAND_INFO, STORY_MAP, DEFAULT_STARTERS, DEFAULT_WHAT_IF, FEELINGS,
+  MODE_INFO, BAND_INFO, STORY_MAP, DEFAULT_STARTERS, FEELINGS,
   AUDIO_MAX_SECS, countWords, goldUsed, plainArabic, wordNoun, LISTEN_TITLE, LISTEN_FALLBACK,
 } from '../../../../lib/scene-story';
 import { SC_CSS, SceneImage, ReviewCard, StarRow, RecordingPlayer, feelingOf } from '../_ui';
@@ -43,7 +43,6 @@ export default function ScenePage() {
   const [photo, setPhoto]     = useState(null);   // { path?, url, blob? }
   const [usedTiles, setUsedTiles] = useState([]);
   const [mapHint, setMapHint] = useState(null);
-  const [whatIf, setWhatIf]   = useState(null);
   const [playing, setPlaying] = useState(false);
   const [sending, setSending] = useState(null);   // نص حالة الإرسال
   const [msg, setMsg]         = useState(null);   // { ok, text }
@@ -52,7 +51,6 @@ export default function ScenePage() {
   const rec = useStoryAudioRecorder(AUDIO_MAX_SECS);
   const textRef  = useRef(null);
   const audioRef = useRef(null);
-  const whatIfN  = useRef(0);
 
   const scene    = data?.scene;
   const response = data?.response;
@@ -201,11 +199,6 @@ export default function ScenePage() {
     a.onpause = () => setPlaying(false);
     setPlaying(true);
     a.play().catch(() => { setPlaying(false); say(); });
-  };
-
-  const flipWhatIf = () => {
-    const list = scene.what_if?.length ? scene.what_if : DEFAULT_WHAT_IF;
-    setWhatIf(list[whatIfN.current++ % list.length]);
   };
 
   /* ── التسجيل ── */
@@ -365,12 +358,6 @@ export default function ScenePage() {
             </section>
             {!reviewed && scene.hotspots?.length > 0 && (
               <p className="sc-small">🔍 المس العدسات الذهبية على الصورة — في كل واحدة سؤال صغير يساعدك</p>
-            )}
-            {whatIf && <div className="sc-whatif" role="status"><span aria-hidden="true">🎲</span>{whatIf}</div>}
-            {!reviewed && (
-              <button type="button" className="sc-whatif-btn" onClick={flipWhatIf}>
-                🎲 {whatIf ? 'بطاقة «ماذا لو؟» أخرى' : 'احترت؟ اقلب بطاقة «ماذا لو؟»'}
-              </button>
             )}
           </div>
 

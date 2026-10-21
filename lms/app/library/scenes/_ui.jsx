@@ -165,11 +165,6 @@ export const SC_CSS = `
   .sc-listen{ width:54px; height:54px; border-radius:50%; border:none; background:#3FA796; color:#fff; font-size:1.4rem; cursor:pointer; flex-shrink:0;
     box-shadow:0 4px 0 #2B7E71; }
   .sc-listen.playing{ background:#E8B84B; box-shadow:0 4px 0 #C99A2E; animation:scBeat 1s ease-in-out infinite; }
-  .sc-whatif{ background:linear-gradient(135deg,#7C5CD9,#6246C4); color:#fff; border-radius:20px; padding:14px 16px; font-weight:900; font-size:1.08rem; line-height:1.6;
-    display:flex; gap:10px; align-items:center; animation:scFlip .35s ease; }
-  .sc-whatif span{ font-size:1.6rem; }
-  .sc-whatif-btn{ align-self:center; border:none; background:transparent; color:#6246C4; font-weight:900; font-size:1rem; cursor:pointer; min-height:44px;
-    text-decoration:underline; text-underline-offset:5px; }
 
   .sc-box{ background:#fff; border-radius:22px; padding:14px; display:flex; flex-direction:column; gap:12px; box-shadow:0 3px 12px rgba(26,43,74,.06); }
   .sc-box h3{ margin:0; font-size:1rem; font-weight:900; }
@@ -275,7 +270,6 @@ export const SC_CSS = `
   @keyframes scBeat{ 0%,100%{ transform:scale(1) } 50%{ transform:scale(1.08) } }
   @keyframes scFade{ from{ opacity:0 } to{ opacity:1 } }
   @keyframes scPop{ 0%{ transform:scale(.7); opacity:0 } 70%{ transform:scale(1.06); opacity:1 } 100%{ transform:scale(1) } }
-  @keyframes scFlip{ from{ transform:rotateX(70deg); opacity:0 } to{ transform:none; opacity:1 } }
   @keyframes scFall{ to{ transform:translateY(110vh) rotate(540deg); } }
   @keyframes scShimmer{ to{ background-position:-200% 0 } }
   @media (prefers-reduced-motion: reduce){ .sc *{ animation:none !important; } .sc-confetti{ display:none; } }
