@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { getRole } from '../../../../lib/auth-role';
@@ -94,10 +94,28 @@ const CAT_META = {
 };
 
 /* ────────────────────── image with fallback ─────────────────── */
-function WordImage({ imageUrl, emoji }) {
+function WordImage({ imageUrl, emoji, size = 150 }) {
   const [err, setErr] = useState(false);
-  if (!imageUrl || err) return <div style={S.emojiBox}>{emoji || '❓'}</div>;
-  return <img src={imageUrl} alt="" style={S.wordImg} onError={() => setErr(true)} />;
+  if (!imageUrl || err) return <div style={{ ...S.emojiBox, width: size, height: size, fontSize: size * 0.5 }}>{emoji || '❓'}</div>;
+  return <img src={imageUrl} alt="" style={{ height: size, width: 'auto', maxWidth: '100%', objectFit: 'contain', borderRadius: 16 }} onError={() => setErr(true)} />;
+}
+
+const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
+
+/* ارتفاع الشاشة المرئي فعلاً (يتغير مع شريط المتصفح) — يختار أحجاماً أصغر للشاشات القصيرة */
+function useViewportHeight() {
+  const [h, setH] = useState(800);
+  useEffect(() => {
+    const on = () => setH(Math.round(window.visualViewport?.height || window.innerHeight));
+    on();
+    window.addEventListener('resize', on);
+    window.visualViewport?.addEventListener('resize', on);
+    return () => {
+      window.removeEventListener('resize', on);
+      window.visualViewport?.removeEventListener('resize', on);
+    };
+  }, []);
+  return h;
 }
 
 /* ── تصميم «عوالم المجموعات» (2026-10-21): خلفية مرسومة لكل مجموعة (components/GameScene)،
@@ -105,12 +123,12 @@ function WordImage({ imageUrl, emoji }) {
 const TILE_TINTS = ['#E8B84B', '#A48BE6', '#8798B3', '#6CCFA0', '#D9CCB6'];
 const MAX_TRIES  = 2; // محاولتان لكل كلمة قبل كشف الحرف
 
-/* فهيم واقف في المشهد أسفل الشاشة مع كلمة تشجيع */
-function FaheemBuddy({ text }) {
+/* فهيم واقف في المشهد أسفل الشاشة مع كلمة تشجيع (أو زر «التالي» بجانبه) — ارتفاع ثابت */
+function FaheemBuddy({ text, action, size = 66 }) {
   return (
-    <div style={S.buddy} aria-live="polite">
-      <img src="/faheem.png" alt="فهيم" style={S.buddyImg} />
-      <div style={S.buddyBubble}>{text}</div>
+    <div style={{ ...S.buddy, height: size }}>
+      <img src="/faheem.png" alt="فهيم" style={{ width: size * 0.82, height: size, objectFit: 'contain', flexShrink: 0 }} />
+      {action || <div style={S.buddyBubble} aria-live="polite">{text}</div>}
     </div>
   );
 }
@@ -157,6 +175,39 @@ export default function LetterCatcherGame() {
   /* عرض صف مربعات الكلمة — لتصغير مربعات الاسم المكوّن من كلمتين ليسع سطراً واحداً */
   const [wordRowEl, setWordRowEl] = useState(null);
   const wordRowWidth = useElementWidth(wordRowEl);
+  const vh = useViewportHeight();
+
+  /* شاشة اللعب بلا تمرير: الصورة وحدها تكبر وتصغر لتملأ ما بقي من الشاشة. نقيس الفراغ الفعلي
+     بعد الرسم (يشمل حواف الشاشة الآمنة في التطبيق المثبّت وشريط المتصفح) ثم نعدّل الصورة بقدره */
+  const stageRef  = useRef(null);
+  const middleRef = useRef(null);
+  const cardRef   = useRef(null);
+  const [imgH, setImgH] = useState(150);
+  const imgMax = vh >= 1000 ? 280 : 190; // الآيباد: صورة أكبر بدل فراغ حول البطاقة
+  useIsoLayoutEffect(() => {
+    if (phase !== 'playing') return;
+    const fit = () => {
+      const st = stageRef.current, md = middleRef.current, cd = cardRef.current;
+      if (!st || !md || !cd) return;
+      const spare = (md.clientHeight - cd.offsetHeight) - (st.scrollHeight - st.clientHeight);
+      setImgH(h => {
+        const n = Math.max(64, Math.min(imgMax, Math.round(h + spare)));
+        return Math.abs(n - h) < 2 ? h : n;
+      });
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    [stageRef.current, cardRef.current].forEach(el => el && ro.observe(el));
+    return () => ro.disconnect();
+  }, [phase, imgMax]);
+
+  /* الصفحة نفسها لا ترتدّ ولا تتحرك تحت اللعبة — كل شاشة «مسرح» ثابت بحجم الشاشة */
+  useEffect(() => {
+    const root = document.documentElement;
+    const prev = root.style.overscrollBehavior;
+    root.style.overscrollBehavior = 'none';
+    return () => { root.style.overscrollBehavior = prev; };
+  }, []);
 
   /* «اسمع الكلمة»: تسجيل المعلم إن وُجد، وإلا صوت فهيم البشري (مخزَّن لكل الطلاب c=1)،
      وصوت الجهاز احتياطاً. يُستدعى داخل اللمسة نفسها (شرط سفاري) */
@@ -338,7 +389,6 @@ export default function LetterCatcherGame() {
     setQueue(buildQueue(pickRoundWords(filtered, catFilter ?? '__all__'), settings.options_count));
     setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]);
     setPhase('playing');
-    window.scrollTo(0, 0); // البطاقة المختارة قد تكون أسفل القائمة — اللعبة تبدأ من أعلاها
   }, [gameWords, buildQueue, pickRoundWords, settings.options_count]);
 
   const pick = useCallback((opt) => {
@@ -389,7 +439,6 @@ export default function LetterCatcherGame() {
     setQueue(buildQueue(pickRoundWords(filtered, selectedCategory ?? '__all__'), settings.options_count));
     setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]);
     setPhase('playing');
-    window.scrollTo(0, 0);
   }, [selectedCategory, gameWords, buildQueue, pickRoundWords, settings.options_count]);
 
   /* ══════════════════════ RENDER: START ══════════════════════ */
@@ -423,7 +472,7 @@ export default function LetterCatcherGame() {
     };
 
     return (
-      <div style={S.scenePage}>
+      <div key="start" style={S.stage}>
         {/* non-blocking progress strip */}
         {loadProgress > 0 && loadProgress < 100 && (
           <div style={{ position:'fixed', top:0, left:0, right:0, height:3, zIndex:9999, background:'#EDE5D8' }}>
@@ -515,7 +564,7 @@ export default function LetterCatcherGame() {
           </div>
         )}
 
-        <div style={{ ...S.sceneColumn, maxWidth: 680 }}>
+        <div style={{ ...S.stageColumn, maxWidth: 680 }}>
           <div style={S.glassBar}>
             <Link href="/library" style={S.roundBlueBtn} aria-label="العودة للمكتبة">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
@@ -672,20 +721,22 @@ export default function LetterCatcherGame() {
       : pct >= 50 ? 'جيد! تستطيع أن تتحسن أكثر 💪'
       : 'لا تيأس! المحاولة مفتاح النجاح 🌟';
     return (
-      <div style={S.scenePage}>
+      <div key="finished" style={S.stage}>
         <GameScene category={selectedCategory} />
-        <div style={S.sceneColumn}>
-          <div style={{ ...S.glassCard, alignItems: 'center', textAlign: 'center', gap: 14, padding: '26px 20px', marginTop: 24 }}>
-            <div style={{ fontSize: '3rem', lineHeight: 1 }}>{'⭐'.repeat(stars)}</div>
-            <h2 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 900, color: '#1A2B4A' }}>أَحْسَنْتَ!</h2>
-            <div style={{ fontSize: '3.2rem', fontWeight: 900, color: '#1A2B4A', direction: 'ltr' }}>{score} / {queue.length}</div>
-            <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#4A5A75', lineHeight: 1.8 }}>{msg}</p>
-            <button style={S.goldBtn} onClick={restart}>🔄 العب مرة أخرى</button>
-            <button
-              style={S.whiteBtn}
-              onClick={() => { setPhase('start'); setPendingCategory(undefined); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]); }}
-            >🏠 اختر مجموعة أخرى</button>
-            <Link href="/library" style={{ ...S.backLink, color: '#4A5A75', fontWeight: 700 }}>← العودة للمكتبة</Link>
+        <div style={S.stageColumn}>
+          <div style={S.stageMiddle}>
+            <div style={{ ...S.glassCard, alignItems: 'center', textAlign: 'center', gap: 14, padding: '26px 20px' }}>
+              <div style={{ fontSize: '3rem', lineHeight: 1 }}>{'⭐'.repeat(stars)}</div>
+              <h2 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 900, color: '#1A2B4A' }}>أَحْسَنْتَ!</h2>
+              <div style={{ fontSize: '3.2rem', fontWeight: 900, color: '#1A2B4A', direction: 'ltr' }}>{score} / {queue.length}</div>
+              <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#4A5A75', lineHeight: 1.8 }}>{msg}</p>
+              <button style={S.goldBtn} onClick={restart}>🔄 العب مرة أخرى</button>
+              <button
+                style={S.whiteBtn}
+                onClick={() => { setPhase('start'); setPendingCategory(undefined); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]); }}
+              >🏠 اختر مجموعة أخرى</button>
+              <Link href="/library" style={{ ...S.backLink, color: '#4A5A75', fontWeight: 700 }}>← العودة للمكتبة</Link>
+            </div>
           </div>
           <FaheemBuddy text={pct >= 50 ? 'أَنْتَ صَيَّادُ حُرُوفٍ بَارِعٌ!' : 'كُلُّ مُحَاوَلَةٍ تَجْعَلُكَ أَقْوَى!'} />
         </div>
@@ -732,13 +783,26 @@ export default function LetterCatcherGame() {
 
   const catLabel = selectedCategory ?? w.category ?? '';
   const retrying  = chosen === null && tried.length > 0;
-  const buddyText = correct === true ? (tried.length ? 'أَحْسَنْتَ! وَجَدْتَهُ بِنَفْسِكَ!' : 'أَحْسَنْتَ يَا بَطَل!')
-    : correct === false ? 'لَا بَأْسَ، تَعَلَّمْنَا حَرْفًا جَدِيدًا!'
-    : retrying ? 'جَرِّبْ مَرَّةً أُخْرَى، أَنْتَ قَرِيبٌ!'
-    : 'هَيَّا يَا بَطَل، أَنْتَ تَسْتَطِيعُ!';
+  const buddyText = retrying ? 'جَرِّبْ مَرَّةً أُخْرَى، أَنْتَ قَرِيبٌ!' : 'هَيَّا يَا بَطَل، أَنْتَ تَسْتَطِيعُ!';
+
+  /* شاشة ثابتة بلا تمرير (طلب الأستاذ محمد: «ثابتاً… وكل شيء موسّطاً وفي مكانه»):
+     أحجام ثابتة لكل عنصر، وأصغر قليلاً في الشاشات القصيرة — والصورة تملأ الباقي (imgH) */
+  const compact = vh < 600;
+  const sz = compact
+    ? { word: 46, opt: 54, pill: 38, foot: 56, pad: 10, gap: 8 }
+    : { word: 58, opt: 70, pill: 46, foot: 72, pad: 14, gap: 10 };
+
+  // سطر الحالة أعلى البطاقة: السؤال، أو «جرّب حرفاً آخر»، أو «أحسنت»، أو الحرف الصحيح
+  const pill = correct === true
+    ? { text: tried.length ? '✅ أَحْسَنْتَ! وَجَدْتَهُ 🎉' : '✅ أَحْسَنْتَ! 🎉', style: S.pillOk }
+    : correct === false
+      ? { text: `💡 قَرِيبٌ! الْحَرْفُ النَّاقِصُ هُوَ «${w.missing_letter}»`, style: S.pillSoft }
+      : retrying
+        ? { text: '🔁 قَرِيبٌ! جَرِّبْ حَرْفًا آخَرَ', style: S.pillSoft }
+        : { text: 'اِخْتَرِ الْحَرْفَ النَّاقِصَ', style: null };
 
   return (
-    <div style={S.scenePage}>
+    <div key="playing" ref={stageRef} style={S.stage}>
       <style>{`
         @keyframes ptFloatUp {
           0%   { opacity: 1; transform: translateY(0) scale(1.25); }
@@ -782,169 +846,159 @@ export default function LetterCatcherGame() {
       {/* في «العب الكل» يتغير العالم مع مجموعة كل كلمة */}
       <GameScene category={catLabel} />
 
-      <div style={S.sceneColumn}>
-        <div style={S.glassBar}>
-          <button
-            onClick={() => { stopWordAudio(); setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]); }}
-            style={S.roundBlueBtn}
-            aria-label="رجوع إلى المجموعات"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
-          </button>
-          <div style={S.barTitle}>
-            صَيَّادُ الْحُرُوفِ{catLabel ? <span style={{ color: '#4A5A75', fontWeight: 800 }}> — {catLabel}</span> : null}
-          </div>
-          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-            <span style={S.pointsPill}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#E8B84B" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" /></svg>
-              {totalPoints.toLocaleString('en-US')}
-            </span>
-            {ptPopupActive && (
-              <span key={ptPopupKey} style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', color: '#E8B84B', fontWeight: 900, fontSize: '1.05rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards', textShadow: '0 1px 6px rgba(26,43,74,.45)' }}>+5 ⭐</span>
-            )}
-          </div>
-        </div>
-
-        <div style={{ ...S.glassBar, padding: '6px 8px', gap: 10 }}>
-          <span style={S.qChip}>السؤال {cur + 1} من {queue.length}</span>
-          <div style={S.bar}>
-            <div style={{ ...S.barFill, width: `${((cur + 1) / queue.length) * 100}%` }} />
-          </div>
-          <span style={S.scoreChip} aria-label={`إجابات صحيحة: ${score}`}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="#E8B84B" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" /></svg>
-            {score}
-          </span>
-        </div>
-
-        <div style={S.glassCard}>
-          <h1 style={S.questionPill}>اِخْتَرِ الْحَرْفَ النَّاقِصَ</h1>
-
-          <div style={S.pictureCard}>
-            <WordImage imageUrl={w.image_url} emoji={w.emoji} />
-            <button style={S.listenRow} onClick={() => playWord(w)} aria-label="اسمع الكلمة">
-              <span style={S.listenBtn}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>
-              </span>
-              <span style={{ fontSize: '.95rem', fontWeight: 800, color: '#8A6212' }}>اِسْمَعِ الْكَلِمَةَ أَوَّلًا</span>
+      <div style={S.stageColumn}>
+        {/* الترويسة: رجوع + العنوان + النقاط، وتحتها التقدم */}
+        <div style={S.glassHeader}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => { stopWordAudio(); setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]); }}
+              style={S.roundBlueBtn}
+              aria-label="رجوع إلى المجموعات"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
             </button>
+            <div style={S.barTitle}>
+              صَيَّادُ الْحُرُوفِ{catLabel ? <span style={{ color: '#4A5A75', fontWeight: 800 }}> — {catLabel}</span> : null}
+            </div>
+            <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+              <span style={S.pointsPill}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#E8B84B" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" /></svg>
+                {totalPoints.toLocaleString('en-US')}
+              </span>
+              {ptPopupActive && (
+                <span key={ptPopupKey} style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', color: '#E8B84B', fontWeight: 900, fontSize: '1.05rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards', textShadow: '0 1px 6px rgba(26,43,74,.45)' }}>+5 ⭐</span>
+              )}
+            </div>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 6px' }}>
+            <span style={S.qCount}>السؤال {cur + 1} من {queue.length}</span>
+            <div style={S.bar}>
+              <div style={{ ...S.barFill, width: `${((cur + 1) / queue.length) * 100}%` }} />
+            </div>
+            <span style={S.scoreChip} aria-label={`إجابات صحيحة: ${score}`}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#E8B84B" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" /></svg>
+              {score}
+            </span>
+          </div>
+        </div>
 
-          {/* ── word display area ── */}
-          {correct === true ? (
-            /* ── correct: beautiful full-word reveal ── */
-            <div style={{ position:'relative', padding:'4px 0 8px', textAlign:'center', overflow:'visible' }}>
-              {[
-                { em:'✨', an:'lcSpark0', delay:'0ms',   fs:'1.3rem' },
-                { em:'⭐', an:'lcSpark1', delay:'80ms',  fs:'1.1rem' },
-                { em:'💫', an:'lcSpark2', delay:'50ms',  fs:'1.2rem' },
-                { em:'🌟', an:'lcSpark3', delay:'130ms', fs:'1.1rem' },
-                { em:'✨', an:'lcSpark4', delay:'30ms',  fs:'1.4rem' },
-                { em:'⭐', an:'lcSpark5', delay:'100ms', fs:'1rem'   },
-                { em:'💫', an:'lcSpark6', delay:'60ms',  fs:'1.1rem' },
-              ].map((p, i) => (
-                <span key={i} style={{
-                  position:'absolute', top:'50%', left:'50%',
-                  fontSize: p.fs, lineHeight:1, pointerEvents:'none',
-                  animation: `${p.an} .9s ${p.delay} cubic-bezier(.25,.46,.45,.94) both`,
-                }}>{p.em}</span>
-              ))}
-              <div style={{
-                display:'inline-flex', flexDirection:'column', alignItems:'center',
-                background:'linear-gradient(135deg,#F2FBF6,#DCF3E8)',
-                borderRadius:26, padding:'10px 28px 14px',
-                border:'2.5px solid #6CCFA0',
-                animation:'lcGlowPulse 1.8s .4s ease-in-out infinite, lcWordReveal .55s cubic-bezier(.34,1.56,.64,1) both',
-              }}>
-                <div style={{ fontSize:'.85rem', fontWeight:800, color:'#17784C', marginBottom:3 }}>
-                  {tried.length ? '✅ أَحْسَنْتَ! وَجَدْتَهُ 🎉' : '✅ أَحْسَنْتَ! 🎉'}
-                </div>
+        {/* البطاقة في وسط المساحة المتبقية */}
+        <div ref={middleRef} style={S.stageMiddle}>
+          <div ref={cardRef} style={{ ...S.glassCard, padding: sz.pad, gap: sz.gap }}>
+            <h1 aria-live="polite" style={{ ...S.questionPill, ...pill.style, minHeight: sz.pill, fontSize: compact ? '1rem' : '1.12rem' }}>{pill.text}</h1>
+
+            <div style={{ ...S.pictureCard, height: imgH + 20 }}>
+              <WordImage imageUrl={w.image_url} emoji={w.emoji} size={imgH} />
+              <button style={S.listenChip} onClick={() => playWord(w)} aria-label="اسمع الكلمة">
+                <span style={S.listenBtn}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>
+                </span>
+                <span style={{ fontSize: '.85rem', fontWeight: 800, color: '#8A6212' }}>اِسْمَعْ</span>
+              </button>
+            </div>
+
+            {/* ── الكلمة: مربعات الحروف، أو الكلمة كاملة عند الصح — بالارتفاع نفسه ── */}
+            {correct === true ? (
+              <div style={{ position:'relative', height: sz.word + 6, display:'flex', alignItems:'center', justifyContent:'center', overflow:'visible' }}>
+                {[
+                  { em:'✨', an:'lcSpark0', delay:'0ms',   fs:'1.3rem' },
+                  { em:'⭐', an:'lcSpark1', delay:'80ms',  fs:'1.1rem' },
+                  { em:'💫', an:'lcSpark2', delay:'50ms',  fs:'1.2rem' },
+                  { em:'🌟', an:'lcSpark3', delay:'130ms', fs:'1.1rem' },
+                  { em:'✨', an:'lcSpark4', delay:'30ms',  fs:'1.4rem' },
+                  { em:'⭐', an:'lcSpark5', delay:'100ms', fs:'1rem'   },
+                  { em:'💫', an:'lcSpark6', delay:'60ms',  fs:'1.1rem' },
+                ].map((p, i) => (
+                  <span key={i} style={{
+                    position:'absolute', top:'50%', left:'50%',
+                    fontSize: p.fs, lineHeight:1, pointerEvents:'none',
+                    animation: `${p.an} .9s ${p.delay} cubic-bezier(.25,.46,.45,.94) both`,
+                  }}>{p.em}</span>
+                ))}
                 <div style={{
-                  fontSize: fullWordDisplay.length > 6 ? '2.1rem' : '2.7rem',
-                  fontWeight:900,
-                  fontFamily:'inherit',
-                  direction:'rtl',
-                  background:'linear-gradient(90deg,#E8B84B,#2ABB7A,#1A2B4A,#7C5CD9,#E8B84B)',
-                  backgroundSize:'300% auto',
-                  WebkitBackgroundClip:'text',
-                  WebkitTextFillColor:'transparent',
-                  backgroundClip:'text',
-                  lineHeight:1.45,
-                  animation:'lcWordShimmer 2.5s .55s linear infinite, lcWordFloat 2.8s .55s ease-in-out infinite',
-                  willChange:'transform',
+                  display:'inline-flex', alignItems:'center', height: sz.word + 6, boxSizing:'border-box',
+                  background:'linear-gradient(135deg,#F2FBF6,#DCF3E8)',
+                  borderRadius:22, padding:'0 26px',
+                  border:'2.5px solid #6CCFA0',
+                  animation:'lcGlowPulse 1.8s .4s ease-in-out infinite, lcWordReveal .55s cubic-bezier(.34,1.56,.64,1) both',
                 }}>
-                  {fullWordDisplay}
+                  <div style={{
+                    fontSize: compact ? '1.8rem' : (fullWordDisplay.length > 6 ? '2rem' : '2.4rem'),
+                    fontWeight:900,
+                    fontFamily:'inherit',
+                    direction:'rtl',
+                    background:'linear-gradient(90deg,#E8B84B,#2ABB7A,#1A2B4A,#7C5CD9,#E8B84B)',
+                    backgroundSize:'300% auto',
+                    WebkitBackgroundClip:'text',
+                    WebkitTextFillColor:'transparent',
+                    backgroundClip:'text',
+                    lineHeight:1.3,
+                    animation:'lcWordShimmer 2.5s .55s linear infinite',
+                  }}>
+                    {fullWordDisplay}
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            /* ── unanswered / wrong: segmented letter boxes ── */
-            <div key={`row-${cur}-${tried.length}`} ref={setWordRowEl} style={{ ...S.wordRow, ...(isPhrase ? compactRowStyle : null), animation: tried.length ? 'lcWrongShake .45s cubic-bezier(.36,.07,.19,.97) both' : 'none' }}>
-              {mi < 0 ? (
-                <>
-                  <span style={S.wordLetterBox}>{w.word}</span>
-                  <span style={{ ...S.blank, ...S.blankOpen }}>؟</span>
-                </>
-              ) : letterGroups.map((group, gi) => (
-                <span key={gi} style={isPhrase ? { ...S.wordGroup, ...compactGroupStyle } : S.wordGroup}>
-                  {group.map(i => {
-                    const form = getLetterForm(sw, i);
-                    if (i === mi) {
+            ) : (
+              <div key={`row-${cur}-${tried.length}`} ref={setWordRowEl} style={{ ...S.wordRow, ...(isPhrase ? compactRowStyle : null), minHeight: sz.word + 6, animation: tried.length ? 'lcWrongShake .45s cubic-bezier(.36,.07,.19,.97) both' : 'none' }}>
+                {mi < 0 ? (
+                  <>
+                    <span style={{ ...S.wordLetterBox, height: sz.word }}>{w.word}</span>
+                    <span style={{ ...S.blank, ...S.blankOpen, height: sz.word }}>؟</span>
+                  </>
+                ) : letterGroups.map((group, gi) => (
+                  <span key={gi} style={isPhrase ? { ...S.wordGroup, ...compactGroupStyle } : S.wordGroup}>
+                    {group.map(i => {
+                      const form = getLetterForm(sw, i);
+                      if (i === mi) {
+                        return (
+                          <span key={i} style={{ ...S.blank, height: sz.word, ...tile, ...(correct === null ? S.blankOpen : S.blankShown) }}>
+                            {correct !== null ? toContextual(w.missing_letter, form) : '؟'}
+                          </span>
+                        );
+                      }
                       return (
-                        <span key={i} style={{ ...S.blank, ...tile, ...(correct === null ? S.blankOpen : S.blankShown) }}>
-                          {correct !== null ? toContextual(w.missing_letter, form) : '؟'}
+                        <span key={i} style={tile ? { ...S.wordLetterBox, height: sz.word, ...tile } : { ...S.wordLetterBox, height: sz.word }}>
+                          {toContextual(sw[i], form)}
                         </span>
                       );
-                    }
-                    return (
-                      <span key={i} style={tile ? { ...S.wordLetterBox, ...tile } : S.wordLetterBox}>
-                        {toContextual(sw[i], form)}
-                      </span>
-                    );
-                  })}
-                </span>
-              ))}
-            </div>
-          )}
+                    })}
+                  </span>
+                ))}
+              </div>
+            )}
 
-          {/* الخطأ بلا أحمر (صفر إحباط): محاولة ثانية أولاً، ثم يظهر الحرف الصحيح بالأخضر */}
-          {retrying && (
-            <div style={S.gentleFeedback} role="status">
-              🔁 قَرِيبٌ! اِسْمَعِ الْكَلِمَةَ وَجَرِّبْ حَرْفًا آخَرَ
+            <div style={{ ...S.optRow, gridTemplateColumns: `repeat(${Math.min(opts.length, 5)}, minmax(0, 1fr))` }}>
+              {opts.filter(Boolean).map((opt, idx) => {
+                const isRight  = stripDia(opt) === stripDia(w.missing_letter);
+                const isTried  = tried.includes(opt);
+                const revealed = chosen !== null;
+                let btn = { ...S.optBtn, maxHeight: sz.opt, fontSize: compact ? '1.6rem' : '1.9rem', borderBottom: `6px solid ${TILE_TINTS[idx % TILE_TINTS.length]}` };
+                if (revealed) {
+                  if (isRight)      btn = { ...btn, ...S.optCorrect };
+                  else if (isTried) btn = { ...btn, ...S.optTried };
+                  else              btn = { ...btn, opacity: 0.35 };
+                } else if (isTried) btn = { ...btn, ...S.optTried };
+                return (
+                  <button key={`${opt}-${idx}`} style={btn} onClick={() => pick(opt)} disabled={revealed || isTried} aria-label={`الحرف ${opt}`}>
+                    {toContextual(opt, w._form || 'isolated')}
+                  </button>
+                );
+              })}
             </div>
-          )}
-          {correct === false && (
-            <div style={S.gentleFeedback}>
-              💡 قَرِيبٌ! الْحَرْفُ النَّاقِصُ هُوَ «{w.missing_letter}»
-            </div>
-          )}
-
-          <div style={{ ...S.optRow, gridTemplateColumns: `repeat(${Math.min(opts.length, 5)}, minmax(0, 1fr))` }}>
-            {opts.filter(Boolean).map((opt, idx) => {
-              const isRight  = stripDia(opt) === stripDia(w.missing_letter);
-              const isTried  = tried.includes(opt);
-              const revealed = chosen !== null;
-              let btn = { ...S.optBtn, borderBottom: `6px solid ${TILE_TINTS[idx % TILE_TINTS.length]}` };
-              if (revealed) {
-                if (isRight)      btn = { ...btn, ...S.optCorrect };
-                else if (isTried) btn = { ...btn, ...S.optTried };
-                else              btn = { ...btn, opacity: 0.35 };
-              } else if (isTried) btn = { ...btn, ...S.optTried };
-              return (
-                <button key={`${opt}-${idx}`} style={btn} onClick={() => pick(opt)} disabled={revealed || isTried} aria-label={`الحرف ${opt}`}>
-                  {toContextual(opt, w._form || 'isolated')}
-                </button>
-              );
-            })}
           </div>
+        </div>
 
-          {chosen !== null && (
-            <button style={S.goldBtn} onClick={next}>
+        {/* الأسفل ثابت: فهيم يشجّع، وبعد الإجابة زر «التالي» بجانبه — لا شيء يدفع البطاقة */}
+        <FaheemBuddy
+          size={sz.foot}
+          text={buddyText}
+          action={chosen !== null && (
+            <button style={{ ...S.goldBtn, minHeight: compact ? 50 : 56, flex: 1 }} onClick={next}>
               {isLast ? '🏁 النَّتِيجَةُ النِّهَائِيَّةُ' : 'التَّالِي ←'}
             </button>
           )}
-        </div>
-
-        <FaheemBuddy text={buddyText} />
+        />
       </div>
     </div>
   );
@@ -1046,16 +1100,26 @@ const S = {
     alignSelf: 'center', marginTop: 8, background: 'rgba(255,255,255,0.85)', borderRadius: 999, padding: '10px 18px',
     color: '#1A2B4A', fontWeight: 800, fontSize: '.9rem', textDecoration: 'none',
   },
-  /* ── شاشة اللعب بعوالم المجموعات ── */
-  scenePage: {
-    position: 'relative', minHeight: '100dvh', width: '100%', boxSizing: 'border-box',
-    overflowX: 'hidden', background: '#F4EFE6', direction: 'rtl', fontFamily: 'inherit',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 12px 12px',
+  /* ── شاشة اللعب بعوالم المجموعات ──
+     «مسرح» ثابت بحجم الشاشة: الصفحة خلفه لا تتحرك (حشوة body السفلية للجوال لا تضيف فراغاً)،
+     ويمرّر داخله فقط ما يطول فعلاً — قائمة المجموعات، أو شاشة أفقية قصيرة جداً */
+  stage: {
+    position: 'fixed', inset: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'none',
+    background: '#F4EFE6', direction: 'rtl', fontFamily: 'inherit',
   },
-  sceneColumn: {
-    position: 'relative', zIndex: 1, width: '100%', maxWidth: 560, flex: 1,
-    display: 'flex', flexDirection: 'column', gap: 10,
+  stageColumn: {
+    position: 'relative', zIndex: 1, width: '100%', maxWidth: 560, minHeight: '100%', margin: '0 auto',
+    boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 8,
+    padding: 'max(12px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom))',
   },
+  // المساحة بين الترويسة وفهيم: البطاقة في وسطها تماماً
+  stageMiddle: { flex: '1 0 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center' },
+  glassHeader: {
+    display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 6px 8px', borderRadius: 26,
+    background: 'rgba(255,255,255,0.62)', WebkitBackdropFilter: 'blur(12px)', backdropFilter: 'blur(12px)',
+    border: '1.5px solid rgba(255,255,255,0.85)', boxShadow: '0 8px 24px rgba(26,43,74,0.14)',
+  },
+  qCount: { fontSize: '.8rem', fontWeight: 800, color: '#1A2B4A', whiteSpace: 'nowrap' },
   glassBar: {
     display: 'flex', alignItems: 'center', gap: 8, padding: 6, borderRadius: 999,
     background: 'rgba(255,255,255,0.62)', WebkitBackdropFilter: 'blur(12px)', backdropFilter: 'blur(12px)',
@@ -1074,10 +1138,6 @@ const S = {
     display: 'inline-flex', alignItems: 'center', gap: 5, background: '#1A2B4A', color: '#fff',
     borderRadius: 999, padding: '8px 12px', fontWeight: 800, fontSize: '.95rem', whiteSpace: 'nowrap',
   },
-  qChip: {
-    background: '#1A2B4A', color: '#fff', borderRadius: 999, padding: '5px 12px',
-    fontSize: '.82rem', fontWeight: 800, whiteSpace: 'nowrap',
-  },
   scoreChip: {
     display: 'inline-flex', alignItems: 'center', gap: 4, background: '#fff', color: '#1A2B4A',
     borderRadius: 999, padding: '4px 10px', fontSize: '.88rem', fontWeight: 900, flexShrink: 0,
@@ -1090,17 +1150,25 @@ const S = {
     border: '1.5px solid rgba(255,255,255,0.88)', boxShadow: '0 14px 34px rgba(26,43,74,0.18)',
     boxSizing: 'border-box', width: '100%',
   },
+  // سطر الحالة: السؤال، ثم «أحسنت» أخضر أو تلميح ذهبي — في المكان نفسه فلا يتحرك شيء
   questionPill: {
-    margin: 0, background: 'rgba(255,255,255,0.9)', borderRadius: 999, padding: '9px 12px',
-    textAlign: 'center', fontSize: '1.15rem', fontWeight: 900, color: '#1A2B4A',
+    margin: 0, background: 'rgba(255,255,255,0.9)', borderRadius: 999, padding: '6px 12px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box',
+    textAlign: 'center', fontSize: '1.15rem', fontWeight: 900, color: '#1A2B4A', lineHeight: 1.4,
   },
+  pillOk:   { background: '#DCF3E8', color: '#17784C' },
+  pillSoft: { background: '#FBF3DF', color: '#8A6212' },
   pictureCard: {
-    background: '#fff', borderRadius: 22, padding: '10px 10px 12px', boxShadow: '0 4px 14px rgba(26,43,74,0.08)',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+    position: 'relative', background: '#fff', borderRadius: 22, padding: 10, boxSizing: 'border-box',
+    boxShadow: '0 4px 14px rgba(26,43,74,0.08)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
-  listenRow: {
-    display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none',
-    padding: '2px 6px', cursor: 'pointer', fontFamily: 'inherit', minHeight: 44,
+  // «اسمع» فوق زاوية الصورة — لا يأخذ سطراً خاصاً به
+  listenChip: {
+    position: 'absolute', bottom: 8, left: 8, display: 'inline-flex', alignItems: 'center', gap: 6,
+    background: 'rgba(255,255,255,0.94)', border: '1.5px solid #F1DDA6', borderRadius: 999,
+    padding: '3px 3px 3px 12px', minHeight: 48, cursor: 'pointer', fontFamily: 'inherit',
+    boxShadow: '0 3px 10px rgba(26,43,74,0.12)', boxSizing: 'border-box',
   },
   listenBtn: {
     width: 42, height: 42, borderRadius: '50%', background: '#E8B84B', borderBottom: '4px solid #C99A2E',
@@ -1110,7 +1178,6 @@ const S = {
     width: 150, height: 150, background: '#FAF7F2', borderRadius: 20,
     fontSize: '4.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
-  wordImg: { width: 150, height: 150, objectFit: 'contain', borderRadius: 16 },
   wordRow: {
     width: '100%',
     display: 'flex', alignItems: 'center', gap: '10px 26px',
@@ -1133,10 +1200,6 @@ const S = {
   },
   blankOpen:  { background: '#FBF3DF', border: '3px dashed #E8B84B', color: '#B07F1E' },
   blankShown: { background: '#DCF3E8', border: '3px solid #2ABB7A', color: '#17784C' },
-  gentleFeedback: {
-    padding: '10px 18px', borderRadius: 14, fontSize: '1rem', fontWeight: 800, textAlign: 'center',
-    background: '#FBF3DF', color: '#8A6212', border: '1.5px solid #F1DDA6',
-  },
   optRow: { display: 'grid', gap: 9, width: '100%', boxSizing: 'border-box' },
   // مربّع يملأ عموده فقط: لا حدّ أدنى للارتفاع — مع aspectRatio كان يوسّع الزر فيخرج الصف عن البطاقة
   optBtn: {
@@ -1160,13 +1223,9 @@ const S = {
     border: '2px solid #EDE5D8', borderBottom: '5px solid #E2D6C2', fontSize: '1.05rem', fontWeight: 800,
     cursor: 'pointer', fontFamily: 'inherit',
   },
-  buddy: {
-    marginTop: 'auto', paddingTop: 8, display: 'flex', alignItems: 'flex-end', gap: 6,
-    alignSelf: 'flex-start', pointerEvents: 'none',
-  },
-  buddyImg: { width: 84, height: 104, objectFit: 'contain', flexShrink: 0 },
+  buddy: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', flexShrink: 0 },
   buddyBubble: {
-    marginBottom: 64, maxWidth: 220, background: '#fff', color: '#5A3FBF', borderRadius: '18px 18px 18px 6px',
+    maxWidth: 260, background: '#fff', color: '#5A3FBF', borderRadius: '18px 18px 18px 6px',
     padding: '9px 13px', fontSize: '.92rem', fontWeight: 800, boxShadow: '0 6px 16px rgba(26,43,74,0.16)',
   },
 };
