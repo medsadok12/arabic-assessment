@@ -10,6 +10,7 @@ import { freshFetch } from '../../../../lib/fresh-fetch';
 import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useElementWidth } from '../../../../lib/fit-tiles';
 import { stripDia, isGap, getLetterForm, toContextual } from '../../../../lib/letter-forms';
 import { speakArabic } from '../../../../lib/speak-arabic';
+import GameScene from '../../../../components/GameScene';
 
 /* teacher-only panel loads only when the teacher opens it — not in students' bundle */
 const SettingsPanel = dynamic(() => import('./_teacher-panel'), { ssr: false, loading: () => null });
@@ -109,6 +110,20 @@ function WordImage({ imageUrl, emoji }) {
   return <img src={imageUrl} alt="" style={S.wordImg} onError={() => setErr(true)} />;
 }
 
+/* ── تصميم «عوالم المجموعات» (2026-10-21): خلفية مرسومة لكل مجموعة (components/GameScene)،
+   شرائط وبطاقة زجاجية، وألوان الهوية — لكل زر حرف حافة سفلية بدرجة من ألوانها، ولا أحمر عند الخطأ ── */
+const TILE_TINTS = ['#E8B84B', '#A48BE6', '#8798B3', '#6CCFA0', '#D9CCB6'];
+
+/* فهيم واقف في المشهد أسفل الشاشة مع كلمة تشجيع */
+function FaheemBuddy({ text }) {
+  return (
+    <div style={S.buddy} aria-live="polite">
+      <img src="/faheem.png" alt="فهيم" style={S.buddyImg} />
+      <div style={S.buddyBubble}>{text}</div>
+    </div>
+  );
+}
+
 /* ═══════════════════════ MAIN COMPONENT ════════════════════════ */
 export default function LetterCatcherGame() {
   const [phase,      setPhase]      = useState('start');
@@ -148,6 +163,23 @@ export default function LetterCatcherGame() {
   /* عرض صف مربعات الكلمة — لتصغير مربعات الاسم المكوّن من كلمتين ليسع سطراً واحداً */
   const [wordRowEl, setWordRowEl] = useState(null);
   const wordRowWidth = useElementWidth(wordRowEl);
+
+  /* «اسمع الكلمة»: تسجيل المعلم إن وُجد، وإلا صوت فهيم البشري (مخزَّن لكل الطلاب c=1)،
+     وصوت الجهاز احتياطاً. يُستدعى داخل اللمسة نفسها (شرط سفاري) */
+  const wordAudioRef = useRef(null);
+  const stopWordAudio = useCallback(() => {
+    try { wordAudioRef.current?.pause(); } catch {}
+    wordAudioRef.current = null;
+  }, []);
+  const playWord = useCallback((wd) => {
+    const text = wd.word.includes('_') ? wd.word.replace('_', wd.missing_letter) : wd.word;
+    stopWordAudio();
+    const a = new Audio(wd.audio_url || `/api/faheem/tts?c=1&t=${encodeURIComponent(text)}`);
+    wordAudioRef.current = a;
+    a.onerror = () => speakArabic(text);
+    a.play().catch(() => speakArabic(text));
+  }, [stopWordAudio]);
+  useEffect(() => stopWordAudio, [stopWordAudio]);
 
   /* ── detect teacher/admin role + load user + load past results ── */
   useEffect(() => {
@@ -312,6 +344,7 @@ export default function LetterCatcherGame() {
     setQueue(buildQueue(pickRoundWords(filtered, catFilter ?? '__all__'), settings.options_count));
     setCur(0); setScore(0); setChosen(null); setCorrect(null);
     setPhase('playing');
+    window.scrollTo(0, 0); // البطاقة المختارة قد تكون أسفل القائمة — اللعبة تبدأ من أعلاها
   }, [gameWords, buildQueue, pickRoundWords, settings.options_count]);
 
   const pick = useCallback((opt) => {
@@ -337,10 +370,11 @@ export default function LetterCatcherGame() {
   }, [chosen, cur, queue]);
 
   const next = useCallback(() => {
+    stopWordAudio();
     const n = cur + 1;
     if (n >= queue.length) setPhase('finished');
     else { setCur(n); setChosen(null); setCorrect(null); }
-  }, [cur, queue.length]);
+  }, [cur, queue.length, stopWordAudio]);
 
   const restart = useCallback(() => {
     const filtered = selectedCategory === null
@@ -350,6 +384,7 @@ export default function LetterCatcherGame() {
     setQueue(buildQueue(pickRoundWords(filtered, selectedCategory ?? '__all__'), settings.options_count));
     setCur(0); setScore(0); setChosen(null); setCorrect(null);
     setPhase('playing');
+    window.scrollTo(0, 0);
   }, [selectedCategory, gameWords, buildQueue, pickRoundWords, settings.options_count]);
 
   /* ══════════════════════ RENDER: START ══════════════════════ */
@@ -660,18 +695,22 @@ export default function LetterCatcherGame() {
       : pct >= 50 ? 'جيد! تستطيع أن تتحسن أكثر 💪'
       : 'لا تيأس! المحاولة مفتاح النجاح 🌟';
     return (
-      <div style={S.page}>
-        <div style={S.centerCard}>
-          <div style={{ fontSize: '3rem' }}>{'⭐'.repeat(stars)}</div>
-          <h2 style={S.mainTitle}>أحسنت!</h2>
-          <div style={{ fontSize: '3.5rem', fontWeight: 800, color: '#F5A623' }}>{score} / {queue.length}</div>
-          <p style={S.sub}>{msg}</p>
-          <button style={S.btnGold} onClick={restart}>🔄 العب مرة أخرى</button>
-          <button
-            style={{ ...S.btnGold, background:'linear-gradient(135deg,#5b4fc4,#7c3aed)', marginTop:-8 }}
-            onClick={() => { setPhase('start'); setPendingCategory(undefined); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); }}
-          >🏠 اختر مجموعة أخرى</button>
-          <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
+      <div style={S.scenePage}>
+        <GameScene category={selectedCategory} />
+        <div style={S.sceneColumn}>
+          <div style={{ ...S.glassCard, alignItems: 'center', textAlign: 'center', gap: 14, padding: '26px 20px', marginTop: 24 }}>
+            <div style={{ fontSize: '3rem', lineHeight: 1 }}>{'⭐'.repeat(stars)}</div>
+            <h2 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 900, color: '#1A2B4A' }}>أَحْسَنْتَ!</h2>
+            <div style={{ fontSize: '3.2rem', fontWeight: 900, color: '#1A2B4A', direction: 'ltr' }}>{score} / {queue.length}</div>
+            <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#4A5A75', lineHeight: 1.8 }}>{msg}</p>
+            <button style={S.goldBtn} onClick={restart}>🔄 العب مرة أخرى</button>
+            <button
+              style={S.whiteBtn}
+              onClick={() => { setPhase('start'); setPendingCategory(undefined); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); }}
+            >🏠 اختر مجموعة أخرى</button>
+            <Link href="/library" style={{ ...S.backLink, color: '#4A5A75', fontWeight: 700 }}>← العودة للمكتبة</Link>
+          </div>
+          <FaheemBuddy text={pct >= 50 ? 'أَنْتَ صَيَّادُ حُرُوفٍ بَارِعٌ!' : 'كُلُّ مُحَاوَلَةٍ تَجْعَلُكَ أَقْوَى!'} />
         </div>
       </div>
     );
@@ -714,8 +753,13 @@ export default function LetterCatcherGame() {
     ? compactTileStyle(fitTileSize(wordRowWidth, letterGroups.reduce((n, g) => n + g.length, 0), letterGroups.length))
     : null;
 
+  const catLabel = selectedCategory ?? w.category ?? '';
+  const buddyText = correct === true ? 'أَحْسَنْتَ يَا بَطَل!'
+    : correct === false ? 'لَا بَأْسَ، تَعَلَّمْنَا حَرْفًا جَدِيدًا!'
+    : 'هَيَّا يَا بَطَل، أَنْتَ تَسْتَطِيعُ!';
+
   return (
-    <div style={S.page}>
+    <div style={S.scenePage}>
       <style>{`
         @keyframes ptFloatUp {
           0%   { opacity: 1; transform: translateY(0) scale(1.25); }
@@ -751,149 +795,172 @@ export default function LetterCatcherGame() {
         @keyframes lcSpark5 { 0%{opacity:0;transform:translate(0,0) scale(0)} 50%{opacity:1;transform:translate(-30px,58px) scale(1.2)} 100%{opacity:0;transform:translate(-44px,80px) scale(0)} }
         @keyframes lcSpark6 { 0%{opacity:0;transform:translate(0,0) scale(0)} 50%{opacity:1;transform:translate(36px,62px) scale(1.3)} 100%{opacity:0;transform:translate(52px,88px) scale(0)} }
         @keyframes lcGlowPulse {
-          0%,100% { box-shadow:0 0 18px 2px rgba(34,197,94,.22), 0 6px 28px rgba(0,0,0,.1); }
-          50%     { box-shadow:0 0 36px 8px rgba(34,197,94,.38), 0 8px 32px rgba(0,0,0,.12); }
+          0%,100% { box-shadow:0 0 18px 2px rgba(42,187,122,.22), 0 6px 28px rgba(0,0,0,.1); }
+          50%     { box-shadow:0 0 36px 8px rgba(42,187,122,.38), 0 8px 32px rgba(0,0,0,.12); }
         }
       `}</style>
 
-      <div style={S.headerRow}>
-        <button
-          onClick={() => { setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); }}
-          style={{ flexShrink:0, background:'rgba(255,255,255,.18)', border:'none', borderRadius:10, padding:'5px 12px', color:'#fff', cursor:'pointer', fontSize:'.82rem', fontWeight:700, fontFamily:'inherit' }}
-        >← رجوع</button>
-        <span style={S.scoreBadge}>✨ {score}</span>
-        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-          <span style={{ background: 'rgba(245,158,11,0.28)', borderRadius: 20, padding: '4px 12px', fontSize: '.88rem', fontWeight: 800, color: '#fff' }}>⭐ {totalPoints.toLocaleString('en-US')}</span>
-          {ptPopupActive && (
-            <span key={ptPopupKey} style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', color: '#fbbf24', fontWeight: 900, fontSize: '1.05rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards', textShadow: '0 1px 6px rgba(0,0,0,.45)' }}>+5 ⭐</span>
-          )}
+      {/* في «العب الكل» يتغير العالم مع مجموعة كل كلمة */}
+      <GameScene category={catLabel} />
+
+      <div style={S.sceneColumn}>
+        <div style={S.glassBar}>
+          <button
+            onClick={() => { stopWordAudio(); setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); }}
+            style={S.roundBlueBtn}
+            aria-label="رجوع إلى المجموعات"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
+          </button>
+          <div style={S.barTitle}>
+            صَيَّادُ الْحُرُوفِ{catLabel ? <span style={{ color: '#4A5A75', fontWeight: 800 }}> — {catLabel}</span> : null}
+          </div>
+          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+            <span style={S.pointsPill}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#E8B84B" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" /></svg>
+              {totalPoints.toLocaleString('en-US')}
+            </span>
+            {ptPopupActive && (
+              <span key={ptPopupKey} style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', color: '#E8B84B', fontWeight: 900, fontSize: '1.05rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards', textShadow: '0 1px 6px rgba(26,43,74,.45)' }}>+5 ⭐</span>
+            )}
+          </div>
         </div>
-        <div style={S.bar}>
-          <div style={{ ...S.barFill, width: `${((cur + 1) / queue.length) * 100}%` }} />
+
+        <div style={{ ...S.glassBar, padding: '6px 8px', gap: 10 }}>
+          <span style={S.qChip}>السؤال {cur + 1} من {queue.length}</span>
+          <div style={S.bar}>
+            <div style={{ ...S.barFill, width: `${((cur + 1) / queue.length) * 100}%` }} />
+          </div>
+          <span style={S.scoreChip} aria-label={`إجابات صحيحة: ${score}`}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#E8B84B" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" /></svg>
+            {score}
+          </span>
         </div>
-        <span style={S.barLabel}>{cur + 1} / {queue.length}</span>
-      </div>
 
-      <div style={S.card}>
-        <WordImage imageUrl={w.image_url} emoji={w.emoji} />
+        <div style={S.glassCard}>
+          <h1 style={S.questionPill}>اِخْتَرِ الْحَرْفَ النَّاقِصَ</h1>
 
-        {/* ── word display area ── */}
-        {correct === true ? (
-          /* ── correct: beautiful full-word reveal ── */
-          <div style={{ position:'relative', padding:'10px 0 14px', textAlign:'center', overflow:'visible' }}>
-            {/* sparkle particles */}
-            {[
-              { em:'✨', an:'lcSpark0', delay:'0ms',   fs:'1.3rem' },
-              { em:'⭐', an:'lcSpark1', delay:'80ms',  fs:'1.1rem' },
-              { em:'💫', an:'lcSpark2', delay:'50ms',  fs:'1.2rem' },
-              { em:'🌟', an:'lcSpark3', delay:'130ms', fs:'1.1rem' },
-              { em:'✨', an:'lcSpark4', delay:'30ms',  fs:'1.4rem' },
-              { em:'⭐', an:'lcSpark5', delay:'100ms', fs:'1rem'   },
-              { em:'💫', an:'lcSpark6', delay:'60ms',  fs:'1.1rem' },
-            ].map((p, i) => (
-              <span key={i} style={{
-                position:'absolute', top:'50%', left:'50%',
-                fontSize: p.fs, lineHeight:1, pointerEvents:'none',
-                animation: `${p.an} .9s ${p.delay} cubic-bezier(.25,.46,.45,.94) both`,
-              }}>{p.em}</span>
-            ))}
+          <div style={S.pictureCard}>
+            <WordImage imageUrl={w.image_url} emoji={w.emoji} />
+            <button style={S.listenRow} onClick={() => playWord(w)} aria-label="اسمع الكلمة">
+              <span style={S.listenBtn}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>
+              </span>
+              <span style={{ fontSize: '.95rem', fontWeight: 800, color: '#8A6212' }}>اِسْمَعِ الْكَلِمَةَ أَوَّلًا</span>
+            </button>
+          </div>
 
-            {/* reveal container */}
-            <div style={{
-              display:'inline-flex', flexDirection:'column', alignItems:'center',
-              background:'linear-gradient(135deg,#f0fdf4,#dcfce7)',
-              borderRadius:28, padding:'10px 28px 14px',
-              border:'2.5px solid #86efac',
-              animation:'lcGlowPulse 1.8s .4s ease-in-out infinite, lcWordReveal .55s cubic-bezier(.34,1.56,.64,1) both',
-            }}>
-              <div style={{ fontSize:'.8rem', fontWeight:800, color:'#15803d', marginBottom:3, letterSpacing:'.02em' }}>
-                ✅ أحسنت! 🎉
-              </div>
+          {/* ── word display area ── */}
+          {correct === true ? (
+            /* ── correct: beautiful full-word reveal ── */
+            <div style={{ position:'relative', padding:'4px 0 8px', textAlign:'center', overflow:'visible' }}>
+              {[
+                { em:'✨', an:'lcSpark0', delay:'0ms',   fs:'1.3rem' },
+                { em:'⭐', an:'lcSpark1', delay:'80ms',  fs:'1.1rem' },
+                { em:'💫', an:'lcSpark2', delay:'50ms',  fs:'1.2rem' },
+                { em:'🌟', an:'lcSpark3', delay:'130ms', fs:'1.1rem' },
+                { em:'✨', an:'lcSpark4', delay:'30ms',  fs:'1.4rem' },
+                { em:'⭐', an:'lcSpark5', delay:'100ms', fs:'1rem'   },
+                { em:'💫', an:'lcSpark6', delay:'60ms',  fs:'1.1rem' },
+              ].map((p, i) => (
+                <span key={i} style={{
+                  position:'absolute', top:'50%', left:'50%',
+                  fontSize: p.fs, lineHeight:1, pointerEvents:'none',
+                  animation: `${p.an} .9s ${p.delay} cubic-bezier(.25,.46,.45,.94) both`,
+                }}>{p.em}</span>
+              ))}
               <div style={{
-                fontSize: fullWordDisplay.length > 6 ? '2.1rem' : '2.7rem',
-                fontWeight:900,
-                fontFamily:'inherit',
-                direction:'rtl',
-                background:'linear-gradient(90deg,#f59e0b,#10b981,#3b82f6,#8b5cf6,#f59e0b)',
-                backgroundSize:'300% auto',
-                WebkitBackgroundClip:'text',
-                WebkitTextFillColor:'transparent',
-                backgroundClip:'text',
-                lineHeight:1.45,
-                animation:'lcWordShimmer 2.5s .55s linear infinite, lcWordFloat 2.8s .55s ease-in-out infinite',
-                willChange:'transform',
+                display:'inline-flex', flexDirection:'column', alignItems:'center',
+                background:'linear-gradient(135deg,#F2FBF6,#DCF3E8)',
+                borderRadius:26, padding:'10px 28px 14px',
+                border:'2.5px solid #6CCFA0',
+                animation:'lcGlowPulse 1.8s .4s ease-in-out infinite, lcWordReveal .55s cubic-bezier(.34,1.56,.64,1) both',
               }}>
-                {fullWordDisplay}
+                <div style={{ fontSize:'.85rem', fontWeight:800, color:'#17784C', marginBottom:3 }}>
+                  ✅ أَحْسَنْتَ! 🎉
+                </div>
+                <div style={{
+                  fontSize: fullWordDisplay.length > 6 ? '2.1rem' : '2.7rem',
+                  fontWeight:900,
+                  fontFamily:'inherit',
+                  direction:'rtl',
+                  background:'linear-gradient(90deg,#E8B84B,#2ABB7A,#1A2B4A,#7C5CD9,#E8B84B)',
+                  backgroundSize:'300% auto',
+                  WebkitBackgroundClip:'text',
+                  WebkitTextFillColor:'transparent',
+                  backgroundClip:'text',
+                  lineHeight:1.45,
+                  animation:'lcWordShimmer 2.5s .55s linear infinite, lcWordFloat 2.8s .55s ease-in-out infinite',
+                  willChange:'transform',
+                }}>
+                  {fullWordDisplay}
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          /* ── unanswered / wrong: segmented letter boxes ── */
-          <div ref={setWordRowEl} style={{ ...S.wordRow, ...(isPhrase ? compactRowStyle : null), animation: correct === false ? 'lcWrongShake .45s cubic-bezier(.36,.07,.19,.97) both' : 'none' }}>
-            {mi < 0 ? (
-              <>
-                <span style={S.wordLetterBox}>{w.word}</span>
-                <span style={{ ...S.blank, background:'#eef3fc', borderColor:'#7c3aed', color:'#7c3aed' }}>؟</span>
-              </>
-            ) : letterGroups.map((group, gi) => (
-              <span key={gi} style={isPhrase ? { ...S.wordGroup, ...compactGroupStyle } : S.wordGroup}>
-                {group.map(i => {
-                  const form = getLetterForm(sw, i);
-                  if (i === mi) {
+          ) : (
+            /* ── unanswered / wrong: segmented letter boxes ── */
+            <div ref={setWordRowEl} style={{ ...S.wordRow, ...(isPhrase ? compactRowStyle : null), animation: correct === false ? 'lcWrongShake .45s cubic-bezier(.36,.07,.19,.97) both' : 'none' }}>
+              {mi < 0 ? (
+                <>
+                  <span style={S.wordLetterBox}>{w.word}</span>
+                  <span style={{ ...S.blank, ...S.blankOpen }}>؟</span>
+                </>
+              ) : letterGroups.map((group, gi) => (
+                <span key={gi} style={isPhrase ? { ...S.wordGroup, ...compactGroupStyle } : S.wordGroup}>
+                  {group.map(i => {
+                    const form = getLetterForm(sw, i);
+                    if (i === mi) {
+                      return (
+                        <span key={i} style={{ ...S.blank, ...tile, ...(correct === null ? S.blankOpen : S.blankShown) }}>
+                          {correct !== null ? toContextual(w.missing_letter, form) : '؟'}
+                        </span>
+                      );
+                    }
                     return (
-                      <span key={i} style={{
-                        ...S.blank,
-                        ...tile,
-                        background:  correct === null ? '#eef3fc' : '#f8d7da',
-                        borderColor: correct === null ? '#7c3aed'  : '#e74c3c',
-                        color:       correct === null ? '#7c3aed'  : '#e74c3c',
-                      }}>
-                        {correct !== null ? toContextual(w.missing_letter, form) : '؟'}
+                      <span key={i} style={tile ? { ...S.wordLetterBox, ...tile } : S.wordLetterBox}>
+                        {toContextual(sw[i], form)}
                       </span>
                     );
-                  }
-                  return (
-                    <span key={i} style={tile ? { ...S.wordLetterBox, ...tile } : S.wordLetterBox}>
-                      {toContextual(sw[i], form)}
-                    </span>
-                  );
-                })}
-              </span>
-            ))}
-          </div>
-        )}
+                  })}
+                </span>
+              ))}
+            </div>
+          )}
 
-        {/* feedback for wrong answer only */}
-        {correct === false && (
-          <div style={{ ...S.feedback, color:'#9b1c1c', background:'#f8d7da' }}>
-            {`❌ الصحيح: ${w.missing_letter}`}
-          </div>
-        )}
+          {/* الخطأ بلا أحمر (صفر إحباط): الحرف الصحيح يظهر بالأخضر ورسالة تشجيع */}
+          {correct === false && (
+            <div style={S.gentleFeedback}>
+              💡 قَرِيبٌ! الْحَرْفُ النَّاقِصُ هُوَ «{w.missing_letter}»
+            </div>
+          )}
 
-        <div style={{ ...S.optRow, gridTemplateColumns: `repeat(${Math.min(opts.length, 5)}, 1fr)` }}>
-          {opts.filter(Boolean).map((opt, idx) => {
-            const isRight  = stripDia(opt) === stripDia(w.missing_letter);
-            const picked   = chosen === opt;
-            const revealed = chosen !== null;
-            let btn = { ...S.optBtn };
-            if (revealed) {
-              if (isRight)     btn = { ...btn, ...S.optCorrect };
-              else if (picked) btn = { ...btn, ...S.optWrong };
-              else             btn = { ...btn, opacity: 0.32 };
-            }
-            return (
-              <button key={`${opt}-${idx}`} style={btn} onClick={() => pick(opt)} disabled={revealed}>
-                {toContextual(opt, w._form || 'isolated')}
-              </button>
-            );
-          })}
+          <div style={{ ...S.optRow, gridTemplateColumns: `repeat(${Math.min(opts.length, 5)}, 1fr)` }}>
+            {opts.filter(Boolean).map((opt, idx) => {
+              const isRight  = stripDia(opt) === stripDia(w.missing_letter);
+              const picked   = chosen === opt;
+              const revealed = chosen !== null;
+              let btn = { ...S.optBtn, borderBottom: `6px solid ${TILE_TINTS[idx % TILE_TINTS.length]}` };
+              if (revealed) {
+                if (isRight)     btn = { ...btn, ...S.optCorrect };
+                else if (picked) btn = { ...btn, ...S.optTried };
+                else             btn = { ...btn, opacity: 0.35 };
+              }
+              return (
+                <button key={`${opt}-${idx}`} style={btn} onClick={() => pick(opt)} disabled={revealed} aria-label={`الحرف ${opt}`}>
+                  {toContextual(opt, w._form || 'isolated')}
+                </button>
+              );
+            })}
+          </div>
+
+          {chosen !== null && (
+            <button style={S.goldBtn} onClick={next}>
+              {isLast ? '🏁 النَّتِيجَةُ النِّهَائِيَّةُ' : 'التَّالِي ←'}
+            </button>
+          )}
         </div>
 
-        {chosen !== null && (
-          <button style={S.btnBlue} onClick={next}>
-            {isLast ? '🏁 النتيجة النهائية' : 'التالي ←'}
-          </button>
-        )}
+        <FaheemBuddy text={buddyText} />
       </div>
     </div>
   );
@@ -922,8 +989,6 @@ const S = {
     borderRadius: 10, padding: '7px 14px', fontSize: '0.85rem', fontWeight: 600,
     cursor: 'pointer', color: '#374151', fontFamily:'inherit',
   },
-  mainTitle: { fontSize: '2rem', fontWeight: 800, color: '#1a1a2e', margin: 0 },
-  sub: { fontSize: '0.97rem', color: '#6b7280', lineHeight: 1.8, margin: 0 },
   statsRow: {
     display: 'flex', alignItems: 'center', background: '#f9fafb', borderRadius: 14,
     padding: '14px 20px', width: '100%', justifyContent: 'space-around', boxSizing: 'border-box',
@@ -984,29 +1049,71 @@ const S = {
     fontSize: '1rem', fontFamily:'inherit', direction: 'rtl',
     color: '#1a1a2e', cursor: 'pointer',
   },
-  headerRow: {
-    display: 'flex', alignItems: 'center', gap: 10, width: '100%', maxWidth: 640,
-    boxSizing: 'border-box',
-    marginBottom: 12, color: '#fff',
+  /* ── شاشة اللعب بعوالم المجموعات ── */
+  scenePage: {
+    position: 'relative', minHeight: '100dvh', width: '100%', boxSizing: 'border-box',
+    overflowX: 'hidden', background: '#F4EFE6', direction: 'rtl', fontFamily: 'inherit',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 12px 12px',
   },
-  scoreBadge: {
-    fontSize: '1rem', fontWeight: 700, flexShrink: 0,
-    background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 14px',
+  sceneColumn: {
+    position: 'relative', zIndex: 1, width: '100%', maxWidth: 560, flex: 1,
+    display: 'flex', flexDirection: 'column', gap: 10,
   },
-  bar: { flex: 1, height: 8, background: 'rgba(255,255,255,0.25)', borderRadius: 4, overflow: 'hidden' },
-  barFill: { height: '100%', background: '#fbbf24', borderRadius: 4, transition: 'width 0.4s' },
-  barLabel: { fontSize: '0.88rem', flexShrink: 0, opacity: 0.82 },
-  card: {
-    background: '#fff', borderRadius: 24, padding: '24px 18px', width: '100%', maxWidth: 640,
-    boxSizing: 'border-box',
-    boxShadow: '0 24px 64px rgba(0,0,0,0.32)',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18,
+  glassBar: {
+    display: 'flex', alignItems: 'center', gap: 8, padding: 6, borderRadius: 999,
+    background: 'rgba(255,255,255,0.62)', WebkitBackdropFilter: 'blur(12px)', backdropFilter: 'blur(12px)',
+    border: '1.5px solid rgba(255,255,255,0.85)', boxShadow: '0 8px 24px rgba(26,43,74,0.14)',
+  },
+  roundBlueBtn: {
+    width: 44, height: 44, flexShrink: 0, borderRadius: '50%', background: '#1A2B4A',
+    border: 'none', borderBottom: '4px solid #0F1B30', color: '#fff', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+  },
+  barTitle: {
+    flex: 1, minWidth: 0, textAlign: 'center', fontSize: '.95rem', fontWeight: 900, color: '#1A2B4A',
+    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+  },
+  pointsPill: {
+    display: 'inline-flex', alignItems: 'center', gap: 5, background: '#1A2B4A', color: '#fff',
+    borderRadius: 999, padding: '8px 12px', fontWeight: 800, fontSize: '.95rem', whiteSpace: 'nowrap',
+  },
+  qChip: {
+    background: '#1A2B4A', color: '#fff', borderRadius: 999, padding: '5px 12px',
+    fontSize: '.82rem', fontWeight: 800, whiteSpace: 'nowrap',
+  },
+  scoreChip: {
+    display: 'inline-flex', alignItems: 'center', gap: 4, background: '#fff', color: '#1A2B4A',
+    borderRadius: 999, padding: '4px 10px', fontSize: '.88rem', fontWeight: 900, flexShrink: 0,
+  },
+  bar: { flex: 1, height: 10, background: 'rgba(26,43,74,0.14)', borderRadius: 999, overflow: 'hidden' },
+  barFill: { height: '100%', background: '#E8B84B', borderRadius: 999, transition: 'width 0.4s' },
+  glassCard: {
+    display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 12, padding: 14, borderRadius: 30,
+    background: 'rgba(255,255,255,0.64)', WebkitBackdropFilter: 'blur(14px)', backdropFilter: 'blur(14px)',
+    border: '1.5px solid rgba(255,255,255,0.88)', boxShadow: '0 14px 34px rgba(26,43,74,0.18)',
+    boxSizing: 'border-box', width: '100%',
+  },
+  questionPill: {
+    margin: 0, background: 'rgba(255,255,255,0.9)', borderRadius: 999, padding: '9px 12px',
+    textAlign: 'center', fontSize: '1.15rem', fontWeight: 900, color: '#1A2B4A',
+  },
+  pictureCard: {
+    background: '#fff', borderRadius: 22, padding: '10px 10px 12px', boxShadow: '0 4px 14px rgba(26,43,74,0.08)',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+  },
+  listenRow: {
+    display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none',
+    padding: '2px 6px', cursor: 'pointer', fontFamily: 'inherit', minHeight: 44,
+  },
+  listenBtn: {
+    width: 42, height: 42, borderRadius: '50%', background: '#E8B84B', borderBottom: '4px solid #C99A2E',
+    color: '#1A2B4A', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box',
   },
   emojiBox: {
-    width: 140, height: 140, background: '#f5f3ff', borderRadius: 20,
-    fontSize: '4.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    width: 150, height: 150, background: '#FAF7F2', borderRadius: 20,
+    fontSize: '4.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
-  wordImg: { width: 140, height: 140, objectFit: 'contain', borderRadius: 16 },
+  wordImg: { width: 150, height: 150, objectFit: 'contain', borderRadius: 16 },
   wordRow: {
     width: '100%',
     display: 'flex', alignItems: 'center', gap: '10px 26px',
@@ -1018,34 +1125,50 @@ const S = {
   },
   wordLetterBox: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    minWidth: 44, height: 56, borderRadius: 10,
-    background: '#f5f3ff', border: '2px solid #ede9fe',
-    fontSize: '2rem', fontWeight: 700, color: '#1a1a2e', padding: '0 6px',
+    minWidth: 46, height: 58, borderRadius: 14, boxSizing: 'border-box',
+    background: '#fff', border: '2px solid #EDE5D8',
+    fontSize: '2rem', fontWeight: 800, color: '#1A2B4A', padding: '0 6px',
   },
   blank: {
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    minWidth: 48, height: 56, border: '3px dashed', borderRadius: 10,
-    fontSize: '2rem', fontWeight: 700, transition: 'all 0.3s', padding: '0 6px',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box',
+    minWidth: 50, height: 58, borderRadius: 14,
+    fontSize: '2rem', fontWeight: 800, transition: 'all 0.3s', padding: '0 6px',
   },
-  feedback: {
-    padding: '10px 22px', borderRadius: 10, fontSize: '1rem',
-    fontWeight: 600, textAlign: 'center', width: '100%',
+  blankOpen:  { background: '#FBF3DF', border: '3px dashed #E8B84B', color: '#B07F1E' },
+  blankShown: { background: '#DCF3E8', border: '3px solid #2ABB7A', color: '#17784C' },
+  gentleFeedback: {
+    padding: '10px 18px', borderRadius: 14, fontSize: '1rem', fontWeight: 800, textAlign: 'center',
+    background: '#FBF3DF', color: '#8A6212', border: '1.5px solid #F1DDA6',
   },
-  optRow: { display: 'grid', gap: 10, width: '100%', boxSizing: 'border-box' },
+  optRow: { display: 'grid', gap: 9, width: '100%', boxSizing: 'border-box' },
   optBtn: {
-    width: '100%',
+    width: '100%', minHeight: 64, maxHeight: 92,
     aspectRatio: '1',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    borderRadius: 16, border: '2px solid #e5e7eb',
-    background: '#f9fafb', fontSize: '1.8rem', fontWeight: 700, cursor: 'pointer',
-    transition: 'all 0.18s', fontFamily:'inherit', color: '#1a1a2e',
-    boxSizing: 'border-box',
+    borderRadius: 18, border: '2px solid #fff',
+    background: '#fff', fontSize: '1.9rem', fontWeight: 800, cursor: 'pointer',
+    transition: 'all 0.18s', fontFamily: 'inherit', color: '#1A2B4A',
+    boxSizing: 'border-box', boxShadow: '0 4px 10px rgba(26,43,74,0.08)',
   },
-  optCorrect: { background: '#d4edda', borderColor: '#27ae60', color: '#1a6b38' },
-  optWrong:   { background: '#f8d7da', borderColor: '#e74c3c', color: '#9b1c1c' },
-  btnBlue: {
-    background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 14,
-    padding: '13px 0', fontSize: '1.05rem', fontWeight: 700, cursor: 'pointer',
-    fontFamily:'inherit', width: '100%', maxWidth: 420,
+  optCorrect: { background: '#1E9E64', borderColor: '#1E9E64', borderBottomColor: '#17784C', color: '#fff', opacity: 1 },
+  optTried:   { background: '#FBF3DF', border: '2px dashed #E8B84B', borderBottom: '6px solid #E8B84B', opacity: 0.75 },
+  goldBtn: {
+    width: '100%', minHeight: 58, borderRadius: 18, background: '#E8B84B', color: '#1A2B4A',
+    border: 'none', borderBottom: '6px solid #C99A2E', fontSize: '1.15rem', fontWeight: 900,
+    cursor: 'pointer', fontFamily: 'inherit',
+  },
+  whiteBtn: {
+    width: '100%', minHeight: 54, borderRadius: 18, background: '#fff', color: '#1A2B4A',
+    border: '2px solid #EDE5D8', borderBottom: '5px solid #E2D6C2', fontSize: '1.05rem', fontWeight: 800,
+    cursor: 'pointer', fontFamily: 'inherit',
+  },
+  buddy: {
+    marginTop: 'auto', paddingTop: 8, display: 'flex', alignItems: 'flex-end', gap: 6,
+    alignSelf: 'flex-start', pointerEvents: 'none',
+  },
+  buddyImg: { width: 84, height: 104, objectFit: 'contain', flexShrink: 0 },
+  buddyBubble: {
+    marginBottom: 64, maxWidth: 220, background: '#fff', color: '#5A3FBF', borderRadius: '18px 18px 18px 6px',
+    padding: '9px 13px', fontSize: '.92rem', fontWeight: 800, boxShadow: '0 6px 16px rgba(26,43,74,0.16)',
   },
 };
