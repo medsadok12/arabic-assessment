@@ -340,13 +340,11 @@ export default function ScenePage() {
         <div className="sc-layout">
           <div className="sc-col stick">
             <SceneImage scene={scene} />
-            <section className="sc-prompt" aria-label="اسْتَمِعْ وَعَبِّرْ">
-              <div className="sc-prompt-text">
-                <h2>🎧 اسْتَمِعْ وَعَبِّرْ</h2>
-                <p>{scene.prompt}</p>
-              </div>
+            {/* سؤال المعلم يُسمَع بـ🔊 (بصوته، وإلا بصوت الجهاز) — والعنوان الظاهر ثابت */}
+            <section className="sc-prompt">
+              <p>اسْتَمِعْ وَعَبِّرْ</p>
               <button type="button" className={`sc-listen${playing ? ' playing' : ''}`} onClick={listen}
-                aria-label={playing ? 'أوقف الصوت' : 'استمع للسؤال'}>{playing ? '⏸' : '🔊'}</button>
+                aria-label={playing ? 'أوقف الصوت' : `استمع للسؤال: ${scene.prompt}`}>{playing ? '⏸' : '🔊'}</button>
             </section>
             {!reviewed && scene.hotspots?.length > 0 && (
               <p className="sc-small">🔍 المس العدسات الذهبية على الصورة — في كل واحدة سؤال صغير يساعدك</p>

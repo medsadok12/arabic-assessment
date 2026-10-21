@@ -223,7 +223,7 @@ export default function SceneEditor({ initial, isAdmin, onClose, onSaved }) {
           <input className="wa-input" value={form.title} maxLength={LIMITS.title} placeholder="مثل: يومٌ على التلّة" onChange={e => set('title', e.target.value)} />
         </label>
         <label className="wa-field">
-          <span className="wa-label">سؤال المشهد للطفل</span>
+          <span className="wa-label">سؤال المشهد للطفل <small style={{ fontWeight: 600, color: '#64748B' }}>— يسمعه الطفل عند لمس 🔊 تحت عنوان «اسْتَمِعْ وَعَبِّرْ»، ويظهر وصفاً للمشهد في قائمة المشاهد</small></span>
           <textarea className="wa-textarea" value={form.prompt} maxLength={LIMITS.prompt} placeholder="ماذا يحدث في هذه الصورة؟ احكِ لنا الحكاية!" onChange={e => set('prompt', e.target.value)} />
           <span className="wa-count">{form.prompt.length}/{LIMITS.prompt}</span>
         </label>
