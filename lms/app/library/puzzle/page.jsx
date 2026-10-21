@@ -61,7 +61,7 @@ export default function PuzzlePage() {
               { icon: '📅', label: 'دخول يومي', pts: '+10 نقطة' },
               { icon: '📚', label: 'إنهاء واجب', pts: '+15 نقطة' },
               { icon: '✅', label: 'حضور حصة', pts: '+20 نقطة' },
-              { icon: '🎡', label: 'لعب عجلة الكلمات', pts: '+5 نقاط/كلمة' },
+              { icon: '🎡', label: 'لعب عجلة الكلمات', pts: '+10 نقاط/كلمة' },
             ].map(({ icon, label, pts }) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '.85rem', color: '#374151' }}>{icon} {label}</span>
