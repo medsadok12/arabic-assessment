@@ -225,6 +225,8 @@ export const SC_CSS = `
     box-shadow:0 6px 0 #C99A2E; }
   .sc-send:active:not(:disabled){ transform:translateY(3px); box-shadow:0 3px 0 #C99A2E; }
   .sc-send:disabled{ opacity:.5; cursor:not-allowed; }
+  .sc-locked{ display:grid; place-items:center; background:#DDF3EF; color:#1F6E62; box-shadow:0 6px 0 #B6E2D9; cursor:default; }
+  .sc-more{ display:grid; place-items:center; text-decoration:none; align-self:center; }
   .sc-banner{ border-radius:18px; padding:12px 16px; font-weight:800; line-height:1.7; display:flex; gap:10px; align-items:center; }
   .sc-banner.sent{ background:#DDF3EF; color:#1F6E62; }
   .sc-banner.preview{ background:#EEF2FF; color:#3730A3; }

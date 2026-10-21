@@ -1,7 +1,7 @@
 import { createAdminClient } from '../../../../../lib/supabase-admin';
 import {
   json, requireViewer, teacherIdsFor, isMissingSchema, schemaResponse, SCENE_COLUMNS, RESPONSE_COLUMNS,
-  signStudentMedia, withMediaUrls, removeStudentMedia,
+  signStudentMedia, withMediaUrls,
 } from '../../../../../lib/scene-story-server';
 import { sceneVisibleTo, sanitizeResponseInput, SUBMIT_POINTS } from '../../../../../lib/scene-story';
 import { awardPoints } from '../../../../../lib/points-server';
@@ -9,8 +9,9 @@ import { notifyUser } from '../../../../../lib/notify';
 
 export const dynamic = 'force-dynamic';
 
-// PUT — ردّ الطالب على المشهد: ردّ واحد لكل مشهد، يُعدَّل حتى يقيّمه المعلم.
-// أول إرسال: نقاط (مرة واحدة لكل مشهد) + إشعار لمعلمي الطالب ولمنشئ المشهد.
+// PUT — ردّ الطالب على المشهد: إرسال واحد نهائي لكل مشهد (طلب الأستاذ محمد:
+// بعد الإرسال ينظر الطالب في عمله فقط دون تغيير). نقاط مرة واحدة + إشعار لمعلمي
+// الطالب ولمنشئ المشهد. إرسال ثانٍ ← 409.
 export async function PUT(req, { params }) {
   const admin = createAdminClient();
   const viewer = await requireViewer(admin, req);
@@ -26,35 +27,24 @@ export async function PUT(req, { params }) {
   const { data: fields, error: invalid } = sanitizeResponseInput(await req.json().catch(() => null), scene, { studentId });
   if (invalid) return json({ error: invalid }, 400);
 
-  const { data: current } = await admin.from('scene_responses').select(RESPONSE_COLUMNS)
+  const { data: current } = await admin.from('scene_responses').select('id')
     .eq('scene_id', scene.id).eq('student_id', studentId).maybeSingle();
-  if (current?.status === 'reviewed') return json({ error: 'قرأ معلمك حكايتك وقيّمها — لا يمكن تعديلها الآن 🌟' }, 409);
+  const already = json({ error: 'أرسلت حكايتك لمعلمك من قبل — يمكنك قراءتها فقط 🌟' }, 409);
+  if (current) return already;
 
-  const row = {
+  const { data: saved, error } = await admin.from('scene_responses').insert({
     ...fields,
     scene_id: scene.id, student_id: studentId,
     student_email: viewer.identity.effectiveEmail, student_name: viewer.name, student_grade: viewer.grade,
     updated_at: new Date().toISOString(),
-  };
-  const { data: saved, error } = current
-    ? await admin.from('scene_responses').update(row).eq('id', current.id).select(RESPONSE_COLUMNS).single()
-    : await admin.from('scene_responses').insert(row).select(RESPONSE_COLUMNS).single();
-  if (error) return json({ error: 'تعذّر حفظ حكايتك — حاول مرة أخرى بعد لحظة' }, 500);
+  }).select(RESPONSE_COLUMNS).single();
+  // إرسالان متزامنان (نقرتان سريعتان): القيد UNIQUE يرفض الثاني
+  if (error) return error.code === '23505' ? already : json({ error: 'تعذّر حفظ حكايتك — حاول مرة أخرى بعد لحظة' }, 500);
 
-  // ملف استُبدل أو أُزيل ← يُحذف من التخزين الخاص
-  if (current) {
-    const dropped = ['audio_path', 'photo_path'].map(k => current[k]).filter(p => p && p !== saved.audio_path && p !== saved.photo_path);
-    await removeStudentMedia(admin, dropped);
-  }
-
-  let points = null;
-  if (!current) {
-    const r = await awardPoints(admin, studentId, `scene_story:${scene.id}`, SUBMIT_POINTS, { dedup: true });
-    points = r.success ? SUBMIT_POINTS : 0;
-    const recipients = [...new Set([...teacherIds, scene.created_by].filter(Boolean))];
-    await Promise.all(recipients.map(id => notifyUser(id, 'scene_story', `📝 حكاية جديدة من ${viewer.name}`, `على مشهد «${scene.title}»`, '/library/scenes/manage?tab=inbox')));
-  }
+  const r = await awardPoints(admin, studentId, `scene_story:${scene.id}`, SUBMIT_POINTS, { dedup: true });
+  const recipients = [...new Set([...teacherIds, scene.created_by].filter(Boolean))];
+  await Promise.all(recipients.map(id => notifyUser(id, 'scene_story', `📝 حكاية جديدة من ${viewer.name}`, `على مشهد «${scene.title}»`, '/library/scenes/manage?tab=inbox')));
 
   const urls = await signStudentMedia(admin, [saved.audio_path, saved.photo_path]);
-  return json({ response: withMediaUrls(saved, urls), points, first: !current });
+  return json({ response: withMediaUrls(saved, urls), points: r.success ? SUBMIT_POINTS : 0 });
 }

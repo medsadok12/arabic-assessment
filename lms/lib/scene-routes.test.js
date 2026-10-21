@@ -89,28 +89,28 @@ describe('PUT /api/scenes/[id]/response', () => {
   it('أول إرسال: يُحفظ الردّ + 15 نقطة مرة واحدة + إشعار المعلم ومنشئ المشهد', async () => {
     const r = await submit({ text: 'فرح فهيم بالطائرة', audio_path: audioPath(1), feeling: 'happy' });
     expect(r.status).toBe(200);
-    expect(r.body).toMatchObject({ first: true, points: 15 });
+    expect(r.body).toMatchObject({ points: 15 });
     expect(r.body.response).toMatchObject({ word_count: 3, status: 'submitted', student_name: 'سارة', audio_url: `https://signed/${audioPath(1)}` });
     expect(db.points).toEqual([{ userId: KID, reason: `scene_story:${SCENE}`, amount: 15 }]);
     expect(db.notes.map(n => n[0]).sort()).toEqual([ADMIN, T1].sort());
   });
 
-  it('التعديل قبل التقييم: نفس الصف، بلا نقاط جديدة، والتسجيل القديم يُحذف', async () => {
+  it('إرسال واحد نهائي: الإرسال الثاني ← 409 بلا تغيير ولا نقاط ولا إشعار', async () => {
     await submit({ text: 'نص أول', audio_path: audioPath(1) });
     const r = await submit({ text: 'نص معدَّل', audio_path: audioPath(2) });
-    expect(r.body.first).toBe(false);
+    expect(r.status).toBe(409);
+    expect(r.body.error).toMatch(/من قبل/);
     expect(db.tables.scene_responses).toHaveLength(1);
+    expect(db.tables.scene_responses[0]).toMatchObject({ text: 'نص أول', audio_path: audioPath(1) });
     expect(db.points).toHaveLength(1);
     expect(db.notes).toHaveLength(2);
-    expect(db.removed).toEqual([`student-work:${audioPath(1)}`]);
+    expect(db.removed).toEqual([]);
   });
 
-  it('بعد التقييم ← 409 برسالة ودّية', async () => {
+  it('بعد التقييم أيضاً ← 409', async () => {
     await submit({ text: 'حكايتي' });
     db.tables.scene_responses[0].status = 'reviewed';
-    const r = await submit({ text: 'تعديل' });
-    expect(r.status).toBe(409);
-    expect(r.body.error).toMatch(/قيّمها/);
+    expect((await submit({ text: 'تعديل' })).status).toBe(409);
   });
 
   it('ملف طالب آخر مرفوض', async () => {

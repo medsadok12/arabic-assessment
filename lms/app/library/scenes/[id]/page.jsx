@@ -19,7 +19,8 @@ import { SC_CSS, SceneImage, ReviewCard, StarRow, RecordingPlayer, feelingOf } f
 /* ════════════════════════════════════════════════════════════════
    «مشهدٌ وحكاية» — شاشة الطفل: ينظر للمشهد، يفتح عدسات المحقّق، يختار
    شعور الشخصية، ويستعين ببطاقات المساعدة (أفكار المعلم)، ثم يحكي بالكتابة
-   أو بصوته أو بصورة ورقته. ردّ واحد لكل مشهد يعدّله حتى يقرأه معلمه، ثم يرى نجومه وملصقاته.
+   أو بصوته أو بصورة ورقته. ردّ واحد نهائي لكل مشهد: بعد «أرسل» يرى عمله فقط
+   ولا يغيّره، ثم يرى نجوم معلمه وملصقاته.
    التسجيل والصورة يبقيان في الجهاز حتى «أرسل» ثم يُرفعان لدلو خاص.
 ════════════════════════════════════════════════════════════════ */
 
@@ -38,7 +39,7 @@ export default function ScenePage() {
   const [playing, setPlaying] = useState(false);
   const [sending, setSending] = useState(null);   // نص حالة الإرسال
   const [msg, setMsg]         = useState(null);   // { ok, text }
-  const [done, setDone]       = useState(null);   // { first, points }
+  const [done, setDone]       = useState(null);   // { points }
   const [restored, setRestored] = useState(false);
   const rec = useStoryAudioRecorder(AUDIO_MAX_SECS);
   const audioRef = useRef(null);
@@ -102,12 +103,12 @@ export default function ScenePage() {
     if (reviewed && !preview) markReviewSeen(scene?.id, response?.reviewed_at);
   }, [reviewed, preview, scene?.id, response?.reviewed_at]);
 
-  // مسودة النص والشعور في الجهاز
+  // مسودة النص والشعور في الجهاز (قبل الإرسال فقط)
   useEffect(() => {
-    if (!scene || reviewed || preview) return;
+    if (!scene || response || preview) return;
     const t = setTimeout(() => writeSceneDraft(scene.id, { text, feeling }), 400);
     return () => clearTimeout(t);
-  }, [scene, text, feeling, reviewed, preview]);
+  }, [scene, text, feeling, response, preview]);
 
   // تسجيل أو صورة لم يُرسلا بعد ← تنبيه قبل مغادرة الصفحة
   const unsent = !!(audio?.blob || photo?.blob);
@@ -161,16 +162,11 @@ export default function ScenePage() {
     });
     if (err) setMsg({ ok: false, text: err });
   };
-  /* حذف ما أُضيف: إن كان قد وصل للمعلم سابقاً، يُحذف عنده عند «أرسل لتقييم عملك» */
-  const removedMsg = (what, saved) => ({
-    ok: true,
-    text: saved && response ? `🗑 حُذف ${what} — اضغط «أرسل لتقييم عملك» ليصل التعديل لمعلمك` : `🗑 حُذف ${what}`,
-  });
+  /* حذف ما أُضيف قبل الإرسال (بعده لا تعديل) */
   const deleteAudio = () => {
     if (!confirm('هل تريد حذف التسجيل؟')) return;
-    const saved = !!audio?.path;
     setAudio(null);
-    setMsg(removedMsg('التسجيل', saved));
+    setMsg({ ok: true, text: '🗑 حُذف التسجيل' });
   };
   const reRecord = () => {
     if (!confirm('هل تريد حذف هذا التسجيل والتسجيل من جديد؟')) return;
@@ -179,9 +175,8 @@ export default function ScenePage() {
   };
   const deletePhoto = () => {
     if (!confirm('هل تريد حذف الصورة؟')) return;
-    const saved = !!photo?.path;
     setPhoto(null);
-    setMsg(removedMsg('الصورة', saved));
+    setMsg({ ok: true, text: '🗑 حُذفت الصورة' });
   };
 
   /* ── الصورة: تُصغَّر في الجهاز قبل الرفع ── */
@@ -203,7 +198,7 @@ export default function ScenePage() {
   const has = { write: !!text.trim(), speak: !!audio, photo: !!photo };
   const ready = modes.some(m => has[m]);
   const send = async () => {
-    if (!ready || sending || rec.recording || preview) return;
+    if (!ready || sending || rec.recording || preview || response) return;
     setMsg(null);
     try {
       let audioPath = audio?.path || null;
@@ -237,8 +232,8 @@ export default function ScenePage() {
       setData(cur => ({ ...cur, response: d.response }));
       setAudio(d.response.audio_path ? { path: d.response.audio_path, url: d.response.audio_url } : null);
       setPhoto(d.response.photo_path ? { path: d.response.photo_path, url: d.response.photo_url } : null);
-      setDone({ first: d.first, points: d.points });
-      if (d.first) loadPoints();
+      setDone({ points: d.points });
+      loadPoints();
     } catch (e) {
       setMsg({ ok: false, text: `${e.message || 'لم تُحفظ حكايتك'} 🌱` });
     }
@@ -306,13 +301,14 @@ export default function ScenePage() {
               <button type="button" className={`sc-listen${playing ? ' playing' : ''}`} onClick={listen}
                 aria-label={playing ? 'أوقف الصوت' : 'استمع لسؤال المعلم'}>{playing ? '⏸' : '🔊'}</button>
             </section>
-            {!reviewed && scene.hotspots?.length > 0 && (
+            {!response && scene.hotspots?.length > 0 && (
               <p className="sc-small">🔍 المس العدسات الذهبية على الصورة — في كل واحدة سؤال صغير يساعدك</p>
             )}
           </div>
 
           <div className="sc-col">
-            {reviewed ? (
+            {response ? (
+              // أُرسلت الحكاية: يراها الطفل كما هي فقط — لا تعديل ولا إعادة إرسال
               <section className="sc-box sc-mywork" aria-label="حكايتي">
                 <h3>📖 حكايتي {feelingLabel && <span className="sc-mode-tag">{feelingOf(feeling).icon} {feelingLabel}</span>}</h3>
                 {response.text && <p className="sc-mywork-text">{response.text}</p>}
@@ -321,14 +317,19 @@ export default function ScenePage() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img className="sc-photo-prev" src={response.photo_url} alt="صورة حكايتي" />
                 )}
-                <Link href="/library/scenes" className="sc-send" style={{ display: 'grid', placeItems: 'center', textDecoration: 'none' }}>📚 مشهد جديد ينتظرك</Link>
+                {reviewed ? (
+                  <Link href="/library/scenes" className="sc-send" style={{ display: 'grid', placeItems: 'center', textDecoration: 'none' }}>📚 مشهد جديد ينتظرك</Link>
+                ) : (
+                  <>
+                    <div className="sc-send sc-locked" role="status" aria-disabled="true">✅ وصلت حكايتك لمعلمك</div>
+                    <p className="sc-small">🔒 أرسلتَ حكايتك — سيقرؤها معلمك ويرسل لك نجومه قريباً</p>
+                    <Link href="/library/scenes" className="sc-soft sc-more">📚 مشاهد أخرى</Link>
+                  </>
+                )}
               </section>
             ) : (
               <>
-                {response && (
-                  <div className="sc-banner sent"><span aria-hidden="true">📨</span>وصلت حكايتك لمعلمك! يمكنك تحسينها حتى يقرأها ✨</div>
-                )}
-                {restored && !response && (
+                {restored && (
                   <div className="sc-msg ok">✍️ أعدنا لك ما كتبته من قبل — أكمل حكايتك</div>
                 )}
 
@@ -458,18 +459,16 @@ export default function ScenePage() {
 
       {done && (
         <div className="sc-done" role="dialog" aria-modal="true" aria-label="وصلت حكايتك">
-          {done.first && (
-            <div className="sc-confetti" aria-hidden="true">
-              {Array.from({ length: 26 }, (_, i) => (
-                <span key={i} style={{ left: `${(i * 37) % 100}%`, background: CONFETTI[i % CONFETTI.length], animationDelay: `${(i % 7) * 90}ms`, borderRadius: i % 3 ? 3 : '50%' }} />
-              ))}
-            </div>
-          )}
+          <div className="sc-confetti" aria-hidden="true">
+            {Array.from({ length: 26 }, (_, i) => (
+              <span key={i} style={{ left: `${(i * 37) % 100}%`, background: CONFETTI[i % CONFETTI.length], animationDelay: `${(i % 7) * 90}ms`, borderRadius: i % 3 ? 3 : '50%' }} />
+            ))}
+          </div>
           <div className="sc-done-card">
-            <span className="big" aria-hidden="true">{done.first ? '🌟' : '✨'}</span>
-            <h2>{done.first ? 'أحسنت يا حكّاءنا الصغير!' : 'وصل عملك لمعلمك من جديد!'}</h2>
-            <p>{done.first ? 'وصلت حكايتك لمعلمك، وسيرد عليك بنجومه قريباً' : 'سيقرأ معلمك عملك الجديد ويقيّمه قريباً'}</p>
-            {done.first && done.points > 0 && <span className="pts">+{done.points} نقطة ⭐</span>}
+            <span className="big" aria-hidden="true">🌟</span>
+            <h2>أحسنت يا حكّاءنا الصغير!</h2>
+            <p>وصلت حكايتك لمعلمك، وسيرد عليك بنجومه قريباً</p>
+            {done.points > 0 && <span className="pts">+{done.points} نقطة ⭐</span>}
             <Link href="/library/scenes" className="sc-send" style={{ display: 'grid', placeItems: 'center', textDecoration: 'none' }}>📚 مشاهد أخرى</Link>
             <button type="button" className="sc-soft" onClick={() => setDone(null)} autoFocus>👀 أبقى هنا</button>
           </div>
