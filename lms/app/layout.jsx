@@ -1,5 +1,5 @@
 import './globals.css';
-import { Cairo, Tajawal } from 'next/font/google';
+import { Cairo, Tajawal, Noto_Naskh_Arabic } from 'next/font/google';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import PWAInstall           from '../components/PWAInstall';
 import FlashcardReminder    from '../components/FlashcardReminder';
@@ -11,6 +11,16 @@ const cairo = Cairo({
   variable: '--font-cairo',
   display:  'swap',
   preload:  true,
+});
+
+/* خط الألعاب: نسخ الكتب المدرسية (اختيار الأستاذ محمد 2026-10-22) — الدال لا تشبه الحاء،
+   والحركات واضحة. يُحمَّل فقط في صفحات الألعاب (الصنف .game-font) */
+const naskh = Noto_Naskh_Arabic({
+  subsets:  ['arabic'],
+  weight:   ['400', '500', '600', '700'],
+  variable: '--font-naskh',
+  display:  'swap',
+  preload:  false,
 });
 
 const tajawal = Tajawal({
@@ -51,7 +61,7 @@ export default function RootLayout({ children }) {
     <html
       lang="ar"
       dir="rtl"
-      className={`${cairo.className} ${cairo.variable} ${tajawal.variable}`}
+      className={`${cairo.className} ${cairo.variable} ${tajawal.variable} ${naskh.variable}`}
     >
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />

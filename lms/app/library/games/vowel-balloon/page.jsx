@@ -118,7 +118,7 @@ function Balloon({ label, colorIdx, floatVariant, state, onClick }) {
         <span style={{
           fontSize:fs, lineHeight:1.3, color:'#fff', position:'relative', zIndex:1,
           textShadow:'0 2px 8px rgba(0,0,0,.5), 0 0 16px rgba(0,0,0,.15)',
-          fontFamily:"'Cairo','Tajawal',sans-serif", fontWeight:900, textAlign:'center',
+          fontFamily:'inherit', fontWeight:900, textAlign:'center',
         }}>
           {label}
         </span>
@@ -261,12 +261,12 @@ function WordManager({ user }) {
     box:   { background:'#fff', borderRadius:18, padding:'24px 20px', boxShadow:'0 4px 20px rgba(0,0,0,.08)', marginTop:40 },
     h2:    { fontSize:'1.15rem', fontWeight:800, color:'#1e3a5f', marginBottom:16 },
     lbl:   { fontSize:'.82rem', fontWeight:700, color:'#475569', marginBottom:4, display:'block' },
-    inp:   { width:'100%', border:'1.5px solid #e2e8f0', borderRadius:10, padding:'9px 13px', fontSize:'.9rem', fontFamily:"'Cairo','Tajawal',sans-serif", outline:'none', boxSizing:'border-box', background:'#f8fafc' },
-    sel:   { width:'100%', border:'1.5px solid #e2e8f0', borderRadius:10, padding:'9px 13px', fontSize:'.9rem', fontFamily:"'Cairo','Tajawal',sans-serif", outline:'none', boxSizing:'border-box', background:'#f8fafc' },
+    inp:   { width:'100%', border:'1.5px solid #e2e8f0', borderRadius:10, padding:'9px 13px', fontSize:'.9rem', fontFamily:'inherit', outline:'none', boxSizing:'border-box', background:'#f8fafc' },
+    sel:   { width:'100%', border:'1.5px solid #e2e8f0', borderRadius:10, padding:'9px 13px', fontSize:'.9rem', fontFamily:'inherit', outline:'none', boxSizing:'border-box', background:'#f8fafc' },
     row2:  { display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 },
     mb12:  { marginBottom:12 },
     hint:  { fontSize:'.71rem', color:'#94a3b8', marginTop:3, display:'block' },
-    btn:   c => ({ border:'none', borderRadius:10, padding:'10px 22px', fontWeight:700, fontSize:'.88rem', cursor:'pointer', fontFamily:"'Cairo','Tajawal',sans-serif", color:'#fff', background: c==='green'?'linear-gradient(135deg,#10b981,#059669)':c==='red'?'#ef4444':c==='gray'?'#94a3b8':'linear-gradient(135deg,#3b82f6,#2563eb)' }),
+    btn:   c => ({ border:'none', borderRadius:10, padding:'10px 22px', fontWeight:700, fontSize:'.88rem', cursor:'pointer', fontFamily:'inherit', color:'#fff', background: c==='green'?'linear-gradient(135deg,#10b981,#059669)':c==='red'?'#ef4444':c==='gray'?'#94a3b8':'linear-gradient(135deg,#3b82f6,#2563eb)' }),
     table: { width:'100%', borderCollapse:'collapse', fontSize:'.84rem' },
     th:    { padding:'8px 10px', background:'#f1f5f9', fontWeight:700, textAlign:'right', borderBottom:'2px solid #e2e8f0' },
     td:    { padding:'8px 10px', borderBottom:'1px solid #f1f5f9', verticalAlign:'middle' },
@@ -387,7 +387,7 @@ function WordManager({ user }) {
               )}
               {items.map(it => (
                 <tr key={it.id} data-edit-row={it.id}>
-                  <td style={{ ...S.td, fontSize:'1.8rem', textAlign:'center', fontFamily:"'Cairo','Tajawal',sans-serif" }}>{it.target_text}</td>
+                  <td style={{ ...S.td, fontSize:'1.8rem', textAlign:'center', fontFamily:'inherit' }}>{it.target_text}</td>
                   <td style={{ ...S.td, color:'#10b981', fontWeight:700 }}>{it.correct_option}</td>
                   <td style={S.td}>{it.wrong_option_1 || <span style={{ color:'#cbd5e1' }}>تلقائي</span>}</td>
                   <td style={S.td}>{it.wrong_option_2 || <span style={{ color:'#cbd5e1' }}>تلقائي</span>}</td>
@@ -548,7 +548,7 @@ export default function VowelBalloonPage() {
         .vb-balloon-wrap:hover  { filter: brightness(1.08); }
         .vb-balloon-wrap:active { filter: brightness(.95); }
 
-        .vb-tab { border:none; border-radius:12px; padding:9px 22px; font-weight:800; font-size:.9rem; cursor:pointer; font-family:'Cairo','Tajawal',sans-serif; transition:all .18s; }
+        .vb-tab { border:none; border-radius:12px; padding:9px 22px; font-weight:800; font-size:.9rem; cursor:pointer; font-family:inherit; transition:all .18s; }
         .vb-tab.on  { background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; box-shadow:0 4px 14px rgba(59,130,246,.4); }
         .vb-tab.off { background:#f1f5f9; color:#64748b; }
         .vb-tab.off:hover { background:#e2e8f0; }
@@ -556,7 +556,7 @@ export default function VowelBalloonPage() {
         .vb-listen-btn:active { transform:scale(0.92) !important; }
       `}</style>
 
-      <main style={{ minHeight:'100vh', background:'linear-gradient(160deg,#e0f2fe 0%,#f0fdf4 50%,#fef9c3 100%)', fontFamily:"'Cairo','Tajawal',sans-serif", padding:'16px 0 48px' }}>
+      <main style={{ minHeight:'100vh', background:'linear-gradient(160deg,#e0f2fe 0%,#f0fdf4 50%,#fef9c3 100%)', fontFamily:'inherit', padding:'16px 0 48px' }}>
         <div style={{ maxWidth:700, margin:'0 auto', padding:'0 16px' }}>
 
           {/* tabs */}
@@ -603,7 +603,7 @@ export default function VowelBalloonPage() {
                   <div style={{ fontSize:'5rem', marginBottom:12 }}>🎉</div>
                   <h2 style={{ fontSize:'1.6rem', fontWeight:900, color:'#78350f', margin:'0 0 8px' }}>أحسنت! انتهت اللعبة</h2>
                   <p style={{ color:'#64748b', fontSize:'1rem', marginBottom:20 }}>نقاطك: <strong style={{ color:'#f59e0b', fontSize:'1.3rem' }}>{score}</strong> من {total}</p>
-                  <button onClick={restart} style={{ border:'none', borderRadius:50, padding:'12px 36px', background:'linear-gradient(135deg,#10b981,#059669)', color:'#fff', fontSize:'1rem', fontWeight:800, cursor:'pointer', boxShadow:'0 4px 18px rgba(16,185,129,.45)', fontFamily:"'Cairo','Tajawal',sans-serif" }}>
+                  <button onClick={restart} style={{ border:'none', borderRadius:50, padding:'12px 36px', background:'linear-gradient(135deg,#10b981,#059669)', color:'#fff', fontSize:'1rem', fontWeight:800, cursor:'pointer', boxShadow:'0 4px 18px rgba(16,185,129,.45)', fontFamily:'inherit' }}>
                     العب مجدداً ←
                   </button>
                 </div>
@@ -618,7 +618,7 @@ export default function VowelBalloonPage() {
                     {showConf && <ConfettiBurst key={confKey} />}
                     <div style={{
                       display:'inline-block', fontSize:'5rem', lineHeight:1,
-                      color:'#78350f', fontWeight:900, fontFamily:"'Cairo','Tajawal',sans-serif",
+                      color:'#78350f', fontWeight:900, fontFamily:'inherit',
                       textShadow:'0 3px 14px rgba(120,53,15,.22)',
                       animation: letterAnim==='bounce' ? 'vbLetterBounce .6s ease both'
                                : letterAnim==='shake'  ? 'vbLetterShake .5s ease both' : 'none',

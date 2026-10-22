@@ -212,7 +212,7 @@ function WordManager({ dbWords, onRefresh }) {
           onClick={() => word.trim() && speak(word.trim())}
           style={{ marginTop: 6, background: '#ede9fe', border: 'none', borderRadius: 10,
             padding: '6px 14px', cursor: 'pointer', fontSize: '.85rem', fontWeight: 700,
-            color: '#7c3aed', fontFamily: "'Tajawal', sans-serif" }}>
+            color: '#7c3aed', fontFamily: 'inherit' }}>
           🔊 استمع للكلمة
         </button>
 
@@ -238,7 +238,7 @@ function WordManager({ dbWords, onRefresh }) {
                 style={{
                   flex: 1, minHeight: 44, border: 'none', borderRadius: 10, padding: '10px 8px',
                   fontSize: '.86rem', fontWeight: 700, cursor: 'pointer',
-                  fontFamily: "'Tajawal', sans-serif",
+                  fontFamily: 'inherit',
                   background: recording ? '#fee2e2' : '#f0fdf4',
                   color:      recording ? '#dc2626' : '#16a34a',
                 }}>
@@ -248,7 +248,7 @@ function WordManager({ dbWords, onRefresh }) {
                 onPick={(url) => { setAudioUrl(url); setMsg(null); }}
                 onError={(text) => setMsg({ ok: false, text: `❌ ${text}` })}
                 style={{ flex: 1, minHeight: 44, borderRadius: 10, padding: '10px 8px', fontSize: '.86rem', fontWeight: 700,
-                  fontFamily: "'Tajawal', sans-serif", background: '#eff6ff', color: '#1d4ed8', border: 'none' }} />
+                  fontFamily: 'inherit', background: '#eff6ff', color: '#1d4ed8', border: 'none' }} />
             </div>
           ) : (
             <div style={{ background: '#f0fdf4', borderRadius: 10, padding: 10, border: '1.5px solid #86efac' }}>
@@ -259,7 +259,7 @@ function WordManager({ dbWords, onRefresh }) {
               <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                 <button type="button" onClick={recording ? stopRecording : startRecording}
                   style={{ flex: 1, minHeight: 38, border: 'none', borderRadius: 8, padding: '7px', fontSize: '.8rem',
-                    fontWeight: 700, cursor: 'pointer', fontFamily: "'Tajawal', sans-serif",
+                    fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                     background: recording ? '#fee2e2' : '#ede9fe',
                     color:      recording ? '#dc2626' : '#7c3aed' }}>
                   {recording ? `⏹️ إيقاف (${recSecs}ث)` : '🔄 إعادة التسجيل'}
@@ -268,10 +268,10 @@ function WordManager({ dbWords, onRefresh }) {
                   onPick={(url) => { setAudioUrl(url); setMsg(null); }}
                   onError={(text) => setMsg({ ok: false, text: `❌ ${text}` })}
                   style={{ flex: 1, minHeight: 38, borderRadius: 8, padding: '7px', fontSize: '.8rem', fontWeight: 700,
-                    fontFamily: "'Tajawal', sans-serif", background: '#eff6ff', color: '#1d4ed8', border: 'none' }} />
+                    fontFamily: 'inherit', background: '#eff6ff', color: '#1d4ed8', border: 'none' }} />
                 <button type="button" onClick={() => setAudioUrl(null)}
                   style={{ minHeight: 38, border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: '.8rem',
-                    fontWeight: 700, cursor: 'pointer', fontFamily: "'Tajawal', sans-serif",
+                    fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                     background: '#fee2e2', color: '#dc2626' }}>
                   🗑️ حذف
                 </button>
@@ -317,7 +317,7 @@ function WordManager({ dbWords, onRefresh }) {
             <button onClick={resetForm}
               style={{ flex: 1, background: '#f3f4f6', color: '#374151', border: 'none',
                 borderRadius: 10, padding: '11px 0', fontSize: '.9rem', fontWeight: 700,
-                fontFamily: "'Tajawal', sans-serif", cursor: 'pointer' }}>
+                fontFamily: 'inherit', cursor: 'pointer' }}>
               إلغاء
             </button>
           )}
@@ -326,7 +326,7 @@ function WordManager({ dbWords, onRefresh }) {
               flex: 2, background: 'linear-gradient(135deg,#5b4fc4,#7c3aed)', color: '#fff',
               border: 'none', borderRadius: 10, padding: '11px 0', fontSize: '.9rem', fontWeight: 700,
               cursor: (saving || !word.trim()) ? 'not-allowed' : 'pointer',
-              fontFamily: "'Tajawal', sans-serif",
+              fontFamily: 'inherit',
               opacity: (saving || !word.trim()) ? 0.6 : 1,
             }}>
             {saving ? 'جارٍ الحفظ…' : editId ? '✏️ حفظ التعديلات' : '💾 حفظ في قاعدة البيانات'}
@@ -776,7 +776,7 @@ export default function WordScrambleGame() {
                       boxShadow: done ? 'none' : `0 5px 20px ${glow}`,
                       animation: `ws-slide-r .35s ${i * 0.06}s ease both`,
                       transition: 'transform .18s, box-shadow .18s',
-                      fontFamily: "'Cairo','Tajawal',sans-serif",
+                      fontFamily: 'inherit',
                     }}
                     onMouseEnter={e => { if (!done) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 10px 28px ${glow}`; } }}
                     onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = done ? 'none' : `0 5px 20px ${glow}`; }}
@@ -812,7 +812,7 @@ export default function WordScrambleGame() {
                   background: 'rgba(255,255,255,.08)', border: '2px solid rgba(255,255,255,.25)',
                   borderRadius: 16, padding: 0, cursor: 'pointer', overflow: 'hidden',
                   animation: `ws-slide-r .35s ${uniqueTopics.length * 0.06 + 0.05}s ease both`,
-                  backdropFilter: 'blur(8px)', fontFamily: "'Cairo','Tajawal',sans-serif",
+                  backdropFilter: 'blur(8px)', fontFamily: 'inherit',
                   transition: 'background .18s',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,.16)'; }}
@@ -962,7 +962,7 @@ export default function WordScrambleGame() {
               }}>
                 <span style={{
                   fontSize: '2.6rem', fontWeight: 900, color: '#fff',
-                  letterSpacing: 8, fontFamily: "'Tajawal','Cairo',sans-serif",
+                  letterSpacing: 8, fontFamily: 'inherit',
                   textShadow: '0 2px 10px rgba(0,0,0,0.25)',
                   display: 'block',
                 }}>{w.word}</span>
@@ -1030,7 +1030,7 @@ const S = {
     overflowX: 'hidden',
     background: 'linear-gradient(135deg, #5b4fc4 0%, #7c3aed 50%, #9c3ec4 100%)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    padding: '16px 12px', fontFamily: "'Tajawal', sans-serif", direction: 'rtl',
+    padding: '16px 12px', fontFamily: 'inherit', direction: 'rtl',
   },
   centerCard: {
     position: 'relative', background: '#fff', borderRadius: 24, padding: '32px 22px',
@@ -1042,7 +1042,7 @@ const S = {
   cfgBtn: {
     position: 'absolute', top: 16, left: 16, background: '#f3f4f6', border: 'none',
     borderRadius: 10, padding: '7px 14px', fontSize: '0.85rem', fontWeight: 600,
-    cursor: 'pointer', color: '#374151', fontFamily: "'Tajawal', sans-serif",
+    cursor: 'pointer', color: '#374151', fontFamily: 'inherit',
   },
   mainTitle: { fontSize: '2rem', fontWeight: 800, color: '#1a1a2e', margin: 0 },
   sub: { fontSize: '0.97rem', color: '#6b7280', lineHeight: 1.8, margin: 0 },
@@ -1067,12 +1067,12 @@ const S = {
   btnOutline: {
     background: 'transparent', color: '#7c3aed', border: '2px solid #7c3aed',
     borderRadius: 12, padding: '10px 24px', fontSize: '.92rem', fontWeight: 700,
-    cursor: 'pointer', fontFamily: "'Tajawal', sans-serif", marginTop: 4,
+    cursor: 'pointer', fontFamily: 'inherit', marginTop: 4,
   },
   btnGold: {
     background: 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#fff', border: 'none',
     borderRadius: 14, padding: '14px 0', fontSize: '1.1rem', fontWeight: 700,
-    cursor: 'pointer', fontFamily: "'Tajawal', sans-serif", width: '100%',
+    cursor: 'pointer', fontFamily: 'inherit', width: '100%',
     boxShadow: '0 4px 16px rgba(245,158,11,0.4)',
   },
   backLink: { color: '#9ca3af', fontSize: '0.87rem', textDecoration: 'none' },
@@ -1085,7 +1085,7 @@ const S = {
     boxSizing: 'border-box',
     display: 'flex', flexDirection: 'column', gap: 0,
     boxShadow: '0 16px 48px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto',
-    fontFamily: "'Tajawal', sans-serif",
+    fontFamily: 'inherit',
   },
   settingsLabel: {
     display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.95rem', fontWeight: 600,
@@ -1093,12 +1093,12 @@ const S = {
   },
   settingsSelect: {
     padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb',
-    fontSize: '1rem', fontFamily: "'Tajawal', sans-serif", direction: 'rtl',
+    fontSize: '1rem', fontFamily: 'inherit', direction: 'rtl',
     color: '#1a1a2e', cursor: 'pointer',
   },
   input: {
     width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10,
-    padding: '9px 12px', fontSize: '1rem', fontFamily: "'Tajawal', sans-serif",
+    padding: '9px 12px', fontSize: '1rem', fontFamily: 'inherit',
     boxSizing: 'border-box', outline: 'none',
   },
   headerRow: {
@@ -1146,7 +1146,7 @@ const S = {
   letterBtn: {
     width: 76, height: 76, borderRadius: 16, border: '2px solid #e5e7eb',
     background: '#f9fafb', fontSize: '2rem', fontWeight: 700, cursor: 'pointer',
-    transition: 'all 0.15s', fontFamily: "'Tajawal', sans-serif", color: '#1a1a2e',
+    transition: 'all 0.15s', fontFamily: 'inherit', color: '#1a1a2e',
     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     boxSizing: 'border-box',
@@ -1154,6 +1154,6 @@ const S = {
   btnBlue: {
     background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 14,
     padding: '13px 0', fontSize: '1.05rem', fontWeight: 700, cursor: 'pointer',
-    fontFamily: "'Tajawal', sans-serif", width: '100%', maxWidth: 420,
+    fontFamily: 'inherit', width: '100%', maxWidth: 420,
   },
 };

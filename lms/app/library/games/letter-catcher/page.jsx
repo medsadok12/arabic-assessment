@@ -978,7 +978,7 @@ export default function LetterCatcherGame() {
         {/* البطاقة في وسط المساحة المتبقية */}
         <div ref={middleRef} style={S.stageMiddle}>
           <div ref={cardRef} style={{ ...S.glassCard, padding: sz.pad, gap: sz.gap }}>
-            <h1 aria-live="polite" style={{ ...S.questionPill, ...pill.style, minHeight: sz.pill, fontSize: compact ? '1rem' : '1.12rem' }}>{pill.text}</h1>
+            <h1 aria-live="polite" style={{ ...S.questionPill, ...pill.style, minHeight: sz.pill, fontSize: compact ? '1.12rem' : '1.25rem' }}>{pill.text}</h1>
 
             <div style={{ ...S.pictureCard, height: imgH + 20, gap: fahimShown ? 8 : 0 }}>
               {/* فهيم يحتفل بجانب الصورة (لا فوق الكلمة — يتأملها الطفل كاملة تحتها). موجود دائماً
@@ -1024,7 +1024,7 @@ export default function LetterCatcherGame() {
                   animation:'lcGlowPulse 1.8s .4s ease-in-out infinite, lcWordReveal .55s cubic-bezier(.34,1.56,.64,1) both',
                 }}>
                   <div style={{
-                    fontSize: compact ? '1.8rem' : (fullWordDisplay.length > 6 ? '2rem' : '2.4rem'),
+                    fontSize: compact ? '2.1rem' : (fullWordDisplay.length > 6 ? '2.3rem' : '2.7rem'),
                     fontWeight:900,
                     fontFamily:'inherit',
                     direction:'rtl',
@@ -1074,7 +1074,7 @@ export default function LetterCatcherGame() {
                 const isRight  = stripDia(opt) === stripDia(w.missing_letter);
                 const isTried  = tried.includes(opt);
                 const revealed = chosen !== null;
-                let btn = { ...S.optBtn, maxHeight: sz.opt, fontSize: compact ? '1.6rem' : '1.9rem', borderBottom: `6px solid ${TILE_TINTS[idx % TILE_TINTS.length]}` };
+                let btn = { ...S.optBtn, maxHeight: sz.opt, fontSize: compact ? '1.95rem' : '2.3rem', borderBottom: `6px solid ${TILE_TINTS[idx % TILE_TINTS.length]}` };
                 if (revealed) {
                   if (isRight)      btn = { ...btn, ...S.optCorrect };
                   else if (isTried) btn = { ...btn, ...S.optTried };
@@ -1233,7 +1233,7 @@ const S = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
   },
   barTitle: {
-    flex: 1, minWidth: 0, textAlign: 'center', fontSize: '.95rem', fontWeight: 900, color: '#1A2B4A',
+    flex: 1, minWidth: 0, textAlign: 'center', fontSize: '1.05rem', fontWeight: 900, color: '#1A2B4A',
     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
   },
   pointsPill: {
@@ -1289,16 +1289,17 @@ const S = {
     display: 'flex', alignItems: 'center', gap: 6,
     flexWrap: 'wrap', justifyContent: 'center', direction: 'rtl', maxWidth: '100%',
   },
+  // خط النسخ المدرسي (.game-font) يبدو أصغر من الكوفي بالحجم نفسه — الحروف أكبر قليلاً
   wordLetterBox: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     minWidth: 46, height: 58, borderRadius: 14, boxSizing: 'border-box',
     background: '#fff', border: '2px solid #EDE5D8',
-    fontSize: '2rem', fontWeight: 800, color: '#1A2B4A', padding: '0 6px',
+    fontSize: '2.35rem', fontWeight: 800, color: '#1A2B4A', padding: '0 6px',
   },
   blank: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box',
     minWidth: 50, height: 58, borderRadius: 14,
-    fontSize: '2rem', fontWeight: 800, transition: 'all 0.3s', padding: '0 6px',
+    fontSize: '2.35rem', fontWeight: 800, transition: 'all 0.3s', padding: '0 6px',
   },
   blankOpen:  { background: '#FBF3DF', border: '3px dashed #E8B84B', color: '#B07F1E' },
   blankShown: { background: '#DCF3E8', border: '3px solid #2ABB7A', color: '#17784C' },
@@ -1334,6 +1335,6 @@ const S = {
   cheerVideo: { display: 'block', width: '100%', height: '100%', objectFit: 'contain', background: '#fff' },
   buddyBubble: {
     maxWidth: 260, background: '#fff', color: '#5A3FBF', borderRadius: '18px 18px 18px 6px',
-    padding: '9px 13px', fontSize: '.92rem', fontWeight: 800, boxShadow: '0 6px 16px rgba(26,43,74,0.16)',
+    padding: '9px 13px', fontSize: '1.02rem', fontWeight: 800, boxShadow: '0 6px 16px rgba(26,43,74,0.16)',
   },
 };

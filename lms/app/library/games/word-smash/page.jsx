@@ -195,7 +195,7 @@ function WordManager({ dbWords, onRefresh }) {
 
   return (
     <div style={{ border: '1.5px solid #d1fae5', borderRadius: 14, background: '#fff', overflow: 'hidden', marginBottom: 20 }}>
-      <div style={{ background: '#ecfdf5', borderBottom: '1px solid #d1fae5', padding: '12px 16px', fontWeight: 700, color: '#065f46', fontFamily: 'Cairo, sans-serif', fontSize: '.95rem' }}>
+      <div style={{ background: '#ecfdf5', borderBottom: '1px solid #d1fae5', padding: '12px 16px', fontWeight: 700, color: '#065f46', fontFamily: 'inherit', fontSize: '.95rem' }}>
         🔨 إدارة كلمات مطرقة التفكيك {editId ? '— (تعديل)' : ''}
       </div>
 
@@ -219,7 +219,7 @@ function WordManager({ dbWords, onRefresh }) {
           {cs.length > 0 && (
             <div style={{ marginTop: 5, display: 'flex', gap: 6, flexWrap: 'wrap', direction: 'rtl' }}>
               {cs.map((s, i) => (
-                <span key={i} style={{ background: '#d1fae5', color: '#065f46', borderRadius: 8, padding: '3px 10px', fontWeight: 700, fontSize: '.88rem', fontFamily: 'Cairo, sans-serif' }}>{s}</span>
+                <span key={i} style={{ background: '#d1fae5', color: '#065f46', borderRadius: 8, padding: '3px 10px', fontWeight: 700, fontSize: '.88rem', fontFamily: 'inherit' }}>{s}</span>
               ))}
             </div>
           )}
@@ -254,7 +254,7 @@ function WordManager({ dbWords, onRefresh }) {
             <label style={{
               flex: 1, display: 'flex', alignItems: 'center', gap: 8,
               border: '1.5px dashed #86efac', borderRadius: 8, padding: '8px 12px',
-              background: '#f0fdf4', cursor: 'pointer', fontFamily: 'Cairo, sans-serif',
+              background: '#f0fdf4', cursor: 'pointer', fontFamily: 'inherit',
               fontSize: '.85rem', color: '#15803d', fontWeight: 600,
             }}>
               📷 {imgPrev ? 'تغيير الصورة' : 'رفع صورة'}
@@ -263,7 +263,7 @@ function WordManager({ dbWords, onRefresh }) {
             {imgPrev && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <img src={imgPrev} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1.5px solid #d1fae5' }} />
-                <button onClick={() => { setImgUrl(''); setImgPrev(''); }} style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: '.78rem', color: '#dc2626', fontFamily: 'Cairo, sans-serif' }}>🗑️</button>
+                <button onClick={() => { setImgUrl(''); setImgPrev(''); }} style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: '.78rem', color: '#dc2626', fontFamily: 'inherit' }}>🗑️</button>
               </div>
             )}
           </div>
@@ -295,7 +295,7 @@ function WordManager({ dbWords, onRefresh }) {
         </div>
 
         {msg && (
-          <div style={{ padding: '8px 12px', borderRadius: 8, marginBottom: 10, background: msg.ok ? '#f0fdf4' : '#fef2f2', color: msg.ok ? '#15803d' : '#dc2626', fontFamily: 'Cairo, sans-serif', fontSize: '.88rem', fontWeight: 600 }}>
+          <div style={{ padding: '8px 12px', borderRadius: 8, marginBottom: 10, background: msg.ok ? '#f0fdf4' : '#fef2f2', color: msg.ok ? '#15803d' : '#dc2626', fontFamily: 'inherit', fontSize: '.88rem', fontWeight: 600 }}>
             {msg.text}
           </div>
         )}
@@ -311,14 +311,14 @@ function WordManager({ dbWords, onRefresh }) {
       {/* List */}
       <div style={{ maxHeight: 320, overflowY: 'auto' }}>
         {dbWords.length === 0 ? (
-          <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontFamily: 'Cairo, sans-serif' }}>لا توجد كلمات بعد</div>
+          <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontFamily: 'inherit' }}>لا توجد كلمات بعد</div>
         ) : dbWords.map(item => (
           <div key={item.id} data-edit-row={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid #f1f5f9', background: editId === item.id ? '#f0fdf4' : 'transparent', direction: 'rtl' }}>
             {item.image_url
               ? <img src={item.image_url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 7, border: '1.5px solid #d1fae5', flexShrink: 0 }} />
               : <button onClick={() => speak(item.word_text)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', flexShrink: 0, padding: '2px 4px' }}>🔊</button>
             }
-            <div style={{ flex: 1, fontFamily: 'Cairo, sans-serif', textAlign: 'right' }}>
+            <div style={{ flex: 1, fontFamily: 'inherit', textAlign: 'right' }}>
               <div style={{ fontWeight: 700, fontSize: '1rem' }}>{item.word_text}</div>
               <div style={{ fontSize: '.75rem', color: '#64748b' }}>
                 ✓ {formatSegs(item.correct_segments)}
@@ -496,7 +496,7 @@ function WormTopicSelect({ topics, completedTopics, onPickTopic }) {
                 color: done ? '#78350f' : '#fff',
                 textShadow: done ? 'none' : '0 1px 6px rgba(0,0,0,.4)',
                 textAlign: 'center', lineHeight: 1.3,
-                fontFamily: "'Cairo','Tajawal',sans-serif",
+                fontFamily: 'inherit',
               }}>
                 {topic}
               </span>
@@ -535,10 +535,10 @@ function WormTopicSelect({ topics, completedTopics, onPickTopic }) {
 
 /* ─── shared styles ─── */
 const S = {
-  label:      { display: 'block', fontSize: '.8rem', fontWeight: 600, color: '#475569', marginBottom: 4, fontFamily: 'Cairo, sans-serif' },
-  input:      { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #d1d5db', fontFamily: 'Cairo, sans-serif', fontSize: '.9rem', boxSizing: 'border-box', direction: 'rtl', outline: 'none' },
-  btnPrimary: { background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, cursor: 'pointer', fontFamily: 'Cairo, sans-serif', fontWeight: 700, fontSize: '.9rem' },
-  btnSm:      { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 7, padding: '6px 10px', cursor: 'pointer', fontFamily: 'Cairo, sans-serif', fontSize: '.82rem' },
+  label:      { display: 'block', fontSize: '.8rem', fontWeight: 600, color: '#475569', marginBottom: 4, fontFamily: 'inherit' },
+  input:      { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #d1d5db', fontFamily: 'inherit', fontSize: '.9rem', boxSizing: 'border-box', direction: 'rtl', outline: 'none' },
+  btnPrimary: { background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '.9rem' },
+  btnSm:      { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 7, padding: '6px 10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.82rem' },
 };
 
 /* ═══════════════════ MAIN PAGE ═══════════════════ */
@@ -841,7 +841,7 @@ export default function WordSmashGame() {
         .worm-sphere:not(.done):active { transform: scale(0.94); }
       `}</style>
 
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#065f46 0%,#10b981 50%,#34d399 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 12px', fontFamily: "'Cairo','Tajawal',sans-serif", direction: 'rtl' }}>
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#065f46 0%,#10b981 50%,#34d399 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 12px', fontFamily: 'inherit', direction: 'rtl' }}>
 
         {/* ── START ── */}
         {phase === 'start' && (
@@ -1027,7 +1027,7 @@ export default function WordSmashGame() {
                     style={{
                       color: 'rgba(255,255,255,.65)', background: 'none', border: 'none',
                       cursor: 'pointer', fontSize: '.85rem', marginTop: 4,
-                      fontFamily: "'Cairo','Tajawal',sans-serif",
+                      fontFamily: 'inherit',
                     }}
                   >
                     ← العودة
@@ -1198,7 +1198,7 @@ export default function WordSmashGame() {
                                 minWidth: 52,
                                 flexShrink: 0,
                                 whiteSpace: 'nowrap',
-                                fontFamily: "'Cairo','Tajawal',sans-serif",
+                                fontFamily: 'inherit',
                                 direction: 'rtl',
                                 lineHeight: 1.4,
                                 /* wave animation on each correct badge with cascade delay */

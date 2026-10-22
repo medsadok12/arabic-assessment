@@ -187,7 +187,7 @@ export default function PuzzleWidget() {
     <div style={S.card}>
       <div style={{ textAlign: 'center', padding: '40px 20px' }}>
         <div style={{ fontSize: '3rem', marginBottom: 12 }}>🏆</div>
-        <div style={{ fontFamily: "'Cairo','Tajawal',sans-serif", fontWeight: 800, color: '#D97706', fontSize: '1.1rem' }}>أكملت كل الأحاجي — أنت بطل!</div>
+        <div style={{ fontFamily: 'inherit', fontWeight: 800, color: '#D97706', fontSize: '1.1rem' }}>أكملت كل الأحاجي — أنت بطل!</div>
         <div style={S.hint}>سيضيف المعلم أحاجي جديدة قريباً</div>
       </div>
     </div>
@@ -211,7 +211,7 @@ export default function PuzzleWidget() {
         <div style={S.overlay}>
           <div style={S.finaleCard}>
             <div style={{ fontSize: '5rem', animation: 'pw-pop 0.6s ease forwards' }}>{badge?.icon ?? '🏆'}</div>
-            <h2 style={{ fontFamily: "'Cairo','Tajawal',sans-serif", color: '#D97706', fontSize: '1.7rem', margin: '10px 0 4px', fontWeight: 900 }}>مبروك يا بطل! 🎉</h2>
+            <h2 style={{ fontFamily: 'inherit', color: '#D97706', fontSize: '1.7rem', margin: '10px 0 4px', fontWeight: 900 }}>مبروك يا بطل! 🎉</h2>
             <p style={S.hint}>أكملت الأحجية وحصلت على وسام</p>
             {badge?.name && (
               <div style={S.badgePill}>{badge.icon} {badge.name}</div>
@@ -359,7 +359,7 @@ const S = {
     background: '#fff', borderRadius: 22, padding: '18px 16px',
     boxShadow: '0 6px 28px rgba(0,0,0,0.09)', border: '1.5px solid #FDE68A',
     display: 'flex', flexDirection: 'column', gap: 14,
-    fontFamily: "'Cairo','Tajawal',sans-serif", direction: 'rtl',
+    fontFamily: 'inherit', direction: 'rtl',
   },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
   pointsPill: {
@@ -379,7 +379,7 @@ const S = {
   btnGold: {
     background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#fff',
     border: 'none', borderRadius: 14, padding: '14px 0', fontSize: '.96rem',
-    fontWeight: 700, cursor: 'pointer', fontFamily: "'Cairo','Tajawal',sans-serif",
+    fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
     width: '100%', transition: 'transform .15s, box-shadow .15s',
   },
   hint: { fontSize: '.77rem', color: '#9CA3AF', fontWeight: 500 },
@@ -389,7 +389,7 @@ const S = {
     background: '#fff', borderRadius: 24, padding: '44px 32px', textAlign: 'center',
     maxWidth: 380, width: '100%', boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-    fontFamily: "'Cairo','Tajawal',sans-serif",
+    fontFamily: 'inherit',
   },
   badgePill: {
     background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#fff',

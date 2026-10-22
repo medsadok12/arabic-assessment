@@ -1084,7 +1084,7 @@ export default function WordImageMatchPage() {
         .wim-nav-pill {
           background:rgba(255,255,255,.82); color:#92400e;
           border:1.5px solid rgba(251,191,36,.55); border-radius:99px;
-          padding:6px 14px; font-family:'Cairo',sans-serif; font-weight:700;
+          padding:6px 14px; font-family:inherit; font-weight:700;
           font-size:.8rem; text-decoration:none; cursor:pointer;
           display:inline-flex; align-items:center; gap:5px;
           transition:background .15s, box-shadow .15s; white-space:nowrap;

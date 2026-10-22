@@ -31,6 +31,13 @@ html {
   max-width: 100vw;
 }
 
+/* خط الألعاب (اختيار الأستاذ محمد 2026-10-22): نسخ الكتب المدرسية — حروف الكلمات كما يتعلمها
+   الطفل (الدال لا تشبه الحاء، والحركات في مكانها). كل صفحات الألعاب ملفوفة به (components/GameFont) */
+.game-font { font-family: var(--font-naskh), var(--font-cairo), serif; }
+.game-font :is(button, input, select, textarea) { font-family: inherit; }
+/* شريط المنصة نفسه (أعلى الصفحة وأسفلها) يبقى بخط المنصة */
+.game-font :is(.navbar, .nav-bottom-bar) { font-family: var(--font-cairo), var(--font-tajawal), sans-serif; }
+
 body {
   background: var(--bg);
   color: var(--text);

@@ -140,7 +140,7 @@ export function Notice({ tone = 'info', children }) {
 }
 
 export const ADMIN_CSS = `
-  .wa{ min-height:100vh; background:#F4EFE6; direction:rtl; font-family:'Cairo','Tajawal',sans-serif; color:#1A2B4A; padding-bottom:64px; }
+  .wa{ min-height:100vh; background:#F4EFE6; direction:rtl; font-family:inherit; color:#1A2B4A; padding-bottom:64px; }
   .wa *{ box-sizing:border-box; }
   .wa-head{ background:linear-gradient(135deg,#1A2B4A,#2C4470); color:#fff; padding:18px 16px 0; }
   .wa-head-in{ max-width:1080px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
@@ -218,7 +218,7 @@ export const ADMIN_CSS = `
   .wa-choice button:disabled{ opacity:.5; cursor:not-allowed; }
 
   /* النافذة */
-  .wa-overlay{ position:fixed; inset:0; background:rgba(15,23,42,.6); display:flex; align-items:center; justify-content:center; padding:16px; direction:rtl; font-family:'Cairo','Tajawal',sans-serif; }
+  .wa-overlay{ position:fixed; inset:0; background:rgba(15,23,42,.6); display:flex; align-items:center; justify-content:center; padding:16px; direction:rtl; font-family:inherit; }
   .wa-modal{ background:#fff; border-radius:24px; width:100%; max-width:640px; max-height:calc(100vh - 32px); display:flex; flex-direction:column; box-shadow:0 24px 60px rgba(0,0,0,.3); color:#1A2B4A; }
   .wa-modal.wide{ max-width:980px; }
   .wa-modal-head{ display:flex; align-items:center; gap:10px; padding:16px 18px; border-bottom:1px solid #EDE5D8; }

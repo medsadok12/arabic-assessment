@@ -291,7 +291,7 @@ export default function ChallengePage() {
         .ch-inp {
           width:100%; padding:11px 14px; font-size:1rem;
           border:2px solid #e5e7eb; border-radius:12px;
-          font-family:'Cairo','Tajawal',sans-serif;
+          font-family:inherit;
           outline:none; color:#1f2937; transition:border-color .2s;
         }
         .ch-inp:focus { border-color:#6366f1; }
@@ -300,7 +300,7 @@ export default function ChallengePage() {
           width:100%; padding:15px 18px; border-radius:16px;
           font-size:1.05rem; font-weight:900; cursor:pointer;
           border:2.5px solid transparent;
-          font-family:'Cairo','Tajawal',sans-serif;
+          font-family:inherit;
           transition:transform .12s, box-shadow .12s, background .15s, border-color .15s;
           user-select:none; -webkit-user-select:none;
         }
@@ -313,7 +313,7 @@ export default function ChallengePage() {
 
       <div style={{
         minHeight:'100vh',
-        fontFamily:"'Cairo','Tajawal',sans-serif",
+        fontFamily:'inherit',
         background:'linear-gradient(135deg,#0f0c29 0%,#302b63 50%,#24243e 100%)',
         display:'flex', flexDirection:'column', alignItems:'center',
         justifyContent:'center', padding:'80px 16px 32px',
@@ -353,7 +353,7 @@ export default function ChallengePage() {
                     border: gameType === g.key ? '2px solid #6366f1' : '2px solid #e5e7eb',
                     background: gameType === g.key ? '#eef2ff' : 'white',
                     color: gameType === g.key ? '#4338ca' : '#6b7280',
-                    fontFamily:"'Cairo','Tajawal',sans-serif",
+                    fontFamily:'inherit',
                     fontSize:'.8rem', fontWeight:700, cursor:'pointer',
                     transition:'all .2s', textAlign:'center',
                   }}>{g.label}</button>
@@ -369,7 +369,7 @@ export default function ChallengePage() {
                 background:'linear-gradient(135deg,#6366f1,#4f46e5)',
                 color:'white', fontSize:'1.05rem', fontWeight:900,
                 border:'none', cursor: busy ? 'wait' : 'pointer',
-                fontFamily:"'Cairo','Tajawal',sans-serif",
+                fontFamily:'inherit',
                 boxShadow:'0 6px 22px rgba(99,102,241,.4)',
                 marginBottom:16, display:'flex', alignItems:'center', justifyContent:'center', gap:8,
               }}
@@ -400,7 +400,7 @@ export default function ChallengePage() {
                   background:'linear-gradient(135deg,#10b981,#059669)',
                   color:'white', fontSize:'.95rem', fontWeight:900,
                   border:'none', cursor: busy ? 'wait' : 'pointer',
-                  fontFamily:"'Cairo','Tajawal',sans-serif",
+                  fontFamily:'inherit',
                   boxShadow:'0 4px 14px rgba(16,185,129,.35)',
                   display:'flex', alignItems:'center', gap:6,
                 }}
@@ -511,7 +511,7 @@ export default function ChallengePage() {
                   fontSize: curQ.target_text?.length > 6 ? '2.8rem' : '4.5rem',
                   fontWeight:900, color:'#312e81',
                   lineHeight:1.3, marginBottom:28,
-                  fontFamily:"'Cairo','Tajawal',sans-serif",
+                  fontFamily:'inherit',
                 }}>{curQ.target_text}</div>
               )}
 
@@ -606,7 +606,7 @@ export default function ChallengePage() {
                       background:'linear-gradient(135deg,#6366f1,#4f46e5)',
                       color:'white', fontSize:'1.05rem', fontWeight:900,
                       border:'none', cursor:'pointer',
-                      fontFamily:"'Cairo','Tajawal',sans-serif",
+                      fontFamily:'inherit',
                       boxShadow:'0 6px 22px rgba(99,102,241,.4)',
                     }}
                   >🔄 العب مجدداً</button>

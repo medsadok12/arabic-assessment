@@ -103,7 +103,7 @@ export function WordCard({ card, points = 0, revealed = false, autoSeconds = 0, 
 
 export const WW_CSS = `
   .ww{ min-height:100vh; width:100%; box-sizing:border-box; overflow-x:hidden; direction:rtl;
-    background:linear-gradient(150deg,var(--bg1),var(--bg2)); font-family:'Cairo','Tajawal',sans-serif;
+    background:linear-gradient(150deg,var(--bg1),var(--bg2)); font-family:inherit;
     display:flex; flex-direction:column; align-items:center; gap:14px; padding:14px 14px 48px; color:#1F2937; }
   .ww *{ box-sizing:border-box; }
   .ww-wrap{ width:100%; max-width:720px; display:flex; flex-direction:column; gap:14px; }
@@ -231,7 +231,7 @@ export const WW_CSS = `
     animation:wwFadeIn .2s ease-out; }
   .ww-card{ position:relative; overflow:hidden; width:100%; max-width:380px; max-height:calc(100vh - 32px); overflow-y:auto; background:#fff; border-radius:28px;
     padding:20px 18px 18px; display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; direction:rtl;
-    box-shadow:0 24px 60px rgba(0,0,0,.35); animation:wwCardIn .45s cubic-bezier(.34,1.56,.64,1); font-family:'Cairo','Tajawal',sans-serif; }
+    box-shadow:0 24px 60px rgba(0,0,0,.35); animation:wwCardIn .45s cubic-bezier(.34,1.56,.64,1); font-family:inherit; }
   .ww-card-head{ font-weight:900; font-size:1.05rem; color:#6B7280; }
   .ww-card-word{ font-size:2.6rem; font-weight:900; line-height:1.5; color:var(--accent,#7C3AED);
     background:linear-gradient(90deg,#F59E0B,#10B981,#3B82F6,#8B5CF6,#F59E0B); background-size:300% auto;
