@@ -879,8 +879,11 @@ export default function LetterCatcherGame() {
     : { word: 58, opt: 70, pill: 46, foot: 72, pad: 14, gap: 10 };
 
   // سطر الحالة أعلى البطاقة: السؤال، أو «جرّب حرفاً آخر»، أو «أحسنت»، أو الحرف الصحيح
+  // «أحسنت» تظهر مع فهيم وصوته معاً — أثناء نطق الكلمة يقول السطر «اسمع الكلمة» فقط
   const pill = correct === true
-    ? { text: tried.length ? '✅ أَحْسَنْتَ! وَجَدْتَهُ 🎉' : '✅ أَحْسَنْتَ! 🎉', style: S.pillOk }
+    ? fahimShown
+      ? { text: tried.length ? '✅ أَحْسَنْتَ! وَجَدْتَهُ 🎉' : '✅ أَحْسَنْتَ! 🎉', style: S.pillOk }
+      : { text: '🔊 اِسْمَعِ الْكَلِمَةَ', style: null }
     : correct === false
       ? { text: `💡 قَرِيبٌ! الْحَرْفُ النَّاقِصُ هُوَ «${w.missing_letter}»`, style: S.pillSoft }
       : retrying
