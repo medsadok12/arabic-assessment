@@ -96,8 +96,8 @@ const CAT_META = {
 /* ────────────────────── image with fallback ─────────────────── */
 function WordImage({ imageUrl, emoji, size = 150 }) {
   const [err, setErr] = useState(false);
-  if (!imageUrl || err) return <div style={{ ...S.emojiBox, width: size, height: size, fontSize: size * 0.5 }}>{emoji || '❓'}</div>;
-  return <img src={imageUrl} alt="" style={{ height: size, width: 'auto', maxWidth: '100%', objectFit: 'contain', borderRadius: 16 }} onError={() => setErr(true)} />;
+  if (!imageUrl || err) return <div style={{ ...S.emojiBox, width: size, height: size, minWidth: 0, fontSize: size * 0.5 }}>{emoji || '❓'}</div>;
+  return <img src={imageUrl} alt="" style={{ height: size, width: 'auto', maxWidth: '100%', minWidth: 0, objectFit: 'contain', borderRadius: 16 }} onError={() => setErr(true)} />;
 }
 
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
@@ -228,8 +228,8 @@ export default function LetterCatcherGame() {
   }, [stopWordAudio]);
   useEffect(() => stopWordAudio, [stopWordAudio]);
 
-  /* احتفال فهيم عند الإجابة الصحيحة: مقطعه يلوّح ويقول «أحسنت يا بطل» فوق البطاقة 3 ثوانٍ،
-     ثم يختفي بنعومة وينتقل الطفل للسؤال التالي. الصوت مدموج في المقطع نفسه فيبقيان متزامنين،
+  /* احتفال فهيم عند الإجابة الصحيحة: مقطعه يلوّح ويقول «أحسنت يا بطل» بجانب الصورة 3 ثوانٍ
+     (والكلمة كاملة ظاهرة تحته)، ثم يختفي بنعومة وينتقل الطفل للسؤال التالي. الصوت مدموج في المقطع نفسه فيبقيان متزامنين،
      والتشغيل داخل لمسة الطفل (شرط سفاري للصوت) — وإن مُنع الصوت يظهر المقطع صامتاً */
   const cheerVidRef = useRef(null);
   const cheerTimers = useRef([]);
@@ -918,29 +918,20 @@ export default function LetterCatcherGame() {
 
         {/* البطاقة في وسط المساحة المتبقية */}
         <div ref={middleRef} style={S.stageMiddle}>
-          <div ref={cardRef} style={{ ...S.glassCard, padding: sz.pad, gap: sz.gap, position: 'relative' }}>
-            {/* فهيم يحتفل فوق البطاقة — موجود دائماً ومخفي، ليبدأ فوراً داخل لمسة الطفل */}
-            <div
-              aria-hidden={!cheer}
-              style={{
-                ...S.cheerPanel,
-                opacity: cheer === 'in' ? 1 : 0,
-                transform: cheer === 'in' ? 'scale(1)' : 'scale(.94)',
-                visibility: cheer ? 'visible' : 'hidden',
-              }}
-            >
-              <video ref={cheerVidRef} poster="/media/elephant-poster.jpg" playsInline preload="auto" style={S.cheerVideo}>
-                <source src="/media/elephant.mp4" type="video/mp4" />
-                <source src="/media/elephant.webm" type="video/webm" />
-              </video>
-              <div style={S.cheerWord}>{fullWordDisplay}</div>
-            </div>
-
+          <div ref={cardRef} style={{ ...S.glassCard, padding: sz.pad, gap: sz.gap }}>
             <h1 aria-live="polite" style={{ ...S.questionPill, ...pill.style, minHeight: sz.pill, fontSize: compact ? '1rem' : '1.12rem' }}>{pill.text}</h1>
 
-            <div style={{ ...S.pictureCard, height: imgH + 20 }}>
+            <div style={{ ...S.pictureCard, height: imgH + 20, gap: cheer ? 8 : 0 }}>
+              {/* فهيم يحتفل بجانب الصورة (لا فوق الكلمة — يتأملها الطفل كاملة تحتها). موجود دائماً
+                  بعرض صفر ليبدأ فوراً داخل لمسة الطفل */}
+              <div aria-hidden={!cheer} style={{ ...S.cheerBox, width: cheer ? `min(50%, ${imgH}px)` : 0, opacity: cheer === 'in' ? 1 : 0 }}>
+                <video ref={cheerVidRef} poster="/media/elephant-poster.jpg" playsInline preload="auto" style={S.cheerVideo}>
+                  <source src="/media/elephant.mp4" type="video/mp4" />
+                  <source src="/media/elephant.webm" type="video/webm" />
+                </video>
+              </div>
               <WordImage imageUrl={w.image_url} emoji={w.emoji} size={imgH} />
-              <button style={S.listenChip} onClick={() => playWord(w)} aria-label="اسمع الكلمة">
+              <button style={{ ...S.listenChip, visibility: cheer ? 'hidden' : 'visible' }} onClick={() => playWord(w)} aria-label="اسمع الكلمة">
                 <span style={S.listenBtn}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>
                 </span>
@@ -1276,18 +1267,12 @@ const S = {
     cursor: 'pointer', fontFamily: 'inherit',
   },
   buddy: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', flexShrink: 0 },
-  // مقطع فهيم بخلفية بيضاء — اللوحة بيضاء مثله فلا يظهر إطار للفيديو
-  cheerPanel: {
-    position: 'absolute', inset: 0, zIndex: 3, borderRadius: 30, background: '#fff',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
-    padding: 12, boxSizing: 'border-box', overflow: 'hidden',
-    boxShadow: '0 14px 34px rgba(26,43,74,0.18)', transition: 'opacity .35s ease, transform .35s ease',
+  // مقطع فهيم بخلفية بيضاء داخل بطاقة الصورة البيضاء — لا إطار ظاهر للفيديو، وتنزاح الصورة بجانبه
+  cheerBox: {
+    height: '100%', flexShrink: 0, overflow: 'hidden', borderRadius: 16,
+    transition: 'width .35s ease, opacity .35s ease',
   },
-  cheerVideo: { display: 'block', width: '100%', flex: '1 1 auto', minHeight: 0, objectFit: 'contain', background: '#fff' },
-  cheerWord: {
-    flexShrink: 0, background: '#DCF3E8', color: '#17784C', borderRadius: 999, padding: '2px 26px',
-    fontSize: '2.1rem', fontWeight: 900, lineHeight: 1.45, direction: 'rtl',
-  },
+  cheerVideo: { display: 'block', width: '100%', height: '100%', objectFit: 'contain', background: '#fff' },
   buddyBubble: {
     maxWidth: 260, background: '#fff', color: '#5A3FBF', borderRadius: '18px 18px 18px 6px',
     padding: '9px 13px', fontSize: '.92rem', fontWeight: 800, boxShadow: '0 6px 16px rgba(26,43,74,0.16)',
