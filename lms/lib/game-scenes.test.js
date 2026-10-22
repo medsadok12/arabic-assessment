@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { SCENES, sceneFor, normalizeArabic } from './game-scenes.js';
-import GameScene from '../components/GameScene.jsx';
+import GameScene, { SceneThumb, SCENE_VEIL } from '../components/GameScene.jsx';
 
 /* عوالم الألعاب: كل مجموعة يكتبها المعلم تجد مشهدها، وكل مشهد يُرسم */
 
@@ -46,5 +46,10 @@ describe('رسم العوالم', () => {
   });
   it('بالمجموعة مباشرة: «أدوات» ← الورشة', () => {
     expect(renderToStaticMarkup(createElement(GameScene, { category: 'أدوات' }))).toContain('data-scene="workshop"');
+  });
+  it('خلفية اللعب باهتة (غلالة كريمية 65٪) فلا تشتّت الطفل، والصورة المصغّرة للعالم زاهية', () => {
+    expect(SCENE_VEIL).toBe('rgba(244,239,230,0.65)');
+    expect(renderToStaticMarkup(createElement(GameScene, { scene: 'colors' }))).toContain('data-scene-veil');
+    expect(renderToStaticMarkup(createElement(SceneThumb, { scene: 'colors' }))).not.toContain('data-scene-veil');
   });
 });

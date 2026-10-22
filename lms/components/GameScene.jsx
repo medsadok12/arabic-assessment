@@ -981,6 +981,8 @@ const SCENE_TOP = {
   school: '#E6EEF5', meadow: '#A9D7EF',
 };
 
+export const SCENE_VEIL = 'rgba(244,239,230,0.65)'; // #F4EFE6 من الهوية
+
 /* خلفية ثابتة تملأ الشاشة خلف اللعبة؛ تتلاشى بلطف عند تغيّر العالم (لعبة «العب الكل») */
 function GameSceneInner({ category, scene }) {
   const key = scene || sceneFor(category);
@@ -991,6 +993,9 @@ function GameSceneInner({ category, scene }) {
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice" style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', height: 'min(100%, 1000px)', display: 'block' }}>
         <Scene />
       </svg>
+      {/* غلالة كريمية 65٪ (اختيار الأستاذ محمد «ب»): العالم يبقى معروفاً لكنه هادئ لا يشتّت الطفل
+          عن البطاقة. الصور المصغّرة للعوالم (SceneThumb) تبقى زاهية */}
+      <div data-scene-veil style={{ position: 'absolute', inset: 0, background: SCENE_VEIL }} />
     </div>
   );
 }
