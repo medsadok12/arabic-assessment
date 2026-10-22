@@ -124,6 +124,11 @@ const TILE_TINTS = ['#E8B84B', '#A48BE6', '#8798B3', '#6CCFA0', '#D9CCB6'];
 const MAX_TRIES  = 2; // محاولتان لكل كلمة قبل كشف الحرف
 const CHEER_MS   = 3000; // مقطع فهيم «أحسنت يا بطل» ثم السؤال التالي تلقائياً
 const CHEER_FADE = 400;  // اختفاء ناعم في آخر المقطع
+const WORD_GAP   = 2000; // بين انتهاء نطق الكلمة وصوت فهيم
+const WORD_MAX   = 6000; // إن لم تنتهِ الكلمة (شبكة بطيئة) يأتي فهيم على كل حال
+
+const fullWordOf = (wd) => (wd.word.includes('_') ? wd.word.replace('_', wd.missing_letter) : wd.word);
+const ttsUrl     = (text) => `/api/faheem/tts?c=1&t=${encodeURIComponent(text)}`;
 
 /* فهيم واقف في المشهد أسفل الشاشة مع كلمة تشجيع (أو زر «التالي» بجانبه) — ارتفاع ثابت */
 function FaheemBuddy({ text, action, size = 66, hidden = false }) {
@@ -219,30 +224,38 @@ export default function LetterCatcherGame() {
     wordAudioRef.current = null;
   }, []);
   const playWord = useCallback((wd) => {
-    const text = wd.word.includes('_') ? wd.word.replace('_', wd.missing_letter) : wd.word;
+    const text = fullWordOf(wd);
     stopWordAudio();
-    const a = new Audio(wd.audio_url || `/api/faheem/tts?c=1&t=${encodeURIComponent(text)}`);
+    const a = new Audio(wd.audio_url || ttsUrl(text));
     wordAudioRef.current = a;
     a.onerror = () => speakArabic(text);
     a.play().catch(() => speakArabic(text));
   }, [stopWordAudio]);
   useEffect(() => stopWordAudio, [stopWordAudio]);
 
-  /* احتفال فهيم عند الإجابة الصحيحة: مقطعه يلوّح ويقول «أحسنت يا بطل» بجانب الصورة 3 ثوانٍ
-     (والكلمة كاملة ظاهرة تحته)، ثم يختفي بنعومة وينتقل الطفل للسؤال التالي. الصوت مدموج في المقطع نفسه فيبقيان متزامنين،
-     والتشغيل داخل لمسة الطفل (شرط سفاري للصوت) — وإن مُنع الصوت يظهر المقطع صامتاً */
+  /* احتفال الإجابة الصحيحة (طلب الأستاذ محمد): يسمع الطفل الكلمة أولاً، وبعد انتهائها بثانيتين
+     يظهر فهيم بجانب الصورة يلوّح ويقول «أحسنت يا بطل» 3 ثوانٍ، ثم يختفي بنعومة وينتقل للسؤال التالي.
+     الكلمة كاملة ظاهرة طوال الوقت. صوت فهيم مدموج في مقطعه فيبقيان متزامنين.
+     سفاري لا يسمح بصوت يبدأ بعد اللمسة بثوانٍ، فيُفتح صوت المقطع داخل اللمسة نفسها (تشغيل صامت
+     ثم إيقاف فوري)، وإن مُنع رغم ذلك يظهر المقطع صامتاً */
   const cheerVidRef = useRef(null);
   const cheerTimers = useRef([]);
+  const cheerRun    = useRef(0);   // كل احتفال برقم — ما يصل متأخراً من احتفال أُلغي يُهمل
+  const fahimOn     = useRef(false);
   const nextRef     = useRef(() => {});
-  const [cheer, setCheer] = useState(null); // null | 'in' | 'out'
+  const [cheer, setCheer] = useState(null); // null | 'word' | 'in' | 'out'
+  const clearCheerTimers = () => { cheerTimers.current.forEach(clearTimeout); cheerTimers.current = []; };
   const clearCheer = useCallback(() => {
-    cheerTimers.current.forEach(clearTimeout);
-    cheerTimers.current = [];
+    cheerRun.current += 1;
+    clearCheerTimers();
     try { cheerVidRef.current?.pause(); } catch {}
     setCheer(null);
   }, []);
-  const playCheer = useCallback(() => {
+  const startFahim = useCallback((run) => {
+    if (run !== cheerRun.current) return;
+    clearCheerTimers();
     stopWordAudio();
+    fahimOn.current = true;
     const v = cheerVidRef.current;
     if (v) {
       try { v.currentTime = 0; } catch {}
@@ -250,14 +263,51 @@ export default function LetterCatcherGame() {
       v.play()?.catch(() => { v.muted = true; v.play()?.catch(() => {}); });
     }
     setCheer('in');
-    cheerTimers.current.forEach(clearTimeout);
     cheerTimers.current = [
       setTimeout(() => setCheer('out'), CHEER_MS - CHEER_FADE),
       setTimeout(() => nextRef.current(), CHEER_MS),
     ];
   }, [stopWordAudio]);
+  const celebrate = useCallback((wd) => {
+    const run = ++cheerRun.current;
+    const text = fullWordOf(wd);
+    stopWordAudio();
+    clearCheerTimers();
+    fahimOn.current = false;
+    setCheer('word');
+    const v = cheerVidRef.current;
+    if (v) {
+      v.muted = true;
+      v.play()?.then(() => { if (!fahimOn.current) { v.pause(); try { v.currentTime = 0; } catch {} } }).catch(() => {});
+    }
+    // بعد انتهاء الكلمة (تسجيل المعلم، أو صوت فهيم، أو صوت الجهاز احتياطاً) بثانيتين
+    let done = false;
+    const afterWord = () => {
+      if (done || run !== cheerRun.current) return;
+      done = true;
+      clearCheerTimers();
+      cheerTimers.current = [setTimeout(() => startFahim(run), WORD_GAP)];
+    };
+    let device = false;
+    const viaDevice = () => {
+      if (device || done) return;
+      device = true;
+      speakArabic(text, { onEnd: afterWord });
+    };
+    const a = new Audio(wd.audio_url || ttsUrl(text));
+    wordAudioRef.current = a;
+    a.onended = afterWord;
+    a.onerror = viaDevice;
+    a.play()?.catch(viaDevice);
+    cheerTimers.current = [setTimeout(() => startFahim(run), WORD_MAX)];
+  }, [stopWordAudio, startFahim]);
   useEffect(() => clearCheer, [clearCheer]);
   useEffect(() => { if (phase !== 'playing') clearCheer(); }, [phase, clearCheer]);
+  /* صوت الكلمة يُجهَّز مع ظهور السؤال — فيُسمع فور الإجابة الصحيحة (يُخزَّن في المتصفح يوماً) */
+  useEffect(() => {
+    const wd = phase === 'playing' ? queue[cur] : null;
+    if (wd && !wd.audio_url) fetch(ttsUrl(fullWordOf(wd))).catch(() => {});
+  }, [phase, cur, queue]);
 
   /* ── detect teacher/admin role + load user + load past results ── */
   useEffect(() => {
@@ -444,7 +494,7 @@ export default function LetterCatcherGame() {
         setTimeout(() => setPtPopupActive(false), 1200);
         childFetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'letter_catcher' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
       }
-      playCheer();
+      celebrate(w);
       return;
     }
     // أول خطأ: الكلمة تذهب لبطاقات المراجعة (مرة واحدة)
@@ -454,7 +504,7 @@ export default function LetterCatcherGame() {
     const nextTried = [...tried, opt];
     setTried(nextTried);
     if (nextTried.length >= MAX_TRIES) { setChosen(opt); setCorrect(false); }
-  }, [chosen, tried, cur, queue, playCheer]);
+  }, [chosen, tried, cur, queue, celebrate]);
 
   const next = useCallback(() => {
     stopWordAudio();
@@ -817,7 +867,9 @@ export default function LetterCatcherGame() {
 
   const catLabel = selectedCategory ?? w.category ?? '';
   const retrying  = chosen === null && tried.length > 0;
-  const buddyText = retrying ? 'جَرِّبْ مَرَّةً أُخْرَى، أَنْتَ قَرِيبٌ!' : 'هَيَّا يَا بَطَل، أَنْتَ تَسْتَطِيعُ!';
+  const fahimShown = cheer === 'in' || cheer === 'out';
+  const buddyText = cheer === 'word' ? `🔊 ${fullWordDisplay}`
+    : retrying ? 'جَرِّبْ مَرَّةً أُخْرَى، أَنْتَ قَرِيبٌ!' : 'هَيَّا يَا بَطَل، أَنْتَ تَسْتَطِيعُ!';
 
   /* شاشة ثابتة بلا تمرير (طلب الأستاذ محمد: «ثابتاً… وكل شيء موسّطاً وفي مكانه»):
      أحجام ثابتة لكل عنصر، وأصغر قليلاً في الشاشات القصيرة — والصورة تملأ الباقي (imgH) */
@@ -921,10 +973,10 @@ export default function LetterCatcherGame() {
           <div ref={cardRef} style={{ ...S.glassCard, padding: sz.pad, gap: sz.gap }}>
             <h1 aria-live="polite" style={{ ...S.questionPill, ...pill.style, minHeight: sz.pill, fontSize: compact ? '1rem' : '1.12rem' }}>{pill.text}</h1>
 
-            <div style={{ ...S.pictureCard, height: imgH + 20, gap: cheer ? 8 : 0 }}>
+            <div style={{ ...S.pictureCard, height: imgH + 20, gap: fahimShown ? 8 : 0 }}>
               {/* فهيم يحتفل بجانب الصورة (لا فوق الكلمة — يتأملها الطفل كاملة تحتها). موجود دائماً
                   بعرض صفر ليبدأ فوراً داخل لمسة الطفل */}
-              <div aria-hidden={!cheer} style={{ ...S.cheerBox, width: cheer ? `min(50%, ${imgH}px)` : 0, opacity: cheer === 'in' ? 1 : 0 }}>
+              <div data-cheer={cheer || ''} aria-hidden={!fahimShown} style={{ ...S.cheerBox, width: fahimShown ? `min(50%, ${imgH}px)` : 0, opacity: cheer === 'in' ? 1 : 0 }}>
                 <video ref={cheerVidRef} poster="/media/elephant-poster.jpg" playsInline preload="auto" style={S.cheerVideo}>
                   <source src="/media/elephant.mp4" type="video/mp4" />
                   <source src="/media/elephant.webm" type="video/webm" />
@@ -1034,9 +1086,9 @@ export default function LetterCatcherGame() {
         {/* الأسفل ثابت: فهيم يشجّع، وبعد الإجابة زر «التالي» بجانبه — لا شيء يدفع البطاقة */}
         <FaheemBuddy
           size={sz.foot}
-          hidden={!!cheer}
+          hidden={fahimShown}
           text={buddyText}
-          action={chosen !== null && (
+          action={chosen !== null && !cheer && (
             <button style={{ ...S.goldBtn, minHeight: compact ? 50 : 56, flex: 1 }} onClick={next}>
               {isLast ? '🏁 النَّتِيجَةُ النِّهَائِيَّةُ' : 'التَّالِي ←'}
             </button>
