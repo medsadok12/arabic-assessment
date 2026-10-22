@@ -124,7 +124,8 @@ const TILE_TINTS = ['#E8B84B', '#A48BE6', '#8798B3', '#6CCFA0', '#D9CCB6'];
 const MAX_TRIES  = 2; // محاولتان لكل كلمة قبل كشف الحرف
 const CHEER_MS   = 3000; // مقطع فهيم «أحسنت يا بطل» ثم السؤال التالي تلقائياً
 const CHEER_FADE = 400;  // اختفاء ناعم في آخر المقطع
-const WORD_GAP   = 2000; // بين انتهاء نطق الكلمة وصوت فهيم
+const CHEER_AT   = 2000; // فهيم بعد ثانيتين من لمسة الطفل (الكلمة تُنطق في أولهما)
+const WORD_PAUSE = 250;  // إن طالت الكلمة: فهيم بعد انتهائها بربع ثانية — لا يتداخل الصوتان
 const WORD_MAX   = 6000; // إن لم تنتهِ الكلمة (شبكة بطيئة) يأتي فهيم على كل حال
 
 const fullWordOf = (wd) => (wd.word.includes('_') ? wd.word.replace('_', wd.missing_letter) : wd.word);
@@ -233,7 +234,7 @@ export default function LetterCatcherGame() {
   }, [stopWordAudio]);
   useEffect(() => stopWordAudio, [stopWordAudio]);
 
-  /* احتفال الإجابة الصحيحة (طلب الأستاذ محمد): يسمع الطفل الكلمة أولاً، وبعد انتهائها بثانيتين
+  /* احتفال الإجابة الصحيحة (طلب الأستاذ محمد): يسمع الطفل الكلمة أولاً، وبعد ثانيتين من لمسته
      يظهر فهيم بجانب الصورة يلوّح ويقول «أحسنت يا بطل» 3 ثوانٍ، ثم يختفي بنعومة وينتقل للسؤال التالي.
      الكلمة كاملة ظاهرة طوال الوقت. صوت فهيم مدموج في مقطعه فيبقيان متزامنين.
      سفاري لا يسمح بصوت يبدأ بعد اللمسة بثوانٍ، فيُفتح صوت المقطع داخل اللمسة نفسها (تشغيل صامت
@@ -280,13 +281,16 @@ export default function LetterCatcherGame() {
       v.muted = true;
       v.play()?.then(() => { if (!fahimOn.current) { v.pause(); try { v.currentTime = 0; } catch {} } }).catch(() => {});
     }
-    // بعد انتهاء الكلمة (تسجيل المعلم، أو صوت فهيم، أو صوت الجهاز احتياطاً) بثانيتين
+    // فهيم عند الثانية الثانية من اللمسة، وبعد انتهاء الكلمة دائماً (تسجيل المعلم، أو صوت فهيم،
+    // أو صوت الجهاز احتياطاً)
+    const t0 = Date.now();
     let done = false;
     const afterWord = () => {
       if (done || run !== cheerRun.current) return;
       done = true;
       clearCheerTimers();
-      cheerTimers.current = [setTimeout(() => startFahim(run), WORD_GAP)];
+      const wait = Math.max(CHEER_AT - (Date.now() - t0), WORD_PAUSE);
+      cheerTimers.current = [setTimeout(() => startFahim(run), wait)];
     };
     let device = false;
     const viaDevice = () => {
