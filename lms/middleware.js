@@ -138,6 +138,8 @@ export async function middleware(request) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|txt)$).*)',
+    // الوسائط الثابتة (مثل مقطع فهيم /media/elephant.mp4) لا تمر بفحص الجلسة — كان يضيف طلباً
+    // لـ Supabase قبل كل جزء من الفيديو فيتأخر بدء المقطع
+    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|txt|mp4|webm|mp3|m4a|wav|ogg)$).*)',
   ],
 };

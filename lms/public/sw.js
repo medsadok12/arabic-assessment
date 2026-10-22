@@ -34,6 +34,10 @@ self.addEventListener('fetch', e => {
   // API + Supabase: network only (no caching)
   if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase')) return;
 
+  // الفيديو والصوت (مثل مقطع فهيم /media/elephant.mp4): للشبكة مباشرة — سفاري يطلبهما
+  // بأجزاء (Range) ونسخة كاملة مخزّنة تمنع تشغيلهما على الآيفون والآيباد
+  if (e.request.headers.has('range') || e.request.destination === 'video' || e.request.destination === 'audio') return;
+
   // Navigation (HTML pages): NETWORK ONLY — الصفحات لا تُخزَّن أبداً في كاش الـSW.
   // فقط عند انقطاع الإنترنت فعلياً نعرض الهيكل المخزَّن مسبقاً كي لا تظهر شاشة خطأ.
   if (e.request.mode === 'navigate') {
