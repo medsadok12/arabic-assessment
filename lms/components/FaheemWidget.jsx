@@ -1,41 +1,10 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { applyWaqf } from '../lib/arabic-waqf';
+import { cleanText, chunkText, takeSentences } from '../lib/faheem-speech';
 
-/* ── TTS text cleaner — strips only non-speakable glyphs (emojis, flags, markdown)
-      so the voice never reads "صاروخ" / "علم تونس". Arabic text + ALL harakat and
-      tanwin pass through UNTOUCHED — Gemini handles waqf/pausing linguistically. ── */
-function cleanText(text) {
-  return text
-    .replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '')   // regional indicators → country flags 🇹🇳
-    .replace(/[\u{1F3FB}-\u{1F3FF}]/gu, '')   // skin-tone modifiers (digits-safe)
-    .replace(/\p{Extended_Pictographic}/gu, '')// emoji: faces, objects, symbols 🌟🦁
-    .replace(/[\u{2190}-\u{21FF}]/gu, '')      // arrows
-    .replace(/[\u{2300}-\u{27BF}]/gu, '')      // misc technical, dingbats, symbols
-    .replace(/[\u{2B00}-\u{2BFF}]/gu, '')      // misc symbols & arrows (⭐ etc.)
-    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')      // variation selectors
-    .replace(/⃣/g, '')                    // combining enclosing keycap
-    .replace(/‍/g, '')                    // zero-width joiner
-    .replace(/ـ/g, '')                         // tatweel (no phonetic value)
-    .replace(/[*_~`#>]/g, '')                  // markdown symbols
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-}
-
-/* الجواب كله قطعة واحدة: كل قطعة يولّدها نموذج الصوت منفصلة فيتغير الصوت والسرعة
-   بين القطع (بلاغ الأستاذ محمد). لا يُقسم إلا نص أطول من حد الخادم (1200 حرف). */
-function chunkText(text) {
-  const MAX = 1100;
-  if (text.length <= MAX) return text ? [text] : [];
-  const chunks = [];
-  let cur = '';
-  for (const s of text.split(/(?<=[.!?؟،؛\n])\s*/)) {
-    if (cur && (cur + s).length > MAX) { chunks.push(cur.trim()); cur = s; }
-    else cur += (cur ? ' ' : '') + s;
-  }
-  if (cur.trim()) chunks.push(cur.trim());
-  return chunks.flatMap(c => (c.length > MAX ? c.match(new RegExp(`[\\s\\S]{1,${MAX}}`, 'g')) : [c]));
-}
+// مقطع صامت يُشغَّل داخل ضغطة الطفل فيُفتح عنصر الصوت على iOS لكل ما يليه
+const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
 
 /* ── Arabic voice picker — priority-ranked for best quality across platforms ──
    Apple  : Laila (female, iOS/macOS) → Maged (male, macOS)  ← best quality
@@ -62,11 +31,15 @@ function pickArabicVoice() {
 }
 
 /* ── TTS hook — server voice /api/faheem/tts (human voice: Azure / Gemini — see
-      lib/faheem-tts.js); the device's own Arabic voice only if the server audio fails ── */
+      lib/faheem-tts.js).
+   • عنصر صوت واحد طوال الجلسة يُفتح داخل ضغطة الطفل (unlock) فيعمل على iOS أيضاً.
+   • القراءة طابور: كل قطعة تُجلب فور معرفتها (بالتوازي) وتُشغَّل بالترتيب.
+   • sentences=true (صوت Azure الثابت): الجواب يُقرأ جملةً جملة وهو يصل من الخادم.
+     وإن تعثّرت جملة تُتخطّى بصمت — لا يدخل صوت الجهاز وسط صوت فهيم.
+   • sentences=false: الجواب كله قطعة واحدة، وصوت الجهاز احتياط إن فشل صوت الخادم. ── */
 function useSpeech() {
-  const audioRef = useRef(null);   // القطعة التي تُشغَّل الآن
-  const nextRef  = useRef(null);   // القطعة التالية — تُحمَّل أثناء تشغيل الحالية
-  const runRef   = useRef(null);   // رمز القراءة الجارية؛ قراءة جديدة أو إيقاف يُبطل السابقة
+  const elRef  = useRef(null);   // عنصر الصوت الوحيد
+  const runRef = useRef(null);   // القراءة الجارية؛ قراءة جديدة أو إيقاف يُبطل السابقة
 
   // Preload browser voices so they're available on first utterance
   useEffect(() => {
@@ -75,78 +48,143 @@ function useSpeech() {
     window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
   }, []);
 
+  function getEl() {
+    if (!elRef.current) { elRef.current = new Audio(); elRef.current.preload = 'auto'; }
+    return elRef.current;
+  }
+
+  // يُستدعى داخل ضغطة الطفل: تشغيل صامت يفتح العنصر، ولا يُوقَف إلا إن بقي الصامت نفسه
+  const unlock = useCallback(() => {
+    const el = getEl();
+    if (el.dataset.unlocked) return;
+    el.dataset.unlocked = '1';
+    el.src = SILENT_WAV;
+    el.play()?.then(() => { if (el.src === SILENT_WAV) el.pause(); }).catch(() => {});
+  }, []);
+
   // يوقف كل صوت ويلغي التحميل الجاري (بلا أحداث خطأ تُطلق صوت الجهاز)
   function stopAll() {
-    for (const a of [audioRef.current, nextRef.current]) {
-      if (!a) continue;
-      a.onended = null; a.onerror = null; a.onplaying = null;
-      a.pause(); a.removeAttribute('src'); a.load();
+    const run = runRef.current;
+    runRef.current = null;
+    if (run) { run.ctrl.abort(); run.urls.forEach(u => URL.revokeObjectURL(u)); run.urls.clear(); }
+    const el = elRef.current;
+    if (el) {
+      el.onended = null; el.onerror = null; el.onplaying = null;
+      el.pause(); el.removeAttribute('src'); el.load();
     }
-    audioRef.current = null; nextRef.current = null;
     window.speechSynthesis?.cancel();
   }
 
-  useEffect(() => () => { runRef.current = null; stopAll(); }, []);
+  useEffect(() => () => stopAll(), []);
 
   // Fallback: browser Speech API (system voice) — used only if the server audio fails
-  function playBrowser(chunk, resolve) {
-    const voice = pickArabicVoice();
-    if (!window.speechSynthesis || !voice) { resolve(); return; }
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(applyWaqf(chunk)); // الوقف بالسكون كصوت الخادم
-    u.voice  = voice;
-    u.lang   = voice.lang || 'ar-SA';
-    u.rate   = 0.94;   // articulate shadda/gemination
-    u.pitch  = 1.12;   // friendly but realistic
-    u.volume = 1;
-    u.onend  = resolve;
-    u.onerror = resolve;
-    window.speechSynthesis.speak(u);
-  }
-
-  function makeAudio(chunk) {
-    const a = new Audio(`/api/faheem/tts?t=${encodeURIComponent(chunk)}`);
-    a.preload = 'auto';
-    return a;
-  }
-
-  function playChunk(audio, chunk, onStart) {
+  function playBrowser(chunk) {
     return new Promise(resolve => {
-      const fallback = () => { onStart(); playBrowser(chunk, resolve); };
-      audioRef.current = audio;
-      audio.onplaying = onStart;
-      audio.onended = resolve;
-      audio.onerror = fallback;
-      audio.play().catch(fallback);
+      const voice = pickArabicVoice();
+      if (!window.speechSynthesis || !voice) { resolve(); return; }
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(applyWaqf(chunk)); // الوقف بالسكون كصوت الخادم
+      u.voice  = voice;
+      u.lang   = voice.lang || 'ar-SA';
+      u.rate   = 0.94;   // articulate shadda/gemination
+      u.pitch  = 1.12;   // friendly but realistic
+      u.volume = 1;
+      u.onend  = resolve;
+      u.onerror = resolve;
+      window.speechSynthesis.speak(u);
     });
   }
 
   // onStart: أول صوت مسموع (يُخفي «يُجَهِّزُ صَوْتَهُ»)، onEnd: انتهى الكلام
-  const speak = useCallback(async (text, { onStart, onEnd } = {}) => {
+  const startStream = useCallback(({ sentences = false, onStart, onEnd } = {}) => {
     stopAll();
-    const run = {};
+    const run = { ctrl: new AbortController(), urls: new Set(), queue: [], playing: false, ended: false, started: false };
     runRef.current = run;
-    let started = false;
-    const markStarted = () => { if (!started && runRef.current === run) { started = true; onStart?.(); } };
+    const live = () => runRef.current === run;
+    const markStarted = () => { if (!run.started && live()) { run.started = true; onStart?.(); } };
+    let buf = '';
 
-    const chunks = chunkText(cleanText(text));
-    if (!chunks.length) { onEnd?.(); return; }
-    let audio = makeAudio(chunks[0]);
-    for (let i = 0; i < chunks.length; i++) {
-      if (runRef.current !== run) return;
-      nextRef.current = chunks[i + 1] ? makeAudio(chunks[i + 1]) : null;
-      await playChunk(audio, chunks[i], markStarted);
-      audio = nextRef.current;
+    function fetchAudio(text) {
+      return fetch(`/api/faheem/tts?t=${encodeURIComponent(text)}`, { signal: run.ctrl.signal })
+        .then(r => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+        .then(b => {
+          if (!live()) throw new Error('stopped');
+          const u = URL.createObjectURL(b);
+          run.urls.add(u);
+          return u;
+        });
     }
-    if (runRef.current === run) onEnd?.();
+
+    function enqueue(raw) {
+      const text = cleanText(raw);
+      if (!text) return;
+      const item = { text, url: fetchAudio(text) };
+      item.url.catch(() => {});
+      run.queue.push(item);
+      if (!run.playing) playNext();
+    }
+
+    async function playNext() {
+      if (!live()) return;
+      const item = run.queue.shift();
+      if (!item) {
+        run.playing = false;
+        if (run.ended) onEnd?.();
+        return;
+      }
+      run.playing = true;
+      const url = await item.url.catch(() => null);
+      if (!live()) return;
+      if (!url) {
+        if (!sentences) { markStarted(); await playBrowser(item.text); }
+        playNext();
+        return;
+      }
+      const el = getEl();
+      await new Promise(resolve => {
+        const fail = () => {
+          if (!sentences && live()) { markStarted(); playBrowser(item.text).then(resolve); }
+          else resolve();
+        };
+        el.onplaying = markStarted;
+        el.onended = resolve;
+        el.onerror = fail;
+        el.src = url;
+        el.play()?.catch(fail);
+      });
+      URL.revokeObjectURL(url);
+      run.urls.delete(url);
+      playNext();
+    }
+
+    return {
+      push(delta) {
+        if (!live()) return;
+        buf += delta;
+        if (!sentences) return;
+        const r = takeSentences(buf);
+        buf = r.rest;
+        r.sentences.forEach(enqueue);
+      },
+      end() {
+        if (!live()) return;
+        run.ended = true;
+        (sentences ? takeSentences(buf, true).sentences : chunkText(cleanText(buf))).forEach(enqueue);
+        buf = '';
+        if (!run.playing && !run.queue.length) onEnd?.();
+      },
+    };
   }, []);
 
-  const cancel = useCallback(() => {
-    runRef.current = null;
-    stopAll();
-  }, []);
+  const speak = useCallback((text, opts) => {
+    const s = startStream(opts);
+    s.push(text);
+    s.end();
+  }, [startStream]);
 
-  return { speak, cancel };
+  const cancel = useCallback(() => stopAll(), []);
+
+  return { speak, startStream, cancel, unlock };
 }
 
 const iconBtn = {
@@ -205,7 +243,7 @@ function buildGreeting(name, isFemale, streak, mastered) {
 /* ── Main FaheemWidget component ── */
 export default function FaheemWidget({ studentName = 'بطل', studentGender = 'male', streakCount = 0, masteredCount = 0 }) {
   const isFemale = studentGender === 'female';
-  const { speak, cancel } = useSpeech();
+  const { speak, startStream, cancel, unlock } = useSpeech();
 
   const [open,      setOpen]    = useState(false);
   const [greeted,   setGreeted] = useState(false);
@@ -258,6 +296,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
 
   async function sendMsg(text) {
     if (!text.trim() || locked) return;
+    unlock();
     const t = text.trim();
     cancel();
     setPendingQ(null);
@@ -265,20 +304,60 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
     setInput('');
     setPhase('thinking');
 
+    const id = Date.now();
+    let reply = '';
+    const show = (txt) => setMsgs(p => (p.some(m => m.id === id)
+      ? p.map(m => (m.id === id ? { ...m, text: txt } : m))
+      : [...p, { id, role: 'ai', text: txt }]));
+
     try {
-      const res   = await fetch('/api/faheem', {
+      const res = await fetch('/api/faheem', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ message: t, history: msgs, studentName, studentGender }),
       });
-      const json  = await res.json();
-      const reply = json.reply || FALLBACKS[0];
-      setMsgs(p => [...p, { role: 'ai', text: reply }]);
-      sayText(reply);
+
+      // رسائل الخادم الجاهزة (حدّ الأسئلة، تعذّر الإجابة...) تصل JSON كاملة
+      if (!res.body || !(res.headers.get('content-type') || '').startsWith('text/plain')) {
+        const json = await res.json();
+        reply = json.reply || FALLBACKS[0];
+        show(reply);
+        sayText(reply);
+        return;
+      }
+
+      // الجواب يُبثّ: يظهر وهو يُكتب، ومع صوت Azure يبدأ الكلام عند أول جملة مكتملة
+      setVoiceReady(false);
+      setPhase('speaking');
+      const voice = startStream({
+        sentences: res.headers.get('x-faheem-voice') === 'azure',
+        onStart: () => setVoiceReady(true),
+        onEnd: () => setPhase(p => p === 'speaking' ? 'idle' : p),
+      });
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          const delta = dec.decode(value, { stream: true });
+          if (!delta) continue;
+          reply += delta;
+          voice.push(delta);
+          show(reply);
+        }
+      } catch { /* انقطع البث: يبقى ما وصل ويُقرأ */ }
+      if (!reply.trim()) {
+        reply = FALLBACKS[0];
+        show(reply);
+        voice.push(reply);
+      }
+      voice.end();
       prefetchQuestion(reply);
     } catch {
+      if (reply.trim()) return; // وصل جزء من الجواب ويُقرأ
       const fb = FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
-      setMsgs(p => [...p, { role: 'ai', text: fb }]);
+      show(fb);
       sayText(fb);
     }
   }
@@ -290,6 +369,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
       setSttErr('مُتَصَفِّحُكَ لَا يَدْعَمُ الإِدْخَالَ الصَّوْتِيَّ — جَرِّبْ Google Chrome');
       return;
     }
+    unlock();
     cancel();
     setPhase('listening');
     setIsRec(true);
@@ -359,7 +439,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
 
       {!open && (
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => { unlock(); setOpen(true); }}
           title="تَحَدَّثْ مَعَ فَهِيمٍ"
           style={{
             position: 'fixed', bottom: 'var(--faheem-btn-bottom, 24px)', right: 24, zIndex: 1000,

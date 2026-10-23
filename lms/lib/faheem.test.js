@@ -26,16 +26,30 @@ vi.mock('./supabase-admin', () => {
 
 const K = await import('./faheem-knowledge.js');
 const { POST } = await import('../app/api/faheem/route.js');
+// الجواب الناجح يُبثّ نصاً، ورسائل الخادم الجاهزة JSON
 const ask = async (body) => {
   const res = await POST(new Request('https://www.aarem.net/api/faheem', { method: 'POST', body: JSON.stringify(body) }));
-  return { status: res.status, body: await res.json() };
+  const streamed = (res.headers.get('content-type') || '').startsWith('text/plain');
+  return { status: res.status, streamed, voice: res.headers.get('x-faheem-voice'), body: streamed ? { reply: await res.text() } : await res.json() };
 };
+// أحداث SSE كما يرسلها Gemini، مقطّعة على حدود عشوائية (منتصف السطر وحتى منتصف الحرف)
+const sse = (events, cut) => {
+  const bytes = new TextEncoder().encode(events.map(e => `data: ${JSON.stringify(e)}\r\n\r\n`).join(''));
+  return new ReadableStream({
+    start(c) { for (let i = 0; i < bytes.length; i += cut) c.enqueue(bytes.slice(i, i + cut)); c.close(); },
+  });
+};
+const part = (text, thought = false) => ({ candidates: [{ content: { parts: [{ text, ...(thought ? { thought: true } : {}) }] } }] });
 
 beforeEach(() => {
   s.created = []; s.fetches = []; s.user = { id: 'u1' }; s.tables = {};
   s.claude = async () => ({ stop_reason: 'end_turn', model: 'claude-opus-5-5', content: [{ type: 'text', text: 'أَنَا فِيلٌ صَغِير 🐘' }], usage: {} });
-  s.gemini = { ok: true, json: { candidates: [{ content: { parts: [{ text: 'رَدُّ جِيمِنَاي' }] } }] } };
-  globalThis.fetch = vi.fn(async (url, init) => { s.fetches.push({ url, body: JSON.parse(init.body) }); return { ok: s.gemini.ok, status: s.gemini.ok ? 200 : 500, json: async () => s.gemini.json, text: async () => 'err' }; });
+  s.gemini = { ok: true, cut: 7, events: [part('رَدُّ '), part('جِيمِنَاي')] };
+  globalThis.fetch = vi.fn(async (url, init) => {
+    s.fetches.push({ url, body: JSON.parse(init.body) });
+    return { ok: s.gemini.ok, status: s.gemini.ok ? 200 : 500, body: s.gemini.ok ? sse(s.gemini.events, s.gemini.cut) : null, text: async () => 'err' };
+  });
+  delete process.env.AZURE_SPEECH_KEY;
   K._resetCatalogCache();
   delete process.env.ANTHROPIC_API_KEY;
   process.env.GEMINI_API_KEY = 'g-test';
@@ -144,8 +158,31 @@ describe('POST /api/faheem', () => {
     let r = await ask({ message: 'سؤال' });
     expect(s.created).toHaveLength(0);
     expect(r.body.reply).toBe('رَدُّ جِيمِنَاي');
-    s.gemini = { ok: false, json: {} };
+    s.gemini = { ok: false };
     r = await ask({ message: 'سؤال' });
+    expect(r.streamed).toBe(false);
+    expect(r.body.reply).toMatch(/أَعِدِ الْمُحَاوَلَةَ/);
+  });
+  it('Gemini يُبثّ: SSE مقطّع على أي حدود يُجمع كاملاً، وأجزاء التفكير لا تصل للطفل', async () => {
+    const text = 'عَاصِمَةُ نَيْجِيرْيَا هِيَ أَبُوجَا. إِنَّهَا مَدِينَةٌ جَمِيلَةٌ! 🌍';
+    s.gemini.events = [part('أفكّر في السؤال…', true), part('  '), ...text.match(/.{1,5}/gsu).map(t => part(t))];
+    for (const cut of [1, 3, 64, 10000]) {
+      s.gemini.cut = cut;
+      const r = await ask({ message: 'ما عاصمة نيجيريا؟' });
+      expect(r.streamed).toBe(true);
+      expect(r.body.reply).toBe(text);
+    }
+    expect(s.fetches[0].url).toContain(':streamGenerateContent?alt=sse');
+  });
+  it('X-Faheem-Voice يُعلن صوت Azure الثابت حين يوجد مفتاحه (فتقرأ الواجهة جملةً جملة)', async () => {
+    expect((await ask({ message: 'سؤال' })).voice).toBe('gemini');
+    process.env.AZURE_SPEECH_KEY = 'az';
+    expect((await ask({ message: 'سؤال' })).voice).toBe('azure');
+  });
+  it('بثّ بلا أي نص (تفكير فقط) ← رسالة الاعتذار الودّية JSON', async () => {
+    s.gemini.events = [part('تفكير فقط', true)];
+    const r = await ask({ message: 'سؤال' });
+    expect(r.streamed).toBe(false);
     expect(r.body.reply).toMatch(/أَعِدِ الْمُحَاوَلَةَ/);
   });
   it('غير مسجّل ← 401', async () => {

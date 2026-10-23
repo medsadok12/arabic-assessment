@@ -11,7 +11,8 @@ export const maxDuration = 30;
    فَهِيم — المرافق الذكي للطالب.
    1) Claude (حين يوجد ANTHROPIC_API_KEY في Vercel): أدق إجابات، والقسم
       الثابت من التعليمات (الهوية + القواعد + دليل المنصة) مخزَّن مؤقتاً.
-   2) Gemini 2.5 Flash احتياطاً: نفس التعليمات، بحرارة منخفضة وتفكير قصير للدقة.
+   2) Gemini 2.5 Flash احتياطاً: نفس التعليمات، بحرارة منخفضة وتفكير قصير للدقة،
+      ويُبثّ الجواب للطفل وهو يُكتب (يظهر النص ويبدأ الصوت قبل اكتمال الجواب).
    ميزانية الطلب كله 30 ثانية (maxDuration): Claude حتى 17ث، ثم Gemini بالباقي.
 ════════════════════════════════════════════════════════════════ */
 
@@ -60,12 +61,42 @@ async function askClaude(apiKey, dynamicPrompt, turns) {
   }
 }
 
-async function askGemini(apiKey, systemText, turns, timeoutMs) {
+/* أحداث SSE من Gemini ← نصوص الجواب كما تصل (بلا أجزاء التفكير) */
+async function* geminiDeltas(body) {
+  const reader = body.getReader();
+  const dec = new TextDecoder();
+  const textOf = (line) => {
+    if (!line.startsWith('data:')) return '';
+    try {
+      const json = JSON.parse(line.slice(5));
+      return json?.candidates?.[0]?.content?.parts?.filter(p => !p.thought && p.text).map(p => p.text).join('') || '';
+    } catch { return ''; }
+  };
+  let buf = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let nl;
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const text = textOf(buf.slice(0, nl).trim());
+      buf = buf.slice(nl + 1);
+      if (text) yield text;
+    }
+  }
+  const tail = textOf(buf.trim());
+  if (tail) yield tail;
+}
+
+/* Gemini بالبث: يُنتظر أول نص فقط (فإن فشل قبله تبقى رسالة الاعتذار الودّية ممكنة)،
+   ثم يُمرَّر الباقي للطفل كلمةً كلمة وهو يُكتب */
+async function streamGemini(apiKey, systemText, turns, timeoutMs) {
   const t0 = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const fail = (msg) => { clearTimeout(timer); console.error(`[faheem] ✗ ${GEMINI_MODEL} ${msg} (${Date.now() - t0}ms)`); return null; };
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse&key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
@@ -81,59 +112,92 @@ async function askGemini(apiKey, systemText, turns, timeoutMs) {
         },
       }),
     });
-    if (!res.ok) {
-      console.error(`[faheem] ✗ ${GEMINI_MODEL} HTTP ${res.status} (${Date.now() - t0}ms) — ${(await res.text().catch(() => '')).slice(0, 200)}`);
-      return null;
+    if (!res.ok || !res.body) return fail(`HTTP ${res.status} — ${(await res.text().catch(() => '')).slice(0, 200)}`);
+    const deltas = geminiDeltas(res.body);
+    let first = '';
+    while (!first) {
+      const { value, done } = await deltas.next();
+      if (done) return fail('empty reply');
+      first = value.trimStart();
     }
-    const json = await res.json().catch(() => null);
-    const reply = json?.candidates?.[0]?.content?.parts?.filter(p => !p.thought && p.text).map(p => p.text).join('').trim();
-    if (reply) {
-      console.log(`[faheem] ✓ ${GEMINI_MODEL} OK (${Date.now() - t0}ms) len=${reply.length}`);
-      return reply;
-    }
-    console.error(`[faheem] ✗ ${GEMINI_MODEL} empty reply finishReason=${json?.candidates?.[0]?.finishReason ?? 'unknown'} (${Date.now() - t0}ms)`);
+    return { first, deltas, t0, firstMs: Date.now() - t0, abort: () => controller.abort(), done: () => clearTimeout(timer) };
   } catch (e) {
-    console.error(`[faheem] ✗ ${GEMINI_MODEL} ${e?.name} (${Date.now() - t0}ms): ${e?.message}`);
-  } finally {
-    clearTimeout(timer);
+    return fail(`${e?.name}: ${e?.message}`);
   }
-  return null;
+}
+
+/* الجواب نصاً يُبثّ؛ X-Faheem-Voice يخبر الواجهة أن صوت الخادم ثابت (Azure)
+   فتقرأ الجواب جملةً جملة وهو يصل */
+function textStream(chunks, { onEnd = () => {}, onCancel = () => {} } = {}) {
+  const enc = new TextEncoder();
+  let len = 0;
+  const body = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const t of chunks) { len += t.length; controller.enqueue(enc.encode(t)); }
+      } catch (e) {
+        console.error(`[faheem] ✗ stream ${e?.name}: ${e?.message}`);
+      } finally {
+        try { controller.close(); } catch { /* أُغلق من جهة الطفل */ }
+        onEnd(len);
+      }
+    },
+    cancel() { onCancel(); },
+  });
+  return new Response(body, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Faheem-Voice': process.env.AZURE_SPEECH_KEY ? 'azure' : 'gemini',
+    },
+  });
 }
 
 export async function POST(req) {
   const started = Date.now();
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // التحقق من الطالب وقراءة سؤاله معاً، ثم الحدّ والكتالوج معاً — لا انتظار متسلسل
+  const [{ data: { user } }, body] = await Promise.all([
+    supabase.auth.getUser(),
+    req.json().catch(() => null),
+  ]);
   if (!user) return NextResponse.json({ error: 'غير مخول' }, { status: 401 });
 
-  // حدّ لكل مستخدم يضبط كلفة الذكاء الاصطناعي — يفتح عند خطأ المحدِّد
-  const admin = createAdminClient();
-  const { data: aiAllowed } = await admin.rpc('ai_rate_check', {
-    p_user: user.id, p_bucket: 'gen', p_per_minute: 20, p_per_day: 300,
-  });
-  if (aiAllowed === false) return NextResponse.json({ reply: RATE_LIMITED }, { status: 429 });
-
-  let body;
-  try { body = await req.json(); } catch { return NextResponse.json({ reply: EMPTY }); }
   const { message, history = [], studentName = 'صديقي', studentGender = 'male' } = body || {};
   if (!message?.trim()) return NextResponse.json({ reply: EMPTY });
 
+  // حدّ لكل مستخدم يضبط كلفة الذكاء الاصطناعي — يفتح عند خطأ المحدِّد
+  const admin = createAdminClient();
+  const [{ data: aiAllowed }, catalog] = await Promise.all([
+    admin.rpc('ai_rate_check', { p_user: user.id, p_bucket: 'gen', p_per_minute: 20, p_per_day: 300 }),
+    loadLiveCatalog(admin),
+  ]);
+  if (aiAllowed === false) return NextResponse.json({ reply: RATE_LIMITED }, { status: 429 });
+
   const turns = toTurns(history, message);
-  const catalog = await loadLiveCatalog(admin);
   const dynamicPrompt = `${catalog}\n\n${buildStudentContext({ studentName, studentGender })}`;
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
-  console.log(`[faheem] ▶ msg="${message.trim().slice(0, 40)}" anthropic=${!!anthropicKey} gemini=${!!geminiKey}`);
+  const pre = Date.now() - started;
+  console.log(`[faheem] ▶ msg="${message.trim().slice(0, 40)}" anthropic=${!!anthropicKey} gemini=${!!geminiKey} pre=${pre}ms`);
 
   if (anthropicKey) {
     const reply = await askClaude(anthropicKey, dynamicPrompt, turns);
-    if (reply) return NextResponse.json({ reply });
+    if (reply) return textStream([reply]);
   }
   if (geminiKey) {
     const left = Math.max(6000, TOTAL_BUDGET_MS - (Date.now() - started));
-    const reply = await askGemini(geminiKey, `${FAHEEM_STATIC_PROMPT}\n\n${dynamicPrompt}`, turns, left);
-    if (reply) return NextResponse.json({ reply });
+    const g = await streamGemini(geminiKey, `${FAHEEM_STATIC_PROMPT}\n\n${dynamicPrompt}`, turns, left);
+    if (g) {
+      return textStream((async function* () { yield g.first; yield* g.deltas; })(), {
+        onEnd: (len) => {
+          g.done();
+          console.log(`[faheem] ✓ ${GEMINI_MODEL} stream pre=${pre}ms first=${g.firstMs}ms total=${Date.now() - started}ms len=${len}`);
+        },
+        onCancel: () => { g.abort(); g.done(); },
+      });
+    }
   } else {
     console.error('[faheem] ✗ GEMINI_API_KEY not set — no fallback available');
   }

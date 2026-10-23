@@ -8,6 +8,7 @@ export const maxDuration = 30;
 /* صوت فهيم: ?t=النص — و&c=1 للنصوص المشتركة بين الطلاب (كلمة اليوم) فتُخزَّن دائماً.
    المزوّدون وترتيبهم في lib/faheem-tts.js */
 export async function GET(req) {
+  const t0 = Date.now();
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response('Unauthorized', { status: 401 });
@@ -23,8 +24,10 @@ export async function GET(req) {
   const text = (searchParams.get('t') ?? '').trim().slice(0, TTS_MAX_CHARS);
   if (!text) return new Response('', { status: 400 });
 
+  const pre = Date.now() - t0; // التحقق من الطالب + الحدّ، قبل توليد الصوت
   const out = await synthesize(text, { admin, shared: searchParams.get('c') === '1' });
   if (!out) return new Response(null, { status: 502 });
+  console.log(`[tts] ⏱ pre=${pre}ms total=${Date.now() - t0}ms chars=${text.length}`);
 
   return new Response(out.buf, {
     headers: {
