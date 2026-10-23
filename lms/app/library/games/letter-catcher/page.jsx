@@ -229,8 +229,11 @@ export default function LetterCatcherGame() {
     stopWordAudio();
     const a = new Audio(wd.audio_url || ttsUrl(text));
     wordAudioRef.current = a;
-    a.onerror = () => speakArabic(text);
-    a.play().catch(() => speakArabic(text));
+    // صوت الجهاز احتياطاً فقط إن بقي هذا الصوت هو الحالي — إيقافه بضغطة جديدة يرفض play()
+    // (AbortError)، ولو نطقنا عندها لتداخل صوتان
+    const fallback = () => { if (wordAudioRef.current === a) speakArabic(text); };
+    a.onerror = fallback;
+    a.play().catch(fallback);
   }, [stopWordAudio]);
   useEffect(() => stopWordAudio, [stopWordAudio]);
 
@@ -294,7 +297,7 @@ export default function LetterCatcherGame() {
     };
     let device = false;
     const viaDevice = () => {
-      if (device || done) return;
+      if (device || done || run !== cheerRun.current || wordAudioRef.current !== a) return;
       device = true;
       speakArabic(text, { onEnd: afterWord });
     };

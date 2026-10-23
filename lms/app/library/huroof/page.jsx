@@ -27,32 +27,12 @@ const PALETTE = [
 
 /* محتوى الحروف الافتراضي + تعديلات المعلم/الإدارة: lib/huroof.js (mergeLetters) */
 
-function speak(text) {
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  let done = false;
-  function go() {
-    if (done) return;
-    done = true;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ar-SA';
-    u.rate = 0.85;
-    window.speechSynthesis.speak(u);
-  }
-  if (window.speechSynthesis.getVoices().length > 0) go();
-  else {
-    window.speechSynthesis.addEventListener('voiceschanged', go, { once: true });
-    setTimeout(go, 600);
-  }
-}
-
 function LetterCard({ data, index, active, onToggle, onPlay, showBadges }) {
   const pal = PALETTE[index % PALETTE.length];
 
   return (
     <button
-      onClick={() => { onPlay(data.letter_audio_url, data.name); onToggle(index); }}
+      onClick={() => { onPlay(data.letter_audio_url); onToggle(index); }}
       style={{
         background: active
           ? `linear-gradient(145deg, ${pal.main}, ${pal.main}dd)`
@@ -115,8 +95,6 @@ function LetterCard({ data, index, active, onToggle, onPlay, showBadges }) {
 /* ── بطاقة الحرف (اختيار الأستاذ محمد «الصورة أولاً» 2026-10-23): أرى ← أقرأ ← أسمع.
    صورة كبيرة في إطار أبيض، الكلمة والجملة بخط النسخ والحرف ملوّن فيهما، وثلاثة أزرار صوت.
    على الجوال تصعد من الأسفل، وعلى الحاسوب والآيباد نافذة في الوسط (التنسيق في <style> الصفحة) ── */
-const ttsUrl = (text) => `/api/faheem/tts?c=1&t=${encodeURIComponent(text)}`;
-
 function LetterSheet({ data, index, onClose, onPlay, onEdit, onPrev, onNext }) {
   const pal = PALETTE[index % PALETTE.length];
 
@@ -160,18 +138,22 @@ function LetterSheet({ data, index, onClose, onPlay, onEdit, onPrev, onNext }) {
         <div className="hf-word">{colored(data.word)}</div>
         {data.sentence && <div className="hf-sent">{colored(data.sentence)}</div>}
 
-        {/* ثلاثة أصوات: تسجيل المعلم إن وُجد، وإلا صوت فهيم (مخزَّن للجميع)، وصوت الجهاز احتياطاً */}
-        <div className="hf-btns">
-          <button className="hf-sb hf-sb-l" onClick={() => onPlay(data.letter_audio_url, data.name)}>
-            <span aria-hidden="true">🔤</span>الحرف
-          </button>
-          <button className="hf-sb hf-sb-w" onClick={() => onPlay(ttsUrl(data.word), data.word)}>
-            <span aria-hidden="true">🗣️</span>الكلمة
-          </button>
-          <button className="hf-sb hf-sb-s" onClick={() => onPlay(data.sentence_audio_url || ttsUrl(data.sentence), data.sentence)}>
-            <span aria-hidden="true">📖</span>الجملة
-          </button>
-        </div>
+        {/* أزرار الصوت لتسجيلات المعلم وحدها (طلب الأستاذ محمد): لا صوت آلي ولا صوت جهاز —
+            الزر يظهر فقط إن رُفع تسجيله */}
+        {(data.letter_audio_url || data.sentence_audio_url) && (
+          <div className="hf-btns">
+            {data.letter_audio_url && (
+              <button className="hf-sb hf-sb-l" onClick={() => onPlay(data.letter_audio_url)}>
+                <span aria-hidden="true">🔤</span>الحرف
+              </button>
+            )}
+            {data.sentence_audio_url && (
+              <button className="hf-sb hf-sb-s" onClick={() => onPlay(data.sentence_audio_url)}>
+                <span aria-hidden="true">📖</span>الجملة
+              </button>
+            )}
+          </div>
+        )}
 
         {onEdit && (
           <button className="hf-edit" onClick={onEdit}>✏️ تعديل الحرف — الصورة والأصوات والجملة</button>
@@ -212,22 +194,23 @@ export default function HuroofPage() {
     return () => { alive = false; document.removeEventListener('visibilitychange', onVisible); };
   }, []);
 
-  // صوت مسجَّل إن رفعه المعلم، وإلا قراءة الجهاز الآلية. عنصر صوت واحد مشترك،
-  // يُشغَّل داخل معالج اللمسة نفسه (شرط سفاري على آيباد/آيفون).
-  function play(url, fallbackText) {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  // تسجيلات المعلم وحدها (طلب الأستاذ محمد 2026-10-23): لا صوت آلي ولا صوت جهاز أبداً في هذا
+  // التدريب. عنصر صوت واحد مشترك ← صوت واحد في كل لحظة: كل ضغطة توقف ما قبلها.
+  // يُشغَّل داخل معالج اللمسة نفسه (شرط سفاري على آيباد/آيفون). بلا تسجيل = صمت.
+  function play(url) {
     const el = audioRef.current || (audioRef.current = new Audio());
     el.pause();
-    if (!url) { speak(fallbackText); return; }
+    if (!url) return;
     el.src = url;
-    el.play().catch(() => speak(fallbackText));
+    el.play().catch(() => {});
   }
+  useEffect(() => () => audioRef.current?.pause(), []);   // مغادرة الصفحة توقف الصوت
 
   // السهمان في البطاقة: الحرف التالي/السابق كأن الطفل ضغطه (نطقه + «شاهدته» + النقاط)
   function goTo(i) {
     const d = letters[i];
     if (!d) return;
-    play(d.letter_audio_url, d.name);
+    play(d.letter_audio_url);
     toggle(i);
   }
 
@@ -316,12 +299,11 @@ export default function HuroofPage() {
             .hf-word { font-family:var(--font-naskh), serif; font-weight:700; font-size:clamp(2.3rem, 7vh, 3.1rem); line-height:1.45; }
             .hf-sent { font-family:var(--font-naskh), serif; font-weight:600; font-size:1.55rem; line-height:1.85;
               background:#F7FAFF; border:2px solid var(--pal-l); border-radius:18px; padding:8px 14px; }
-            .hf-btns { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; }
+            .hf-btns { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0, 1fr); gap:8px; }
             .hf-sb { min-height:60px; border-radius:16px; border:none; font-family:inherit; font-size:1rem; font-weight:800;
               display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.3; cursor:pointer; }
             .hf-sb span { font-size:1.25rem; line-height:1.1; }
             .hf-sb-l { background:var(--pal); color:#fff; border-bottom:5px solid rgba(0,0,0,.28); }
-            .hf-sb-w { background:#E8B84B; color:#1A2B4A; border-bottom:5px solid #C99A2E; }
             .hf-sb-s { background:#2ABB7A; color:#fff; border-bottom:5px solid #17784C; }
             .hf-sb:active, .hf-arrow:active { transform:translateY(2px); }
             .hf-arrow:active { transform:translateY(calc(-50% + 2px)); }
@@ -418,7 +400,7 @@ export default function HuroofPage() {
             textAlign: 'center', color: '#94a3b8',
             fontSize: '.76rem', marginTop: 30, lineHeight: 1.8,
           }}>
-            💡 اضغط على أي حرف لتفتح بطاقته، واسمع الحرف والكلمة والجملة
+            💡 اضغط على أي حرف لتفتح بطاقته، واسمع الحرف والجملة
           </p>
         </div>
       </main>
