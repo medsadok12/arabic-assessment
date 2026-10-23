@@ -101,3 +101,33 @@ export function sanitizeHuroofPatch(idx, body) {
   }
   return { fields };
 }
+
+/* بطاقة الحرف: الحرف ملوّن داخل الكلمة والجملة ليجده الطفل بعينه — يقسم النص إلى
+   مقاطع { t, hl } فيُلوَّن الحرف مع حركاته. لا يُلوَّن نصف «لا» (لام+ألف تُرسمان شكلاً
+   واحداً، وتلوين أحدهما يكسر الشكل) */
+const HF_MARKS = /[ً-ٰٟ]/;
+const HF_ALEFS = 'اأإآ';
+export function highlightLetter(text, letter) {
+  const s = typeof text === 'string' ? text : '';
+  const target = (letter || '').replace(/[ـ]/g, '').replace(new RegExp(HF_MARKS.source, 'g'), '');
+  if (!s || target.length !== 1) return s ? [{ t: s, hl: false }] : [];
+  const out = [];
+  const push = (t, hl) => {
+    if (!t) return;
+    const last = out[out.length - 1];
+    if (last && last.hl === hl) last.t += t; else out.push({ t, hl });
+  };
+  const base = (i) => { let j = i; while (j >= 0 && HF_MARKS.test(s[j])) j--; return j; };
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    let j = i + 1;
+    while (j < s.length && HF_MARKS.test(s[j])) j++;
+    const unit = s.slice(i, j);
+    let hl = ch === target;
+    if (hl && ch === 'ل' && j < s.length && HF_ALEFS.includes(s[j])) hl = false;  // لام قبل ألف
+    if (hl && HF_ALEFS.includes(ch) && s[base(i - 1)] === 'ل') hl = false;          // ألف بعد لام
+    push(unit, hl);
+    i = j - 1;
+  }
+  return out;
+}

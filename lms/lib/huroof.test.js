@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
-  DEFAULT_LETTERS, HUROOF_COUNT, mergeLetters, sanitizeHuroofPatch, huroofMediaPathFromUrl,
+  DEFAULT_LETTERS, HUROOF_COUNT, mergeLetters, sanitizeHuroofPatch, huroofMediaPathFromUrl, highlightLetter,
 } from './huroof.js';
 
 const SUPA = 'https://proj.supabase.co';
@@ -63,5 +63,29 @@ describe('huroofMediaPathFromUrl', () => {
   it('يرفض الخروج من مجلد الحروف', () => {
     expect(huroofMediaPathFromUrl(`${MEDIA}huroof/../stories/a.mp3`)).toBeNull();
     expect(huroofMediaPathFromUrl(`${MEDIA}huroof/1-letter-1.m4a?t=1`)).toBe('huroof/1-letter-1.m4a');
+  });
+});
+
+describe('highlightLetter — الحرف ملوّن داخل الكلمة والجملة', () => {
+  const hl = (t, l) => highlightLetter(t, l).filter(x => x.hl).map(x => x.t);
+  it('يلوّن الحرف مع حركاته', () => {
+    expect(highlightLetter('أَسَدٌ', 'أ')).toEqual([{ t: 'أَ', hl: true }, { t: 'سَدٌ', hl: false }]);
+    expect(hl('دَجَاجَةٌ', 'ج')).toEqual(['جَ', 'جَ']);
+  });
+  it('يقبل حرف البطاقة بالكشيدة «هـ»', () => {
+    expect(hl('هِلَالٌ', 'هـ')).toEqual(['هِ']);
+  });
+  it('لا يكسر «لا»: لام قبل ألف وألف بعد لام لا يُلوَّنان', () => {
+    expect(hl('هِلَالٌ', 'ل')).toEqual(['لٌ']);
+    expect(hl('الأَسَدُ', 'أ')).toEqual([]);
+    expect(hl('الأَسَدُ مَلِكُ', 'ل')).toEqual(['لِ']);
+  });
+  it('النص كله محفوظ كما هو', () => {
+    const t = 'الدَّجَاجَةُ تَبِيضُ كُلَّ يَوْمْ';
+    expect(highlightLetter(t, 'د').map(x => x.t).join('')).toBe(t);
+  });
+  it('بلا نص أو بلا حرف: مقطع واحد أو لا شيء', () => {
+    expect(highlightLetter('', 'أ')).toEqual([]);
+    expect(highlightLetter('أَسَدٌ', '')).toEqual([{ t: 'أَسَدٌ', hl: false }]);
   });
 });

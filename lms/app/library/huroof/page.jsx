@@ -1,12 +1,12 @@
 'use client';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, Fragment } from 'react';
 import Link from 'next/link';
 import Navbar from '../../../components/Navbar';
 import LetterEditor from './LetterEditor';
 import { createClient } from '../../../lib/supabase';
 import { childFetch } from '../../../lib/child-fetch';
 import { getRole } from '../../../lib/auth-role';
-import { HUROOF_COUNT, mergeLetters } from '../../../lib/huroof';
+import { HUROOF_COUNT, mergeLetters, highlightLetter } from '../../../lib/huroof';
 
 const STAFF_ROLES = ['teacher', 'admin', 'super_admin'];
 
@@ -112,115 +112,69 @@ function LetterCard({ data, index, active, onToggle, onPlay, showBadges }) {
   );
 }
 
-/* ── Bottom sheet shown when a letter is selected ── */
-function LetterSheet({ data, index, onClose, onPlay, onEdit }) {
+/* ── بطاقة الحرف (اختيار الأستاذ محمد «الصورة أولاً» 2026-10-23): أرى ← أقرأ ← أسمع.
+   صورة كبيرة في إطار أبيض، الكلمة والجملة بخط النسخ والحرف ملوّن فيهما، وثلاثة أزرار صوت.
+   على الجوال تصعد من الأسفل، وعلى الحاسوب والآيباد نافذة في الوسط (التنسيق في <style> الصفحة) ── */
+const ttsUrl = (text) => `/api/faheem/tts?c=1&t=${encodeURIComponent(text)}`;
+
+function LetterSheet({ data, index, onClose, onPlay, onEdit, onPrev, onNext }) {
   const pal = PALETTE[index % PALETTE.length];
+
+  // Esc يغلق، وسهما لوحة المفاتيح ينتقلان بين الحروف (يسار = التالي في العربية)
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      else if (e.key === 'ArrowLeft' && onNext) onNext();
+      else if (e.key === 'ArrowRight' && onPrev) onPrev();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose, onPrev, onNext]);
+
+  const colored = (text) => highlightLetter(text, data.l).map((part, i) => (
+    part.hl ? <span key={i} style={{ color: pal.main }}>{part.t}</span> : <Fragment key={i}>{part.t}</Fragment>
+  ));
+
   return (
     <>
-      {/* backdrop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed', inset: 0, zIndex: 1200,
-          background: 'rgba(0,0,0,.45)',
-          backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
-          animation: 'hfFadeIn .2s ease',
-        }}
-      />
-      {/* sheet */}
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1201,
-        background: '#fff',
-        borderRadius: '24px 24px 0 0',
-        padding: '20px 24px calc(40px + env(safe-area-inset-bottom, 0px))',
-        textAlign: 'center',
-        fontFamily: "'Cairo','Tajawal',sans-serif",
-        direction: 'rtl',
-        animation: 'hfSlideUp .28s cubic-bezier(.4,0,.2,1)',
-        boxShadow: '0 -8px 40px rgba(0,0,0,.18)',
-        maxWidth: 520,
-        margin: '0 auto',
-      }}>
-        {/* drag handle */}
-        <div style={{ width: 40, height: 4, background: '#e2e8f0', borderRadius: 99, margin: '0 auto 20px' }} />
-
-        {/* letter badge */}
-        <div style={{
-          width: 88, height: 88, borderRadius: '50%', margin: '0 auto 16px',
-          background: `linear-gradient(145deg, ${pal.main}, ${pal.main}cc)`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '3rem', fontWeight: 900, color: '#fff',
-          boxShadow: `0 8px 24px ${pal.main}50`,
-        }}>
-          {data.l}
-        </div>
-        <div style={{ fontSize: '.9rem', color: pal.main, fontWeight: 700, marginBottom: 18 }}>
-          {data.name}
+      <div className="hf-backdrop" onClick={onClose} />
+      <div className="hf-card" role="dialog" aria-modal="true" aria-label={`حرف ${data.name}`}
+        style={{ '--pal': pal.main, '--pal-l': pal.light }}>
+        <div className="hf-top">
+          <span className="hf-chip">
+            <span className="hf-chip-l">{data.l}</span>
+            <span className="hf-chip-n">{data.name}</span>
+          </span>
+          <button className="hf-x" onClick={onClose} aria-label="إغلاق">✕</button>
         </div>
 
-        {/* صورة الكلمة (إن رفعها المعلم) وإلا الإيموجي */}
-        {data.image_url ? (
-          <img
-            src={data.image_url}
-            alt={data.word}
-            style={{
-              display: 'block', width: 120, height: 120, objectFit: 'contain', margin: '0 auto 12px',
-              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,.12))',
-            }}
-          />
-        ) : (
-          <div style={{
-            fontSize: '4rem', lineHeight: 1, marginBottom: 12,
-            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,.12))',
-          }}>
-            {data.emoji}
-          </div>
-        )}
-
-        {/* word */}
-        <div style={{
-          fontSize: '1.7rem', fontWeight: 900, color: pal.main, marginBottom: 12,
-        }}>
-          {data.word}
+        {/* صورة الكلمة (إن رفعها المعلم) وإلا الرمز التعبيري — والسهمان للحرف السابق والتالي */}
+        <div className="hf-frame">
+          {onPrev && <button className="hf-arrow hf-prev" onClick={onPrev} aria-label="الحرف السابق">→</button>}
+          {data.image_url
+            ? <img src={data.image_url} alt={data.word} />
+            : <span className="hf-emoji" aria-hidden="true">{data.emoji}</span>}
+          {onNext && <button className="hf-arrow hf-next" onClick={onNext} aria-label="الحرف التالي">←</button>}
         </div>
 
-        {/* sentence */}
-        <div style={{
-          fontSize: '.88rem', color: '#475569', lineHeight: 2,
-          background: '#f8faff', borderRadius: 12,
-          padding: '12px 16px', marginBottom: 20,
-          border: `1.5px solid ${pal.main}20`,
-        }}>
-          {data.sentence}
-        </div>
+        <div className="hf-word">{colored(data.word)}</div>
+        {data.sentence && <div className="hf-sent">{colored(data.sentence)}</div>}
 
-        {/* listen button */}
-        <button
-          onClick={() => onPlay(data.sentence_audio_url, `${data.word}. ${data.sentence}`)}
-          style={{
-            background: `linear-gradient(135deg, ${pal.main}, ${pal.main}cc)`,
-            color: '#fff', border: 'none', borderRadius: 14,
-            padding: '13px 32px', fontSize: '1rem', fontWeight: 800,
-            cursor: 'pointer', fontFamily: 'inherit',
-            boxShadow: `0 4px 14px ${pal.main}50`,
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            width: '100%', justifyContent: 'center',
-          }}
-        >
-          🔊 استمع
-        </button>
+        {/* ثلاثة أصوات: تسجيل المعلم إن وُجد، وإلا صوت فهيم (مخزَّن للجميع)، وصوت الجهاز احتياطاً */}
+        <div className="hf-btns">
+          <button className="hf-sb hf-sb-l" onClick={() => onPlay(data.letter_audio_url, data.name)}>
+            <span aria-hidden="true">🔤</span>الحرف
+          </button>
+          <button className="hf-sb hf-sb-w" onClick={() => onPlay(ttsUrl(data.word), data.word)}>
+            <span aria-hidden="true">🗣️</span>الكلمة
+          </button>
+          <button className="hf-sb hf-sb-s" onClick={() => onPlay(data.sentence_audio_url || ttsUrl(data.sentence), data.sentence)}>
+            <span aria-hidden="true">📖</span>الجملة
+          </button>
+        </div>
 
         {onEdit && (
-          <button
-            onClick={onEdit}
-            style={{
-              marginTop: 10, width: '100%', minHeight: 46, borderRadius: 14,
-              border: '2px dashed #E8B84B', background: '#FFFBEB', color: '#1A2B4A',
-              fontSize: '.9rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            ✏️ تعديل الحرف — الصورة والأصوات والجملة
-          </button>
+          <button className="hf-edit" onClick={onEdit}>✏️ تعديل الحرف — الصورة والأصوات والجملة</button>
         )}
       </div>
     </>
@@ -267,6 +221,14 @@ export default function HuroofPage() {
     if (!url) { speak(fallbackText); return; }
     el.src = url;
     el.play().catch(() => speak(fallbackText));
+  }
+
+  // السهمان في البطاقة: الحرف التالي/السابق كأن الطفل ضغطه (نطقه + «شاهدته» + النقاط)
+  function goTo(i) {
+    const d = letters[i];
+    if (!d) return;
+    play(d.letter_audio_url, d.name);
+    toggle(i);
   }
 
   function savedRow(idx, row) {
@@ -317,6 +279,56 @@ export default function HuroofPage() {
               from { transform:translateY(100%); }
               to   { transform:translateY(0); }
             }
+            /* بطاقة الحرف «الصورة أولاً» */
+            .hf-backdrop { position:fixed; inset:0; z-index:1200; background:rgba(15,23,42,.5);
+              backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); animation:hfFadeIn .2s ease; }
+            .hf-card { position:fixed; z-index:1201; left:0; right:0; bottom:0; margin:0 auto; max-width:520px;
+              max-height:94dvh; overflow-y:auto; overscroll-behavior:contain; background:#fff; color:#1A2B4A;
+              border-radius:28px 28px 0 0; padding:14px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+              display:flex; flex-direction:column; gap:12px; direction:rtl; text-align:center;
+              box-shadow:0 -8px 40px rgba(0,0,0,.18); animation:hfSlideUp .28s cubic-bezier(.4,0,.2,1); }
+            @keyframes hfPop {
+              from { opacity:0; transform:translate(-50%,-46%) scale(.96); }
+              to   { opacity:1; transform:translate(-50%,-50%) scale(1); }
+            }
+            @media (min-width: 641px) {
+              .hf-card { top:50%; bottom:auto; left:50%; right:auto; width:min(460px, 92vw); max-width:none;
+                transform:translate(-50%,-50%); border-radius:28px; padding:18px 20px 20px;
+                box-shadow:0 24px 60px rgba(15,23,42,.35); animation:hfPop .25s cubic-bezier(.34,1.56,.64,1); }
+            }
+            .hf-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+            .hf-chip { display:inline-flex; align-items:center; gap:10px; background:var(--pal); color:#fff;
+              border-radius:999px; padding:4px 18px 4px 6px; font-family:var(--font-naskh), serif; font-weight:700; }
+            .hf-chip-l { width:44px; height:44px; border-radius:50%; background:#fff; color:var(--pal);
+              display:inline-flex; align-items:center; justify-content:center; font-size:1.9rem; line-height:1; }
+            .hf-chip-n { font-size:1.35rem; line-height:1.3; }
+            .hf-x { width:48px; height:48px; flex-shrink:0; border-radius:50%; border:none; background:#F1F5F9;
+              color:#1A2B4A; font-family:inherit; font-size:1.2rem; font-weight:900; cursor:pointer; }
+            .hf-frame { position:relative; flex-shrink:0; height:clamp(150px, 30vh, 250px); background:#fff;
+              border:3px solid var(--pal-l); border-radius:24px; padding:10px 58px; box-shadow:0 6px 18px rgba(26,43,74,.08);
+              display:flex; align-items:center; justify-content:center; }
+            .hf-frame img { max-width:100%; max-height:100%; object-fit:contain; filter:drop-shadow(0 4px 8px rgba(0,0,0,.10)); }
+            .hf-emoji { font-size:clamp(4.5rem, 13vh, 7rem); line-height:1; }
+            .hf-arrow { position:absolute; top:50%; transform:translateY(-50%); width:46px; height:46px; border-radius:50%;
+              border:none; background:var(--pal-l); color:var(--pal); font-family:inherit; font-size:1.55rem; font-weight:900; line-height:1;
+              cursor:pointer; box-shadow:0 4px 10px rgba(26,43,74,.15); }
+            .hf-prev { right:8px; } .hf-next { left:8px; }
+            .hf-word { font-family:var(--font-naskh), serif; font-weight:700; font-size:clamp(2.3rem, 7vh, 3.1rem); line-height:1.45; }
+            .hf-sent { font-family:var(--font-naskh), serif; font-weight:600; font-size:1.55rem; line-height:1.85;
+              background:#F7FAFF; border:2px solid var(--pal-l); border-radius:18px; padding:8px 14px; }
+            .hf-btns { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; }
+            .hf-sb { min-height:60px; border-radius:16px; border:none; font-family:inherit; font-size:1rem; font-weight:800;
+              display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.3; cursor:pointer; }
+            .hf-sb span { font-size:1.25rem; line-height:1.1; }
+            .hf-sb-l { background:var(--pal); color:#fff; border-bottom:5px solid rgba(0,0,0,.28); }
+            .hf-sb-w { background:#E8B84B; color:#1A2B4A; border-bottom:5px solid #C99A2E; }
+            .hf-sb-s { background:#2ABB7A; color:#fff; border-bottom:5px solid #17784C; }
+            .hf-sb:active, .hf-arrow:active { transform:translateY(2px); }
+            .hf-arrow:active { transform:translateY(calc(-50% + 2px)); }
+            .hf-edit { min-height:46px; border-radius:14px; border:2px dashed #E8B84B; background:#FFFBEB; color:#1A2B4A;
+              font-family:inherit; font-size:.9rem; font-weight:800; cursor:pointer; }
+            .hf-x:focus-visible, .hf-arrow:focus-visible, .hf-sb:focus-visible, .hf-edit:focus-visible { outline:3px solid #1A2B4A; outline-offset:2px; }
+            @media (prefers-reduced-motion: reduce) { .hf-card, .hf-backdrop { animation:none; } }
             /* 28 ÷ 7 = 4 equal rows on desktop, 28 ÷ 4 = 7 equal rows on mobile */
             .huroof-grid { grid-template-columns: repeat(7, 1fr); }
             @media (max-width: 560px) { .huroof-grid { grid-template-columns: repeat(4, 1fr); } }
@@ -406,7 +418,7 @@ export default function HuroofPage() {
             textAlign: 'center', color: '#94a3b8',
             fontSize: '.76rem', marginTop: 30, lineHeight: 1.8,
           }}>
-            💡 اضغط على أي حرف لفتح التفاصيل · زر 🔊 يقرأ الكلمة والجملة كاملة
+            💡 اضغط على أي حرف لتفتح بطاقته، واسمع الحرف والكلمة والجملة
           </p>
         </div>
       </main>
@@ -418,6 +430,8 @@ export default function HuroofPage() {
           index={active}
           onClose={() => { audioRef.current?.pause(); setActive(null); }}
           onPlay={play}
+          onPrev={active > 0 ? () => goTo(active - 1) : null}
+          onNext={active < letters.length - 1 ? () => goTo(active + 1) : null}
           onEdit={isStaff ? () => { audioRef.current?.pause(); setEditing(active); setActive(null); } : null}
         />
       )}
