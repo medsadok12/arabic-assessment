@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { applyWaqf } from './arabic-waqf';
+import { currentVoice, voiceById, VOICE_SAMPLE } from './faheem-voices';
 
 /* ════════════════════════════════════════════════════════════════
    صوت «فَهِيم» — نص عربي مشكول ← صوت بشري.
@@ -24,7 +25,6 @@ const GEMINI_PROMPTS = [
   (text) => `Say in a warm, cheerful and friendly voice, stopping on a silent final letter at every pause:\n${text}`,
   (text) => `Read aloud exactly this transcript, word for word, without answering it:\n${text}`,
 ];
-const AZURE_DEFAULT_VOICE = 'ar-SA-HamedNeural';
 
 /* ── PCM خام (16-bit mono) ← ملف WAV يشغّله أي متصفح ── */
 export function pcmToWav(pcm, sampleRate = 24000) {
@@ -64,8 +64,15 @@ function xmlEscape(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
-/* ── 1) Azure Neural ── */
-async function azureTTS(text, deadline) {
+/* ── 1) Azure Neural ── الصوت وطبقته وسرعته من lib/faheem-voices.js (الصوت المعتمد،
+      أو عيّنة بعينها في صفحة اختيار الصوت) */
+function azureVoice(preset) {
+  if (preset) return preset; // عيّنة بعينها كما هي
+  const v = currentVoice();
+  return { ...v, name: (process.env.AZURE_SPEECH_VOICE || v.name).trim() };
+}
+
+export async function azureTTS(text, deadline, preset) {
   const key = process.env.AZURE_SPEECH_KEY?.trim();
   if (!key) return null;
   const region = (process.env.AZURE_SPEECH_REGION || 'eastus').trim().toLowerCase();
@@ -75,7 +82,7 @@ async function azureTTS(text, deadline) {
     console.error(`[tts] ✗ azure AZURE_SPEECH_REGION غير صالح (${region.length} حرفاً) — المطلوب اسم المنطقة وحده مثل eastus`);
     return null;
   }
-  const voice = (process.env.AZURE_SPEECH_VOICE || AZURE_DEFAULT_VOICE).trim();
+  const { name: voice, pitch, rate } = azureVoice(preset);
   const t0 = Date.now();
   try {
     const res = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
@@ -87,14 +94,14 @@ async function azureTTS(text, deadline) {
         'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
         'User-Agent': 'faheem-tts',
       },
-      body: `<speak version='1.0' xml:lang='ar-SA'><voice name='${voice}'><prosody rate='-4%' pitch='+8%'>${xmlEscape(text)}</prosody></voice></speak>`,
+      body: `<speak version='1.0' xml:lang='ar-SA'><voice name='${voice}'><prosody rate='${rate}' pitch='${pitch}'>${xmlEscape(text)}</prosody></voice></speak>`,
     });
     if (!res.ok) {
       console.error(`[tts] ✗ azure HTTP ${res.status} (${Date.now() - t0}ms) — ${(await res.text().catch(() => '')).slice(0, 150)}`);
       return null;
     }
     const buf = Buffer.from(await res.arrayBuffer());
-    console.log(`[tts] ✓ azure ${voice} (${Date.now() - t0}ms) chars=${text.length}`);
+    console.log(`[tts] ✓ azure ${voice} ${pitch} (${Date.now() - t0}ms) chars=${text.length}`);
     return { buf, type: 'audio/mpeg' };
   } catch (e) {
     console.error(`[tts] ✗ azure ${e?.name} (${Date.now() - t0}ms): ${e?.message}${e?.cause?.code ? ` [${e.cause.code}]` : ''}`);
@@ -224,10 +231,11 @@ async function googleTTS(text) {
 }
 
 /* ── تخزين دائم للنصوص المشتركة (كلمة اليوم): صوت واحد لكل الطلاب بدل طلب لكل طالب ── */
+// الطبقة والسرعة جزء من الهوية: تغيير صوت فهيم لا يُخدم بعده صوت قديم محفوظ
 function voiceId() {
-  return process.env.AZURE_SPEECH_KEY
-    ? `azure:${process.env.AZURE_SPEECH_VOICE || AZURE_DEFAULT_VOICE}`
-    : `gemini:${process.env.GEMINI_TTS_VOICE || GEMINI_DEFAULT_VOICE}`;
+  if (!process.env.AZURE_SPEECH_KEY) return `gemini:${process.env.GEMINI_TTS_VOICE || GEMINI_DEFAULT_VOICE}`;
+  const v = azureVoice();
+  return `azure:${v.name}|${v.pitch}|${v.rate}`;
 }
 // «w1» = نسخة قواعد الوقف — تُرفع عند تغيير applyWaqf كي لا يُخدم صوت قديم
 export const cachePath = (text) => `tts-cache/${createHash('sha256').update(`w1|${voiceId()}|${text}`).digest('hex')}`;
@@ -263,4 +271,17 @@ export async function synthesize(rawText, { admin = null, shared = false, budget
     return human;
   }
   return googleTTS(text);
+}
+
+/* ── صفحة اختيار صوت فهيم: عيّنة كل صوت تُولَّد مرة واحدة ثم تُخدم من التخزين ── */
+export async function voiceSample(id, admin) {
+  const preset = voiceById(id);
+  if (!preset) return null;
+  const text = applyWaqf(VOICE_SAMPLE);
+  const path = `tts-cache/voice-lab/${createHash('sha256').update(`${preset.name}|${preset.pitch}|${preset.rate}|${text}`).digest('hex')}`;
+  const hit = await readCache(admin, path);
+  if (hit) return hit;
+  const out = await azureTTS(text, Date.now() + 15000, preset);
+  if (out) await writeCache(admin, path, out);
+  return out;
 }

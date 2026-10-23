@@ -197,3 +197,51 @@ describe('GET /api/faheem/tts', () => {
     expect(geminiCalls()[0].body.contents[0].parts[0].text.split('\n')[1]).toBe(`${'ب'.repeat(1200)}\u0652`); // 1200 + سكون الوقف
   });
 });
+
+describe('صوت فهيم المعتمد وعيّنات الاختيار', async () => {
+  const V = await import('./faheem-voices.js');
+  const { GET: LAB } = await import('../app/api/faheem/voice-lab/route.js');
+  const azureCalls = () => s.calls.filter(c => c.url.includes('microsoft'));
+
+  it('كل الأصوات المرشّحة بأسماء Azure صالحة وطبقة وسرعة بصيغة SSML، والمعتمد منها', () => {
+    expect(V.currentVoice()).toBeTruthy();
+    expect(new Set(V.FAHEEM_VOICES.map(v => v.id)).size).toBe(V.FAHEEM_VOICES.length);
+    for (const v of V.FAHEEM_VOICES) {
+      expect(v.name).toMatch(/^ar-(SA|AE|QA|KW)-[A-Za-z]+Neural$/); // فصحى خليجية — لا مصرية ولا مغاربية
+      expect(v.pitch).toMatch(/^[+-]\d{1,2}%$/);
+      expect(v.rate).toMatch(/^[+-]\d{1,2}%$/);
+    }
+  });
+  it('Azure يقرأ بصوت فهيم المعتمد وطبقته وسرعته', async () => {
+    process.env.AZURE_SPEECH_KEY = 'az';
+    await T.synthesize('نص');
+    const v = V.currentVoice();
+    expect(azureCalls()[0].body).toContain(`<voice name='${v.name}'><prosody rate='${v.rate}' pitch='${v.pitch}'>`);
+  });
+  it('مسار تخزين كلمة اليوم يتبع الصوت وطبقته — تغيير الصوت لا يُخدم بعده الصوت القديم', async () => {
+    process.env.AZURE_SPEECH_KEY = 'az';
+    const a = T.cachePath('قَمَرْ');
+    process.env.AZURE_SPEECH_VOICE = 'ar-SA-ZariyahNeural';
+    const b = T.cachePath('قَمَرْ');
+    delete process.env.AZURE_SPEECH_VOICE;
+    expect(a).not.toBe(b);
+  });
+  it('العيّنة تُولَّد بصوتها هي (لا المعتمد) مرة واحدة ثم تُخدم من التخزين', async () => {
+    process.env.AZURE_SPEECH_KEY = 'az';
+    const z = V.voiceById('zariyah40');
+    const out = await T.voiceSample('zariyah40', admin);
+    expect(out.type).toBe('audio/mpeg');
+    expect(azureCalls()[0].body).toContain(`<voice name='${z.name}'><prosody rate='${z.rate}' pitch='${z.pitch}'>`);
+    await T.voiceSample('zariyah40', admin);
+    expect(azureCalls()).toHaveLength(1);
+    expect(await T.voiceSample('غير-موجود', admin)).toBeNull();
+  });
+  it('GET /api/faheem/voice-lab: غير مسجّل 401، بلا صوت 400، صوت معروف ← mp3', async () => {
+    process.env.AZURE_SPEECH_KEY = 'az';
+    const lab = (q) => LAB(new Request(`https://www.aarem.net/api/faheem/voice-lab?${q}`));
+    expect((await lab('v=amal40')).headers.get('Content-Type')).toBe('audio/mpeg');
+    expect((await lab('')).status).toBe(400);
+    s.user = null;
+    expect((await lab('v=amal40')).status).toBe(401);
+  });
+});
