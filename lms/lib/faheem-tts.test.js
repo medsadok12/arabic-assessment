@@ -216,7 +216,36 @@ describe('صوت فهيم المعتمد وعيّنات الاختيار', async
     process.env.AZURE_SPEECH_KEY = 'az';
     await T.synthesize('نص');
     const v = V.currentVoice();
-    expect(azureCalls()[0].body).toContain(`<voice name='${v.name}'><prosody rate='${v.rate}' pitch='${v.pitch}'>`);
+    expect(azureCalls()[0].body).toContain(`<voice name='${v.name}'>`);
+    expect(azureCalls()[0].body).toContain(`<prosody rate='${v.rate}' pitch='${v.pitch}'>`);
+  });
+  it('لا صمت قبل الكلام، وصمت قصير بعده وبين الجمل — لا وقفة ثانية عند كل نقطة', async () => {
+    process.env.AZURE_SPEECH_KEY = 'az';
+    await T.synthesize('جُمْلَةٌ أُولَى. جُمْلَةٌ ثَانِيَةٌ.');
+    const ssml = azureCalls()[0].body;
+    expect(ssml).toContain("xmlns:mstts='http://www.w3.org/2001/mstts'");
+    expect(ssml).toContain("<mstts:silence type='Leading-exact' value='0ms'/>");
+    const ms = (type) => Number(ssml.match(new RegExp(`type='${type}' value='(\\d+)ms'`))[1]);
+    expect(ms('Tailing-exact')).toBeLessThanOrEqual(200);
+    expect(ms('Sentenceboundary-exact')).toBeLessThanOrEqual(300);
+    // عناصر الصمت داخل <voice> قبل الكلام (شرط Azure)
+    expect(ssml.indexOf('<mstts:silence')).toBeGreaterThan(ssml.indexOf('<voice'));
+    expect(ssml.lastIndexOf('<mstts:silence')).toBeLessThan(ssml.indexOf('<prosody'));
+  });
+  it('إن رفض Azure إعدادات الصمت (400) يُعاد الطلب بدونها بصوت فهيم نفسه — لا Gemini', async () => {
+    process.env.AZURE_SPEECH_KEY = 'az';
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const base = globalThis.fetch.getMockImplementation();
+    globalThis.fetch.mockImplementation(async (url, init = {}) => (
+      String(url).includes('microsoft') && init.body.includes('mstts:silence')
+        ? (s.calls.push({ url: String(url), body: init.body }), reply(400, 'bad ssml'))
+        : base(url, init)));
+    const out = await T.synthesize('نص');
+    expect(out.type).toBe('audio/mpeg');
+    expect(azureCalls()).toHaveLength(2);
+    expect(azureCalls()[1].body).not.toContain('mstts:silence');
+    expect(geminiCalls()).toHaveLength(0);
+    console.error.mockRestore();
   });
   it('مسار تخزين كلمة اليوم يتبع الصوت وطبقته — تغيير الصوت لا يُخدم بعده الصوت القديم', async () => {
     process.env.AZURE_SPEECH_KEY = 'az';
@@ -231,7 +260,8 @@ describe('صوت فهيم المعتمد وعيّنات الاختيار', async
     const z = V.voiceById('zariyah40');
     const out = await T.voiceSample('zariyah40', admin);
     expect(out.type).toBe('audio/mpeg');
-    expect(azureCalls()[0].body).toContain(`<voice name='${z.name}'><prosody rate='${z.rate}' pitch='${z.pitch}'>`);
+    expect(azureCalls()[0].body).toContain(`<voice name='${z.name}'>`);
+    expect(azureCalls()[0].body).toContain(`<prosody rate='${z.rate}' pitch='${z.pitch}'>`);
     await T.voiceSample('zariyah40', admin);
     expect(azureCalls()).toHaveLength(1);
     expect(await T.voiceSample('غير-موجود', admin)).toBeNull();

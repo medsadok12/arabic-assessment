@@ -72,6 +72,25 @@ function azureVoice(preset) {
   return { ...v, name: (process.env.AZURE_SPEECH_VOICE || v.name).trim() };
 }
 
+/* الصمت حول الكلام: Azure يضيف افتراضياً صمتاً في أول كل مقطع وآخره، والجواب يُقرأ جملةً
+   جملة (مقطع لكل جملة) فتراكم ≈ثانية عند كل نقطة — بلاغ الأستاذ محمد (2026-10-23):
+   «يتوقف تقريباً ثانية عند كل نقطة». الآن: لا صمت قبل الكلام، وصمت قصير بعده، ووقفة
+   قصيرة طبيعية بين الجمل داخل المقطع الواحد (التحية) — فالوقفة عند النقطة ≈ربع ثانية. */
+export const AZURE_SILENCE = { lead: '0ms', tail: '120ms', sentence: '220ms' };
+
+export function azureSsml(text, { name, pitch, rate }, { silence = true } = {}) {
+  const s = AZURE_SILENCE;
+  return "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='ar-SA'>"
+    + `<voice name='${name}'>`
+    + (silence
+      ? `<mstts:silence type='Leading-exact' value='${s.lead}'/>`
+        + `<mstts:silence type='Tailing-exact' value='${s.tail}'/>`
+        + `<mstts:silence type='Sentenceboundary-exact' value='${s.sentence}'/>`
+      : '')
+    + `<prosody rate='${rate}' pitch='${pitch}'>${xmlEscape(text)}</prosody>`
+    + '</voice></speak>';
+}
+
 export async function azureTTS(text, deadline, preset) {
   const key = process.env.AZURE_SPEECH_KEY?.trim();
   if (!key) return null;
@@ -82,20 +101,27 @@ export async function azureTTS(text, deadline, preset) {
     console.error(`[tts] ✗ azure AZURE_SPEECH_REGION غير صالح (${region.length} حرفاً) — المطلوب اسم المنطقة وحده مثل eastus`);
     return null;
   }
-  const { name: voice, pitch, rate } = azureVoice(preset);
+  const v = azureVoice(preset);
+  const { name: voice, pitch } = v;
   const t0 = Date.now();
+  const call = (silence) => fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(Math.max(3000, deadline - Date.now())),
+    headers: {
+      'Ocp-Apim-Subscription-Key': key,
+      'Content-Type': 'application/ssml+xml',
+      'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
+      'User-Agent': 'faheem-tts',
+    },
+    body: azureSsml(text, v, { silence }),
+  });
   try {
-    const res = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
-      method: 'POST',
-      signal: AbortSignal.timeout(Math.max(3000, deadline - Date.now())),
-      headers: {
-        'Ocp-Apim-Subscription-Key': key,
-        'Content-Type': 'application/ssml+xml',
-        'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
-        'User-Agent': 'faheem-tts',
-      },
-      body: `<speak version='1.0' xml:lang='ar-SA'><voice name='${voice}'><prosody rate='${rate}' pitch='${pitch}'>${xmlEscape(text)}</prosody></voice></speak>`,
-    });
+    let res = await call(true);
+    // إن رفض Azure إعدادات الصمت يُعاد الطلب بدونها — بصوت فهيم نفسه بدل Gemini البطيء
+    if (res.status === 400) {
+      console.error(`[tts] ✗ azure 400 مع إعدادات الصمت — إعادة بدونها: ${(await res.text().catch(() => '')).slice(0, 150)}`);
+      res = await call(false);
+    }
     if (!res.ok) {
       console.error(`[tts] ✗ azure HTTP ${res.status} (${Date.now() - t0}ms) — ${(await res.text().catch(() => '')).slice(0, 150)}`);
       return null;
@@ -235,7 +261,8 @@ async function googleTTS(text) {
 function voiceId() {
   if (!process.env.AZURE_SPEECH_KEY) return `gemini:${process.env.GEMINI_TTS_VOICE || GEMINI_DEFAULT_VOICE}`;
   const v = azureVoice();
-  return `azure:${v.name}|${v.pitch}|${v.rate}`;
+  const sl = AZURE_SILENCE;
+  return `azure:${v.name}|${v.pitch}|${v.rate}|${sl.lead}/${sl.tail}/${sl.sentence}`;
 }
 // «w1» = نسخة قواعد الوقف — تُرفع عند تغيير applyWaqf كي لا يُخدم صوت قديم
 export const cachePath = (text) => `tts-cache/${createHash('sha256').update(`w1|${voiceId()}|${text}`).digest('hex')}`;
@@ -278,7 +305,7 @@ export async function voiceSample(id, admin) {
   const preset = voiceById(id);
   if (!preset) return null;
   const text = applyWaqf(VOICE_SAMPLE);
-  const path = `tts-cache/voice-lab/${createHash('sha256').update(`${preset.name}|${preset.pitch}|${preset.rate}|${text}`).digest('hex')}`;
+  const path = `tts-cache/voice-lab/${createHash('sha256').update(`${preset.name}|${preset.pitch}|${preset.rate}|${JSON.stringify(AZURE_SILENCE)}|${text}`).digest('hex')}`;
   const hit = await readCache(admin, path);
   if (hit) return hit;
   const out = await azureTTS(text, Date.now() + 15000, preset);
