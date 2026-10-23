@@ -249,6 +249,11 @@ const V2_CSS = `
   .v2-why{ background:#EDE5D8; padding:64px 0 80px; }
   .v2-video{ max-width:760px; margin:0 auto 28px; }
   .v2-video video{ width:100%; display:block; border-radius:18px; background:#1A2B4A; box-shadow:0 10px 32px rgba(26,43,74,.18); }
+  /* الحاسوب والآيباد (طلب الأستاذ محمد): الفيديو العمودي كان أطول من الشاشة — يُحدّ بارتفاعها
+     فيظهر كاملاً مع أزراره بلا تمرير. الجوال يبقى بعرض الشاشة كما هو */
+  @media (min-width:641px){
+    .v2-video video{ width:auto; max-width:100%; max-height:min(80vh, 640px); margin:0 auto; }
+  }
   .v2-acc-grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; align-items:start; }
   .v2-acc{ background:#fff; border-radius:18px; border:1.5px solid rgba(26,43,74,.08);
     box-shadow:0 1px 4px rgba(26,43,74,.06),0 4px 16px rgba(26,43,74,.07); min-width:0; transition:border-color .2s, box-shadow .2s; }
