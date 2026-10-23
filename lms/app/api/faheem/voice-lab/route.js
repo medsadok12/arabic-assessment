@@ -1,12 +1,13 @@
 import { createClient } from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
-import { voiceSample } from '../../../../lib/faheem-tts';
+import { voiceSample, grammarSample } from '../../../../lib/faheem-tts';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 /* عيّنة صوت مرشّح لفهيم: ?v=<id> من القائمة الثابتة في lib/faheem-voices.js فقط
-   (لا نص ولا طبقة من الطلب)، وتُولَّد مرة واحدة ثم تُخدم من التخزين */
+   (لا نص ولا طبقة من الطلب)، وتُولَّد مرة واحدة ثم تُخدم من التخزين.
+   اختبار الإعراب: ?g=<id>&t=<جملة> — جملة الأستاذ بأحد أصوات المقارنة الثابتة (بلا تخزين) */
 export async function GET(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -18,8 +19,10 @@ export async function GET(req) {
   });
   if (allowed === false) return new Response(null, { status: 429 });
 
-  const id = new URL(req.url).searchParams.get('v') || '';
-  const out = await voiceSample(id, admin);
+  const q = new URL(req.url).searchParams;
+  const g = q.get('g');
+  const id = g || q.get('v') || '';
+  const out = g ? await grammarSample(g, q.get('t')) : await voiceSample(id, admin);
   if (!out) return new Response(null, { status: id ? 502 : 400 });
   return new Response(out.buf, { headers: { 'Content-Type': out.type, 'Cache-Control': 'private, max-age=3600' } });
 }

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { applyWaqf } from './arabic-waqf';
 import { completeSukun } from './arabic-tashkeel';
-import { currentVoice, voiceById, VOICE_SAMPLE } from './faheem-voices';
+import { currentVoice, voiceById, grammarVoiceById, VOICE_SAMPLE } from './faheem-voices';
 
 /* ════════════════════════════════════════════════════════════════
    صوت «فَهِيم» — نص عربي مشكول ← صوت بشري.
@@ -313,4 +313,12 @@ export async function voiceSample(id, admin) {
   const out = await azureTTS(text, Date.now() + 15000, preset);
   if (out) await writeCache(admin, path, out);
   return out;
+}
+
+/* ── اختبار الإعراب: جملة الأستاذ بصوت من أصوات المقارنة (بلا تخزين — نص حر) ── */
+export async function grammarSample(id, rawText) {
+  const preset = grammarVoiceById(id);
+  const text = String(rawText ?? '').trim().slice(0, 300);
+  if (!preset || !text) return null;
+  return azureTTS(applyWaqf(completeSukun(text)), Date.now() + 15000, preset);
 }

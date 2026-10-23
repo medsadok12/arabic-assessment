@@ -1,6 +1,6 @@
 'use client';
 import { useRef, useState, useEffect } from 'react';
-import { FAHEEM_VOICES, FAHEEM_VOICE_ID, VOICE_SAMPLE } from '../../../lib/faheem-voices';
+import { FAHEEM_VOICES, FAHEEM_VOICE_ID, VOICE_SAMPLE, GRAMMAR_VOICES } from '../../../lib/faheem-voices';
 
 /* صفحة صوت فهيم: «جرّب جملة» تسمعها بصوت فهيم المعتمد كما يسمعها الطفل (لفحص النطق
    والإعراب)، ثم صوته الأصلي في مقطع الفيل والأصوات المرشّحة بالجملة نفسها. صوت واحد في كل لحظة. */
@@ -29,6 +29,7 @@ export default function FaheemVoicePage() {
     a.src = item.id === 'ref'
       ? (a.canPlayType('audio/mp4; codecs="mp4a.40.2"') ? '/media/elephant.mp4' : '/media/elephant.webm')
       : item.id === 'try' ? `/api/faheem/tts?t=${encodeURIComponent(tryText.trim())}`
+      : item.id.startsWith('g:') ? `/api/faheem/voice-lab?g=${item.id.slice(2)}&t=${encodeURIComponent(tryText.trim())}`
       : `/api/faheem/voice-lab?v=${item.id}`;
     a.play().catch(() => a.onerror());
   }
@@ -79,6 +80,13 @@ export default function FaheemVoicePage() {
         .fv-area:focus { outline: none; border-color: #7C5CD9; }
         .fv-trybtn { margin-top: 10px; width: 100%; min-height: 56px; border: none; border-radius: 16px; background: #2ABB7A; color: #fff; font: inherit; font-size: 1.2rem; font-weight: 800; cursor: pointer; }
         .fv-trybtn:disabled { background: #cbd5e1; cursor: not-allowed; }
+        .fv-h3 { color: #1A2B4A; font-size: 1.08rem; font-weight: 800; margin: 18px 0 2px; }
+        .fv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+        .fv-gbtn { min-height: 52px; border: 2px solid #e2e8f0; border-radius: 14px; background: #fff; color: #1A2B4A; font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; text-align: right; padding: 6px 10px; display: flex; align-items: center; gap: 8px; }
+        .fv-gbtn span { flex: 0 0 30px; height: 30px; border-radius: 50%; background: #7C5CD9; color: #fff; display: flex; align-items: center; justify-content: center; font-size: .85rem; }
+        .fv-gbtn.fv-gon { border-color: #7C5CD9; background: #f5f3ff; }
+        .fv-gbtn.fv-gerr { border-color: #E8B84B; }
+        .fv-gbtn:disabled { opacity: .5; cursor: not-allowed; }
         .fv-foot { margin-top: 20px; color: #475569; font-size: 1rem; line-height: 1.9; text-align: center; }
       `}</style>
       <h1 className="fv-h">🎙️ صوت فهيم</h1>
@@ -90,6 +98,19 @@ export default function FaheemVoicePage() {
           {loading === 'try' ? '… يُجهِّز الصوت' : playing === 'try' ? '■ إيقاف' : '▶ استمع'}
         </button>
         {failed.try && <div className="fv-note">تعذّر تشغيل الجملة — جرّب مرة أخرى</div>}
+        <h3 className="fv-h3">⚖️ قارن الإعراب بأصوات رجالية أخرى</h3>
+        <p className="fv-sub">الجملة نفسها بكل صوت. أخبرني بالصوت الذي ينطق الحركات كما كُتبت تماماً.</p>
+        <div className="fv-grid">
+          {GRAMMAR_VOICES.map(v => {
+            const id = `g:${v.id}`;
+            return (
+              <button key={id} className={`fv-gbtn${playing === id ? ' fv-gon' : ''}${failed[id] ? ' fv-gerr' : ''}`}
+                disabled={!tryText.trim()} onClick={() => play({ id })}>
+                <span>{loading === id ? '…' : playing === id ? '■' : '▶'}</span> {v.label}
+              </button>
+            );
+          })}
+        </div>
       </section>
       <h2 className="fv-h2">🐘 اختر صوت فهيم</h2>
       <p className="fv-sub">استمع أولاً إلى صوت فهيم في مقطع الفيل، ثم إلى الأصوات المرشّحة. كلها تقرأ الجملة نفسها:</p>

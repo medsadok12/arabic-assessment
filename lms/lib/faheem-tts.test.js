@@ -271,6 +271,25 @@ describe('صوت فهيم المعتمد وعيّنات الاختيار', async
     expect(azureCalls()).toHaveLength(1);
     expect(await T.voiceSample('غير-موجود', admin)).toBeNull();
   });
+  it('اختبار الإعراب: الجملة نفسها بصوت المقارنة المختار، بطبقة حامد وسرعته، بلا تخزين', async () => {
+    process.env.AZURE_SPEECH_KEY = 'az';
+    for (const v of V.GRAMMAR_VOICES) {
+      expect(v.name).toMatch(/^ar-[A-Z]{2}-[A-Za-z]+Neural$/);
+      expect(v.name).not.toMatch(/^ar-(EG|MA|DZ|TN|LY)-/);
+    }
+    const out = await T.grammarSample('fahed', 'أَوْ غَيرَ نَاطِقِينَ بِهَا.');
+    expect(out.type).toBe('audio/mpeg');
+    const body = azureCalls()[0].body;
+    expect(body).toContain("<voice name='ar-KW-FahedNeural'>");
+    expect(body).toContain("<prosody rate='-4%' pitch='+8%'>");
+    expect(body).toContain('أَوْ غَيْرَ نَاطِقِينَ');
+    expect(s.store.size).toBe(0);
+    expect(await T.grammarSample('غير-موجود', 'نص')).toBeNull();
+    expect(await T.grammarSample('fahed', '   ')).toBeNull();
+    const res = await LAB(new Request(`https://www.aarem.net/api/faheem/voice-lab?g=taim&t=${encodeURIComponent('نَصٌّ')}`));
+    expect(res.headers.get('Content-Type')).toBe('audio/mpeg');
+    expect(azureCalls().at(-1).body).toContain("<voice name='ar-JO-TaimNeural'>");
+  });
   it('GET /api/faheem/voice-lab: غير مسجّل 401، بلا صوت 400، صوت معروف ← mp3', async () => {
     process.env.AZURE_SPEECH_KEY = 'az';
     const lab = (q) => LAB(new Request(`https://www.aarem.net/api/faheem/voice-lab?${q}`));
