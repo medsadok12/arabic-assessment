@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { applyWaqf } from './arabic-waqf';
+import { completeSukun } from './arabic-tashkeel';
 import { currentVoice, voiceById, VOICE_SAMPLE } from './faheem-voices';
 
 /* ════════════════════════════════════════════════════════════════
@@ -283,7 +284,8 @@ async function writeCache(admin, path, out) {
 
 export async function synthesize(rawText, { admin = null, shared = false, budgetMs = 25000 } = {}) {
   const deadline = Date.now() + budgetMs;
-  const text = applyWaqf(rawText); // الوقف بالسكون قبل أي مزوّد
+  // السكون الناقص يُكمَل (كلمة ناقصة التشكيل يخمّن الصوت حركاتها)، ثم الوقف بالسكون — قبل أي مزوّد
+  const text = applyWaqf(completeSukun(rawText));
   const path = shared && admin ? cachePath(text) : null;
   if (path) {
     const hit = await readCache(admin, path);

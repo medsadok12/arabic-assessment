@@ -2,8 +2,9 @@
 import { useRef, useState, useEffect } from 'react';
 import { FAHEEM_VOICES, FAHEEM_VOICE_ID, VOICE_SAMPLE } from '../../../lib/faheem-voices';
 
-/* صفحة اختيار صوت فهيم: صوته الأصلي في مقطع الفيل للمقارنة، ثم الأصوات المرشّحة
-   بالجملة نفسها. صوت واحد في كل لحظة. */
+/* صفحة صوت فهيم: «جرّب جملة» تسمعها بصوت فهيم المعتمد كما يسمعها الطفل (لفحص النطق
+   والإعراب)، ثم صوته الأصلي في مقطع الفيل والأصوات المرشّحة بالجملة نفسها. صوت واحد في كل لحظة. */
+const TRY_DEFAULT = 'سَوَاءٌ كَانُوا نَاطِقِينَ بِالْعَرَبِيَّةِ أَوْ غَيرَ نَاطِقِينَ بِهَا.';
 const REF = { id: 'ref', label: 'صوت فهيم في مقطع الفيل', note: 'المرجع: هذا ما نريد أن يشبهه' };
 
 export default function FaheemVoicePage() {
@@ -11,6 +12,7 @@ export default function FaheemVoicePage() {
   const [playing, setPlaying] = useState(null);
   const [loading, setLoading] = useState(null);
   const [failed, setFailed] = useState({});
+  const [tryText, setTryText] = useState(TRY_DEFAULT);
 
   useEffect(() => () => audioRef.current?.pause(), []);
 
@@ -26,6 +28,7 @@ export default function FaheemVoicePage() {
     // المرجع: نسخة mp4 (AAC) حيث تُدعم، وإلا webm (Opus) — كما في صيّاد الحروف
     a.src = item.id === 'ref'
       ? (a.canPlayType('audio/mp4; codecs="mp4a.40.2"') ? '/media/elephant.mp4' : '/media/elephant.webm')
+      : item.id === 'try' ? `/api/faheem/tts?t=${encodeURIComponent(tryText.trim())}`
       : `/api/faheem/voice-lab?v=${item.id}`;
     a.play().catch(() => a.onerror());
   }
@@ -70,9 +73,25 @@ export default function FaheemVoicePage() {
         .fv-note { color: #64748b; font-size: .95rem; margin-top: 2px; }
         .fv-play { flex: 0 0 60px; height: 60px; border-radius: 50%; border: none; background: #2ABB7A; color: #fff; font-size: 1.5rem; cursor: pointer; box-shadow: 0 4px 10px rgba(42,187,122,.35); }
         .fv-on .fv-play { background: #7C5CD9; box-shadow: 0 4px 10px rgba(124,92,217,.35); }
+        .fv-h2 { color: #1A2B4A; font-size: 1.25rem; font-weight: 800; margin: 18px 0 6px; }
+        .fv-try { background: #fff; border-radius: 20px; padding: 6px 16px 16px; margin-bottom: 8px; box-shadow: 0 4px 14px rgba(26,43,74,.08); }
+        .fv-area { width: 100%; box-sizing: border-box; border: 2px solid #e2e8f0; border-radius: 14px; padding: 10px 12px; font: inherit; font-size: 1.2rem; line-height: 2; color: #1A2B4A; resize: vertical; }
+        .fv-area:focus { outline: none; border-color: #7C5CD9; }
+        .fv-trybtn { margin-top: 10px; width: 100%; min-height: 56px; border: none; border-radius: 16px; background: #2ABB7A; color: #fff; font: inherit; font-size: 1.2rem; font-weight: 800; cursor: pointer; }
+        .fv-trybtn:disabled { background: #cbd5e1; cursor: not-allowed; }
         .fv-foot { margin-top: 20px; color: #475569; font-size: 1rem; line-height: 1.9; text-align: center; }
       `}</style>
-      <h1 className="fv-h">🎙️ اختر صوت فهيم</h1>
+      <h1 className="fv-h">🎙️ صوت فهيم</h1>
+      <section className="fv-try">
+        <h2 className="fv-h2">🔍 جرّب جملة بصوت فهيم</h2>
+        <p className="fv-sub">اكتب أو الصق جملة مشكولة، واستمع إليها كما يسمعها الطالب تماماً — لفحص النطق والإعراب.</p>
+        <textarea className="fv-area" dir="rtl" rows={3} value={tryText} onChange={e => setTryText(e.target.value)} maxLength={1200} />
+        <button className="fv-trybtn" disabled={!tryText.trim()} onClick={() => play({ id: 'try' })}>
+          {loading === 'try' ? '… يُجهِّز الصوت' : playing === 'try' ? '■ إيقاف' : '▶ استمع'}
+        </button>
+        {failed.try && <div className="fv-note">تعذّر تشغيل الجملة — جرّب مرة أخرى</div>}
+      </section>
+      <h2 className="fv-h2">🐘 اختر صوت فهيم</h2>
       <p className="fv-sub">استمع أولاً إلى صوت فهيم في مقطع الفيل، ثم إلى الأصوات المرشّحة. كلها تقرأ الجملة نفسها:</p>
       <div className="fv-sample">{VOICE_SAMPLE}</div>
       <div className="fv-list">

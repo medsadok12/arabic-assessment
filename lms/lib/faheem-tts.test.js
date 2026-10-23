@@ -232,6 +232,11 @@ describe('صوت فهيم المعتمد وعيّنات الاختيار', async
     expect(ssml.indexOf('<mstts:silence')).toBeGreaterThan(ssml.indexOf('<voice'));
     expect(ssml.lastIndexOf('<mstts:silence')).toBeLessThan(ssml.indexOf('<prosody'));
   });
+  it('الكلمة ناقصة السكون تُكمَل قبل أن تصل Azure: «أَوْ غَيرَ نَاطِقِينَ» ← «غَيْرَ»', async () => {
+    process.env.AZURE_SPEECH_KEY = 'az';
+    await T.synthesize('سَوَاءٌ كَانُوا نَاطِقِينَ بِالْعَرَبِيَّةِ أَوْ غَيرَ نَاطِقِينَ بِهَا.');
+    expect(azureCalls()[0].body).toContain('أَوْ غَيْرَ نَاطِقِينَ');
+  });
   it('إن رفض Azure إعدادات الصمت (400) يُعاد الطلب بدونها بصوت فهيم نفسه — لا Gemini', async () => {
     process.env.AZURE_SPEECH_KEY = 'az';
     vi.spyOn(console, 'error').mockImplementation(() => {});
