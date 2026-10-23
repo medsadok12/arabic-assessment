@@ -33,7 +33,8 @@ beforeEach(() => {
   s.user = { id: 'u1' }; s.calls = []; s.store = new Map(); s.models = [];
   s.gemini = () => reply(200, { candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/L16;codec=pcm;rate=24000', data: PCM.toString('base64') } }] } }] });
   T._resetGeminiTtsState();
-  delete process.env.AZURE_SPEECH_KEY; delete process.env.GEMINI_TTS_MODEL; delete process.env.GEMINI_TTS_VOICE;
+  delete process.env.AZURE_SPEECH_KEY; delete process.env.AZURE_SPEECH_REGION;
+  delete process.env.GEMINI_TTS_MODEL; delete process.env.GEMINI_TTS_VOICE;
   process.env.GEMINI_API_KEY = 'g-test';
   globalThis.fetch = vi.fn(async (url, init = {}) => {
     const u = String(url);
@@ -126,6 +127,25 @@ describe('اختيار الصوت', () => {
     expect(geminiCalls()).toHaveLength(0);
     expect(s.calls[0].body).toContain('&amp; &lt;أهلاً&gt;');
   });
+  it('مفتاح ومنطقة لُصقا بفراغات أو سطر زائد في آخرهما ← يُنظَّفان ويعمل Azure', async () => {
+    process.env.AZURE_SPEECH_KEY = ' az\n';
+    process.env.AZURE_SPEECH_REGION = ' EastUS \n';
+    const out = await T.synthesize('نص');
+    expect(out.type).toBe('audio/mpeg');
+    expect(s.calls[0].url).toBe('https://eastus.tts.speech.microsoft.com/cognitiveservices/v1');
+    expect(globalThis.fetch.mock.calls[0][1].headers['Ocp-Apim-Subscription-Key']).toBe('az');
+  });
+  it('منطقة فيها سطران (المفتاح لُصق فيها بالخطأ) ← لا طلب لـ Azure، ولا تُطبع القيمة، ويكمل Gemini', async () => {
+    process.env.AZURE_SPEECH_KEY = 'az';
+    process.env.AZURE_SPEECH_REGION = 'SECRETKEY123\neastus';
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const out = await T.synthesize('نص');
+    expect(out.type).toBe('audio/wav');
+    expect(s.calls.some(c => c.url.includes('microsoft'))).toBe(false);
+    expect(err.mock.calls.flat().join(' ')).toContain('AZURE_SPEECH_REGION غير صالح');
+    expect(err.mock.calls.flat().join(' ')).not.toContain('SECRETKEY123');
+    err.mockRestore();
+  });
   it('Google الاحتياطي يقسم النص الطويل ويلصق المقاطع', async () => {
     delete process.env.GEMINI_API_KEY;
     const out = await T.synthesize('كَلِمَةٌ '.repeat(60));
@@ -150,6 +170,15 @@ describe('تخزين النصوص المشتركة (كلمة اليوم)', () =>
     s.gemini = () => reply(200, { candidates: [{ content: { parts: [{ inlineData: { data: PCM.toString('base64') } }] } }] });
     await T.synthesize('يَا سَارَة', { admin });
     expect(s.store.size).toBe(0);
+  });
+  it('Azure متعثّر ومفتاحه موجود ← صوت Gemini البديل يُسمع ولا يُخزَّن باسم Azure', async () => {
+    process.env.AZURE_SPEECH_KEY = 'az';
+    process.env.AZURE_SPEECH_REGION = 'bad\nregion';
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const out = await T.synthesize('نَهْرٌ', { admin, shared: true });
+    expect(out.type).toBe('audio/wav');
+    expect(s.store.size).toBe(0);
+    console.error.mockRestore();
   });
 });
 

@@ -66,10 +66,16 @@ function xmlEscape(s) {
 
 /* ── 1) Azure Neural ── */
 async function azureTTS(text, deadline) {
-  const key = process.env.AZURE_SPEECH_KEY;
+  const key = process.env.AZURE_SPEECH_KEY?.trim();
   if (!key) return null;
-  const region = process.env.AZURE_SPEECH_REGION || 'eastus';
-  const voice = process.env.AZURE_SPEECH_VOICE || AZURE_DEFAULT_VOICE;
+  const region = (process.env.AZURE_SPEECH_REGION || 'eastus').trim().toLowerCase();
+  // قيمة لُصقت فيها سطور زائدة (2026-10-23: سطر طويل ثم eastus) تجعل العنوان باطلاً فيفشل الطلب فوراً.
+  // لا تُطبع القيمة في السجل: قد يكون المفتاح نفسه لُصق فيها بالخطأ.
+  if (!/^[a-z0-9]+$/.test(region)) {
+    console.error(`[tts] ✗ azure AZURE_SPEECH_REGION غير صالح (${region.length} حرفاً) — المطلوب اسم المنطقة وحده مثل eastus`);
+    return null;
+  }
+  const voice = (process.env.AZURE_SPEECH_VOICE || AZURE_DEFAULT_VOICE).trim();
   const t0 = Date.now();
   try {
     const res = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
@@ -91,7 +97,7 @@ async function azureTTS(text, deadline) {
     console.log(`[tts] ✓ azure ${voice} (${Date.now() - t0}ms) chars=${text.length}`);
     return { buf, type: 'audio/mpeg' };
   } catch (e) {
-    console.error(`[tts] ✗ azure ${e?.name} (${Date.now() - t0}ms): ${e?.message}`);
+    console.error(`[tts] ✗ azure ${e?.name} (${Date.now() - t0}ms): ${e?.message}${e?.cause?.code ? ` [${e.cause.code}]` : ''}`);
     return null;
   }
 }
@@ -248,9 +254,12 @@ export async function synthesize(rawText, { admin = null, shared = false, budget
     const hit = await readCache(admin, path);
     if (hit) return hit;
   }
-  const human = (await azureTTS(text, deadline)) ?? (await geminiTTS(text, deadline));
+  const azure = await azureTTS(text, deadline);
+  const human = azure ?? (await geminiTTS(text, deadline));
   if (human) {
-    if (path) await writeCache(admin, path, human); // الصوت البشري فقط يُخزَّن
+    // الصوت البشري فقط يُخزَّن، وتحت مسار مزوّده: إن تعثّر Azure ومفتاحه موجود
+    // فصوت Gemini البديل لا يُحفظ باسم Azure (وإلا خُدم بدل صوت Azure بعد إصلاحه)
+    if (path && (azure || !process.env.AZURE_SPEECH_KEY)) await writeCache(admin, path, human);
     return human;
   }
   return googleTTS(text);
