@@ -65,7 +65,9 @@ export default function LetterEditor({ letter, onClose, onSaved }) {
     if (file.size > HUROOF_IMAGE_MAX_MB * 1024 * 1024) { setMsg({ ok: false, text: `الصورة أكبر من ${HUROOF_IMAGE_MAX_MB}MB` }); return; }
     setImgBusy(true); setMsg(null);
     try {
-      const small = await resizeImageToWebp(file, 360); // تُعرض بحجم 120px
+      // تُعرض الآن تملأ إطار البطاقة (حتى ≈460×250 نقطة، وضعفها على شاشات الجوال الحادة) —
+      // 360px كانت تبدو مشوّشة، فـ1280px بجودة عالية (≈100–250KB)
+      const small = await resizeImageToWebp(file, 1280, 0.88);
       const url   = await uploadHuroofMedia(letter.idx, 'image', small);
       set('image_url', url);
       setMsg({ ok: true, text: '✅ رُفعت الصورة — اضغط «حفظ» في الأسفل' });

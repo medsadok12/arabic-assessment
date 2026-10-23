@@ -95,6 +95,43 @@ function LetterCard({ data, index, active, onToggle, onPlay, showBadges }) {
 /* ── بطاقة الحرف (اختيار الأستاذ محمد «الصورة أولاً» 2026-10-23): أرى ← أقرأ ← أسمع.
    صورة كبيرة في إطار أبيض، الكلمة والجملة بخط النسخ والحرف ملوّن فيهما، وثلاثة أزرار صوت.
    على الجوال تصعد من الأسفل، وعلى الحاسوب والآيباد نافذة في الوسط (التنسيق في <style> الصفحة) ── */
+/* صور الحروف في الذاكرة: كل صورة تُجلب مرة واحدة وتُحفظ (رابط blob) فتظهر فوراً عند العودة إليها
+   أو الانتقال بالسهمين — لا انتظار للشبكة ولا اعتماد على كاش المتصفح. إن تعذّر الجلب يُستعمل
+   الرابط نفسه كما هو */
+const imageCache = new Map();
+function loadImage(url) {
+  if (!imageCache.has(url)) {
+    imageCache.set(url, fetch(url)
+      .then(r => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+      .then(b => URL.createObjectURL(b))
+      .catch(() => url));
+  }
+  return imageCache.get(url);
+}
+
+/* صورة الإطار بطبقتين: عند الانتقال لحرف آخر تبقى الصورة السابقة ظاهرة تحت الجديدة حتى تُرسم
+   الجديدة كاملة، ثم تُزال — فلا وميض ولا إطار فارغ ولو للحظة */
+function FrameImage({ src, alt }) {
+  const [layers, setLayers] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    loadImage(src).then(u => {
+      const img = new Image();
+      img.src = u;
+      const add = () => {
+        if (alive) setLayers(ls => (ls.length && ls[ls.length - 1] === u ? ls : [...ls.slice(-1), u]));
+      };
+      if (img.decode) img.decode().then(add, add); else add();
+    });
+    return () => { alive = false; };
+  }, [src]);
+  const top = layers.length - 1;
+  return layers.map((u, i) => (
+    <img key={u} src={u} alt={i === top ? alt : ''} aria-hidden={i === top ? undefined : true} decoding="sync"
+      onLoad={i === top && layers.length > 1 ? () => setLayers(ls => ls.slice(-1)) : undefined} />
+  ));
+}
+
 function LetterSheet({ data, index, onClose, onPlay, onEdit, onPrev, onNext }) {
   const pal = PALETTE[index % PALETTE.length];
 
@@ -130,7 +167,7 @@ function LetterSheet({ data, index, onClose, onPlay, onEdit, onPrev, onNext }) {
         <div className="hf-frame">
           {onPrev && <button className="hf-arrow hf-prev" onClick={onPrev} aria-label="الحرف السابق">→</button>}
           {data.image_url
-            ? <img src={data.image_url} alt={data.word} />
+            ? <FrameImage src={data.image_url} alt={data.word} />
             : <span className="hf-emoji" aria-hidden="true">{data.emoji}</span>}
           {onNext && <button className="hf-arrow hf-next" onClick={onNext} aria-label="الحرف التالي">←</button>}
         </div>
@@ -205,6 +242,25 @@ export default function HuroofPage() {
     el.play().catch(() => {});
   }
   useEffect(() => () => audioRef.current?.pause(), []);   // مغادرة الصفحة توقف الصوت
+
+  // صور الحرفين قبل المفتوح وبعده أولاً — السهمان ينقلان فوراً بلا انتظار
+  useEffect(() => {
+    if (active === null) return;
+    [active + 1, active - 1, active + 2, active - 2].forEach(i => {
+      const url = letters[i]?.image_url;
+      if (url) loadImage(url);
+    });
+  }, [active, letters]);
+  // وبقية صور الحروف في الخلفية بعد أن تهدأ الصفحة، واحدة تلو الأخرى — فأول فتح لأي حرف فوري أيضاً
+  useEffect(() => {
+    const urls = letters.map(l => l.image_url).filter(Boolean);
+    if (!urls.length) return;
+    let alive = true;
+    const t = setTimeout(async () => {
+      for (const u of urls) { if (!alive) return; await loadImage(u); }
+    }, 1500);
+    return () => { alive = false; clearTimeout(t); };
+  }, [letters]);
 
   // السهمان في البطاقة: الحرف التالي/السابق كأن الطفل ضغطه (نطقه + «شاهدته» + النقاط)
   function goTo(i) {
