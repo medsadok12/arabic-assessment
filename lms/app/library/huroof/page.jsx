@@ -287,12 +287,13 @@ export default function HuroofPage() {
             .hf-chip-n { font-size:1.35rem; line-height:1.3; }
             .hf-x { width:48px; height:48px; flex-shrink:0; border-radius:50%; border:none; background:#F1F5F9;
               color:#1A2B4A; font-family:inherit; font-size:1.2rem; font-weight:900; cursor:pointer; }
-            .hf-frame { position:relative; flex-shrink:0; height:clamp(150px, 30vh, 250px); background:#fff;
+            .hf-frame { position:relative; flex-shrink:0; height:clamp(150px, 30vh, 250px); background:#fff; overflow:hidden;
               border:3px solid var(--pal-l); border-radius:24px; padding:10px 58px; box-shadow:0 6px 18px rgba(26,43,74,.08);
               display:flex; align-items:center; justify-content:center; }
-            .hf-frame img { max-width:100%; max-height:100%; object-fit:contain; filter:drop-shadow(0 4px 8px rgba(0,0,0,.10)); }
+            /* الصورة تملأ الإطار كله (طلب الأستاذ محمد) والسهمان فوقها في مكانهما */
+            .hf-frame img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
             .hf-emoji { font-size:clamp(4.5rem, 13vh, 7rem); line-height:1; }
-            .hf-arrow { position:absolute; top:50%; transform:translateY(-50%); width:46px; height:46px; border-radius:50%;
+            .hf-arrow { position:absolute; z-index:2; top:50%; transform:translateY(-50%); width:46px; height:46px; border-radius:50%;
               border:none; background:var(--pal-l); color:var(--pal); font-family:inherit; font-size:1.55rem; font-weight:900; line-height:1;
               cursor:pointer; box-shadow:0 4px 10px rgba(26,43,74,.15); }
             .hf-prev { right:8px; } .hf-next { left:8px; }
