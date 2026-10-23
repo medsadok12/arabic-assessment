@@ -144,12 +144,12 @@ function LetterSheet({ data, index, onClose, onPlay, onEdit, onPrev, onNext }) {
           <div className="hf-btns">
             {data.letter_audio_url && (
               <button className="hf-sb hf-sb-l" onClick={() => onPlay(data.letter_audio_url)}>
-                <span aria-hidden="true">🔤</span>الحرف
+                الحرف
               </button>
             )}
             {data.sentence_audio_url && (
               <button className="hf-sb hf-sb-s" onClick={() => onPlay(data.sentence_audio_url)}>
-                <span aria-hidden="true">📖</span>الجملة
+                الجملة
               </button>
             )}
           </div>
@@ -300,9 +300,8 @@ export default function HuroofPage() {
             .hf-sent { font-family:var(--font-naskh), serif; font-weight:600; font-size:1.55rem; line-height:1.85;
               background:#F7FAFF; border:2px solid var(--pal-l); border-radius:18px; padding:8px 14px; }
             .hf-btns { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0, 1fr); gap:8px; }
-            .hf-sb { min-height:60px; border-radius:16px; border:none; font-family:inherit; font-size:1rem; font-weight:800;
+            .hf-sb { min-height:60px; border-radius:16px; border:none; font-family:inherit; font-size:1.2rem; font-weight:800;
               display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.3; cursor:pointer; }
-            .hf-sb span { font-size:1.25rem; line-height:1.1; }
             .hf-sb-l { background:var(--pal); color:#fff; border-bottom:5px solid rgba(0,0,0,.28); }
             .hf-sb-s { background:#2ABB7A; color:#fff; border-bottom:5px solid #17784C; }
             .hf-sb:active, .hf-arrow:active { transform:translateY(2px); }
