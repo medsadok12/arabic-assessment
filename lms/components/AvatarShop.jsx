@@ -372,21 +372,10 @@ export function AvatarWithAccessory({ name, avatarURL, equipped = {}, equippedId
   );
 }
 
-/* ── model-viewer script loader (shared with heroes-studio) ─────────────── */
-function loadMvScript() {
-  if (typeof document === 'undefined') return;
-  if (document.querySelector('script[data-mv]')) return;
-  const s = document.createElement('script');
-  s.type = 'module';
-  s.src = '/vendor/model-viewer.min.js'; // مستضاف ذاتياً — لا اعتماد على CDN خارجي
-  s.dataset.mv = '1';
-  document.head.appendChild(s);
-}
-
 /* ══════════════════════════════════════════════════════════════════════════
    AvatarShop — small trigger card in the dashboard header
-   When a 3D hero is saved: shows the preview image (emoji SVG) — no extra
-   model-viewer here because DashboardHero3D already renders the full 3D hero.
+   When a studio hero is saved: shows its small portrait (preview_url, rendered
+   by the studio on save) — DashboardHero3D already renders the full 3D hero.
    Otherwise: falls back to DiceBear 2D avatar.
 ══════════════════════════════════════════════════════════════════════════ */
 export default function AvatarShop({ user, displayName, viewingChildId = null }) {
@@ -409,7 +398,7 @@ export default function AvatarShop({ user, displayName, viewingChildId = null })
   const equipped   = cfg?.equipped    ?? {};
   const baseSeed   = cfg?.base_seed   ?? null;
   const seed       = baseSeed || userId;
-  const is3D       = cfg?.avatar_url?.endsWith?.('.glb');
+  const is3D       = !!cfg?.look;
 
   return (
     <Link
@@ -439,7 +428,7 @@ export default function AvatarShop({ user, displayName, viewingChildId = null })
     >
       {/* ── Avatar display ── */}
       {is3D && previewUrl ? (
-        /* Preview image (emoji SVG) — lightweight, no duplicate model-viewer */
+        /* صورة البطل المصغّرة — خفيفة، بلا مشهد ثلاثي الأبعاد ثانٍ */
         <img
           src={previewUrl}
           alt=""

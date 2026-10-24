@@ -2,14 +2,17 @@ import { NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase-server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { resolveActiveIdentity } from '../../../lib/active-child';
+import { normalizeLook, unpaidItems, isValidPreview } from '../../../lib/hero-catalog';
 
 export const dynamic = 'force-dynamic';
+
+const EMPTY = { look: null, preview_url: null, equipped: {}, owned: [], points: 0 };
 
 export async function GET(req) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ base_seed: null, equipped: {}, owned: [], points: 0 });
+    if (!user) return NextResponse.json(EMPTY);
 
     const admin = createAdminClient();
     const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
@@ -20,11 +23,11 @@ export async function GET(req) {
     ]);
 
     return NextResponse.json({
-      base_seed:   cfg?.base_seed   ?? effectiveUserId,
-      avatar_url:  cfg?.avatar_url  ?? null,
-      preview_url: cfg?.preview_url ?? null,
-      avatar_id:   cfg?.avatar_id   ?? null,
-      avatar_tint: cfg?.avatar_tint ?? null,
+      // بطل الاستوديو ثلاثي الأبعاد — null حتى يحفظ الطالب بطله أول مرة
+      look:        cfg?.look ? normalizeLook(cfg.look) : null,
+      preview_url: cfg?.look ? cfg?.preview_url ?? null : null,
+      base_seed:   cfg?.base_seed ?? effectiveUserId,
+      // زينة الأفاتار ثنائي الأبعاد القديم (AvatarWithAccessory) — للقراءة فقط
       equipped: {
         hat:        cfg?.equipped_hat        ?? null,
         glasses:    cfg?.equipped_glasses    ?? null,
@@ -37,39 +40,45 @@ export async function GET(req) {
       points: pts?.total ?? 0,
     });
   } catch {
-    return NextResponse.json({ base_seed: null, equipped: {}, owned: [], points: 0 });
+    return NextResponse.json(EMPTY);
   }
 }
 
+/* حفظ البطل: { look, preview_url? } — لا يُحفظ بطل يلبس قطعة لم تُشترَ */
 export async function PATCH(req) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
 
-    const body  = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body?.look || typeof body.look !== 'object') {
+      return NextResponse.json({ error: 'بيانات البطل ناقصة' }, { status: 400 });
+    }
+
     const admin = createAdminClient();
     const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
-    const up    = { updated_at: new Date().toISOString() };
+    const look = normalizeLook(body.look);
 
-    if ('base_seed'   in body) up.base_seed           = body.base_seed;
-    if ('avatar_url'  in body) up.avatar_url          = body.avatar_url;
-    if ('preview_url' in body) up.preview_url         = body.preview_url;
-    if ('avatar_id'   in body) up.avatar_id           = body.avatar_id;
-    if ('tint'        in body) up.avatar_tint         = body.tint;
-    if ('hat'         in body) up.equipped_hat        = body.hat;
-    if ('glasses'     in body) up.equipped_glasses    = body.glasses;
-    if ('scarf'       in body) up.equipped_scarf      = body.scarf;
-    if ('halo'        in body) up.equipped_halo       = body.halo;
-    if ('companion'   in body) up.equipped_companion  = body.companion;
-    if ('background'  in body) up.equipped_background = body.background;
+    const { data: items } = await admin.from('avatar_items').select('item_id').eq('user_id', effectiveUserId);
+    const unpaid = unpaidItems(look, (items ?? []).map(r => r.item_id));
+    if (unpaid.length) {
+      return NextResponse.json({ error: 'اشترِ القطع الجديدة أولاً ثم احفظ بطلك 🛒', unpaid: unpaid.map(x => x.key) }, { status: 400 });
+    }
 
-    await admin.from('hero_config').upsert(
-      { user_id: effectiveUserId, ...up },
-      { onConflict: 'user_id' }
-    );
-    return NextResponse.json({ success: true });
-  } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    const row = {
+      user_id: effectiveUserId,
+      look,
+      avatar_id: 'studio3d',
+      avatar_url: null,
+      updated_at: new Date().toISOString(),
+    };
+    if (isValidPreview(body.preview_url)) row.preview_url = body.preview_url;
+
+    const { error } = await admin.from('hero_config').upsert(row, { onConflict: 'user_id' });
+    if (error) return NextResponse.json({ error: 'تعذّر حفظ البطل، حاول مرة أخرى' }, { status: 500 });
+    return NextResponse.json({ success: true, look });
+  } catch {
+    return NextResponse.json({ error: 'تعذّر حفظ البطل، حاول مرة أخرى' }, { status: 500 });
   }
 }

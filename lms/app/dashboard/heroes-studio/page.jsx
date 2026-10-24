@@ -1,735 +1,352 @@
 'use client';
-import { useState, useEffect, useRef, Suspense, lazy, Component } from 'react';
-import { childFetch } from '../../../lib/child-fetch';
-const Spline = lazy(() =>
-  import('@splinetool/react-spline').then(m => ({ default: m.default ?? m }))
-);
-
-class SplineErrorBoundary extends Component {
-  constructor(props) { super(props); this.state = { err: false }; }
-  static getDerivedStateFromError() { return { err: true }; }
-  render() {
-    if (this.state.err) {
-      return (
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex',
-          flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(2,4,20,.85)',
-        }}>
-          <span style={{ fontSize: 72 }}>{this.props.emoji ?? '🦾'}</span>
-          <p style={{ color: '#64748B', fontFamily: 'Cairo,sans-serif', marginTop: 12, fontSize: 13 }}>
-            ⚠️ تعذّر تحميل المجسم التفاعلي
-          </p>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import HeroAvatar3D from '../../../components/HeroAvatar3D';
+import { childFetch } from '../../../lib/child-fetch';
+import {
+  ITEMS, HAIR, SLOT_LABEL, SKIN, HAIR_C, HIJAB_C, CLOTH_C, PANTS_C, SHOE_C,
+  DEFAULT_LOOK, findItem, isOwned, unpaidItems, looksEqual, normalizeLook,
+} from '../../../lib/hero-catalog';
 
-/* ── Inject CSS animations once ─────────────────────────────────────────── */
-if (typeof document !== 'undefined' && !document.getElementById('hs-anim')) {
-  const s = document.createElement('style');
-  s.id = 'hs-anim';
-  s.textContent = `
-    @keyframes hsSpin    { to{transform:rotate(360deg)} }
-    @keyframes hsPulse   { 0%,100%{opacity:.12;transform:scale(.82)} 50%{opacity:.5;transform:scale(1.08)} }
-    @keyframes hsFadeIn  { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes hsGlow    { 0%,100%{box-shadow:0 0 20px rgba(139,92,246,.28)} 50%{box-shadow:0 0 52px rgba(139,92,246,.7)} }
-    @keyframes hsShimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
-    @keyframes hsCardPop { from{transform:scale(.9);opacity:0} to{transform:scale(1);opacity:1} }
-    model-viewer { --progress-bar-color:#8b5cf6; --poster-color:transparent; }
-  `;
-  document.head.appendChild(s);
-}
+/* استوديو الأبطال: الطفل يلبس بطله ثلاثي الأبعاد ويجرّب القطع مجاناً،
+   ثم يشتريها بنجومه ويحفظه. الأسعار والملكية يتحقق منها الخادم دائماً. */
 
-function useModelViewerScript() {
-  useEffect(() => {
-    if (document.querySelector('script[data-mv]')) return;
-    const s = document.createElement('script');
-    s.type = 'module';
-    // مستضاف ذاتياً من public/vendor — لا اعتماد على CDN خارجي (كان ajax.googleapis.com)
-    s.src = '/vendor/model-viewer.min.js';
-    s.dataset.mv = '1';
-    document.head.appendChild(s);
-  }, []);
-}
-
-const HEROES = [
-  {
-    id: 'robot',
-    name: 'الروبوت الذكي',
-    emoji: '🤖',
-    color: '#8B5CF6',
-    price: 0,
-    desc: 'بطلك المجاني — يتحرك ويتفاعل',
-    glb:  '/models/RobotExpressive.glb',
-    anim: 'Idle',
-  },
-  {
-    id: 'whobee',
-    name: 'ويبي المتحرك',
-    emoji: '🦾',
-    color: '#F59E0B',
-    price: 0,
-    desc: 'روبوت آلي مميز يتحرك باحترافية',
-    glb:  '/models/BrainStem.glb',
-    anim: null,
-  },
-  {
-    id: 'astronaut',
-    name: 'رائد الفضاء',
-    emoji: '🧑‍🚀',
-    color: '#3B82F6',
-    price: 1000,
-    desc: 'يجوب النجوم بشجاعة',
-    glb:  '/models/Astronaut.glb',
-    anim: null,
-  },
-  {
-    id: 'fox',
-    name: 'الثعلب الذكي',
-    emoji: '🦊',
-    color: '#F97316',
-    price: 1000,
-    desc: 'ماكر وسريع كالريح',
-    glb:  '/models/Fox.glb',
-    anim: 'Survey',
-  },
-  {
-    id: 'duck',
-    name: 'البطة الذهبية',
-    emoji: '🦆',
-    color: '#CA8A04',
-    price: 1000,
-    desc: 'طريفة ومحبوبة بالجميع',
-    glb:  '/models/Duck.glb',
-    anim: null,
-  },
-  {
-    id: 'parrot',
-    name: 'الببغاء الملون',
-    emoji: '🦜',
-    color: '#16A34A',
-    price: 1000,
-    desc: 'طائر ذكي بألوان مبهجة',
-    glb:  '/models/Parrot.glb',
-    anim: null,
-  },
-  {
-    id: 'flamingo',
-    name: 'النحامة الوردية',
-    emoji: '🦩',
-    color: '#EC4899',
-    price: 1000,
-    desc: 'أنيقة وجميلة كالحلم',
-    glb:  '/models/Flamingo.glb',
-    anim: null,
-  },
-  {
-    id: 'explorer',
-    name: 'المستكشف',
-    emoji: '🧭',
-    color: '#22C55E',
-    price: 1000,
-    desc: 'يستكشف الآفاق بلا حدود',
-    glb:  '/models/CesiumMan.glb',
-    anim: 'Walk',
-  },
-  {
-    id: 'cyborg',
-    name: 'الآلة المُدرَّعة',
-    emoji: '🦾',
-    color: '#EF4444',
-    price: 1000,
-    desc: 'دروع مستقبلية وقوة هائلة',
-    glb:  '/models/BrainStem.glb',
-    anim: null,
-  },
-  {
-    id: 'knight',
-    name: 'الفارس',
-    emoji: '⚔️',
-    color: '#EAB308',
-    price: 1000,
-    desc: 'فارس الساحات والبطولات',
-    glb:  '/models/RiggedFigure.glb',
-    anim: null,
-  },
-  {
-    id: 'ninja',
-    name: 'النينجا',
-    emoji: '🥷',
-    color: '#1E293B',
-    price: 1000,
-    desc: 'خفي كالظلام وسريع كالبرق',
-    glb: null, comingSoon: true,
-  },
-  {
-    id: 'wizard',
-    name: 'الساحر',
-    emoji: '🧙',
-    color: '#7C3AED',
-    price: 1000,
-    desc: 'يتقن فن السحر والأسرار',
-    glb: null, comingSoon: true,
-  },
-  {
-    id: 'scientist',
-    name: 'العالم',
-    emoji: '👨‍🔬',
-    color: '#06B6D4',
-    price: 1000,
-    desc: 'عقل نابغة وروح مغامرة',
-    glb: null, comingSoon: true,
-  },
+const TABS = [
+  { id: 'clothes', name: 'مَلَابِسِي', em: '👕' },
+  { id: 'gear',    name: 'مُعَدَّاتِي', em: '🛡️' },
+  { id: 'head',    name: 'رَأْسِي',    em: '🧢' },
+  { id: 'me',      name: 'شَكْلِي',    em: '🙂' },
+  { id: 'pet',     name: 'رَفِيقِي',   em: '🐘' },
 ];
-
-const PALETTE = [
-  '#8B5CF6', '#3B82F6', '#EF4444', '#22C55E', '#EAB308',
-  '#EC4899', '#F97316', '#06B6D4', '#F1F5F9', '#64748B',
-];
-
-function hexToFactor(hex) {
-  const n = parseInt(hex.replace('#', ''), 16);
-  return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255, 1.0];
-}
+const LINES = ['أَنَا بَطَلُ الْحُرُوفِ! ⭐', 'هَيَّا نَتَعَلَّمْ مَعًا! 📚', 'شُكْرًا عَلَى مَلَابِسِي الْجَدِيدَةِ 😎', 'أَيْنَ الْمُغَامَرَةُ التَّالِيَةُ؟ 🚀'];
+const CONFETTI_C = ['#E8B84B', '#7C5CD9', '#2ABB7A', '#E8578C', '#3B9BEF'];
 
 export default function HeroesStudio() {
-  useModelViewerScript();
-  const mvRef = useRef(null);
-
-  const [cfg,       setCfg]       = useState(null);
-  const [hero,      setHero]      = useState(HEROES[0]);
-  const [tint,      setTint]      = useState(HEROES[0].color);
-  const [owned,     setOwned]     = useState([]);
-  const [ready,     setReady]     = useState(false);
-  const [loadError, setLoadError] = useState(false);
-  const [tab,       setTab]       = useState('chars');
-  const [saving,    setSaving]    = useState(false);
-  const [buying,    setBuying]    = useState(null);
-  const [toast,     setToast]     = useState(null);
-  const [isMobile,  setIsMobile]  = useState(false);
-
-  useEffect(() => { setIsMobile(window.innerWidth < 700); }, []);
+  const heroRef = useRef(null);
+  const bubbleT = useRef(null);
+  const pageRef = useRef(null);
+  const actRef = useRef(null);
+  const [loaded, setLoaded] = useState(false);
+  const [owned, setOwned] = useState(() => new Set());
+  const [points, setPoints] = useState(0);
+  const [look, setLook] = useState(DEFAULT_LOOK);
+  const [saved, setSaved] = useState(null);
+  const [tab, setTab] = useState('clothes');
+  const [busy, setBusy] = useState(null);
+  const [bubble, setBubble] = useState('');
+  const [note, setNote] = useState('');
+  const [bump, setBump] = useState(0);
+  const [confetti, setConfetti] = useState([]);
 
   useEffect(() => {
-    childFetch('/api/hero-config').then(r => r.json()).then(d => {
-      setCfg(d);
-      setOwned(d.owned ?? []);
-      if (d.avatar_id) {
-        const saved = HEROES.find(h => h.id === d.avatar_id);
-        if (saved?.glb) { setHero(saved); setTint(saved.color); }
-      }
-    }).catch(() => setCfg({ points: 0 }));
+    childFetch('/api/hero-config')
+      .then(r => r.json())
+      .then(d => {
+        setOwned(new Set(d.owned ?? []));
+        setPoints(d.points ?? 0);
+        if (d.look) { const l = normalizeLook(d.look); setLook(l); setSaved(l); }
+      })
+      .catch(() => {})
+      .finally(() => setLoaded(true));
+    return () => clearTimeout(bubbleT.current);
   }, []);
 
+  /* شريط الشراء ثابت أسفل الشاشة — نحجز تحته مساحة بقدر ارتفاعه الحالي فلا يغطي القطع */
   useEffect(() => {
-    const mv = mvRef.current;
-    if (!mv) return;
-    setReady(false);
-    setLoadError(false);
+    const act = actRef.current, pg = pageRef.current;
+    if (!act || !pg) return;
+    const ro = new ResizeObserver(() => pg.style.setProperty('--hs-act-h', `${act.offsetHeight}px`));
+    ro.observe(act);
+    return () => ro.disconnect();
+  }, []);
 
-    let timer;
-    const finishOk   = () => { clearTimeout(timer); setReady(true); setLoadError(false); };
-    const finishFail = () => { clearTimeout(timer); setReady(true); setLoadError(true); };
-
-    mv.addEventListener('load',  finishOk);
-    mv.addEventListener('error', finishFail);
-
-    // مسار سريع: المجسم مُحمَّل مسبقاً قبل ربط المستمعين (كاش)، أو نفس ملف الـGLB
-    // مُعاد استخدامه عند التبديل بين بطلين (حدث load لا يتكرر لمصدر لم يتغيّر).
-    if (mv.loaded) {
-      finishOk();
-    } else {
-      // شبكة أمان: لا تعليق للأبد. إن لم يُطلَق load ولا error (بطء/تعذّر تحميل من مصدر
-      // خارجي، أو عامل معطّل…)، أوقف دوران التحميل واعرض رمز البطل بدل تجميد الشاشة.
-      timer = setTimeout(finishFail, 12000);
-    }
-
-    return () => {
-      mv.removeEventListener('load',  finishOk);
-      mv.removeEventListener('error', finishFail);
-      clearTimeout(timer);
-    };
-  }, [hero.id]);
-
-  useEffect(() => {
-    if (!ready || loadError) return;
-    const mv = mvRef.current;
-    if (!mv?.model?.materials?.length) return;
-    mv.model.materials[0].pbrMetallicRoughness.setBaseColorFactor(hexToFactor(tint));
-  }, [ready, tint, loadError]);
-
-  function isOwned(h) { return h.price === 0 || owned.includes(h.id); }
-
-  function selectHero(h) {
-    if ((!h.glb && !h.splineUrl) || h.comingSoon) return;
-    setHero(h);
-    setTint(h.color);
-    setReady(false);
-    setLoadError(false);
+  function say(text) {
+    setBubble(text);
+    clearTimeout(bubbleT.current);
+    bubbleT.current = setTimeout(() => setBubble(''), 2400);
   }
 
-  async function handleBuy(h) {
-    if (buying || isOwned(h) || (!h.glb && !h.splineUrl) || h.comingSoon) return;
-    setBuying(h.id);
+  function wear(key, val, announce, move = 'jump') {
+    if (look[key] === val) return;
+    setLook(l => ({ ...l, [key]: val }));
+    setNote('');
+    if (announce) { say(announce); heroRef.current?.[move](); }
+  }
+
+  function pickItem(slot, it) {
+    const back = slot === 'back';
+    wear(slot, it.id, it.id === 'none' ? null : `${it.icon} ${it.name}!${back ? ' انْظُرْ إِلَى ظَهْرِي' : ''}`, back ? 'peek' : 'jump');
+  }
+
+  function celebrate() {
+    const now = Date.now();
+    const bits = Array.from({ length: 36 }, (_, i) => ({
+      id: `${now}-${i}`, left: Math.random() * 100, color: CONFETTI_C[i % 5],
+      delay: Math.random() * .3, dur: 1.3 + Math.random() * .8,
+    }));
+    setConfetti(bits);
+    setTimeout(() => setConfetti(c => (c[0]?.id === bits[0].id ? [] : c)), 2600);
+  }
+
+  async function persist(next, msg) {
+    const res = await childFetch('/api/hero-config', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ look: next, preview_url: heroRef.current?.snapshot(160) ?? undefined }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(d.error || 'تعذّر حفظ بطلك، حاول مرة أخرى');
+    setSaved(next);
+    if (msg) say(msg);
+  }
+
+  async function buy() {
+    if (busy) return;
+    const up = unpaidItems(look, owned);
+    if (!up.length) return;
+    setBusy('buy'); setNote('');
+    const next = look;
     try {
       const res = await childFetch('/api/hero-config/shop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item_id: h.id }),
+        body: JSON.stringify({ items: up.map(x => x.key) }),
       });
+      const d = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? 'فشل الشراء');
+        if (typeof d.points === 'number') setPoints(d.points);
+        throw new Error(d.error || 'تعذّر إتمام الشراء، حاول مرة أخرى');
       }
-      setOwned(prev => [...prev, h.id]);
-      setCfg(p => ({ ...p, points: (p?.points ?? 0) - h.price }));
-      selectHero(h);
-      setToast({ msg: `🎉 اشتريت ${h.name}!`, ok: true });
+      setOwned(prev => new Set([...prev, ...up.map(x => x.key)]));
+      setPoints(d.points);
+      setBump(b => b + 1);
+      celebrate();
+      heroRef.current?.jump();
+      await persist(next, 'شُكْرًا! صِرْتُ أَجْمَلَ الْآنَ 😎');
     } catch (e) {
-      setToast({ msg: `❌ ${e.message}`, ok: false });
+      setNote(e.message);
     } finally {
-      setBuying(null);
-      setTimeout(() => setToast(null), 3200);
+      setBusy(null);
     }
   }
 
-  async function handleSave() {
-    setSaving(true);
+  async function save() {
+    if (busy) return;
+    setBusy('save'); setNote('');
     try {
-      const previewSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="50" fill="${tint}"/>
-        <text y="70" x="50" text-anchor="middle" font-size="54">${hero.emoji}</text>
-      </svg>`;
-      const previewUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(previewSvg)))}`;
-      const res = await childFetch('/api/hero-config', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          avatar_url:  hero.splineUrl ?? hero.glb,
-          preview_url: previewUrl,
-          avatar_id:   hero.id,
-          tint:        tint,
-          hat:         null,
-          halo:        null,
-          companion:   null,
-        }),
-      });
-      if (!res.ok) throw new Error();
-      setCfg(p => ({ ...p, avatar_url: hero.glb, preview_url: previewUrl, avatar_id: hero.id }));
-      setToast({ msg: '🎉 تم حفظ بطلك!', ok: true });
-    } catch {
-      setToast({ msg: '❌ خطأ أثناء الحفظ', ok: false });
+      await persist(look, 'تَمَّ حِفْظُ بَطَلِكَ! 💾');
+      heroRef.current?.jump();
+    } catch (e) {
+      setNote(e.message);
     } finally {
-      setSaving(false);
-      setTimeout(() => setToast(null), 3200);
+      setBusy(null);
     }
   }
 
-  const coins  = cfg?.points ?? 0;
-  const isLoad = cfg === null;
+  function undo() {
+    setLook(saved ?? DEFAULT_LOOK);
+    setNote('');
+    say('رَجَعْتُ كَمَا كُنْتُ 🙂');
+  }
+
+  const up = unpaidItems(look, owned);
+  const sum = up.reduce((s, x) => s + x.item.price, 0);
+  const changed = !saved || !looksEqual(look, saved);
+
+  const chip = (slot, it) => {
+    const sel = look[slot] === it.id, own = isOwned(slot, it.id, owned);
+    if (sel && !own) return <span className="hs-pr hs-try">👀 تُجَرِّبُهُ</span>;
+    if (own) return <span className="hs-pr hs-own">{it.price ? '✓ لَدَيْكَ' : 'مَجَّانِيٌّ'}</span>;
+    return <span className="hs-pr hs-cost">⭐ {it.price}</span>;
+  };
+  const tiles = (slot) => (
+    <div className="hs-items">
+      {ITEMS[slot].map(it => (
+        <button key={it.id} type="button" className={`hs-item${look[slot] === it.id ? ' hs-sel' : ''}`} onClick={() => pickItem(slot, it)} aria-pressed={look[slot] === it.id}>
+          <span className="hs-ic" aria-hidden="true">{it.icon}</span>
+          <span className="hs-nm">{it.name}</span>
+          {chip(slot, it)}
+        </button>
+      ))}
+    </div>
+  );
+  const swatches = (key, list) => (
+    <div className="hs-swatches">
+      {list.map((c, i) => (
+        <button key={c} type="button" className={`hs-sw${look[key] === i ? ' hs-sel' : ''}`} style={{ background: c }}
+          onClick={() => wear(key, i, null)} aria-label={`لَوْنٌ ${i + 1}`} aria-pressed={look[key] === i} />
+      ))}
+    </div>
+  );
+  const group = (title, inner) => <div className="hs-group"><h3>{title}</h3>{inner}</div>;
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'radial-gradient(ellipse at 50% 0%, #1a0533 0%, #020314 65%)',
-      fontFamily: 'Cairo, Tajawal, sans-serif',
-      color: 'white', direction: 'rtl',
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: 'clamp(10px,2vw,20px) 10px 40px',
-    }}>
-
-      {/* Starfield */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-        {Array.from({ length: 30 }, (_, i) => (
-          <div key={i} style={{
-            position: 'absolute',
-            left: `${3 + i * 3.2}%`, top: `${2 + (i * 7 % 92)}%`,
-            width: i % 4 === 0 ? 3 : 2, height: i % 4 === 0 ? 3 : 2,
-            background: i % 5 === 0 ? '#a78bfa' : '#fff', borderRadius: '50%',
-            animation: `hsPulse ${2.2 + i * 0.25}s ease-in-out infinite`,
-            animationDelay: `${i * 0.1}s`,
-          }} />
-        ))}
-      </div>
-
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 980, display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-        {/* Top bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link href="/dashboard" style={{ color: '#475569', fontSize: 13, textDecoration: 'none', padding: '4px 8px', fontFamily: 'Cairo,sans-serif' }}>
-            → لوحتي
-          </Link>
-          <div style={{ background: 'rgba(234,179,8,.1)', border: '1.5px solid rgba(234,179,8,.28)', borderRadius: 40, padding: '5px 16px', display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{ fontSize: 16 }}>⭐</span>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#FCD34D' }}>{isLoad ? '...' : coins} نقطة</span>
-          </div>
+    <div className="hs-page" ref={pageRef}>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
+      <div className="hs-wrap">
+        <div className="hs-bar">
+          <Link href="/dashboard" className="hs-back" aria-label="الْعَوْدَةُ إِلَى لَوْحَتِي">→</Link>
+          <h1>اِسْتُودْيُو الْأَبْطَالِ</h1>
+          <div key={bump} className={`hs-points${bump ? ' hs-bump' : ''}`} aria-label={`نُجُومُكَ: ${points}`}>⭐ <span>{loaded ? points : '…'}</span></div>
         </div>
 
-        {/* Title */}
-        <div style={{ textAlign: 'center', animation: 'hsFadeIn .5s ease-out' }}>
-          <h1 style={{
-            margin: 0, fontSize: 'clamp(20px,5vw,30px)', fontWeight: 900,
-            backgroundImage: 'linear-gradient(135deg,#c084fc,#818cf8,#38bdf8)',
-            backgroundSize: '200% auto',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            animation: 'hsShimmer 5s linear infinite',
-          }}>
-            ✨ استوديو الأبطال
-          </h1>
-          <p style={{ margin: '4px 0 0', color: '#64748B', fontSize: 12 }}>
-            اختر بطلك من مجموعتك — اسحبه لتدويره 360°
-          </p>
-        </div>
-
-        {/* MAIN GRID */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '1fr 310px',
-          gap: 14, alignItems: 'start',
-        }}>
-
-          {/* 3D VIEWER */}
-          <div style={{
-            position: 'relative', borderRadius: 24, overflow: 'hidden',
-            background: 'linear-gradient(160deg,rgba(18,12,55,.9),rgba(4,2,18,.95))',
-            border: `2px solid ${hero.color}44`,
-            boxShadow: `0 24px 64px rgba(0,0,0,.7), 0 0 50px ${hero.color}18`,
-            animation: 'hsGlow 4s ease-in-out infinite',
-            minHeight: isMobile ? 300 : 520,
-            transition: 'border-color .4s, box-shadow .5s',
-          }}>
-            <div style={{
-              position: 'absolute', top: 12, right: 14, zIndex: 6,
-              background: `${hero.color}22`, border: `1px solid ${hero.color}44`,
-              borderRadius: 20, padding: '4px 14px',
-              display: 'flex', alignItems: 'center', gap: 7,
-              backdropFilter: 'blur(6px)',
-            }}>
-              <span style={{ fontSize: 18 }}>{hero.emoji}</span>
-              <span style={{ color: 'white', fontSize: 12, fontFamily: 'Cairo,sans-serif', fontWeight: 700 }}>{hero.name}</span>
-            </div>
-
-            {!ready && !hero.splineUrl && (
-              <div style={{
-                position: 'absolute', inset: 0, zIndex: 3,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                background: 'rgba(2,4,20,.75)', pointerEvents: 'none',
-              }}>
-                <div style={{ width: 48, height: 48, borderRadius: '50%', border: '3px solid #3b0764', borderTopColor: '#8b5cf6', animation: 'hsSpin 1s linear infinite' }} />
-                <p style={{ color: '#a78bfa', fontFamily: 'Cairo,sans-serif', marginTop: 14, fontSize: 14 }}>
-                  تحميل {hero.emoji}...
-                </p>
-              </div>
-            )}
-
-            {ready && loadError && (
-              <div style={{
-                position: 'absolute', inset: 0, zIndex: 4,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                background: 'rgba(2,4,20,.85)',
-              }}>
-                <span style={{ fontSize: 64 }}>{hero.emoji}</span>
-                <p style={{ color: '#64748B', fontFamily: 'Cairo,sans-serif', marginTop: 12, fontSize: 13 }}>
-                  ⚠️ تعذّر تحميل المجسم ثلاثي الأبعاد
-                </p>
-              </div>
-            )}
-
-            {hero.splineUrl ? (
-              <SplineErrorBoundary emoji={hero.emoji}>
-                <Suspense fallback={null}>
-                  <Spline
-                    scene={hero.splineUrl}
-                    onLoad={() => setReady(true)}
-                    style={{ width: '100%', height: isMobile ? '300px' : '520px', background: 'transparent' }}
-                  />
-                </Suspense>
-              </SplineErrorBoundary>
+        <div className="hs-studio">
+          <section className="hs-stage">
+            {loaded ? (
+              <HeroAvatar3D ref={heroRef} look={look} label="بَطَلُكَ ثُلَاثِيُّ الْأَبْعَادِ — اسْحَبْهُ لِتُدِيرَهُ، وَالْمِسْهُ لِيَقْفِزَ"
+                onTap={() => say(LINES[Math.floor(Math.random() * LINES.length)])} />
             ) : (
-              <model-viewer
-                ref={mvRef}
-                src={hero.glb}
-                camera-controls=""
-                auto-rotate=""
-                auto-rotate-delay="1200"
-                shadow-intensity="1"
-                shadow-softness="0.8"
-                environment-image="neutral"
-                exposure="1"
-                tone-mapping="commerce"
-                animation-name={hero.anim ?? undefined}
-                style={{ width: '100%', height: isMobile ? '300px' : '520px', background: 'transparent' }}
-              />
+              <div className="hs-loading">يُجَهِّزُ بَطَلَكَ…</div>
             )}
+            <div className="hs-tag">⭐ بَطَلِي</div>
+            <div className={`hs-bubble${bubble ? ' hs-show' : ''}`} aria-live="polite">{bubble}</div>
+            <div className="hs-drag">↔ اسْحَبْ لِتُدِيرَ بَطَلَكَ، وَالْمِسْهُ لِيَقْفِزَ</div>
+          </section>
 
-            <div style={{
-              position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
-              background: 'rgba(0,0,0,.45)', borderRadius: 20, padding: '3px 14px',
-              fontSize: 10, color: '#475569', pointerEvents: 'none', whiteSpace: 'nowrap',
-            }}>
-              {hero.splineUrl ? '🖱️ حرّك الماوس للتفاعل مع البطل' : '🖱️ اسحب لتدوير البطل'}
-            </div>
-          </div>
-
-          {/* SHOP PANEL */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-            {/* Tabs */}
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[
-                { key: 'chars',  label: '🦸 الشخصيات' },
-                { key: 'colors', label: '🎨 الألوان'  },
-              ].map(t => (
-                <button key={t.key} onClick={() => setTab(t.key)} style={{
-                  flex: 1, padding: '10px 2px',
-                  background: tab === t.key ? 'rgba(139,92,246,.32)' : 'rgba(15,23,42,.5)',
-                  border: `1.5px solid ${tab === t.key ? '#8B5CF6' : 'rgba(139,92,246,.15)'}`,
-                  borderRadius: 12, color: tab === t.key ? '#C4B5FD' : '#475569',
-                  cursor: 'pointer', fontSize: 13, fontFamily: 'Cairo,sans-serif',
-                  fontWeight: tab === t.key ? 700 : 400, transition: 'all .18s',
-                }}>
-                  {t.label}
+          <section className="hs-panel">
+            <nav className="hs-tabs" aria-label="أَقْسَامُ الِاسْتُودْيُو">
+              {TABS.map(t => (
+                <button key={t.id} type="button" className={`hs-tab${tab === t.id ? ' hs-on' : ''}`} onClick={() => setTab(t.id)} aria-pressed={tab === t.id}>
+                  <span className="hs-em" aria-hidden="true">{t.em}</span>{t.name}
                 </button>
               ))}
-            </div>
-
-            <div style={{
-              background: 'rgba(22,18,60,.55)',
-              borderRadius: 18, border: '1px solid rgba(139,92,246,.14)',
-              padding: '13px',
-              maxHeight: isMobile ? 'none' : 450,
-              overflowY: 'auto',
-            }}>
-
-              {/* CHARACTERS GRID */}
-              {tab === 'chars' && (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <p style={{ margin: 0, color: '#A78BFA', fontSize: 13, fontWeight: 700 }}>🦸 مجموعة أبطالك</p>
-                    <span style={{ color: '#64748B', fontSize: 11 }}>رصيدك: <strong style={{ color: '#FCD34D' }}>{coins}</strong> ⭐</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
-                    {HEROES.map((h, idx) => {
-                      const owned_h   = isOwned(h);
-                      const active    = hero.id === h.id;
-                      const isBuying_ = buying === h.id;
-                      const locked    = !owned_h && !h.comingSoon;
-                      const canBuy    = locked && coins >= h.price;
-                      const hasModel  = !!(h.glb || h.splineUrl);
-
-                      return (
-                        <div
-                          key={h.id}
-                          onClick={() => owned_h && !h.comingSoon && hasModel ? selectHero(h) : null}
-                          style={{
-                            borderRadius: 14, overflow: 'hidden', position: 'relative',
-                            background: active
-                              ? `linear-gradient(160deg,${h.color}28,${h.color}10)`
-                              : h.comingSoon
-                                ? 'rgba(15,23,42,.3)'
-                                : 'rgba(15,23,42,.6)',
-                            border: `2px solid ${
-                              active       ? h.color :
-                              owned_h      ? 'rgba(139,92,246,.28)' :
-                              h.comingSoon ? 'rgba(71,85,105,.15)' :
-                                             'rgba(71,85,105,.2)'
-                            }`,
-                            cursor: owned_h && !h.comingSoon && hasModel ? 'pointer' : 'default',
-                            opacity: h.comingSoon ? 0.5 : 1,
-                            transition: 'all .2s',
-                            animation: idx < 9 ? `hsCardPop .3s ease-out ${idx * 0.05}s both` : 'none',
-                            boxShadow: active ? `0 0 18px ${h.color}33` : 'none',
-                          }}
-                        >
-                          <div style={{
-                            height: 86,
-                            background: `radial-gradient(circle at 50% 65%, ${h.color}25, transparent 72%)`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            position: 'relative',
-                          }}>
-                            <span style={{
-                              fontSize: 48, lineHeight: 1,
-                              filter: h.comingSoon ? 'grayscale(.7) opacity(.7)' : 'none',
-                            }}>
-                              {h.emoji}
-                            </span>
-
-                            {h.comingSoon && (
-                              <div style={{
-                                position: 'absolute', top: 6, left: 6,
-                                background: 'rgba(71,85,105,.8)', borderRadius: 6,
-                                padding: '2px 7px', fontSize: 9, color: '#94A3B8',
-                              }}>
-                                🔜 قريباً
-                              </div>
-                            )}
-
-                            {owned_h && !h.comingSoon && (
-                              <div style={{
-                                position: 'absolute', top: 6, right: 6,
-                                background: 'rgba(34,197,94,.25)', border: '1px solid #22C55E',
-                                borderRadius: 6, padding: '2px 6px', fontSize: 9, color: '#22C55E',
-                              }}>
-                                ✓ مملوك
-                              </div>
-                            )}
-                            {h.splineUrl && (
-                              <div style={{
-                                position: 'absolute', bottom: 6, left: 6,
-                                background: 'rgba(245,158,11,.22)', border: '1px solid rgba(245,158,11,.5)',
-                                borderRadius: 6, padding: '2px 6px', fontSize: 9, color: '#FCD34D',
-                              }}>
-                                ✨ تفاعلي
-                              </div>
-                            )}
-                          </div>
-
-                          <div style={{ padding: '8px 10px 10px' }}>
-                            <div style={{
-                              color: active ? '#C4B5FD' : '#CBD5E1',
-                              fontSize: 12, fontWeight: 700, fontFamily: 'Cairo,sans-serif', marginBottom: 2,
-                            }}>
-                              {h.name}
-                            </div>
-                            <div style={{ color: '#475569', fontSize: 10, fontFamily: 'Cairo,sans-serif', marginBottom: 8 }}>
-                              {h.desc}
-                            </div>
-
-                            {h.comingSoon ? null : owned_h ? (
-                              active ? (
-                                <div style={{ color: h.color, fontSize: 10, fontWeight: 700 }}>▶ مختار الآن</div>
-                              ) : (
-                                <div style={{
-                                  textAlign: 'center', background: 'rgba(139,92,246,.12)',
-                                  border: '1px solid rgba(139,92,246,.2)',
-                                  borderRadius: 8, padding: '5px', fontSize: 10, color: '#A78BFA',
-                                }}>
-                                  انقر للتجهيز
-                                </div>
-                              )
-                            ) : (
-                              <button
-                                onClick={e => { e.stopPropagation(); handleBuy(h); }}
-                                disabled={isBuying_ || !canBuy}
-                                style={{
-                                  width: '100%', padding: '6px 0',
-                                  background: canBuy
-                                    ? `linear-gradient(135deg,${h.color}dd,${h.color}99)`
-                                    : 'rgba(71,85,105,.2)',
-                                  border: 'none', borderRadius: 8,
-                                  color: canBuy ? 'white' : '#64748B',
-                                  cursor: canBuy && !isBuying_ ? 'pointer' : 'not-allowed',
-                                  fontSize: 11, fontFamily: 'Cairo,sans-serif', fontWeight: 700,
-                                  transition: 'all .15s',
-                                }}>
-                                {isBuying_ ? '⏳' : canBuy ? `⭐ ${h.price.toLocaleString('en-US')} نجمة` : `🔒 ${h.price.toLocaleString('en-US')} ⭐`}
-                              </button>
-                            )}
-                          </div>
-
-                          {active && (
-                            <div style={{
-                              position: 'absolute', inset: -1, borderRadius: 15,
-                              border: `2px solid ${h.color}`,
-                              boxShadow: `0 0 20px ${h.color}44, inset 0 0 12px ${h.color}11`,
-                              pointerEvents: 'none',
-                            }} />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* COLOURS */}
-              {tab === 'colors' && (
-                <>
-                  <p style={{ margin: '0 0 12px', color: '#A78BFA', fontSize: 13, fontWeight: 700 }}>🎨 لون زي البطل</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10 }}>
-                    {PALETTE.map(c => (
-                      <button key={c} onClick={() => setTint(c)} style={{
-                        aspectRatio: '1/1', background: c, borderRadius: 12,
-                        border: tint === c ? '3px solid white' : '2px solid rgba(255,255,255,.1)',
-                        cursor: 'pointer',
-                        transform: tint === c ? 'scale(1.2)' : 'scale(1)',
-                        boxShadow: tint === c ? `0 0 0 3px ${c}88, 0 0 16px ${c}66` : 'none',
-                        transition: 'all .15s',
-                      }} />
+            </nav>
+            <div className="hs-opts">
+              {tab === 'clothes' && <>
+                {group('الْقَمِيصُ', tiles('top'))}
+                {['tee', 'hoodie', 'jersey'].includes(look.top) && group('لَوْنُ الْقَمِيصِ', swatches('topC', CLOTH_C))}
+                {!['thobe', 'space'].includes(look.top) && group('السِّرْوَالُ', <>{tiles('bottom')}{swatches('pantsC', PANTS_C)}</>)}
+                {look.top !== 'space' && group('الْحِذَاءُ', swatches('shoeC', SHOE_C))}
+              </>}
+              {tab === 'gear' && <>{group(SLOT_LABEL.hand, tiles('hand'))}{group(SLOT_LABEL.back, tiles('back'))}</>}
+              {tab === 'head' && <>{group(SLOT_LABEL.head, tiles('head'))}{group(SLOT_LABEL.eyes, tiles('eyes'))}</>}
+              {tab === 'me' && <>
+                {group('لَوْنُ الْبَشَرَةِ', swatches('skin', SKIN))}
+                {group('الشَّعْرُ', (
+                  <div className="hs-items">
+                    {HAIR.map(h => (
+                      <button key={h.id} type="button" className={`hs-item${look.hair === h.id ? ' hs-sel' : ''}`} onClick={() => wear('hair', h.id, null)} aria-pressed={look.hair === h.id}>
+                        <span className="hs-ic" aria-hidden="true">{h.icon}</span><span className="hs-nm">{h.name}</span><span className="hs-pr hs-own">مَجَّانِيٌّ</span>
+                      </button>
                     ))}
                   </div>
-                  <p style={{ margin: '10px 0 0', color: '#334155', fontSize: 11, textAlign: 'center' }}>
-                    {ready && !loadError ? '✓ اللون مطبّق على المجسم' : 'يُطبَّق اللون بعد اكتمال التحميل'}
-                  </p>
-                </>
-              )}
+                ))}
+                {look.hair === 'hijab' ? group('لَوْنُ الْحِجَابِ', swatches('hijabC', HIJAB_C)) : group('لَوْنُ الشَّعْرِ', swatches('hairC', HAIR_C))}
+              </>}
+              {tab === 'pet' && group(SLOT_LABEL.pet, tiles('pet'))}
             </div>
-
-            {/* Current hero card */}
-            <div style={{
-              background: `linear-gradient(135deg,${hero.color}18,${hero.color}0a)`,
-              border: `1px solid ${hero.color}33`, borderRadius: 14,
-              padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 12,
-            }}>
-              <span style={{ fontSize: 32 }}>{hero.emoji}</span>
-              <div>
-                <div style={{ color: '#C4B5FD', fontSize: 14, fontWeight: 700, fontFamily: 'Cairo,sans-serif' }}>
-                  {hero.name}
-                </div>
-                <div style={{ color: '#475569', fontSize: 11, fontFamily: 'Cairo,sans-serif' }}>
-                  {hero.desc}
-                </div>
-              </div>
-            </div>
-
-            {/* Save button */}
-            <button
-              onClick={handleSave}
-              disabled={saving || isLoad || loadError}
-              style={{
-                padding: '14px',
-                background: saving || loadError ? 'rgba(124,58,237,.3)' : 'linear-gradient(135deg,#7c3aed,#4f46e5)',
-                border: 'none', borderRadius: 14, color: 'white',
-                fontSize: 15, fontWeight: 700, fontFamily: 'Cairo,sans-serif',
-                cursor: saving || isLoad || loadError ? 'not-allowed' : 'pointer',
-                boxShadow: saving || loadError ? 'none' : '0 8px 24px rgba(124,58,237,.45)',
-                transition: 'transform .15s, box-shadow .15s',
-              }}
-              onMouseEnter={e => {
-                if (!saving && !isLoad && !loadError) {
-                  e.currentTarget.style.transform = 'scale(1.03)';
-                  e.currentTarget.style.boxShadow = '0 12px 32px rgba(124,58,237,.65)';
-                }
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = saving || loadError ? 'none' : '0 8px 24px rgba(124,58,237,.45)';
-              }}
-            >
-              {saving ? '⏳ جاري الحفظ...' : '💾 احفظ بطلك'}
-            </button>
-          </div>
+          </section>
         </div>
+
+        <div className="hs-act" ref={actRef}><div className="hs-act-in">
+          {up.length > 0 ? <>
+            <div className="hs-trying">تُجَرِّبُ الْآنَ: {up.map(x => `${x.item.icon} ${x.item.name}`).join('، ')}</div>
+            <div className="hs-row">
+              {points >= sum ? (
+                <button type="button" className="hs-btn hs-buy" onClick={buy} disabled={!!busy}>
+                  {busy === 'buy' ? '⏳ لَحْظَةً…' : `🛒 اشْتَرِ بِـ ${sum} ⭐`}
+                </button>
+              ) : (
+                <button type="button" className="hs-btn hs-off" disabled>🔒 يَنْقُصُكَ {sum - points} ⭐</button>
+              )}
+              <button type="button" className="hs-btn hs-soft" onClick={undo} disabled={!!busy}>↩ تَرَاجَعْ</button>
+            </div>
+            {points < sum && <div className="hs-trying">كُلُّ دَرْسٍ تُنْهِيهِ يَمْنَحُكَ نُجُومًا جَدِيدَةً 💪</div>}
+          </> : changed ? (
+            <button type="button" className="hs-btn hs-save" onClick={save} disabled={!!busy || !loaded}>
+              {busy === 'save' ? '⏳ لَحْظَةً…' : '💾 احْفَظْ بَطَلِي'}
+            </button>
+          ) : (
+            <button type="button" className="hs-btn hs-off" disabled>✅ بَطَلُكَ مَحْفُوظٌ</button>
+          )}
+          {note && <div className="hs-note" role="status">{note}</div>}
+        </div></div>
       </div>
 
-      {/* Toast */}
-      {toast && (
-        <div style={{
-          position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)',
-          background: toast.ok ? 'rgba(5,46,22,.93)' : 'rgba(127,29,29,.93)',
-          border: `1.5px solid ${toast.ok ? '#22C55E' : '#EF4444'}`,
-          color: 'white', borderRadius: 14, padding: '12px 30px',
-          fontFamily: 'Cairo,sans-serif', fontSize: 15, fontWeight: 700,
-          boxShadow: '0 8px 32px rgba(0,0,0,.5)',
-          zIndex: 300, animation: 'hsFadeIn .3s ease-out', whiteSpace: 'nowrap',
-        }}>
-          {toast.msg}
-        </div>
-      )}
+      {confetti.map(c => (
+        <span key={c.id} className="hs-confetti" aria-hidden="true"
+          style={{ left: `${c.left}vw`, background: c.color, animationDelay: `${c.delay}s`, animationDuration: `${c.dur}s` }} />
+      ))}
     </div>
   );
 }
+
+/* تخطيط: منصة البطل ← تبويبات ← قطع بالنجوم ← شريط شراء/حفظ ثابت أسفل الشاشة.
+   على الشاشة الواسعة: المنصة يميناً والمتجر يساراً. */
+const CSS = `
+.hs-page {
+  --hs-ink: #1A2B4A; --hs-soft: #52627E; --hs-gold: #E8B84B; --hs-violet: #7C5CD9; --hs-green: #2ABB7A;
+  --hs-card: #FFFFFF; --hs-line: #E1E7F1; --hs-sand: #FFF6E7; --hs-act-h: 96px;
+  --hs-ui: var(--font-cairo), 'Cairo', 'Tajawal', system-ui, sans-serif;
+  --hs-story: var(--font-naskh), 'Noto Naskh Arabic', 'Amiri', serif;
+  min-height: 100vh; direction: rtl; color: var(--hs-ink); font-family: var(--hs-ui);
+  background: linear-gradient(180deg, #E7F1FF 0%, #F3EEFF 40%, var(--hs-sand) 100%);
+  -webkit-tap-highlight-color: transparent;
+}
+/* الاستوديو صفحة كاملة بلا شريط تنقل سفلي — نلغي حشوة الجسم المخصصة له على الجوال */
+body:has(.hs-page) { padding-bottom: 0; background: var(--hs-sand, #FFF6E7); }
+:where(.hs-page) button { font: inherit; color: inherit; cursor: pointer; border: none; background: none; }
+.hs-page button:focus-visible, .hs-back:focus-visible { outline: 3px solid var(--hs-violet); outline-offset: 2px; }
+.hs-wrap { max-width: 1100px; margin: 0 auto; padding: 14px max(16px, env(safe-area-inset-right, 0px)) calc(var(--hs-act-h) + 16px) max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 14px; }
+.hs-bar { display: flex; align-items: center; gap: 10px; }
+.hs-back { width: 48px; height: 48px; flex: 0 0 auto; border-radius: 50%; background: var(--hs-card); box-shadow: 0 3px 10px rgba(26,43,74,.08); font-size: 1.3rem; display: grid; place-items: center; color: var(--hs-ink); text-decoration: none; }
+.hs-bar h1 { margin: 0; flex: 1; font-size: 1.35rem; font-weight: 900; }
+.hs-points { display: flex; align-items: center; gap: 6px; background: var(--hs-card); border-radius: 99px; padding: 8px 14px; font-weight: 900; font-size: 1.12rem; box-shadow: 0 3px 10px rgba(26,43,74,.08); font-variant-numeric: tabular-nums; }
+.hs-bump { animation: hsBump .55s ease; }
+
+.hs-studio { display: grid; gap: 14px; }
+.hs-stage { position: relative; height: clamp(340px, 52vh, 470px); border-radius: 32px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #FFFFFF 0%, #EEF0FF 46%, #DCD3FF 100%); box-shadow: 0 12px 30px rgba(26,43,74,.12); }
+/* الشاشة الواسعة: البطل ثابت يميناً والمتجر يساراً يُمرَّر وحده (تبويباته تبقى ظاهرة) */
+@media (min-width: 900px) {
+  .hs-studio { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: start; }
+  .hs-stage, .hs-panel { height: max(440px, min(640px, calc(100vh - 110px - var(--hs-act-h)))); }
+  .hs-panel { overflow-y: auto; overscroll-behavior: contain; padding: 0 2px 8px; scrollbar-width: thin; }
+  .hs-tabs { position: sticky; top: 0; z-index: 2; background: linear-gradient(180deg, #F3EEFF 80%, rgba(243,238,255,0)); padding-bottom: 8px; }
+}
+.hs-loading { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 800; color: var(--hs-soft); }
+.hs-tag { position: absolute; top: 12px; right: 12px; background: var(--hs-ink); color: #fff; border-radius: 99px; padding: 6px 14px; font-family: var(--hs-story); font-weight: 700; font-size: 1.05rem; pointer-events: none; }
+.hs-drag { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,.85); border-radius: 99px; padding: 5px 14px; font-weight: 800; font-size: .9rem; color: var(--hs-soft); white-space: nowrap; pointer-events: none; }
+.hs-bubble { position: absolute; top: 56px; left: 50%; transform: translateX(-50%) scale(.9); max-width: min(320px, 86%); width: max-content; background: var(--hs-card); border-radius: 18px; padding: 8px 16px; font-family: var(--hs-story); font-size: 1.15rem; line-height: 1.8; text-align: center; box-shadow: 0 6px 18px rgba(26,43,74,.15); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+.hs-bubble.hs-show { opacity: 1; transform: translateX(-50%) scale(1); }
+
+.hs-panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.hs-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; padding: 2px; }
+.hs-tab { min-height: 70px; padding: 6px 2px; border-radius: 18px; background: var(--hs-card); font-weight: 800; font-size: .9rem; white-space: nowrap; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; box-shadow: 0 3px 10px rgba(26,43,74,.06); }
+.hs-em { font-size: 1.55rem; line-height: 1.2; }
+.hs-tab.hs-on { background: var(--hs-ink); color: #fff; }
+.hs-opts { display: flex; flex-direction: column; gap: 12px; }
+.hs-group { background: var(--hs-card); border-radius: 24px; padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 4px 14px rgba(26,43,74,.06); }
+.hs-group h3 { margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--hs-soft); }
+.hs-items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 560px) and (max-width: 899px), (min-width: 1040px) { .hs-items { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.hs-item { position: relative; min-height: 118px; border-radius: 18px; background: #F7F8FC; border: 3px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 6px; transition: transform .12s; }
+.hs-item:active { transform: scale(.96); }
+.hs-item.hs-sel { border-color: var(--hs-violet); background: #F3EFFF; }
+.hs-ic { font-size: 2.1rem; line-height: 1.2; }
+.hs-nm { font-family: var(--hs-story); font-weight: 700; font-size: .98rem; line-height: 1.5; text-align: center; }
+.hs-pr { font-size: .82rem; font-weight: 800; border-radius: 99px; padding: 1px 9px; }
+.hs-cost { background: #FFF3D6; color: #8A6412; }
+.hs-own { background: #E9F8F1; color: #1E8A5B; }
+.hs-try { background: #EFEAFF; color: var(--hs-violet); }
+.hs-swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.hs-sw { width: 46px; height: 46px; border-radius: 50%; border: 4px solid #fff; box-shadow: 0 0 0 2px var(--hs-line); }
+.hs-sw.hs-sel { box-shadow: 0 0 0 3px var(--hs-violet); transform: scale(1.06); }
+
+.hs-act { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); background: linear-gradient(180deg, rgba(255,246,231,0) 0%, var(--hs-sand) 30%); pointer-events: none; }
+.hs-act-in { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
+.hs-trying { font-family: var(--hs-story); font-size: 1.02rem; line-height: 1.8; color: var(--hs-soft); text-align: center; }
+.hs-note { font-family: var(--hs-story); font-size: 1.02rem; line-height: 1.8; text-align: center; background: #FFF3D6; color: #6B4E12; border-radius: 14px; padding: 6px 12px; }
+.hs-row { display: grid; grid-template-columns: 1.6fr 1fr; gap: 10px; }
+.hs-btn { min-height: 58px; width: 100%; border-radius: 18px; font-weight: 900; font-size: 1.12rem; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 6px 12px; }
+.hs-buy { background: var(--hs-gold); color: var(--hs-ink); box-shadow: 0 6px 0 #C29530; }
+.hs-buy:active { transform: translateY(3px); box-shadow: 0 3px 0 #C29530; }
+.hs-save { background: var(--hs-green); color: #fff; box-shadow: 0 6px 0 #1E9462; }
+.hs-save:active { transform: translateY(3px); box-shadow: 0 3px 0 #1E9462; }
+.hs-soft { background: var(--hs-card); color: var(--hs-violet); box-shadow: 0 3px 10px rgba(26,43,74,.08); }
+.hs-off { background: #EEF1F6; color: var(--hs-soft); cursor: default; }
+.hs-btn:disabled { opacity: .85; }
+.hs-confetti { position: fixed; top: -20px; width: 10px; height: 14px; border-radius: 3px; z-index: 300; pointer-events: none; animation: hsFall 1.6s ease-in forwards; }
+@keyframes hsBump { 0%, 100% { transform: scale(1) } 40% { transform: scale(1.16) } }
+@keyframes hsFall { to { transform: translateY(105vh) rotate(540deg); } }
+@media (prefers-reduced-motion: reduce) { .hs-page *, .hs-confetti { animation: none !important; transition: none !important; } }
+`;

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient } from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/auth-role';
+import { itemLabel } from '../../../../lib/hero-catalog';
 
 /* ── helpers ── */
 function calcStreak(logDates) {
@@ -392,7 +393,7 @@ export default async function StudentViewPage({ params }) {
                     border: r.equipped ? '1.5px solid #c4b5fd' : '1.5px solid #e2e8f0',
                     padding: '3px 9px', borderRadius: 20,
                   }}>
-                    {ITEM_NAMES[r.item_id] ?? r.item_id}
+                    {ITEM_NAMES[r.item_id] ?? itemLabel(r.item_id) ?? r.item_id}
                     {r.equipped ? ' ✓' : ''}
                   </span>
                 ))}

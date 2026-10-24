@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.137.0",
-    "@splinetool/react-spline": "^4.1.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.1",
     "gsap": "^3.15.0",
@@ -23,7 +22,8 @@
     "react-dom": "^18.3.1",
     "react-pageflip": "^2.0.3",
     "recharts": "^3.8.1",
-    "resend": "^6.12.4"
+    "resend": "^6.12.4",
+    "three": "0.186.1"
   },
   "devDependencies": {
     "eslint": "^8",

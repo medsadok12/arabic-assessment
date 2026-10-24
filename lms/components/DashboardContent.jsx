@@ -587,14 +587,14 @@ export default function DashboardContent({
             viewingChildId={viewingChildId}
           />
 
-          {/* ── Hero discovery card — يختفي بمجرد اختيار الطالب بطله ── */}
+          {/* ── Hero discovery card — يختفي بمجرد أن يحفظ الطالب بطله في الاستوديو ── */}
           {isStudent && !hasHero && (
             <div className="hero-discover">
               <div className="hero-discover-icon">🦸</div>
               <div className="hero-discover-body">
-                <div className="hero-discover-title">اختر بطلك!</div>
+                <div className="hero-discover-title">اصْنَعْ بَطَلَكَ!</div>
                 <div className="hero-discover-desc">
-                  ادخل استوديو الأبطال واختر شخصيتك — كل بطل له شخصية مميزة خاصة بك ✨
+                  أَلْبِسْ بَطَلَكَ مَلَابِسَهُ، وَاشْتَرِ لَهُ مُعَدَّاتِهِ بِنُجُومِكَ ✨
                 </div>
               </div>
               <Link href="/dashboard/heroes-studio" className="hero-discover-btn">

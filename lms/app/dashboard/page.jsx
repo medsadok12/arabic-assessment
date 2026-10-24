@@ -126,7 +126,7 @@ export default async function DashboardPage({ searchParams }) {
       .then(r => r.error?.code === '42P01' ? { data: [] } : r),
     admin
       .from('hero_config')
-      .select('avatar_id')
+      .select('look')
       .eq('user_id', effectiveUserId)
       .maybeSingle()
       .then(r => r.error ? { data: null } : r),
@@ -215,7 +215,8 @@ export default async function DashboardPage({ searchParams }) {
   const rootName      = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '';
   const displayName   = viewingChild?.full_name ?? rootName;
   const studentGender = user.user_metadata?.gender === 'female' ? 'female' : 'male';
-  const hasHero       = isStudent ? !!(heroConfigRow?.avatar_id) : true;
+  // بطل «استوديو الأبطال» ثلاثي الأبعاد — الأبطال الجاهزة القديمة (avatar_id) لم تعد تُعرض
+  const hasHero       = isStudent ? !!(heroConfigRow?.look) : true;
 
   return (
     <DashboardContent
