@@ -11,6 +11,9 @@ import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useE
 import { stripDia, isGap, getLetterForm, toContextual } from '../../../../lib/letter-forms';
 import { speakArabic } from '../../../../lib/speak-arabic';
 import GameScene, { SceneThumb } from '../../../../components/GameScene';
+// بطل الطالب من «عالم الأبطال» يحتفل معه في شاشة النهاية — المكوّن خفيف، وthree.js يُحمَّل عند ظهوره فقط
+// (استيراد مباشر لا dynamic(): نحتاج ref ليقوم البطل بحركته الخاصة)
+import HeroAvatar3D from '../../../../components/HeroAvatar3D';
 
 /* teacher-only panel loads only when the teacher opens it — not in students' bundle */
 const SettingsPanel = dynamic(() => import('./_teacher-panel'), { ssr: false, loading: () => null });
@@ -440,6 +443,19 @@ export default function LetterCatcherGame() {
       .catch(() => {});
   }, [phase, currentUser, score, queue.length, selectedCategory]);
 
+  /* بطل الطالب (إن صنعه) — يُجلب مرة واحدة عند أول نهاية جولة، في عالم الاستوديو الشفاف */
+  const [hero, setHero] = useState(null);
+  const heroRef = useRef(null);
+  const heroAsked = useRef(false);
+  useEffect(() => {
+    if (phase !== 'finished' || !currentUser || heroAsked.current) return;
+    heroAsked.current = true;
+    childFetch('/api/hero-config')
+      .then(r => r.json())
+      .then(d => { if (d?.look) setHero({ look: { ...d.look, world: 'studio' }, level: d.level ?? 0, letters: d.letters ?? [] }); })
+      .catch(() => {});
+  }, [phase, currentUser]);
+
   /* reset save guard when a new game starts */
   useEffect(() => {
     if (phase === 'playing') savedResultRef.current = false;
@@ -817,6 +833,15 @@ export default function LetterCatcherGame() {
         <div style={S.stageColumn}>
           <div style={S.stageMiddle}>
             <div style={{ ...S.glassCard, alignItems: 'center', textAlign: 'center', gap: 14, padding: '26px 20px' }}>
+              {hero && (
+                <div style={{ width: '100%', height: vh < 600 ? 130 : 180, position: 'relative', margin: '-10px 0 -6px' }}>
+                  <HeroAvatar3D ref={heroRef} look={hero.look} level={hero.level} letters={hero.letters} interactive={false}
+                    label="بَطَلُكَ يَحْتَفِلُ مَعَكَ — الْمِسْهُ!"
+                    onReady={() => setTimeout(() => (pct >= 50 ? heroRef.current?.special() : heroRef.current?.emote('clap')), 400)}
+                    onTap={() => heroRef.current?.special()}
+                    style={{ position: 'absolute', inset: 0 }} />
+                </div>
+              )}
               <div style={{ fontSize: '3rem', lineHeight: 1 }}>{'⭐'.repeat(stars)}</div>
               <h2 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 900, color: '#1A2B4A' }}>أَحْسَنْتَ!</h2>
               <div style={{ fontSize: '3.2rem', fontWeight: 900, color: '#1A2B4A', direction: 'ltr' }}>{score} / {queue.length}</div>

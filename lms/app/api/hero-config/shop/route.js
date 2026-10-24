@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { resolveActiveIdentity } from '../../../../lib/active-child';
-import { parseBuyList, priceOf } from '../../../../lib/hero-catalog';
+import { parseBuyList, priceOf, buyBlocked } from '../../../../lib/hero-catalog';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +18,7 @@ export async function POST(req) {
     const body = await req.json().catch(() => null);
     const keys = parseBuyList(body?.items);
     if (!keys) return NextResponse.json({ error: 'هذه القطعة غير موجودة في المتجر' }, { status: 400 });
+    if (keys.some(k => buyBlocked(k))) return NextResponse.json({ error: 'هذه القطعة الموسمية تعود في موسمها 🌙' }, { status: 400 });
 
     const admin = createAdminClient();
     const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);

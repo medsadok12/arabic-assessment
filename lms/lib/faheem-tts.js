@@ -315,6 +315,18 @@ export async function voiceSample(id, admin) {
   return out;
 }
 
+/* ── أصوات شخصيات «عالم الأبطال»: جملة ثابتة بصوت الشخصية، تُولَّد مرة ثم تُخدم من التخزين ── */
+export async function heroVoice(preset, rawText, admin) {
+  if (!preset?.name || !rawText) return null;
+  const text = applyWaqf(completeSukun(rawText));
+  const path = `tts-cache/hero/${createHash('sha256').update(`${preset.name}|${preset.pitch}|${preset.rate}|${JSON.stringify(AZURE_SILENCE)}|${text}`).digest('hex')}`;
+  const hit = admin ? await readCache(admin, path) : null;
+  if (hit) return hit;
+  const out = await azureTTS(text, Date.now() + 15000, preset);
+  if (out && admin) await writeCache(admin, path, out);
+  return out;
+}
+
 /* ── اختبار الإعراب: جملة الأستاذ بصوت من أصوات المقارنة (بلا تخزين — نص حر) ── */
 export async function grammarSample(id, rawText) {
   const preset = grammarVoiceById(id);

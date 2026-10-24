@@ -37,7 +37,7 @@ describe('normalizeLook', () => {
   it('يرفض القيم الغريبة: ألوان خارج اللوحة، قطع مجهولة، أنواع خاطئة', () => {
     const l = normalizeLook({
       skin: 99, hairC: -1, topC: 1.5, shoeC: '2', hair: 'mohawk',
-      head: '__proto__', pet: 'dragon', back: { id: 'wings' }, extra: 'x',
+      head: '__proto__', pet: 'unicorn', back: { id: 'wings' }, extra: 'x',
     });
     expect(l).toEqual(DEFAULT_LOOK);
     expect('extra' in l).toBe(false);
@@ -102,5 +102,72 @@ describe('isValidPreview', () => {
     expect(isValidPreview('data:image/png;base64,abc<script>')).toBe(false);
     expect(isValidPreview(`data:image/png;base64,${'A'.repeat(PREVIEW_MAX)}`)).toBe(false);
     expect(isValidPreview(null)).toBe(false);
+  });
+});
+
+describe('الشخصيات والقطع الخاصة', () => {
+  it('كل شخصية لها لوحة ألوان وتحية وحركة خاصة، والمظهر يتحقق من لونها', async () => {
+    const { CHARACTERS, charOf } = await import('./hero-catalog');
+    for (const c of CHARACTERS) {
+      expect(c.colors.length).toBeGreaterThan(0);
+      expect(c.hello && c.special?.name && c.lines.length).toBeTruthy();
+    }
+    expect(normalizeLook({ char: 'cat', skin: 4 }).skin).toBe(4);
+    expect(normalizeLook({ char: 'panda', skin: 3 }).skin).toBe(0);   // للباندا لون واحد
+    expect(normalizeLook({ skin: 9 }).skin).toBe(DEFAULT_LOOK.skin);
+    expect(charOf({ char: 'dragon' }).id).toBe('kid');
+  });
+
+  it('القطع الخاصة لا تُشترى ولا تُلبس بلا ملكية', async () => {
+    const { isSpecial } = await import('./hero-catalog');
+    for (const slot of SLOTS) for (const it of ITEMS[slot]) {
+      if (!isSpecial(it)) continue;
+      expect(parseBuyList([itemKey(slot, it.id)])).toBeNull();
+      expect(unpaidItems({ ...DEFAULT_LOOK, [slot]: it.id }, []).map(x => x.key)).toContain(itemKey(slot, it.id));
+      expect(unpaidItems({ ...DEFAULT_LOOK, [slot]: it.id }, [itemKey(slot, it.id)])).toEqual([]);
+    }
+  });
+});
+
+describe('الإنجازات والمواسم والتحدي والبيضة', async () => {
+  const m = await import('./hero-catalog');
+
+  it('الإنجازات تُحسب من سجل النقاط، والقطع المكتسبة تتبعها', () => {
+    const stats = { p: { daily_login: { n: 7 }, letter_catcher: { sum: 250 }, fc: { n: 3 } }, letters: [0, 1, 2, 3, 4], earned: 1200 };
+    expect(m.earnedAchievements(stats).sort()).toEqual(['catcher', 'letters5', 'loyal']);
+    expect(m.earnedItemKeys(['loyal'])).toEqual(['head:laurel']);
+    expect(m.earnedItemKeys(['lettersAll'])).toEqual(['hand:shield']);
+    expect(m.earnedAchievements({ p: { huroof_all_complete: { n: 1 } } })).toContain('lettersAll');
+    expect(m.earnedAchievements(null)).toEqual([]);
+  });
+
+  it('المستوى كل 1000 نجمة مكتسبة وحتى «أسطورة»', () => {
+    expect([0, 999, 1000, 2500, 3999, 4000, 99999].map(m.levelOf)).toEqual([0, 0, 1, 2, 3, 4, 4]);
+  });
+
+  it('المواسم بتواريخها، والقطعة الموسمية لا تُشترى خارج موسمها', () => {
+    expect(m.activeSeasons(new Date('2026-10-24T12:00:00Z'))).toEqual(['autumn']);
+    expect(m.activeSeasons(new Date('2027-01-15T12:00:00Z'))).toEqual(['winter']);
+    expect(m.activeSeasons(new Date('2027-02-20T12:00:00Z')).sort()).toEqual(['ramadan', 'winter']);
+    expect(m.buyBlocked('aura:snow', new Date('2026-10-24T12:00:00Z'))).toBe('season');
+    expect(m.buyBlocked('aura:leaves', new Date('2026-10-24T12:00:00Z'))).toBeNull();
+    expect(m.buyBlocked('head:crown')).toBeNull();
+  });
+
+  it('تحدي الأسبوع يبدأ الاثنين ويتبدّل، وتقدّمه من نجوم الأسبوع فقط', () => {
+    expect(m.weekStart(new Date('2026-10-24T09:00:00Z')).toISOString()).toBe('2026-10-19T00:00:00.000Z');
+    expect(m.weekStart(new Date('2026-10-19T00:00:00Z')).toISOString()).toBe('2026-10-19T00:00:00.000Z');
+    const a = m.weeklyOf(new Date('2026-10-24T09:00:00Z')), b = m.weeklyOf(new Date('2026-10-27T09:00:00Z'));
+    expect(a.id).not.toBe(b.id);
+    for (const w of m.WEEKLY) expect(m.priceOf(w.reward)).toBe(0);
+    const w = m.WEEKLY.find(x => x.id === 'catcher');
+    expect(m.weeklyProgress({ p: { letter_catcher: { sum: 500, ws: 35 } } }, w)).toBe(35);
+    expect(m.weeklyProgress({ p: { letter_catcher: { ws: 90 } } }, w)).toBe(50);
+  });
+
+  it('البيضة تمتلئ بنجوم التعلّم بعد وضعها فقط، لا بتسجيل الدخول', () => {
+    expect(m.eggProgress({ p: { letter_catcher: { es: 25 }, fc: { es: 6 }, daily_login: { es: 40 } } })).toBe(31);
+    expect(m.eggProgress({ p: { letter_catcher: { es: 500 } } })).toBe(m.EGG_GOAL);
+    expect(m.LEARN_PREFIXES).not.toContain('daily_login');
   });
 });
