@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const LMS_URL = 'https://www.aarem.net';
 
@@ -8,6 +8,16 @@ export default function StudentInfo({ onStart }) {
   const [validating,     setValidating]     = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockedUntil,    setLockedUntil]    = useState(null);
+  // خانة كود التقييم: يُظهرها أو يخفيها المشرف من bogga (تبويب الأكواد).
+  // null أثناء القراءة = مخفية؛ وإن ردّ الخادم need_code تظهر فوراً.
+  const [codeRequired,   setCodeRequired]   = useState(null);
+
+  useEffect(() => {
+    fetch(`${LMS_URL}/api/public/signup-settings`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((s) => setCodeRequired(s.assessment_code_required !== false))
+      .catch(() => setCodeRequired(true));
+  }, []);
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
   const setCode = (e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase().replace(/\s/g, '') }));
@@ -21,7 +31,7 @@ export default function StudentInfo({ onStart }) {
 
     const { name, age, email, type, code } = form;
 
-    if (!name.trim() || !age || !email.trim() || !type || !code.trim()) {
+    if (!name.trim() || !age || !email.trim() || !type || (codeRequired && !code.trim())) {
       setError('يرجى ملء جميع الحقول المطلوبة');
       return;
     }
@@ -40,9 +50,16 @@ export default function StudentInfo({ onStart }) {
       const res  = await fetch(`${LMS_URL}/api/public/validate-student-code`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ code: code.trim(), name: name.trim() }),
+        // بلا كود حين يكون مخفياً: الخادم يتحقق من الإعداد ويُشعر الإدارة ببدء التقييم
+        body:    JSON.stringify({ code: codeRequired ? code.trim() : '', name: name.trim() }),
       });
       const data = await res.json();
+      if (data.need_code) {
+        setCodeRequired(true);
+        setError(data.error && data.error !== 'الكود مطلوب' ? data.error : 'يرجى إدخال كود التقييم الممنوح لك من الإدارة');
+        setValidating(false);
+        return;
+      }
       if (!data.valid) {
         const newAttempts = failedAttempts + 1;
         setFailedAttempts(newAttempts);
@@ -57,13 +74,19 @@ export default function StudentInfo({ onStart }) {
         return;
       }
     } catch {
-      setError('تعذّر التحقق من الكود. تأكد من اتصالك بالإنترنت وأعد المحاولة.');
-      setValidating(false);
-      return;
+      // بلا كود مطلوب: تعذّر الإشعار لا يمنع الطالب من البدء
+      if (codeRequired) {
+        setError('تعذّر التحقق من الكود. تأكد من اتصالك بالإنترنت وأعد المحاولة.');
+        setValidating(false);
+        return;
+      }
     }
 
-    setValidating(false);
-    onStart({ name: name.trim(), age: +age, email: email.trim(), type });
+    // يبقى الزر معطَّلاً (validating) حتى ينتهي onStart فعلياً — يجلب بيانات
+    // المستوى الأول (من قاعدة البيانات أو النسخة الاحتياطية، دائماً ينجح
+    // بأحدهما) قبل الانتقال لصفحة الترحيب؛ لا داعي لإعادة تعيينه بعد النجاح
+    // لأن هذا المكوّن يُستبدَل بالكامل فور الانتقال.
+    await onStart({ name: name.trim(), age: +age, email: email.trim(), type });
   }
 
   return (
@@ -113,27 +136,29 @@ export default function StudentInfo({ onStart }) {
         </select>
       </div>
 
-      <div className="form-group">
-        <label>كود التقييم *</label>
-        <input
-          type="text"
-          placeholder="أدخل كود التقييم الممنوح لك من الإدارة"
-          value={form.code}
-          onChange={setCode}
-          style={{ letterSpacing: '0.08em', fontFamily: 'monospace', fontSize: '1rem' }}
-        />
-        <p style={{ fontSize: '.82rem', color: '#64748b', marginTop: 7, lineHeight: 1.6 }}>
-          للحصول على رمز التقييم، تواصل مع الإدارة عبر{' '}
-          <a
-            href="https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: '#1a7c40', fontWeight: 700, textDecoration: 'underline' }}
-          >
-            واتساب
-          </a>
-        </p>
-      </div>
+      {codeRequired && (
+        <div className="form-group">
+          <label>كود التقييم *</label>
+          <input
+            type="text"
+            placeholder="أدخل كود التقييم الممنوح لك من الإدارة"
+            value={form.code}
+            onChange={setCode}
+            style={{ letterSpacing: '0.08em', fontFamily: 'monospace', fontSize: '1rem' }}
+          />
+          <p style={{ fontSize: '.82rem', color: '#64748b', marginTop: 7, lineHeight: 1.6 }}>
+            للحصول على رمز التقييم، تواصل مع الإدارة عبر{' '}
+            <a
+              href="https://api.whatsapp.com/send/?phone=447400755914&text&type=phone_number&app_absent=0"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#1a7c40', fontWeight: 700, textDecoration: 'underline' }}
+            >
+              واتساب
+            </a>
+          </p>
+        </div>
+      )}
 
       {error && <div className="error-msg">⚠️ {error}</div>}
 
@@ -141,7 +166,7 @@ export default function StudentInfo({ onStart }) {
         disabled={validating || (lockedUntil && Date.now() < lockedUntil)}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
         {validating && <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />}
-        {validating ? 'جارٍ التحقق من الكود...' : (lockedUntil && Date.now() < lockedUntil) ? '🔒 محظور مؤقتاً' : 'ابدأ رحلة التميز ←'}
+        {validating ? (codeRequired ? 'جارٍ التحقق من الكود...' : 'جارٍ تجهيز التقييم...') : (lockedUntil && Date.now() < lockedUntil) ? '🔒 محظور مؤقتاً' : 'ابدأ رحلة التميز ←'}
       </button>
 
     </div>

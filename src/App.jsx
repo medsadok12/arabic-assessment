@@ -3,11 +3,14 @@ import StudentInfo     from './components/StudentInfo.jsx';
 import Assessment      from './components/Assessment.jsx';
 import LevelTransition from './components/LevelTransition.jsx';
 import Results         from './components/Results.jsx';
-import { getLevelQuestions, shuffle } from './data/questions.js';
-import { calculateLevelScore, applyJumpLogic, saveToLocalStorage } from './utils/scoring.js';
+import { getLevelQuestions, shuffle, CHECKPOINT_QUESTION } from './data/questions.js';
+import { getQuestionData } from './data/fetchQuestions.js';
+import { calculateLevelScore, applyJumpLogic, evaluateCheckpoint, saveToLocalStorage } from './utils/scoring.js';
+import { getAdminPreviewLevel, ADMIN_PREVIEW_STUDENT_INFO } from './utils/adminPreview.js';
 import './App.css';
 
-const PAGES       = { INFO: 'info', WELCOME: 'welcome', ASSESSMENT: 'assessment', TRANSITION: 'transition', RESULTS: 'results' };
+const PAGES       = { INFO: 'info', WELCOME: 'welcome', ASSESSMENT: 'assessment', TRANSITION: 'transition', RESULTS: 'results', ADMIN_LOADING: 'admin-loading' };
+const adminPreviewLevel = getAdminPreviewLevel();
 const SESSION_KEY = 'areem_session';
 const RESUME_KEY  = 'areem_resume';
 
@@ -46,7 +49,22 @@ function clearResume() {
 
 const PINNED = new Set(['letter-recognition', 'vowel-cards', 'vowel-long', 'sukun-cards', 'tanween-cards', 'listen-choose', 'syllable-order', 'letter-position', 'word-construct', 'oral-assessment', 'matching', 'speaking', 'photo-writing', 'word-order', 'correction', 'fill', 'letter-listen-choose', 'syllable-reading', 'image-matching', 'listen-speak']);
 
-function buildLevelData(levelId) {
+/**
+ * يبني بيانات المستوى ديناميكياً من Supabase عند توفرها (بنية fixed/shuffled
+ * جاهزة من الخادم — راجع api/questions.js)، أو يعود تلقائياً وبصمت لبنك
+ * الأسئلة الثابت (buildLevelDataStatic) عند أي فشل — القرار على مستوى
+ * التقييم بأكمله (لا تبديل مصدر بين مستوياته، راجع src/data/fetchQuestions.js).
+ */
+async function buildLevelDataAsync(levelId) {
+  const data = await getQuestionData();
+  const bucket = data?.source === 'database' ? data.levels?.[levelId] : null;
+  if (bucket) {
+    return { questions: [...bucket.fixed, ...shuffle(bucket.shuffled)], answers: [] };
+  }
+  return buildLevelDataStatic(levelId);
+}
+
+function buildLevelDataStatic(levelId) {
   const all        = getLevelQuestions(levelId);
   const llChoose       = all.filter(q => q.type === 'letter-listen-choose');
   const sylReading     = all.filter(q => q.type === 'syllable-reading');
@@ -84,8 +102,10 @@ const BG_LETTERS = [
   { char: 'ب', style: { left: '10%', top: '80%', fontSize: '8rem',  opacity: 0.10, animationDuration: '18s', animationDelay: '2s' } },
 ];
 
-const saved      = loadSession();
-const resumeData = !saved ? loadResume() : null;
+// جلسة معاينة المشرف لا تُقرأ من/لا تُقحَم في جلسة طالب حقيقي محفوظة على
+// نفس المتصفح — تجاهل تام لأي استئناف، وبدء نظيف دائماً.
+const saved      = adminPreviewLevel ? null : loadSession();
+const resumeData = !saved && !adminPreviewLevel ? loadResume() : null;
 const hasResume  = !!resumeData && resumeData.page !== PAGES.INFO && resumeData.page !== PAGES.RESULTS;
 
 export default function App() {
@@ -100,13 +120,19 @@ export default function App() {
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
-  const [page, setPage]               = useState(saved?.page ?? PAGES.INFO);
+  const [page, setPage]               = useState(adminPreviewLevel ? PAGES.ADMIN_LOADING : (saved?.page ?? PAGES.INFO));
   const [studentInfo, setStudentInfo] = useState(saved?.studentInfo ?? null);
   const [currentLevel, setCurrentLevel] = useState(saved?.currentLevel ?? 1);
   const [levelData, setLevelData]     = useState(saved?.levelData ?? null);
   const [questionIdx, setQuestionIdx] = useState(saved?.questionIdx ?? 0);
   const [allAnswers, setAllAnswers]   = useState(saved?.allAnswers ?? []);
   const [levelPath, setLevelPath]     = useState(saved?.levelPath ?? []);
+  const [streak, setStreak]           = useState(saved?.streak ?? 0);
+
+  // نقطة تحقق منتصف الطريق (بعد السؤال العاشر من كل مستوى، القسم 13 من CLAUDE.md
+  // — الترقية/الإنزال المبكر): earlyJumpOffer يعرض خياراً، earlyDropInfo تعديل تلقائي لطيف
+  const [earlyJumpOffer, setEarlyJumpOffer] = useState(null); // { accumulated } أو null
+  const [earlyDropInfo,  setEarlyDropInfo]  = useState(null); // { accumulated } أو null
 
   const [transitionFrom, setTransitionFrom]   = useState(saved?.transitionFrom ?? null);
   const [transitionTo, setTransitionTo]       = useState(saved?.transitionTo ?? null);
@@ -116,29 +142,54 @@ export default function App() {
   const [finalLevel, setFinalLevel]   = useState(saved?.finalLevel ?? 1);
   const [showAbout, setShowAbout]     = useState(false);
 
-  // حفظ الجلسة عند كل تغيير في الحالة
+  // بناء بيانات المستوى المطلوب فوراً عند فتح رابط معاينة مشرف (?admin_preview=
+  // true&level=N من زر "🚀 تجربة التقييم" في bogga) — يتخطى بيانات الطالب
+  // وكود التقييم بالكامل، ويحقن بيانات وهمية بدلاً منهما.
   useEffect(() => {
+    if (!adminPreviewLevel) return;
+    let cancelled = false;
+    (async () => {
+      const data = await buildLevelDataAsync(adminPreviewLevel);
+      if (cancelled) return;
+      setStudentInfo(ADMIN_PREVIEW_STUDENT_INFO);
+      setCurrentLevel(adminPreviewLevel);
+      setLevelData(data);
+      setQuestionIdx(0);
+      setAllAnswers([]);
+      setLevelPath([adminPreviewLevel]);
+      setStreak(0);
+      setPage(PAGES.ASSESSMENT);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // حفظ الجلسة عند كل تغيير في الحالة — مُعطَّل بالكامل في وضع معاينة
+  // المشرف (لا يُكتَب شيء في sessionStorage/localStorage قد يظهر لاحقاً
+  // كـ"استئناف جلسة سابقة" لطالب حقيقي يستخدم نفس المتصفح).
+  useEffect(() => {
+    if (adminPreviewLevel) return;
     if (page === PAGES.INFO) { clearSession(); clearResume(); return; }
     const state = {
       page, studentInfo, currentLevel, levelData,
-      questionIdx, allAnswers, levelPath,
+      questionIdx, allAnswers, levelPath, streak,
       transitionFrom, transitionTo, transitionScore,
       finalScores, finalLevel,
     };
     saveSession(state);
     if (page !== PAGES.RESULTS) saveResume(state);
     else clearResume();
-  }, [page, studentInfo, currentLevel, levelData, questionIdx, allAnswers, levelPath,
+  }, [page, studentInfo, currentLevel, levelData, questionIdx, allAnswers, levelPath, streak,
       transitionFrom, transitionTo, transitionScore, finalScores, finalLevel]);
 
-  function handleStart(info) {
-    const data = buildLevelData(1);
+  async function handleStart(info) {
+    const data = await buildLevelDataAsync(1);
     setStudentInfo(info);
     setCurrentLevel(1);
     setLevelData(data);
     setQuestionIdx(0);
     setAllAnswers([]);
     setLevelPath([1]);
+    setStreak(0);
     setPage(PAGES.WELCOME);
   }
 
@@ -150,9 +201,23 @@ export default function App() {
     const newAnswers = [...levelData.answers, answerObj];
     const nextIdx    = questionIdx + 1;
 
+    setStreak(answerObj.isCorrect ? streak + 1 : 0);
+
     if (nextIdx < levelData.questions.length) {
       setLevelData((prev) => ({ ...prev, answers: newAnswers }));
       setQuestionIdx(nextIdx);
+
+      // نقطة تحقق منتصف الطريق — تُفحَص مرة واحدة فقط لكل مستوى (عند
+      // السؤال العاشر بالضبط)، بمعزل عن نظام الاحتساب المرجّح الكامل: نسبة
+      // خام بسيطة تعكس بدقة الأداء الفعلي في أول CHECKPOINT_QUESTION أسئلة.
+      if (nextIdx === CHECKPOINT_QUESTION) {
+        const correctCount = newAnswers.filter((a) => a.isCorrect).length;
+        const rate = correctCount / CHECKPOINT_QUESTION;
+        const accumulated = [...allAnswers, ...newAnswers];
+        const decision = evaluateCheckpoint(rate, currentLevel);
+        if (decision === 'jump') setEarlyJumpOffer({ accumulated });
+        else if (decision === 'drop') setEarlyDropInfo({ accumulated });
+      }
       return;
     }
 
@@ -171,11 +236,32 @@ export default function App() {
     } else {
       finalize(accumulated, currentLevel, [...levelPath]);
     }
-  }, [levelData, questionIdx, allAnswers, currentLevel, levelPath]);
+  }, [levelData, questionIdx, allAnswers, currentLevel, levelPath, streak]);
 
-  function handleTransitionContinue() {
+  function handleAcceptEarlyJump() {
+    const { accumulated } = earlyJumpOffer;
+    const scores = calculateLevelScore(accumulated);
+    setAllAnswers(accumulated);
+    setTransitionFrom(currentLevel);
+    setTransitionTo(currentLevel + 1);
+    setTransitionScore(scores.overall);
+    setEarlyJumpOffer(null);
+    setPage(PAGES.TRANSITION);
+  }
+
+  function handleDeclineEarlyJump() {
+    setEarlyJumpOffer(null);
+  }
+
+  function handleAcknowledgeEarlyDrop() {
+    const { accumulated } = earlyDropInfo;
+    setEarlyDropInfo(null);
+    finalize(accumulated, currentLevel, [...levelPath]);
+  }
+
+  async function handleTransitionContinue() {
     const newPath = [...levelPath, transitionTo];
-    const data    = buildLevelData(transitionTo);
+    const data    = await buildLevelDataAsync(transitionTo);
     setCurrentLevel(transitionTo);
     setLevelData(data);
     setQuestionIdx(0);
@@ -188,25 +274,40 @@ export default function App() {
     const determined = applyJumpLogic(scores.overall, level);
     setFinalScores(scores);
     setFinalLevel(determined);
-    saveToLocalStorage({ studentInfo, scores, finalLevel: determined, levelPath: path });
+    if (!adminPreviewLevel) saveToLocalStorage({ studentInfo, scores, finalLevel: determined, levelPath: path });
     setPage(PAGES.RESULTS);
   }
 
-  function handleRestart() {
+  async function handleRestart() {
     if (!window.confirm('هل تريد بدء تقييم جديد؟ سيتم مسح نتائج هذا التقييم.')) return;
-    clearSession();
-    setPage(PAGES.INFO);
-    setStudentInfo(null);
-    setCurrentLevel(1);
-    setLevelData(null);
     setQuestionIdx(0);
     setAllAnswers([]);
-    setLevelPath([]);
+    setStreak(0);
+    setEarlyJumpOffer(null);
+    setEarlyDropInfo(null);
     setFinalScores(null);
     setFinalLevel(1);
     setTransitionFrom(null);
     setTransitionTo(null);
     setTransitionScore(0);
+
+    // في وضع معاينة المشرف: إعادة تجهيز نفس مستوى المعاينة مباشرة بدل
+    // العودة لشاشة بيانات طالب حقيقي — يحافظ الزر على معناه ("جرّب مجدداً").
+    if (adminPreviewLevel) {
+      setPage(PAGES.ADMIN_LOADING);
+      const data = await buildLevelDataAsync(adminPreviewLevel);
+      setLevelData(data);
+      setLevelPath([adminPreviewLevel]);
+      setPage(PAGES.ASSESSMENT);
+      return;
+    }
+
+    clearSession();
+    setPage(PAGES.INFO);
+    setStudentInfo(null);
+    setCurrentLevel(1);
+    setLevelData(null);
+    setLevelPath([]);
   }
 
   function handleResume() {
@@ -218,6 +319,7 @@ export default function App() {
     setQuestionIdx(resumeData.questionIdx ?? 0);
     setAllAnswers(resumeData.allAnswers ?? []);
     setLevelPath(resumeData.levelPath ?? []);
+    setStreak(resumeData.streak ?? 0);
     setTransitionFrom(resumeData.transitionFrom ?? null);
     setTransitionTo(resumeData.transitionTo ?? null);
     setTransitionScore(resumeData.transitionScore ?? 0);
@@ -231,7 +333,9 @@ export default function App() {
 
   const answered       = allAnswers.length + (page === PAGES.ASSESSMENT ? questionIdx : 0);
   const totalPossible  = allAnswers.length + (levelData?.questions?.length || 60);
-  const globalProgress = Math.min(Math.round((answered / totalPossible) * 100), 100);
+  const globalProgress = page === PAGES.RESULTS
+    ? 100
+    : Math.min(Math.round((answered / totalPossible) * 100), 100);
 
   return (
     <Fragment>
@@ -250,6 +354,11 @@ export default function App() {
       {offline && (
         <div style={{ background: '#c62828', color: 'white', textAlign: 'center', padding: '8px', fontSize: 14, fontWeight: 'bold' }}>
           ⚠️ انقطع الاتصال بالإنترنت — لا تغلق الصفحة، سيتم استئناف التقييم عند العودة
+        </div>
+      )}
+      {adminPreviewLevel && (
+        <div style={{ background: '#E8B84B', color: '#1A2B4A', textAlign: 'center', padding: '8px', fontSize: 14, fontWeight: 'bold' }}>
+          🚀 وضع معاينة المشرف (المستوى {adminPreviewLevel}) — تجريبي بالكامل، لن يُحفَظ أو يُرسَل لأي نظام
         </div>
       )}
       <header className="app-header">
@@ -276,6 +385,12 @@ export default function App() {
       )}
 
       <main className="app-main">
+        {page === PAGES.ADMIN_LOADING && (
+          <div className="page-content" style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <div className="spinner" style={{ margin: '0 auto 16px' }} />
+            <p>جارٍ تجهيز معاينة المستوى {adminPreviewLevel}...</p>
+          </div>
+        )}
         {page === PAGES.INFO && (
           <StudentInfo onStart={handleStart} />
         )}
@@ -310,6 +425,7 @@ export default function App() {
             currentLevel={currentLevel}
             questionIndex={questionIdx}
             studentInfo={studentInfo}
+            streak={streak}
             onAnswer={handleAnswer}
           />
         )}
@@ -327,7 +443,9 @@ export default function App() {
             finalLevel={finalLevel}
             scores={finalScores}
             levelPath={levelPath}
+            allAnswers={allAnswers}
             onRestart={handleRestart}
+            isAdminPreview={!!adminPreviewLevel}
           />
         )}
       </main>
@@ -368,7 +486,7 @@ export default function App() {
                 <strong>المستوى:</strong> المستوى {resumeData.currentLevel ?? 1}
               </div>
               <div>
-                <strong>آخر حفظ:</strong> {new Date(resumeData._savedAt).toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}
+                <strong>آخر حفظ:</strong> {new Date(resumeData._savedAt).toLocaleDateString('ar-SA-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' })}
               </div>
             </div>
             <p style={{ color: '#64748b', fontSize: '.88rem', textAlign: 'center', marginBottom: 20 }}>
@@ -385,6 +503,44 @@ export default function App() {
                 بدء تقييم جديد
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {earlyJumpOffer && (
+        <div className="modal-overlay" onClick={handleDeclineEarlyJump}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" dir="rtl" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '2.6rem', marginBottom: 8 }}>🌟</div>
+            <h2 className="modal-title" style={{ fontSize: '1.15rem' }}>أداء رائع يا بطل!</h2>
+            <p style={{ color: '#64748b', fontSize: '.93rem', margin: '10px 0 20px', lineHeight: 1.8 }}>
+              إجاباتك ممتازة حتى الآن! هل تريد الانتقال مباشرة إلى المستوى الأعلى الآن بدل إكمال هذا المستوى؟
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
+              <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={handleAcceptEarlyJump}>
+                🚀 نعم، انتقل الآن ←
+              </button>
+              <button
+                style={{ background: 'none', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.9rem', color: '#64748b', fontWeight: 600 }}
+                onClick={handleDeclineEarlyJump}
+              >
+                لا، أكمل هذا المستوى
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {earlyDropInfo && (
+        <div className="modal-overlay">
+          <div className="modal-box" role="dialog" aria-modal="true" dir="rtl" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '2.6rem', marginBottom: 8 }}>💪</div>
+            <h2 className="modal-title" style={{ fontSize: '1.15rem' }}>لا بأس يا بطل!</h2>
+            <p style={{ color: '#64748b', fontSize: '.93rem', margin: '10px 0 20px', lineHeight: 1.8 }}>
+              كل شخص يتعلّم بسرعته الخاصة. سنُظهر لك نتيجتك الآن في المستوى الأنسب لك تماماً.
+            </p>
+            <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={handleAcknowledgeEarlyDrop}>
+              عرض نتيجتي ←
+            </button>
           </div>
         </div>
       )}

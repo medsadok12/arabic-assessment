@@ -1,5 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
+import { createClient as createServerClient } from '../../../../../lib/supabase-server';
+import { getRole } from '../../../../../lib/auth-role';
 export const dynamic = 'force-dynamic';
+
+const ADMIN_ROLES = new Set(['admin', 'super_admin']);
+
+async function requireAdmin() {
+  const supabase = createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || !ADMIN_ROLES.has(getRole(user))) return null;
+  return user;
+}
 
 function getClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -8,6 +19,8 @@ function getClient() {
 }
 
 export async function POST(request) {
+  if (!await requireAdmin()) return Response.json({ error: 'غير مخول' }, { status: 403 });
+
   let body;
   try { body = await request.json(); } catch { return Response.json({ error: 'طلب غير صالح' }, { status: 400 }); }
 
@@ -15,7 +28,6 @@ export async function POST(request) {
   if (!id) return Response.json({ error: 'id مطلوب' }, { status: 400 });
 
   const supabase = getClient();
-  // FK ON DELETE SET NULL will clear assignments automatically
   const { error } = await supabase.from('student_groups').delete().eq('id', id);
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ success: true });

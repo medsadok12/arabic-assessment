@@ -1,0 +1,675 @@
+'use client';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { applyWaqf } from '../lib/arabic-waqf';
+import { cleanText, chunkText, takeSentences } from '../lib/faheem-speech';
+
+// مقطع صامت يُشغَّل داخل ضغطة الطفل فيُفتح عنصر الصوت على iOS لكل ما يليه
+const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+
+/* ── Arabic voice picker — priority-ranked for best quality across platforms ──
+   Apple  : Laila (female, iOS/macOS) → Maged (male, macOS)  ← best quality
+   Windows: Naayf (male) → Hoda (female)  ← high quality
+   Chrome : Google Arabic built-in
+   Fallback: any ar-* voice                                                    */
+function pickArabicVoice() {
+  const voices = window.speechSynthesis?.getVoices() ?? [];
+  const priority = [
+    /\bLaila\b/i,
+    /\bMaged\b/i,
+    /\bMajed\b/i,
+    /Microsoft\s+Naayf/i,
+    /Microsoft\s+Hoda/i,
+    /Microsoft\s+Tarik/i,
+    /Google\s+.*Arab/i,
+    /Arab/i,
+  ];
+  for (const pattern of priority) {
+    const v = voices.find(v => pattern.test(v.name));
+    if (v) return v;
+  }
+  return voices.find(v => v.lang?.startsWith('ar')) ?? null;
+}
+
+/* ── TTS hook — server voice /api/faheem/tts (human voice: Azure / Gemini — see
+      lib/faheem-tts.js).
+   • عنصر صوت واحد طوال الجلسة يُفتح داخل ضغطة الطفل (unlock) فيعمل على iOS أيضاً.
+   • القراءة طابور: كل قطعة تُجلب فور معرفتها (بالتوازي) وتُشغَّل بالترتيب.
+   • sentences=true (صوت Azure الثابت): الجواب يُقرأ جملةً جملة وهو يصل من الخادم.
+     وإن تعثّرت جملة تُتخطّى بصمت — لا يدخل صوت الجهاز وسط صوت فهيم.
+   • sentences=false: الجواب كله قطعة واحدة، وصوت الجهاز احتياط إن فشل صوت الخادم. ── */
+function useSpeech() {
+  const elRef  = useRef(null);   // عنصر الصوت الوحيد
+  const runRef = useRef(null);   // القراءة الجارية؛ قراءة جديدة أو إيقاف يُبطل السابقة
+
+  // Preload browser voices so they're available on first utterance
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  }, []);
+
+  function getEl() {
+    if (!elRef.current) { elRef.current = new Audio(); elRef.current.preload = 'auto'; }
+    return elRef.current;
+  }
+
+  // يُستدعى داخل ضغطة الطفل: تشغيل صامت يفتح العنصر، ولا يُوقَف إلا إن بقي الصامت نفسه
+  const unlock = useCallback(() => {
+    const el = getEl();
+    if (el.dataset.unlocked) return;
+    el.dataset.unlocked = '1';
+    el.src = SILENT_WAV;
+    el.play()?.then(() => { if (el.src === SILENT_WAV) el.pause(); }).catch(() => {});
+  }, []);
+
+  // يوقف كل صوت ويلغي التحميل الجاري (بلا أحداث خطأ تُطلق صوت الجهاز)
+  function stopAll() {
+    const run = runRef.current;
+    runRef.current = null;
+    if (run) { run.ctrl.abort(); run.urls.forEach(u => URL.revokeObjectURL(u)); run.urls.clear(); }
+    const el = elRef.current;
+    if (el) {
+      el.onended = null; el.onerror = null; el.onplaying = null;
+      el.pause(); el.removeAttribute('src'); el.load();
+    }
+    window.speechSynthesis?.cancel();
+  }
+
+  useEffect(() => () => stopAll(), []);
+
+  // Fallback: browser Speech API (system voice) — used only if the server audio fails
+  function playBrowser(chunk) {
+    return new Promise(resolve => {
+      const voice = pickArabicVoice();
+      if (!window.speechSynthesis || !voice) { resolve(); return; }
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(applyWaqf(chunk)); // الوقف بالسكون كصوت الخادم
+      u.voice  = voice;
+      u.lang   = voice.lang || 'ar-SA';
+      u.rate   = 0.94;   // articulate shadda/gemination
+      u.pitch  = 1.12;   // friendly but realistic
+      u.volume = 1;
+      u.onend  = resolve;
+      u.onerror = resolve;
+      window.speechSynthesis.speak(u);
+    });
+  }
+
+  // onStart: أول صوت مسموع (يُخفي «يُجَهِّزُ صَوْتَهُ»)، onEnd: انتهى الكلام
+  const startStream = useCallback(({ sentences = false, onStart, onEnd } = {}) => {
+    stopAll();
+    const run = { ctrl: new AbortController(), urls: new Set(), queue: [], playing: false, ended: false, started: false };
+    runRef.current = run;
+    const live = () => runRef.current === run;
+    const markStarted = () => { if (!run.started && live()) { run.started = true; onStart?.(); } };
+    let buf = '';
+
+    function fetchAudio(text) {
+      return fetch(`/api/faheem/tts?t=${encodeURIComponent(text)}`, { signal: run.ctrl.signal })
+        .then(r => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+        .then(b => {
+          if (!live()) throw new Error('stopped');
+          const u = URL.createObjectURL(b);
+          run.urls.add(u);
+          return u;
+        });
+    }
+
+    function enqueue(raw) {
+      const text = cleanText(raw);
+      if (!text) return;
+      const item = { text, url: fetchAudio(text) };
+      item.url.catch(() => {});
+      run.queue.push(item);
+      if (!run.playing) playNext();
+    }
+
+    async function playNext() {
+      if (!live()) return;
+      const item = run.queue.shift();
+      if (!item) {
+        run.playing = false;
+        if (run.ended) onEnd?.();
+        return;
+      }
+      run.playing = true;
+      const url = await item.url.catch(() => null);
+      if (!live()) return;
+      if (!url) {
+        if (!sentences) { markStarted(); await playBrowser(item.text); }
+        playNext();
+        return;
+      }
+      const el = getEl();
+      await new Promise(resolve => {
+        const fail = () => {
+          if (!sentences && live()) { markStarted(); playBrowser(item.text).then(resolve); }
+          else resolve();
+        };
+        el.onplaying = markStarted;
+        el.onended = resolve;
+        el.onerror = fail;
+        el.src = url;
+        el.play()?.catch(fail);
+      });
+      URL.revokeObjectURL(url);
+      run.urls.delete(url);
+      playNext();
+    }
+
+    return {
+      push(delta) {
+        if (!live()) return;
+        buf += delta;
+        if (!sentences) return;
+        const r = takeSentences(buf);
+        buf = r.rest;
+        r.sentences.forEach(enqueue);
+      },
+      end() {
+        if (!live()) return;
+        run.ended = true;
+        (sentences ? takeSentences(buf, true).sentences : chunkText(cleanText(buf))).forEach(enqueue);
+        buf = '';
+        if (!run.playing && !run.queue.length) onEnd?.();
+      },
+    };
+  }, []);
+
+  const speak = useCallback((text, opts) => {
+    const s = startStream(opts);
+    s.push(text);
+    s.end();
+  }, [startStream]);
+
+  const cancel = useCallback(() => stopAll(), []);
+
+  return { speak, startStream, cancel, unlock };
+}
+
+const iconBtn = {
+  background: 'rgba(255,255,255,.13)', border: 'none', borderRadius: '50%',
+  width: 30, height: 30, color: '#fff', cursor: 'pointer',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.8rem',
+};
+
+/* ── Warm fallback messages (shown on network error) ── */
+const FALLBACKS = [
+  'يَا صَدِيقِي، الاتِّصَالُ بَطِيءٌ الآنَ. هَلْ تُحَاوِلُ مُجَدَّدًا؟ 🌟',
+  'عَفْوًا يَا بَطَلُ! لَمْ أَسْمَعْكَ جَيِّدًا، أَعِدْ سُؤَالَكَ مِنْ فَضْلِكَ. 🎈',
+  'أَنَا هُنَا وَأَسْمَعُكَ يَا صَدِيقِي! جَرِّبْ مَرَّةً أُخْرَى. 🚀',
+  'الشَّبَكَةُ مَشْغُولَةٌ قَلِيلاً. لَا تَقْلَقْ وَحَاوِلْ مُجَدَّدًا! 💡',
+];
+
+/* ── Arabic-correct counted-noun forms for the personalized greeting ── */
+function arDays(n) {
+  if (n === 2)              return 'يَوْمَيْنِ';
+  if (n >= 3 && n <= 10)    return `${n} أَيَّامٍ`;
+  return `${n} يَوْمًا`;
+}
+function arWords(n) {
+  if (n === 1)              return 'كَلِمَةً';
+  if (n === 2)              return 'كَلِمَتَيْنِ';
+  if (n >= 3 && n <= 10)    return `${n} كَلِمَاتٍ`;
+  return `${n} كَلِمَةً`;
+}
+
+/* Personalized first message: greets the child by name, and — when there is
+   something to celebrate — mentions their live streak or mastered-words count so
+   Fahim feels like a friend who remembers them, not a generic bot. */
+function buildGreeting(name, isFemale, streak, mastered) {
+  const friend = isFemale ? 'صَدِيقُكِ وَمُرَافِقُكِ' : 'صَدِيقُكَ وَمُرَافِقُكَ';
+  const hero   = isFemale ? 'يَا بَطَلَةُ' : 'يَا بَطَلُ';
+  const intro  = `مَرْحَبًا يَا ${name} فِي أَكَادِيمِيَّةِ عَارِم! أَنَا ${friend} الذَّكِيُّ فَهِيمٌ.`;
+
+  let middle = '';
+  if (streak >= 2) {
+    const back     = isFemale ? 'عُدْتِ'         : 'عُدْتَ';
+    const yourStr  = isFemale ? 'سِلْسِلَتُكِ'   : 'سِلْسِلَتُكَ';
+    const yourCont = isFemale ? 'اسْتِمْرَارُكِ' : 'اسْتِمْرَارُكَ';
+    middle = ` ${back} ${hero}! 🔥 ${yourStr} الآنَ ${arDays(streak)} مُتَوَاصِلَةٌ، وَ${yourCont} يُبْهِرُنِي!`;
+  } else if (mastered >= 1) {
+    const done = isFemale ? 'أَتْقَنْتِ' : 'أَتْقَنْتَ';
+    middle = ` 🌟 لَقَدْ ${done} ${arWords(mastered)} حَتَّى الآنَ، أَحْسَنْتَ ${hero}!`;
+  }
+
+  const outro = isFemale
+    ? ` أَخْبِرِينِي ${hero}، مَاذَا تُرِيدِينَ أَنْ نَتَعَلَّمَ الْيَوْمَ؟`
+    : ` أَخْبِرْنِي ${hero}، مَاذَا تُرِيدُ أَنْ نَتَعَلَّمَ الْيَوْمَ؟`;
+
+  return intro + middle + outro;
+}
+
+/* ── Main FaheemWidget component ── */
+export default function FaheemWidget({ studentName = 'بطل', studentGender = 'male', streakCount = 0, masteredCount = 0 }) {
+  const isFemale = studentGender === 'female';
+  const { speak, startStream, cancel, unlock } = useSpeech();
+
+  const [open,      setOpen]    = useState(false);
+  const [greeted,   setGreeted] = useState(false);
+  const [phase,     setPhase]   = useState('idle');
+  const [msgs,      setMsgs]    = useState([]);
+  const [input,     setInput]   = useState('');
+  const [isRec,     setIsRec]   = useState(false);
+  const [sttErr,    setSttErr]  = useState('');
+  const [pendingQ,  setPendingQ] = useState(null); // prefetched question
+
+  const recRef   = useRef(null);
+  const endRef   = useRef(null);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
+
+  const [voiceReady, setVoiceReady] = useState(false); // false = الصوت يُجهَّز بعد
+  const sayText = useCallback((text) => {
+    setVoiceReady(false);
+    setPhase('speaking');
+    speak(text, {
+      onStart: () => setVoiceReady(true),
+      onEnd: () => setPhase(p => p === 'speaking' ? 'idle' : p),
+    });
+  }, [speak]);
+
+  useEffect(() => {
+    if (!open || greeted) return;
+    setGreeted(true);
+    const g = buildGreeting(studentName, isFemale, streakCount, masteredCount);
+    setMsgs([{ role: 'ai', text: g }]);
+    const t = setTimeout(() => sayText(g), 700);
+    return () => clearTimeout(t);
+  }, [open, greeted, studentName, isFemale, streakCount, masteredCount, sayText]);
+
+  const locked = phase === 'thinking' || phase === 'speaking';
+
+  // Background prefetch: generate a question while child reads/listens
+  async function prefetchQuestion(responseText) {
+    try {
+      const res = await fetch('/api/generate-question', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ context: responseText }),
+      });
+      if (!res.ok) return;
+      const { question } = await res.json();
+      if (question?.q) setPendingQ(question);
+    } catch { /* silent */ }
+  }
+
+  async function sendMsg(text) {
+    if (!text.trim() || locked) return;
+    unlock();
+    const t = text.trim();
+    cancel();
+    setPendingQ(null);
+    setMsgs(p => [...p, { role: 'user', text: t }]);
+    setInput('');
+    setPhase('thinking');
+
+    const id = Date.now();
+    let reply = '';
+    const show = (txt) => setMsgs(p => (p.some(m => m.id === id)
+      ? p.map(m => (m.id === id ? { ...m, text: txt } : m))
+      : [...p, { id, role: 'ai', text: txt }]));
+
+    try {
+      const res = await fetch('/api/faheem', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ message: t, history: msgs, studentName, studentGender }),
+      });
+
+      // رسائل الخادم الجاهزة (حدّ الأسئلة، تعذّر الإجابة...) تصل JSON كاملة
+      if (!res.body || !(res.headers.get('content-type') || '').startsWith('text/plain')) {
+        const json = await res.json();
+        reply = json.reply || FALLBACKS[0];
+        show(reply);
+        sayText(reply);
+        return;
+      }
+
+      // الجواب يُبثّ: يظهر وهو يُكتب، ومع صوت Azure يبدأ الكلام عند أول جملة مكتملة
+      setVoiceReady(false);
+      setPhase('speaking');
+      const voice = startStream({
+        sentences: res.headers.get('x-faheem-voice') === 'azure',
+        onStart: () => setVoiceReady(true),
+        onEnd: () => setPhase(p => p === 'speaking' ? 'idle' : p),
+      });
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          const delta = dec.decode(value, { stream: true });
+          if (!delta) continue;
+          reply += delta;
+          voice.push(delta);
+          show(reply);
+        }
+      } catch { /* انقطع البث: يبقى ما وصل ويُقرأ */ }
+      if (!reply.trim()) {
+        reply = FALLBACKS[0];
+        show(reply);
+        voice.push(reply);
+      }
+      voice.end();
+      prefetchQuestion(reply);
+    } catch {
+      if (reply.trim()) return; // وصل جزء من الجواب ويُقرأ
+      const fb = FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
+      show(fb);
+      sayText(fb);
+    }
+  }
+
+  function startListen() {
+    setSttErr('');
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      setSttErr('مُتَصَفِّحُكَ لَا يَدْعَمُ الإِدْخَالَ الصَّوْتِيَّ — جَرِّبْ Google Chrome');
+      return;
+    }
+    unlock();
+    cancel();
+    setPhase('listening');
+    setIsRec(true);
+
+    const r = new SR();
+    r.lang = 'ar-SA';
+    r.continuous = false;
+    r.interimResults = false;
+
+    r.onresult = e => {
+      const tr = e.results[0]?.[0]?.transcript;
+      if (tr) sendMsg(tr);
+    };
+    r.onerror = e => {
+      setIsRec(false);
+      setPhase('idle');
+      if (e.error === 'not-allowed') setSttErr('يُرْجَى السَّمَاحُ بِالْوُصُولِ إِلَى الْمَيكُرُوفُون');
+      else setSttErr('لَمْ أَسْمَعْ شَيْئًا بِوُضُوحٍ — حَاوِلْ مَرَّةً أُخْرَى');
+    };
+    r.onend = () => {
+      setIsRec(false);
+      setPhase(p => p === 'listening' ? 'idle' : p);
+    };
+
+    recRef.current = r;
+    r.start();
+  }
+
+  function stopListen() {
+    recRef.current?.stop();
+    setIsRec(false);
+    setPhase('idle');
+  }
+
+  const phaseLabel = {
+    listening: '🎤 يَسْتَمِعُ...',
+    thinking:  '💭 يُفَكِّرُ...',
+    writing:   '✍️ يَكْتُبُ...',
+    speaking:  voiceReady ? '🔊 يَتَحَدَّثُ...' : '🎙️ يُجَهِّزُ صَوْتَهُ...',
+    idle:      '● مُتَّصِلٌ',
+  }[phase] ?? '● مُتَّصِلٌ';
+
+  return (
+    <>
+      <style>{`
+        @keyframes fDot {
+          0%,80%,100% { transform: scale(.55); opacity: .35; }
+          40%          { transform: scale(1);   opacity: 1;   }
+        }
+        @keyframes fSlideUp {
+          from { opacity: 0; transform: translateY(20px) scale(.96); }
+          to   { opacity: 1; transform: translateY(0)   scale(1);   }
+        }
+        @keyframes fFloat {
+          0%,100% { transform: translateX(-50%) translateY(0); }
+          50%      { transform: translateX(-50%) translateY(-7px); }
+        }
+        @keyframes fShadow {
+          0%,100% { transform: translateX(-50%) scaleX(1);   opacity: .28; }
+          50%      { transform: translateX(-50%) scaleX(.82); opacity: .18; }
+        }
+        @keyframes fPillBob {
+          0%,100% { transform: translateY(0); }
+          50%      { transform: translateY(-3px); }
+        }
+      `}</style>
+
+      {!open && (
+        <button
+          onClick={() => { unlock(); setOpen(true); }}
+          title="تَحَدَّثْ مَعَ فَهِيمٍ"
+          style={{
+            position: 'fixed', bottom: 'var(--faheem-btn-bottom, 24px)', right: 24, zIndex: 1000,
+            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+            display: 'flex', alignItems: 'flex-end', gap: 8,
+          }}
+        >
+          <div style={{ position: 'relative', width: 100, height: 150, flexShrink: 0 }}>
+            <div style={{
+              position: 'absolute', bottom: 10, left: '50%', width: 54, height: 13, borderRadius: '50%',
+              background: 'radial-gradient(ellipse, rgba(15,23,42,.42), transparent 72%)',
+              animation: 'fShadow 3s ease-in-out infinite',
+            }} />
+            <img src="/faheem.png" alt="فَهِيمٌ" width={555} height={707}
+              style={{
+                position: 'absolute', bottom: 14, left: '50%', height: 128, width: 'auto',
+                filter: 'drop-shadow(0 10px 14px rgba(0,0,0,.22))',
+                animation: 'fFloat 3.2s ease-in-out infinite',
+              }}
+            />
+          </div>
+          <div style={{
+            position: 'relative', background: '#fff', color: '#1A2B4A', fontWeight: 800, fontSize: '.78rem',
+            borderRadius: 16, padding: '8px 14px', boxShadow: '0 6px 16px rgba(0,0,0,.16)',
+            whiteSpace: 'nowrap', marginBottom: 58, animation: 'fPillBob 2.6s ease-in-out infinite',
+          }}>
+            اسْأَلْ فَهِيم! 💬
+            <span style={{
+              position: 'absolute', top: '50%', right: -5, width: 12, height: 12, background: '#fff',
+              transform: 'translateY(-50%) rotate(45deg)',
+            }} />
+          </div>
+        </button>
+      )}
+
+      {open && (
+        <div style={{
+          position: 'fixed', bottom: 'var(--faheem-panel-bottom, 16px)', right: 16, zIndex: 1000,
+          width: 348, maxWidth: 'calc(100vw - 32px)',
+          background: '#fff', borderRadius: 24,
+          boxShadow: '0 20px 64px rgba(0,0,0,.22), 0 0 0 1px rgba(124,92,217,.08)',
+          display: 'flex', flexDirection: 'column',
+          maxHeight: 'calc(100dvh - env(safe-area-inset-top, 20px) - var(--faheem-panel-bottom, 16px) - 24px)',
+          animation: 'fSlideUp .3s ease-out',
+        }}>
+
+          <div style={{
+            background: 'linear-gradient(135deg,#7C5CD9,#5B3FA8)',
+            padding: '12px 14px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            borderRadius: '24px 24px 0 0', flexShrink: 0,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 42, height: 42, borderRadius: '50%',
+                border: '2px solid rgba(255,255,255,.4)', background: 'rgba(255,255,255,.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+              }}>
+                <img src="/faheem.png" alt="فَهِيمٌ" width={555} height={707}
+                  style={{ width: '82%', height: '82%', objectFit: 'contain' }} />
+              </div>
+              <div>
+                <div style={{ color: '#fff', fontWeight: 800, fontSize: '.92rem' }}>فَهِيمٌ</div>
+                <div style={{ color: 'rgba(255,255,255,.6)', fontSize: '.7rem' }}>{phaseLabel}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {phase === 'speaking' && (
+                <button onClick={() => { cancel(); setPhase('idle'); }} style={iconBtn} title="إِيقَافُ الصَّوْتِ">🔇</button>
+              )}
+              <button onClick={() => setOpen(false)} style={iconBtn} title="إِغْلَاقٌ">✕</button>
+            </div>
+          </div>
+
+          <div style={{
+            background: 'linear-gradient(180deg,#eef3fb 0%,#f8faff 100%)',
+            display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
+            padding: '14px 0 4px', borderBottom: '1px solid #e8eef5', flexShrink: 0,
+          }}>
+            <img src="/faheem.png" alt="فَهِيمٌ" width={555} height={707}
+              style={{ height: 112, width: 'auto', filter: 'drop-shadow(0 6px 16px rgba(0,0,0,.22))' }} />
+          </div>
+
+          <div style={{
+            flex: 1, overflowY: 'auto', padding: '12px 14px',
+            display: 'flex', flexDirection: 'column', gap: 8, minHeight: 80,
+          }}>
+            {msgs.map((m, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-start' : 'flex-end' }}>
+                <div style={{
+                  maxWidth: '83%',
+                  background: m.role === 'user' ? '#f1f5f9' : 'linear-gradient(135deg,#7C5CD9,#5B3FA8)',
+                  color: m.role === 'user' ? '#1a2d4a' : '#fff',
+                  borderRadius: m.role === 'user' ? '18px 18px 18px 4px' : '18px 18px 4px 18px',
+                  padding: '10px 14px', fontSize: '1.05rem',
+                  lineHeight: 1.8, direction: 'rtl',
+                  fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                }}>
+                  {m.text}
+                </div>
+              </div>
+            ))}
+
+            {phase === 'thinking' && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{
+                  background: 'linear-gradient(135deg,#7C5CD9,#5B3FA8)',
+                  borderRadius: '18px 18px 4px 18px',
+                  padding: '10px 18px', display: 'flex', gap: 5, alignItems: 'center',
+                }}>
+                  {[0, 1, 2].map(i => (
+                    <span key={i} style={{
+                      width: 7, height: 7, borderRadius: '50%',
+                      background: '#fff', display: 'inline-block',
+                      animation: `fDot 1.2s ease-in-out ${i * .22}s infinite`,
+                    }} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Prefetched interactive question ── */}
+            {pendingQ && phase === 'idle' && (
+              <div style={{
+                background: '#fffbeb', border: '1.5px solid #fcd34d',
+                borderRadius: 14, padding: '10px 12px', direction: 'rtl',
+              }}>
+                <div style={{ fontSize: '.82rem', fontWeight: 800, color: '#92400e', marginBottom: 8 }}>
+                  🌟 {pendingQ.q}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {pendingQ.opts.map((opt, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { setPendingQ(null); sendMsg(opt); }}
+                      style={{
+                        padding: '6px 12px', borderRadius: 20, border: '1.5px solid #fcd34d',
+                        background: '#fff', color: '#92400e', fontWeight: 700,
+                        fontSize: '.82rem', cursor: 'pointer', textAlign: 'right',
+                        fontFamily: "'Cairo','Tajawal',sans-serif", transition: '.15s',
+                      }}
+                      onMouseEnter={e => e.target.style.background = '#fef3c7'}
+                      onMouseLeave={e => e.target.style.background = '#fff'}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div ref={endRef} />
+          </div>
+
+          {sttErr && (
+            <div style={{
+              background: '#fff3e0', color: '#e65100',
+              fontSize: '.75rem', textAlign: 'center',
+              padding: '7px 14px', borderTop: '1px solid #ffe0b2',
+              direction: 'rtl', flexShrink: 0,
+            }}>
+              {sttErr}
+            </div>
+          )}
+
+          <div style={{
+            borderTop: '1px solid #e8eef5', padding: '10px 12px',
+            display: 'flex', gap: 8, alignItems: 'center',
+            background: '#fafbfc', borderRadius: '0 0 24px 24px', flexShrink: 0,
+          }}>
+            <button
+              onClick={isRec ? stopListen : startListen}
+              disabled={locked}
+              style={{
+                width: 38, height: 38, borderRadius: '50%', border: 'none',
+                background: isRec ? '#e53935'
+                          : locked ? '#c3cbd6'
+                          : 'linear-gradient(135deg,#7C5CD9,#5B3FA8)',
+                color: '#fff', cursor: locked ? 'not-allowed' : 'pointer',
+                opacity: locked ? .65 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1rem', flexShrink: 0,
+                boxShadow: isRec ? '0 0 0 5px rgba(229,57,53,.22)' : 'none',
+                transition: 'all .2s',
+              }}
+            >
+              {isRec ? '⏹' : '🎤'}
+            </button>
+
+            <input
+              type="text"
+              value={input}
+              dir="rtl"
+              disabled={locked}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(input); }
+              }}
+              placeholder={
+                phase === 'thinking' ? 'فَهِيمٌ يُفَكِّرُ... 💭'
+                : phase === 'speaking' ? (voiceReady ? 'فَهِيمٌ يَتَحَدَّثُ... 🔊' : 'فَهِيمٌ يُجَهِّزُ صَوْتَهُ... 🎙️')
+                : 'اكْتُبْ سُؤَالَكَ لِفَهِيمٍ...'
+              }
+              style={{
+                flex: 1, border: '1.5px solid #e8eef5', borderRadius: 20,
+                padding: '9px 14px', fontSize: '.95rem',
+                outline: 'none',
+                background: locked ? '#f1f3f6' : '#fff',
+                color: '#1a2d4a',
+                cursor: locked ? 'not-allowed' : 'text',
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+              }}
+            />
+
+            <button
+              onClick={() => sendMsg(input)}
+              disabled={!input.trim() || locked}
+              style={{
+                width: 38, height: 38, borderRadius: '50%', border: 'none',
+                background: input.trim() && !locked ? '#7C5CD9' : '#e0e0e0',
+                color: '#fff', cursor: input.trim() && !locked ? 'pointer' : 'not-allowed',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.1rem', flexShrink: 0, transition: 'background .2s',
+              }}
+            >
+              &#x2190;
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
