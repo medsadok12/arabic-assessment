@@ -103,6 +103,7 @@ export default function HuroofPage() {
   const [pathCount, setPathCount] = useState(0);    // موضع فهيم المعروض (يتقدّم بعد إغلاق النافذة ليراه الطفل)
   const [burst,    setBurst]    = useState(0);
   const [finale,   setFinale]   = useState(false);
+  const [cheer,    setCheer]    = useState(null);   // شريط «أحسنت» فوق صورة البطاقة لحظة كشف الحرف
   const pointsGivenRef     = useRef(new Set());
   const completionBonusRef = useRef(false);
   const audioRef           = useRef(null);
@@ -206,6 +207,7 @@ export default function HuroofPage() {
     const d = letters[i];
     if (!d) return;
     play(d.letter_audio_url);
+    setCheer(null);
     if (challenge) setActive(i); else toggle(i);
   }
 
@@ -250,10 +252,15 @@ export default function HuroofPage() {
     setNote(null);
     setRiddle(idx);
   }
-  function solved(j) {
+  /* الحلّ ← تُغلق نافذة اللغز وتظهر بطاقة الحرف التي صنعها المعلم مباشرة (صورته وكلمته وجملته وأصواته)
+     مع شريط «أحسنت» صغير يختفي وحده — اختيار الأستاذ محمد بعد صفحة التجربة. فهيم يتقدّم حين تُغلق البطاقة */
+  function solved(j, idx) {
     setProg(p => ({ ...(p || {}), solved: j.solved }));
     remember(null);
     setBurst(Date.now());
+    setRiddle(null); setNote(null);
+    setCheer(`🎉 أَحْسَنْتَ! كَشَفْتَ حَرْفَ «${letters[idx].name}»`);
+    setActive(idx);
     if (j.complete) setFinale(true);
   }
   const closeRiddle = () => { audioRef.current?.pause(); setRiddle(null); setNote(null); };
@@ -418,7 +425,8 @@ export default function HuroofPage() {
         <LetterSheet
           data={letters[active]}
           index={active}
-          onClose={() => { audioRef.current?.pause(); setActive(null); }}
+          cheer={cheer}
+          onClose={() => { audioRef.current?.pause(); setActive(null); setCheer(null); }}
           onPlay={play}
           onPrev={(!challenge || complete) && active > 0 ? () => goTo(active - 1) : null}
           onNext={(!challenge || complete) && active < letters.length - 1 ? () => goTo(active + 1) : null}
@@ -438,9 +446,8 @@ export default function HuroofPage() {
           note={note}
           onAttempt={() => setAttempts(a => ({ ...a, [riddle]: (a[riddle] ?? 0) + 1 }))}
           onHint={() => setHints(h => ({ ...h, [riddle]: Math.min(3, (h[riddle] ?? 0) + 1) }))}
-          onSolved={solved}
+          onSolved={(j) => solved(j, riddle)}
           onClose={closeRiddle}
-          onShowCard={() => { const i = riddle; setRiddle(null); setNote(null); setActive(i); }}
           onEdit={isStaff ? () => { const i = riddle; closeRiddle(); setEditing(i); } : null}
           onPlay={play}
         />

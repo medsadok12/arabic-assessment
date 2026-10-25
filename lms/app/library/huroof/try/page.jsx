@@ -11,9 +11,8 @@ import { ChallengeCard, FaheemPath, RiddleSheet, Confetti, CHALLENGE_CSS } from 
 import { LetterSheet, SHEET_CSS } from '../LetterSheet';
 
 /* ════════════════════════════════════════════════════════════════
-   صفحة تجربة جانبية لحرف واحد (طلب الأستاذ محمد 2026-10-25):
-   عند كتابة الكلمة صحيحة لا تظهر شاشة «أحسنت» منفصلة — تظهر مباشرة بطاقة الحرف التي صنعها
-   المعلم (صورته وكلمته وجملته وأصواته) مع شريط احتفال قصير فوق الصورة، ثم يتقدّم فهيم.
+   صفحة تجربة جانبية لحرف واحد (طلب الأستاذ محمد 2026-10-25) — للمعلم ليجرّب ما يراه الطفل:
+   عند كتابة الكلمة صحيحة تظهر مباشرة بطاقة الحرف التي صنعها المعلم (اعتُمد وعُمِّم على الصفحة الرئيسية).
    لا تُسجَّل نقاط ولا تقدّم هنا: التدقيق في المتصفح فقط.
 ════════════════════════════════════════════════════════════════ */
 
@@ -128,7 +127,6 @@ function TryOne() {
           hintLevel={hint}
           onAttempt={() => setAttempts(a => a + 1)}
           onHint={() => setHint(h => Math.min(3, h + 1))}
-          revealMode="card"
           verify={async (value) => {
             const r = checkSpelling(value, huroofTarget(letter), { allowAl: settings.accept_al });
             return r.ok ? { ok: true } : { ok: false, result: r };
@@ -138,7 +136,6 @@ function TryOne() {
             setCard({ cheer: `🎉 أَحْسَنْتَ! كَشَفْتَ حَرْفَ «${letter.name}»` });
           }}
           onClose={() => { audioRef.current?.pause(); setRiddle(false); }}
-          onShowCard={() => {}}
           onPlay={play}
         />
       )}

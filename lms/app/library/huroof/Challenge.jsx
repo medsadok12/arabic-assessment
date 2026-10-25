@@ -1,7 +1,7 @@
 'use client';
-import { useEffect, useRef, useState, Fragment } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { childFetch } from '../../../lib/child-fetch';
-import { HUROOF_COUNT, huroofTarget, highlightLetter } from '../../../lib/huroof';
+import { HUROOF_COUNT, huroofTarget } from '../../../lib/huroof';
 import { checkSpelling, normalizeArabic, displayAnswer } from '../../../lib/huroof-spell';
 
 /* ════════════════════════════════════════════════════════════════
@@ -117,18 +117,16 @@ const isTouch = () => typeof window !== 'undefined'
   && (window.matchMedia?.('(pointer: coarse)').matches || (navigator.maxTouchPoints || 0) > 0);
 
 /* ── نافذة لغز فهيم: اللغز ← الكتابة ← التدقيق ← كشف الحرف ── */
-/* revealMode: 'card' ← عند الحلّ تُغلق النافذة وتظهر بطاقة الحرف التي صنعها المعلم مباشرة (onSolved)؛
-   'screen' ← شاشة «أحسنت» داخل النافذة. verify: بديل لتدقيق الخادم (صفحة التجربة لا تسجّل شيئاً) */
+/* عند الحلّ تُغلق النافذة وتظهر بطاقة الحرف التي صنعها المعلم مباشرة (onSolved) — بلا شاشة «أحسنت» منفصلة
+   (اختيار الأستاذ محمد بعد صفحة التجربة 2026-10-25). verify: بديل لتدقيق الخادم (صفحة التجربة لا تسجّل شيئاً) */
 export function RiddleSheet({
   letter, pos, settings, solvedCount, attempts, hintLevel, note,
-  onAttempt, onHint, onSolved, onClose, onShowCard, onEdit, onPlay,
-  revealMode = 'screen', verify,
+  onAttempt, onHint, onSolved, onClose, onEdit, onPlay, verify,
 }) {
   const pal = PALETTE[pos % PALETTE.length];
   const [value, setValue] = useState('');
   const [fb, setFb] = useState(note ? { kind: 'note', msg: note } : null);
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
   const [deviceKb, setDeviceKb] = useState(false);
   const [touch, setTouch] = useState(false);
   const inputRef = useRef(null);
@@ -158,7 +156,7 @@ export function RiddleSheet({
 
   async function submit(e) {
     e?.preventDefault();
-    if (busy || done) return;
+    if (busy) return;
     const r = checkSpelling(value, target, { allowAl: settings.accept_al });
     if (!r.ok) {
       setFb(r);
@@ -179,7 +177,6 @@ export function RiddleSheet({
       }
       if (j.ok) {
         onPlay(letter.letter_audio_url);   // تسجيل المعلم لنطق الحرف إن وُجد
-        if (revealMode !== 'card') { setDone(true); setFb(null); }
         setBusy(false);
         onSolved(j);
         return;
@@ -192,9 +189,6 @@ export function RiddleSheet({
     setBusy(false);
   }
 
-  const colored = (text) => highlightLetter(text, letter.l).map((part, i) => (
-    part.hl ? <span key={i} style={{ color: pal.main }}>{part.t}</span> : <Fragment key={i}>{part.t}</Fragment>
-  ));
   const picture = letter.image_url
     ? <img src={letter.image_url} alt="" className="hc-pic-img" />
     : <span className="hc-pic-emoji" aria-hidden="true">{letter.emoji}</span>;
@@ -209,18 +203,6 @@ export function RiddleSheet({
           <button className="hf-x" onClick={onClose} aria-label="إغلاق">✕</button>
         </div>
 
-        {done ? (
-          <div className="hc-win">
-            <div className="hc-win-t">🎉 أَحْسَنْتَ!</div>
-            <div className="hc-win-l" style={{ background: pal.main }}>{letter.l}</div>
-            <div className="hc-win-n">كَشَفْتَ حَرْفَ «{letter.name}»</div>
-            <div className="hf-word">{colored(letter.word)}</div>
-            <div className="hc-win-btns">
-              <button type="button" className="hc-btn hc-go" onClick={onClose}>🚶 هَيَّا نَتَقَدَّمْ مَعَ فَهِيمٍ!</button>
-              <button type="button" className="hc-btn hc-soft" onClick={onShowCard}>🖼️ بِطَاقَةُ الْحَرْفِ</button>
-            </div>
-          </div>
-        ) : (
           <form className="hc-play" onSubmit={submit}>
             <div className="hc-fh-row">
               <img src="/faheem.png" alt="فهيم" className="hc-fh" />
@@ -284,7 +266,6 @@ export function RiddleSheet({
             </div>
             {onEdit && <button type="button" className="hf-edit" onClick={onEdit}>✏️ تعديل هذا اللغز والإملاء (للمعلم)</button>}
           </form>
-        )}
       </div>
     </>
   );
@@ -374,19 +355,13 @@ export const CHALLENGE_CSS = `
 .hc-check:active, .hc-go:active { transform:translateY(3px); box-shadow:0 2px 0 #C29530; }
 .hc-soft { background:#fff; color:#7C5CD9; border:2px solid #E2D9FF; }
 .hc-btn:disabled { opacity:.75; }
-.hc-win { display:flex; flex-direction:column; align-items:center; gap:10px; padding:6px 0 4px; text-align:center; }
-.hc-win-t { font-size:1.8rem; font-weight:900; color:#1A2B4A; }
-.hc-win-l { width:110px; height:110px; border-radius:28px; color:#fff; display:grid; place-items:center; font-size:4rem; font-weight:900; box-shadow:0 10px 26px rgba(26,43,74,.25); animation:hcFlip .7s cubic-bezier(.34,1.56,.64,1); }
-.hc-win-n { font-weight:800; font-size:1.05rem; color:#52627E; }
-.hc-win-btns { display:flex; flex-direction:column; gap:8px; width:100%; }
 .hc-conf { position:fixed; top:-20px; width:10px; height:14px; border-radius:3px; z-index:1400; pointer-events:none; animation:hcFall 1.6s ease-in forwards; }
 .hc-done-banner { margin:0 0 16px; text-align:center; background:linear-gradient(135deg,#1a7c40,#1A2B4A); color:#fff; border-radius:16px; padding:12px 16px; font-size:1rem; font-weight:800; line-height:1.8; animation:hfDown .3s ease; }
 @keyframes hcPulse { 0%,100% { box-shadow:0 0 0 4px rgba(232,184,75,.25) } 50% { box-shadow:0 0 0 8px rgba(232,184,75,.12) } }
 @keyframes hcHop { 0% { transform:translateY(0) } 40% { transform:translateY(-14px) } 100% { transform:translateY(0) } }
-@keyframes hcFlip { from { transform:rotateY(90deg) scale(.6); opacity:0 } to { transform:rotateY(0) scale(1); opacity:1 } }
 @keyframes hcIn { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:none } }
 @keyframes hcFall { to { transform:translateY(105vh) rotate(540deg); } }
-@media (prefers-reduced-motion: reduce) { .hc-current, .hc-fh-path, .hc-win-l, .hc-conf, .hc-fb { animation:none !important; } .hc-fh-walk { transition:none; } }
+@media (prefers-reduced-motion: reduce) { .hc-current, .hc-fh-path, .hc-conf, .hc-fb { animation:none !important; } .hc-fh-walk { transition:none; } }
 /* شاشات قصيرة (آيفون SE وأشباهه): نافذة أصغر قليلاً كي يبقى زر «تحقّق» قريباً — والمفاتيح تبقى ≥ 44 */
 @media (max-height: 720px) {
   .hc-sheet { gap:7px; }
