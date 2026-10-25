@@ -165,3 +165,29 @@ describe('shuffledOrder — خلط ثابت لكل طالب وجولة', () => {
     expect(a).not.toEqual(Array.from({ length: 28 }, (_, i) => i));
   });
 });
+
+describe('ألغاز كلمات المعلم (كلمات المنصة الحية)', () => {
+  // الصفوف كما هي في القاعدة الحية 2026-10-25
+  const LIVE = [
+    { idx: 0, word: 'أَسَد' }, { idx: 2, word: 'تُّفَّاحَةٌ' }, { idx: 5, word: 'حِصَان' }, { idx: 15, word: 'طاووسٌ', name: 'طَاء' },
+    { idx: 18, word: 'غُرابٌ' }, { idx: 19, word: 'فيلٌ' }, { idx: 20, word: 'قِطٌّ' }, { idx: 23, word: 'مَوْزٌ' },
+    { idx: 25, word: 'هَدِيَّةٌ' }, { idx: 27, word: 'يَقْطينٌ' },
+  ];
+  const L = mergeLetters(LIVE);
+  it('الكلمة الأصلية بتشكيل مختلف تبقي لغزها وقواعدها', () => {
+    expect(L[0].riddle).toBe(DEFAULT_RIDDLES[0].riddle);
+    expect(L[0].rules.length).toBe(2);
+    expect(L[2].riddle).toBe(DEFAULT_RIDDLES[2].riddle);
+    expect(L[5].rules[0].wrong).toBe('فرس');
+  });
+  it('كل حروف المنصة الحية لها لغز، وإجابته من كلمة المعلم', () => {
+    L.forEach(l => expect(l.riddle).toBeTruthy());
+    expect(L.map(l => l.answer).filter((a, i) => [15, 18, 19, 20, 23, 25, 27].includes(i)))
+      .toEqual(['طاووس', 'غراب', 'فيل', 'قط', 'موز', 'هدية', 'يقطين']);
+    expect(L[19].riddle).toContain('فَهِيمٌ');
+    expect(L[20].accept).toEqual(['قطة']);
+  });
+  it('كلمة جديدة بلا لغز جاهز ← لا لغز (الصورة هي السؤال)', () => {
+    expect(mergeLetters([{ idx: 1, word: 'بَطَّةٌ' }])[1].riddle).toBeNull();
+  });
+});

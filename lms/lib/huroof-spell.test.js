@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { checkSpelling, normalizeArabic, looseEqual, displayAnswer, levenshtein } from './huroof-spell.js';
-import { DEFAULT_LETTERS, DEFAULT_RIDDLES, mergeLetters, huroofTarget } from './huroof.js';
+import { DEFAULT_LETTERS, DEFAULT_RIDDLES, WORD_RIDDLES, mergeLetters, huroofTarget } from './huroof.js';
 
 const L = mergeLetters([]);
 const T = (i) => huroofTarget(L[i]);
@@ -159,6 +159,16 @@ describe('الألغاز الافتراضية', () => {
       (d.rules || []).forEach(r => expect(looseEqual(r.wrong, L[i].answer)).toBe(false));
       (d.accept || []).forEach(a => expect(check(a, i).ok).toBe(true));
     });
+  });
+  it('ألغاز كلمات المعلم: تنتهي بسؤال، وإجاباتها المقبولة صحيحة، وقواعدها لا تطابق الإجابة', () => {
+    Object.entries(WORD_RIDDLES).forEach(([answer, d]) => {
+      expect(d.riddle.endsWith('؟')).toBe(true);
+      const t = { word: answer, accept: d.accept, rules: d.rules };
+      (d.accept || []).forEach(a => expect(checkSpelling(a, t).ok).toBe(true));
+      (d.rules || []).forEach(r => expect(looseEqual(r.wrong, answer)).toBe(false));
+    });
+    expect(checkSpelling('طاوس', { word: 'طاووسٌ', accept: WORD_RIDDLES['طاووس'].accept }).ok).toBe(true);
+    expect(checkSpelling('هديه', { word: 'هَدِيَّةٌ' }).kind).toBe('ta_marbuta');
   });
   it('levenshtein', () => {
     expect(levenshtein('غزال', 'غزل')).toBe(1);

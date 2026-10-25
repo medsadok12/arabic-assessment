@@ -96,10 +96,29 @@ export const DEFAULT_RIDDLES = [
   { riddle: 'طَائِرٌ وَدِيعٌ يُشْبِهُ الْحَمَامَةَ، أَقُولُ: كُو كُو. مَنْ أَنَا؟', rules: [R('حمامة', 'أشبه الحمامة! لكن اسمي يبدأ بحرف الياء 🕊️')] },
 ];
 
-/* الافتراضي لحرف (لغز، إجابات مقبولة، قواعد) — فارغ إن غيّر المعلم كلمته */
+/* ألغاز جاهزة لكلمات اختارها المعلم بدل الأصلية (بالإجابة بلا تشكيل) — كلمات المنصة الحية 2026-10-25:
+   طاووس للطاء، غراب للغين، فيل للفاء، قط للقاف، موز للميم، هدية للهاء، يقطين للياء */
+export const WORD_RIDDLES = {
+  'طاووس': { riddle: 'طَائِرٌ جَمِيلٌ، أَفْتَحُ ذَيْلِي الْمُلَوَّنَ كَالْمِرْوَحَةِ. مَنْ أَنَا؟', accept: ['طاوس'], rules: [R('طائر', 'صحيح، أنا طائر! 🦚 لكن ما اسمي الخاص؟ ذيلي ملوّن كالمروحة'), R('طير', 'صحيح، أنا طير! 🦚 لكن ما اسمي الخاص؟ ذيلي ملوّن كالمروحة')] },
+  'غراب':  { riddle: 'طَائِرٌ أَسْوَدُ اللَّوْنِ، أَقُولُ: قَاقْ قَاقْ! مَنْ أَنَا؟', rules: [R('طائر', 'صحيح، أنا طائر! لكن ما اسمي؟ لوني أسود واسمي يبدأ بحرف الغين 🐦‍⬛')] },
+  'فيل':   { riddle: 'أَنَا أَضْخَمُ حَيَوَانٍ عَلَى الْيَابِسَةِ، لِي خُرْطُومٌ طَوِيلٌ، وَصَدِيقُكَ فَهِيمٌ يُشْبِهُنِي! مَنْ أَنَا؟', rules: [R('فهيم', 'هههه! فهيم فيل صغير 🐘 لكن ما اسم هذا الحيوان؟ يبدأ بحرف الفاء')] },
+  'قط':    { riddle: DEFAULT_RIDDLES[20].riddle, accept: ['قطة'], rules: DEFAULT_RIDDLES[20].rules },
+  'موز':   { riddle: DEFAULT_RIDDLES[23].riddle, accept: ['موزة'] },
+  'هدية':  { riddle: 'أَكُونُ مُغَلَّفَةً بِوَرَقٍ مُلَوَّنٍ وَشَرِيطٍ جَمِيلٍ، وَتَفْرَحُ بِي فِي عِيدِ مِيلَادِكَ. مَا أَنَا؟', rules: [R('لعبة', 'قد تكون في داخلي لعبة 🎁 لكن ما اسمي؟ يبدأ بحرف الهاء')] },
+  'يقطين': { riddle: 'خُضَارٌ كَبِيرَةٌ مُسْتَدِيرَةٌ بُرْتُقَالِيَّةُ اللَّوْنِ، يُصْنَعُ مِنِّي الْحَسَاءُ. مَا أَنَا؟', accept: ['يقطينة'], rules: [R('قرع', 'صحيح! ولي اسم آخر يبدأ بحرف الياء 🎃'), R('قرعة', 'صحيح! ولي اسم آخر يبدأ بحرف الياء 🎃')] },
+};
+
+/* اللغز الافتراضي لكلمة الحرف: الكلمة الأصلية (ولو اختلف تشكيلها) ← لغز الحرف؛
+   كلمة جديدة معروفة ← لغزها من WORD_RIDDLES؛ وإلا لا لغز (يُسأل الطفل عن الصورة) */
+function defaultsForWord(idx, word) {
+  const a = answerFromWord(cleanText(word) ?? DEFAULT_LETTERS[idx]?.word ?? '');
+  if (!a || a === answerFromWord(DEFAULT_LETTERS[idx]?.word ?? '')) return DEFAULT_RIDDLES[idx] || {};
+  return WORD_RIDDLES[a] || {};
+}
+
+/* الافتراضي لحرف (لغز، إجابات مقبولة، قواعد) لكلمته الحالية — للمحرر */
 export function riddleDefaults(idx, word) {
-  const changed = cleanText(word) && cleanText(word) !== DEFAULT_LETTERS[idx]?.word;
-  const d = changed ? {} : (DEFAULT_RIDDLES[idx] || {});
+  const d = defaultsForWord(idx, word);
   return { riddle: d.riddle ?? '', accept: d.accept ?? [], rules: d.rules ?? [] };
 }
 
@@ -175,8 +194,8 @@ export function mergeLetters(rows) {
     const out = { ...d, idx, customized: byIdx.has(idx) };
     ['name', 'word', 'emoji', 'sentence'].forEach(f => { out[f] = cleanText(r[f]) ?? d[f]; });
     HUROOF_MEDIA_FIELDS.forEach(f => { out[f] = (typeof r[f] === 'string' && r[f]) ? r[f] : null; });
-    // اللغز وقواعد الإملاء الجاهزة تخص الكلمة الأصلية — إن تغيّرت الكلمة لا تُستعمل
-    const def = cleanText(r.word) ? {} : DEFAULT_RIDDLES[idx];
+    // اللغز وقواعد الإملاء الجاهزة تتبع كلمة الحرف (الأصلية أو كلمة جديدة لها لغز جاهز)
+    const def = defaultsForWord(idx, out.word);
     out.riddle = cleanText(r.riddle) ?? def.riddle ?? null;
     out.answer = cleanText(r.answer) ?? answerFromWord(out.word);
     out.accept = cleanList(r.accept) ?? def.accept ?? [];
