@@ -89,3 +89,79 @@ describe('highlightLetter — الحرف ملوّن داخل الكلمة وال
     expect(highlightLetter('أَسَدٌ', '')).toEqual([{ t: 'أَسَدٌ', hl: false }]);
   });
 });
+
+/* ── تحدّي الحروف (2026-10-25) ── */
+import {
+  DEFAULT_RIDDLES, normalizeHuroofSettings, validateHuroofSettings, HUROOF_DEFAULT_SETTINGS, shuffledOrder, riddleDefaults,
+} from './huroof.js';
+
+describe('mergeLetters — لغز فهيم والإملاء', () => {
+  it('الافتراضي: لغز الحرف، والإجابة بلا تشكيل، وإجاباته المقبولة وقواعده', () => {
+    const l = mergeLetters([])[20];
+    expect(l.riddle).toBe(DEFAULT_RIDDLES[20].riddle);
+    expect(l.answer).toBe('قطة');
+    expect(l.accept).toEqual(['قط']);
+    expect(l.rules.length).toBeGreaterThan(0);
+    expect(l.custom).toEqual({ riddle: false, answer: false, accept: false, rules: false });
+  });
+  it('إن غيّر المعلم الكلمة: لا لغز افتراضي ولا قواعد قديمة، والإجابة من الكلمة الجديدة', () => {
+    const l = mergeLetters([{ idx: 1, word: 'بَطَّةٌ' }])[1];
+    expect(l.riddle).toBeNull();
+    expect(l.answer).toBe('بطة');
+    expect(l.rules).toEqual([]);
+    expect(riddleDefaults(1, 'بَطَّةٌ')).toEqual({ riddle: '', accept: [], rules: [] });
+  });
+  it('ما كتبه المعلم يحل محل الافتراضي، و[] تعني «لا شيء»', () => {
+    const l = mergeLetters([{ idx: 20, riddle: 'لغزي؟', answer: 'هرة', accept: [], spell_rules: [{ wrong: 'قطة', msg: 'اكتب اسمها الآخر' }, { wrong: '', msg: 'x' }] }])[20];
+    expect(l).toMatchObject({ riddle: 'لغزي؟', answer: 'هرة', accept: [] });
+    expect(l.rules).toEqual([{ wrong: 'قطة', msg: 'اكتب اسمها الآخر' }]);
+    expect(l.custom).toEqual({ riddle: true, answer: true, accept: true, rules: true });
+  });
+});
+
+describe('sanitizeHuroofPatch — حقول اللغز', () => {
+  it('اللغز والإجابة المطابقان للأصل يُحفظان null', () => {
+    expect(sanitizeHuroofPatch(0, { riddle: DEFAULT_RIDDLES[0].riddle, answer: 'أسد' }).fields).toEqual({ riddle: null, answer: null });
+    expect(sanitizeHuroofPatch(0, { answer: 'الأسد' }).fields).toEqual({ answer: 'الأسد' });
+  });
+  it('الإجابات المقبولة: قائمة نصوص بلا تكرار، وnull للافتراضي', () => {
+    expect(sanitizeHuroofPatch(0, { accept: [' ليث ', 'ليث', ''] }).fields).toEqual({ accept: ['ليث'] });
+    expect(sanitizeHuroofPatch(0, { accept: null }).fields).toEqual({ accept: null });
+    expect(sanitizeHuroofPatch(0, { accept: 'ليث' }).error).toBeTruthy();
+    expect(sanitizeHuroofPatch(0, { accept: Array(9).fill('a') }).error).toBeTruthy();
+  });
+  it('القواعد: { wrong, msg } فقط وبحدود طول', () => {
+    expect(sanitizeHuroofPatch(0, { spell_rules: [{ wrong: 'ليث', msg: 'اسم آخر', x: 1 }] }).fields).toEqual({ spell_rules: [{ wrong: 'ليث', msg: 'اسم آخر' }] });
+    expect(sanitizeHuroofPatch(0, { spell_rules: [{ wrong: 'ليث' }] }).error).toBeTruthy();
+    expect(sanitizeHuroofPatch(0, { spell_rules: [{ wrong: 'ليث', msg: 'م'.repeat(201) }] }).error).toBeTruthy();
+    expect(sanitizeHuroofPatch(0, { spell_rules: Array(13).fill({ wrong: 'a', msg: 'b' }) }).error).toBeTruthy();
+  });
+  it('صوت اللغز: روابط مجلد الحروف فقط', () => {
+    expect(sanitizeHuroofPatch(0, { riddle_audio_url: `${MEDIA}huroof/1-riddle-1.m4a` }).fields).toEqual({ riddle_audio_url: `${MEDIA}huroof/1-riddle-1.m4a` });
+    expect(sanitizeHuroofPatch(0, { riddle_audio_url: 'https://evil.example/a.mp3' }).error).toBeTruthy();
+  });
+});
+
+describe('إعدادات التحدّي', () => {
+  it('القيم الافتراضية والقيم الخاطئة تعود للافتراضي', () => {
+    expect(normalizeHuroofSettings(null)).toEqual(HUROOF_DEFAULT_SETTINGS);
+    expect(normalizeHuroofSettings({ mode: 'x', show_path: 'yes', reveal_after: 99 })).toEqual(HUROOF_DEFAULT_SETTINGS);
+  });
+  it('المعلم يغيّر الإعدادات ولا يغيّر رقم الجولة', () => {
+    const out = validateHuroofSettings({ mode: 'explore', show_path: false, reveal_after: 0, epoch: 50 }, { epoch: 3 });
+    expect(out).toMatchObject({ mode: 'explore', show_path: false, reveal_after: 0, epoch: 3, hints: true });
+    expect(validateHuroofSettings({ hints: 'no' }, {})).toBeNull();
+    expect(validateHuroofSettings({ mode: 'race' }, {})).toBeNull();
+    expect(validateHuroofSettings(null, {})).toBeNull();
+  });
+});
+
+describe('shuffledOrder — خلط ثابت لكل طالب وجولة', () => {
+  it('تبديل كامل للأرقام 0..27، ثابت للبذرة نفسها، ومختلف لغيرها', () => {
+    const a = shuffledOrder('user-1:0');
+    expect([...a].sort((x, y) => x - y)).toEqual(Array.from({ length: 28 }, (_, i) => i));
+    expect(shuffledOrder('user-1:0')).toEqual(a);
+    expect(shuffledOrder('user-1:1')).not.toEqual(a);
+    expect(a).not.toEqual(Array.from({ length: 28 }, (_, i) => i));
+  });
+});

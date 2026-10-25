@@ -6,18 +6,24 @@
    الصور والأصوات في Supabase Storage تحت media/huroof/ (لا base64 أبداً).
 ════════════════════════════════════════════════════════════════ */
 import { mediaPathFromUrl } from './story-audio';
+import { normalizeArabic, stripHarakat } from './huroof-spell';
 
 export const HUROOF_BUCKET       = 'media';
 export const HUROOF_PREFIX       = 'huroof/';
 export const HUROOF_IMAGE_MAX_MB = 5;   // قبل التصغير في المتصفح
 export const HUROOF_AUDIO_MAX_MB = 10;
 
-export const HUROOF_TEXT_FIELDS  = ['name', 'word', 'emoji', 'sentence'];
-export const HUROOF_MEDIA_FIELDS = ['image_url', 'letter_audio_url', 'sentence_audio_url'];
-export const HUROOF_TEXT_LIMITS  = { name: 40, word: 60, emoji: 16, sentence: 300 };
+export const HUROOF_TEXT_FIELDS  = ['name', 'word', 'emoji', 'sentence', 'riddle', 'answer'];
+export const HUROOF_MEDIA_FIELDS = ['image_url', 'letter_audio_url', 'sentence_audio_url', 'riddle_audio_url'];
+/* حقول قوائم (jsonb): null = الافتراضي، [] = لا شيء — accept: إجابات مقبولة أخرى، spell_rules: قواعد المعلم */
+export const HUROOF_LIST_FIELDS  = ['accept', 'spell_rules'];
+export const HUROOF_TEXT_LIMITS  = { name: 40, word: 60, emoji: 16, sentence: 300, riddle: 300, answer: 40 };
+export const HUROOF_LIST_LIMITS  = { accept: 8, spell_rules: 12, item: 40, msg: 200 };
+/* أعمدة الجدول كلها (للقراءة والكتابة في المسارات) */
+export const HUROOF_COLUMNS = ['idx', ...HUROOF_TEXT_FIELDS, ...HUROOF_MEDIA_FIELDS, ...HUROOF_LIST_FIELDS];
 
 /* أنواع الرفع ← بادئة اسم الملف */
-export const HUROOF_UPLOAD_KINDS = { image: 'img', letter_audio: 'letter', sentence_audio: 'sentence' };
+export const HUROOF_UPLOAD_KINDS = { image: 'img', letter_audio: 'letter', sentence_audio: 'sentence', riddle_audio: 'riddle' };
 
 export const HUROOF_IMAGE_TYPES = { 'image/webp': 'webp', 'image/jpeg': 'jpg', 'image/png': 'png' };
 
@@ -54,6 +60,107 @@ export const DEFAULT_LETTERS = [
 
 export const HUROOF_COUNT = DEFAULT_LETTERS.length;
 
+/* ── تحدّي الحروف: لغز فهيم لكل كلمة (فهيم يتكلم بلسان الشيء: «من أنا؟»)، وإجابات أخرى
+   مقبولة، وقواعد جاهزة لأشهر الإجابات القريبة (مرادف أو حيوان شبيه) تعيد الطفل للكلمة
+   المطلوبة بلطف. تُستعمل فقط ما دامت كلمة الحرف هي الأصلية — إن غيّرها المعلم ولم يكتب
+   لغزاً يرى الطفل صورة الكلمة ويُسأل «ما اسم هذه الصورة؟» ── */
+const R = (wrong, msg) => ({ wrong, msg });
+export const DEFAULT_RIDDLES = [
+  { riddle: 'أَنَا مَلِكُ الْغَابَةِ، وَصَوْتِي زَئِيرٌ عَالٍ. مَنْ أَنَا؟', rules: [R('ليث', 'صحيح! هذا اسم آخر للأسد 🦁 لكن اكتب اسمه المشهور الذي يبدأ بحرف الألف'), R('سبع', 'صحيح! هذا اسم آخر للأسد 🦁 لكن اكتب اسمه المشهور الذي يبدأ بحرف الألف')] },
+  { riddle: 'أَسْكُنُ فِيهِ مَعَ عَائِلَتِي، لَهُ بَابٌ وَنَوَافِذُ وَسَقْفٌ. مَا هُوَ؟', rules: [R('منزل', 'صحيح! وله اسم آخر قصير يبدأ بحرف الباء 🏠'), R('دار', 'صحيح! وله اسم آخر يبدأ بحرف الباء 🏠')] },
+  { riddle: 'فَاكِهَةٌ حَمْرَاءُ أَوْ خَضْرَاءُ، مُسْتَدِيرَةٌ وَمُقَرْمِشَةٌ. مَا هِيَ؟', accept: ['تفاح'] },
+  { riddle: 'حَيَوَانٌ ذَكِيٌّ مَاكِرٌ، ذَيْلُهُ كَثِيفٌ وَلَوْنُهُ بُرْتُقَالِيٌّ. مَنْ أَنَا؟' },
+  { riddle: 'أَنَا سَفِينَةُ الصَّحْرَاءِ، وَعَلَى ظَهْرِي سَنَامٌ. مَنْ أَنَا؟', rules: [R('ناقة', 'صحيح! واكتب اسمه المشهور الذي يبدأ بحرف الجيم 🐫'), R('بعير', 'صحيح! واكتب اسمه المشهور الذي يبدأ بحرف الجيم 🐫')] },
+  { riddle: 'أَرْكُضُ بِسُرْعَةٍ، وَلِي ذَيْلٌ طَوِيلٌ، وَيَرْكَبُنِي الْفَارِسُ. مَنْ أَنَا؟', rules: [R('فرس', 'صحيح! الفرس والحصان متشابهان 🐴 لكن اكتب الاسم الذي يبدأ بحرف الحاء')] },
+  { riddle: 'آكُلُهُ كُلَّ يَوْمٍ، يَصْنَعُهُ الْخَبَّازُ مِنَ الدَّقِيقِ فِي الْفُرْنِ. مَا هُوَ؟' },
+  { riddle: 'أَبِيضُ كُلَّ يَوْمٍ، وَأَقُولُ: كَاكْ كَاكْ! مَنْ أَنَا؟', accept: ['دجاج'] },
+  { riddle: 'أَعْوِي فِي اللَّيْلِ، وَأَعِيشُ فِي الْغَابَةِ، وَأُشْبِهُ الْكَلْبَ. مَنْ أَنَا؟', rules: [R('كلب', 'أشبه الكلب، لكني أعيش في الغابة واسمي يبدأ بحرف الذال 🐺')] },
+  { riddle: 'فَاكِهَةٌ حَمْرَاءُ، فِي دَاخِلِهَا حَبَّاتٌ صَغِيرَةٌ كَثِيرَةٌ كَالْيَاقُوتِ. مَا هِيَ؟', accept: ['رمانة'] },
+  { riddle: 'أَنَا أَطْوَلُ الْحَيَوَانَاتِ، وَعُنُقِي طَوِيلٌ جِدًّا. مَنْ أَنَا؟' },
+  { riddle: 'أَعِيشُ فِي الْمَاءِ، وَأَسْبَحُ بِزَعَانِفِي. مَنْ أَنَا؟', accept: ['سمك'], rules: [R('حوت', 'الحوت يعيش في البحر أيضاً 🐳 لكني أصغر منه، واسمي يبدأ بحرف السين')] },
+  { riddle: 'أُضِيءُ النَّهَارَ وَأُدْفِئُ الْأَرْضَ، وَأَغِيبُ فِي الْمَسَاءِ. مَنْ أَنَا؟' },
+  { riddle: 'طَائِرٌ قَوِيٌّ، عَيْنَايَ حَادَّتَانِ، وَأَصْطَادُ مِنَ السَّمَاءِ. مَنْ أَنَا؟', rules: [R('نسر', 'قريب! النسر طائر قوي أيضاً 🦅 لكن اسمي يبدأ بحرف الصاد')] },
+  { riddle: 'أَقْفِزُ قُرْبَ الْبِرْكَةِ، وَأَقُولُ: نَقْ نَقْ! مَنْ أَنَا؟' },
+  { riddle: 'لِي جَنَاحَانِ وَرِيشٌ، أَطِيرُ فِي السَّمَاءِ وَأُغَرِّدُ. مَنْ أَنَا؟', accept: ['طير'], rules: [R('عصفور', 'العصفور نوع من الطيور 🐦 اكتب الاسم العامّ الذي يبدأ بحرف الطاء'), R('طيور', 'أحسنت! اكتبها لواحدٍ فقط 🐦')] },
+  { riddle: 'حَيَوَانٌ رَشِيقٌ يُشْبِهُ الْغَزَالَ، لِي قَرْنَانِ، وَأَعِيشُ فِي الْبَرِّيَّةِ. مَنْ أَنَا؟', rules: [R('غزال', 'الظبي يشبه الغزال كثيراً 🦌 لكن اسمي يبدأ بحرف الظاء')] },
+  { riddle: 'عَنَاقِيدُ حُلْوَةٌ، خَضْرَاءُ أَوْ بَنَفْسَجِيَّةٌ، يُصْنَعُ مِنِّي الزَّبِيبُ. مَا أَنَا؟', rules: [R('زبيب', 'الزبيب يُصنع مني! 🍇 فما اسمي؟ يبدأ بحرف العين')] },
+  { riddle: 'حَيَوَانٌ جَمِيلٌ، عَيْنَايَ وَاسِعَتَانِ، وَأَرْكُضُ بِخِفَّةٍ فِي الصَّحْرَاءِ. مَنْ أَنَا؟', rules: [R('ظبي', 'الظبي يشبهني كثيراً 🦌 لكن اسمي يبدأ بحرف الغين')] },
+  { riddle: 'أَنَا أُنْثَى الْحِصَانِ، وَأَرْكُضُ فِي السِّبَاقِ. مَنْ أَنَا؟', rules: [R('حصان', 'صحيح، أشبه الحصان 🐎 لكن اسمي يبدأ بحرف الفاء')] },
+  { riddle: 'حَيَوَانٌ أَلِيفٌ فِي الْبَيْتِ، أَقُولُ: مِيَاوْ! مَنْ أَنَا؟', accept: ['قط'], rules: [R('هرة', 'صحيح! ولها اسم آخر يبدأ بحرف القاف 🐱'), R('هر', 'صحيح! وله اسم آخر يبدأ بحرف القاف 🐱'), R('بسة', 'صحيح! ولها اسم آخر يبدأ بحرف القاف 🐱')] },
+  { riddle: 'لِي صَفَحَاتٌ كَثِيرَةٌ، فِيَّ قِصَصٌ وَعِلْمٌ، وَتَقْرَؤُنِي. مَا أَنَا؟', rules: [R('قصة', 'القصة تكون في داخلي 📚 فما اسمي؟ يبدأ بحرف الكاف'), R('دفتر', 'الدفتر نكتب فيه، أمّا أنا فنقرؤني 📚 اسمي يبدأ بحرف الكاف')] },
+  { riddle: 'فَاكِهَةٌ صَفْرَاءُ، طَعْمُهَا حَامِضٌ جِدًّا. مَا هِيَ؟', accept: ['ليمونة'] },
+  { riddle: 'فَاكِهَةٌ صَفْرَاءُ طَوِيلَةٌ، يُحِبُّهَا الْقِرْدُ، وَنُقَشِّرُهَا قَبْلَ الْأَكْلِ. مَا هِيَ؟', accept: ['موز'] },
+  { riddle: 'قِطٌّ كَبِيرٌ قَوِيٌّ، جِلْدِي مُخَطَّطٌ بِالْأَسْوَدِ وَالْبُرْتُقَالِيِّ. مَنْ أَنَا؟', rules: [R('فهد', 'الفهد يشبهني، لكني مخطَّط واسمي يبدأ بحرف النون 🐯')] },
+  { riddle: 'أَظْهَرُ فِي السَّمَاءِ أَوَّلَ الشَّهْرِ، رَقِيقًا كَالْقَوْسِ. مَنْ أَنَا؟', rules: [R('قمر', 'أنا القمر في أول الشهر! ولي اسم خاص يبدأ بحرف الهاء 🌙')] },
+  { riddle: 'زَهْرَةٌ جَمِيلَةٌ، رَائِحَتِي عَطِرَةٌ، وَعَلَى سَاقِي أَشْوَاكٌ. مَنْ أَنَا؟', accept: ['ورد'], rules: [R('زهرة', 'صحيح، أنا زهرة! واسمي الخاص يبدأ بحرف الواو 🌹')] },
+  { riddle: 'طَائِرٌ وَدِيعٌ يُشْبِهُ الْحَمَامَةَ، أَقُولُ: كُو كُو. مَنْ أَنَا؟', rules: [R('حمامة', 'أشبه الحمامة! لكن اسمي يبدأ بحرف الياء 🕊️')] },
+];
+
+/* الافتراضي لحرف (لغز، إجابات مقبولة، قواعد) — فارغ إن غيّر المعلم كلمته */
+export function riddleDefaults(idx, word) {
+  const changed = cleanText(word) && cleanText(word) !== DEFAULT_LETTERS[idx]?.word;
+  const d = changed ? {} : (DEFAULT_RIDDLES[idx] || {});
+  return { riddle: d.riddle ?? '', accept: d.accept ?? [], rules: d.rules ?? [] };
+}
+
+/* الإجابة المطلوبة إملاءً من كلمة البطاقة: بلا تشكيل (الطفل لا يُحاسَب على الحركات) */
+export const answerFromWord = (word) => normalizeArabic(stripHarakat(word));
+
+/* هدف المدقق لحرف بعد الدمج (lib/huroof-spell.js → checkSpelling) */
+export const huroofTarget = (letter) => ({
+  word: letter.word, answer: letter.answer, accept: letter.accept, rules: letter.rules,
+});
+
+/* ── إعدادات التحدّي (game_settings، game_id = 'huroof') يحفظها المعلم/المدير ── */
+export const HUROOF_GAME_ID = 'huroof';
+export const HUROOF_POINTS = { letter: 2, all: 10 };   // مطابقة لـPOINT_EVENTS في /api/points
+export const HUROOF_DEFAULT_SETTINGS = {
+  mode: 'challenge',     // challenge: بطاقات مغلقة مخلوطة + لغز + إملاء | explore: الحروف مكشوفة مرتبة (القديم)
+  show_path: true,       // مسار فهيم (28 محطة) على يسار الشاشة
+  shuffle: true,         // خلط البطاقات (ثابت لكل طالب في الجولة)
+  lock_current: true,    // لا يفتح بطاقة أخرى قبل حلّ اللغز المفتوح
+  hints: true,           // زر «ساعدني»: الصورة ← أول حرف وعدد الحروف ← الكلمة كاملة
+  accept_al: true,       // «الأسد» تُقبل لِـ«أسد»
+  reveal_after: 3,       // بعد كم محاولة خاطئة تظهر الكلمة لينسخها (0 = أبداً)
+  epoch: 0,              // رقم الجولة — «إعادة ضبط مسار الجميع» تزيده فيبدأ الكل من جديد
+};
+export function normalizeHuroofSettings(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const d = HUROOF_DEFAULT_SETTINGS;
+  const bool = (k) => (typeof r[k] === 'boolean' ? r[k] : d[k]);
+  const int = (k, lo, hi) => (Number.isInteger(r[k]) && r[k] >= lo && r[k] <= hi ? r[k] : d[k]);
+  return {
+    mode: r.mode === 'explore' ? 'explore' : 'challenge',
+    show_path: bool('show_path'), shuffle: bool('shuffle'), lock_current: bool('lock_current'),
+    hints: bool('hints'), accept_al: bool('accept_al'),
+    reveal_after: int('reveal_after', 0, 10), epoch: int('epoch', 0, 1e6),
+  };
+}
+/* ما يرسله المعلم ← إعدادات صالحة (الجولة epoch لا تُعدَّل من هنا) أو null */
+export function validateHuroofSettings(body, current) {
+  if (!body || typeof body !== 'object') return null;
+  const keys = ['mode', 'show_path', 'shuffle', 'lock_current', 'hints', 'accept_al', 'reveal_after'];
+  for (const k of keys) {
+    if (!(k in body)) continue;
+    const v = body[k];
+    if (k === 'mode' ? !['challenge', 'explore'].includes(v)
+      : k === 'reveal_after' ? !(Number.isInteger(v) && v >= 0 && v <= 10)
+        : typeof v !== 'boolean') return null;
+  }
+  const base = normalizeHuroofSettings(current);
+  return normalizeHuroofSettings({ ...base, ...Object.fromEntries(keys.filter(k => k in body).map(k => [k, body[k]])), epoch: base.epoch });
+}
+
+/* ترتيب البطاقات المخلوط: ثابت لكل طالب في الجولة نفسها (لا يتبدّل كل زيارة) */
+export function shuffledOrder(seed, n = HUROOF_COUNT) {
+  let h = 2166136261;
+  for (const ch of String(seed)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619); }
+  const rnd = () => { h = (h + 0x6D2B79F5) | 0; let t = Math.imul(h ^ (h >>> 15), 1 | h); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const out = Array.from({ length: n }, (_, i) => i);
+  for (let i = n - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+  return out;
+}
+
 const cleanText = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 
 /* الحروف الـ28 بعد دمج تعديلات الإدارة: النص المعدَّل يحل محل الافتراضي،
@@ -66,11 +173,23 @@ export function mergeLetters(rows) {
   return DEFAULT_LETTERS.map((d, idx) => {
     const r = byIdx.get(idx) || {};
     const out = { ...d, idx, customized: byIdx.has(idx) };
-    HUROOF_TEXT_FIELDS.forEach(f => { out[f] = cleanText(r[f]) ?? d[f]; });
+    ['name', 'word', 'emoji', 'sentence'].forEach(f => { out[f] = cleanText(r[f]) ?? d[f]; });
     HUROOF_MEDIA_FIELDS.forEach(f => { out[f] = (typeof r[f] === 'string' && r[f]) ? r[f] : null; });
+    // اللغز وقواعد الإملاء الجاهزة تخص الكلمة الأصلية — إن تغيّرت الكلمة لا تُستعمل
+    const def = cleanText(r.word) ? {} : DEFAULT_RIDDLES[idx];
+    out.riddle = cleanText(r.riddle) ?? def.riddle ?? null;
+    out.answer = cleanText(r.answer) ?? answerFromWord(out.word);
+    out.accept = cleanList(r.accept) ?? def.accept ?? [];
+    out.rules  = cleanRules(r.spell_rules) ?? def.rules ?? [];
+    // للمحرر: أي حقول اللغز كتبها المعلم بنفسه (والباقي افتراضي)
+    out.custom = { riddle: !!cleanText(r.riddle), answer: !!cleanText(r.answer), accept: Array.isArray(r.accept), rules: Array.isArray(r.spell_rules) };
     return out;
   });
 }
+const cleanList = (v) => (Array.isArray(v) ? v.map(cleanText).filter(Boolean) : null);
+const cleanRules = (v) => (Array.isArray(v)
+  ? v.filter(x => x && typeof x === 'object').map(x => ({ wrong: cleanText(x.wrong), msg: cleanText(x.msg) })).filter(x => x.wrong && x.msg)
+  : null);
 
 /* مسار التخزين من رابط عام — ويرفض أي رابط خارج مجلد الحروف */
 export function huroofMediaPathFromUrl(url) {
@@ -82,7 +201,7 @@ export function huroofMediaPathFromUrl(url) {
    والنص المطابق للافتراضي أو الفارغ يُحفظ null (يبقى افتراضياً). */
 export function sanitizeHuroofPatch(idx, body) {
   if (!body || typeof body !== 'object') return { error: 'بيانات غير صالحة' };
-  const def = DEFAULT_LETTERS[idx];
+  const def = { ...DEFAULT_LETTERS[idx], riddle: DEFAULT_RIDDLES[idx]?.riddle, answer: answerFromWord(DEFAULT_LETTERS[idx].word) };
   const fields = {};
   for (const f of HUROOF_TEXT_FIELDS) {
     if (!(f in body)) continue;
@@ -91,6 +210,29 @@ export function sanitizeHuroofPatch(idx, body) {
     const t = cleanText(v);
     if (t && t.length > HUROOF_TEXT_LIMITS[f]) return { error: `النص أطول من المسموح (${HUROOF_TEXT_LIMITS[f]} حرفاً)` };
     fields[f] = t && t !== def[f] ? t : null;
+  }
+  // الإجابات المقبولة: قائمة كلمات — null يعني «الافتراضي»، و[] يعني «لا شيء غير الإجابة»
+  if ('accept' in body) {
+    const v = body.accept;
+    if (v !== null && !Array.isArray(v)) return { error: 'بيانات غير صالحة' };
+    if (v) {
+      if (v.length > HUROOF_LIST_LIMITS.accept) return { error: `الإجابات المقبولة ${HUROOF_LIST_LIMITS.accept} على الأكثر` };
+      if (v.some(x => typeof x !== 'string' || x.trim().length > HUROOF_LIST_LIMITS.item)) return { error: 'إجابة مقبولة غير صالحة' };
+    }
+    fields.accept = v ? [...new Set(v.map(cleanText).filter(Boolean))] : null;
+  }
+  // قواعد المعلم: [{ wrong: ما قد يكتبه الطفل، msg: ما يقوله فهيم }]
+  if ('spell_rules' in body) {
+    const v = body.spell_rules;
+    if (v !== null && !Array.isArray(v)) return { error: 'بيانات غير صالحة' };
+    if (v) {
+      if (v.length > HUROOF_LIST_LIMITS.spell_rules) return { error: `القواعد ${HUROOF_LIST_LIMITS.spell_rules} على الأكثر` };
+      for (const x of v) {
+        if (!x || typeof x !== 'object' || typeof x.wrong !== 'string' || typeof x.msg !== 'string') return { error: 'قاعدة غير صالحة' };
+        if (x.wrong.trim().length > HUROOF_LIST_LIMITS.item || x.msg.trim().length > HUROOF_LIST_LIMITS.msg) return { error: 'نص القاعدة أطول من المسموح' };
+      }
+    }
+    fields.spell_rules = v ? cleanRules(v) : null;
   }
   for (const f of HUROOF_MEDIA_FIELDS) {
     if (!(f in body)) continue;

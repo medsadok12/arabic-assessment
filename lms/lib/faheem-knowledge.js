@@ -75,7 +75,7 @@ How to EARN points:
 • Listening to «كلمة اليوم» with «🔊 استمع بصوت فهيم»: +3 once a day.
 • Each correct answer in صيّاد الحروف، منطاد الحركات، صِل الكلمة بصورتها، رتّب الكلمة، مطرقة التفكيك: +5 (no limit).
 • عجلة الكلمات: usually +10 per word found and +10 for finishing a wheel with at least one star (the teacher can change these numbers).
-• الحروف الهجائية: +2 the first time each letter is opened, +10 once for finishing all 28 letters.
+• الحروف الهجائية: +2 the first time each letter is revealed (its word written correctly), +10 once for finishing all 28 letters.
 • بطاقات الحفظ: +3 the first time a word is marked «✅ حفظتها».
 • وضع التحدي: win +15، draw +10، loss +5 (once per room).
 • Finishing a story: the story's points (usually 10), once per story.
@@ -116,7 +116,7 @@ The saved hero also lives on the dashboard card (tap it for its special move) an
 
 ## Library («المكتبة التعليمية 📚»)
 A bar shows «X/Y مكتمل ✓» and «استمر ←» to continue. Tapping a card opens its description and a start button («🎮 ابدأ اللعب الآن ←» or «📖 ابدأ التعلّم الآن ←»; «✓ العب مجدداً» if finished). Activities (default names — the LIVE CATALOG may rename some):
-• 🔤 الحروف الهجائية (مستوى 1): the 28 letters; tap a letter to see its picture, word and sentence, and «🔊 استمع».
+• 🔤 الحروف الهجائية (مستوى 1) — a challenge with ME, Faheem: the 28 letters are hidden in mixed-up closed cards «؟». Tapping a card opens my riddle (for example «أَنَا مَلِكُ الْغَابَةِ، وَصَوْتِي زَئِيرٌ عَالٍ. مَنْ أَنَا؟»); the child writes the word (the on-screen Arabic letter keyboard, or «⌨️ أكتب بلوحة جهازي» on a tablet) and taps «✅ تَحَقَّقْ». Harakat are not required. If the spelling is not right yet I explain gently — the hamza (اسد ← أَسَد), the taa marbuta (تفاحه ← تُفَّاحَة), tanween is not written as ن, alef maqsura, long vowels, shadda, look-alike letters — and the child corrects it; only a correct word reveals the letter, its picture, word and sentence. Then I climb one station on my path of 28 stations (on the left of the screen); at station 28 I reach the top 🏆 and all the letters appear in order. Usually the child must finish the open riddle before opening another card. «💡 سَاعِدْنِي» shows step by step: the picture, then the first letter and the number of letters, then the whole word to copy. The teacher can change riddles, words, rules and settings (or switch back to the open letters).
 • 🔊 الحركات والتشكيل — inside the game it is called «🎈 منطاد الحركات»: choose the balloon with the right sound (فتحة، ضمة، كسرة، سكون، مدود); a 💡 rule appears after a mistake.
 • 📝 مشهدٌ وحكاية (تعبيري): see below.
 • 🎮 صيّاد الحروف: find the missing letter in a word. Groups open in order («أكمل … أولاً») or choose «العب الكل». Stars: 3 stars from 80%، 2 stars from 50%.

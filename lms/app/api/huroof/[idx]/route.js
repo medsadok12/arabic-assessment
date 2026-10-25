@@ -3,9 +3,12 @@ import { createClient }      from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { getRole }           from '../../../../lib/auth-role';
 import {
-  HUROOF_BUCKET, HUROOF_COUNT, HUROOF_MEDIA_FIELDS, HUROOF_TEXT_FIELDS,
+  HUROOF_BUCKET, HUROOF_COUNT, HUROOF_LIST_FIELDS, HUROOF_MEDIA_FIELDS, HUROOF_TEXT_FIELDS,
   huroofMediaPathFromUrl, sanitizeHuroofPatch,
 } from '../../../../lib/huroof';
+import { HUROOF_SELECT } from '../../../../lib/huroof-server';
+
+const ALL_FIELDS = [...HUROOF_TEXT_FIELDS, ...HUROOF_MEDIA_FIELDS, ...HUROOF_LIST_FIELDS];
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +32,7 @@ async function removeFiles(admin, urls) {
   try { await admin.storage.from(HUROOF_BUCKET).remove(paths); } catch {}
 }
 
-// PUT — حفظ تعديل حرف (نص/صورة/صوت الحرف/صوت الجملة) — معلم أو مدير
+// PUT — حفظ تعديل حرف (نص/صورة/أصوات/لغز فهيم/الإجابة وقواعد الإملاء) — معلم أو مدير
 export async function PUT(req, { params }) {
   const user = await getStaff();
   if (!user) return NextResponse.json({ error: 'غير مخول' }, { status: 403 });
@@ -47,18 +50,18 @@ export async function PUT(req, { params }) {
     const { data: current } = await admin.from('huroof_letters').select('*').eq('idx', idx).maybeSingle();
     const next = { ...(current || {}), ...fields, idx };
 
-    const hasAnything = [...HUROOF_TEXT_FIELDS, ...HUROOF_MEDIA_FIELDS].some(f => next[f]);
+    const hasAnything = ALL_FIELDS.some(f => (HUROOF_LIST_FIELDS.includes(f) ? Array.isArray(next[f]) : next[f]));
     let row = null;
     if (hasAnything) {
       const { data, error } = await admin
         .from('huroof_letters')
         .upsert({
           idx,
-          ...Object.fromEntries([...HUROOF_TEXT_FIELDS, ...HUROOF_MEDIA_FIELDS].map(f => [f, next[f] ?? null])),
+          ...Object.fromEntries(ALL_FIELDS.map(f => [f, next[f] ?? null])),
           updated_at: new Date().toISOString(),
           updated_by: user.id,
         }, { onConflict: 'idx' })
-        .select('idx, name, word, emoji, sentence, image_url, letter_audio_url, sentence_audio_url')
+        .select(HUROOF_SELECT)
         .single();
       if (error) throw error;
       row = data;
