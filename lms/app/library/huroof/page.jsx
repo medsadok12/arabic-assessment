@@ -300,10 +300,17 @@ export default function HuroofPage() {
               <span style={{ flex: '1 1 260px' }}>
                 ✏️ وضع المعلم: من «لوحة التحكم» عدّل ألغاز فهيم وكلمات الإملاء وقواعده، واختر إظهار المسار أو إعادة ضبطه. وفي بطاقة أي حرف «تعديل الحرف» لصورته وأصواته وجملته.
               </span>
-              <button type="button" onClick={() => setAdminOpen(true)} style={{
-                minHeight: 44, borderRadius: 12, border: 'none', background: '#1A2B4A', color: '#fff',
-                fontFamily: 'inherit', fontWeight: 800, fontSize: '.9rem', padding: '8px 16px', cursor: 'pointer',
-              }}>⚙️ لوحة تحكم التحدي</button>
+              <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => setAdminOpen(true)} style={{
+                  minHeight: 44, borderRadius: 12, border: 'none', background: '#1A2B4A', color: '#fff',
+                  fontFamily: 'inherit', fontWeight: 800, fontSize: '.9rem', padding: '8px 16px', cursor: 'pointer',
+                }}>⚙️ لوحة تحكم التحدي</button>
+                {/* صفحة التجربة الجانبية: حرف واحد بلا نقاط ولا تقدّم (للمعلم فقط) */}
+                <Link href="/library/huroof/try" style={{
+                  minHeight: 44, borderRadius: 12, border: '2px solid #1A2B4A', background: '#fff', color: '#1A2B4A',
+                  fontWeight: 800, fontSize: '.9rem', padding: '8px 16px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', boxSizing: 'border-box',
+                }}>🧪 تجربة حرف واحد</Link>
+              </span>
             </div>
           )}
 
