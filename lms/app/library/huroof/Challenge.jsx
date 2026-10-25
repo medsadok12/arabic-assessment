@@ -117,9 +117,12 @@ const isTouch = () => typeof window !== 'undefined'
   && (window.matchMedia?.('(pointer: coarse)').matches || (navigator.maxTouchPoints || 0) > 0);
 
 /* ── نافذة لغز فهيم: اللغز ← الكتابة ← التدقيق ← كشف الحرف ── */
+/* revealMode: 'card' ← عند الحلّ تُغلق النافذة وتظهر بطاقة الحرف التي صنعها المعلم مباشرة (onSolved)؛
+   'screen' ← شاشة «أحسنت» داخل النافذة. verify: بديل لتدقيق الخادم (صفحة التجربة لا تسجّل شيئاً) */
 export function RiddleSheet({
   letter, pos, settings, solvedCount, attempts, hintLevel, note,
   onAttempt, onHint, onSolved, onClose, onShowCard, onEdit, onPlay,
+  revealMode = 'screen', verify,
 }) {
   const pal = PALETTE[pos % PALETTE.length];
   const [value, setValue] = useState('');
@@ -164,16 +167,24 @@ export function RiddleSheet({
     }
     setBusy(true);
     try {
-      const res = await childFetch('/api/huroof/progress', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idx: letter.idx, answer: value, attempts, hints: hintLevel }),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (res.ok && j.ok) {
-        setDone(true); setFb(null);
+      let j;
+      if (verify) j = await verify(value);
+      else {
+        const res = await childFetch('/api/huroof/progress', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idx: letter.idx, answer: value, attempts, hints: hintLevel }),
+        });
+        j = await res.json().catch(() => ({}));
+        if (!res.ok && !j.result) j = { net: true };
+      }
+      if (j.ok) {
         onPlay(letter.letter_audio_url);   // تسجيل المعلم لنطق الحرف إن وُجد
+        if (revealMode !== 'card') { setDone(true); setFb(null); }
+        setBusy(false);
         onSolved(j);
-      } else if (j.result) { setFb(j.result); onAttempt(); }
+        return;
+      }
+      if (j.result) { setFb(j.result); onAttempt(); }
       else setFb({ kind: 'net', msg: 'تعذّر الحفظ الآن 🙈 حاول مرة أخرى' });
     } catch {
       setFb({ kind: 'net', msg: 'تعذّر الاتصال 🙈 حاول مرة أخرى' });
