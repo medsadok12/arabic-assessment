@@ -66,6 +66,16 @@ describe('أكتشف الأشياء — صلاحيات وحفظ مستقل', () 
     config.scenes[0].rounds[0].target = 'missing';
     expect((await configRoute.PUT(request({ config, version: null }, 'PUT'))).status).toBe(400);
   });
+  it('يحفظ صوت الكلمة والدليل والموسيقى مستقلة دون تغيير النصوص والمواضع', async () => {
+    teacher(); const config = freshDiscover();
+    config.scenes[0].rounds[0].wordAudio = 'https://media.test/word.mp3';
+    config.scenes[0].rounds[0].audio = 'https://media.test/clue.mp3';
+    config.sounds = { ...config.sounds, background: 'clouds', success: 'bell', backgroundVolume: .12, wordVolume: .9 };
+    expect((await configRoute.PUT(request({ config, version: null }, 'PUT'))).status).toBe(200);
+    const r = await out(await configRoute.GET());
+    expect(r.body.config.sounds).toEqual(config.sounds);
+    expect(r.body.config.scenes).toEqual(config.scenes);
+  });
 });
 describe('أكتشف الأشياء — نتيجة ونقاط مدقّقة على الخادم', () => {
   it('الإجابة الخاطئة والنسخة القديمة لا تُحفظان ولا تمنحان نقاطًا', async () => {

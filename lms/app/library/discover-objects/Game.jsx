@@ -1,11 +1,13 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, Check, Heart, Lightbulb, ScanSearch, Undo2, Volume2, RotateCcw, Settings } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, Heart, Lightbulb, ScanSearch, Undo2, Volume2, VolumeX, RotateCcw, Settings } from 'lucide-react';
 import { childFetch } from '../../../lib/child-fetch';
 import { cleanWord, lettersOf, playableDiscover } from '../../../lib/discover-objects';
 import { useElementWidth, fitTileSize, compactTileStyle } from '../../../lib/fit-tiles';
 import Scene from './Scene';
+import { createDiscoverAudio } from '../../../lib/discover-objects-audio';
+import { normalizeDiscoverSound } from '../../../lib/discover-objects-sounds';
 import './discover.css';
 
 export default function Game({ initialContent, staff }) {
@@ -16,10 +18,12 @@ export default function Game({ initialContent, staff }) {
   const [message, setMessage] = useState('انظر جيّدًا… واضغط على ما وجدته.');
   const [hinted, setHinted] = useState(0), [busy, setBusy] = useState(false), [saveNote, setSaveNote] = useState('');
   const [retryBody, setRetryBody] = useState(null), [loadError, setLoadError] = useState('');
+  const [muted, setMuted] = useState(false);
   const [rowEl, setRowEl] = useState(null);
   const width = useElementWidth(rowEl);
   const audioRef = useRef(null), lock = useRef(false);
   const config = content?.config;
+  const sounds = useMemo(() => normalizeDiscoverSound(config?.sounds) || normalizeDiscoverSound(), [config?.sounds]);
   const entries = useMemo(() => config ? playableDiscover(config) : [], [config]);
   const entry = entries[index], round = entry?.round, scene = entry?.scene;
   const wordLetters = useMemo(() => lettersOf(round?.word), [round?.word]);
@@ -27,8 +31,13 @@ export default function Game({ initialContent, staff }) {
   const word = picked.map(i => bank[i].letter).join('');
   const tileSize = fitTileSize(width, wordLetters.length, cleanWord(round?.word).split(' ').length, { max: 52, min: 8, tileGap: 4, wordGap: 10 });
   const compact = cleanWord(round?.word).includes(' ') || wordLetters.length > 5;
-  const stopAudio = () => audioRef.current?.pause();
-  function resetRound() { stopAudio(); setPicked([]); setStage('find'); setHinted(0); setRetryBody(null); setSaveNote(''); setMessage('انظر جيّدًا… واضغط على ما وجدته.'); }
+  const stopAudio = () => audioRef.current?.stop();
+  const audioAllowed = !!config && (config.enabled || staff) && !!entry && stage !== 'finish';
+  useEffect(() => { const player = createDiscoverAudio(); audioRef.current = player; return () => player.destroy(); }, []);
+  useEffect(() => { audioRef.current?.configure(sounds); }, [sounds]);
+  useEffect(() => { audioRef.current?.setMuted(muted); }, [muted]);
+  useEffect(() => { const visible = () => audioRef.current?.setVisible(audioAllowed && document.visibilityState === 'visible'); visible(); document.addEventListener('visibilitychange', visible); return () => document.removeEventListener('visibilitychange', visible); }, [audioAllowed]);
+  function resetRound() { audioRef.current?.reset(); setPicked([]); setStage('find'); setHinted(0); setRetryBody(null); setSaveNote(''); setMessage('انظر جيّدًا… واضغط على ما وجدته.'); }
   useEffect(() => {
     let alive = true;
     async function load() {
@@ -50,12 +59,11 @@ export default function Game({ initialContent, staff }) {
     return () => { alive = false; clearInterval(timer); document.removeEventListener('visibilitychange', visible); window.removeEventListener('focus', visible); stopAudio(); };
   }, []);
   function play() {
-    const audio = audioRef.current || (audioRef.current = new Audio());
-    audio.pause(); if (!round?.audio) return; audio.src = round.audio; audio.play().catch(() => {});
+    audioRef.current?.playClue(round?.audio);
   }
   async function finishRound(sentence) {
     if (lock.current) return;
-    lock.current = true; setBusy(true); stopAudio();
+    lock.current = true; setBusy(true);
     const body = { roundId: round.id, found: round.target, word: config.build ? (word || cleanWord(round.word)) : '', sentence, version: content.version };
     setRetryBody(body);
     try {
@@ -72,11 +80,11 @@ export default function Game({ initialContent, staff }) {
   function pickObject(id) {
     if (stage !== 'find' || busy) return;
     if (id !== round.target) return setMessage(config.retryMessage);
-    stopAudio(); setMessage('رائع! وجدتَ الشيء المطلوب. لنكمل اكتشافنا.'); afterFind();
+    audioRef.current?.discovered(round.wordAudio || ''); setMessage('رائع! وجدتَ الشيء المطلوب. لنكمل اكتشافنا.'); afterFind();
   }
   function checkWord() {
     if (word !== cleanWord(round.word).replace(/ /g, '')) return setMessage(`كلُّ الحروف معك! جرّب ترتيبًا آخر. أوّلُ حرفٍ هو «${wordLetters[0]}».`);
-    stopAudio(); setMessage('أحسنت! ركّبتَ الكلمة. اقرأ الجمل واختر المناسبة.');
+    setMessage('أحسنت! ركّبتَ الكلمة. اقرأ الجمل واختر المناسبة.');
     if (config.read) setStage('read'); else finishRound(undefined);
   }
   function help() {
@@ -90,13 +98,14 @@ export default function Game({ initialContent, staff }) {
   const target = scene.objects.find(o => o.id === round.target);
   const found = entries.filter(e => e.scene.id === scene.id && completed.includes(e.round.id)).map(e => e.round.target);
   const stepList = [['find', 'أكتشف'], ...(config.build ? [['build', 'أركّب']] : []), ...(config.read ? [['read', 'أفهم']] : [])];
-  return <div id="word-detective" dir="rtl">{back}<div className="wd-app">
+  return <div id="word-detective" dir="rtl" onPointerDownCapture={() => audioRef.current?.unlock()} onKeyDownCapture={() => audioRef.current?.unlock()}>{back}<div className="wd-app">
     <header className="wd-header"><div className="wd-brand"><span className="wd-mark"><ScanSearch /></span><div><span className="wd-overline">مغامرات فهيم</span><h1>{config.title}</h1></div></div><div className="wd-stars" aria-label="نجوم إنجازات الجولة"><span>★</span><strong>{completed.length * config.pointsPerRound}</strong><span>/ {entries.length * config.pointsPerRound}</span></div></header>
-    <p className="wd-subtitle">{config.subtitle}</p><div className="wd-journey"><div><span className="wd-place">{scene.title}</span><span className="wd-count">اللغز {index + 1} من {entries.length}</span></div><div className="wd-progress" role="progressbar" aria-label="الألغاز المكتملة" aria-valuemin={0} aria-valuemax={entries.length} aria-valuenow={completed.length}><span style={{ width: `${progress}%` }} /></div></div>
+    <div className="wd-audio-row"><p className="wd-subtitle">{config.subtitle}</p><button type="button" className="wd-sound-toggle" aria-pressed={muted} onClick={() => setMuted(v => !v)}>{muted ? <VolumeX /> : <Volume2 />}{muted ? 'تشغيل الصوت' : 'كتم الصوت'}</button></div><div className="wd-journey"><div><span className="wd-place">{scene.title}</span><span className="wd-count">اللغز {index + 1} من {entries.length}</span></div><div className="wd-progress" role="progressbar" aria-label="الألغاز المكتملة" aria-valuemin={0} aria-valuemax={entries.length} aria-valuenow={completed.length}><span style={{ width: `${progress}%` }} /></div></div>
     {stage === 'finish' ? <section id="wd-finish"><div className="wd-final-spark">✦</div><h2>أنت مُحقّقُ كلماتٍ رائع!</h2><p>{config.successMessage}</p><div className="wd-final-stars">★ ★ ★<span>{completed.length * config.pointsPerRound} نجوم اكتشاف</span></div><div className="wd-final-words">{entries.map(e => <span key={e.round.id}>{e.round.word}</span>)}</div><button type="button" className="wd-primary" onClick={() => { setIndex(0); setCompleted([]); resetRound(); }}><RotateCcw /> ألعب من جديد</button></section> : <>
     <div className="wd-steps">{stepList.map(([k, label], n) => <span key={k} className={stage === k ? 'active' : stage === 'round' || stepList.findIndex(x => x[0] === stage) > n ? 'done' : ''}><b>{n + 1}</b>{label}</span>)}</div>
     <div className="wd-play-area"><aside className="wd-guide"><div className="wd-friend"><img className="wd-faheem" src="/faheem.png" alt="فهيم" /><div><span>دليلك الصغير</span><strong>أنا فهيم، ومعك نكتشف!</strong></div></div><div className="wd-clue"><span>{stage === 'find' ? 'اقرأ الدليل، ثم ابحث في المشهد' : stage === 'build' ? 'المرحلة الثانية · أركّب' : stage === 'round' ? 'اكتمل الاكتشاف' : 'أقرأ وأفهم'}</span><h2>{stage === 'find' ? round.clue : stage === 'build' ? 'لنرتّب حروفَ الكلمة معًا.' : stage === 'round' ? config.successMessage : 'أيُّ جملةٍ تناسبُ ما اكتشفناه؟'}</h2></div>
     {stage === 'find' && round.audio && <button type="button" className="wd-help" onClick={play}><Volume2 /> أستمع إلى الدليل</button>}
+    {stage !== 'find' && round.wordAudio && <button type="button" className="wd-help" onClick={() => audioRef.current?.playWord(round.wordAudio)}><Volume2 /> أسمع الكلمة</button>}
     <div className={`wd-feedback${stage === 'round' ? ' success' : ''}`} aria-live="polite">{message}</div>
     {retryBody && !busy && <button type="button" className="wd-primary" onClick={() => finishRound(retryBody.sentence)}>حفظ الإنجاز من جديد</button>}
     {config.hints && stage !== 'round' && <button type="button" className="wd-help" onClick={help}><Lightbulb /> أعطني دليلًا آخر</button>}
