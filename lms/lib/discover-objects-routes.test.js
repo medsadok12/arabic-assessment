@@ -9,6 +9,9 @@ vi.mock('./supabase-admin', () => {
     constructor(table) { this.table = table; this.op = 'read'; this.filters = []; this.one = false; }
     select() { return this; }
     eq(k, v) { this.filters.push(r => r[k] === v); return this; }
+    like(k, v) { const prefix = v.slice(0, -1).replace(/\\(.)/g, '$1'); this.filters.push(r => typeof r[k] === 'string' && r[k].startsWith(prefix)); return this; }
+    order(k) { this.sortBy = k; return this; }
+    range(a, b) { this.slice = [a, b + 1]; return this; }
     maybeSingle() { this.one = true; return this; }
     single() { this.one = true; return this; }
     insert(p) { this.op = 'insert'; this.payload = p; return this; }
@@ -26,6 +29,7 @@ vi.mock('./supabase-admin', () => {
       }
       if (this.op === 'update') matches.forEach(r => Object.assign(r, structuredClone(this.payload)));
       if (this.op === 'delete') db.rows[this.table] = rows.filter(r => !matches.includes(r));
+      if (this.op === 'read') { if (this.sortBy) matches.sort((a, b) => a[this.sortBy].localeCompare(b[this.sortBy])); if (this.slice) matches = matches.slice(...this.slice); }
       return { error: null, data: this.one ? matches[0] || null : matches };
     }
   }
@@ -34,6 +38,7 @@ vi.mock('./supabase-admin', () => {
 const configRoute = await import('../app/api/discover-objects/route.js');
 const completeRoute = await import('../app/api/discover-objects/complete/route.js');
 const uploadRoute = await import('../app/api/discover-objects/upload/route.js');
+const progressRoute = await import('../app/api/discover-objects/progress/route.js');
 const request = (body, method = 'POST') => new Request('https://www.aarem.net/api/discover-objects', { method, ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) });
 const out = async r => ({ status: r.status, body: await r.json() });
 const teacher = () => { db.user.app_metadata.role = 'teacher'; };
@@ -92,6 +97,30 @@ describe('أكتشف الأشياء — صلاحيات وحفظ مستقل', () 
   });
 });
 describe('أكتشف الأشياء — نتيجة ونقاط مدقّقة على الخادم', () => {
+  it('لا يمكن إرسال إجابة مشهد مقفل، ولو أرسل المتصفح الإجابة الصحيحة', async () => {
+    const c = freshDiscover(), round = c.scenes[1].rounds[0];
+    const body = { roundId: round.id, found: round.target, word: round.word, sentence: round.correct, version: null };
+    expect((await completeRoute.POST(request(body))).status).toBe(403);
+    expect(db.awards).toEqual([]);
+    for (const r of c.scenes[0].rounds) expect((await completeRoute.POST(request({ roundId: r.id, found: r.target, word: r.word, sentence: r.correct, version: null }))).status).toBe(200);
+    expect((await completeRoute.POST(request(body))).status).toBe(200);
+  });
+  it('المسار يُستعاد من إنجازات الخادم المعزولة لكل طفل؛ نتائج متصفح مزوّرة لا تفتح المشاهد', async () => {
+    db.rows.game_results = [{ user_id: 'student-1', game_id: 'discover_objects', category: 'garden-ball' }];
+    let r = await out(await progressRoute.GET(request(undefined, 'GET'))); expect(r.body.solved).toEqual([]);
+    await completeRoute.POST(request(answer()));
+    r = await out(await progressRoute.GET(request(undefined, 'GET'))); expect(r.body.solved).toEqual(['garden-ball']);
+    expect(r.body.identity).toBe('student-1');
+    db.child = 'sibling'; r = await out(await progressRoute.GET(request(undefined, 'GET'))); expect(r.body.solved).toEqual([]);
+    db.child = null; r = await out(await progressRoute.GET(request(undefined, 'GET'))); expect(r.body.solved).toEqual(['garden-ball']);
+  });
+  it('فشل قراءة المسار لا يفتح المشاهد، ومعاينة المعلم لا تتطلب إنهاء المشاهد السابقة', async () => {
+    db.failRead = true; expect((await progressRoute.GET(request(undefined, 'GET'))).status).toBe(503); db.failRead = false;
+    teacher(); const r = freshDiscover().scenes[4].rounds[0];
+    expect((await out(await completeRoute.POST(request({ roundId: r.id, found: r.target, word: r.word, sentence: r.correct, version: null })))).body.preview).toBe(true);
+    expect((await out(await progressRoute.GET(request(undefined, 'GET')))).body.preview).toBe(true);
+    expect(db.awards).toEqual([]);
+  });
   it('الإجابة الخاطئة والنسخة القديمة لا تُحفظان ولا تمنحان نقاطًا', async () => {
     expect((await completeRoute.POST(request({ ...answer(), word: 'كتاب' }))).status).toBe(400);
     expect((await completeRoute.POST(request({ ...answer(), version: 'old' }))).status).toBe(409);

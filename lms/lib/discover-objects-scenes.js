@@ -5,7 +5,7 @@ const POSITIONS = [[18, 70], [50, 71], [82, 70], [31, 39], [69, 39]];
 function makeScene(id, title, items, sentences) {
   const positions = id === 'beach' ? [[22, 43], [27, 82], [69, 82], [84, 57], [65, 36]] : id === 'city' ? [[18, 77], [52, 77], [82, 77], [83, 38], [25, 47]] : POSITIONS;
   return {
-    id, title, enabled: true, background: `/discover-objects/scenes/${id}.svg`, sky: '#b8e4ef', grass: '#d5e5a5',
+    id, title, enabled: true, cover: '', background: `/discover-objects/scenes/${id}.svg`, sky: '#b8e4ef', grass: '#d5e5a5',
     objects: items.map(([key, word], i) => ({ id: key, label: word.replace(/[\u064B-\u065F\u0670]/g, ''), art: 'image', image: `/discover-objects/objects/${key}.svg`, x: positions[i][0], y: positions[i][1], size: 23 })),
     rounds: items.map(([key, word, clue, hint], i) => {
       const correct = i % 3;

@@ -3,7 +3,8 @@ import { resolveActiveIdentity } from '../../../../lib/active-child';
 import { getRole } from '../../../../lib/auth-role';
 import { awardPoints } from '../../../../lib/points-server';
 import { DISCOVER_ID, checkDiscoverAnswer } from '../../../../lib/discover-objects';
-import { discoverJson as json, discoverUser, loadDiscover } from '../../../../lib/discover-objects-server';
+import { discoverJson as json, discoverUser, loadDiscover, loadDiscoverSolved } from '../../../../lib/discover-objects-server';
+import { discoverJourney } from '../../../../lib/discover-objects-journey';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
@@ -20,6 +21,12 @@ export async function POST(req) {
     // تجارب الطاقم لا تكتب نتائج ولا تمنح نقاطًا لأي طفل.
     if (auth.staff || getRole(auth.user) === 'supervisor') return json({ success: true, preview: true, awarded: 0 });
     const { effectiveUserId } = await resolveActiveIdentity(auth.user, admin, req);
+    if (config.sequentialScenes !== false) {
+      const solved = await loadDiscoverSolved(admin, effectiveUserId, config);
+      const target = config.scenes.find(s => s.rounds.some(r => r.id === body.roundId));
+      if (!discoverJourney(config, solved).find(s => s.id === target?.id)?.unlocked)
+        return json({ error: 'لنكمل المشهد السابق أولًا، مغامرتك التالية تنتظرك!' }, 403);
+    }
     // مفتاح نصي خاص باللعبة في game_settings (مخططه موثّق): يحجز مكافأة الطفل/اللغز
     // ذريًا بـPK، دون افتراض نوع id في game_results أو تعديل مخططه.
     const claim = `${DISCOVER_ID}:completed:${effectiveUserId}:${body.roundId}`;

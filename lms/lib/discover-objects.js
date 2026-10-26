@@ -10,11 +10,12 @@ export const lettersOf = word => [...cleanWord(word)].filter(c => c !== ' ');
 export const DEFAULT_DISCOVER = {
   title: 'أكتشف الأشياء', subtitle: 'أبحثُ مع فهيم، وأركّبُ الكلمات، وأفهمُ الجمل.',
   enabled: true, hints: true, showWord: true, build: true, read: true, pointsPerRound: 3,
+  sequentialScenes: true,
   sounds: { ...DEFAULT_DISCOVER_SOUND },
   successMessage: 'رائع! كلُّ كلمةٍ جديدة تفتحُ لك عالمًا جديدًا.',
   retryMessage: 'محاولة جميلة! تأمّل الدليل وجرّب ثانية، أنت تستطيع.',
   scenes: [{
-    id: 'garden', title: 'أسرار الحديقة', enabled: true, background: '', sky: '#b8e4ef', grass: '#d5e5a5',
+    id: 'garden', title: 'أسرار الحديقة', enabled: true, background: '', cover: '', sky: '#b8e4ef', grass: '#d5e5a5',
     objects: [
       { id: 'ball', label: 'كرة', art: 'ball', image: '', x: 49, y: 79, size: 16 },
       { id: 'flower', label: 'زهرة', art: 'flower', image: '', x: 83, y: 78, size: 19 },
@@ -45,6 +46,7 @@ export function validateDiscover(raw) {
   const text = (v, max, required = false) => typeof v === 'string' && v.length <= max && (!required || v.trim().length > 0);
   if (!text(raw.title, 100, true) || !text(raw.subtitle, 400) || !text(raw.successMessage, 400, true) || !text(raw.retryMessage, 400, true)) return fail('راجع العنوان ورسائل التدريب');
   for (const k of ['enabled', 'hints', 'showWord', 'build', 'read']) if (typeof raw[k] !== 'boolean') return fail('إعدادات التشغيل غير صالحة');
+  if (raw.sequentialScenes !== undefined && typeof raw.sequentialScenes !== 'boolean') return fail('إعداد ترتيب المشاهد غير صالح');
   if (!Number.isInteger(raw.pointsPerRound) || raw.pointsPerRound < 0 || raw.pointsPerRound > 20) return fail('المكافأة من صفر إلى 20 نجمة لكل لغز');
   const sounds = normalizeDiscoverSound(raw.sounds);
   if (!sounds || !validDiscoverUrl(sounds.backgroundUrl) || !validDiscoverUrl(sounds.successUrl) || (sounds.background === 'custom' && !sounds.backgroundUrl) || (sounds.success === 'custom' && !sounds.successUrl)) return fail('راجع اختيارات الموسيقى وروابطها ومستويات الصوت');
@@ -55,6 +57,8 @@ export function validateDiscover(raw) {
   const id = value => typeof value === 'string' && /^[a-z0-9_-]{1,70}$/i.test(value) && !ids.has(value) && (ids.add(value), true);
   const scenes = [];
   for (const s of raw.scenes) {
+    const cover = s.cover === undefined ? '' : s.cover;
+    if (!validDiscoverUrl(cover)) return fail('رابط صورة بطاقة المشهد غير صالح');
     if (!id(s.id) || !text(s.title, 100, true) || typeof s.enabled !== 'boolean' || !validDiscoverUrl(s.background) || !/^#[a-f\d]{6}$/i.test(s.sky) || !/^#[a-f\d]{6}$/i.test(s.grass)) return fail('راجع عنوان المشهد وخلفيته وألوانه ومعرّفه');
     if (!Array.isArray(s.objects) || s.objects.length > 30 || !Array.isArray(s.rounds) || s.rounds.length > 50) return fail('الحد الأقصى لكل مشهد: 30 شيئًا و50 لغزًا');
     const objIds = new Set();
@@ -74,9 +78,9 @@ export function validateDiscover(raw) {
       rounds.push({ id: r.id, target: r.target, word: r.word.trim(), clue: r.clue.trim(), hint: r.hint, audio: r.audio, wordAudio, enabled: r.enabled, sentences: r.sentences.map(t => t.trim()), correct: r.correct });
     }
     if (s.enabled && !rounds.some(r => r.enabled)) return fail('أضف لغزًا مفعّلًا للمشهد أو أخفِ المشهد');
-    scenes.push({ id: s.id, title: s.title.trim(), enabled: s.enabled, background: s.background, sky: s.sky, grass: s.grass, objects, rounds });
+    scenes.push({ id: s.id, title: s.title.trim(), enabled: s.enabled, background: s.background, cover, sky: s.sky, grass: s.grass, objects, rounds });
   }
-  return { config: { title: raw.title.trim(), subtitle: raw.subtitle, enabled: raw.enabled, hints: raw.hints, showWord: raw.showWord, build: raw.build, read: raw.read, pointsPerRound: raw.pointsPerRound, successMessage: raw.successMessage, retryMessage: raw.retryMessage, sounds, scenePacks: [...new Set(scenePacks)], scenes } };
+  return { config: { title: raw.title.trim(), subtitle: raw.subtitle, enabled: raw.enabled, hints: raw.hints, showWord: raw.showWord, build: raw.build, read: raw.read, sequentialScenes: raw.sequentialScenes !== false, pointsPerRound: raw.pointsPerRound, successMessage: raw.successMessage, retryMessage: raw.retryMessage, sounds, scenePacks: [...new Set(scenePacks)], scenes } };
 }
 export function playableDiscover(config) {
   return config.scenes.filter(s => s.enabled).flatMap(s => s.rounds.filter(r => r.enabled).map(r => ({ scene: s, round: r })));
