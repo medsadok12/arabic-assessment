@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from './supabase-server';
 import { getRole, isSuspended } from './auth-role';
 import { DISCOVER_ID, DISCOVER_STAFF, freshDiscover, validateDiscover } from './discover-objects';
+import { addDiscoverScenePack } from './discover-objects-scenes';
 
 export const discoverJson = (body, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store, max-age=0' } });
 export async function discoverUser(staffOnly = false) {
@@ -17,5 +18,5 @@ export async function loadDiscover(admin) {
   if (!data) return { config: freshDiscover(), version: null };
   const checked = validateDiscover(data.settings);
   if (checked.error) throw new Error('تعذّرت قراءة محتوى التدريب المحفوظ');
-  return { config: checked.config, version: data.updated_at };
+  return { config: addDiscoverScenePack(checked.config), version: data.updated_at };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { freshDiscover } from './discover-objects';
+import { freshDiscover, DEFAULT_DISCOVER } from './discover-objects';
 const db = vi.hoisted(() => ({ user: null, rows: {}, child: null, awards: [], failRead: false, conflict: false, uploads: [] }));
 vi.mock('./supabase-server', () => ({ createClient: () => ({ auth: { getUser: async () => ({ data: { user: db.user } }) } }) }));
 vi.mock('./active-child', () => ({ resolveActiveIdentity: async user => ({ effectiveUserId: db.child || user.id }) }));
@@ -41,6 +41,20 @@ const answer = () => ({ roundId: 'garden-ball', found: 'ball', word: 'كرة', s
 beforeEach(() => { db.user = { id: 'student-1', app_metadata: { role: 'student' }, user_metadata: {} }; db.rows = { game_settings: [{ game_id: 'huroof', settings: { untouched: true }, updated_at: 'old' }] }; db.child = null; db.awards = []; db.failRead = false; db.conflict = false; db.uploads = []; });
 
 describe('أكتشف الأشياء — صلاحيات وحفظ مستقل', () => {
+  it('صف قديم محفوظ: تصل المشاهد الجديدة دون الكتابة فوق بيانات المعلم', async () => {
+    const old = structuredClone(DEFAULT_DISCOVER);
+    old.scenes[0].rounds[0].wordAudio = '/teacher-word.mp3'; old.title = 'عنوان خاص';
+    db.rows.game_settings.push({ game_id: 'discover_objects', settings: old, updated_at: 'v-old' });
+    const before = structuredClone(db.rows);
+    const r = await out(await configRoute.GET());
+    expect(r.body.config.scenes).toHaveLength(10);
+    expect(r.body.config.scenes[0]).toEqual(old.scenes[0]);
+    expect(r.body.config.title).toBe('عنوان خاص'); expect(r.body.version).toBe('v-old');
+    expect(db.rows).toEqual(before);
+    teacher(); const config = r.body.config; config.scenes = config.scenes.filter(s => s.id !== 'bedroom');
+    expect((await configRoute.PUT(request({ config, version: 'v-old' }, 'PUT'))).status).toBe(200);
+    expect((await out(await configRoute.GET())).body.config.scenes.some(s => s.id === 'bedroom')).toBe(false);
+  });
   it('القراءة مسجّلة وبلا كاش، والافتراضي فقط عند غياب الصف', async () => {
     let r = await configRoute.GET(); expect(r.headers.get('Cache-Control')).toContain('no-store');
     expect((await r.json()).config.title).toBe('أكتشف الأشياء');

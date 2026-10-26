@@ -2,16 +2,18 @@ import { describe, it, expect } from 'vitest';
 import { freshDiscover, validateDiscover, playableDiscover, checkDiscoverAnswer, cleanWord, validDiscoverUrl } from './discover-objects';
 
 describe('أكتشف الأشياء — محتوى قابل للتحرير دون كسر اللعب', () => {
-  it('المثال صالح وفيه ثلاثة ألغاز وخمسة أشياء', () => {
+  it('المحتوى صالح وفيه عشرة مشاهد و48 لغزًا، والحديقة الأصلية محفوظة', () => {
     const config = freshDiscover();
     expect(validateDiscover(config).error).toBeUndefined();
-    expect(playableDiscover(config)).toHaveLength(3);
+    expect(config.scenes).toHaveLength(10);
+    expect(playableDiscover(config)).toHaveLength(48);
+    expect(config.scenes[0].rounds).toHaveLength(3);
     expect(config.scenes[0].objects).toHaveLength(5);
   });
   it('الحذف والتعطيل مقصودان ولا يُعاد إدخال المثال تلقائيًا', () => {
     const c = freshDiscover(); c.scenes = [];
     expect(validateDiscover(c).config.scenes).toEqual([]);
-    c.scenes = freshDiscover().scenes; c.scenes[0].enabled = false;
+    c.scenes = freshDiscover().scenes; c.scenes.forEach(s => { s.enabled = false; });
     expect(playableDiscover(c)).toEqual([]);
   });
   it('منع تكرار المعرفات وتعلّق لغز بشيء محذوف', () => {

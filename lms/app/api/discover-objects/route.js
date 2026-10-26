@@ -1,5 +1,6 @@
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { DISCOVER_ID, validateDiscover } from '../../../lib/discover-objects';
+import { addDiscoverScenePack } from '../../../lib/discover-objects-scenes';
 import { discoverJson as json, discoverUser, loadDiscover } from '../../../lib/discover-objects-server';
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,7 @@ export async function PUT(req) {
   catch { return json({ error: 'بيانات غير صالحة' }, 400); }
   const checked = validateDiscover(body?.config);
   if (checked.error) return json({ error: checked.error }, 400);
+  checked.config = addDiscoverScenePack(checked.config);
   if (body.version !== null && typeof body.version !== 'string') return json({ error: 'أعد تحميل المحتوى قبل الحفظ' }, 400);
   try {
     const admin = createAdminClient();

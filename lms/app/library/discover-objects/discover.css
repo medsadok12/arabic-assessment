@@ -12,3 +12,5 @@
 #word-detective .wd-subtitle{padding:15px 4% 0;color:#746782;font-size:13px;line-height:1.9}
 
 #word-detective .wd-audio-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 4% 0;flex-wrap:wrap}#word-detective .wd-audio-row .wd-subtitle{padding:0;flex:1 1 220px}#word-detective .wd-sound-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #dcd0e9;background:#f2edf8;border-radius:12px;padding:8px 13px;min-height:44px;font-size:12px;font-weight:700;color:#67458e;white-space:nowrap}#word-detective .wd-sound-toggle svg{width:17px;height:17px}
+
+#word-detective .wd-scene-select{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:20px 4% 0;color:#67517c;font-size:12px}#word-detective .wd-scene-select label{font-weight:800}#word-detective .wd-scene-select select{min-height:46px;max-width:100%;min-width:190px;flex:1 1 200px;border:1px solid #d8cae7;border-radius:12px;background:#fff;color:#513b6d;padding:9px 14px;font-family:inherit;font-size:16px}#word-detective .wd-scene-select>span{font-size:11px;color:#7c6b8b}

@@ -1,5 +1,6 @@
 // «أكتشف الأشياء» — محتوى مستقل في صف game_settings؛ لا يغيّر أي لعبة أخرى.
 import { DEFAULT_DISCOVER_SOUND, normalizeDiscoverSound } from './discover-objects-sounds';
+import { addDiscoverScenePack } from './discover-objects-scenes';
 export const DISCOVER_ID = 'discover_objects';
 export const DISCOVER_MEDIA = 'discover-objects/';
 export const DISCOVER_STAFF = ['teacher', 'admin', 'super_admin'];
@@ -28,7 +29,7 @@ export const DEFAULT_DISCOVER = {
     ],
   }],
 };
-export const freshDiscover = () => JSON.parse(JSON.stringify(DEFAULT_DISCOVER));
+export const freshDiscover = () => addDiscoverScenePack(JSON.parse(JSON.stringify(DEFAULT_DISCOVER)));
 
 // النصوص ليست HTML؛ الروابط ملفات من نطاق المنصة أو HTTPS فقط (بلا data/base64).
 export function validDiscoverUrl(value) {
@@ -48,6 +49,8 @@ export function validateDiscover(raw) {
   const sounds = normalizeDiscoverSound(raw.sounds);
   if (!sounds || !validDiscoverUrl(sounds.backgroundUrl) || !validDiscoverUrl(sounds.successUrl) || (sounds.background === 'custom' && !sounds.backgroundUrl) || (sounds.success === 'custom' && !sounds.successUrl)) return fail('راجع اختيارات الموسيقى وروابطها ومستويات الصوت');
   if (!Array.isArray(raw.scenes) || raw.scenes.length > 20) return fail('الحد الأقصى 20 مشهدًا');
+  const scenePacks = raw.scenePacks === undefined ? [] : raw.scenePacks;
+  if (!Array.isArray(scenePacks) || scenePacks.length > 10 || !scenePacks.every(p => typeof p === 'string' && /^[a-z0-9_-]{1,70}$/i.test(p))) return fail('معرّفات حزم المشاهد غير صالحة');
   const ids = new Set();
   const id = value => typeof value === 'string' && /^[a-z0-9_-]{1,70}$/i.test(value) && !ids.has(value) && (ids.add(value), true);
   const scenes = [];
@@ -73,7 +76,7 @@ export function validateDiscover(raw) {
     if (s.enabled && !rounds.some(r => r.enabled)) return fail('أضف لغزًا مفعّلًا للمشهد أو أخفِ المشهد');
     scenes.push({ id: s.id, title: s.title.trim(), enabled: s.enabled, background: s.background, sky: s.sky, grass: s.grass, objects, rounds });
   }
-  return { config: { title: raw.title.trim(), subtitle: raw.subtitle, enabled: raw.enabled, hints: raw.hints, showWord: raw.showWord, build: raw.build, read: raw.read, pointsPerRound: raw.pointsPerRound, successMessage: raw.successMessage, retryMessage: raw.retryMessage, sounds, scenes } };
+  return { config: { title: raw.title.trim(), subtitle: raw.subtitle, enabled: raw.enabled, hints: raw.hints, showWord: raw.showWord, build: raw.build, read: raw.read, pointsPerRound: raw.pointsPerRound, successMessage: raw.successMessage, retryMessage: raw.retryMessage, sounds, scenePacks: [...new Set(scenePacks)], scenes } };
 }
 export function playableDiscover(config) {
   return config.scenes.filter(s => s.enabled).flatMap(s => s.rounds.filter(r => r.enabled).map(r => ({ scene: s, round: r })));
