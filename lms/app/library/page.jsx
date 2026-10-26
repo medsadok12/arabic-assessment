@@ -74,6 +74,7 @@ export default async function LibraryPage() {
         'word-image-match': games.has('word_image_match'),
         'word-smash':       games.has('word_smash'),
         'word-wheel':       games.has('word_wheel'),
+        'discover-objects': games.has('discover_objects'),
         'flashcards':       (flashRes.count ?? 0) > 0,
         'puzzle':           (puzzleRes.count ?? 0) > 0,
         'challenge':        [...reasons].some(r => r.startsWith('challenge_')),

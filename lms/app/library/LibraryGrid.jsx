@@ -120,6 +120,14 @@ const RESOURCES = [
     accent: '#312E81', dark: '#1E1B4B', rot: -3, bg: '#EEF2FF', border: '#A5B4FC', iconBg: '#E0E7FF',
     btnBg: 'linear-gradient(135deg,#312E81,#4338CA)',
   },
+  {
+    key: 'discover-objects',
+    icon: '🔎', title: 'أكتشف الأشياء',
+    desc: 'حلّ ألغاز فهيم، واكتشف الأشياء، وركّب كلماتها وافهم جملها!',
+    tag: 'اكتشافي', link: '/library/discover-objects', ready: true,
+    accent: '#7C5CD9', dark: '#6141AF', rot: -3, bg: '#F4EEFC', border: '#D7C7F0', iconBg: '#E9DFF7',
+    btnBg: 'linear-gradient(135deg,#7C5CD9,#6141AF)',
+  },
 ];
 
 /* STORIES loaded dynamically from DB — see initialStories prop */
