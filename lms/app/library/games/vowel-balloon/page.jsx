@@ -1,11 +1,11 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { Fragment, useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '../../../../lib/supabase';
 import Navbar from '../../../../components/Navbar';
 import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
 import { freshFetch } from '../../../../lib/fresh-fetch';
-import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
+import { keepRowInPlace, returnRow, revealBelow, flashRow } from '../../../../lib/edit-scroll';
 import AudioUploadButton from '../../../../components/AudioUploadButton';
 
 /* ─── balloon colors by position ─── */
@@ -174,8 +174,9 @@ function WordManager({ user }) {
 
   useEffect(() => { fetchItems(); }, []);
 
-  async function fetchItems() {
-    setLoading(true);
+  // quiet: تحديث بعد الحفظ/الحذف بلا «جاري التحميل…» مكان الجدول، فيبقى المعلم في مكانه
+  async function fetchItems({ quiet = false } = {}) {
+    if (!quiet) setLoading(true);
     try {
       const r = await freshFetch('/api/games/vowel-balloon');
       const d = await r.json();
@@ -184,14 +185,25 @@ function WordManager({ user }) {
     setLoading(false);
   }
 
+  /* «تعديل» ← النموذج يُفتح تحت صف العنصر نفسه، والصف لا يتحرك (طلب الأستاذ محمد 2026-10-26) */
   function startEdit(it) {
+    discardRecording();
+    const restore = keepRowInPlace(it.id);
     setEditId(it.id);
     const isPreset = OPTION_PRESETS.includes(it.correct_option);
     setCorrectPreset(isPreset ? it.correct_option : 'أخرى');
     setCorrectCustom(isPreset ? '' : it.correct_option);
     setForm({ target_text:it.target_text, wrong_option_1:it.wrong_option_1||'', wrong_option_2:it.wrong_option_2||'', rule_text:it.rule_text, topic:it.topic||'', grade_level:it.grade_level||'' });
     setAudioB64(it.audio_url || '');
-    bringIntoView(formRef.current); // نموذج التعديل أمام المعلم مباشرة، بلا صعود يدوي
+    restore(() => revealBelow(formRef.current));
+  }
+
+  // إلغاء التعديل: يُغلق النموذج ويبقى الصف في مكانه
+  function closeEdit() {
+    discardRecording();
+    const restore = returnRow(editId);
+    cancelEdit();
+    restore();
   }
 
   function cancelEdit() {
@@ -222,10 +234,13 @@ function WordManager({ user }) {
     const d = await r.json();
     setSaving(false);
     if (d.error) { flash(d.error, false); return; }
-    flash(editId ? 'تم التعديل ✅' : 'تمت الإضافة ✅');
+    // رسالة الإضافة فقط: التعديل يؤكده الوميض الأخضر على الصف نفسه (رسالة أعلى الجدول تُزيح القائمة حين تختفي)
+    if (!editId) flash('تمت الإضافة ✅');
     const savedId = editId;
-    cancelEdit(); await fetchItems();
-    if (savedId) flashSavedRow(savedId); // العودة لنفس العنصر في الجدول بعد حفظ التعديل
+    // بعد حفظ التعديل يُغلق النموذج ويبقى المعلم في مكانه أمام العنصر نفسه مع وميض أخضر
+    const restore = savedId ? returnRow(savedId) : null;
+    cancelEdit(); await fetchItems({ quiet: true });
+    restore?.(() => flashRow(savedId));
   }
 
   async function del(id) {
@@ -233,7 +248,16 @@ function WordManager({ user }) {
     const r = await fetch(`/api/games/vowel-balloon?id=${id}`, { method:'DELETE' });
     const d = await r.json();
     if (d.error) { flash(d.error, false); return; }
-    flash('تم الحذف ✅'); fetchItems();
+    if (id === editId) cancelEdit(); // العنصر المحذوف كان قيد التعديل
+    flash('تم الحذف ✅'); fetchItems({ quiet: true });
+  }
+
+  // الانتقال لعنصر آخر أثناء التسجيل: يُلغى التسجيل كي لا يُلصق صوته بالعنصر الجديد
+  function discardRecording() {
+    const mr = mediaRef.current;
+    if (!recording || !mr) return;
+    mr.onstop = () => { mr.stream.getTracks().forEach(t => t.stop()); setRecording(false); };
+    mr.stop();
   }
 
   async function toggleRecord() {
@@ -272,11 +296,7 @@ function WordManager({ user }) {
     td:    { padding:'8px 10px', borderBottom:'1px solid #f1f5f9', verticalAlign:'middle' },
   };
 
-  return (
-    <div style={S.box}>
-      <h2 style={S.h2}>⚙️ لوحة تحكم منطاد الحركات</h2>
-
-      {/* ── form ── */}
+  const formEl = (
       <div ref={formRef} style={{ background:'#f8fafc', borderRadius:14, padding:'18px 16px', marginBottom:20, border:'1.5px solid #e2e8f0', scrollMarginTop:90 }}>
         <h3 style={{ fontSize:'.95rem', fontWeight:800, color:'#1e3a5f', marginBottom:14 }}>
           {editId ? '✏️ تعديل عنصر' : '➕ إضافة عنصر جديد'}
@@ -359,13 +379,21 @@ function WordManager({ user }) {
         </div>
 
         <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-          {editId && <button style={S.btn('gray')} onClick={cancelEdit}>إلغاء</button>}
+          {editId && <button style={S.btn('gray')} onClick={closeEdit}>إلغاء</button>}
           <button style={S.btn('green')} onClick={save} disabled={saving}>
             {saving ? '...' : editId ? 'حفظ التعديل' : 'إضافة'}
           </button>
         </div>
         {msg && <p style={{ marginTop:10, color:msg.ok?'#10b981':'#ef4444', fontWeight:700, fontSize:'.85rem' }}>{msg.text}</p>}
       </div>
+  );
+
+  return (
+    <div style={S.box}>
+      <h2 style={S.h2}>⚙️ لوحة تحكم منطاد الحركات</h2>
+
+      {/* ── form ── (أعلى الجدول للإضافة، وتحت صف العنصر عند تعديله) */}
+      {!editId && formEl}
 
       {/* ── table ── */}
       {loading ? <p style={{ color:'#94a3b8', textAlign:'center' }}>جاري التحميل…</p> : (
@@ -386,7 +414,8 @@ function WordManager({ user }) {
                 <tr><td colSpan={6} style={{ ...S.td, textAlign:'center', color:'#94a3b8' }}>لا توجد عناصر — أضف أول عنصر أعلاه</td></tr>
               )}
               {items.map(it => (
-                <tr key={it.id} data-edit-row={it.id}>
+                <Fragment key={it.id}>
+                <tr data-edit-row={it.id} style={editId === it.id ? { background:'#fffbeb' } : undefined}>
                   <td style={{ ...S.td, fontSize:'1.8rem', textAlign:'center', fontFamily:'inherit' }}>{it.target_text}</td>
                   <td style={{ ...S.td, color:'#10b981', fontWeight:700 }}>{it.correct_option}</td>
                   <td style={S.td}>{it.wrong_option_1 || <span style={{ color:'#cbd5e1' }}>تلقائي</span>}</td>
@@ -394,11 +423,18 @@ function WordManager({ user }) {
                   <td style={{ ...S.td, maxWidth:180, fontSize:'.8rem' }}>{it.rule_text}</td>
                   <td style={S.td}>
                     <div style={{ display:'flex', gap:6 }}>
-                      <button style={{ ...S.btn(''), padding:'5px 12px', fontSize:'.78rem' }} onClick={() => startEdit(it)}>تعديل</button>
+                      <button style={{ ...S.btn(''), padding:'5px 12px', fontSize:'.78rem' }} onClick={() => (editId === it.id ? closeEdit() : startEdit(it))}>{editId === it.id ? 'إغلاق' : 'تعديل'}</button>
                       <button style={{ ...S.btn('red'), padding:'5px 12px', fontSize:'.78rem' }} onClick={() => del(it.id)}>حذف</button>
                     </div>
                   </td>
                 </tr>
+                {editId === it.id && (
+                  <tr><td colSpan={6} style={{ padding:'4px 0 12px' }}>
+                    {/* الجدول أعرض من شاشة الجوال: النموذج بعرض المنطقة الظاهرة ومثبَّت عند حافتها */}
+                    <div style={{ position:'sticky', right:0, width:'min(100%, calc(100vw - 72px))' }}>{formEl}</div>
+                  </td></tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

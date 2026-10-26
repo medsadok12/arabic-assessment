@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
+import { useState, useRef, Fragment } from 'react';
+import { keepRowInPlace, returnRow, revealBelow, flashRow } from '../../../../lib/edit-scroll';
 import AudioUploadButton from '../../../../components/AudioUploadButton';
 import { WORDS_PER_ROUND_CHOICES, OPTIONS_COUNT_CHOICES, LEN_NO_LIMIT } from '../../../../lib/letter-catcher';
 
@@ -208,6 +208,13 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
     setRecording(false);
   };
 
+  // الانتقال لكلمة أخرى أثناء التسجيل: يُلغى التسجيل كي لا يُلصق صوته بالكلمة الجديدة
+  const discardRecording = () => {
+    const mr = mediaRef.current;
+    if (mr) mr.onstop = () => mr.stream.getTracks().forEach(t => t.stop());
+    stopRecording();
+  };
+
   const resetForm = () => {
     setWord(''); setMissing(''); setCategory('');
     setImgFile(null); setImgPrev(null); setAudioUrl(null);
@@ -215,7 +222,10 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
     if (fileRef.current) fileRef.current.value = '';
   };
 
+  /* ✏️ ← نموذج التعديل يُفتح تحت صف الكلمة نفسها، والصف لا يتحرك من مكانه (طلب الأستاذ محمد) */
   const startEditWord = (w) => {
+    if (recording) discardRecording();
+    const restore = keepRowInPlace(editingWordId === w.id ? null : w.id);
     setWord(w.word);
     setMissing(w.missing_letter);
     setCategory(w.category || '');
@@ -225,10 +235,15 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
     setImgPrev(w.image_url || null);
     setEditingWordId(w.id);
     setMsg(null);
-    bringIntoView(formRef.current); // نموذج التعديل أمام المعلم مباشرة، بلا صعود يدوي
+    restore(() => revealBelow(formRef.current));
   };
 
-  const cancelEdit = () => resetForm();
+  const cancelEdit = () => {
+    if (recording) discardRecording();
+    const restore = returnRow(editingWordId);
+    resetForm(); setMsg(null);
+    restore();
+  };
 
   const handleAdd = async () => {
     if (!word.trim() || !missing.trim()) { setMsg({ ok: false, text: 'اكتب الكلمة والحرف الناقص أولاً' }); return; }
@@ -259,10 +274,12 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
         ? `✅ حُدِّثت "${word.trim().replace('_', missing.trim())}" بنجاح`
         : `✅ أُضيفت "${word.trim().replace('_', missing.trim())}" بنجاح` });
       const savedId = editingWordId;
+      // بعد حفظ التعديل يُغلق النموذج ويبقى المعلم في مكانه أمام الكلمة نفسها مع وميض أخضر
+      const restore = isEditing ? returnRow(savedId) : null;
       resetForm();
+      if (isEditing) setMsg(null);
       await onRefresh();
-      // بعد حفظ التعديل يعود المعلم إلى نفس الكلمة في القائمة ليكمل من حيث توقف
-      if (isEditing) flashSavedRow(savedId);
+      restore?.(() => flashRow(savedId));
     } catch (e) { setMsg({ ok: false, text: `❌ ${e.message}` }); }
     setSaving(false);
   };
@@ -273,15 +290,15 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
     try {
       const res = await fetch(`/api/games/letter-catcher?id=${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error();
-      if (id === editingWordId) resetForm(); // الكلمة المحذوفة كانت قيد التعديل
+      if (id === editingWordId) { resetForm(); setMsg(null); } // الكلمة المحذوفة كانت قيد التعديل
       onRefresh();
     } catch { alert('فشل الحذف'); }
     setDeleting(null);
   };
 
-  return (
-    <div>
-      <div ref={formRef} style={{ background: editingWordId ? '#fffbeb' : '#f5f3ff', borderRadius:14, padding:16, marginBottom:18, border: `1.5px dashed ${editingWordId ? '#f59e0b' : '#7c3aed'}`, scrollMarginTop:12 }}>
+  /* نموذج الإضافة/التعديل: في أعلى القائمة للإضافة، وتحت صف الكلمة نفسها عند تعديلها */
+  const formEl = (
+      <div ref={formRef} style={{ background: editingWordId ? '#fffbeb' : '#f5f3ff', borderRadius:14, padding:16, marginBottom: editingWordId ? 6 : 18, marginTop: editingWordId ? 4 : 0, border: `1.5px dashed ${editingWordId ? '#f59e0b' : '#7c3aed'}`, scrollMarginTop:12 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
           <div style={{ fontWeight:800, color: editingWordId ? '#d97706' : '#7c3aed', fontSize:'.92rem' }}>
             {editingWordId ? '✏️ تعديل كلمة' : '➕ إضافة كلمة جديدة'}
@@ -400,6 +417,11 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
             : (editingWordId ? '💾 حفظ التعديل' : '💾 حفظ في قاعدة البيانات')}
         </button>
       </div>
+  );
+
+  return (
+    <div>
+      {!editingWordId && formEl}
 
       {dbWords.length > 0 && <div style={{ fontWeight:700, color:'#374151', marginBottom:10, fontSize:'.88rem' }}>📚 الكلمات ({dbWords.length})</div>}
       {dbWords.length === 0 ? (
@@ -473,7 +495,8 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
 
                   <div style={{ display:'flex', flexDirection:'column', gap:4, paddingRight:10 }}>
                     {words.map(w => (
-                      <div key={w.id} data-edit-row={w.id} style={{
+                      <Fragment key={w.id}>
+                      <div data-edit-row={w.id} style={{
                         display:'flex', alignItems:'center', gap:7, borderRadius:8, padding:'6px 10px',
                         background: editingWordId === w.id ? '#fffbeb' : '#f9fafb',
                         border: `1px solid ${editingWordId === w.id ? '#f59e0b' : '#e5e7eb'}`,
@@ -484,13 +507,16 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
                         {w.audio_url && <span title="يحتوي على تسجيل" style={{ fontSize:'.7rem' }}>🎙️</span>}
                         <button onClick={() => w.audio_url ? new Audio(w.audio_url).play() : speak(w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word)}
                           title="استمع" style={{ background:'none', border:'none', cursor:'pointer', fontSize:'.9rem', padding:'2px 3px', lineHeight:1 }}>🔊</button>
-                        <button onClick={() => startEditWord(w)}
-                          title="تعديل" style={{ background:'none', border:'none', cursor:'pointer', fontSize:'.9rem', padding:'2px 3px', lineHeight:1 }}>✏️</button>
+                        <button onClick={() => (editingWordId === w.id ? cancelEdit() : startEditWord(w))}
+                          title={editingWordId === w.id ? 'إغلاق التعديل' : 'تعديل'} aria-expanded={editingWordId === w.id}
+                          style={{ background: editingWordId === w.id ? '#fde68a' : 'none', border:'none', borderRadius:6, cursor:'pointer', fontSize:'.9rem', padding:'2px 5px', lineHeight:1 }}>✏️</button>
                         <button onClick={() => handleDelete(w.id, w.word)} disabled={deleting === w.id}
                           style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:'.9rem', padding:'2px 3px', lineHeight:1 }} title="حذف">
                           {deleting === w.id ? '…' : '🗑️'}
                         </button>
                       </div>
+                      {editingWordId === w.id && formEl}
+                      </Fragment>
                     ))}
                   </div>
                 </div>

@@ -1,10 +1,10 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Fragment, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
 import { freshFetch } from '../../../../lib/fresh-fetch';
-import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
+import { keepRowInPlace, returnRow, revealBelow, flashRow } from '../../../../lib/edit-scroll';
 
 /* ─── helpers ─── */
 function speak(text) {
@@ -106,6 +106,7 @@ function WordManager({ dbWords, onRefresh }) {
   const [saving,  setSaving]  = useState(false);
   const [delId,   setDelId]   = useState(null);
   const [msg,     setMsg]     = useState(null);
+  const [tall,    setTall]    = useState(false); // القائمة تطول بعد أول تعديل ليتسع النموذج تحت الكلمة
   const formRef = useRef(null);
 
   const parseSegs = s => s.split(/[،,]/).map(x => x.trim()).filter(Boolean);
@@ -115,7 +116,10 @@ function WordManager({ dbWords, onRefresh }) {
     setRule(''); setTopic(''); setGrade(0); setImgUrl(''); setImgPrev(''); setImgFile(null); setMsg(null);
   };
 
+  /* ✏️ ← نموذج التعديل يُفتح تحت صف الكلمة نفسها، والصف لا يتحرك من مكانه (طلب الأستاذ محمد 2026-10-26) */
   const startEdit = item => {
+    const restore = keepRowInPlace(item.id);
+    setTall(true);
     setEditId(item.id);
     setWord(item.word_text);
     setCorrect((item.correct_segments || []).join('، '));
@@ -129,7 +133,14 @@ function WordManager({ dbWords, onRefresh }) {
     setImgPrev(item.image_url || '');
     setImgFile(null);
     setMsg(null);
-    bringIntoView(formRef.current); // نموذج التعديل نفسه أمام المعلم، لا أعلى الصفحة
+    restore(() => revealBelow(formRef.current));
+  };
+
+  // إلغاء التعديل: يُغلق النموذج ويبقى الصف في مكانه
+  const closeEdit = () => {
+    const restore = returnRow(editId);
+    reset();
+    restore();
   };
 
   const handleImgFile = (e) => {
@@ -170,8 +181,10 @@ function WordManager({ dbWords, onRefresh }) {
       if (json.error) throw new Error(json.error);
       setMsg({ ok: true, text: editId ? 'تم التعديل ✅' : 'أُضيفت الكلمة ✅' });
       const savedId = editId;
+      // بعد حفظ التعديل يُغلق النموذج ويبقى المعلم في مكانه أمام الكلمة نفسها مع وميض أخضر
+      const restore = savedId ? returnRow(savedId) : null;
       reset(); await Promise.resolve(onRefresh()).catch(() => {}); // فشل إعادة التحميل لا يُظهر الحفظ الناجح كخطأ
-      if (savedId) flashSavedRow(savedId); // العودة لنفس الكلمة في القائمة بعد حفظ التعديل
+      restore?.(() => flashRow(savedId));
     } catch (e) {
       setMsg({ ok: false, text: e.message });
     }
@@ -193,13 +206,11 @@ function WordManager({ dbWords, onRefresh }) {
 
   const cs = parseSegs(correct);
 
-  return (
-    <div style={{ border: '1.5px solid #d1fae5', borderRadius: 14, background: '#fff', overflow: 'hidden', marginBottom: 20 }}>
-      <div style={{ background: '#ecfdf5', borderBottom: '1px solid #d1fae5', padding: '12px 16px', fontWeight: 700, color: '#065f46', fontFamily: 'inherit', fontSize: '.95rem' }}>
-        🔨 إدارة كلمات مطرقة التفكيك {editId ? '— (تعديل)' : ''}
-      </div>
-
-      <div ref={formRef} style={{ padding: 16, borderBottom: '1px solid #f1f5f9', scrollMarginTop: 90 }}>
+  /* نموذج الإضافة/التعديل: في أعلى القائمة للإضافة، وتحت صف الكلمة نفسها عند تعديلها */
+  const formEl = (
+      <div ref={formRef} style={editId
+        ? { padding: 16, scrollMarginTop: 90, background: '#fffbeb', border: '1.5px dashed #f59e0b', borderRadius: 12, margin: '4px 8px 8px' }
+        : { padding: 16, borderBottom: '1px solid #f1f5f9', scrollMarginTop: 90 }}>
         {/* Word */}
         <div style={{ marginBottom: 10 }}>
           <label style={S.label}>الكلمة المُشكَّلة</label>
@@ -304,16 +315,26 @@ function WordManager({ dbWords, onRefresh }) {
           <button onClick={handleSave} disabled={saving} style={{ ...S.btnPrimary, flex: 1, opacity: saving ? .7 : 1 }}>
             {saving ? '⏳ جارٍ الحفظ...' : editId ? '💾 حفظ التعديل' : '➕ إضافة كلمة'}
           </button>
-          {editId && <button onClick={reset} style={S.btnSm}>✕ إلغاء</button>}
+          {editId && <button onClick={closeEdit} style={S.btnSm}>✕ إلغاء</button>}
         </div>
       </div>
+  );
+
+  return (
+    <div style={{ border: '1.5px solid #d1fae5', borderRadius: 14, background: '#fff', overflow: 'hidden', marginBottom: 20 }}>
+      <div style={{ background: '#ecfdf5', borderBottom: '1px solid #d1fae5', padding: '12px 16px', fontWeight: 700, color: '#065f46', fontFamily: 'inherit', fontSize: '.95rem' }}>
+        🔨 إدارة كلمات مطرقة التفكيك {editId ? '— (تعديل)' : ''}
+      </div>
+
+      {!editId && formEl}
 
       {/* List */}
-      <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+      <div style={{ maxHeight: tall ? 'min(80vh, 860px)' : 320, overflowY: 'auto' }}>
         {dbWords.length === 0 ? (
           <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontFamily: 'inherit' }}>لا توجد كلمات بعد</div>
         ) : dbWords.map(item => (
-          <div key={item.id} data-edit-row={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid #f1f5f9', background: editId === item.id ? '#f0fdf4' : 'transparent', direction: 'rtl' }}>
+          <Fragment key={item.id}>
+          <div data-edit-row={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid #f1f5f9', background: editId === item.id ? '#f0fdf4' : 'transparent', direction: 'rtl' }}>
             {item.image_url
               ? <img src={item.image_url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 7, border: '1.5px solid #d1fae5', flexShrink: 0 }} />
               : <button onClick={() => speak(item.word_text)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', flexShrink: 0, padding: '2px 4px' }}>🔊</button>
@@ -326,12 +347,16 @@ function WordManager({ dbWords, onRefresh }) {
                 {item.grade_level ? ` · ص${item.grade_level}` : ''}
               </div>
             </div>
-            <button onClick={() => startEdit(item)} style={{ ...S.btnSm, color: '#065f46', borderColor: '#6ee7b7', background: '#f0fdf4' }}>✏️</button>
+            <button onClick={() => (editId === item.id ? closeEdit() : startEdit(item))}
+              title={editId === item.id ? 'إغلاق التعديل' : 'تعديل'} aria-expanded={editId === item.id}
+              style={{ ...S.btnSm, color: '#065f46', borderColor: '#6ee7b7', background: editId === item.id ? '#fde68a' : '#f0fdf4' }}>✏️</button>
             <button onClick={() => handleDelete(item.id, item.word_text)} disabled={delId === item.id}
               style={{ ...S.btnSm, color: '#dc2626', borderColor: '#fca5a5', background: '#fef2f2' }}>
               {delId === item.id ? '…' : '🗑️'}
             </button>
           </div>
+          {editId === item.id && formEl}
+          </Fragment>
         ))}
       </div>
     </div>

@@ -1,10 +1,10 @@
 'use client';
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Fragment, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
 import { freshFetch } from '../../../../lib/fresh-fetch';
-import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
+import { keepRowInPlace, returnRow, revealBelow, flashRow } from '../../../../lib/edit-scroll';
 import AudioUploadButton from '../../../../components/AudioUploadButton';
 
 /* ─────────────── helpers ─────────────── */
@@ -98,7 +98,14 @@ function useRecorder() {
     setRecording(false); setRecSecs(0);
   }, []);
 
-  return { recording, recSecs, startRecording, stopRecording };
+  // الانتقال لكلمة أخرى أثناء التسجيل: يُلغى التسجيل كي لا يُلصق صوته بالكلمة الجديدة
+  const discardRecording = useCallback(() => {
+    const mr = mrRef.current;
+    if (mr) mr.onstop = () => mr.stream.getTracks().forEach(t => t.stop());
+    stopRecording();
+  }, [stopRecording]);
+
+  return { recording, recSecs, startRecording, stopRecording, discardRecording };
 }
 
 /* ─────────────── pair manager ─────────────── */
@@ -113,11 +120,26 @@ function PairManager({ allPairs, onRefresh }) {
   const [audioUrl, setAudioUrl] = useState('');
   const [saving,   setSaving]   = useState(false);
   const [msg,      setMsg]      = useState(null);
-  const { recording, recSecs, startRecording, stopRecording } = useRecorder();
+  const [tall,     setTall]     = useState(false); // القائمة تطول بعد أول تعديل ليتسع النموذج تحت الكلمة
+  const { recording, recSecs, startRecording, stopRecording, discardRecording } = useRecorder();
   const formRef = useRef(null);
 
   const reset = () => { setEditId(null); setWord(''); setTopic(''); setGrade(0); setImgUrl(''); setImgPrev(''); setImgFile(null); setAudioUrl(''); setMsg(null); };
-  const startEdit = (p) => { setEditId(p.id); setWord(p.word_text); setTopic(p.topic||''); setGrade(p.grade_level||0); setImgUrl(p.image_url||''); setImgPrev(p.image_url||''); setImgFile(null); setAudioUrl(p.audio_url||''); setMsg(null); bringIntoView(formRef.current); };
+  /* ✏️ ← نموذج التعديل يُفتح تحت صف الكلمة نفسها، والصف لا يتحرك من مكانه (طلب الأستاذ محمد 2026-10-26) */
+  const startEdit = (p) => {
+    if (recording) discardRecording();
+    const restore = keepRowInPlace(p.id);
+    setTall(true);
+    setEditId(p.id); setWord(p.word_text); setTopic(p.topic||''); setGrade(p.grade_level||0); setImgUrl(p.image_url||''); setImgPrev(p.image_url||''); setImgFile(null); setAudioUrl(p.audio_url||''); setMsg(null);
+    restore(() => revealBelow(formRef.current));
+  };
+  // إلغاء التعديل: يُغلق النموذج ويبقى الصف في مكانه
+  const closeEdit = () => {
+    if (recording) discardRecording();
+    const restore = returnRow(editId);
+    reset();
+    restore();
+  };
   const handleImgFile = (e) => { const f = e.target.files?.[0]; if (!f) return; setImgFile(f); setImgPrev(URL.createObjectURL(f)); };
 
   const handleSave = async () => {
@@ -138,8 +160,10 @@ function PairManager({ allPairs, onRefresh }) {
       if (json.error) throw new Error(json.error);
       setMsg({ ok:true, text: editId ? 'تم التعديل ✅' : 'تمت الإضافة ✅' });
       const savedId = editId;
+      // بعد حفظ التعديل يُغلق النموذج ويبقى المعلم في مكانه أمام الكلمة نفسها مع وميض أخضر
+      const restore = savedId ? returnRow(savedId) : null;
       reset(); await Promise.resolve(onRefresh()).catch(() => {}); // فشل إعادة التحميل لا يُظهر الحفظ الناجح كخطأ
-      if (savedId) flashSavedRow(savedId); // العودة لنفس الكلمة في القائمة بعد حفظ التعديل
+      restore?.(() => flashRow(savedId));
     } catch (e) { setMsg({ ok:false, text: e.message }); }
     finally { setSaving(false); }
   };
@@ -153,10 +177,11 @@ function PairManager({ allPairs, onRefresh }) {
     onRefresh();
   };
 
-  return (
-    <div style={{ border:'1.5px solid #e2e8f0', borderRadius:12, background:'#fff', overflow:'hidden', marginBottom:16 }}>
-      <div style={{ background:'#f8fafc', borderBottom:'1px solid #e2e8f0', padding:'10px 14px', fontWeight:700, color:'#1e40af', fontFamily:'inherit', fontSize:'.9rem' }}>📚 إدارة الكلمات والصور</div>
-      <div ref={formRef} style={{ padding:14, borderBottom:'1px solid #f1f5f9', scrollMarginTop:90 }}>
+  /* نموذج الإضافة/التعديل: في أعلى القائمة للإضافة، وتحت صف الكلمة نفسها عند تعديلها */
+  const formEl = (
+      <div ref={formRef} style={editId
+        ? { padding:14, scrollMarginTop:90, background:'#fffbeb', border:'1.5px dashed #f59e0b', borderRadius:12, margin:'4px 8px 8px' }
+        : { padding:14, borderBottom:'1px solid #f1f5f9', scrollMarginTop:90 }}>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
           <div><label style={S.label}>الكلمة</label><input value={word} onChange={e=>setWord(e.target.value)} placeholder="مثال: أسد" style={S.input} dir="rtl" /></div>
           <div>
@@ -199,22 +224,33 @@ function PairManager({ allPairs, onRefresh }) {
         {msg && <div style={{ padding:'7px 10px', borderRadius:7, marginBottom:8, background:msg.ok?'#f0fdf4':'#fef2f2', color:msg.ok?'#15803d':'#dc2626', fontSize:'.85rem', fontFamily:'inherit' }}>{msg.text}</div>}
         <div style={{ display:'flex', gap:7 }}>
           <button onClick={handleSave} disabled={saving} style={{ ...S.btnPrimary, flex:1 }}>{saving?'⏳ جارٍ الحفظ...':editId?'💾 حفظ التعديل':'➕ إضافة'}</button>
-          {editId && <button onClick={reset} style={S.btnSm}>إلغاء</button>}
+          {editId && <button onClick={closeEdit} style={S.btnSm}>إلغاء</button>}
         </div>
       </div>
-      <div style={{ maxHeight:280, overflowY:'auto' }}>
+  );
+
+  return (
+    <div style={{ border:'1.5px solid #e2e8f0', borderRadius:12, background:'#fff', overflow:'hidden', marginBottom:16 }}>
+      <div style={{ background:'#f8fafc', borderBottom:'1px solid #e2e8f0', padding:'10px 14px', fontWeight:700, color:'#1e40af', fontFamily:'inherit', fontSize:'.9rem' }}>📚 إدارة الكلمات والصور</div>
+      {!editId && formEl}
+      <div style={{ maxHeight: tall ? 'min(80vh, 860px)' : 280, overflowY:'auto' }}>
         {allPairs.length === 0 ? (
           <div style={{ padding:20, textAlign:'center', color:'#94a3b8', fontFamily:'inherit', fontSize:'.88rem' }}>لا توجد كلمات بعد</div>
         ) : allPairs.map(p => (
-          <div key={p.id} data-edit-row={p.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderBottom:'1px solid #f1f5f9', background:editId===p.id?'#eff6ff':'transparent' }}>
+          <Fragment key={p.id}>
+          <div data-edit-row={p.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderBottom:'1px solid #f1f5f9', background:editId===p.id?'#eff6ff':'transparent' }}>
             {p.image_url && <img src={p.image_url} alt="" style={{ width:42, height:42, objectFit:'cover', borderRadius:6, flexShrink:0 }} />}
             <div style={{ flex:1, fontFamily:'inherit', direction:'rtl', textAlign:'right' }}>
               <div style={{ fontWeight:700, fontSize:'.95rem' }}>{p.word_text}</div>
               <div style={{ fontSize:'.74rem', color:'#64748b' }}>{[p.topic, p.grade_level?`ص${p.grade_level}`:'', p.audio_url?'🔊':''].filter(Boolean).join(' · ')}</div>
             </div>
-            <button onClick={() => startEdit(p)} style={{ ...S.btnSm, background:'#eff6ff', color:'#1e40af', border:'1px solid #bfdbfe' }}>✏️</button>
+            <button onClick={() => (editId === p.id ? closeEdit() : startEdit(p))}
+              title={editId === p.id ? 'إغلاق التعديل' : 'تعديل'} aria-expanded={editId === p.id}
+              style={{ ...S.btnSm, background: editId === p.id ? '#fde68a' : '#eff6ff', color:'#1e40af', border:'1px solid #bfdbfe' }}>✏️</button>
             <button onClick={() => handleDelete(p.id)} style={{ ...S.btnSm, background:'#fef2f2', color:'#dc2626', border:'1px solid #fca5a5' }}>🗑️</button>
           </div>
+          {editId === p.id && formEl}
+          </Fragment>
         ))}
       </div>
     </div>

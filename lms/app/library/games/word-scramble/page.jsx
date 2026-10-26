@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Fragment, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { getRole } from '../../../../lib/auth-role';
 import { childFetch } from '../../../../lib/child-fetch';
 import { freshFetch } from '../../../../lib/fresh-fetch';
-import { bringIntoView, flashSavedRow } from '../../../../lib/edit-scroll';
+import { keepRowInPlace, returnRow, revealBelow, flashRow } from '../../../../lib/edit-scroll';
 import AudioUploadButton from '../../../../components/AudioUploadButton';
 import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useElementWidth } from '../../../../lib/fit-tiles';
 import { LEN_NO_LIMIT } from '../../../../lib/letter-catcher';
@@ -90,6 +90,8 @@ function WordManager({ dbWords, onRefresh }) {
   const [deleting,  setDeleting]  = useState(null);
   const [editId,    setEditId]    = useState(null);
   const [msg,       setMsg]       = useState(null);
+  // بعد أول تعديل تُعرض القائمة كاملة داخل نافذة الإعدادات (شريط تمرير واحد) ليتسع النموذج تحت الكلمة
+  const [tall,      setTall]      = useState(false);
   const fileRef  = useRef();
   const formRef  = useRef(null);
   const mediaRef = useRef(null);
@@ -103,7 +105,10 @@ function WordManager({ dbWords, onRefresh }) {
     if (fileRef.current) fileRef.current.value = '';
   };
 
+  /* ✏️ ← نموذج التعديل يُفتح تحت صف الكلمة نفسها، والصف لا يتحرك من مكانه (طلب الأستاذ محمد 2026-10-26) */
   const startEdit = (w) => {
+    const restore = keepRowInPlace(w.id);
+    setTall(true);
     setEditId(w.id);
     setWord(w.word || '');
     setTopic(w.topic || '');
@@ -111,7 +116,14 @@ function WordManager({ dbWords, onRefresh }) {
     setImgPrev(w.image_url || null);
     setAudioUrl(w.audio_url || null);
     setImgFile(null); setMsg(null);
-    bringIntoView(formRef.current); // نموذج التعديل أمام المعلم مباشرة، بلا صعود يدوي
+    restore(() => revealBelow(formRef.current));
+  };
+
+  // إلغاء التعديل: يُغلق النموذج ويبقى الصف في مكانه
+  const closeEdit = () => {
+    const restore = returnRow(editId);
+    resetForm();
+    restore();
   };
 
   const handleImg = (e) => {
@@ -178,8 +190,10 @@ function WordManager({ dbWords, onRefresh }) {
       if (!res.ok) throw new Error(json.error || 'فشل الحفظ');
       setMsg({ ok: true, text: editId ? `✅ تم تعديل "${word.trim()}"` : `✅ أُضيفت "${word.trim()}" بنجاح` });
       const savedId = editId;
+      // بعد حفظ التعديل يُغلق النموذج ويبقى المعلم في مكانه أمام الكلمة نفسها مع وميض أخضر
+      const restore = savedId ? returnRow(savedId) : null;
       resetForm(); await onRefresh();
-      if (savedId) flashSavedRow(savedId); // العودة لنفس الكلمة في القائمة بعد حفظ التعديل
+      restore?.(() => flashRow(savedId));
     } catch (e) {
       setMsg({ ok: false, text: `❌ ${e.message}` });
     }
@@ -192,14 +206,15 @@ function WordManager({ dbWords, onRefresh }) {
     try {
       const res = await fetch(`/api/games/word-scramble?id=${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error();
+      if (id === editId) resetForm(); // الكلمة المحذوفة كانت قيد التعديل
       onRefresh();
     } catch { alert('فشل الحذف'); }
     setDeleting(null);
   };
 
-  return (
-    <div>
-      <div ref={formRef} style={{ background: '#f5f3ff', borderRadius: 14, padding: 16, marginBottom: 18, border: '1.5px dashed #7c3aed', scrollMarginTop: 12 }}>
+  /* نموذج الإضافة/التعديل: في أعلى القائمة للإضافة، وتحت صف الكلمة نفسها عند تعديلها */
+  const formEl = (
+      <div ref={formRef} style={{ background: editId ? '#fffbeb' : '#f5f3ff', borderRadius: 14, padding: 16, marginBottom: editId ? 4 : 18, border: `1.5px dashed ${editId ? '#f59e0b' : '#7c3aed'}`, scrollMarginTop: 12 }}>
         <div style={{ fontWeight: 800, color: '#7c3aed', marginBottom: 12, fontSize: '.92rem' }}>
           {editId ? '✏️ تعديل الكلمة' : '➕ إضافة كلمة جديدة'}
         </div>
@@ -314,7 +329,7 @@ function WordManager({ dbWords, onRefresh }) {
 
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           {editId && (
-            <button onClick={resetForm}
+            <button onClick={closeEdit}
               style={{ flex: 1, background: '#f3f4f6', color: '#374151', border: 'none',
                 borderRadius: 10, padding: '11px 0', fontSize: '.9rem', fontWeight: 700,
                 fontFamily: 'inherit', cursor: 'pointer' }}>
@@ -333,6 +348,11 @@ function WordManager({ dbWords, onRefresh }) {
           </button>
         </div>
       </div>
+  );
+
+  return (
+    <div>
+      {!editId && formEl}
 
       <div style={{ fontWeight: 700, color: '#374151', marginBottom: 8, fontSize: '.88rem' }}>
         📚 الكلمات في قاعدة البيانات ({dbWords.length})
@@ -342,9 +362,10 @@ function WordManager({ dbWords, onRefresh }) {
           لا توجد كلمات بعد — أضف أولى كلماتك أعلاه
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: tall ? 'none' : 240, overflowY: tall ? 'visible' : 'auto' }}>
           {dbWords.map(w => (
-            <div key={w.id} data-edit-row={w.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f9fafb', borderRadius: 10, padding: '8px 12px', border: '1px solid #e5e7eb' }}>
+            <Fragment key={w.id}>
+            <div data-edit-row={w.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: editId === w.id ? '#fffbeb' : '#f9fafb', borderRadius: 10, padding: '8px 12px', border: `1px solid ${editId === w.id ? '#f59e0b' : '#e5e7eb'}`, flexShrink: 0 }}>
               {w.image_url && <img src={w.image_url} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />}
               <span style={{ flex: 1, fontWeight: 700, color: '#1f2937', fontSize: '.9rem' }}>{w.word}</span>
               {w.topic && <span style={{ background: '#e0f2fe', color: '#0369a1', borderRadius: 20, padding: '2px 8px', fontSize: '.7rem', fontWeight: 700 }}>{w.topic}</span>}
@@ -352,13 +373,16 @@ function WordManager({ dbWords, onRefresh }) {
               {w.audio_url && <span title="يحتوي على تسجيل" style={{ fontSize: '.75rem' }}>🎙️</span>}
               <button onClick={() => w.audio_url ? new Audio(w.audio_url).play() : speak(w.word)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '2px 4px', lineHeight: 1 }}>🔊</button>
-              <button onClick={() => startEdit(w)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '2px 4px', color: '#7c3aed', lineHeight: 1 }}>✏️</button>
+              <button onClick={() => (editId === w.id ? closeEdit() : startEdit(w))}
+                title={editId === w.id ? 'إغلاق التعديل' : 'تعديل'} aria-expanded={editId === w.id}
+                style={{ background: editId === w.id ? '#fde68a' : 'none', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: '1rem', padding: '2px 6px', color: '#7c3aed', lineHeight: 1 }}>✏️</button>
               <button onClick={() => handleDelete(w.id, w.word)} disabled={deleting === w.id}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '1.05rem', padding: '2px 4px', lineHeight: 1 }}>
                 {deleting === w.id ? '…' : '🗑️'}
               </button>
             </div>
+            {editId === w.id && formEl}
+            </Fragment>
           ))}
         </div>
       )}
@@ -468,9 +492,10 @@ export default function WordScrambleGame() {
     } catch { setDbWords([]); }
   }, [isTeacher]);
 
-  // Load filtered game words from API
-  const loadGameWords = useCallback(async () => {
-    setLoadingWords(true);
+  // Load filtered game words from API — quiet: تحديث بعد حفظ كلمة بلا شاشة التحميل
+  // (شاشة التحميل كانت تُغلق نافذة الإعدادات وتفتحها من جديد فيضيع مكان المعلم في القائمة)
+  const loadGameWords = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) setLoadingWords(true);
     try {
       const p = new URLSearchParams();
       if (cfg.topic)    p.set('topic',  cfg.topic);
@@ -660,7 +685,7 @@ export default function WordScrambleGame() {
         {isTeacher && showCfg && (
           <SettingsPanel
             onClose={() => setShowCfg(false)}
-            dbWords={dbWords} onRefresh={() => Promise.all([loadWords(), loadGameWords()])} />
+            dbWords={dbWords} onRefresh={() => Promise.all([loadWords(), loadGameWords({ quiet: true })])} />
         )}
         <style>{`
           @keyframes ws-fadein { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
