@@ -2,6 +2,9 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { resizeImageToWebp } from '../../lib/image-resize';
+import { libraryOverview } from '../../lib/library-progress';
+import useLibraryProgress from './useLibraryProgress';
+import ActivityProgress from './ActivityProgress';
 
 const RESOURCES = [
   {
@@ -144,7 +147,7 @@ async function cardImageToDataUrl(file) {
   });
 }
 
-export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, initialStories }) {
+export default function LibraryGrid({ initialMeta, isTeacher, initialStories }) {
   const stories = initialStories || [];
   const [cardMeta,      setCardMeta]      = useState(initialMeta || {});
   const [editing,       setEditing]       = useState(null);
@@ -158,30 +161,14 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
   const [selectedKey,   setSelectedKey]   = useState(null);
   const fileRef    = useRef();
 
-  /* ── مجموعة المكتملة ── */
-  const completedKeys = new Set(
-    Object.entries(initialProgress || {})
-      .filter(([, done]) => done)
-      .map(([k]) => k)
-  );
-  const hasAnyProgress = completedKeys.size > 0;
-
-  /* ── النشاط التالي المقترح ── */
-  const lastDoneIdx = RESOURCES.reduce(
-    (last, r, i) => (completedKeys.has(r.key) ? i : last), -1
-  );
-  const nextActivity =
-    RESOURCES.find((r, i) => r.ready && !completedKeys.has(r.key) && i > lastDoneIdx) ||
-    RESOURCES.find(r => r.ready && !completedKeys.has(r.key));
-
-  /* ── إحصاء شريط التقدم ── */
-  const totalInFilter = RESOURCES.length;
-  const readyInFilter = RESOURCES.filter(r => r.ready).length;
-  const doneInFilter  = RESOURCES.filter(r => completedKeys.has(r.key)).length;
-
-  const progressPct = hasAnyProgress
-    ? (readyInFilter > 0 ? Math.round((doneInFilter / readyInFilter) * 100) : 0)
-    : Math.round((readyInFilter / totalInFilter) * 100);
+  const { progress: activityProgress, ready: progressReady, preview, error: progressError, refresh } = useLibraryProgress(isTeacher);
+  const overview = libraryOverview(RESOURCES, activityProgress);
+  const completedKeys = new Set(RESOURCES.filter(r => activityProgress[r.key]?.status === 'completed').map(r => r.key));
+  const hasAnyProgress = overview.hasProgress;
+  const nextActivity = !preview && progressReady ? overview.next : null;
+  const continuingNext = nextActivity && ['in-progress', 'practiced'].includes(activityProgress[nextActivity.key]?.status);
+  const replayNext = nextActivity && activityProgress[nextActivity.key]?.status === 'completed';
+  const hasProgressError = !!progressError || Object.values(activityProgress).some(p => p.status === 'unknown');
 
   /* ── معالجات التعديل ── */
   const openEdit = (r) => {
@@ -238,6 +225,22 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
   return (
     <>
       <style>{`
+        .lib-journey-summary { margin:0 0 22px; padding:16px; border:1px solid #E8B84B; border-radius:18px; background:#FAF7F1; color:#1A2B4A; }
+        .lib-journey-summary>strong { display:block; font-size:.95rem; margin-bottom:10px; }
+        .lib-journey-counts { display:flex; flex-wrap:wrap; gap:8px; font-size:.8rem; }
+        .lib-journey-counts>span { background:#fff; padding:7px 10px; border-radius:10px; }
+        .lib-journey-error { margin:12px 0 0; font-size:.85rem; line-height:1.8; }
+        .lib-journey-error button { min-height:44px; margin-inline-start:8px; padding:6px 12px; border:1px solid #7C5CD9; border-radius:10px; background:#fff; color:#1A2B4A; font:inherit; font-weight:700; cursor:pointer; }
+        .lib-activity-progress { display:flex; flex-direction:column; align-items:center; gap:6px; width:100%; max-width:240px; color:#1A2B4A; font-size:.76rem; line-height:1.6; font-weight:700; }
+        .lib-activity-progress.in-progress { color:#6141AF; }
+        .lib-activity-progress.completed { color:#1A2B4A; }
+        .lib-activity-progress.loading,.lib-activity-progress.unknown,.lib-activity-progress.unavailable { color:#64748b; }
+        .lib-activity-meter { display:block; width:100%; max-width:140px; height:6px; border-radius:99px; overflow:hidden; background:#E9DFF7; }
+        .lib-activity-meter>span { display:block; height:100%; background:#7C5CD9; border-radius:inherit; }
+        .lib-activity-progress.completed .lib-activity-meter>span { background:#2ABB7A; }
+        .lib-activity-detail { font-weight:500; font-size:.88rem; }
+        .sg-sheet .lib-activity-progress { padding:12px; border-radius:14px; background:#FAF7F1; max-width:100%; box-sizing:border-box; }
+        .lib-journey-error button:focus-visible { outline:3px solid #E8B84B; outline-offset:3px; }
         @keyframes libCardIn {
           from { opacity:0; transform:translateY(20px) scale(.92); }
           to   { opacity:1; transform:translateY(0)    scale(1); }
@@ -640,12 +643,12 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
             <div className="lib-banner">
               <div className="lib-banner-text">
                 <p className="lib-banner-title">
-                  {hasAnyProgress ? '👋 استمر من حيث توقفت!' : '🚀 ابدأ رحلتك من هنا!'}
+                  {continuingNext ? '👋 أكمل مغامرتك!' : replayNext ? '🌟 أحسنت! استمتع بمغامراتك مجدّدًا' : hasAnyProgress ? '✨ مغامرة جديدة تنتظرك!' : '🚀 ابدأ رحلتك من هنا!'}
                 </p>
-                <p className="lib-banner-sub">{title}</p>
+                <p className="lib-banner-sub">{title}{continuingNext && ` · ${activityProgress[nextActivity.key].label}`}</p>
               </div>
               <Link href={nextActivity.link} className="lib-banner-btn">
-                {hasAnyProgress ? 'استمر ←' : 'ابدأ الآن ←'}
+                {continuingNext ? 'أكمل رحلتك ←' : replayNext ? 'ألعب مجدّدًا ←' : 'ابدأ الآن ←'}
               </Link>
               <button className="lib-banner-close" onClick={() => setBannerDismiss(true)}>✕</button>
             </div>
@@ -666,20 +669,11 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
           />
         </div>
 
-        {/* ── شريط التقدم — يظهر فقط بعد إكمال نشاط واحد على الأقل ── */}
-        {hasAnyProgress && (
-          <div className="lib-progress">
-            <div className="lib-progress-track">
-              <div
-                className="lib-progress-fill"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-            <span className="lib-progress-label">
-              {doneInFilter}/{readyInFilter} مكتمل ✓
-            </span>
-          </div>
-        )}
+        {!isTeacher && !preview && <section className="lib-journey-summary" aria-label="ملخّص رحلتك">
+          <strong>✦ رحلتك خطوة بخطوة</strong>
+          {!progressReady ? <p role="status">نجهّز إنجازاتك…</p> : !hasProgressError && <div className="lib-journey-counts"><span>✓ {overview.completed} مكتمل</span><span>✦ {overview.continuing} قيد التعلّم</span><span>↻ {overview.practiced} تدرّبت فيه</span></div>}
+          {hasProgressError && <p className="lib-journey-error" role="status">{progressError || 'بعض إنجازاتك لم تظهر بعد. إنجازاتك محفوظة.'}<button type="button" onClick={refresh}>أعد المحاولة</button></p>}
+        </section>}
 
         {/* ── الشبكة / مروحة البطاقات ── */}
         {(() => {
@@ -712,6 +706,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
                   {!r.ready && <span className="sg-card-lock">🔒</span>}
                 </div>
                 <span className="sg-card-title">{displayTitle}</span>
+                {r.ready && !isTeacher && !preview && <ActivityProgress progress={activityProgress[r.key]} ready={progressReady} />}
               </button>
             );
           };
@@ -942,6 +937,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
         const displayImg   = meta.image_url   || null;
         const displayIcon  = displayImg ? null : (meta.icon || r.icon);
         const done         = completedKeys.has(r.key);
+        const started      = ['in-progress', 'practiced'].includes(activityProgress[r.key]?.status);
         const ctaLabel     = r.tag === 'تعزيزي' ? '🎮 ابدأ اللعب الآن ←' : '📖 ابدأ التعلّم الآن ←';
         const closeSheet   = () => setSelectedKey(null);
         return (
@@ -963,12 +959,13 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialProgress, i
                 <span className="sg-sheet-tag">{r.tag}</span>
                 <p className="sg-sheet-title">{displayTitle}</p>
                 <p className="sg-sheet-desc">{displayDesc}</p>
+                {r.ready && !isTeacher && !preview && <ActivityProgress progress={activityProgress[r.key]} ready={progressReady} detail />}
               </div>
               <div className="sg-sheet-actions">
                 {r.ready
                   ? done
                     ? <Link href={r.link} className="sg-sheet-cta" style={{ background:'linear-gradient(135deg,#22c55e,#16a34a)' }}>✓ العب مجدداً</Link>
-                    : <Link href={r.link} className="sg-sheet-cta" style={{ background:r.btnBg }}>{ctaLabel}</Link>
+                    : <Link href={r.link} className="sg-sheet-cta" style={{ background:r.btnBg }}>{started ? '✨ أكمل رحلتك ←' : ctaLabel}</Link>
                   : <div className="sg-sheet-locked">🔒 سيكون هذا النشاط متاحاً قريباً</div>
                 }
                 {isTeacher && (

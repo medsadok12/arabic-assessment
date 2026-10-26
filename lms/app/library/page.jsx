@@ -48,40 +48,7 @@ export default async function LibraryPage() {
     initialStories = data || [];
   } catch {}
 
-  // fetch activity progress for students only
-  let initialProgress = {};
-  if (!isTeacher) {
-    try {
-      const [logsRes, gamesRes, flashRes, puzzleRes] = await Promise.all([
-        admin.from('points_log').select('reason').eq('user_id', user.id),
-        admin.from('game_results').select('game_id').eq('user_id', user.id),
-        admin.from('flashcard_progress')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id),
-        admin.from('puzzle_progress')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id),
-      ]);
-
-      const reasons = new Set((logsRes.data  || []).map(l => l.reason));
-      const games   = new Set((gamesRes.data || []).map(g => g.game_id));
-
-      initialProgress = {
-        'huroof':           reasons.has('huroof_all_complete'),
-        'vowel-balloon':    games.has('vowel_balloon'),
-        'letter-catcher':   games.has('letter_catcher'),
-        'word-scramble':    games.has('word_scramble'),
-        'word-image-match': games.has('word_image_match'),
-        'word-smash':       games.has('word_smash'),
-        'word-wheel':       games.has('word_wheel'),
-        'discover-objects': games.has('discover_objects'),
-        'flashcards':       (flashRes.count ?? 0) > 0,
-        'puzzle':           (puzzleRes.count ?? 0) > 0,
-        'challenge':        [...reasons].some(r => r.startsWith('challenge_')),
-        'literature':       [...reasons].some(r => r.startsWith('scene_story:')),
-      };
-    } catch {}
-  }
+  // التقدّم يُقرأ في العميل عبر childFetch: هوية الطفل خاصة بكل تبويب.
 
   return (
     <>
@@ -103,7 +70,6 @@ export default async function LibraryPage() {
           <LibraryGrid
             initialMeta={initialMeta}
             isTeacher={isTeacher}
-            initialProgress={initialProgress}
             initialStories={initialStories}
           />
         </div>
