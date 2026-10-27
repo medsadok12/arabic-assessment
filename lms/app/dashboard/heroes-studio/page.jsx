@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import HeroAvatar3D from '../../../components/HeroAvatar3D';
+import HeroesPreview from '../../../components/HeroesPreview';
 import { childFetch } from '../../../lib/child-fetch';
 import {
   ITEMS, HAIR, SLOT_LABEL, HAIR_C, HIJAB_C, CLOTH_C, PANTS_C, SHOE_C, CHARACTERS, EMOTES, LEVELS, ACHIEVEMENTS, WEEKLY, SEASONS,
@@ -46,6 +47,15 @@ export default function HeroesStudio() {
   const [shots, setShots] = useState({});
   const [photo, setPhoto] = useState(null);
   const [sound, setSound] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
+
+  function changePreview(next) {
+    if (busy) return;
+    audioRef.current?.pause();
+    clearTimeout(bubbleT.current);
+    setBubble('');
+    setShowPreview(next);
+  }
 
   const apply = useCallback((r) => {
     setD({
@@ -320,10 +330,17 @@ export default function HeroesStudio() {
         <div className="hs-bar">
           <Link href="/dashboard" className="hs-back" aria-label="الْعَوْدَةُ إِلَى لَوْحَتِي">→</Link>
           <h1>عَالَمُ الْأَبْطَالِ</h1>
-          <button type="button" className="hs-sound" onClick={toggleSound} aria-label={sound ? 'إِيقَافُ صَوْتِ الْبَطَلِ' : 'تَشْغِيلُ صَوْتِ الْبَطَلِ'}>{sound ? '🔊' : '🔇'}</button>
-          <div key={bump} className={`hs-points${bump ? ' hs-bump' : ''}`} aria-label={`نُجُومُكَ: ${d.points}`}>⭐ <span>{loaded ? d.points : '…'}</span></div>
+          {!showPreview && <button type="button" className="hs-sound" onClick={toggleSound} aria-label={sound ? 'إِيقَافُ صَوْتِ الْبَطَلِ' : 'تَشْغِيلُ صَوْتِ الْبَطَلِ'}>{sound ? '🔊' : '🔇'}</button>}
+          <div key={bump} className={`hs-points${bump ? ' hs-bump' : ''}`} aria-label={`رصيدك الفعلي: ${d.points}`} title="رصيدك الفعلي؛ لا يتغير في معاينة الأبطال الجدد">⭐ <span>{loaded ? d.points : '…'}</span></div>
         </div>
 
+        <nav className="hs-preview-switch" aria-label="عرض عالم الأبطال">
+          <button type="button" aria-pressed={!showPreview} disabled={!!busy} onClick={() => changePreview(false)}>أبطالي الحاليون</button>
+          <button type="button" aria-pressed={showPreview} disabled={!!busy} onClick={() => changePreview(true)}>✨ جرّب الأبطال الجدد <small>معاينة</small></button>
+        </nav>
+        {showPreview && <HeroesPreview onReturn={() => changePreview(false)} />}
+
+        <div hidden={showPreview}>
         <div className="hs-studio">
           <div className="hs-left">
             <section className="hs-stage" ref={stageRef}>
@@ -478,6 +495,7 @@ export default function HeroesStudio() {
           )}
           {note && <div className="hs-note" role="status">{note}</div>}
         </div></div>
+        </div>
       </div>
 
       {photo && (
@@ -521,6 +539,11 @@ body:has(.hs-page) { padding-bottom: 0; background: var(--hs-sand, #FFF6E7); }
 .hs-bar h1 { margin: 0; flex: 1; font-size: 1.35rem; font-weight: 900; }
 .hs-points { display: flex; align-items: center; gap: 6px; background: var(--hs-card); border-radius: 99px; padding: 8px 14px; font-weight: 900; font-size: 1.12rem; box-shadow: 0 3px 10px rgba(26,43,74,.08); font-variant-numeric: tabular-nums; }
 .hs-bump { animation: hsBump .55s ease; }
+.hs-preview-switch { display: flex; flex-wrap: wrap; gap: 8px; padding: 5px; border: 1px solid #EDE5D8; background: #FAF7F2; border-radius: 18px; }
+.hs-preview-switch button { flex: 1; min-width: 140px; min-height: 48px; border-radius: 13px; padding: 8px 12px; font-weight: 800; font-size: .88rem; }
+.hs-preview-switch button[aria-pressed=true] { background: #E8B84B; color: #1A2B4A; box-shadow: 0 2px 7px #1A2B4A12; }
+.hs-preview-switch small { display: inline-block; font-size: .66rem; padding: 1px 7px; border-radius: 20px; background: #1A2B4A; color: #fff; margin-inline-start: 4px; }
+.hs-preview-switch button:disabled { opacity: .6; cursor: wait; }
 
 .hs-studio { display: grid; gap: 14px; }
 .hs-stage { position: relative; height: clamp(340px, 52vh, 470px); border-radius: 32px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #FFFFFF 0%, #EEF0FF 46%, #DCD3FF 100%); box-shadow: 0 12px 30px rgba(26,43,74,.12); }
