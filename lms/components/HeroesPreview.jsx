@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import styles from './HeroesPreview.module.css';
+import HeroesPreview3D from './HeroesPreview3D';
 
 // A deliberately local prototype: no account writes, rewards, ownership or saved hero changes.
 const ART = '/heroes/preview-v1/characters.webp';
@@ -39,8 +40,8 @@ export default function HeroesPreview({ onReturn }) {
   const [frame, setFrame] = useState('gold');
   const [outfit, setOutfit] = useState('daily');
   const [message, setMessage] = useState('');
-  const [mood, setMood] = useState('body');
-  const [motion, setMotion] = useState(0);
+  const [action, setAction] = useState(null);
+  const animate = kind => setAction({ kind, tick: Date.now() });
   const [question, setQuestion] = useState(0);
   const [answer, setAnswer] = useState(null);
   const [complete, setComplete] = useState(false);
@@ -50,40 +51,37 @@ export default function HeroesPreview({ onReturn }) {
   const name = names[selected]?.trim() || hero.name;
   const q = QUESTIONS[question];
 
-  function choose(h) { setSelected(h.id); setMessage(h.hello); setMood('body'); setMotion(0); }
+  function choose(h) { setSelected(h.id); setMessage(h.hello); }
   function react(kind) {
-    setMood(outfit === 'daily' ? (kind === 'celebrate' ? 'happy' : 'face') : 'body'); setMotion(n => n + 1);
+    animate(kind);
     setMessage(kind === 'celebrate' ? 'أحسنت! كل خطوة صغيرة تستحق أن نفرح بها.' : `${name} يحيّيك! جاهز لمغامرة جديدة؟`);
   }
   function pick(option) {
     if (answer === true || complete) return;
     setAnswer(!!option.right);
     setMessage(option.right ? `رائع! «${option.word}» تبدأ بحرف «${q.letter}».` : 'قريب! انظر إلى أول حرف في كل كلمة، وجرّب مرة أخرى.');
-    setMood(outfit === 'daily' ? (option.right ? 'happy' : 'face') : 'body');
-    if (option.right) setMotion(n => n + 1);
+    if (option.right) { animate('celebrate'); }
   }
   function next() {
     if (answer !== true) return;
     if (question === QUESTIONS.length - 1) { setComplete(true); setMessage('أنهيت مهمة المعاينة! أضف شجرة الكلمات إلى عالمك.'); }
     else { setQuestion(n => n + 1); setAnswer(null); setMessage('خطوة جميلة! هيا نكتشف كلمة أخرى.'); }
   }
-  function restart() { setQuestion(0); setAnswer(null); setComplete(false); setMessage('نبدأ من جديد! خذ وقتك واستمتع.'); setMood('body'); }
+  function restart() { setQuestion(0); setAnswer(null); setComplete(false); setMessage('نبدأ من جديد! خذ وقتك واستمتع.'); }
 
   return <section className={styles.preview} aria-labelledby="heroes-preview-title">
     <div className={styles.intro}>
       <div><span className={styles.eyebrow}>تصوّر جديد · تجربة داخل عالم الأبطال</span><h2 id="heroes-preview-title">بطل يشبه خيالك، ورفيق يحبّ التعلّم معك</h2><p>اختر رفيقك، سمِّه، وابنِ معه أول حكاية.</p></div>
       <span className={styles.seal} aria-hidden="true">ع<span>أبطال عارم</span></span>
     </div>
-    <p className={styles.disclosure}>معاينة للتجربة فقط؛ اختياراتك هنا مؤقتة ولا تغيّر بطلك المحفوظ أو مشترياتك أو رصيدك. الشخصيات رسوم تفاعلية، وليست نماذج ثلاثية الأبعاد قابلة للدوران بعد.</p>
+    <p className={styles.disclosure}>معاينة للتجربة فقط؛ اختياراتك هنا مؤقتة ولا تغيّر بطلك المحفوظ أو مشترياتك أو رصيدك. جرّب المجسّمات الجديدة: أدر بطلك، وغيّر إطلالته، وشاهد تحيّته ومشيه واحتفاله. التصاميم الأصلية متاحة أسفل الصفحة للمقارنة.</p>
 
     <div className={styles.layout}>
       <div className={styles.sceneColumn}>
         <div className={`${styles.scene} ${styles[world.id]} ${styles[frame]}`}>
           <div className={styles.sceneTop}><span>{world.icon} {world.name}</span><span>رفيق التعلّم</span></div>
           <div className={styles.orbit} aria-hidden="true"><span>✦</span><span>ب</span><span>م</span><span>✧</span></div>
-          <button type="button" key={`${hero.id}-${mood}-${motion}`} className={`${styles.character} ${motion ? styles.bounce : ''}`} style={{ '--character-width': `${335 * hero[mood][2] / hero[mood][3]}px`, '--character-mobile-width': `${265 * hero[mood][2] / hero[mood][3]}px` }} onClick={() => react('hello')} aria-label={`المس ${name} ليحيّيك`}>
-            <Portrait hero={hero} kind={mood} outfit={outfit} />
-          </button>
+          <HeroesPreview3D hero={hero.id} outfit={outfit} action={action} fallback={<Portrait hero={hero} kind="body" outfit={outfit} />} />
           {complete && <span className={styles.tree} aria-label="شجرة الكلمات المكتسبة في المعاينة">🌳</span>}
           <div className={styles.nameplate}><strong>{name}</strong><span>{hero.icon} {hero.title}</span></div>
         </div>
@@ -91,7 +89,8 @@ export default function HeroesPreview({ onReturn }) {
         <div className={styles.reactions}>
           <button type="button" onClick={() => react('hello')}>👋 حيّني</button>
           <button type="button" onClick={() => react('celebrate')}>✨ احتفل معي</button>
-          <button type="button" onClick={() => { setMood('body'); setMotion(0); setMessage(hero.hello); }}>🧍 الشكل الكامل</button>
+          <button type="button" onClick={() => { animate('walk'); setMessage(`${name} يمشي معك خطوة خطوة!`); }}>🚶 امشِ معي</button>
+          <button type="button" onClick={() => animate('reset')}>🧍 واجهني</button>
         </div>
       </div>
 
@@ -106,9 +105,9 @@ export default function HeroesPreview({ onReturn }) {
             {HEROES.map(h => <button type="button" key={h.id} className={styles.heroOption} onClick={() => choose(h)} aria-pressed={h.id === selected} aria-label={`اختر ${h.name}`}><Portrait hero={h} kind="face" /><strong>{h.name}</strong><small>{h.title}</small><span className={styles.selected}>{h.id === selected ? '✓ رفيقي الآن' : 'جرّبني'}</span></button>)}
           </div>
           <label className={styles.nameInput}>ماذا تحب أن تسمّي بطلك؟<input value={names[selected] || ''} onChange={e => setNames(n => ({ ...n, [selected]: e.target.value }))} maxLength={24} placeholder={hero.name} autoComplete="off" /></label>
-          <fieldset className={styles.outfits}><legend>إطلالة رفيقي</legend>{[['daily', '🎨', 'إطلالتي اليومية'], ['explorer', '🧭', 'رحلة استكشاف']].map(([id, icon, label]) => <button type="button" key={id} aria-pressed={outfit === id} onClick={() => { setOutfit(id); setMood('body'); setMotion(0); setMessage(id === 'explorer' ? 'حقيبتي جاهزة! ما الكلمة التي سنكتشفها معًا؟' : hero.hello); }}><span aria-hidden="true">{icon}</span>{label}{outfit === id && ' ✓'}</button>)}</fieldset>
+          <fieldset className={styles.outfits}><legend>إطلالة رفيقي</legend>{[['daily', '🎨', 'إطلالتي اليومية'], ['explorer', '🧭', 'رحلة استكشاف']].map(([id, icon, label]) => <button type="button" key={id} aria-pressed={outfit === id} onClick={() => { setOutfit(id); setMessage(id === 'explorer' ? 'حقيبتي جاهزة! ما الكلمة التي سنكتشفها معًا؟' : hero.hello); }}><span aria-hidden="true">{icon}</span>{label}{outfit === id && ' ✓'}</button>)}</fieldset>
           <fieldset className={styles.frames}><legend>لون إطار بطلي</legend>{[['gold', 'ذهبي'], ['navy', 'كحلي'], ['cream', 'كريمي']].map(([id, label]) => <button type="button" key={id} className={styles[id]} aria-pressed={frame === id} onClick={() => setFrame(id)}>{frame === id && '✓ '}{label}</button>)}</fieldset>
-          <div className={styles.tailor}><span aria-hidden="true">👕</span><p><b>الملابس والمعدات</b><br />جرّبنا هنا إطلالتين مرسومتين. الملابس والقطع ثلاثية الأبعاد تظل في متجرك الحالي.</p><button type="button" onClick={onReturn}>جرّب المتجر الحالي ←</button></div>
+          <div className={styles.tailor}><span aria-hidden="true">👕</span><p><b>الملابس والمعدات</b><br />جرّب الإطلالة اليومية وإطلالة الاستكشاف على المجسم. ولتجربة مشترياتك، افتح متجرك الحالي.</p><button type="button" onClick={onReturn}>جرّب المتجر الحالي ←</button></div>
         </div>}
 
         {panel === 'world' && <div className={styles.card}>
