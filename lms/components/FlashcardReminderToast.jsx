@@ -25,7 +25,7 @@ export default function FlashcardReminderToast() {
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes frIn {
           from { opacity:0; transform:translateY(18px) scale(.92); }
           to   { opacity:1; transform:translateY(0)    scale(1);   }
@@ -61,7 +61,7 @@ export default function FlashcardReminderToast() {
         @media (prefers-color-scheme:dark) {
           .fr-card { background:#1e1b4b; }
         }
-      `}</style>
+      ` }} />
 
       <div className={`fr-card${leaving ? ' leaving' : ''}`}>
         {/* X — أعلى يسار البطاقة */}

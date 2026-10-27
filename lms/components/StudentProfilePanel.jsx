@@ -55,7 +55,7 @@ export default function StudentProfilePanel({ student, onClose }) {
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .sp-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1200;
                       display:flex; justify-content:flex-end; }
         .sp-panel   { width:min(480px,100vw); height:100vh; overflow-y:auto;
@@ -83,7 +83,7 @@ export default function StudentProfilePanel({ student, onClose }) {
                     color:#451a03; line-height:1.7; }
 
         .att-dot  { width:9px; height:9px; border-radius:50%; flex-shrink:0; margin-top:4px; }
-      `}</style>
+      ` }} />
 
       <div className="sp-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
         <div className="sp-panel">

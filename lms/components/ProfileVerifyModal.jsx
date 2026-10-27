@@ -18,7 +18,7 @@ export default function ProfileVerifyModal({ targetName, subtitle, onSuccess, on
 
   return (
     <div className="pv-backdrop" onClick={e => { if (e.target === e.currentTarget) onCancel?.(); }}>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .pv-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:1200;
                        display:flex; align-items:center; justify-content:center; padding:16px;
                        font-family:'Cairo','Tajawal',sans-serif; direction:rtl; }
@@ -37,7 +37,7 @@ export default function ProfileVerifyModal({ targetName, subtitle, onSuccess, on
         .pv-cancel { width:100%; padding:10px; border-radius:12px; border:none; background:none;
                      color:#94a3b8; font-weight:700; font-size:.85rem; cursor:pointer; margin-top:6px;
                      font-family:inherit; }
-      `}</style>
+      ` }} />
       <form className="pv-modal" onSubmit={submit}>
         <div className="pv-emoji">🔒✨</div>
         <div className="pv-title">اكتب اسمك للمتابعة</div>

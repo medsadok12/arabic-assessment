@@ -1116,7 +1116,7 @@ export default function BoggarAdminPage() {
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .time-btn:not(:disabled):hover { background: var(--primary-lt) !important; border-color: var(--primary) !important; }
         .perm-icon { opacity:.55; transition:opacity .15s; }
         .perm-icon:hover { opacity:1; }
@@ -1176,7 +1176,7 @@ export default function BoggarAdminPage() {
             overflow: hidden !important;
           }
         }
-      `}</style>
+      ` }} />
 
       <Navbar user={user} />
       <main className="page-wrap" dir={lang === 'ar' ? 'rtl' : 'ltr'}>

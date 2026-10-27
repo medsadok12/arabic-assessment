@@ -346,7 +346,7 @@ export default function ProgressDashboard({
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         
         .prog-wrap        { font-family:'Cairo','Tajawal',sans-serif; direction:rtl; padding:20px 0 80px; }
         .prog-stat-grid   { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; margin-bottom:18px; }
@@ -361,7 +361,7 @@ export default function ProgressDashboard({
         @keyframes celebBounce  { 0%,100% { transform:scale(1) } 40% { transform:scale(1.1) } 70% { transform:scale(.95) } }
         @keyframes confettiFall { from { transform:translateY(-10px) rotate(0deg); opacity:.8 } to { transform:translateY(90px) rotate(400deg); opacity:0 } }
         @keyframes badgeShimmer { 0%,100% { opacity:.75 } 50% { opacity:1 } }
-      `}</style>
+      ` }} />
 
       {/* Celebration popup — one item at a time, key resets auto-dismiss timer */}
       {currentCeleb && (

@@ -164,7 +164,7 @@ export default async function StudentViewPage({ params }) {
   /* ── render ── */
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .sv-wrap { max-width: 860px; margin: 0 auto; padding: 0 18px 80px; direction: rtl;
                    font-family: 'Cairo','Tajawal',sans-serif; }
         .sv-card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 18px;
@@ -190,7 +190,7 @@ export default async function StudentViewPage({ params }) {
         @media(max-width:600px){
           .sv-stat-grid { grid-template-columns: repeat(2,1fr); }
         }
-      `}</style>
+      ` }} />
 
       {/* ── Admin Banner ── */}
       <div style={{

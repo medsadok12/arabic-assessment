@@ -280,7 +280,7 @@ export default function StoryPageEditor({
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .spe { direction:rtl; font-family:'Cairo','Tajawal',sans-serif; }
 
         /* ── شريط الصفحات ── */
@@ -395,7 +395,7 @@ export default function StoryPageEditor({
           font-family:'Cairo','Tajawal',sans-serif; font-size:.8rem;
           color:#374151; outline:none; cursor:pointer; background:#fff;
         }
-      `}</style>
+      ` }} />
 
       <div className="spe">
 

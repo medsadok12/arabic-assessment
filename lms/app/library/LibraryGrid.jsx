@@ -224,7 +224,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialStories }) 
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .lib-journey-summary { margin:0 0 22px; padding:16px; border:1px solid #E8B84B; border-radius:18px; background:#FAF7F1; color:#1A2B4A; }
         .lib-journey-summary>strong { display:block; font-size:.95rem; margin-bottom:10px; }
         .lib-journey-counts { display:flex; flex-wrap:wrap; gap:8px; font-size:.8rem; }
@@ -625,7 +625,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialStories }) 
           border:1.5px dashed #cbd5e1; border-radius:50px;
           padding:5px 12px; font-size:.65rem; font-weight:700;
         }
-      `}</style>
+      ` }} />
 
       <div className="lib-page">
 

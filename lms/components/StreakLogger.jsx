@@ -50,7 +50,7 @@ export default function StreakLogger() {
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         /* translateX(-50%) مُدمج في كل keyframe لأن animation تستبدل transform الأساسي */
         @keyframes stSlideUp {
           from { opacity:0; transform:translateX(-50%) translateY(40px) scale(.92); }
@@ -144,7 +144,7 @@ export default function StreakLogger() {
           background:linear-gradient(90deg,#fef3c7,#fbbf24);
           animation:stBar 7s linear forwards;
         }
-      `}</style>
+      ` }} />
 
       <div className={`st-card ${leaving ? 'leaving' : ''}`} onClick={dismiss}>
         <div className="st-inner">

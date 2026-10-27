@@ -345,7 +345,7 @@ export default function DashboardContent({
       {/* ── بوابة الدخول الأولى: اختيار الملف + تحقق بالاسم (تغطي اللوحة حتى التحقق) ── */}
       {!gateOk && (
         <div className="aa-gate">
-          <style>{`
+          <style dangerouslySetInnerHTML={{ __html: `
             .aa-gate { position:fixed; inset:0; z-index:1100; background:linear-gradient(160deg,#F4EFE6,#EDE5D8);
                        display:flex; flex-direction:column; align-items:center; justify-content:center;
                        padding:24px; direction:rtl; font-family:'Cairo','Tajawal',sans-serif; overflow:auto; }
@@ -361,7 +361,7 @@ export default function DashboardContent({
                              display:flex; align-items:center; justify-content:center; font-size:2rem;
                              border:2px solid #EDE5D8; }
             .aa-gate-name { font-size:1rem; font-weight:800; color:#1A2B4A; text-align:center; word-break:break-word; }
-          `}</style>
+          ` }} />
           <div className="aa-gate-title">من يتعلّم الآن؟ 🌟</div>
           <div className="aa-gate-hint">اختر حسابك ثم اكتب اسمك للدخول</div>
           <div className="aa-gate-cards">
@@ -382,7 +382,7 @@ export default function DashboardContent({
         </div>
       )}
 
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .db-wrap { max-width:820px; margin:0 auto; padding:28px 18px 60px; direction:rtl; }
         .db-hello { font-size:1.55rem; font-weight:900; color:var(--primary); margin-bottom:6px; }
         .db-sub   { font-size:.9rem; color:var(--muted); margin-bottom:28px; }
@@ -545,7 +545,7 @@ export default function DashboardContent({
           .hero-discover { flex-wrap: wrap; }
           .hero-discover-btn { width: 100%; justify-content: center; }
         }
-      `}</style>
+      ` }} />
 
       <Navbar user={user} viewingChildId={viewingChildId} displayName={isStudent && viewingChildId ? displayName : null} />
       <main className="page-wrap db-page">
