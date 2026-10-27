@@ -3,7 +3,8 @@
 import { Fragment, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { getRole } from '../../../../lib/auth-role';
-import { childFetch } from '../../../../lib/child-fetch';
+import { childFetch, getActiveChildTab } from '../../../../lib/child-fetch';
+import { splitScrambleLetters } from '../../../../lib/verified-scramble';
 import { freshFetch } from '../../../../lib/fresh-fetch';
 import { keepRowInPlace, returnRow, revealBelow, flashRow } from '../../../../lib/edit-scroll';
 import AudioUploadButton from '../../../../components/AudioUploadButton';
@@ -13,16 +14,7 @@ import { LEN_NO_LIMIT } from '../../../../lib/letter-catcher';
 /* ────────────────────────── helpers ────────────────────────── */
 
 // Split Arabic word into letter+diacritic chunks so harakat stay with their letter
-const DIAC = /[ً-ٰٟ]/;
-function splitArabicLetters(word) {
-  const chunks = [];
-  for (let i = 0; i < word.length; i++) {
-    let ch = word[i];
-    while (i + 1 < word.length && DIAC.test(word[i + 1])) { i++; ch += word[i]; }
-    chunks.push(ch);
-  }
-  return chunks;
-}
+const splitArabicLetters = splitScrambleLetters;
 
 function shuffle(arr) {
   const a = [...arr];
@@ -457,6 +449,28 @@ export default function WordScrambleGame() {
   const [currentTopic,    setCurrentTopic]    = useState(null);
   const [completedTopics, setCompletedTopics] = useState(new Set());
   const [topicTotals,     setTopicTotals]     = useState({ right: 0, total: 0 });
+  const [verificationNote, setVerificationNote] = useState('');
+  const [verifying, setVerifying] = useState(false), [starting, setStarting] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState(null);
+  const [savedRoundId, setSavedRoundId] = useState(null);
+  const savedKey = () => `ws_verified:${getActiveChildTab() || 'active'}`;
+  const rememberRound = id => { try { if (id) sessionStorage.setItem(savedKey(), id); else sessionStorage.removeItem(savedKey()); } catch {} setSavedRoundId(id); };
+  const sessionRef = useRef(null), startRequestRef = useRef(null), verifyLock = useRef(false), previewWrong = useRef(false);
+  const lifecycle = useRef(0);
+  useEffect(() => () => { lifecycle.current++; }, []);
+  useEffect(() => {
+    try { setSavedRoundId(sessionStorage.getItem(savedKey())); } catch {}
+    const checkIdentity = () => {
+      if (!sessionRef.current || sessionRef.current.scope === getActiveChildTab()) return;
+      lifecycle.current++; sessionRef.current = null; startRequestRef.current = null; verifyLock.current = false;
+      setPhase('start'); setQueue([]); setCur(0); setScore(0); setCompletedTopics(new Set()); setTopicTotals({ right: 0, total: 0 });
+      setRetryAttempt(null); setResult(null); setVerifying(false); setStarting(false); setTotalPoints(0);
+      setVerificationNote('تغيّر الطفل المختار. ابدأ جولة جديدة لهذا الطفل.');
+      try { setSavedRoundId(sessionStorage.getItem(savedKey())); } catch { setSavedRoundId(null); }
+    };
+    window.addEventListener('focus', checkIdentity); document.addEventListener('visibilitychange', checkIdentity);
+    return () => { window.removeEventListener('focus', checkIdentity); document.removeEventListener('visibilitychange', checkIdentity); };
+  }, []);
 
   const uniqueTopics = useMemo(() => {
     const seen = new Set(); const out = [];
@@ -514,7 +528,7 @@ export default function WordScrambleGame() {
 
   // Build round queue: add chunks + scrambled arrays per word
   const buildQueue = useCallback((words, count) => {
-    return shuffle(words).slice(0, count).map(w => {
+    return words.slice(0, count).map(w => {
       // المسافة بين كلمتين حدّ كلمة لا حرف: لا خانة لها ولا مربع في الحروف المبعثرة
       const chunks = [];
       const slotGroups = [[]];
@@ -531,37 +545,66 @@ export default function WordScrambleGame() {
     });
   }, []);
 
-  // Start game (all words, no topic filter)
-  const startGame = useCallback(() => {
-    if (gameWords.length === 0) return;
-    const q = buildQueue(gameWords, gameWords.length);
-    setCurrentTopic(null);
-    setQueue(q);
-    setCur(0); setScore(0);
-    setAnswer(q[0].chunks.map(() => null));
-    setAvailable([...q[0].scrambled]);
-    setResult(null);
-    setPhase('playing');
-  }, [gameWords, buildQueue]);
+  async function sessionFetch(body) {
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      const r = await childFetch('/api/games/word-scramble/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal });
+      const j = await r.json(); if (!r.ok) throw Object.assign(new Error(j.error || 'أعد المحاولة لتأكيد الحفظ.'), { status: r.status }); return j;
+    } finally { clearTimeout(timer); }
+  }
+  const beginRound = async (mode, topic = null, resumeId = null) => {
+    if (verifyLock.current || (!gameWords.length && !resumeId)) return;
+    verifyLock.current = true; setStarting(true); setVerificationNote('نجهّز جولتك…');
+    const scope = getActiveChildTab(), ticket = lifecycle.current;
+    const signature = JSON.stringify({ mode, topic, cfg, scope });
+    if (startRequestRef.current?.signature !== signature) startRequestRef.current = { signature, id: crypto.randomUUID() };
+    try {
+      const j = await sessionFetch(resumeId ? { action: 'resume', roundId: resumeId } : { action: 'start', roundId: startRequestRef.current.id, mode, topic, filters: cfg });
+      if (scope !== getActiveChildTab() || ticket !== lifecycle.current) return;
+      const q = buildQueue(j.words.map(w => ({ ...gameWords.find(old => String(old.id) === w.id), ...w })), j.words.length);
+      sessionRef.current = { id: j.roundId, scope, preview: j.preview }; startRequestRef.current = null;
+      const pending = j.confirmation?.reward === 'pending' || j.confirmation?.result === 'pending';
+      const index = pending ? j.confirmationRequest.index : j.summary.complete ? 0 : j.cursor;
+      previewWrong.current = false; setCurrentTopic(j.topic || null); setQueue(q); setCur(index); setScore(j.summary.correct);
+      setAnswer(q[index].chunks.map(() => null)); setAvailable([...q[index].scrambled]); setResult(pending ? 'correct' : null); setRetryAttempt(pending ? j.confirmationRequest : null);
+      if (Number.isFinite(j.confirmation?.points)) setTotalPoints(j.confirmation.points);
+      if (!j.preview) rememberRound(j.summary.complete && !pending ? null : j.roundId);
+      setVerificationNote(j.preview ? 'معاينة المعلم: بلا نقاط أو نتائج للطلاب.' : pending ? 'استعدنا إجابتك. أعد تأكيد الحفظ لنكمل المزامنة.' : resumeId ? 'استعدنا جولتك المدقّقة. لنكمل اكتشافاتك!' : ''); setPhase(j.summary.complete && !pending ? 'finished' : 'playing');
+    } catch (e) { if (scope === getActiveChildTab() && ticket === lifecycle.current) { if (e.status === 409) startRequestRef.current = null; setVerificationNote(e.name === 'AbortError' ? 'لم نتلقّ تأكيد تجهيز الجولة. اضغط البداية للمحاولة مجددًا.' : e.message); } }
+    finally { verifyLock.current = false; if (ticket === lifecycle.current) setStarting(false); }
+  };
+  const startGame = () => beginRound('all');
+  const startGameForTopic = topic => beginRound('topic', topic);
 
-  // Start game for a specific topic (or null = all)
-  const startGameForTopic = useCallback((topic) => {
-    const words = topic ? gameWords.filter(w => w.topic === topic) : gameWords;
-    if (!words.length) return;
-    const count = Math.min(words.length, 12);
-    const q = buildQueue(words, count);
-    setCurrentTopic(topic);
-    setQueue(q);
-    setCur(0); setScore(0);
-    setAnswer(q[0].chunks.map(() => null));
-    setAvailable([...q[0].scrambled]);
-    setResult(null);
-    setPhase('playing');
-  }, [gameWords, buildQueue]);
+  const submitAttempt = async body => {
+    if (verifyLock.current) return;
+    const session = sessionRef.current, ticket = lifecycle.current;
+    if (!session || session.scope !== getActiveChildTab()) { setVerificationNote('تغيّر الطفل المختار. ابدأ جولة جديدة لهذا الطفل.'); setPhase('start'); sessionRef.current = null; return; }
+    verifyLock.current = true; setVerifying(true); setRetryAttempt(body); setVerificationNote('نؤكّد إجابتك ونحفظ اكتشافك…');
+    try {
+      const j = await sessionFetch(body);
+      if (ticket !== lifecycle.current || session.scope !== getActiveChildTab() || sessionRef.current !== session) return;
+      const pending = j.reward === 'pending' || j.result === 'pending';
+      setScore(j.summary.correct); setRetryAttempt(pending ? body : null); setResult(j.right ? 'correct' : 'wrong');
+      if (j.summary.complete && !pending) rememberRound(null);
+      setVerificationNote(j.right && !['done', 'none'].includes(j.reward) ? 'حُفظت إجابتك. نجوم هذه الكلمة تنتظر تأكيدًا؛ لن نكرر احتسابها.' : j.summary.complete ? j.result !== 'done' ? 'حُفظت نتيجتك المدقّقة. مزامنة التقرير تنتظر تأكيدًا.' : 'حُفظت نتيجتك بعد التحقق من جميع إجاباتك.' : 'حُفظت إجابتك بعد التحقق منها.');
+      if (Number.isFinite(j.points)) setTotalPoints(j.points);
+      if (j.awarded > 0) { setPtPopupKey(k => k + 1); setPtPopupActive(true); setTimeout(() => setPtPopupActive(false), 1200); }
+      if (j.right) {
+        const w = queue[body.index]; setTimeout(() => speak(w.word), 200);
+        if (w.audio_url) { try { new Audio(w.audio_url).play().catch(() => {}); } catch {} }
+      } else {
+        const w = queue[body.index];
+        childFetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: w.word, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
+      }
+    } catch (e) {
+      if (ticket === lifecycle.current && session.scope === getActiveChildTab()) setVerificationNote(e.name === 'AbortError' ? 'لم يصل تأكيد الحفظ بعد. أعد المحاولة؛ لن يتكرر احتساب إجابتك.' : e.message);
+    } finally { verifyLock.current = false; if (ticket === lifecycle.current) setVerifying(false); }
+  };
 
   // Click letter in bottom → place in next empty answer slot
   const placeInAnswer = useCallback((availIdx) => {
-    if (result !== null) return;
+    if (result !== null || verifyLock.current || retryAttempt) return;
     const chunk      = available[availIdx];
     const firstEmpty = answer.findIndex(a => a === null);
     if (firstEmpty === -1) return;
@@ -575,32 +618,32 @@ export default function WordScrambleGame() {
 
     if (newAnswer.every(a => a !== null)) {
       const w      = queue[cur];
+      if (!sessionRef.current?.preview) {
+        submitAttempt({ action: 'answer', roundId: sessionRef.current?.id, attemptId: crypto.randomUUID(), index: cur, order: newAnswer.map(a => a.id) });
+        return;
+      }
       const isRight = newAnswer.map(a => a.ch).join('') === w.chunks.map(c => c.ch).join('');
       setResult(isRight ? 'correct' : 'wrong');
       if (isRight) {
-        setScore(s => s + 1);
-        setPtPopupKey(k => k + 1);
-        setPtPopupActive(true);
-        setTimeout(() => setPtPopupActive(false), 1200);
-        childFetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'word_scramble' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
+        if (!previewWrong.current) setScore(s => s + 1);
         setTimeout(() => speak(w.word), 200);
         if (w.audio_url) { try { new Audio(w.audio_url).play().catch(() => {}); } catch {} }
       } else {
-        childFetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: w.word, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
+        previewWrong.current = true;
       }
     }
-  }, [answer, available, result, queue, cur]);
+  }, [answer, available, result, queue, cur, retryAttempt]);
 
   // Click placed letter → return to available pool
   const removeFromAnswer = useCallback((slotIdx) => {
-    if (result !== null) return;
+    if (result !== null || verifyLock.current || retryAttempt) return;
     const chunk = answer[slotIdx];
     if (!chunk) return;
     const newAnswer = [...answer];
     newAnswer[slotIdx] = null;
     setAnswer(newAnswer);
     setAvailable([...available, chunk]);
-  }, [answer, available, result]);
+  }, [answer, available, result, retryAttempt]);
 
   // Auto-reset after wrong answer
   useEffect(() => {
@@ -615,27 +658,29 @@ export default function WordScrambleGame() {
 
   // Advance to next word
   const nextWord = useCallback(() => {
+    if (verifyLock.current || retryAttempt || result !== 'correct') return;
+    if (sessionRef.current?.scope !== getActiveChildTab()) { sessionRef.current = null; setPhase('start'); setVerificationNote('تغيّر الطفل المختار. ابدأ جولة جديدة.'); return; }
     const n = cur + 1;
     if (n >= queue.length) {
       if (currentTopic) {
         setCompletedTopics(prev => new Set([...prev, currentTopic]));
         setTopicTotals(prev => ({ right: prev.right + score, total: prev.total + queue.length }));
-        childFetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_scramble', category: currentTopic, correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
         setCurrentTopic(null);
         setPhase('topics');
       } else {
         setPhase('finished');
-        childFetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_scramble', category: 'عام', correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
       }
       return;
     }
     setCur(n);
+    previewWrong.current = false;
     setAnswer(queue[n].chunks.map(() => null));
     setAvailable([...queue[n].scrambled]);
     setResult(null);
-  }, [cur, queue, currentTopic, score]);
+  }, [cur, queue, currentTopic, score, retryAttempt, result]);
 
   const restart = useCallback(() => {
+    lifecycle.current++; sessionRef.current = null; startRequestRef.current = null; setRetryAttempt(null); setVerificationNote('');
     const goTopics = uniqueTopics.length >= 2;
     setPhase(goTopics ? 'topics' : 'start');
     setQueue([]); setCur(0); setScore(0);
@@ -643,6 +688,12 @@ export default function WordScrambleGame() {
     setCurrentTopic(null);
     if (goTopics) { setCompletedTopics(new Set()); setTopicTotals({ right: 0, total: 0 }); }
   }, [isTeacher, uniqueTopics.length]);
+
+  const verificationStatus = verificationNote && <div role="status" style={{ maxWidth: 520, width: '100%', boxSizing: 'border-box', background: '#FAF7F1', color: '#1A2B4A', borderRadius: 12, padding: '10px 14px', fontSize: '.88rem', lineHeight: 1.8, textAlign: 'center' }}>
+    {verificationNote}
+    {retryAttempt && !verifying && <button type="button" onClick={() => submitAttempt(retryAttempt)} style={{ ...S.btnOutline, display: 'block', margin: '8px auto 0' }}>أعد تأكيد الحفظ</button>}
+    {retryAttempt && !verifying && <button type="button" onClick={restart} style={{ ...S.btnOutline, display: 'block', margin: '8px auto 0' }}>العودة للبداية</button>}
+  </div>;
 
   /* ══════ RENDER: LOADING ══════ */
   if (phase === 'start' && loadingWords) {
@@ -701,6 +752,9 @@ export default function WordScrambleGame() {
             انقر عليها بالترتيب الصحيح من اليمين لليسار!
           </p>
 
+          {verificationStatus}
+          {savedRoundId && !isTeacher && <button disabled={starting} type="button" style={S.btnOutline} onClick={() => beginRound('all', null, savedRoundId)}>أكمل جولتك المحفوظة</button>}
+
           {gameWords.length === 0 ? (
             <div style={{ ...S.emptyState, animation: 'ws-fadein 0.4s ease-out' }}>
               <div style={{ fontSize: '3rem' }}>📭</div>
@@ -717,7 +771,7 @@ export default function WordScrambleGame() {
               <div style={{ ...S.statsRow, animation: 'ws-fadein 0.4s ease-out' }}>
                 <div style={S.statBox}><span style={S.statNum}>{gameWords.length}</span><span style={S.statLbl}>كلمة</span></div>
               </div>
-              <button style={{ ...S.btnGold, animation: 'ws-fadein 0.5s ease-out 0.1s both' }} onClick={useTopicFlow ? () => setPhase('topics') : startGame}>🚀 ابدأ اللعبة</button>
+              <button disabled={starting} style={{ ...S.btnGold, animation: 'ws-fadein 0.5s ease-out 0.1s both' }} onClick={useTopicFlow ? () => setPhase('topics') : startGame}>{starting ? 'نجهّز جولتك…' : '🚀 ابدأ اللعبة'}</button>
             </div>
           )}
 
@@ -748,12 +802,12 @@ export default function WordScrambleGame() {
           /* ─ All topics completed ─ */
           <div style={{ ...S.centerCard, gap: 14, animation: 'ws-pop-in .4s ease' }}>
             <div style={{ fontSize: '3.5rem' }}>🎉</div>
-            <h2 style={S.mainTitle}>أتقنتَ جميع الفصول!</h2>
+            <h2 style={S.mainTitle}>أكملتَ جولات الفصول!</h2>
             <div style={{ fontSize: '2.8rem', fontWeight: 800, color: '#F59E0B' }}>
-              {topicTotals.right} / {topicTotals.total}
+              {topicTotals.right} من {topicTotals.total}
             </div>
             <p style={S.sub}>
-              {topicTotals.total > 0 ? Math.round((topicTotals.right / topicTotals.total) * 100) : 0}٪ إجابات صحيحة
+              {topicTotals.total > 0 ? Math.round((topicTotals.right / topicTotals.total) * 100) : 0}٪ كلمات صحيحة من أول محاولة
             </p>
             <div style={{ display: 'flex', gap: 6 }}>
               {Array.from({ length: uniqueTopics.length }).map((_, i) => (
@@ -791,6 +845,7 @@ export default function WordScrambleGame() {
                 return (
                   <button
                     key={topic}
+                    disabled={starting}
                     onClick={() => !done && startGameForTopic(topic)}
                     style={{
                       display: 'flex', alignItems: 'center',
@@ -831,6 +886,7 @@ export default function WordScrambleGame() {
 
               {/* Challenge All */}
               <button
+                disabled={starting}
                 onClick={() => startGameForTopic(null)}
                 style={{
                   display: 'flex', alignItems: 'center',
@@ -857,6 +913,7 @@ export default function WordScrambleGame() {
             </div>
 
             <div style={{ textAlign: 'center', marginTop: 20 }}>
+              {verificationStatus}
               <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
             </div>
           </div>
@@ -878,8 +935,10 @@ export default function WordScrambleGame() {
         <div style={S.centerCard}>
           <div style={{ fontSize: '3rem' }}>{'⭐'.repeat(stars)}</div>
           <h2 style={S.mainTitle}>أحسنت!</h2>
-          <div style={{ fontSize: '3.5rem', fontWeight: 800, color: '#F5A623' }}>{score} / {queue.length}</div>
+          <div style={{ fontSize: '3.5rem', fontWeight: 800, color: '#F5A623' }}>{score} من {queue.length}</div>
+          <p style={S.sub}>كلمات صحيحة من أول محاولة · أكملت جميع كلمات الجولة</p>
           <p style={S.sub}>{msg}</p>
+          {verificationStatus}
           <button style={S.btnGold} onClick={restart}>🔄 العب مرة أخرى</button>
           <Link href="/library" style={S.backLink}>← العودة للمكتبة</Link>
         </div>
@@ -949,7 +1008,7 @@ export default function WordScrambleGame() {
       `}</style>
 
       <div style={S.headerRow}>
-        <span style={S.scoreBadge}>✨ {score}</span>
+        <span style={S.scoreBadge} title="كلمات صحيحة من أول محاولة">✨ {score} من أول محاولة</span>
         <div style={S.bar}>
           <div style={{ ...S.barFill, width: `${((cur + 1) / queue.length) * 100}%` }} />
         </div>
@@ -962,6 +1021,7 @@ export default function WordScrambleGame() {
       </div>
 
       <div style={S.card}>
+        {verificationStatus}
         <WordImage imageUrl={w.image_url} emoji={w.emoji} />
 
         {/* ── Correct: stamp reveal ── */}
@@ -1020,6 +1080,7 @@ export default function WordScrambleGame() {
           <div style={S.availableRow}>
             {available.map((chunk, i) => (
               <button key={`${chunk.ch}-${chunk.id}`}
+                disabled={verifying || !!retryAttempt}
                 style={S.letterBtn}
                 onClick={() => placeInAnswer(i)}>
                 {chunk.ch}
@@ -1037,7 +1098,7 @@ export default function WordScrambleGame() {
 
         {/* Next button (correct only — wrong auto-resets) */}
         {result === 'correct' && (
-          <button style={S.btnBlue} onClick={nextWord}>
+          <button style={S.btnBlue} disabled={verifying || !!retryAttempt} onClick={nextWord}>
             {isLast ? '🏁 النتيجة النهائية' : 'التالي ←'}
           </button>
         )}

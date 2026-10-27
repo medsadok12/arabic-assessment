@@ -84,6 +84,7 @@ export async function POST(req) {
 
     // Resolve server-side amount from reason prefix
     const prefix = reason.split(':')[0];
+    if (prefix === 'word_scramble') return NextResponse.json({ error: 'نقاط رتّب الكلمة تُحفظ بعد التحقق من الإجابة داخل اللعبة.' }, { status: 409 });
     let amount = POINT_EVENTS[prefix] ?? POINT_EVENTS[reason];
     if (!amount) {
       return NextResponse.json({ error: 'حدث غير معروف' }, { status: 400 });

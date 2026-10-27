@@ -48,6 +48,7 @@ export async function POST(req) {
     if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
 
     const { game_id, category, correct, wrong, total } = await req.json();
+    if (game_id === 'word_scramble') return NextResponse.json({ error: 'نتيجة رتّب الكلمة تُحسب من الإجابات داخل الجولة.' }, { status: 409 });
     if (!game_id || !category || total == null) {
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
     }
