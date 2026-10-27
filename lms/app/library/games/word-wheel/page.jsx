@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '../../../../lib/supabase';
 import { getRole } from '../../../../lib/auth-role';
-import { childFetch } from '../../../../lib/child-fetch';
+import useVerifiedTraining from '../../../../lib/use-verified-training';
+import VerifiedTrainingStatus from '../../../../components/VerifiedTrainingStatus';
+import { childFetch, getActiveChildTab } from '../../../../lib/child-fetch';
 import {
   WW_MODES, MODE_INFO, CHALLENGE_LEVELS, starsFor, cardFor, resolveTheme,
   WW_PROGRESS_KEY, WW_LEGACY_PROGRESS_KEY, progressKey, legacyProgressKey,
@@ -32,6 +34,7 @@ export default function WordWheelGame() {
   const [view, setView]         = useState({ name: 'lobby' }); // lobby | mode | play | results
   const [progress, setProgress] = useState({});
   const [legacy, setLegacy]     = useState({});
+  const [historic,setHistoric]=useState({}),[accountId,setAccountId]=useState(null);
   const [role, setRole]         = useState(null);
   const [points, setPoints]     = useState(null);
   const [replay, setReplay]     = useState(null);
@@ -46,9 +49,9 @@ export default function WordWheelGame() {
 
   useEffect(() => {
     load();
-    setProgress(readJson(WW_PROGRESS_KEY));
+    setHistoric(readJson(WW_PROGRESS_KEY));
     setLegacy(readJson(WW_LEGACY_PROGRESS_KEY));
-    createClient().auth.getUser().then(({ data: d }) => setRole(getRole(d?.user) || null)).catch(() => {});
+    createClient().auth.getUser().then(({ data: d }) => {setRole(getRole(d?.user)||null);setAccountId(d?.user?.id||null);const child=getActiveChildTab();const id=child&&child!=='self'?child:d?.user?.id;if(id)setProgress(readJson(`${WW_PROGRESS_KEY}:${id}`));}).catch(() => {});
     childFetch('/api/points').then(r => r.json()).then(j => setPoints(j.points ?? 0)).catch(() => {});
   }, [load]);
 
@@ -62,37 +65,24 @@ export default function WordWheelGame() {
   const wheels = data?.wheels || [];
   const settings = data?.settings || {};
   const lobbyTheme = data?.theme || resolveTheme(null);
-  const starsOf = useCallback((w) => {
-    const lk = legacyProgressKey(w);
-    return Math.max(progress[progressKey(w)] ?? 0, lk ? (legacy[lk] ?? 0) : 0);
-  }, [progress, legacy]);
+  const starsOf = w => progress[progressKey(w)]||0;
+  const historicStars = w => Math.max(historic[progressKey(w)]||0,legacy[legacyProgressKey(w)]||0);
 
   const cardOf = (word) => data?.cards?.[word] || cardFor(word);
 
-  const award = useCallback(() => {
-    childFetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'word_wheel' }) })
-      .then(r => r.json()).then(j => { if (j.points != null) setPoints(j.points); }).catch(() => {});
-  }, []);
-
-  const finishWheel = useCallback((wheel, result) => {
-    const stars = starsFor(result.solved, result.total, wheel.settings);
-    setProgress(prev => {
-      const k = progressKey(wheel);
-      if ((prev[k] ?? 0) >= stars) return prev;
-      const next = { ...prev, [k]: stars };
-      try { localStorage.setItem(WW_PROGRESS_KEY, JSON.stringify(next)); } catch {}
-      return next;
-    });
-    if (stars > 0 && settings.win_points > 0) {
-      childFetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'word_wheel_win' }) })
-        .then(r => r.json()).then(j => { if (j.points != null) setPoints(j.points); }).catch(() => {});
-    }
-    childFetch('/api/game-results', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ game_id: 'word_wheel', category: wheel.name || MODE_INFO[wheel.mode].title, correct: result.solved, wrong: result.total - result.solved, total: result.total }),
-    }).catch(() => {});
-    setView({ name: 'results', wheel, result, stars });
-  }, [settings.win_points]);
+  const resultOf = j => ({ solved:j.summary.solved,total:j.summary.total,score:j.summary.score,assisted:j.summary.assisted,preview:!!j.preview||!!verified.snapshot?.preview,words:j.answers.map((a,i)=>({word:(j.wheel||verified.snapshot.wheel).words[i],status:a.status})).filter(x=>x.status!=='play') });
+  const rememberResult = (wheel,j) => {
+    const stars=j.stars, result=resultOf(j);
+    if(!j.preview&&!verified.snapshot?.preview)setProgress(prev=>{const next={...prev,[progressKey(wheel)]:Math.max(prev[progressKey(wheel)]||0,stars)};try{localStorage.setItem(`${WW_PROGRESS_KEY}:${verified.snapshot.userId}`,JSON.stringify(next));}catch{}return next;});
+    setView({name:'results',wheel,result,stars});
+  };
+  const verified = useVerifiedTraining('word_wheel', {
+    onPoints:setPoints, onIdentityChange:()=>{setView({name:'lobby'});const child=getActiveChildTab();const id=child&&child!=='self'?child:accountId;setProgress(id?readJson(`${WW_PROGRESS_KEY}:${id}`):{});},
+    onStart:j=>{const cards=Object.fromEntries(j.items.map(x=>[x.word,x.card]));setData(prev=>({...prev,settings:{...prev.settings,points_per_word:j.pointsPerWord,win_points:j.snapshot.bonus},cards:{...prev.cards,...cards}}));if(j.summary.complete)rememberResult(j.wheel,j);else setView({name:'play',wheel:j.wheel,initial:j.snapshot,run:crypto.randomUUID()});},
+  });
+  const award = () => {};
+  const finishWheel = wheel => verified.event({action:'finish'},j=>rememberResult(wheel,j));
+  const startWheel = wheel => verified.start([],wheel.name,{}, {wheelId:wheel.id});
 
   const pageStyle = themeVars(view.wheel?.theme || lobbyTheme);
   const isStaff = STAFF.includes(role);
@@ -166,7 +156,7 @@ export default function WordWheelGame() {
             {g.level && <div className="ww-level">{g.level.icon} {g.level.label}</div>}
             <div className="ww-wheels">
               {g.items.map(w => (
-                <button key={w.id} type="button" className="ww-wheel" style={themeVars(w.theme)} onClick={() => setView({ name: 'play', wheel: w, run: Date.now() })}>
+                <button key={w.id} type="button" className="ww-wheel" style={themeVars(w.theme)} onClick={() => startWheel(w)}>
                   <div className="ww-wheel-art">
                     {w.mode === 'picture'
                       ? w.words.slice(0, 3).map(word => <WordVisual key={word} card={cardOf(word)} size="sm" />)
@@ -175,6 +165,7 @@ export default function WordWheelGame() {
                   <span className="ww-wheel-name">{w.name}</span>
                   <span className="ww-wheel-meta">{w.words.length} كلمات{w.mode === 'challenge' && w.time ? ` · ${w.time}ث` : ''}</span>
                   <Stars count={starsOf(w)} size="1.1rem" />
+                  {historicStars(w)>0&&<small>على هذا الجهاز سابقًا: ⭐ {historicStars(w)}</small>}
                 </button>
               ))}
             </div>
@@ -186,14 +177,14 @@ export default function WordWheelGame() {
     const w = view.wheel;
     const props = {
       wheel: w, cards: data.cards || {}, voice, pointsPerWord: settings.points_per_word || 0,
-      onAward: award, onExit: () => setView({ name: 'mode', mode: w.mode }), onFinish: (r) => finishWheel(w, r),
+      onAward: award, verified, initial:view.initial, onExit: () => { if(verified.busy||verified.pending)return;verified.reset();setView({ name: 'mode', mode: w.mode }); }, onFinish: () => finishWheel(w),
     };
     body = w.mode === 'challenge' ? <ChallengeRound key={view.run} {...props} /> : <WordRound key={view.run} {...props} />;
   } else {
     const { wheel: w, result, stars } = view;
     const list = wheels.filter(x => x.mode === w.mode);
     const next = list[list.findIndex(x => x.id === w.id) + 1];
-    const earned = result.solved * (settings.points_per_word || 0) + (stars > 0 ? settings.win_points || 0 : 0);
+    const earned = result.preview ? 0 : result.solved * (settings.points_per_word || 0) + (stars > 0 ? settings.win_points || 0 : 0);
     const title = stars === 3 ? 'أداء مذهل يا بطل! 🏆' : stars === 2 ? 'أحسنت! أنت تتقدّم بسرعة 👏' : stars === 1 ? 'بداية جميلة! 🌱' : 'لا بأس، المحاولة القادمة أجمل 💪';
     body = (
       <div className="ww-wrap">
@@ -206,6 +197,7 @@ export default function WordWheelGame() {
             <div className="ww-stat"><b>{result.solved}/{result.total}</b><span>كلمات</span></div>
             {earned > 0 && <div className="ww-stat"><b>+{earned}</b><span>نقطة</span></div>}
             {result.score != null && <div className="ww-stat"><b>{result.score}</b><span>نتيجة التحدي</span></div>}
+            {result.assisted>0&&<div className="ww-stat"><b>{result.assisted}</b><span>كلمات بمساعدة</span></div>}
           </div>
           {result.words.length > 0 && (
             <div className="ww-found">
@@ -220,9 +212,9 @@ export default function WordWheelGame() {
               })}
             </div>
           )}
-          {next && <button type="button" className="ww-btn ww-btn-wide" onClick={() => setView({ name: 'play', wheel: next, run: Date.now() })}>العجلة التالية ←</button>}
+          {next && <button type="button" className="ww-btn ww-btn-wide" onClick={() => startWheel(next)}>العجلة التالية ←</button>}
           <div className="ww-controls">
-            <button type="button" className="ww-btn-soft" onClick={() => setView({ name: 'play', wheel: w, run: Date.now() })}>🔄 العب مرة أخرى</button>
+            <button type="button" className="ww-btn-soft" onClick={() => startWheel(w)}>🔄 العب مرة أخرى</button>
             <button type="button" className="ww-btn-soft" onClick={() => setView({ name: 'mode', mode: w.mode })}>كل العجلات</button>
           </div>
         </div>
@@ -232,6 +224,7 @@ export default function WordWheelGame() {
 
   return (
     <div className="ww" style={pageStyle}>
+      <VerifiedTrainingStatus training={verified} />
       <style dangerouslySetInnerHTML={{ __html: WW_CSS }} />
       {body}
       {replay && (

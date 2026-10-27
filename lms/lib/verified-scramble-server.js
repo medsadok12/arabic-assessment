@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { deliverVerifiedEffect, awardVerifiedPoints } from './verified-effects';
 import { SCRAMBLE_GAME, SCRAMBLE_POINTS, SCRAMBLE_TTL, scrambleSummary, recordScrambleAttempt } from './verified-scramble';
 import { letterCount, LEN_NO_LIMIT } from './letter-catcher';
 
@@ -74,48 +74,8 @@ export async function startScramble(admin, user, userId, body, preview = false) 
   return publicRound(round, words);
 }
 
-// حجز دائم لكل أثر جانبي: إعادة الإرسال والمتزامن لا ينفذان المنح/النسخ مرتين.
-// خطأ قاعدة صريح يسمح بإعادة المحاولة. انقطاع مبهم بعد الكتابة يبقى للمراجعة،
-// ولا نعيد منح رصيد قد يكون كُتب بالفعل. النتيجة الأصلية تبقى في صف الجولة.
-async function deliver(admin, id, owner, action) {
-  let row = await readRow(admin, id);
-  if (!row) {
-    const { error } = await putRow(admin, id, { state: 'working', token: randomUUID() }, owner);
-    if (error?.code === '23505') return (await readRow(admin, id))?.settings || { state: 'pending' };
-    if (error) return { state: 'pending' };
-    row = await readRow(admin, id);
-  } else {
-    if (row.settings.state !== 'pending') return row.settings;
-    row = await cas(admin, row, { state: 'working', token: randomUUID() });
-    if (!row) return { state: 'pending' };
-  }
-  let result;
-  try { result = await action(); } catch { result = { state: 'review' }; }
-  try { await cas(admin, row, result); } catch { /* الحجز يبقى working: لا نكرر أثرًا مبهمًا */ }
-  return result;
-}
-async function reward(admin, userId, round, index) {
-  const reason = `${SCRAMBLE_GAME}:${round.id}:${index}`;
-  // reason فريد لكل كلمة في الجولة، لا يأتي مقدار النقاط من المتصفح.
-  const { data: log, error: logError } = await admin.from('points_log').select('id').eq('user_id', userId).eq('reason', reason).maybeSingle();
-  if (logError) return { state: 'pending' };
-  if (log) return { state: 'done', amount: SCRAMBLE_POINTS };
-  for (let retry = 0; retry < 4; retry++) {
-    const { data: current, error } = await admin.from('user_points').select('total').eq('user_id', userId).maybeSingle();
-    if (error) return { state: 'pending' };
-    const before = current?.total ?? 0, after = before + SCRAMBLE_POINTS;
-    const write = current
-      ? await admin.from('user_points').update({ total: after, updated_at: new Date().toISOString() }).eq('user_id', userId).eq('total', before).select('total').maybeSingle()
-      : await admin.from('user_points').insert({ user_id: userId, total: after, updated_at: new Date().toISOString() }).select('total').maybeSingle();
-    if (write.error?.code === '23505') continue;
-    if (write.error) return { state: 'pending' };
-    if (!write.data) continue;
-    const { error: insertError } = await admin.from('points_log').insert({ user_id: userId, delta: SCRAMBLE_POINTS, reason });
-    if (insertError) return { state: 'review', before, after, reason, amount: SCRAMBLE_POINTS };
-    return { state: 'done', points: after, amount: SCRAMBLE_POINTS };
-  }
-  return { state: 'pending' };
-}
+const deliver = deliverVerifiedEffect;
+const reward = (admin, userId, round, index) => awardVerifiedPoints(admin, userId, `${SCRAMBLE_GAME}:${round.id}:${index}`, SCRAMBLE_POINTS);
 export async function answerScramble(admin, user, userId, body) {
   let row, recorded;
   for (let tries = 0; tries < 5; tries++) {

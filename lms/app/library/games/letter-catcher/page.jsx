@@ -1,4 +1,6 @@
 'use client';
+import useVerifiedTraining from '../../../../lib/use-verified-training';
+import VerifiedTrainingStatus from '../../../../components/VerifiedTrainingStatus';
 
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
@@ -165,6 +167,7 @@ export default function LetterCatcherGame() {
   const [showCfg,    setShowCfg]    = useState(false);
   const [catMeta,    setCatMeta]    = useState({});
   const [isTeacher,        setIsTeacher]        = useState(false);
+  const [contentSource,setContentSource]=useState('cached');
   const [loadProgress,     setLoadProgress]     = useState(0);
   const [pendingCategory,  setPendingCategory]  = useState(undefined); // undefined=grid shown; string/'__all__'=modal open
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -275,7 +278,10 @@ export default function LetterCatcherGame() {
       setTimeout(() => nextRef.current(), CHEER_MS),
     ];
   }, [stopWordAudio]);
+  const preparedWord = useRef(null);
+  useEffect(()=>()=>{preparedWord.current?.audio.pause();preparedWord.current=null;},[]);
   const celebrate = useCallback((wd) => {
+    const prepared=preparedWord.current;preparedWord.current=null;
     const run = ++cheerRun.current;
     const text = fullWordOf(wd);
     stopWordAudio();
@@ -304,7 +310,8 @@ export default function LetterCatcherGame() {
       device = true;
       speakArabic(text, { onEnd: afterWord });
     };
-    const a = new Audio(wd.audio_url || ttsUrl(text));
+    const a = prepared&&prepared.id===String(wd.id)?prepared.audio:new Audio(wd.audio_url || ttsUrl(text));
+    a.muted=false;
     wordAudioRef.current = a;
     a.onended = afterWord;
     a.onerror = viaDevice;
@@ -370,6 +377,7 @@ export default function LetterCatcherGame() {
       if (!quiet) setLoadProgress(50);
       const res  = await freshFetch(`/api/games/letter-catcher?${p}`);
       const json = await res.json();
+      setContentSource(json.source||'cached');
       if (json.settings) {
         const st = normalizeLcSettings(json.settings);
         setSettings(st);
@@ -415,33 +423,13 @@ export default function LetterCatcherGame() {
     [loadWords, loadGameWords]
   );
 
-  /* ── save result when game finishes ── */
-  const savedResultRef = useRef(false);
+  // النتيجة تُكتب من الجولة المدقّقة؛ هذا الطلب قراءة للتقرير فقط.
   useEffect(() => {
-    if (phase !== 'finished' || !currentUser || savedResultRef.current) return;
-    savedResultRef.current = true;
-    const wrong    = queue.length - score;
-    const catKey   = selectedCategory ?? '__all__';
-    childFetch('/api/game-results', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        game_id:  'letter_catcher',
-        category: catKey,
-        correct:  score,
-        wrong,
-        total:    queue.length,
-      }),
-    })
-      .then(() => childFetch('/api/game-results?game=letter_catcher'))
-      .then(r  => r.json())
-      .then(j  => {
-        const map = {};
-        (j.results ?? []).forEach(r => { map[r.category] = r; });
-        setCatResults(map);
-      })
-      .catch(() => {});
-  }, [phase, currentUser, score, queue.length, selectedCategory]);
+    if (phase !== 'finished' || !currentUser) return;
+    childFetch('/api/game-results?game=letter_catcher').then(r => {if(!r.ok)throw new Error();return r.json();}).then(j => {
+      const map = {}; (j.results || []).forEach(r => { map[r.category] = r; }); setCatResults(map);
+    }).catch(() => {});
+  }, [phase, currentUser]);
 
   /* بطل الطالب (إن صنعه) — يُجلب مرة واحدة عند أول نهاية جولة، في عالم الاستوديو الشفاف */
   const [hero, setHero] = useState(null);
@@ -455,11 +443,6 @@ export default function LetterCatcherGame() {
       .then(d => { if (d?.look) setHero({ look: { ...d.look, world: 'studio' }, level: d.level ?? 0, letters: d.letters ?? [] }); })
       .catch(() => {});
   }, [phase, currentUser]);
-
-  /* reset save guard when a new game starts */
-  useEffect(() => {
-    if (phase === 'playing') savedResultRef.current = false;
-  }, [phase]);
 
   /* ── build round queue ── */
   const buildQueue = useCallback((words, optCount) => {
@@ -485,22 +468,34 @@ export default function LetterCatcherGame() {
     return picked.map(id => byId.get(id));
   }, [currentUser, settings.words_per_round]);
 
-  /* ── start game (catFilter = null → all words) ── */
-  const startGame = useCallback((catFilter) => {
-    const filtered = catFilter === null
-      ? gameWords
-      : gameWords.filter(w => w.category === catFilter);
-    if (filtered.length === 0) return;
-    setSelectedCategory(catFilter);
-    setQueue(buildQueue(pickRoundWords(filtered, catFilter ?? '__all__'), settings.options_count));
-    setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]);
-    setPhase('playing');
-  }, [gameWords, buildQueue, pickRoundWords, settings.options_count]);
+  const verified = useVerifiedTraining('letter_catcher', {
+    onPoints: setTotalPoints,
+    onIdentityChange: () => { setPhase('start'); setQueue([]); setScore(0); setCatResults({}); },
+    onStart: j => {
+      setSelectedCategory(j.category === '__all__' ? null : j.category);
+      setQueue(buildQueue(j.items, settings.options_count)); setCur(Math.max(0, j.summary.cursor)); setScore(j.summary.correct);
+      setChosen(null); setCorrect(null); setTried(j.snapshot.events.filter(e=>e.action==='answer'&&e.command.index===j.summary.cursor&&!e.right).map(e=>e.command.value)); setPhase(j.summary.complete ? 'finished' : 'playing');
+    },
+  });
+  const startGame = catFilter => {
+    const filtered = catFilter === null ? gameWords : gameWords.filter(w => w.category === catFilter);
+    if (!filtered.length) return;
+    const picked = pickRoundWords(filtered, catFilter ?? '__all__');
+    if(contentSource==='fallback')verified.demo(picked,catFilter??'__all__');else verified.start(picked.map(w => w.id), catFilter ?? '__all__', cfg);
+  };
 
   const pick = useCallback((opt) => {
-    if (chosen !== null || tried.includes(opt)) return;
+    if (chosen !== null || tried.includes(opt) || !verified.canAct()) return;
+    const localWord=queue[cur];
+    if(stripDia(opt)===stripDia(localWord.missing_letter)){
+      preparedWord.current?.audio.pause();
+      const audio=new Audio(localWord.audio_url||ttsUrl(fullWordOf(localWord))),entry={audio,id:String(localWord.id)};preparedWord.current=entry;audio.muted=true;
+      audio.play()?.then(()=>{if(preparedWord.current===entry){audio.pause();try{audio.currentTime=0;}catch{}}}).catch(()=>{});
+      const video=cheerVidRef.current;if(video){video.muted=true;video.play()?.then(()=>{if(preparedWord.current===entry){video.pause();try{video.currentTime=0;}catch{}}}).catch(()=>{});}
+    }
+    verified.answer(cur, opt, j => {
     const w        = queue[cur];
-    const isRight  = stripDia(opt) === stripDia(w.missing_letter);
+    const isRight  = j.right;
     const firstTry = tried.length === 0;
     const fullWord = w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word;
     // الكلمة تُحسب «مرّ عليها» عند أول إجابة — ما لم يصله الطفل يبقى للجولة القادمة
@@ -511,11 +506,11 @@ export default function LetterCatcherGame() {
     if (isRight) {
       setChosen(opt); setCorrect(true);
       if (firstTry) {
-        setScore(s => s + 1);
-        setPtPopupKey(k => k + 1);
-        setPtPopupActive(true);
+        setScore(j.summary.correct);
+        if (j.awarded > 0) setPtPopupKey(k => k + 1);
+        if (j.awarded > 0) setPtPopupActive(true);
         setTimeout(() => setPtPopupActive(false), 1200);
-        childFetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'letter_catcher' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
+
       }
       celebrate(w);
       return;
@@ -526,27 +521,21 @@ export default function LetterCatcherGame() {
     }
     const nextTried = [...tried, opt];
     setTried(nextTried);
-    if (nextTried.length >= MAX_TRIES) { setChosen(opt); setCorrect(false); }
-  }, [chosen, tried, cur, queue, celebrate]);
+    if (j.questionDone || nextTried.length >= MAX_TRIES) { setChosen(opt); setCorrect(false); }
+    });
+  }, [chosen, tried, cur, queue, celebrate, verified]);
 
   const next = useCallback(() => {
+    if (verified.busy || verified.pending) return;
     stopWordAudio();
     clearCheer();
     const n = cur + 1;
     if (n >= queue.length) setPhase('finished');
     else { setCur(n); setChosen(null); setCorrect(null); setTried([]); }
-  }, [cur, queue.length, stopWordAudio, clearCheer]);
+  }, [cur, queue.length, stopWordAudio, clearCheer, verified]);
   nextRef.current = next;
 
-  const restart = useCallback(() => {
-    const filtered = selectedCategory === null
-      ? gameWords
-      : gameWords.filter(w => w.category === selectedCategory);
-    if (filtered.length === 0) return;
-    setQueue(buildQueue(pickRoundWords(filtered, selectedCategory ?? '__all__'), settings.options_count));
-    setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]);
-    setPhase('playing');
-  }, [selectedCategory, gameWords, buildQueue, pickRoundWords, settings.options_count]);
+  const restart = () => startGame(selectedCategory);
 
   /* ══════════════════════ RENDER: START ══════════════════════ */
   if (phase === 'start') {
@@ -580,6 +569,7 @@ export default function LetterCatcherGame() {
 
     return (
       <div key="start" style={S.stage}>
+      <VerifiedTrainingStatus training={verified} />
         {/* non-blocking progress strip */}
         {loadProgress > 0 && loadProgress < 100 && (
           <div style={{ position:'fixed', top:0, left:0, right:0, height:3, zIndex:9999, background:'#EDE5D8' }}>
@@ -831,6 +821,7 @@ export default function LetterCatcherGame() {
       <div key="finished" style={S.stage}>
         <GameScene category={selectedCategory} />
         <div style={S.stageColumn}>
+          <VerifiedTrainingStatus training={verified} />
           <div style={S.stageMiddle}>
             <div style={{ ...S.glassCard, alignItems: 'center', textAlign: 'center', gap: 14, padding: '26px 20px' }}>
               {hero && (
@@ -968,6 +959,7 @@ export default function LetterCatcherGame() {
       <GameScene category={catLabel} />
 
       <div style={S.stageColumn}>
+        <VerifiedTrainingStatus training={verified} />
         {/* الترويسة: رجوع + العنوان + النقاط، وتحتها التقدم */}
         <div style={S.glassHeader}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

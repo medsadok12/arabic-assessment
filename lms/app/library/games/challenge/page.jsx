@@ -1,16 +1,17 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '../../../../lib/supabase';
-import { childFetch } from '../../../../lib/child-fetch';
+import { challengeOption } from '../../../../lib/challenge-verified';
+import { childFetch, getActiveChildTab } from '../../../../lib/child-fetch';
 import Navbar from '../../../../components/Navbar';
 
 const OPTION_PRESETS = ['فتحة','ضمة','كسرة','سكون','مد بالألف','مد بالواو','مد بالياء'];
 const WIN_SCORE = 5;
 
 function buildOptions(q) {
-  const correct = q.correct_option;
-  let w1 = q.wrong_option_1?.trim() || '';
-  let w2 = q.wrong_option_2?.trim() || '';
+  const correct = challengeOption(q.correct_option);
+  let w1 = challengeOption(q.wrong_option_1);
+  let w2 = challengeOption(q.wrong_option_2);
   if (!w1 || !w2) {
     const pool = OPTION_PRESETS
       .filter(f => f !== correct && f !== w1 && f !== w2)
@@ -109,23 +110,13 @@ export default function ChallengePage() {
     setRoundState(null);
   }, [room?.cur_q_index, room?.status, room?.id]);
 
-  /* Award points when game finishes */
-  useEffect(() => {
-    if (phase !== 'finished' || !room || earnedPts > 0 || !user) return;
-    const myIsP1 = room.player1_id === playerIdRef.current;
-    const p1 = room.player1_score || 0;
-    const p2 = room.player2_score || 0;
-    const tied  = p1 === p2;
-    const myWon = myIsP1 ? p1 > p2 : p2 > p1;
-    const amount = myWon ? 15 : tied ? 10 : 5;
-    const tag    = myWon ? 'win' : tied ? 'draw' : 'loss';
-    setEarnedPts(amount);
-    childFetch('/api/points', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason: `challenge_${tag}:${room.id}` }),
-    }).catch(() => {});
-  }, [phase, room, earnedPts, user]);
+  const [resultError,setResultError]=useState('');
+  const claimResult=async()=>{
+    if(!room)return;const scope=getActiveChildTab(),targetRoom=room.id;
+    try{const r=await childFetch('/api/challenge/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room_id:room.id})});const j=await r.json();if(!r.ok)throw new Error(j.error);if(scope!==getActiveChildTab()||roomRef.current?.id!==targetRoom)return;if(j.state&&j.state!=='done'){setResultError('حُفظت النتيجة؛ المكافأة تنتظر التأكيد.');return;}setEarnedPts(j.awarded||0);setResultError('');}catch{setResultError('أعد تأكيد مكافأتك؛ لن تتكرر.');}
+  };
+  useEffect(()=>{if(phase==='finished'&&room&&user)claimResult();},[phase,room?.id,user]);
+  useEffect(()=>{let scope=getActiveChildTab();const check=()=>{if(scope===getActiveChildTab())return;scope=getActiveChildTab();setRoom(null);setPhase('lobby');setEarnedPts(0);setResultError('');if(advanceTimer.current)clearTimeout(advanceTimer.current);};window.addEventListener('focus',check);return()=>window.removeEventListener('focus',check);},[]);
 
   /* Realtime subscription */
   useEffect(() => {
@@ -176,6 +167,7 @@ export default function ChallengePage() {
 
   /* ── actions ── */
   async function createRoom() {
+    const requestScope=getActiveChildTab();
     if (!name.trim()) { setErr('أدخل اسمك أولاً'); return; }
     setBusy(true); setErr('');
     try {
@@ -186,6 +178,8 @@ export default function ChallengePage() {
       });
       const d = await r.json();
       if (!r.ok) { setErr(d.error || 'فشل إنشاء الغرفة'); return; }
+      if(requestScope!==getActiveChildTab())return;
+      playerIdRef.current=d.effective_player_id||user.id;
       setRoom(d.room);
       setPhase('waiting');
     } catch { setErr('تعذر الاتصال'); }
@@ -193,6 +187,7 @@ export default function ChallengePage() {
   }
 
   async function joinRoom() {
+    const requestScope=getActiveChildTab();
     if (!name.trim()) { setErr('أدخل اسمك أولاً'); return; }
     if (!joinCode.trim()) { setErr('أدخل كود الغرفة'); return; }
     setBusy(true); setErr('');
@@ -204,6 +199,8 @@ export default function ChallengePage() {
       });
       const d = await r.json();
       if (!r.ok) { setErr(d.error || 'فشل الانضمام'); return; }
+      if(requestScope!==getActiveChildTab())return;
+      playerIdRef.current=d.effective_player_id||user.id;
       setRoom(d.room);
       setPhase('playing');
       const q = d.room.questions?.[0];
@@ -221,12 +218,6 @@ export default function ChallengePage() {
 
     setPicked(idx);
 
-    if (!options[idx].isCorrect) {
-      setRoundState('wrong');
-      setTimeout(() => { setPicked(null); setRoundState(null); }, 700);
-      return;
-    }
-
     /* correct — try to claim the round */
     const res = await childFetch('/api/challenge/answer', {
       method: 'POST',
@@ -242,6 +233,7 @@ export default function ChallengePage() {
     if (!res?.ok) { setPicked(null); setRoundState(null); return; }
     const data = await res.json();
 
+    if(data.reason==='wrong'){setRoundState('wrong');setTimeout(()=>{setPicked(null);setRoundState(null);},700);return;}
     if (!data.won) {
       /* too slow — other player got it first (Realtime will handle feedback) */
       setPicked(null);
@@ -274,6 +266,7 @@ export default function ChallengePage() {
 
   return (
     <>
+      {resultError&&<div role="status" style={{padding:12,textAlign:'center'}}>{resultError}<button onClick={claimResult}>أعد تأكيد المكافأة</button></div>}
       {authDone && <Navbar user={user} />}
       <style>{`
         

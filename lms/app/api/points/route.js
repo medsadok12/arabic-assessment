@@ -2,56 +2,10 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase-admin';
 import { createClient } from '../../../lib/supabase-server';
 import { resolveActiveIdentity } from '../../../lib/active-child';
-import { WW_GAME_ID, normalizeWwSettings } from '../../../lib/word-wheel';
-import { awardPoints } from '../../../lib/points-server';
+import { isStaff, isSuspended } from '../../../lib/auth-role';
+import { deliverVerifiedEffect, awardVerifiedPoints } from '../../../lib/verified-effects';
 
 export const dynamic = 'force-dynamic';
-
-// Server-side point registry — client never controls the amount
-// Key = reason prefix (part before first ':'), value = points awarded
-const POINT_EVENTS = {
-  // Game events — per correct action, no dedup (repeating is part of gameplay)
-  letter_catcher:      5,
-  vowel_balloon:       5,
-  word_image_match:    5,
-  word_scramble:       5,
-  word_smash:          5,
-  word_wheel:          10,  // لكل كلمة — القيمة الفعلية من إعدادات اللعبة (gameConfiguredAmount)
-  word_wheel_win:      10,  // إنهاء عجلة — القيمة الفعلية من إعدادات اللعبة
-
-  // Unique events — reason must be "prefix:uniqueId", dedup prevents replays
-  huroof_letter:       2,   // e.g. "huroof_letter:ب"
-  huroof_all_complete: 10,  // e.g. "huroof_all_complete:userId" or plain
-  fc:                  3,   // e.g. "fc:cardId"
-  challenge_win:       15,  // e.g. "challenge_win:roomId"
-  challenge_draw:      10,  // e.g. "challenge_draw:roomId"
-  challenge_loss:      5,   // e.g. "challenge_loss:roomId"
-
-  // System events triggered server-side or with unique IDs
-  daily_login:         5,
-  story:               10,
-  session_attend:      5,
-  homework_done:       5,
-  daily_word:          3,   // e.g. "daily_word:2026-07-05" — once per day per child
-};
-
-// These event types are deduplicated by full reason string
-const DEDUP_PREFIXES = new Set([
-  'huroof_letter', 'huroof_all_complete',
-  'fc',
-  'challenge_win', 'challenge_draw', 'challenge_loss',
-  'daily_login', 'story', 'session_attend', 'homework_done', 'daily_word',
-]);
-
-async function wordWheelAmount(admin, prefix, fallback) {
-  try {
-    const { data } = await admin.from('game_settings').select('settings').eq('game_id', WW_GAME_ID).maybeSingle();
-    const s = normalizeWwSettings(data?.settings);
-    return prefix === 'word_wheel' ? s.points_per_word : s.win_points;
-  } catch {
-    return fallback;
-  }
-}
 
 export async function GET(req) {
   try {
@@ -72,38 +26,17 @@ export async function GET(req) {
   }
 }
 
+// لا متصل عميل شرعي غير «كلمة اليوم»؛ مكافآت الألعاب والحضور والواجبات
+// تُمنح من مساراتها الموثوقة، لا من اسم حدث يختاره المتصفح.
 export async function POST(req) {
   try {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
-
-    const body = await req.json();
-    const reason = body?.reason?.trim();
-    if (!reason) return NextResponse.json({ error: 'reason مطلوب' }, { status: 400 });
-
-    // Resolve server-side amount from reason prefix
-    const prefix = reason.split(':')[0];
-    if (prefix === 'word_scramble') return NextResponse.json({ error: 'نقاط رتّب الكلمة تُحفظ بعد التحقق من الإجابة داخل اللعبة.' }, { status: 409 });
-    let amount = POINT_EVENTS[prefix] ?? POINT_EVENTS[reason];
-    if (!amount) {
-      return NextResponse.json({ error: 'حدث غير معروف' }, { status: 400 });
-    }
-
-    const admin = createAdminClient();
-    // نقاط «عجلة الكلمات» يحدّدها المعلم/المدير من لوحة اللعبة — والخادم وحده يقرؤها
-    if (prefix === 'word_wheel' || prefix === 'word_wheel_win') {
-      amount = await wordWheelAmount(admin, prefix, amount);
-      if (!amount) return NextResponse.json({ skipped: true, disabled: true });
-    }
-    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
-
-    const result = await awardPoints(admin, effectiveUserId, reason, amount, { dedup: DEDUP_PREFIXES.has(prefix) });
-    if (result.skipped) return NextResponse.json({ skipped: true, points: result.points });
-    if (result.conflict)
-      return NextResponse.json({ error: 'تعارض في العملية، يرجى المحاولة مجدداً' }, { status: 409 });
-    return NextResponse.json({ success: true, points: result.points });
-  } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
-  }
+    const {data:{user}}=await createClient().auth.getUser();
+    if(!user||isSuspended(user))return NextResponse.json({error:'سجّل الدخول أولًا.'},{status:401});
+    const body=await req.json(),today=new Date().toISOString().slice(0,10);
+    if(body?.reason!==`daily_word:${today}`)return NextResponse.json({error:'مكافآت التدريب تُحفظ من مساره بعد التحقق.'},{status:409});
+    if(isStaff(user))return NextResponse.json({preview:true,skipped:true});
+    const admin=createAdminClient(),{effectiveUserId}=await resolveActiveIdentity(user,admin,req);
+    const result=await deliverVerifiedEffect(admin,`verified:daily-word:${effectiveUserId}:${today}`,user.id,()=>awardVerifiedPoints(admin,effectiveUserId,`daily_word:${today}`,3));
+    return NextResponse.json({success:result.state==='done',skipped:!!result.skipped,points:result.points,state:result.state});
+  }catch{return NextResponse.json({error:'تعذّر تأكيد المكافأة. أعد المحاولة.'},{status:503});}
 }

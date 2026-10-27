@@ -1,3 +1,6 @@
+import { resolveActiveIdentity } from '../../../../lib/active-child';
+import { isSuspended } from '../../../../lib/auth-role';
+import { challengeMember, challengeOption } from '../../../../lib/challenge-verified';
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient as createServerClient } from '../../../../lib/supabase-server';
@@ -9,7 +12,7 @@ export async function POST(request) {
   try {
     const supabase = createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
+    if (!user || isSuspended(user)) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
 
     const { room_id, from_q_index } = await request.json();
     if (!room_id || from_q_index === undefined)
@@ -24,6 +27,9 @@ export async function POST(request) {
       .single();
 
     if (!room) return NextResponse.json({ advanced: false });
+    const {effectiveUserId}=await resolveActiveIdentity(user,admin,request);
+    if(!challengeMember(room,effectiveUserId))return NextResponse.json({error:'أنت لست مشاركًا في هذا التحدي.'},{status:403});
+    if(!Number.isInteger(from_q_index)||from_q_index!==room.cur_q_index||room.status!=='playing'||!challengeMember(room,room.round_winner))return NextResponse.json({advanced:false});
 
     const questions = room.questions || [];
     const nextIndex = from_q_index + 1;
@@ -42,6 +48,7 @@ export async function POST(request) {
       })
       .eq('id', room_id)
       .eq('cur_q_index', from_q_index)
+      .eq('status','playing').eq('round_winner',room.round_winner)
       .select()
       .single();
 

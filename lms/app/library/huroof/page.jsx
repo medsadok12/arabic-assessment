@@ -221,22 +221,9 @@ export default function HuroofPage() {
     setActive(p => (p === i ? null : i));
     setSeen(s => new Set([...s, i]));
 
-    if (isNew && user && !pointsGivenRef.current.has(i)) {
+    if (user && !pointsGivenRef.current.has(i)) {
       pointsGivenRef.current.add(i);
-      childFetch('/api/points', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: `huroof_letter:${i}` }),
-      }).catch(() => {});
-
-      if (seen.size + 1 === HUROOF_COUNT && !completionBonusRef.current) {
-        completionBonusRef.current = true;
-        childFetch('/api/points', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reason: 'huroof_all_complete' }),
-        }).catch(() => {});
-      }
+      childFetch('/api/huroof/view', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idx:i})}).then(r=>{if(!r.ok)throw new Error();}).catch(()=>{pointsGivenRef.current.delete(i);});
     }
   }
 
@@ -255,7 +242,7 @@ export default function HuroofPage() {
   /* الحلّ ← تُغلق نافذة اللغز وتظهر بطاقة الحرف التي صنعها المعلم مباشرة (صورته وكلمته وجملته وأصواته)
      مع شريط «أحسنت» صغير يختفي وحده — اختيار الأستاذ محمد بعد صفحة التجربة. فهيم يتقدّم حين تُغلق البطاقة */
   function solved(j, idx) {
-    setProg(p => ({ ...(p || {}), solved: j.solved }));
+    setProg(p => ({ ...(p || {}), solved: j.preview ? [...new Map([...(p?.solved||[]),...j.solved].map(r=>[r.idx,r])).values()] : j.solved }));
     remember(null);
     setBurst(Date.now());
     setRiddle(null); setNote(null);

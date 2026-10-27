@@ -1,3 +1,5 @@
+import { isSuspended } from '../../../../lib/auth-role';
+import { challengeOption } from '../../../../lib/challenge-verified';
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient as createServerClient } from '../../../../lib/supabase-server';
@@ -58,9 +60,9 @@ async function loadQuestions(gameType) {
     return shuffle(valid).slice(0, 10).map(r => ({
       id: r.id, question_type: 'text',
       target_text:    r.word_text,
-      correct_option: r.correct_segments[0],
-      wrong_option_1: r.wrong_options[0],
-      wrong_option_2: r.wrong_options[1],
+      correct_option: challengeOption(r.correct_segments),
+      wrong_option_1: challengeOption(r.wrong_options[0]),
+      wrong_option_2: challengeOption(r.wrong_options[1]),
     }));
   }
 
@@ -116,7 +118,7 @@ export async function POST(request) {
   try {
     const supabase = createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
+    if (!user || isSuspended(user)) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
 
     const { game_type = 'vowel-balloon', player1_name } = await request.json();
     if (!player1_name?.trim())
@@ -148,7 +150,7 @@ export async function POST(request) {
       if (!error) { room = data; break; }
     }
     if (!room) return NextResponse.json({ error: 'فشل إنشاء الغرفة' }, { status: 500 });
-    return NextResponse.json({ room });
+    return NextResponse.json({ room, effective_player_id: effectiveUserId });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
@@ -159,7 +161,7 @@ export async function PATCH(request) {
   try {
     const supabase = createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
+    if (!user || isSuspended(user)) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
 
     const { room_code, player2_name } = await request.json();
     if (!room_code?.trim() || !player2_name?.trim())
@@ -189,7 +191,7 @@ export async function PATCH(request) {
       .single();
 
     if (error || !room) return NextResponse.json({ error: 'فشل الانضمام' }, { status: 500 });
-    return NextResponse.json({ room });
+    return NextResponse.json({ room, effective_player_id: effectiveUserId });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

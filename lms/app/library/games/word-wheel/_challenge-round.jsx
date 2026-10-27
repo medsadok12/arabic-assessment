@@ -12,18 +12,18 @@ import { WordCard, WordVisual, goodMsg } from './_ui';
 
 const RULES = [['3 حروف', '1 نقطة'], ['4 حروف', '2 نقطة'], ['5 حروف', '4 نقاط'], ['6 حروف', '8 نقاط'], ['7+ حروف', '12 نقطة'], ['كل الحروف', '×2 مضاعف']];
 
-export default function ChallengeRound({ wheel, cards, voice, pointsPerWord, onAward, onExit, onFinish }) {
+export default function ChallengeRound({ wheel, cards, voice, pointsPerWord, onAward, onExit, onFinish, verified, initial }) {
   const s = wheel.settings;
   const allLetters = [...wheel.letters, wheel.center];
-  const [phase, setPhase]       = useState('intro');
+  const [phase, setPhase]       = useState(initial?.clock.started?'play':'intro');
   const [input, setInput]       = useState([]);
-  const [found, setFound]       = useState([]);
-  const [score, setScore]       = useState(0);
-  const [timeLeft, setTimeLeft] = useState(wheel.time);
+  const [found, setFound]       = useState(()=>wheel.words.filter((_,i)=>initial?.answers[i].right));
+  const [score, setScore]       = useState(()=>wheel.words.reduce((n,w,i)=>n+(initial?.answers[i].right?calcScore(w,allLetters):0),0));
+  const [timeLeft, setTimeLeft] = useState(initial?.clock.started?Math.ceil(initial.clock.left/1000):wheel.time);
   const [msg, setMsg]           = useState(null);
   const [shake, setShake]       = useState(0);
   const [fly, setFly]           = useState(null);
-  const [card, setCard]         = useState(null);
+  const [card, setCard]         = useState(()=>{if(!initial?.clock.started||initial.clock.running)return null;const word=wheel.words.find((_,i)=>initial.answers[i].right);return word?{card:cards[word]||cardFor(word),last:false}:null;});
   const [hintsUsed, setHintsUsed] = useState(0);
   const finished = useRef(false);
   const latest = useRef({ found, score });
@@ -32,7 +32,7 @@ export default function ChallengeRound({ wheel, cards, voice, pointsPerWord, onA
   const hintsLeft = s.hints_enabled ? Math.max(0, s.hints_limit - hintsUsed) : 0;
 
   const finish = useCallback(() => {
-    if (finished.current) return;
+    if (finished.current || !verified.canAct()) return;
     finished.current = true;
     const { found: f, score: sc } = latest.current;
     onFinish({ solved: f.length, total: wheel.words.length, score: sc, words: f.map(w => ({ word: w, status: 'solved' })) });
@@ -40,7 +40,7 @@ export default function ChallengeRound({ wheel, cards, voice, pointsPerWord, onA
 
   // المؤقت يتوقف ما دامت بطاقة الكلمة مفتوحة
   useEffect(() => {
-    if (phase !== 'play' || !wheel.time || card) return;
+    if (phase !== 'play' || !wheel.time || card || verified.busy || verified.pending) return;
     const t = setInterval(() => {
       setTimeLeft(x => {
         if (x <= 1) { clearInterval(t); setTimeout(finish, 0); return 0; }
@@ -48,20 +48,23 @@ export default function ChallengeRound({ wheel, cards, voice, pointsPerWord, onA
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [phase, wheel.time, card, finish]);
+  }, [phase, wheel.time, card, finish, verified.busy, verified.pending]);
 
   const say = (text, tone = 'try') => setMsg({ text, tone });
   const nudge = (text) => { setShake(x => x + 1); say(text); };
 
   const submit = () => {
-    if (phase !== 'play' || card) return;
+    if (phase !== 'play' || card || !verified.canAct()) return;
     const word = input.join('');
     if (word.length < 3) return nudge('الكلمة قصيرة — كوّن 3 حروف على الأقل 💡');
     if (!word.includes(wheel.center)) return nudge(`تذكّر: الحرف «${wheel.center}» في كل كلمة ⭐`);
     if (found.includes(word)) return nudge('وجدتها من قبل! ابحث عن كلمة جديدة 🔎');
     if (!wheel.words.includes(word)) return nudge('كلمة جميلة! لكنها ليست في قائمة هذه العجلة — جرّب غيرها 💪');
+    voice(cards[word] || cardFor(word), { fallback: s.voice_fallback });
+    verified.answer(undefined, word, j => {
+    if(!j.right){if(j.expired){setTimeLeft(0);setTimeout(finish,0);return;}nudge(j.message||'جرّب كلمة أخرى.');return;}
+    if(j.clock&&wheel.time)setTimeLeft(Math.ceil(j.clock.left/1000));
     const info = cards[word] || cardFor(word);
-    voice(info, { fallback: s.voice_fallback });
     const pts = calcScore(word, allLetters);
     const nextFound = [word, ...found];
     setScore(x => x + pts);
@@ -74,20 +77,23 @@ export default function ChallengeRound({ wheel, cards, voice, pointsPerWord, onA
     const all = nextFound.length >= wheel.words.length;
     if (s.show_card) setCard({ card: info, last: all });
     else if (all) setTimeout(finish, 900);
+    });
   };
 
   const closeCard = () => {
     const last = card?.last;
-    setCard(null);
-    if (last) finish();
+    if(last){setCard(null);finish();return;}
+    verified.event({action:'continue'},()=>setCard(null));
   };
 
   const onHint = () => {
-    if (hintsLeft <= 0) return;
+    if (hintsLeft <= 0 || !verified.canAct()) return;
     const h = challengeHint(wheel.words, found);
     if (!h) return;
+    verified.event({action:'hint'},()=>{
     setHintsUsed(x => x + 1);
     say(`💡 ابحث عن كلمة من ${h.length} حروف تبدأ بـ «${h.first}»`, 'hint');
+    });
   };
 
   // لوحة المفاتيح على الحاسوب: Enter تأكيد، Backspace حذف، Escape مسح
@@ -123,7 +129,7 @@ export default function ChallengeRound({ wheel, cards, voice, pointsPerWord, onA
           <p className="ww-instr" style={{ fontWeight: 700, color: '#6B7280', fontSize: '.92rem', lineHeight: 1.8 }}>
             الحرف الأوسط <b style={{ color: 'var(--accent)' }}>إلزامي</b> في كل كلمة — الكلمة الأطول = نقاط أكثر!
           </p>
-          <button type="button" className="ww-btn ww-btn-wide" onClick={() => setPhase('play')}>ابدأ التحدي ←</button>
+          <button type="button" className="ww-btn ww-btn-wide" onClick={() => verified.event({action:'begin'},j=>{setPhase('play');if(wheel.time)setTimeLeft(Math.ceil(j.clock.left/1000));})}>ابدأ التحدي ←</button>
         </div>
       </div>
     );

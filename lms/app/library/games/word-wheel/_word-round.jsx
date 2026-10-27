@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import WheelSVG from '../../../../components/WordWheelSVG';
-import { cardFor, missingIndex, shuffled } from '../../../../lib/word-wheel';
+import { cardFor } from '../../../../lib/word-wheel';
 import { WordCard, WordVisual, goodMsg, tryMsg } from './_ui';
 
 /* ════════════════════════════════════════════════════════════════
@@ -12,24 +12,25 @@ import { WordCard, WordVisual, goodMsg, tryMsg } from './_ui';
    عند اكتمال الكلمة: نطقها (داخل اللمسة نفسها) + احتفال + بطاقة التعلّم.
 ════════════════════════════════════════════════════════════════ */
 
-function setup(word, style) {
+function setup(word, style, fixedHidden) {
   if (style === 'missing') {
-    const hidden = missingIndex(word);
+    const hidden = fixedHidden ?? Math.floor(word.length/2);
     return { hidden, filled: [...word].map((ch, i) => (i === hidden ? null : ch)) };
   }
   return { hidden: -1, filled: Array(word.length).fill(null) };
 }
 
-export default function WordRound({ wheel, cards, voice, pointsPerWord, onAward, onExit, onFinish }) {
+export default function WordRound({ wheel, cards, voice, pointsPerWord, onAward, onExit, onFinish, verified, initial }) {
   const s = wheel.settings;
   const style = wheel.mode === 'picture' ? 'picture' : s.complete_style; // picture | missing | hint
-  const [order] = useState(() => (s.shuffle_words ? shuffled(wheel.words) : wheel.words));
-  const [idx, setIdx] = useState(0);
-  const [{ hidden, filled }, setWord] = useState(() => setup(order[0], style));
+  const [order] = useState(() => wheel.words);
+  const [idx, setIdx] = useState(Math.max(0,initial?.answers.findIndex(a=>!a.done)??0));
+  const [{ hidden, filled }, setWord] = useState(() => setup(order[Math.max(0,initial?.answers.findIndex(a=>!a.done)??0)], style, wheel.missingIndices?.[order[Math.max(0,initial?.answers.findIndex(a=>!a.done)??0)]]));
   const [mistakes, setMistakes] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [status, setStatus] = useState('play'); // play | solved | revealed
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState(()=>initial?.answers.map((a,i)=>({word:order[i],status:a.status})).filter(x=>x.status!=='play')||[]);
+  const trace = useRef([]);
   const [card, setCard] = useState(null);       // { card, kind }
   const [msg, setMsg] = useState(null);
   const [shake, setShake] = useState(0);
@@ -48,23 +49,27 @@ export default function WordRound({ wheel, cards, voice, pointsPerWord, onAward,
       return;
     }
     const k = idx + 1;
-    setIdx(k);
-    setWord(setup(order[k], style));
+    setIdx(k); trace.current=[];
+    setWord(setup(order[k], style, wheel.missingIndices?.[order[k]]));
     setMistakes(0); setHintsUsed(0); setStatus('play'); setMsg(null); setGlow(null);
   };
 
   // اكتمال الكلمة — داخل معالج اللمسة: النطق يبدأ فوراً (شرط سفاري)
-  const complete = (kind) => {
+  const complete = () => {
+    if(!verified.canAct())return;
+    voice(info, { fallback: s.voice_fallback });
+    verified.answer(idx, undefined, j => {
+    const kind=j.outcome;
     setWord(w => ({ ...w, filled: [...target] }));
     setStatus(kind);
     setGlow(null);
-    voice(info, { fallback: s.voice_fallback });
     if (kind === 'solved') { onAward(); setMsg({ tone: 'good', text: goodMsg() }); }
     else setMsg({ tone: 'calm', text: `لا بأس! هذه هي الكلمة: «${info.vocalized}» — سنتعلّمها معاً 🌱` });
     const res = [...results, { word: target, status: kind }];
     setResults(res);
     if (s.show_card) setTimeout(() => setCard({ card: info, kind }), kind === 'solved' ? 700 : 1300);
     else setTimeout(() => nextWord(res), 1500);
+    },{trace:trace.current});
   };
 
   const wrong = () => {
@@ -77,14 +82,16 @@ export default function WordRound({ wheel, cards, voice, pointsPerWord, onAward,
   };
 
   const onLetter = (letter) => {
-    if (status !== 'play' || card) return;
+    if (status !== 'play' || card || !verified.canAct()) return;
     if (style === 'missing') {
+      trace.current.push({type:'letter',letter});
       if (letter === target[hidden]) complete('solved');
       else wrong();
       return;
     }
     const pos = filled.indexOf(null);
     if (pos < 0) return;
+    trace.current.push({type:'letter',letter});
     if (s.instant_check) {
       if (letter !== target[pos]) { wrong(); return; }
       const next = [...filled]; next[pos] = letter;
@@ -102,15 +109,17 @@ export default function WordRound({ wheel, cards, voice, pointsPerWord, onAward,
   };
 
   const onUndo = () => {
-    if (status !== 'play') return;
+    if (status !== 'play' || !verified.canAct()) return;
     const last = filled.map(Boolean).lastIndexOf(true);
     if (last < 0) return;
+    trace.current.push({type:'undo'});
     const next = [...filled]; next[last] = null;
     setWord(w => ({ ...w, filled: next }));
   };
 
   const onHint = () => {
-    if (status !== 'play' || hintsLeft <= 0) return;
+    if (status !== 'play' || hintsLeft <= 0 || !verified.canAct()) return;
+    trace.current.push({type:'hint'});
     setHintsUsed(h => h + 1);
     if (style === 'missing') {
       setGlow(target[hidden]);

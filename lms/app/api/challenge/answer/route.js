@@ -1,3 +1,5 @@
+import { isSuspended } from '../../../../lib/auth-role';
+import { challengeMember, challengeOption } from '../../../../lib/challenge-verified';
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient as createServerClient } from '../../../../lib/supabase-server';
@@ -8,7 +10,7 @@ export async function POST(request) {
   try {
     const supabase = createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
+    if (!user || isSuspended(user)) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
 
     const { room_id, q_index, picked_option } = await request.json();
     if (!room_id || q_index === undefined || !picked_option)
@@ -26,13 +28,15 @@ export async function POST(request) {
       .single();
 
     if (!room) return NextResponse.json({ won: false, reason: 'no_room' });
+    if (!challengeMember(room,player_id)) return NextResponse.json({error:'أنت لست مشاركًا في هذا التحدي.'},{status:403});
+    if (!Number.isInteger(q_index)||q_index!==room.cur_q_index) return NextResponse.json({won:false,reason:'not_current'});
     if (room.status !== 'playing') return NextResponse.json({ won: false, reason: 'not_playing' });
 
     const q = room.questions?.[q_index];
     if (!q) return NextResponse.json({ won: false, reason: 'no_question' });
 
     // Server-side answer validation
-    if (q.correct_option !== picked_option)
+    if (challengeOption(q.correct_option) !== challengeOption(picked_option))
       return NextResponse.json({ won: false, reason: 'wrong' });
 
     const isP1 = room.player1_id === player_id;
@@ -45,6 +49,7 @@ export async function POST(request) {
       .update({ round_winner: player_id, [scoreField]: newScore })
       .eq('id', room_id)
       .eq('cur_q_index', q_index)
+      .eq('status','playing')
       .is('round_winner', null)
       .select()
       .single();

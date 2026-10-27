@@ -167,8 +167,8 @@ describe('رتّب الكلمة — تصحيح الخادم والجولة ال�
     expect((await oldPoints.POST(req({ reason: 'word_scramble' }))).status).toBe(409);
     expect((await oldPoints.POST(req({ reason: 'word_scramble:fake' }))).status).toBe(409);
     expect((await oldResults.POST(req({ game_id: 'word_scramble', category: 'عام', correct: 999, wrong: 0, total: 999 }))).status).toBe(409);
-    expect((await oldPoints.POST(req({ reason: 'letter_catcher' }))).status).toBe(200);
-    expect((await oldResults.POST(req({ game_id: 'letter_catcher', category: 'عام', correct: 1, wrong: 0, total: 1 }))).status).toBe(200);
+    expect((await oldPoints.POST(req({ reason: `daily_word:${new Date().toISOString().slice(0,10)}` }))).status).toBe(200);
+    expect((await oldResults.POST(req({ game_id: 'other_activity', category: 'عام', correct: 1, wrong: 0, total: 1 }))).status).toBe(409);
   });
   it('الكلمات المكررة حروفها والأسماء ذات المسافات تحتفظ بمعنى الإجابة', () => {
     const round = { words: [{ word: 'بَابَ' }], answers: [{ solved: false, wrong: 0 }], events: [], cursor: 0, revision: 0 };

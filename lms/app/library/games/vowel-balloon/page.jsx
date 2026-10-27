@@ -1,4 +1,6 @@
 'use client';
+import useVerifiedTraining from '../../../../lib/use-verified-training';
+import VerifiedTrainingStatus from '../../../../components/VerifiedTrainingStatus';
 import { Fragment, useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '../../../../lib/supabase';
 import Navbar from '../../../../components/Navbar';
@@ -478,6 +480,12 @@ export default function VowelBalloonPage() {
     childFetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
   }, []);
 
+  const verified = useVerifiedTraining('vowel_balloon', {
+    onPoints: setTotalPoints,
+    onIdentityChange: () => { setQueue([]); setScore(0); setChosen(null); setDone(false); location.reload(); },
+    onStart: j => { setItems(j.items); setQueue(j.items.map(item=>({...item,_options:buildOptions(item)}))); setCur(Math.max(0,j.summary.cursor));setScore(j.summary.correct);setChosen(null);setIsRight(null);setBalloonStates(['idle','idle','idle']);setDone(j.summary.complete); },
+  });
+
   /* fetch + build queue */
   useEffect(() => {
     function makeQueue(raw) {
@@ -491,9 +499,10 @@ export default function VowelBalloonPage() {
         const raw = (src === 'database' && d.items?.length) ? d.items : DEMO;
         setDataSource(src === 'database' && d.items?.length ? 'database' : 'demo');
         setItems(raw);
-        setQueue(makeQueue(raw));
+        if(src==='database'&&d.items?.length) { if(verified.hasSaved())setQueue(makeQueue(raw));else verified.start(raw.map(x=>x.id),'عام'); }
+        else verified.demo(raw);
       })
-      .catch(() => { setItems(DEMO); setDataSource('demo'); setQueue(makeQueue(DEMO)); });
+      .catch(() => { setItems(DEMO); setDataSource('demo'); verified.demo(DEMO); });
   }, []);
 
   /* auto-play audio on question change */
@@ -508,26 +517,27 @@ export default function VowelBalloonPage() {
   }, [cur, queue, done]);
 
   const pick = useCallback((idx) => {
-    if (chosen !== null || done) return;
+    if (chosen !== null || done || !verified.canAct()) return;
     const q = queue[cur]; if (!q) return;
-    const correct = q._options[idx].isCorrect;
+    if(q._options[idx].isCorrect&&q.audio_url)new Audio(q.audio_url).play().catch(()=>{});
+    verified.answer(cur, q._options[idx].label, j => {
+    const correct = j.right;
     setChosen(idx); setIsRight(correct);
 
     if (correct) {
       setBalloonStates(s => s.map((st, i) => i === idx ? 'fly' : st));
       setLetterAnim('bounce');
-      setScore(sc => sc + 1);
-      setPtPopupKey(k => k + 1);
-      setPtPopupActive(true);
+      setScore(j.summary.correct);
+      if(j.awarded>0) setPtPopupKey(k => k + 1);
+      if(j.awarded>0) setPtPopupActive(true);
       setTimeout(() => setPtPopupActive(false), 1200);
-      childFetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'vowel_balloon' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
       setConfKey(k => k + 1); setShowConf(true);
-      if (q.audio_url) new Audio(q.audio_url).play().catch(() => {});
+
       setTimeout(() => {
         setShowConf(false); setLetterAnim('idle');
         setBalloonStates(['idle','idle','idle']);
         setChosen(null); setIsRight(null); setShowRule(false); setWrongFeedback(false);
-        if (cur + 1 >= queue.length) { setDone(true); childFetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'vowel_balloon', category: 'عام', correct: score + 1, wrong: (cur + 1) - (score + 1), total: queue.length }) }).catch(() => {}); return; }
+        if (cur + 1 >= queue.length) { setDone(true); return; }
         setCur(c => c + 1);
       }, 1200);
     } else {
@@ -540,15 +550,10 @@ export default function VowelBalloonPage() {
         setChosen(null); setIsRight(null);
       }, 700);
     }
-  }, [chosen, cur, done, queue]);
+    });
+  }, [chosen, cur, done, queue, verified]);
 
-  function restart() {
-    const q2 = [...items].sort(() => Math.random() - 0.5).map(item => ({ ...item, _options: buildOptions(item) }));
-    setQueue(q2); setCur(0); setScore(0);
-    setBalloonStates(['idle','idle','idle']);
-    setChosen(null); setIsRight(null); setShowRule(false); setWrongFeedback(false);
-    setShowConf(false); setDone(false); setLetterAnim('idle');
-  }
+  function restart() { verified.reset(); if(dataSource==='demo')verified.demo(items);else verified.start(items.map(x=>x.id),'عام'); }
 
   const isAdmin = ['super_admin','admin','teacher'].includes(getRole(user) ?? '');
   const q       = queue[cur];
@@ -556,6 +561,7 @@ export default function VowelBalloonPage() {
 
   return (
     <>
+      <VerifiedTrainingStatus training={verified} />
       {authDone && <Navbar user={user} />}
       <style>{`
         @keyframes ptFloatUp {

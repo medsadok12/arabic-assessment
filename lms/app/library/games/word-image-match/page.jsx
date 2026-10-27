@@ -1,4 +1,6 @@
 'use client';
+import useVerifiedTraining from '../../../../lib/use-verified-training';
+import VerifiedTrainingStatus from '../../../../components/VerifiedTrainingStatus';
 import { Fragment, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { getRole } from '../../../../lib/auth-role';
@@ -421,7 +423,7 @@ const DONE_THEME = {
 };
 
 /* ─────────────── game area ─────────────── */
-function GameArea({ gamePairs, cfg, isTeacher }) {
+function GameArea({ gamePairs, cfg, isTeacher, totalPoints, ptPopupKey, ptPopupActive, setTotalPoints, setPtPopupKey, setPtPopupActive }) {
   const containerRef  = useRef(null);
   const dragWordIdRef = useRef(null);
 
@@ -497,42 +499,27 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
     }
   }, [correct.size, currentPairs.length, phase, currentTopic]);
 
-  /* all topics done → post completion */
-  const completionPostedRef = useRef(false);
-  useEffect(() => {
-    if (allDone && !completionPostedRef.current) {
-      completionPostedRef.current = true;
-      childFetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_image_match', category: 'عام', correct: completedTopics.size, wrong: 0, total: topicList.length }) }).catch(() => {});
-    }
-  }, [allDone]);
-
-  const startTopicGame = useCallback((topic) => {
-    const pairs = topicGroups[topic] || [];
-    const sel   = shuffle(pairs).slice(0, 4);
-    const ids   = sel.map(p => p.id);
-    setCurrentPairs(sel);
-    setWordOrder(shuffle([...ids]));
-    setImageOrder(shuffle([...ids]));
-    setConnections([]); setCorrect(new Set()); setSelectedWord(null);
-    setDragPos(null); setShaking(null);
-    setBursting(new Set()); setImgBursting(new Set());
-    dragWordIdRef.current = null;
-    setCurrentTopic(topic);
-    setPhase('playing');
-  }, [topicGroups]);
+  const verified = useVerifiedTraining('word_image_match', {
+    onPoints: setTotalPoints,
+    onIdentityChange: () => { setPhase('topics');setCorrect(new Set());setCompletedTopics(new Set());setCurrentPairs([]); },
+    onStart: j => { const pairs=j.items; const ids=pairs.map(p=>p.id); const solved=new Set(j.answers.map((a,i)=>a.right?ids[i]:null).filter(Boolean));setCurrentPairs(pairs);setWordOrder(shuffle([...ids]));setImageOrder(shuffle([...ids]));setConnections([...solved].map(id=>({wordId:id,imgId:id,correct:true})));setCorrect(solved);setSelectedWord(null);setDragPos(null);setShaking(null);setBursting(new Set());setImgBursting(new Set());dragWordIdRef.current=null;setCurrentTopic(j.category);setPhase(j.summary.complete?'topicDone':'playing'); },
+  });
+  const startTopicGame = topic => { const pairs=shuffle(topicGroups[topic]||[]).slice(0,4);if(pairs.length) verified.start(pairs.map(p=>p.id),topic,cfg); };
 
   const attemptConnect = useCallback((wordId, imgId) => {
-    if (correct.has(wordId)) return;
-    const isCorrect = wordId === imgId;
+    if (correct.has(wordId) || !verified.canAct()) return;
+    const index=currentPairs.findIndex(p=>String(p.id)===String(wordId));
+    if(String(wordId)===String(imgId)&&pairMap[wordId])playAudio(pairMap[wordId].audio_url,pairMap[wordId].word_text);
+    verified.answer(index,String(imgId), j => {
+    const isCorrect = j.right;
     setConnections(prev => [...prev.filter(c => c.wordId !== wordId), { wordId, imgId, correct: isCorrect }]);
     if (isCorrect) {
       setCorrect(prev => new Set([...prev, wordId]));
-      setPtPopupKey(k => k + 1);
-      setPtPopupActive(true);
+      if(j.awarded>0) setPtPopupKey(k => k + 1);
+      if(j.awarded>0) setPtPopupActive(true);
       setTimeout(() => setPtPopupActive(false), 1200);
-      childFetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'word_image_match' }) }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
       const pair = pairMap[wordId];
-      if (pair) setTimeout(() => playAudio(pair.audio_url, pair.word_text), 150);
+
       setBursting(prev => new Set([...prev, wordId]));
       setImgBursting(prev => new Set([...prev, imgId]));
       setTimeout(() => {
@@ -551,7 +538,8 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
     setSelectedWord(null);
     dragWordIdRef.current = null;
     setDragPos(null);
-  }, [correct, pairMap]);
+    });
+  }, [correct, pairMap, currentPairs, verified]);
 
   /* drag listeners */
   useEffect(() => {
@@ -631,6 +619,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
   if (phase === 'topics') {
     if (gamePairs.length === 0) return (
       <div style={{ textAlign:'center', padding:'44px 20px', fontFamily:'inherit' }}>
+        <VerifiedTrainingStatus training={verified} />
         <div style={{ fontSize:'3.5rem', marginBottom:14 }}>🖼️</div>
         <h2 style={{ fontSize:'1.4rem', fontWeight:900, color:'#3730a3', margin:'0 0 8px' }}>صِل الكلمة بصورتها</h2>
         <div style={{ background:'#fffbeb', border:'2px solid #fde68a', borderRadius:14, padding:'14px 20px', color:'#92400e', fontWeight:600 }}>
@@ -641,6 +630,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
 
     return (
       <div style={{ fontFamily:'inherit', padding:'4px 2px' }}>
+      <VerifiedTrainingStatus training={verified} />
 
         {/* header banner */}
         <div style={{ textAlign:'center', marginBottom:28, background:'linear-gradient(135deg,#faf5ff,#ede9fe)', borderRadius:20, padding:'20px 16px', border:'2px solid #ddd6fe' }}>
@@ -777,6 +767,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
     const nextTopic = remaining[0];
     return (
       <div style={{ textAlign:'center', padding:'36px 20px', fontFamily:'inherit' }}>
+      <VerifiedTrainingStatus training={verified} />
         <div style={{ fontSize:'3.5rem', marginBottom:10 }}>🌟</div>
         <h2 style={{ fontSize:'1.3rem', fontWeight:900, color:'#059669', margin:'0 0 6px' }}>
           أحسنت! أكملت موضوع "{currentTopic}" 🎉
@@ -807,6 +798,7 @@ function GameArea({ gamePairs, cfg, isTeacher }) {
 
   return (
     <div>
+      <VerifiedTrainingStatus training={verified} />
       {/* progress */}
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, direction:'rtl' }}>
         <div style={{ flex:1 }}>
@@ -1219,7 +1211,7 @@ export default function WordImageMatchPage() {
               </div>
             </div>
           ) : (
-            <GameArea gamePairs={gamePairs} cfg={cfg} isTeacher={isTeacher} key={`${cfg.topic}-${cfg.grade}-${cfg.pairsCount}`} />
+            <GameArea gamePairs={gamePairs} cfg={cfg} isTeacher={isTeacher} totalPoints={totalPoints} ptPopupKey={ptPopupKey} ptPopupActive={ptPopupActive} setTotalPoints={setTotalPoints} setPtPopupKey={setPtPopupKey} setPtPopupActive={setPtPopupActive} key={`${cfg.topic}-${cfg.grade}-${cfg.pairsCount}`} />
           )}
         </div>
       </div>

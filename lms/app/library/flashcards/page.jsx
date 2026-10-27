@@ -1,8 +1,8 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '../../../lib/supabase';
-import { childFetch } from '../../../lib/child-fetch';
+import { childFetch, getActiveChildTab } from '../../../lib/child-fetch';
 import Navbar from '../../../components/Navbar';
 
 const TOPIC_COLORS = {
@@ -44,21 +44,23 @@ function FlipCard({ card, onEasy, onHard, onForgot, cardNum, total }) {
   const [flipped, setFlipped] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const answering=useRef(false);
   const c = getColor(card.topic);
 
-  useEffect(() => { setFlipped(false); setLeaving(false); setFeedback(null); }, [card.id]);
+  useEffect(() => { answering.current=false;setFlipped(false); setLeaving(false); setFeedback(null); }, [card.id]);
 
-  function answer(difficulty, cb) {
+  async function answer(difficulty, cb) {
+    if(answering.current)return;answering.current=true;const confirmed=await cb();if(!confirmed){answering.current=false;return;}
     const lvl = card.level ?? 0;
     let emoji, msg, sub, color;
 
     if (difficulty === 'easy') {
-      const newLvl = Math.min(lvl + 1, 5);
+      const newLvl = confirmed.new_level ?? Math.min(lvl + 1, 5);
       const days   = SRS_INTERVALS[newLvl];
       emoji = '✅';
       if (newLvl === 5) {
-        msg = 'محفوظة تماماً! ✨';
-        sub = 'أتقنتَ هذه الكلمة';
+        msg = 'مراجعة متقدمة! ✨';
+        sub = 'وصلتَ إلى مراجعة متقدمة';
       } else {
         msg = 'ممتاز!';
         sub = `📅 ستُراجَع بعد ${days} يوم`;
@@ -79,7 +81,7 @@ function FlipCard({ card, onEasy, onHard, onForgot, cardNum, total }) {
     setFeedback({ emoji, msg, sub, color });
     setTimeout(() => {
       setLeaving(true);
-      setTimeout(cb, 350);
+      // نقل البطاقة يحدّده الوالد بعد تأكيد الخادم وانتهاء الحركة.
     }, 700);
   }
 
@@ -379,45 +381,44 @@ export default function FlashcardsPage() {
       .catch(() => setPhase('empty'));
   }, []);
 
-  const callReview = useCallback((wordId, difficulty) => {
-    childFetch('/api/flashcards/review', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word_id: wordId, difficulty }),
-    }).catch(() => {});
-  }, []);
-
+  const [reviewNote,setReviewNote]=useState(''),[reviewBusy,setReviewBusy]=useState(false);
+  const reviewRequest=useRef(null),reviewLock=useRef(false),deckScope=useRef(null);
+  useEffect(()=>{deckScope.current=getActiveChildTab();},[]);
+  const sendReview=async()=>{
+    if(reviewLock.current||!reviewRequest.current)return;
+    if(deckScope.current!==getActiveChildTab()){setReviewNote('تغيّر الطفل المختار. حدّث الصفحة لعرض بطاقاته.');return;}
+    reviewLock.current=true;setReviewBusy(true);setReviewNote('نحفظ مراجعتك…');const request=reviewRequest.current;
+    try{const r=await childFetch('/api/flashcards/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request.body)});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'أعد تأكيد المراجعة.');if(deckScope.current!==getActiveChildTab())return;
+    if(Number.isFinite(j.points))setTotalPoints(j.points);setReviewNote(j.preview?'معاينة المعلم: بلا نتائج أو نقاط للطلاب.':j.state==='review'||j.state==='working'?'حُفظ تقييمك الذاتي؛ المكافأة تنتظر التأكيد.':'حُفظ تقييمك الذاتي للمراجعة.');reviewRequest.current=null;const savedScope=deckScope.current;setTimeout(()=>{if(savedScope===getActiveChildTab())request.after(j);},1050);return j;
+    }catch{setReviewNote('تعذّر تأكيد المراجعة. أعد المحاولة دون تكرارها.');return null;}finally{reviewLock.current=false;setReviewBusy(false);}
+  };
+  const callReview=(difficulty,after)=>{if(reviewLock.current||reviewRequest.current)return;reviewRequest.current={body:{word_id:deck[0].id,difficulty,review_id:crypto.randomUUID()},after};return sendReview();};
   function handleEasy() {
     const card = deck[0];
-    callReview(card.id, 'easy');
+    return callReview('easy',j=>{
     setEasyCount(n => n + 1);
     setCardsDone(n => n + 1);
-    setPtPopupKey(k => k + 1);
-    setPtPopupActive(true);
-    setTimeout(() => setPtPopupActive(false), 1200);
-    childFetch('/api/points', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason: `fc:${card.id}` }),
-    }).then(r => r.json()).then(j => { if (j.points != null) setTotalPoints(j.points); }).catch(() => {});
+    if(j.awarded>0){setPtPopupKey(k=>k+1);setPtPopupActive(true);setTimeout(()=>setPtPopupActive(false),1200);}
     const next = deck.slice(1);
     if (!next.length) { setPhase('done'); return; }
     setDeck(next);
+    });
   }
 
   function handleHard() {
     const card = deck[0];
-    callReview(card.id, 'hard');
+    return callReview('hard',j=>{
     setHardCount(n => n + 1);
     setCardsDone(n => n + 1);
     const next = deck.slice(1);
     if (!next.length) { setPhase('done'); return; }
     setDeck(next);
+    });
   }
 
   function handleForgot() {
     const card = deck[0];
-    callReview(card.id, 'forgot');
+    return callReview('forgot',j=>{
     setForgotCount(f => f + 1);
     const count = (retries[card.id] || 0) + 1;
     setRetries(r => ({ ...r, [card.id]: count }));
@@ -433,12 +434,14 @@ export default function FlashcardsPage() {
     }
     if (!next.length) { setPhase('done'); return; }
     setDeck(next);
+    });
   }
 
   const cur = deck[0];
 
   return (
     <>
+      {reviewNote&&<div role="status" style={{padding:12,textAlign:'center',background:'#FAF7F1',color:'#1A2B4A'}}>{reviewNote}{reviewRequest.current&&!reviewBusy&&<button onClick={sendReview}>أعد تأكيد المراجعة</button>}</div>}
       {authDone && <Navbar user={user} />}
       <style>{`
         
@@ -482,7 +485,7 @@ export default function FlashcardsPage() {
               لا بطاقات اليوم!
             </h2>
             <p style={{ color:'#64748b', fontSize:'.9rem', marginBottom:24 }}>
-              أتقنتَ كل الكلمات المجدولة اليوم.<br />
+              راجعتَ كل الكلمات المجدولة اليوم.<br />
               عُد غداً لمزيد من المراجعة.
             </p>
             {stats && stats.mastered > 0 && (

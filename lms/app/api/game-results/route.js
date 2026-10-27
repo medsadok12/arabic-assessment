@@ -18,12 +18,13 @@ export async function GET(req) {
 
     const admin = createAdminClient();
     const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
-    const { data } = await admin
+    const { data, error } = await admin
       .from('game_results')
       .select('category, correct, wrong, total, played_at')
       .eq('user_id', effectiveUserId)
       .eq('game_id', gameId)
       .order('played_at', { ascending: false });
+    if(error)throw error;
 
     // Keep only the most recent result per category
     const seen    = new Set();
@@ -33,39 +34,15 @@ export async function GET(req) {
       return true;
     });
 
-    return NextResponse.json({ results });
+    return NextResponse.json({ results },{headers:{'Cache-Control':'private, no-store'}});
   } catch {
-    return NextResponse.json({ results: [] });
+    return NextResponse.json({ results: [], error:'تعذّر عرض التقرير الآن.' },{status:503,headers:{'Cache-Control':'private, no-store'}});
   }
 }
 
-/* POST /api/game-results
-   Body: { game_id, category, correct, wrong, total } */
-export async function POST(req) {
-  try {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
-
-    const { game_id, category, correct, wrong, total } = await req.json();
-    if (game_id === 'word_scramble') return NextResponse.json({ error: 'نتيجة رتّب الكلمة تُحسب من الإجابات داخل الجولة.' }, { status: 409 });
-    if (!game_id || !category || total == null) {
-      return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
-    }
-
-    const admin = createAdminClient();
-    const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
-    await admin.from('game_results').insert({
-      user_id: effectiveUserId,
-      game_id,
-      category,
-      correct: correct ?? 0,
-      wrong:   wrong   ?? 0,
-      total:   total   ?? 0,
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
-  }
+/* حفظ الدرجات العامة من المتصفح أُلغي بعد انتقال جميع الألعاب لمسارات التصحيح.
+   القراءة التاريخية أعلاه باقية؛ الدرجة الجديدة تُكتب من الخادم فقط. */
+export async function POST() {
+  const {data:{user}}=await createClient().auth.getUser();
+  return NextResponse.json({error:user?'تُحفظ النتائج من مسار التدريب بعد تصحيح الإجابات.':'سجّل الدخول أولًا.'},{status:user?409:401});
 }

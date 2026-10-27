@@ -1,4 +1,6 @@
 'use client';
+import useVerifiedTraining from '../../../../lib/use-verified-training';
+import VerifiedTrainingStatus from '../../../../components/VerifiedTrainingStatus';
 import { Fragment, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { getRole } from '../../../../lib/auth-role';
@@ -637,8 +639,8 @@ export default function WordSmashGame() {
   const useWormFlow = !isTeacher && uniqueTopics.length >= 2;
 
   /* build queue */
-  const buildQueue = useCallback((words, count) => {
-    let pool = shuffle([...words]);
+  const buildQueue = useCallback((words, count, preserve = false) => {
+    let pool = preserve ? [...words] : shuffle([...words]);
     while (pool.length < count) pool = [...pool, ...shuffle([...words])];
     return pool.slice(0, count).map(w => ({
       ...w,
@@ -650,72 +652,54 @@ export default function WordSmashGame() {
     }));
   }, []);
 
-  const startGame = useCallback(() => {
-    if (gameWords.length === 0) return;
-    const count = isTeacher ? cfg.questionsPerRound : Math.min(gameWords.length, 15);
-    setQueue(buildQueue(gameWords, count));
-    setCurrentTopic('');
-    setCur(0); setScore(0); setChosen(null); setIsRight(null); setCharAnim('idle');
-    setPhase('playing');
-  }, [gameWords, cfg, isTeacher, buildQueue]);
-
-  const startGameForTopic = useCallback((topicName) => {
-    const words = gameWords.filter(w => w.topic === topicName);
-    if (!words.length) return;
-    const count = Math.min(words.length, 12);
-    setQueue(buildQueue(words, count));
-    setCurrentTopic(topicName);
-    setCur(0); setScore(0); setChosen(null); setIsRight(null); setCharAnim('idle'); setWordAnim('idle');
-    setPhase('playing');
-  }, [gameWords, buildQueue]);
+  const verified = useVerifiedTraining('word_smash', {
+    onPoints: setTotalPoints, onIdentityChange: () => { setPhase('start'); setQueue([]); setScore(0); setCompletedTopics(new Set()); setWormTotals({right:0,total:0}); },
+    onStart: j => { setQueue(buildQueue(j.items, j.items.length, true)); setCurrentTopic(j.category === 'عام' ? '' : j.category); setCur(Math.max(0,j.summary.cursor)); setScore(j.summary.correct); setChosen(null); setIsRight(null); setCharAnim('idle'); setWordAnim('idle'); setPhase(j.summary.complete ? 'finished' : 'playing'); },
+  });
+  const startGame = () => { if (!gameWords.length) return; const count = isTeacher ? cfg.questionsPerRound : Math.min(gameWords.length,15); const picked = buildQueue(gameWords,count); verified.start(picked.map(w=>w.id),'عام',cfg); };
+  const startGameForTopic = topic => { const pool=gameWords.filter(w=>w.topic===topic); if(!pool.length)return; const picked=buildQueue(pool,Math.min(pool.length,12)); verified.start(picked.map(w=>w.id),topic,cfg); };
 
   const pick = useCallback((idx) => {
-    if (chosen !== null) return;
+    if (chosen !== null || !verified.canAct()) return;
+    if(queue[cur].opts[idx].isCorrect)speak(queue[cur].word_text);
+    verified.answer(cur, queue[cur].opts[idx].segs, j => {
     const w     = queue[cur];
-    const right = w.opts[idx].isCorrect;
+    const right = j.right;
     setChosen(idx);
     setIsRight(right);
     setCharAnim(right ? 'smash' : 'wrong');
     if (right) {
-      setScore(s => s + 1);
-      speak(w.word_text);
+      setScore(j.summary.correct);
       setWordAnim('shake');
       setConfettiKey(k => k + 1);
       setShowConfetti(true);
       setTimeout(() => { setWordAnim('idle'); setShowConfetti(false); }, 900);
-      // Award 5 points and show floating popup
-      setPtPopupKey(k => k + 1);
-      setPtPopupActive(true);
-      setTimeout(() => setPtPopupActive(false), 1200);
-      childFetch('/api/points', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: 'word_smash' }),
-      }).then(r => r.json()).then(j => { if (j.points) setTotalPoints(j.points); }).catch(() => {});
+      if(j.awarded>0){setPtPopupKey(k=>k+1);setPtPopupActive(true);setTimeout(()=>setPtPopupActive(false),1200);}
     } else {
       childFetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: w.word_text, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
     }
-  }, [chosen, cur, queue]);
+    });
+  }, [chosen, cur, queue, verified]);
 
   const next = useCallback(() => {
+    if (verified.busy || verified.pending) return;
     const n = cur + 1;
     if (n >= queue.length) {
       if (currentTopic) {
         setCompletedTopics(prev => new Set([...prev, currentTopic]));
         setWormTotals(prev => ({ right: prev.right + score, total: prev.total + queue.length }));
-        childFetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_smash', category: currentTopic, correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
         setCurrentTopic('');
         setPhase('worm');
       } else {
         setPhase('finished');
-        childFetch('/api/game-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game_id: 'word_smash', category: 'عام', correct: score, wrong: queue.length - score, total: queue.length }) }).catch(() => {});
       }
     } else {
       setCur(n); setChosen(null); setIsRight(null); setCharAnim('idle'); setWordAnim('idle');
     }
-  }, [cur, queue.length, currentTopic, score]);
+  }, [cur, queue.length, currentTopic, score, verified]);
 
   const restart = () => {
+    verified.reset();
     const goWorm = !isTeacher && uniqueTopics.length >= 2;
     setPhase(goWorm ? 'worm' : 'start');
     setQueue([]); setCur(0); setScore(0);
@@ -726,6 +710,7 @@ export default function WordSmashGame() {
   /* ══════ RENDER ══════ */
   return (
     <>
+      <VerifiedTrainingStatus training={verified} />
       <style>{`
         /* ── hammer animations ── */
         @keyframes hammerSmash {
@@ -988,7 +973,7 @@ export default function WordSmashGame() {
                 <>
                   <div style={{ fontSize:'4rem', filter:'drop-shadow(0 4px 16px rgba(251,191,36,.7))', animation:'wsFloat 2.5s ease-in-out infinite', display:'inline-block' }}>🏆</div>
                   <h2 style={{ fontSize:'1.7rem', fontWeight:900, color:'#fde68a', margin:0, textShadow:'0 2px 16px rgba(251,191,36,.6)' }}>
-                    أتقنت جميع المواضيع!
+                    أكملت جولات المواضيع!
                   </h2>
                   <div style={{ fontSize:'2.6rem', fontWeight:900, color:'#fbbf24', textShadow:'0 2px 12px rgba(251,191,36,.5)' }}>
                     {wormTotals.right} / {wormTotals.total}
