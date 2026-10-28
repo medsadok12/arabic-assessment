@@ -1,3 +1,4 @@
+import { SCRABBLE_LEVELS } from './scrabble-levels';
 // منطق السكرابل الصغير؛ الحروف العربية محفوظة بلا تحويل الهمزات.
 export const SCRABBLE_ID = 'scrabble';
 export const SCRABBLE_STAFF = ['teacher', 'admin', 'super_admin'];
@@ -28,14 +29,42 @@ export function checkScrabbleAnswer(board, index, placements) {
   return { right: needs.every(n => placements.some(p => p.pos === n.pos && p.char === n.char)) };
 }
 const round = (id, word, emoji, row, col, distractors = '') => ({ id, word, vocalized: word, emoji, row, col, direction: 'down', distractors, image_url: '', audio_url: '', enabled: true, motion: 'bloom' });
-export function freshScrabble() {
+export function legacyScrabble() {
   const rounds = [round('door', 'باب', '🚪', 2, 2), round('fish', 'سمك', '🐟', 0, 5), round('berry', 'توت', '🫐', 2, 4, 'ر'), round('home', 'دار', '🏠', 1, 3, 'ب')];
   rounds.forEach((r, i) => { r.vocalized = ['بابٌ','سَمَكٌ','توتٌ','دارٌ'][i]; r.motion = ['door','swim','bloom','house'][i]; });
-  return { enabled: true, title: 'سكرابل الصغار', epoch: 0,
+  return { enabled: true, title: 'سكرابل الصغار', epoch: 0, curriculum: 1,
     settings: { helpCost: 5, reward: 3, errorMs: 1700, pictureSize: 100, letterSize: 32, animate: true, stars: true, sound: true, showWord: true,
       background: '#fffaf0', ink: '#244d40', grid: '#e9efdf', tile: '#ffe1a3', edge: '#c4d5b5', purple: '#7339ba', purpleSoft: '#f1e5ff', success: '#356e4e', error: '#c02a38', errorBackground: '#ffe3e6',
       startText: 'اختر حرفًا 👇', placeText: 'اضغط المربع البنفسجي 👆', continueText: 'أكمل الكلمة 👇', successText: 'أحسنت! 🌸', retryText: 'حاول من جديد 🌱', errorText: 'خطأ', nextText: 'نكمل؟ ←', helpText: '💡 ساعدني', againText: 'نلعب من جديد ↻' },
-    boards: [{ id: 'first-garden', title: 'كلماتي الأولى', enabled: true, size: 6, seed: [{ word: 'كتاب', row: 2, col: 5, direction: 'across' }], rounds }] };
+    boards: [{ id: 'first-garden', title: 'كلماتي الأولى', theme: 'first-garden', themeTitle: 'كلماتي الأولى', themeEmoji: '🧩', enabled: true, size: 6, seed: [{ word: 'كتاب', row: 2, col: 5, direction: 'across' }], rounds }] };
+}
+export function freshScrabble() {
+  const config = legacyScrabble();
+  config.curriculum = 2;
+  config.boards = structuredClone(SCRABBLE_LEVELS);
+  return config;
+}
+// كل خانة مرئية لها حرف معروف في إحدى كلمات اللوحة؛ لا مربعات زينة فارغة.
+export function scrabblePlan(board) {
+  const cells = {};
+  for (const word of [...board.seed, ...board.rounds]) for (const cell of wordCells(word, board.size)) cells[cell.pos] = cell.char;
+  return cells;
+}
+export function scrabbleBoardFilled(board, cursor, placements = []) {
+  if (cursor !== board.rounds.length) return false;
+  const actual = { ...boardBefore(board, cursor), ...Object.fromEntries(placements.map(p => [p.pos, p.char])) };
+  return Object.entries(scrabblePlan(board)).every(([pos, char]) => actual[pos] === char);
+}
+export function withScrabbleCurriculum(config) {
+  if (config.curriculum >= 2) return config;
+  const original = legacyScrabble().boards[0];
+  const stock = config.boards.length === 1 && config.boards[0].id === original.id && config.boards[0].title === original.title && config.boards[0].size === original.size && config.boards[0].enabled === original.enabled && JSON.stringify(config.boards[0].seed) === JSON.stringify(original.seed) && config.boards[0].rounds.length === original.rounds.length && config.boards[0].rounds.every((w,i) => ['id','word','row','col','direction','enabled'].every(k => w[k] === original.rounds[i][k]));
+  const media = new Map(config.boards.flatMap(b => b.rounds).map(w => [cleanWord(w.word),w]));
+  const added = structuredClone(SCRABBLE_LEVELS).map(b => ({...b,rounds:b.rounds.map(w => {const old=media.get(cleanWord(w.word));return old ? {...w,image_url:old.image_url||w.image_url||'',audio_url:old.audio_url||'',vocalized:old.vocalized||w.vocalized} : w})}));
+  // نرقي المثال القديم فقط إن بقي تخطيطه الأصلي؛ لوحات المعلم المخصصة لا تُمحى.
+  const existing = stock ? [] : config.boards;
+  const ids = new Set(existing.map(b => b.id));
+  return {...config,curriculum:2,boards:[...existing,...added.filter(b => !ids.has(b.id))]};
 }
 const safeUrl = s => typeof s === 'string' && s.length < 1500 && (!s || /^https:\/\/[^\s]+$/.test(s) || /^\/(?!\/)[^\s]+$/.test(s));
 const fail = error => ({ error });
@@ -46,6 +75,8 @@ export function validateScrabble(input) {
   config.enabled = input.enabled; config.title = input.title.trim();
   if (!Number.isInteger(input.epoch) || input.epoch < 0 || input.epoch > 100000) return fail('رقم جولة التقدّم غير صالح.');
   config.epoch = input.epoch;
+  if (input.curriculum != null && ![1,2].includes(input.curriculum)) return fail('إصدار المستويات غير صالح.');
+  config.curriculum = input.curriculum ?? 1;
   const s = input.settings;
   if (!s || typeof s !== 'object') return fail('إعدادات المظهر مطلوبة.');
   for (const [key, min, max] of [['helpCost',0,1000],['reward',0,50],['errorMs',700,5000],['pictureSize',70,160],['letterSize',24,44]]) {
@@ -55,13 +86,13 @@ export function validateScrabble(input) {
   for (const key of ['animate','stars','sound','showWord']) { if (typeof s[key] !== 'boolean') return fail('راجع خيارات الحركة والصوت.'); config.settings[key] = s[key]; }
   for (const key of ['background','ink','grid','tile','edge','purple','purpleSoft','success','error','errorBackground']) { if (!/^#[\da-f]{6}$/i.test(s[key])) return fail('استعمل ألوانًا صالحة.'); config.settings[key] = s[key]; }
   for (const key of ['startText','placeText','continueText','successText','retryText','errorText','nextText','helpText','againText']) { if (typeof s[key] !== 'string' || !s[key].trim() || s[key].length > 100) return fail('النصوص مطلوبة وبحد أقصى 100 حرف.'); config.settings[key] = s[key].trim(); }
-  if (!Array.isArray(input.boards) || !input.boards.length || input.boards.length > 30) return fail('أضف من لوحة إلى 30 لوحة.');
+  if (!Array.isArray(input.boards) || !input.boards.length || input.boards.length > 80) return fail('أضف من لوحة إلى 80 لوحة.');
   config.boards = []; const ids = new Set();
   for (const b of input.boards) {
-    if (!b || !/^[a-zA-Z0-9_-]{1,64}$/.test(b.id) || ids.has(b.id) || typeof b.title !== 'string' || !b.title.trim() || b.title.length > 80 || typeof b.enabled !== 'boolean' || !Number.isInteger(b.size) || b.size < 4 || b.size > 6) return fail('تحقّق من اسم اللوحة ومعرّفها وحجمها (4 إلى 6).');
+    if (!b || !/^[a-zA-Z0-9_-]{1,64}$/.test(b.id) || ids.has(b.id) || typeof b.title !== 'string' || !b.title.trim() || b.title.length > 80 || typeof b.enabled !== 'boolean' || !Number.isInteger(b.size) || b.size < 4 || b.size > 7) return fail('تحقّق من اسم اللوحة ومعرّفها وحجمها (4 إلى 7).');
     ids.add(b.id);
     if (!Array.isArray(b.seed) || !b.seed.length || b.seed.length > 8 || !Array.isArray(b.rounds) || !b.rounds.length || b.rounds.length > 20) return fail('كل لوحة تحتاج كلمة بداية ومن 1 إلى 20 كلمة.');
-    const out = { id: b.id, title: b.title.trim(), enabled: b.enabled, size: b.size, seed: [], rounds: [] }, cells = {}, roundIds = new Set();
+    const out = { id: b.id, title: b.title.trim(), theme: typeof b.theme==='string'&&/^[a-zA-Z0-9_-]{1,64}$/.test(b.theme)?b.theme:b.id, themeTitle: typeof b.themeTitle==='string'&&b.themeTitle.trim()&&b.themeTitle.length<=80?b.themeTitle.trim():b.title.trim(), themeEmoji: typeof b.themeEmoji==='string'&&b.themeEmoji.length<=16?b.themeEmoji:'🧩', enabled: b.enabled, size: b.size, seed: [], rounds: [] }, cells = {}, roundIds = new Set();
     for (const [kind, list] of [['seed',b.seed],['rounds',b.rounds]]) for (const w of list) {
       const chars = lettersOf(w?.word);
       if (chars.length < 2 || chars.length > b.size || chars.some(c => !/^[\u0621-\u063a\u0641-\u064a]$/.test(c)) || !['across','down'].includes(w.direction) || !Number.isInteger(w.row) || !Number.isInteger(w.col) || w.row < 0 || w.col < 0 || w.row >= b.size || w.col >= b.size || (w.direction === 'across' ? w.col - chars.length + 1 < 0 : w.row + chars.length > b.size)) return fail(`كلمة أو موقع خارج اللوحة: ${w?.word || ''}`);

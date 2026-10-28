@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest';
-import { freshScrabble,validateScrabble,roundNeeds,checkScrabbleAnswer,wordCells,playableBoards, scrabbleRequestId, scrabbleUuid } from './scrabble';
+import { legacyScrabble as freshScrabble,validateScrabble,roundNeeds,checkScrabbleAnswer,wordCells,playableBoards, scrabbleRequestId, scrabbleUuid } from './scrabble';
 describe('سكرابل الصغار',()=>{
  it('يعتمد النموذج الذي اختاره المعلم ويحسب التقاطعات',()=>{const c=freshScrabble();expect(validateScrabble(c).config).toEqual(c);expect(roundNeeds(c.boards[0],0)).toEqual([{pos:20,char:'ا'},{pos:26,char:'ب'}]);expect(wordCells(c.boards[0].seed[0],6).map(p=>p.char).join('')).toBe('كتاب')});
  it('يقبل ترتيبًا خاطئًا مكتملًا للتغذية المؤجلة ولا يمنحه نجاحًا',()=>{const b=freshScrabble().boards[0];expect(checkScrabbleAnswer(b,0,[{pos:20,char:'ب'},{pos:26,char:'ا'}])).toEqual({right:false});expect(checkScrabbleAnswer(b,0,[{pos:20,char:'ا'},{pos:26,char:'ب'}])).toEqual({right:true})});
