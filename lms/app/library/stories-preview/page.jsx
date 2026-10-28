@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '../../../lib/supabase-server';
 import { createAdminClient } from '../../../lib/supabase-admin';
-import { getRole, isSuspended } from '../../../lib/auth-role';
+import { getRole, isSuspended, isStaff } from '../../../lib/auth-role';
+import { storyAudioPathFromUrl } from '../../../lib/story-audio';
 import Navbar from '../../../components/Navbar';
 import StoriesPreview from './StoriesPreview';
 
@@ -15,10 +16,10 @@ export default async function StoriesPreviewPage() {
   let stories = [], loadError = false;
   try {
     const { data, error } = await createAdminClient().from('stories')
-      .select('id, slug, title, icon, cover_image_url, level, length')
+      .select('id, slug, title, icon, cover_image_url, level, length, page_audio')
       .eq('status', 'published').order('created_at', { ascending: true });
     if (error) throw error;
-    stories = data || [];
+    stories = (data || []).map(({ page_audio, ...story }) => ({ ...story, hasAudio: Array.isArray(page_audio) && page_audio.some(url => !!storyAudioPathFromUrl(url)) }));
   } catch { loadError = true; }
-  return <><Navbar user={user} /><StoriesPreview stories={stories} loadError={loadError} /></>;
+  return <><Navbar user={user} /><StoriesPreview stories={stories} loadError={loadError} ownerId={user.id} isEditor={isStaff(user)} /></>;
 }
