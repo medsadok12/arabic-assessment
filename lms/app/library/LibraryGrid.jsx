@@ -5,6 +5,7 @@ import { resizeImageToWebp } from '../../lib/image-resize';
 import { libraryOverview } from '../../lib/library-progress';
 import useLibraryProgress from './useLibraryProgress';
 import ActivityProgress from './ActivityProgress';
+import StoriesShelf from './stories-preview/StoriesPreview';
 
 const RESOURCES = [
   {
@@ -147,7 +148,7 @@ async function cardImageToDataUrl(file) {
   });
 }
 
-export default function LibraryGrid({ initialMeta, isTeacher, initialStories }) {
+export default function LibraryGrid({ initialMeta, isTeacher, initialStories, ownerId }) {
   const stories = initialStories || [];
   const [cardMeta,      setCardMeta]      = useState(initialMeta || {});
   const [editing,       setEditing]       = useState(null);
@@ -722,206 +723,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialStories }) 
         {/* ══════════════════════════════════════════════
             قسم القصص والحكايات
         ══════════════════════════════════════════════ */}
-        <div className="stories-section">
-
-          {/* ── البانر العلوي — غابة ليلية سحرية ── */}
-          <div className="stories-top-banner">
-
-            {/* نجوم + ضباب + أشجار ظل */}
-            <div className="stories-banner-stars" aria-hidden="true" />
-            <div className="stories-banner-mist"  aria-hidden="true" />
-
-            {/* أشجار ظل — يمين */}
-            <div className="stories-trees-r" aria-hidden="true">
-              <div className="s-tree" style={{width:18,height:52,animation:'storyTreeSway 5s ease-in-out infinite .4s'}}/>
-              <div className="s-tree" style={{width:26,height:76,animation:'storyTreeSway 6s ease-in-out infinite'}}/>
-              <div className="s-tree" style={{width:16,height:44,animation:'storyTreeSway 4.5s ease-in-out infinite .8s'}}/>
-            </div>
-
-            {/* أشجار ظل — يسار */}
-            <div className="stories-trees-l" aria-hidden="true">
-              <div className="s-tree" style={{width:14,height:40,animation:'storyTreeSway 5.5s ease-in-out infinite .2s'}}/>
-              <div className="s-tree" style={{width:22,height:64,animation:'storyTreeSway 4.8s ease-in-out infinite .6s'}}/>
-            </div>
-
-            {/* ✦ بريق متحرك */}
-            <div className="stories-banner-deco" aria-hidden="true">
-              <span style={{position:'absolute',top:'18%',right:'22%',fontSize:'1rem',animation:'storySparkle 3.2s ease-in-out infinite'}}>✦</span>
-              <span style={{position:'absolute',top:'12%',right:'38%',fontSize:'.7rem',color:'#f5d87a',animation:'storySparkle 4s ease-in-out infinite 1.1s'}}>★</span>
-              <span style={{position:'absolute',top:'28%',left:'38%',fontSize:'.8rem',animation:'storySparkle 3.6s ease-in-out infinite .6s'}}>✦</span>
-              <span style={{position:'absolute',top:'10%',left:'25%',fontSize:'.65rem',color:'#a78bfa',animation:'storySparkle 5s ease-in-out infinite 1.8s'}}>◆</span>
-              <span style={{position:'absolute',top:'38%',right:'12%',fontSize:'.75rem',color:'#6ee7b7',animation:'storySparkle 4.4s ease-in-out infinite 2.2s'}}>✦</span>
-            </div>
-
-            {/* القمر + الكائنات */}
-            <div style={{position:'relative',zIndex:2,flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',gap:10}}>
-              {/* هلال القمر */}
-              <div style={{
-                position:'relative', width:42, height:42,
-                borderRadius:'50%',
-                background:'#f5d080',
-                animation:'storyMoonGlow 3s ease-in-out infinite',
-                flexShrink:0,
-              }}>
-                {/* الجزء الداكن ليكوّن الهلال */}
-                <div style={{
-                  position:'absolute', top:-4, right:-4,
-                  width:36, height:36, borderRadius:'50%',
-                  background:'#0a1628',
-                }}/>
-              </div>
-              {/* الكائنات */}
-              <div style={{
-                fontSize:'2.8rem', lineHeight:1,
-                filter:'drop-shadow(0 4px 18px rgba(0,0,0,.5))',
-                animation:'storyOwlFloat 4s ease-in-out infinite',
-              }}>🦁</div>
-            </div>
-
-            {/* النص الرئيسي */}
-            <div style={{position:'relative',zIndex:2,flex:1,minWidth:0}}>
-              <h2 style={{
-                fontWeight:900, fontSize:'1.2rem',
-                margin:'0 0 6px', lineHeight:1.4,
-                background:'linear-gradient(135deg,#ffffff 0%,#a7f3d0 50%,#f5d080 100%)',
-                WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-                backgroundClip:'text',
-                filter:'drop-shadow(0 2px 12px rgba(16,185,129,.4))',
-              }}>
-                حكاياتي
-              </h2>
-              <p style={{
-                color:'rgba(255,255,255,.68)', fontSize:'.8rem',
-                margin:'0 0 12px', lineHeight:1.65,
-              }}>
-                قصص تنمّي الخيال وتُثري اللغة العربية
-              </p>
-              {/* شارة حيوانات صغيرة */}
-              <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
-                {['🦊','🐇','🦉','🐢'].map(e => (
-                  <span key={e} style={{
-                    fontSize:'1.3rem',
-                    filter:'drop-shadow(0 2px 6px rgba(0,0,0,.4))',
-                    opacity:.85,
-                  }}>{e}</span>
-                ))}
-                <span style={{
-                  color:'rgba(167,243,208,.7)', fontSize:'.65rem',
-                  fontWeight:700, marginRight:4,
-                }}>أبطال قصصنا</span>
-              </div>
-            </div>
-
-            {/* شارة الإحصاء */}
-            <div style={{
-              position:'relative', zIndex:2, flexShrink:0,
-              background:'rgba(255,255,255,.08)',
-              border:'1px solid rgba(167,243,208,.25)',
-              borderRadius:16, padding:'12px 16px', textAlign:'center',
-              backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)',
-              boxShadow:'0 4px 20px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.1)',
-            }}>
-              <div style={{
-                color:'#a7f3d0', fontSize:'.78rem', fontWeight:900,
-                marginBottom:5, letterSpacing:'.3px',
-              }}>
-                {stories.length > 0 ? `✨ ${stories.length} قصة متاحة` : '✨ قصص قادمة'}
-              </div>
-              <div style={{display:'flex',justifyContent:'center',gap:5,marginBottom:6}}>
-                {[1,2,3].map(l => (
-                  <span key={l} style={{
-                    background:'rgba(16,185,129,.2)',
-                    border:'1px solid rgba(16,185,129,.35)',
-                    borderRadius:20, padding:'1px 7px',
-                    fontSize:'.58rem', fontWeight:800, color:'#6ee7b7',
-                  }}>م {l}</span>
-                ))}
-              </div>
-              <div style={{
-                width:'100%', height:3, borderRadius:99,
-                background:'rgba(255,255,255,.1)',
-                overflow:'hidden',
-              }}>
-                <div style={{
-                  height:'100%', borderRadius:99,
-                  width: stories.length > 0 ? '100%' : '30%',
-                  background:'linear-gradient(90deg,#10b981,#f5d080)',
-                  transition:'width 1s ease',
-                }}/>
-              </div>
-            </div>
-          </div>
-
-          {/* ── شريط بطاقات القصص ── */}
-          <div className="stories-bottom">
-
-            <div className="stories-scroll-header">
-              <div className="stories-scroll-title">
-                <span>📖</span>
-                قصص وحكايات
-              </div>
-              {stories.length === 0
-                ? <span className="stories-soon-badge">🔜 قريباً</span>
-                : <span className="stories-soon-badge">{stories.length} قصة متاحة</span>
-              }
-            </div>
-
-            {stories.length > 0 && (
-              <p className="stories-hint">
-                <span>←</span>
-                مرّر لاستكشاف المزيد من القصص
-              </p>
-            )}
-
-            {stories.length === 0 ? (
-              <p style={{ color:'rgba(110,231,183,.65)', fontSize:'.82rem', fontWeight:700, textAlign:'center', padding:'18px 0' }}>
-                القصص قادمة قريباً — ترقّب المزيد! 🌟
-              </p>
-            ) : (
-              <div className="stories-scroll">
-                {stories.map((s, i) => {
-                  const accent = s.accent || '#10b981';
-                  const level  = `مستوى ${s.level || 1}`;
-                  const cardEl = (
-                    <>
-                      <span style={{
-                        position:'absolute', top:8, left:8, zIndex:1,
-                        background: accent, color:'#fff',
-                        borderRadius:20, padding:'2px 7px',
-                        fontSize:'.56rem', fontWeight:900,
-                      }}>جديد ✨</span>
-                      {s.cover_image_url
-                        ? <div className="story-cover"><img src={s.cover_image_url} alt={s.title} loading="lazy" /></div>
-                        : <div className="story-icon">{s.icon || '📖'}</div>}
-                      <div className="story-level-badge" style={{ color: accent }}>{level}</div>
-                      <p className="story-title">{s.title}</p>
-                      <div className="story-length">⏱ {s.length || 'قصيرة'}</div>
-                      <span className="story-read-btn" style={{ background: `linear-gradient(135deg,${accent},${accent}bb)` }}>
-                        اقرأ الآن ←
-                      </span>
-                    </>
-                  );
-                  return (
-                    <Link
-                      key={s.id}
-                      href={`/library/stories/${s.slug}`}
-                      className={`story-card s-ready${s.cover_image_url ? ' has-cover' : ''}`}
-                      style={{
-                        background:    s.bg || '#ecfdf5',
-                        borderColor:   s.border_color || '#6ee7b7',
-                        boxShadow:     `0 4px 18px ${accent}20`,
-                        animationDelay:`${i * 0.07}s`,
-                      }}
-                    >
-                      {cardEl}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-        </div>
+        <StoriesShelf stories={stories} ownerId={ownerId} embedded />
         {/* نهاية قسم القصص */}
 
       </div>

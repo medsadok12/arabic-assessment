@@ -71,6 +71,7 @@ export default async function LibraryPage() {
             initialMeta={initialMeta}
             isTeacher={isTeacher}
             initialStories={initialStories}
+            ownerId={user.id}
           />
         </div>
       </main>

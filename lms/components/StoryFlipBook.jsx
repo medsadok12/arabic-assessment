@@ -96,21 +96,11 @@ export default function StoryFlipBook({
   backLabel = '→ المكتبة',
   pageAudio = [],
   mode = 'default',
-  startPage = 0, onPageChange,
 }) {
   const bookRef     = useRef(null);
   const isFlipping  = useRef(false);
   const touchStartX = useRef(null);
-  // Optional preview bookkeeping; omitted by the production reader.
-  // No markup, sizing, navigation or sound changes for existing callers.
-  const initialPage = useRef(null);
-  if (initialPage.current === null) {
-    const page = Number.isInteger(startPage) ? Math.max(0, Math.min(startPage, Math.max(0, pages.length - 1))) : 0;
-    initialPage.current = mode === 'spread' ? page - page % 2 : page;
-  }
-  const [current, setCurrent] = useState(initialPage.current);
-  const pageChangeRef = useRef(onPageChange); pageChangeRef.current = onPageChange;
-  useEffect(() => { pageChangeRef.current?.(current); }, [current]);
+  const [current, setCurrent] = useState(0);
   /*
     dims = null حتى يُحسب من العميل (يمنع Hydration mismatch وتهيئة خاطئة)
     key على HTMLFlipBook يجبر إعادة التهيئة كلما تغيّرت الأبعاد
@@ -189,7 +179,7 @@ export default function StoryFlipBook({
     size: 'fixed',
     flippingTime: 460,
     drawShadow: true,
-    startPage: onPageChange ? current : initialPage.current, showCover: false,
+    startPage: 0, showCover: false,
     mobileScrollSupport: true,
     useMouseEvents: false, clickEventForward: false,
     usePortrait: portrait,
@@ -430,7 +420,7 @@ export default function StoryFlipBook({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', '--sfb-accent': accent }}>
       <style>{NAV_CSS}</style>
-      <div style={{ display: 'flex', gap: 7, marginBottom: 14, direction: 'rtl' }}>
+      <div style={{ display: 'flex', gap: 7, marginBottom: 14 }}>
         {pages.map((_, i) => (
           <div key={i} style={{
             width: i === current ? 20 : 9, height: 9, borderRadius: 99,
@@ -447,9 +437,7 @@ export default function StoryFlipBook({
           onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
           style={{
             filter: 'drop-shadow(2px 4px 0 #e8d9b8) drop-shadow(4px 8px 0 #ddd0a8) drop-shadow(0 12px 24px rgba(0,0,0,.15))',
-            // Match the existing Arabic spread/fullscreen geometry.
-            // Mirror the engine, then restore the page content below.
-            borderRadius: 6, touchAction: 'pan-y', transform: 'scaleX(-1)',
+            borderRadius: 6, touchAction: 'pan-y',
           }}
         >
           <HTMLFlipBook
@@ -459,7 +447,7 @@ export default function StoryFlipBook({
             minWidth={220} minHeight={300} maxWidth={500} maxHeight={720}
           >
             {pages.map((html, i) => (
-              <StoryPage key={i} html={html} pageNum={i+1} total={totalPages} mirrorX={true} />
+              <StoryPage key={i} html={html} pageNum={i+1} total={totalPages} />
             ))}
           </HTMLFlipBook>
         </div>
