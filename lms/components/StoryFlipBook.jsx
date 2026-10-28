@@ -430,7 +430,7 @@ export default function StoryFlipBook({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', '--sfb-accent': accent }}>
       <style>{NAV_CSS}</style>
-      <div style={{ display: 'flex', gap: 7, marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 7, marginBottom: 14, direction: 'rtl' }}>
         {pages.map((_, i) => (
           <div key={i} style={{
             width: i === current ? 20 : 9, height: 9, borderRadius: 99,
@@ -447,7 +447,9 @@ export default function StoryFlipBook({
           onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
           style={{
             filter: 'drop-shadow(2px 4px 0 #e8d9b8) drop-shadow(4px 8px 0 #ddd0a8) drop-shadow(0 12px 24px rgba(0,0,0,.15))',
-            borderRadius: 6, touchAction: 'pan-y',
+            // Match the existing Arabic spread/fullscreen geometry.
+            // Mirror the engine, then restore the page content below.
+            borderRadius: 6, touchAction: 'pan-y', transform: 'scaleX(-1)',
           }}
         >
           <HTMLFlipBook
@@ -457,7 +459,7 @@ export default function StoryFlipBook({
             minWidth={220} minHeight={300} maxWidth={500} maxHeight={720}
           >
             {pages.map((html, i) => (
-              <StoryPage key={i} html={html} pageNum={i+1} total={totalPages} />
+              <StoryPage key={i} html={html} pageNum={i+1} total={totalPages} mirrorX={true} />
             ))}
           </HTMLFlipBook>
         </div>
