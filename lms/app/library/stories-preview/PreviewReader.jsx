@@ -1,45 +1,43 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { useStoryNarration, PageListenButton } from '../../../components/StoryNarration';
-import DOMPurify from 'isomorphic-dompurify';
+import StoryFlipBook from '../../../components/StoryFlipBook';
 import styles from './preview.module.css';
 
-export default function PreviewReader({ story, initialPage = 0, onPage, onClose, onFinish, storageAvailable = true }) {
-  const [page, setPage] = useState(initialPage);
-  const dialog = useRef(null), opener = useRef(null), text = useRef(null);
-  const narration = useStoryNarration({ pageAudio: story.audio, visiblePages: [page] });
-  const pauseAudio = () => dialog.current?.querySelector('audio')?.pause();
-  const onCloseRef = useRef(onClose); onCloseRef.current = onClose;
+// The actual original book, not a replacement renderer or a redesigned modal.
+// Only external layout controls and temporary bookmark callbacks live here.
+export default function PreviewReader({ story, initialPage = 0, onPage, onClose }) {
+  const [ready, setReady] = useState(false), [wide, setWide] = useState(false);
+  const [layout, setLayout] = useState('double');
+  const current = useRef(initialPage), pageCallback = useRef(onPage);
+  pageCallback.current = onPage;
+  const heading = useRef(null), area = useRef(null);
+  const mode = wide && layout === 'double' && story.pages.length > 1 ? 'spread' : 'default';
   useEffect(() => {
-    opener.current = document.activeElement;
-    const previous = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    dialog.current?.focus(); const a = dialog.current?.querySelector('audio');
-    const hide = () => { if (document.visibilityState !== 'visible') a?.pause(); };
+    const size = () => { setWide(window.innerWidth >= 640); setReady(true); };
+    size(); window.scrollTo({ top: 0, behavior: 'instant' }); heading.current?.focus({ preventScroll: true });
+    window.addEventListener('resize', size);
+    const hide = () => { if (document.visibilityState !== 'visible') area.current?.querySelector('audio')?.pause(); };
     document.addEventListener('visibilitychange', hide);
-    return () => { a?.pause(); document.body.style.overflow = previous; document.removeEventListener('visibilitychange', hide); opener.current?.focus?.(); };
+    return () => { area.current?.querySelector('audio')?.pause(); window.removeEventListener('resize', size); document.removeEventListener('visibilitychange', hide); };
   }, []);
-  useEffect(() => { onPage(page); text.current?.scrollTo({ top: 0, behavior: 'instant' }); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
-  const go = next => { pauseAudio(); setPage(next); };
-  function keys(event) {
-    if (event.key === 'Escape') { event.preventDefault(); onCloseRef.current(); }
-    if (event.key !== 'Tab') return;
-    const all = [...dialog.current.querySelectorAll('button:not(:disabled),a[href],[tabindex="0"]')].filter(el => el.getClientRects().length);
-    const first = all[0], last = all[all.length - 1];
-    if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) { event.preventDefault(); last?.focus(); }
-    else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog.current)) { event.preventDefault(); first?.focus(); }
-  }
-  return <div className={styles.readerOverlay} onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
-    <section className={styles.reader} role="dialog" aria-modal="true" aria-labelledby="preview-reader-title" tabIndex={-1} ref={dialog} onKeyDown={keys}>
-      <div className={styles.readerHead}><div><span className={styles.eyebrow}>قارئ المعاينة · لا نقاط أو نتائج رسمية</span><h2 id="preview-reader-title">{story.title}</h2></div><button type="button" className={styles.closeButton} onClick={onClose} aria-label="أغلق قارئ المعاينة">✕</button></div>
-      <p className={styles.readerNotice}>{storageAvailable ? 'موضع القراءة محفوظ مؤقتًا لهذا الطفل في هذا التبويب فقط.' : 'تعمل المعاينة الآن؛ قد لا يبقى موضع القراءة بعد تحديث الصفحة.'}</p>
-      <div className={styles.readerProgress} aria-label={`الصفحة ${page + 1} من ${story.pages.length}`}><span style={{ width: `${(page + 1) / story.pages.length * 100}%` }} /></div>
-      <div className={styles.readerBody} ref={text} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(story.pages[page], { FORBID_TAGS: ['audio', 'video', 'iframe', 'form', 'input', 'button'] }) }} />
-      <div className={styles.readerAudio}>
-        {narration.audioElement}
-        <PageListenButton state={narration.stateOf(page)} onClick={() => narration.toggle(page)} pageNumber={page + 1} />
-        {!story.audio[page] && <p className={styles.readerAudioNote}>لا يوجد تسجيل لهذه الصفحة.</p>}
+  const pageChanged = page => { current.current = page; pageCallback.current?.(page); };
+  function changeLayout(next) { area.current?.querySelector('audio')?.pause(); setLayout(next); }
+  return <main className={styles.bookPreview} dir="rtl">
+    <div className={styles.bookPreviewBar}>
+      <button type="button" className={styles.bookBack} onClick={onClose}>→ العودة إلى معاينة القصص</button>
+      <p>الكتاب القديم نفسه · تجربة جانبية بلا نقاط أو إكمال رسمي</p>
+    </div>
+    <div className={styles.bookPreviewHeading}>
+      <h1 ref={heading} tabIndex={-1}>{story.title}</h1>
+      <div className={styles.bookLayout} aria-label="طريقة عرض الكتاب">
+        <button type="button" aria-pressed={mode === 'default'} onClick={() => changeLayout('single')}>▯ صفحة واحدة</button>
+        <button type="button" aria-pressed={mode === 'spread'} disabled={!wide || story.pages.length < 2} onClick={() => changeLayout('double')}>▯▯ صفحتان</button>
       </div>
-      <div className={styles.readerNav}><button type="button" disabled={page === 0} onClick={() => go(page - 1)}>→ السابقة</button><span dir="ltr">{page + 1} / {story.pages.length}</span>{page < story.pages.length - 1 ? <button type="button" onClick={() => go(page + 1)}>التالية ←</button> : <button type="button" className={styles.finishButton} onClick={() => { pauseAudio(); onFinish(); }}>أنهيت القراءة التجريبية ✓</button>}</div>
-    </section>
-  </div>;
+      {!wide && <small>عرض الصفحتين متاح على الشاشة الواسعة؛ يحافظ الهاتف على وضوح الصفحة الواحدة.</small>}
+    </div>
+    <div className={`${styles.bookArea} ${mode === 'default' ? styles.singleBookArea : ''}`} ref={area}>
+      {ready && <StoryFlipBook key={mode} pages={story.pages} pageAudio={story.audio} accent={story.accent || '#10b981'} mode={mode}
+        isTeacher={true} read={false} loading={false} points={0} startPage={current.current} onPageChange={pageChanged} />}
+    </div>
+  </main>;
 }

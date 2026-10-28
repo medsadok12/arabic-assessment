@@ -96,11 +96,21 @@ export default function StoryFlipBook({
   backLabel = '→ المكتبة',
   pageAudio = [],
   mode = 'default',
+  startPage = 0, onPageChange,
 }) {
   const bookRef     = useRef(null);
   const isFlipping  = useRef(false);
   const touchStartX = useRef(null);
-  const [current, setCurrent] = useState(0);
+  // Optional preview bookkeeping; omitted by the production reader.
+  // No markup, sizing, navigation or sound changes for existing callers.
+  const initialPage = useRef(null);
+  if (initialPage.current === null) {
+    const page = Number.isInteger(startPage) ? Math.max(0, Math.min(startPage, Math.max(0, pages.length - 1))) : 0;
+    initialPage.current = mode === 'spread' ? page - page % 2 : page;
+  }
+  const [current, setCurrent] = useState(initialPage.current);
+  const pageChangeRef = useRef(onPageChange); pageChangeRef.current = onPageChange;
+  useEffect(() => { pageChangeRef.current?.(current); }, [current]);
   /*
     dims = null حتى يُحسب من العميل (يمنع Hydration mismatch وتهيئة خاطئة)
     key على HTMLFlipBook يجبر إعادة التهيئة كلما تغيّرت الأبعاد
@@ -179,7 +189,7 @@ export default function StoryFlipBook({
     size: 'fixed',
     flippingTime: 460,
     drawShadow: true,
-    startPage: 0, showCover: false,
+    startPage: onPageChange ? current : initialPage.current, showCover: false,
     mobileScrollSupport: true,
     useMouseEvents: false, clickEventForward: false,
     usePortrait: portrait,

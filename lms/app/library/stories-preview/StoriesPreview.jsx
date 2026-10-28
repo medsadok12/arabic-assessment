@@ -6,7 +6,6 @@ import { emptyStoryPreview, normalizeStoryPreview, previewResumePage, proposedSt
 import { childFetch, getActiveChildTab } from '../../../lib/child-fetch';
 import styles from './preview.module.css';
 const PreviewReader = dynamic(() => import('./PreviewReader'), { ssr: false });
-const PreviewCelebration = dynamic(() => import('./PreviewCelebration'), { ssr: false });
 
 const tidy = value => String(value || '').normalize('NFKD').replace(/[\u064b-\u065f\u0670\u0640]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').toLowerCase();
 function invitation(story) {
@@ -31,12 +30,12 @@ export default function StoriesPreview({ stories, loadError = false, ownerId, is
   const [world, setWorld] = useState('all');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [reader, setReader] = useState(null);
-  const [celebration, setCelebration] = useState(null);
   const [opening, setOpening] = useState(null);
   const [openError, setOpenError] = useState('');
   const [draftNotes, setDraftNotes] = useState({});
   const [editorSaved, setEditorSaved] = useState(false);
-  const sessionScopeRef = useRef(null), openTicket = useRef(0), controller = useRef(null), lastOpener = useRef(null);
+  const listScroll = useRef(0);
+  const sessionScopeRef = useRef(null), openTicket = useRef(0), controller = useRef(null), lastStory = useRef(null);
   const scopeKey = () => ownerId ? `stories-preview:v2:${ownerId}:${getActiveChildTab() || 'self'}` : null;
   const [search, setSearch] = useState('');
   const [level, setLevel] = useState('all');
@@ -48,7 +47,7 @@ export default function StoriesPreview({ stories, loadError = false, ownerId, is
     function syncScope() {
       const key = scopeKey();
       if (sessionScopeRef.current === key && key) return;
-      openTicket.current++; controller.current?.abort(); setReader(null); setCelebration(null); setOpening(null); setOpenError('');
+      openTicket.current++; controller.current?.abort(); setReader(null); setOpening(null); setOpenError('');
       setOnlyRead(false); setOnlyFavorites(false); setWorld('all'); setDraftNotes({}); setEditorSaved(false);
       sessionScopeRef.current = key;
       let saved = emptyStoryPreview();
@@ -74,7 +73,7 @@ export default function StoriesPreview({ stories, loadError = false, ownerId, is
   const bookmarks = stories.filter(s => session.bookmarks[s.id]).sort((a, b) => session.bookmarks[b.id].at - session.bookmarks[a.id].at);
   async function openStory(story, listen = false) {
     if (sessionScope !== scopeKey()) return;
-    lastOpener.current = document.activeElement;
+    lastStory.current = story.id; listScroll.current = window.scrollY;
     controller.current?.abort(); const ac = new AbortController(); controller.current = ac;
     const ticket = ++openTicket.current, startedScope = scopeKey(); setOpening(story.id); setOpenError('');
     const timer = setTimeout(() => ac.abort(), 15000);
@@ -90,16 +89,18 @@ export default function StoriesPreview({ stories, loadError = false, ownerId, is
     } catch { if (ticket === openTicket.current && startedScope === scopeKey()) setOpenError('تعذّر فتح الحكاية في المعاينة. حاول مرة أخرى.'); }
     finally { clearTimeout(timer); if (ticket === openTicket.current) setOpening(null); }
   }
-  function closeReader() { setReader(null); lastOpener.current?.focus?.(); }
+  function closeReader() {
+    const ticket = ++openTicket.current, y = listScroll.current, id = lastStory.current;
+    controller.current?.abort(); setReader(null);
+    requestAnimationFrame(() => {
+      if (ticket !== openTicket.current) return;
+      window.scrollTo({ top: y, behavior: 'instant' });
+      document.querySelector('button[data-preview-story="' + id + '"]')?.focus({ preventScroll: true });
+    });
+  }
   function recordPage(page) {
     if (!reader) return;
     changeSession(s => ({ ...s, bookmarks: { ...s.bookmarks, [reader.id]: { page, total: reader.pages.length, version: reader.version, at: Date.now() } } }));
-  }
-  function finishPreview() {
-    if (!reader || sessionScope !== scopeKey()) return;
-    const story = reader;
-    changeSession(s => { const next = { ...s.bookmarks }; delete next[story.id]; return { ...s, bookmarks: next, finished: [...new Set([...s.finished, story.id])] }; });
-    setReader(null); setCelebration(story);
   }
   function toggleFavorite(story) { changeSession(s => ({ ...s, favorites: s.favorites.includes(story.id) ? s.favorites.filter(id => id !== story.id) : [...s.favorites, story.id] })); }
   const levels = useMemo(() => [...new Set(stories.map(s => Number(s.level) || 1))].sort((a, b) => a - b), [stories]);
@@ -120,8 +121,10 @@ export default function StoriesPreview({ stories, loadError = false, ownerId, is
     window.addEventListener('focus', visible); document.addEventListener('visibilitychange', visible);
     return () => { active = false; request.current++; window.removeEventListener('focus', visible); document.removeEventListener('visibilitychange', visible); };
   }, []);
-  const filtered = stories.filter(s => (world === 'all' || worldOf(s) === world) && (!onlyFavorites || session.favorites.includes(s.id)) && (level === 'all' || (Number(s.level) || 1) === level) && (!onlyRead || (completed.has(s.id) || session.finished.includes(s.id))) && tidy(s.title).includes(tidy(search).trim()));
+  const filtered = stories.filter(s => (world === 'all' || worldOf(s) === world) && (!onlyFavorites || session.favorites.includes(s.id)) && (level === 'all' || (Number(s.level) || 1) === level) && (!onlyRead || completed.has(s.id)) && tidy(s.title).includes(tidy(search).trim()));
   const chooseAll = () => { setSearch(''); setLevel('all'); setOnlyRead(false); setOnlyFavorites(false); setWorld('all'); };
+
+  if (reader) return <PreviewReader key={reader.id} story={reader} initialPage={reader.initialPage} onPage={recordPage} onClose={closeReader} />;
 
   return <main className={styles.page} dir="rtl">
     <div className={styles.shell}>
@@ -131,7 +134,7 @@ export default function StoriesPreview({ stories, loadError = false, ownerId, is
         <div className={styles.heroText}><span className={styles.kicker}>أكاديمية عارم · ركن الخيال</span><h1>حكاياتي<span>كلّ غلافٍ… بدايةُ مغامرة</span></h1><p>قصة تختارها، وكلمة تكتشفها، وخيال يكبر معك.</p><a href="#story-shelf" className={styles.heroButton}>اختر حكايتك <span aria-hidden="true">↓</span></a></div>
         <div className={styles.heroArt} aria-hidden="true"><span className={styles.moon} />{stories.slice(0, 2).map((s, i) => <div className={`${styles.littleBook} ${i ? styles.secondBook : ''}`} key={s.id}><Cover story={s} decorative /></div>)}<span className={styles.bookPlatform} /><span className={styles.artCaption}>هنا تبدأ الحكاية</span></div>
       </header>
-      <div className={styles.note}><span aria-hidden="true">✦</span><p>معاينة فقط: استئناف القراءة والمفضّلة والنبذات والتصنيفات هنا مؤقتة لهذا الطفل في هذا التبويب. لا نقاط ولا تغيير في المكتبة الحالية.</p></div>
+      <div className={styles.note}><span aria-hidden="true">✦</span><p>معاينة للشكل الخارجي فقط. فتح القصة يعرض الكتاب القديم نفسه؛ يمكنك تجربة صفحة واحدة أو صفحتين دون تغيير القارئ الأساسي أو نقاطك.</p></div>
       {!storageAvailable && <p className={styles.statusNote} role="status">قد لا تبقى اختيارات المعاينة بعد تحديث الصفحة؛ لا يؤثر ذلك في حسابك.</p>}
       {bookmarks.length > 0 && <section className={styles.resumeCard} aria-label="أكمل حكايتي"><div><span className={styles.eyebrow}>علامة كتاب مؤقتة في المعاينة</span><h2>أكمل حكايتي</h2><p>«{bookmarks[0].title}» · الصفحة {session.bookmarks[bookmarks[0].id].page + 1} من {session.bookmarks[bookmarks[0].id].total}</p></div><button type="button" className={styles.heroButton} disabled={opening === bookmarks[0].id} onClick={() => openStory(bookmarks[0])}>أكمل من حيث توقفت ←</button></section>}
       <section id="story-shelf" className={styles.shelf} aria-labelledby="shelf-heading">
@@ -141,24 +144,22 @@ export default function StoriesPreview({ stories, loadError = false, ownerId, is
           <div className={styles.filters} aria-label="تصفية القصص بحسب المستوى"><button type="button" aria-pressed={level === 'all'} onClick={() => setLevel('all')}>كل الحكايات</button>{levels.map(l => <button type="button" key={l} aria-pressed={level === l} onClick={() => setLevel(l)}>المستوى {l}</button>)}</div>
           <label className={styles.search}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.8"/><path d="m16 16 5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg><input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث عن حكاية…" aria-label="ابحث عن حكاية" type="search" /></label>
         </div>
-        <div className={styles.localFilters}><button type="button" aria-pressed={onlyFavorites} onClick={() => setOnlyFavorites(v => !v)}>♡ حكاياتي المفضّلة <span>{session.favorites.length}</span></button>{session.finished.length > 0 && <button type="button" aria-pressed={onlyRead} onClick={() => setOnlyRead(v => !v)}>✓ قرأتها في المعاينة <span>{session.finished.length}</span></button>}</div>
+        <div className={styles.localFilters}><button type="button" aria-pressed={onlyFavorites} onClick={() => setOnlyFavorites(v => !v)}>♡ حكاياتي المفضّلة <span>{session.favorites.length}</span></button></div>
         {openError && <p className={styles.statusNote} role="alert">{openError}</p>}
         <div className={styles.resultLine}><p aria-live="polite">{loadError ? 'تعذّر تحميل الحكايات الآن.' : filtered.length === stories.length ? 'أغلفة جميلة، وحكايات أجمل. خذ وقتك في الاختيار.' : `تظهر الآن ${filtered.length} من ${stories.length} قصص.`}</p>{readingState === 'ready' && completed.size > 0 && <button type="button" aria-pressed={onlyRead} onClick={() => setOnlyRead(v => !v)}>✓ {onlyRead ? 'اعرض كل القصص' : 'قصص قرأتها'}</button>}</div>
         {readingState === 'unavailable' && <p className={styles.statusNote} role="status">تعذّر عرض حالة القراءة الآن؛ يمكنك اختيار قصة كالمعتاد.</p>}
         {loadError ? <div className={styles.empty}><span aria-hidden="true">📚</span><h3>حكاياتك تنتظرك</h3><p>تعذّر عرضها في هذه اللحظة. حاول تحديث الصفحة.</p><Link href="/library/stories-preview">أعد المحاولة ←</Link></div> : filtered.length ? <div className={styles.grid}>
           {filtered.map((story, index) => {
-            const read = completed.has(story.id), demoRead = session.finished.includes(story.id), favorite = session.favorites.includes(story.id), bookmark = session.bookmarks[story.id];
+            const read = completed.has(story.id), favorite = session.favorites.includes(story.id), bookmark = session.bookmarks[story.id];
             return <article className={styles.story} key={story.id}>
-              <div className={styles.coverWrap}><button type="button" className={`${styles.cover} ${styles[`tone${index % 4}`]}`} aria-label={`عاين قصة ${story.title}`} onClick={() => openStory(story)} disabled={opening === story.id}><Cover story={story} /><span className={styles.level}>المستوى {Number(story.level) || 1}</span><span className={styles.spine} aria-hidden="true" /></button><button type="button" className={styles.favoriteButton} aria-label={`${favorite ? 'أزل' : 'أضف'} ${story.title} ${favorite ? 'من' : 'إلى'} المفضّلة التجريبية`} aria-pressed={favorite} onClick={() => toggleFavorite(story)}>{favorite ? '♥' : '♡'}</button></div>
-              <div className={styles.storyText}><div className={styles.meta}><span><span aria-hidden="true">◷</span> حكاية {story.length || 'قصيرة'}</span><span>{STORY_WORLDS.find(w => w.id === worldOf(story))?.name}</span></div><h3>{story.title}</h3><span className={styles.blurbLabel}>{session.notes[story.id] ? 'نبذة المعلم · تجربة' : 'نبذة مقترحة للمعاينة'}</span><p>{blurbOf(story)}</p><div className={styles.storyStatuses}>{read && <span className={styles.localDone}>✓ قرأتها في المنصة</span>}{demoRead && <span className={styles.localDone}>✦ قرأتها في المعاينة</span>}{bookmark && <span>علامة عند الصفحة {bookmark.page + 1}</span>}</div><button type="button" className={styles.readButton} onClick={() => openStory(story)} disabled={opening === story.id}>{opening === story.id ? 'نفتح الحكاية…' : bookmark ? 'أكمل حكايتي' : demoRead || read ? 'أقرأها من جديد' : 'افتح الحكاية في المعاينة'}<span aria-hidden="true">←</span></button>{story.hasAudio && <button type="button" className={styles.listenButton} onClick={() => openStory(story, true)} disabled={opening === story.id}>🔊 استمع لتسجيل المعلم</button>}</div>
+              <div className={styles.coverWrap}><button type="button" className={`${styles.cover} ${styles[`tone${index % 4}`]}`} aria-label={`عاين قصة ${story.title}`} data-preview-story={story.id} onClick={() => openStory(story)} disabled={opening === story.id}><Cover story={story} /><span className={styles.level}>المستوى {Number(story.level) || 1}</span><span className={styles.spine} aria-hidden="true" /></button><button type="button" className={styles.favoriteButton} aria-label={`${favorite ? 'أزل' : 'أضف'} ${story.title} ${favorite ? 'من' : 'إلى'} المفضّلة التجريبية`} aria-pressed={favorite} onClick={() => toggleFavorite(story)}>{favorite ? '♥' : '♡'}</button></div>
+              <div className={styles.storyText}><div className={styles.meta}><span><span aria-hidden="true">◷</span> حكاية {story.length || 'قصيرة'}</span><span>{STORY_WORLDS.find(w => w.id === worldOf(story))?.name}</span></div><h3>{story.title}</h3><span className={styles.blurbLabel}>{session.notes[story.id] ? 'نبذة المعلم · تجربة' : 'نبذة مقترحة للمعاينة'}</span><p>{blurbOf(story)}</p><div className={styles.storyStatuses}>{read && <span className={styles.localDone}>✓ قرأتها في المنصة</span>}{bookmark && <span>علامة عند الصفحة {bookmark.page + 1}</span>}</div><button type="button" className={styles.readButton} onClick={() => openStory(story)} disabled={opening === story.id}>{opening === story.id ? 'نفتح الحكاية…' : bookmark ? 'أكمل حكايتي' : read ? 'أقرأها من جديد' : 'افتح الحكاية في المعاينة'}<span aria-hidden="true">←</span></button>{story.hasAudio && <button type="button" className={styles.listenButton} onClick={() => openStory(story, true)} disabled={opening === story.id}>🔊 استمع لتسجيل المعلم</button>}</div>
             </article>;
           })}
         </div> : <div className={styles.empty}><span aria-hidden="true">📖</span><h3>{stories.length ? 'لنبحث عن حكاية أخرى' : 'قريبًا… حكايات جديدة'}</h3><p>{stories.length ? 'جرّب عنوانًا آخر، أو استكشف كل المستويات.' : 'ستظهر القصص هنا عندما ينشرها معلمك.'}</p>{stories.length > 0 && <button type="button" onClick={chooseAll}>شاهد كل الحكايات ←</button>}</div>}
       </section>
       {isEditor && <details className={styles.editor} onToggle={e => { if (e.currentTarget.open) setEditorSaved(false); }}><summary>✏️ جرّب نبذة المعلم وتصنيف القصة</summary><p>تعديلات مؤقتة داخل المعاينة فقط. لن تُحفظ في القصص الأصلية أو لوحة إدارتها.</p>{stories.map(story => <div key={story.id} className={styles.editorRow}><h3>{story.title}</h3><label>نبذة مشوّقة للقصة<textarea maxLength={240} value={draftNotes[story.id]?.blurb ?? session.notes[story.id]?.blurb ?? invitation(story)} onChange={e => { setEditorSaved(false); setDraftNotes(s => ({ ...s, [story.id]: { blurb: e.target.value, world: s[story.id]?.world || worldOf(story) } })); }} /></label><label>عالم القصة<select value={draftNotes[story.id]?.world ?? worldOf(story)} onChange={e => { setEditorSaved(false); setDraftNotes(s => ({ ...s, [story.id]: { blurb: s[story.id]?.blurb ?? blurbOf(story), world: e.target.value } })); }}>{STORY_WORLDS.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label></div>)}<button type="button" className={styles.heroButton} onClick={() => { changeSession(s => ({ ...s, notes: { ...s.notes, ...draftNotes } })); setDraftNotes({}); setEditorSaved(true); }}>اعرض تعديلات المعاينة</button>{editorSaved && <p role="status">ظهرت تعديلاتك في هذه المعاينة فقط.</p>}</details>}
       <div className={styles.resetPreview}><span>كل اختيارات هذه التجربة مؤقتة، ويمكنك البدء من جديد.</span><button type="button" onClick={() => { if (sessionScope !== scopeKey()) return; setSession(emptyStoryPreview()); setDraftNotes({}); setEditorSaved(false); chooseAll(); }}>ابدأ المعاينة من جديد</button></div>
-      {reader && <PreviewReader key={reader.id} story={reader} initialPage={reader.initialPage} onPage={recordPage} onClose={closeReader} onFinish={finishPreview} storageAvailable={storageAvailable} />}
-      {celebration && <PreviewCelebration story={celebration} reflection={session.reflections[celebration.id] || ''} onReflection={value => changeSession(s => ({ ...s, reflections: { ...s.reflections, [celebration.id]: value } }))} onClose={() => { setCelebration(null); lastOpener.current?.focus?.(); }} />}
       <footer className={styles.footer}><span>ع</span><p>كل حكاية تقرؤها، تفتح في خيالك نافذة جديدة.</p><Link href="/library">المكتبة التعليمية ←</Link></footer>
     </div>
   </main>;
