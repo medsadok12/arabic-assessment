@@ -1,6 +1,7 @@
 // حالات عرض فقط؛ لا تمنح نقاطًا ولا تغيّر سجلًا أو تقرر الإتقان.
 import { discoverJourney } from './discover-objects-journey';
 export const PRACTICE_GAMES = {
+  'scrabble': 'scrabble',
   'vowel-balloon': 'vowel_balloon', 'letter-catcher': 'letter_catcher',
   'word-scramble': 'word_scramble', 'word-image-match': 'word_image_match',
   'word-smash': 'word_smash', 'word-wheel': 'word_wheel',

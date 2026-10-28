@@ -9,6 +9,13 @@ import StoriesShelf from './stories-preview/StoriesPreview';
 
 const RESOURCES = [
   {
+    key: 'scrabble', icon: '🧩', title: 'سكرابل الصغار',
+    desc: 'أضف الحروف واكتشف الكلمات المتقاطعة!',
+    tag: 'تعزيزي', link: '/library/games/scrabble', ready: true,
+    accent: '#7C5CD9', dark: '#6141AF', rot: 2, bg: '#F4EEFC', border: '#D7C7F0', iconBg: '#E9DFF7',
+    btnBg: 'linear-gradient(135deg,#7C5CD9,#6141AF)',
+  },
+  {
     key: 'huroof',
     icon: '🔤', title: 'الحروف الهجائية',
     desc: 'تعلّم الحروف بأشكالها مع أصوات وأمثلة مشوّقة!',
