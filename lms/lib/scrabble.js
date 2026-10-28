@@ -13,6 +13,23 @@ export function boardBefore(board, index) {
   for (const w of [...board.seed, ...board.rounds.slice(0, index)]) for (const c of wordCells(w, board.size)) cells[c.pos] = c.char;
   return cells;
 }
+// ألوان ثابتة لكل كلمة مكتملة؛ التقاطع يحتفظ بألوان كل كلماته.
+const WORD_COLORS = ['#ffe1a3','#bde8dc','#c8dffa','#f6cddd','#d9cff4','#dceaaf','#facdb5','#bfe8ed','#f1d8b5','#d1e4cb','#d4d0ed','#f3d8a5'];
+export function scrabbleWordPaint(board, completed) {
+  const memberships = {};
+  const words = [...board.seed, ...board.rounds];
+  const visibleCount = board.seed.length + Math.max(0, Math.min(completed, board.rounds.length));
+  words.slice(0, visibleCount).forEach((word, i) => {
+    const color = WORD_COLORS[i % WORD_COLORS.length];
+    for (const {pos} of wordCells(word, board.size)) {
+      memberships[pos] ||= [];
+      if (!memberships[pos].includes(color)) memberships[pos].push(color);
+    }
+  });
+  return Object.fromEntries(Object.entries(memberships).map(([pos, colors]) => [pos,
+    colors.length === 1 ? colors[0] : `linear-gradient(135deg, ${colors.map((c,i) => `${c} ${i/colors.length*100}% ${(i+1)/colors.length*100}%`).join(', ')})`
+  ]));
+}
 export function roundNeeds(board, index) {
   const before = boardBefore(board, index);
   return wordCells(board.rounds[index], board.size).filter(c => !before[c.pos]);

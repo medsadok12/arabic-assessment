@@ -12,3 +12,5 @@
 - لا هجرة قاعدة ولا تعديل جداول أو ألعاب أخرى. معاينة الطاقم لا تحفظ مسار طالب ولا تخصم أو تمنح نقاطًا.
 
 التحقق: اختبارات `scrabble*.test.js` تغطي المخططات الـ36 والتقاطعات والتشكيل واكتمال كل الخانات والانتقال والاستئناف والعزل والمكافآت والمساعدة. الفحص البصري محلي بقاعدة وهمية، لا ببيانات الطلبة الحقيقية.
+
+Completed words use coordinated pastel colors along both directions. Shared cells show crisp diagonal color segments for all completed intersecting words. Active purple targets and red error feedback retain priority. Colors are derived from board order and survive resume without changing progress or content.

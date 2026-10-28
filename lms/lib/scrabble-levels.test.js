@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { describe,it,expect } from 'vitest';
-import { freshScrabble, legacyScrabble, validateScrabble, scrabblePlan, boardBefore, roundNeeds, wordCells, scrabbleBoardFilled, withScrabbleCurriculum, cleanWord } from './scrabble';
+import { freshScrabble, legacyScrabble, validateScrabble, scrabblePlan, boardBefore, roundNeeds, wordCells, scrabbleBoardFilled, withScrabbleCurriculum, cleanWord, scrabbleWordPaint } from './scrabble';
 import { SCRABBLE_LEVELS } from './scrabble-levels';
 describe('رحلة السكرابل واللوحات المكتملة',()=>{
  it('يوفر 36 مستوى في 12 موضوعًا تبدأ بالبيت ثم الحديقة ثم الحيوانات',()=>{const c=freshScrabble();expect(c.boards).toHaveLength(36);expect([...new Set(c.boards.map(b=>b.theme))]).toHaveLength(12);expect(c.boards.filter(b=>b.theme==='home')).toHaveLength(3);expect(c.boards[3].theme).toBe('garden');expect(c.boards[6].theme).toBe('animals');expect(validateScrabble(c).error).toBeUndefined()});
@@ -13,3 +13,25 @@ describe('رحلة السكرابل واللوحات المكتملة',()=>{
 });
 
 it("كل صور الكلمات المرسومة موجودة في أصول اللعبة",()=>{for(const b of SCRABBLE_LEVELS)for(const r of b.rounds)if(r.image_url.startsWith("/scrabble/"))expect(existsSync(new URL("../public"+r.image_url,import.meta.url))).toBe(true)});
+
+describe('ألوان الكلمات المكتملة',()=>{
+ it('لا يلوّن الكلمات المقبلة ويضيف لون التقاطع بعد الحل ويحفظ ألوان بقية الحروف',()=>{
+  const board={size:4,seed:[{word:'باب',row:0,col:3,direction:'across'}],rounds:[{word:'بيت',row:0,col:3,direction:'down'}]};
+  const first=scrabbleWordPaint(board,0), solved=scrabbleWordPaint(board,1);
+  expect(first[7]).toBeUndefined();expect(first[11]).toBeUndefined();
+  expect(solved[7]).toBe(solved[11]);expect(solved[7]).not.toBe(first[2]);
+  expect(solved[2]).toBe(first[2]);expect(solved[3]).toContain(first[3]);expect(solved[3]).toContain(solved[7]);expect(solved[3]).toContain('linear-gradient');
+  expect(scrabbleWordPaint(board,1)).toEqual(solved);
+ });
+ it('تملك كل كلمة في كل لوحة لونًا مميزًا يمتد على جميع حروفها',()=>{
+  for(const board of SCRABBLE_LEVELS){
+   const paint=scrabbleWordPaint(board,board.rounds.length),owned=[];
+   for(const word of [...board.seed,...board.rounds]){
+    const values=wordCells(word,board.size).map(c=>paint[c.pos]);
+    const common=values[0].match(/#[a-f0-9]{6}/g).filter(color=>values.every(value=>value.includes(color)));
+    expect(common.length).toBeGreaterThan(0);owned.push(common[0]);
+   }
+   expect(new Set(owned).size).toBe(owned.length);
+  }
+ });
+});
