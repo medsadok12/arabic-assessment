@@ -14,3 +14,5 @@
 التحقق: اختبارات `scrabble*.test.js` تغطي المخططات الـ36 والتقاطعات والتشكيل واكتمال كل الخانات والانتقال والاستئناف والعزل والمكافآت والمساعدة. الفحص البصري محلي بقاعدة وهمية، لا ببيانات الطلبة الحقيقية.
 
 Completed words use coordinated pastel colors along both directions. Shared cells show crisp diagonal color segments for all completed intersecting words. Active purple targets and red error feedback retain priority. Colors are derived from board order and survive resume without changing progress or content.
+
+يمكن الضغط على حرف وضعه اللاعب في الكلمة الحالية لإعادته إلى موضعه في رف الحروف قبل إكمال الكلمة. تبقى حروف البداية والكلمات المحلولة ثابتة، ويُقفل التعديل أثناء التحقق أو الخطأ أو النجاح. الإرجاع لا يستهلك نقاطًا ولا يلغي تلميحًا مدفوعًا.
