@@ -1,3 +1,4 @@
+import { SCRABBLE_THEMES } from './scrabble-themes';
 import { SCRABBLE_LEVELS } from './scrabble-levels';
 // منطق السكرابل الصغير؛ الحروف العربية محفوظة بلا تحويل الهمزات.
 export const SCRABBLE_ID = 'scrabble';
@@ -50,15 +51,15 @@ export function legacyScrabble() {
   const rounds = [round('door', 'باب', '🚪', 2, 2), round('fish', 'سمك', '🐟', 0, 5), round('berry', 'توت', '🫐', 2, 4, 'ر'), round('home', 'دار', '🏠', 1, 3, 'ب')];
   rounds.forEach((r, i) => { r.vocalized = ['بابٌ','سَمَكٌ','توتٌ','دارٌ'][i]; r.motion = ['door','swim','bloom','house'][i]; });
   return { enabled: true, title: 'سكرابل الصغار', epoch: 0, curriculum: 1,
-    settings: { helpCost: 5, reward: 3, errorMs: 1700, pictureSize: 100, letterSize: 32, animate: true, stars: true, sound: true, showWord: true,
+    settings: { backgroundOpacity:14, helpCost: 5, reward: 3, errorMs: 1700, pictureSize: 100, letterSize: 32, animate: true, stars: true, sound: true, showWord: true,
       background: '#fffaf0', ink: '#244d40', grid: '#e9efdf', tile: '#ffe1a3', edge: '#c4d5b5', purple: '#7339ba', purpleSoft: '#f1e5ff', success: '#356e4e', error: '#c02a38', errorBackground: '#ffe3e6',
       startText: 'اختر حرفًا 👇', placeText: 'اضغط المربع البنفسجي 👆', continueText: 'أكمل الكلمة 👇', successText: 'أحسنت! 🌸', retryText: 'حاول من جديد 🌱', errorText: 'خطأ', nextText: 'نكمل؟ ←', helpText: '💡 ساعدني', againText: 'نلعب من جديد ↻' },
-    boards: [{ id: 'first-garden', title: 'كلماتي الأولى', theme: 'first-garden', themeTitle: 'كلماتي الأولى', themeEmoji: '🧩', enabled: true, size: 6, seed: [{ word: 'كتاب', row: 2, col: 5, direction: 'across' }], rounds }] };
+    boards: [{ backgroundTheme:'auto', id: 'first-garden', title: 'كلماتي الأولى', theme: 'first-garden', themeTitle: 'كلماتي الأولى', themeEmoji: '🧩', enabled: true, size: 6, seed: [{ word: 'كتاب', row: 2, col: 5, direction: 'across' }], rounds }] };
 }
 export function freshScrabble() {
   const config = legacyScrabble();
   config.curriculum = 2;
-  config.boards = structuredClone(SCRABBLE_LEVELS);
+  config.boards = structuredClone(SCRABBLE_LEVELS).map(b=>({...b,backgroundTheme:'auto'}));
   return config;
 }
 // كل خانة مرئية لها حرف معروف في إحدى كلمات اللوحة؛ لا مربعات زينة فارغة.
@@ -96,6 +97,8 @@ export function validateScrabble(input) {
   config.curriculum = input.curriculum ?? 1;
   const s = input.settings;
   if (!s || typeof s !== 'object') return fail('إعدادات المظهر مطلوبة.');
+  if(s.backgroundOpacity!=null&&(!Number.isInteger(s.backgroundOpacity)||s.backgroundOpacity<0||s.backgroundOpacity>25))return fail('وضوح الخلفية من 0 إلى 25.');
+  config.settings.backgroundOpacity=s.backgroundOpacity??14;
   for (const [key, min, max] of [['helpCost',0,1000],['reward',0,50],['errorMs',700,5000],['pictureSize',70,160],['letterSize',24,44]]) {
     if (!Number.isInteger(s[key]) || s[key] < min || s[key] > max) return fail(`قيمة غير صالحة: ${key}`);
     config.settings[key] = s[key];
@@ -107,9 +110,10 @@ export function validateScrabble(input) {
   config.boards = []; const ids = new Set();
   for (const b of input.boards) {
     if (!b || !/^[a-zA-Z0-9_-]{1,64}$/.test(b.id) || ids.has(b.id) || typeof b.title !== 'string' || !b.title.trim() || b.title.length > 80 || typeof b.enabled !== 'boolean' || !Number.isInteger(b.size) || b.size < 4 || b.size > 7) return fail('تحقّق من اسم اللوحة ومعرّفها وحجمها (4 إلى 7).');
+    if(b.backgroundTheme!=null&&!['auto','none',...SCRABBLE_THEMES.map(([id])=>id)].includes(b.backgroundTheme))return fail('اختر خلفية متاحة للّوحة.');
     ids.add(b.id);
     if (!Array.isArray(b.seed) || !b.seed.length || b.seed.length > 8 || !Array.isArray(b.rounds) || !b.rounds.length || b.rounds.length > 20) return fail('كل لوحة تحتاج كلمة بداية ومن 1 إلى 20 كلمة.');
-    const out = { id: b.id, title: b.title.trim(), theme: typeof b.theme==='string'&&/^[a-zA-Z0-9_-]{1,64}$/.test(b.theme)?b.theme:b.id, themeTitle: typeof b.themeTitle==='string'&&b.themeTitle.trim()&&b.themeTitle.length<=80?b.themeTitle.trim():b.title.trim(), themeEmoji: typeof b.themeEmoji==='string'&&b.themeEmoji.length<=16?b.themeEmoji:'🧩', enabled: b.enabled, size: b.size, seed: [], rounds: [] }, cells = {}, roundIds = new Set();
+    const out = { backgroundTheme:b.backgroundTheme??'auto', id: b.id, title: b.title.trim(), theme: typeof b.theme==='string'&&/^[a-zA-Z0-9_-]{1,64}$/.test(b.theme)?b.theme:b.id, themeTitle: typeof b.themeTitle==='string'&&b.themeTitle.trim()&&b.themeTitle.length<=80?b.themeTitle.trim():b.title.trim(), themeEmoji: typeof b.themeEmoji==='string'&&b.themeEmoji.length<=16?b.themeEmoji:'🧩', enabled: b.enabled, size: b.size, seed: [], rounds: [] }, cells = {}, roundIds = new Set();
     for (const [kind, list] of [['seed',b.seed],['rounds',b.rounds]]) for (const w of list) {
       const chars = lettersOf(w?.word);
       if (chars.length < 2 || chars.length > b.size || chars.some(c => !/^[\u0621-\u063a\u0641-\u064a]$/.test(c)) || !['across','down'].includes(w.direction) || !Number.isInteger(w.row) || !Number.isInteger(w.col) || w.row < 0 || w.col < 0 || w.row >= b.size || w.col >= b.size || (w.direction === 'across' ? w.col - chars.length + 1 < 0 : w.row + chars.length > b.size)) return fail(`كلمة أو موقع خارج اللوحة: ${w?.word || ''}`);
