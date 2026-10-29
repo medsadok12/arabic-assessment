@@ -87,10 +87,11 @@ export async function hintScrabbleGame(admin,auth,userId,body){
   const row=await ownSession(admin,auth,userId,body.sessionId),s=row.settings;
   if(s.cursor!==body.index)throw failure('المساعدة للكلمة الحالية فقط.',409);
   const n=roundNeeds(s.board,s.cursor).find(n=>n.pos===body.pos);if(!n)throw failure('اختر مكان حرف من اللوحة.',400);
-  const key=`scrabble:hint:${s.id}:${s.cursor}:${n.pos}`;
-  const result=await deliverVerifiedEffect(admin,key,auth.user.id,()=>debitHint(admin,userId,key,s.settings.helpCost));
+  const key=`scrabble:hint:${s.id}:${s.cursor}:${n.pos}`,live=await loadScrabble(admin),cost=live.config.settings.helpCost;
+  if(body.expectedCost!==undefined&&body.expectedCost!==cost)return{state:'cost_changed',cost,points:await scrabbleBalance(admin,userId)};
+  const result=await deliverVerifiedEffect(admin,key,auth.user.id,async()=>({...await debitHint(admin,userId,key,cost),cost}));
   // طلب رُفض لعدم كفاية الرصيد لا يحجز الحرف للأبد؛ يُعاد عندما يكسب الطالب نقاطًا.
   if(result.state==='insufficient'){await admin.from('game_settings').delete().eq('game_id',key).eq('settings->>state','insufficient');return{...result,error:'رصيدك لا يكفي الآن.'};}
   if(result.state!=='done')throw failure('نؤكّد المساعدة. أعد الضغط؛ لن تُخصم مرتين.',409);
-  return{...result,hint:n,cost:s.settings.helpCost};
+  return{...result,hint:n,cost:result.cost??cost};
 }
