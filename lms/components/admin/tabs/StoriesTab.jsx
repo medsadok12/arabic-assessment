@@ -1,8 +1,17 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import StoryAudioPanel from '../StoryAudioPanel';
 import StoryShareLink from '../StoryShareLink';
 import { splitStoryPages, normalizePageAudio } from '../../../lib/story-audio';
+import { keepRowInPlace, returnRow, revealBelow, flashRow } from '../../../lib/edit-scroll';
+
+/* المحرر الكامل نفسه (صفحة /teacher/stories) يُفتح تحت بطاقة القصة — يُحمَّل عند أول ضغط على ✏️ فقط.
+   طلب الأستاذ محمد (2026-10-29): زر تعديل بجانب كل قصة بدل الدخول كل مرة من «فتح محرر القصص الكامل» */
+const StoryManager = dynamic(() => import('../../../app/teacher/stories/StoryManager'), {
+  ssr: false,
+  loading: () => <div style={{ textAlign:'center', padding:'28px 0', color:'#64748b', fontWeight:700 }}>⏳ جارٍ فتح المحرر...</div>,
+});
 
 /* عدد الصفحات وعدد الصفحات التي لها صوت */
 function audioStats(s) {
@@ -18,6 +27,9 @@ export default function StoriesTab({ lang }) {
   const [toggling, setToggling] = useState(null);
   const [audioFor, setAudioFor] = useState(null); // id القصة المفتوحة لوحة صوتها
   const [shareFor, setShareFor] = useState(null); // id القصة المفتوحة لوحة رابط مشاركتها
+  const [editFor,  setEditFor]  = useState(null); // id القصة المفتوح محررها تحت بطاقتها
+  const editRef    = useRef(null);
+  const editSaved  = useRef(false); // حُفظ شيء أثناء التعديل — وميض أخضر على البطاقة عند الإغلاق
 
   useEffect(() => {
     fetch('/api/stories')
@@ -50,6 +62,25 @@ export default function StoriesTab({ lang }) {
       setStories(p => p.filter(s => s.id !== id));
     } catch { alert('فشل الحذف — تحقق من الاتصال'); }
     setDeleting(null);
+  };
+
+  // التعديل في مكانه: البطاقة لا تتحرك على الشاشة عند فتح المحرر تحتها، وتعود إلى موضعها عند الإغلاق
+  const openEdit = (s) => {
+    const restore = keepRowInPlace(s.id);
+    editSaved.current = false;
+    setEditFor(s.id);
+    setAudioFor(a => (a === s.id ? null : a)); // أصوات الصفحات داخل المحرر نفسه
+    restore(() => revealBelow(editRef.current));
+  };
+  const closeEdit = () => {
+    const id = editFor;
+    const restore = returnRow(id);
+    setEditFor(cur => (cur === id ? null : cur)); // حفظ متأخر لقصة سابقة لا يُغلق محرر قصة فُتحت بعدها
+    restore(() => { if (editSaved.current) flashRow(id); });
+  };
+  const storyChanged = (updated) => {
+    editSaved.current = true;
+    setStories(p => p.map(x => x.id === updated.id ? updated : x));
   };
 
   if (stories === null) return (
@@ -87,12 +118,12 @@ export default function StoriesTab({ lang }) {
             const au = audioStats(s);
             return (
               <div key={s.id} style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                <div className="mobile-stack" style={{
+                <div className="mobile-stack" data-edit-row={s.id} style={{
                   display:'flex', alignItems:'center', gap:14,
                   background:'#fff', borderRadius:16, padding:'14px 18px',
                   border:'1.5px solid #f1f5f9', boxShadow:'0 2px 10px rgba(0,0,0,.05)',
                 }}>
-                  <div className="mobile-stack-main" style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:0 }}>
+                  <div className="mobile-stack-main" style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:220 }}>
                     <div style={{ width:48, height:48, borderRadius:12, background: s.bg || '#ecfdf5', border:`2px solid ${s.border_color || '#6ee7b7'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.7rem', flexShrink:0, overflow:'hidden' }}>
                       {s.cover_image_url
                         ? <img src={s.cover_image_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
@@ -113,7 +144,16 @@ export default function StoriesTab({ lang }) {
                       </div>
                     </div>
                   </div>
-                  <div className="mobile-stack-actions" style={{ display:'flex', gap:8, flexShrink:0 }}>
+                  {/* الأزرار تلتف لسطرين إن ضاق العرض بدل أن تعصر عنوان القصة */}
+                  <div className="mobile-stack-actions" style={{ display:'flex', gap:8, flex:'0 1 auto', flexWrap:'wrap', justifyContent:'flex-end' }}>
+                    <button
+                      className="mobile-stack-act"
+                      onClick={() => (editFor === s.id ? closeEdit() : openEdit(s))}
+                      aria-expanded={editFor === s.id}
+                      style={{ background: editFor === s.id ? '#1A2B4A' : '#7C5CD9', color:'#fff', border:'none', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:800, cursor:'pointer' }}
+                    >
+                      {editFor === s.id ? '✖ إغلاق التعديل' : '✏️ تعديل'}
+                    </button>
                     {s.status === 'published' && (
                       <a className="mobile-stack-act" href={`/library/stories/${s.slug}`} target="_blank" style={{ background:'#ecfdf5', color:'#065f46', border:'1.5px solid #86efac', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:700, textDecoration:'none' }}>
                         👁 عرض
@@ -131,7 +171,9 @@ export default function StoriesTab({ lang }) {
                       className="mobile-stack-act"
                       onClick={() => setAudioFor(audioFor === s.id ? null : s.id)}
                       aria-expanded={audioFor === s.id}
-                      style={{ background: audioFor === s.id ? '#1A2B4A' : '#E8B84B', color: audioFor === s.id ? '#fff' : '#1A2B4A', border:'none', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:800, cursor:'pointer' }}
+                      disabled={editFor === s.id}
+                      title={editFor === s.id ? 'أصوات الصفحات داخل المحرر المفتوح الآن' : undefined}
+                      style={{ background: audioFor === s.id ? '#1A2B4A' : '#E8B84B', color: audioFor === s.id ? '#fff' : '#1A2B4A', border:'none', borderRadius:10, padding:'6px 13px', fontSize:'.75rem', fontWeight:800, cursor: editFor === s.id ? 'default' : 'pointer', opacity: editFor === s.id ? .45 : 1 }}
                     >
                       {audioFor === s.id ? '✖ إغلاق الأصوات' : au.voiced > 0 ? '🔊 أصوات الصفحات' : '🎙️ أضف أصوات الصفحات'}
                     </button>
@@ -162,7 +204,12 @@ export default function StoriesTab({ lang }) {
                       x.id === updated.id ? updated : (updated.featured_home ? { ...x, featured_home: false } : x)))}
                   />
                 )}
-                {audioFor === s.id && (
+                {editFor === s.id && (
+                  <div ref={editRef} style={{ background:'#fff', border:'2px solid #7C5CD9', borderRadius:16, padding:'16px 18px', boxShadow:'0 6px 20px rgba(124,92,217,.12)' }}>
+                    <StoryManager key={s.id} editStory={s} onClose={closeEdit} onStoryChange={storyChanged} />
+                  </div>
+                )}
+                {audioFor === s.id && editFor !== s.id && (
                   <StoryAudioPanel
                     story={s}
                     onSaved={(updated) => setStories(p => p.map(x => x.id === updated.id ? updated : x))}

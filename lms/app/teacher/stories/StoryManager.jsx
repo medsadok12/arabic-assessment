@@ -253,34 +253,54 @@ function PageEditor({ html, onChange }) {
   );
 }
 
+/* القصة كما تُعرض في نموذج التعديل */
+const storyForm = (s) => ({
+  title:        s.title,
+  icon:         s.icon || '📖',
+  level:        s.level || 1,
+  length:       s.length || 'قصيرة',
+  content:      s.content || '',
+  status:       s.status || 'draft',
+  points:       s.points || 10,
+  accent:       s.accent || '#10b981',
+  bg:           s.bg || '#ecfdf5',
+  border_color: s.border_color || '#6ee7b7',
+  cover_image_url: s.cover_image_url || null,
+});
+const storyAudio = (s) => (Array.isArray(s?.page_audio) ? s.page_audio : []);
+
 function StatusBadge({ status }) {
   return status === 'published'
     ? <span style={{ background:'#d1fae5', color:'#065f46', borderRadius:20, padding:'2px 10px', fontSize:'.68rem', fontWeight:900, border:'1.5px solid #86efac' }}>✅ منشورة</span>
     : <span style={{ background:'#fef3c7', color:'#78350f', borderRadius:20, padding:'2px 10px', fontSize:'.68rem', fontWeight:900, border:'1.5px solid #fde68a' }}>✏️ مسودة</span>;
 }
 
-export default function StoryManager({ initialStories }) {
-  const [stories,   setStories]   = useState(initialStories ?? null);
+/* editStory: يفتح المحرر مباشرة على هذه القصة داخل صفحة أخرى (زر ✏️ تعديل في حصن الإدارة)،
+   فيستدعي onClose بدل العودة لقائمة القصص، وonStoryChange عند كل حفظ يصل للخادم */
+export default function StoryManager({ initialStories, editStory, onClose, onStoryChange }) {
+  const embedded = !!editStory;
+  const [stories,   setStories]   = useState(embedded ? [editStory] : (initialStories ?? null));
 
   useEffect(() => {
-    if (initialStories !== undefined) return;
+    if (initialStories !== undefined || embedded) return;
     fetch('/api/stories').then(r => r.json()).then(j => setStories(j.stories || [])).catch(() => setStories([]));
   }, []);
 
-  const [view,      setView]      = useState('list');   // 'list' | 'create' | 'edit'
-  const [form,      setForm]      = useState(EMPTY_FORM);
-  const [editId,    setEditId]    = useState(null);
+  const [view,      setView]      = useState(embedded ? 'edit' : 'list');   // 'list' | 'create' | 'edit'
+  const [form,      setForm]      = useState(() => embedded ? storyForm(editStory) : EMPTY_FORM);
+  const [editId,    setEditId]    = useState(embedded ? editStory.id : null);
   const [saving,    setSaving]    = useState(false);
   const [deleting,  setDeleting]  = useState(null);
   const [msg,       setMsg]       = useState(null);
   const [preview,   setPreview]   = useState(false);
-  const [pageAudio, setPageAudioState] = useState([]);  // صوت كل صفحة — يتحرك مع صفحته داخل StoryPageEditor
+  const [pageAudio, setPageAudioState] = useState(() => storyAudio(editStory));  // صوت كل صفحة — يتحرك مع صفحته داخل StoryPageEditor
   const [audioBusy, setAudioBusy] = useState(false);    // صوت صفحة يُرفع/يُحفظ الآن — الحفظ ينتظره
   const [draftOffer, setDraftOffer] = useState(null); // نسخة محلية غير محفوظة وُجدت عند فتح القصة
   const [editorRev,  setEditorRev]  = useState(0);    // يعيد تهيئة محرر الصفحات بعد الاسترجاع
-  const baselineRef = useRef('');                      // لقطة القصة كما فُتحت (أو كما حُفظت آخر مرة)
+  // لقطة القصة كما فُتحت (أو كما حُفظت آخر مرة)
+  const baselineRef = useRef(embedded ? draftSnapshot(storyForm(editStory), storyAudio(editStory)) : '');
   // أحدث أصوات الصفحات فوراً (لا عبر إعادة الرسم) — «حفظ التغييرات» يقرأ منه
-  const pageAudioRef = useRef([]);
+  const pageAudioRef = useRef(storyAudio(editStory));
   const setPageAudio = (list) => { pageAudioRef.current = list; setPageAudioState(list); };
 
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -339,20 +359,8 @@ export default function StoryManager({ initialStories }) {
     beginEditing(null, EMPTY_FORM, []);
   };
   const openEdit   = (s) => {
-    const baseForm = {
-      title:        s.title,
-      icon:         s.icon || '📖',
-      level:        s.level || 1,
-      length:       s.length || 'قصيرة',
-      content:      s.content || '',
-      status:       s.status || 'draft',
-      points:       s.points || 10,
-      accent:       s.accent || '#10b981',
-      bg:           s.bg || '#ecfdf5',
-      border_color: s.border_color || '#6ee7b7',
-      cover_image_url: s.cover_image_url || null,
-    };
-    const baseAudio = Array.isArray(s.page_audio) ? s.page_audio : [];
+    const baseForm = storyForm(s);
+    const baseAudio = storyAudio(s);
     setForm(baseForm);
     setPageAudio(baseAudio);
     beginEditing(s.id, baseForm, baseAudio);
@@ -361,12 +369,21 @@ export default function StoryManager({ initialStories }) {
     setPreview(false);
     setView('edit');
   };
-  const backToList = () => { setView('list'); setMsg(null); };
+  const backToList = () => {
+    if (onClose) { onClose(); return; }
+    setView('list'); setMsg(null);
+  };
+
+  // المحرر المضمَّن يبدأ مفتوحاً: فحص النسخة المحلية غير المحفوظة يحتاج المتصفح (localStorage)
+  useEffect(() => {
+    if (embedded) beginEditing(editStory.id, storyForm(editStory), storyAudio(editStory));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // صوت صفحة حُفظ في القصة فوراً لحظة اكتمال رفعه — القائمة تعرفه حتى لو خرج المعلم
   // من المحرر قبل اكتماله، فلا يفتح القصة لاحقاً بأصوات قديمة ثم يحفظها فوقه
   const handleAudioSaved = (story) => {
     setStories(p => p.map(s => s.id === story.id ? story : s));
+    onStoryChange?.(story);
   };
 
   const handleSave = async () => {
@@ -404,6 +421,7 @@ export default function StoryManager({ initialStories }) {
       clearStoryDraft(draftStore(), editId);
       if (view === 'edit') {
         setStories(p => p.map(s => s.id === editId ? json.story : s));
+        onStoryChange?.(json.story);
         setMsg({ ok: true, text: '✅ تم الحفظ' });
         setTimeout(backToList, 800);
       } else {
@@ -441,6 +459,7 @@ export default function StoryManager({ initialStories }) {
   };
 
   const selectedAccent = ACCENTS.find(a => a.accent === form.accent) || ACCENTS[0];
+  const TitleTag = embedded ? 'h3' : 'h1';
 
   if (stories === null) return (
     <div style={{ textAlign:'center', padding:'60px 0', color:'#94a3b8', fontFamily:'Cairo,Tajawal,sans-serif', fontWeight:700 }}>
@@ -595,19 +614,19 @@ export default function StoryManager({ initialStories }) {
         .sm-tab:not(.active) { background:#f0fdf4; color:#065f46; border:1.5px solid #86efac; }
       ` }} />
 
-      <div className="sm-wrap">
+      <div className="sm-wrap" style={embedded ? { padding: 0 } : undefined}>
 
         {/* رأس الصفحة */}
         <div className="sm-header">
           <div style={{ display:'flex', alignItems:'center', gap:14 }}>
             {view !== 'list' && (
-              <button className="sm-btn-secondary" onClick={backToList}>→ رجوع</button>
+              <button className="sm-btn-secondary" onClick={backToList}>{embedded ? '✖ إغلاق' : '→ رجوع'}</button>
             )}
-            <h1 className="sm-title">
+            <TitleTag className="sm-title">
               {view === 'list'   ? '📚 إدارة القصص' :
                view === 'create' ? '➕ قصة جديدة'  :
                                    '✏️ تعديل القصة'}
-            </h1>
+            </TitleTag>
           </div>
           <div style={{ display:'flex', gap:10, alignItems:'center' }}>
             {view === 'list' && (
