@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import DOMPurify from 'isomorphic-dompurify';
+import SafeHtml from '../../../../components/SafeHtml';
 import StoryFlipBook from '../../../../components/StoryFlipBook';
 import { useStoryNarration, PageListenButton } from '../../../../components/StoryNarration';
 import { childFetch } from '../../../../lib/child-fetch';
@@ -158,7 +158,7 @@ export default function StoryReader({ story, alreadyRead, isTeacher, isPublic = 
           <div className="sr-prog-bar"><div className="sr-prog-fill" style={{ width:`${scrollPct}%`, background:accent }} /></div>
           <div className="sr-scroll-box" ref={contentRef}>
             {story.content
-              ? <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(story.content) }} />
+              ? <SafeHtml html={story.content} />
               : <p style={{ color:'#94a3b8', textAlign:'center', padding:'40px 0' }}>محتوى القصة سيضاف قريباً...</p>
             }
           </div>

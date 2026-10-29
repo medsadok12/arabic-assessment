@@ -22,7 +22,7 @@ export default function LoadingScreen({ label = 'لحظة صغيرة...', mascot
 
       {mascot === 'faheem' ? (
         <img
-          src="/faheem-loading.png"
+          src="/faheem-loading-sm.webp"
           alt="فَهِيمٌ"
           width={950} height={707}
           style={{

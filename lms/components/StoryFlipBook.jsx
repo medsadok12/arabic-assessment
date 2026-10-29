@@ -2,7 +2,7 @@
 import { useRef, useState, useCallback, forwardRef, useEffect } from 'react';
 import Link from 'next/link';
 import HTMLFlipBook from 'react-pageflip';
-import DOMPurify from 'isomorphic-dompurify';
+import SafeHtml from './SafeHtml';
 import { useStoryNarration, PageListenButton, AutoFlipToggle } from './StoryNarration';
 
 /* ── صفحة واحدة ── */
@@ -28,9 +28,7 @@ const StoryPage = forwardRef(function StoryPage({ html, pageNum, total, isRight,
               borderRight: isRight ? 'none' : '1px solid #e8d9b8',
             }),
       }}>
-        <div style={{ flex: 1, overflow: 'hidden' }}
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
-        />
+        <SafeHtml style={{ flex: 1, overflow: 'hidden' }} html={html} />
         <div style={{
           position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
           fontSize: '.58rem', color: '#c4a96d', fontWeight: 700,

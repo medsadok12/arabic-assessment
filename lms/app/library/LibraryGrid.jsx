@@ -666,7 +666,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialStories, ow
         {/* ── فهيم يرافقك في المكتبة ── */}
         <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0 24px' }}>
           <img
-            src="/faheem-tablet.png"
+            src="/faheem-tablet-sm.webp"
             alt="فَهِيمٌ"
             width={648} height={729}
             style={{

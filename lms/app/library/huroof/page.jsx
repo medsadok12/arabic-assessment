@@ -267,7 +267,7 @@ export default function HuroofPage() {
           {/* Breadcrumb */}
           <div style={{ marginBottom: 18 }}>
             <Link href="/library"
-              style={{ color: '#1A2B4A', fontSize: '.86rem', fontWeight: 700, textDecoration: 'none' }}>
+              style={{ color: '#1A2B4A', fontSize: '.86rem', fontWeight: 700, textDecoration: 'none', padding: '12px 0' }}>
               ← المكتبة
             </Link>
           </div>
@@ -310,7 +310,7 @@ export default function HuroofPage() {
 
           {!ready ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b', fontWeight: 800 }}>
-              <img src="/faheem.png" alt="" style={{ width: 70, height: 'auto', display: 'block', margin: '0 auto 10px' }} />
+              <img src="/faheem-sm.webp" alt="" style={{ width: 70, height: 'auto', display: 'block', margin: '0 auto 10px' }} />
               فهيم يجهّز لك التحدي…
             </div>
           ) : challenge ? (
@@ -444,7 +444,7 @@ export default function HuroofPage() {
         <>
           <div className="hf-backdrop" onClick={() => setFinale(false)} />
           <div className="hf-card" role="dialog" aria-modal="true" aria-label="أكملت التحدي" style={{ '--pal': '#E8B84B', '--pal-l': '#FFF3D6', alignItems: 'center' }}>
-            <img src="/faheem.png" alt="فهيم" style={{ width: 110, height: 'auto' }} />
+            <img src="/faheem-sm.webp" alt="فهيم" style={{ width: 110, height: 'auto' }} />
             <div style={{ fontSize: '1.7rem', fontWeight: 900, color: '#1A2B4A' }}>🏆 وَصَلَ فَهِيمٌ إِلَى الْقِمَّةِ!</div>
             <p style={{ margin: 0, fontFamily: 'var(--font-naskh), serif', fontWeight: 700, fontSize: '1.2rem', lineHeight: 1.9, color: '#52627E' }}>
               كَشَفْتَ الْحُرُوفَ الثَّمَانِيَةَ وَالْعِشْرِينَ كُلَّهَا، وَكَتَبْتَ كَلِمَاتِهَا صَحِيحَةً. أَنْتَ بَطَلُ الْحُرُوفِ! ⭐

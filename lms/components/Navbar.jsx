@@ -121,6 +121,7 @@ function LangToggle() {
     <button
       onClick={() => setLang(next)}
       title={next === 'en' ? 'Switch to English' : 'التبديل للعربية'}
+      aria-label={next === 'en' ? 'Switch to English' : 'التبديل للعربية'}
       style={{
         background: 'rgba(255,255,255,0.12)',
         border: '1.5px solid rgba(255,255,255,0.3)',
@@ -129,6 +130,7 @@ function LangToggle() {
         fontWeight: 700,
         fontSize: '.8rem',
         padding: '5px 10px',
+        minHeight: 40, minWidth: 44, // هدف لمس مريح لإصبع الطفل
         cursor: 'pointer',
         letterSpacing: '.5px',
         transition: 'background .2s',

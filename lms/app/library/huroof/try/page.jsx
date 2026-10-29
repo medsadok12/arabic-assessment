@@ -87,7 +87,7 @@ function TryOne() {
           `}</style>
 
           <div style={{ marginBottom: 14 }}>
-            <Link href="/library/huroof" style={{ color: '#1A2B4A', fontSize: '.86rem', fontWeight: 700, textDecoration: 'none' }}>← الحروف الهجائية</Link>
+            <Link href="/library/huroof" style={{ color: '#1A2B4A', fontSize: '.86rem', fontWeight: 700, textDecoration: 'none', padding: '12px 0' }}>← الحروف الهجائية</Link>
           </div>
           <h1 style={{ fontWeight: 900, color: '#1e293b', fontSize: '1.45rem', margin: '0 0 6px' }}>🧪 تجربة حرف واحد</h1>
           <p style={{ color: '#64748b', fontSize: '.9rem', margin: '0 0 14px', lineHeight: 1.8 }}>

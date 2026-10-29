@@ -947,7 +947,7 @@ export default function WordSmashGame() {
               </>
             )}
 
-            <Link href="/library" style={{ color: '#9ca3af', fontSize: '.87rem', textDecoration: 'none' }}>← العودة للمكتبة</Link>
+            <Link href="/library" style={{ color: '#9ca3af', fontSize: '.87rem', textDecoration: 'none', padding: '12px 0' }}>← العودة للمكتبة</Link>
           </div>
         )}
 
@@ -994,7 +994,7 @@ export default function WordSmashGame() {
                   }}>
                     🔄 ابدأ من جديد
                   </button>
-                  <Link href="/library" style={{ color:'rgba(255,255,255,.5)', fontSize:'.87rem', textDecoration:'none' }}>
+                  <Link href="/library" style={{ color:'rgba(255,255,255,.5)', fontSize:'.87rem', textDecoration:'none', padding:'12px 0' }}>
                     ← العودة للمكتبة
                   </Link>
                 </>
@@ -1327,7 +1327,7 @@ export default function WordSmashGame() {
               }}>
                 🔄 العب مرة أخرى
               </button>
-              <Link href="/library" style={{ color: '#9ca3af', fontSize: '.87rem', textDecoration: 'none' }}>← العودة للمكتبة</Link>
+              <Link href="/library" style={{ color: '#9ca3af', fontSize: '.87rem', textDecoration: 'none', padding: '12px 0' }}>← العودة للمكتبة</Link>
             </div>
           );
         })()}

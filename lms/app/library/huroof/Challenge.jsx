@@ -66,7 +66,7 @@ export function FaheemPath({ count, letters }) {
         </span>
       ))}
       <span className="hc-fh-walk" style={{ left: `${fx}%`, top: `${fy}%` }} aria-hidden="true">
-        <img key={count} src="/faheem.png" alt="" className="hc-fh-path" />
+        <img key={count} src="/faheem-sm.webp" alt="" className="hc-fh-path" />
       </span>
       <span className="hc-count">{count}/{HUROOF_COUNT}</span>
     </div>
@@ -205,7 +205,7 @@ export function RiddleSheet({
 
           <form className="hc-play" onSubmit={submit}>
             <div className="hc-fh-row">
-              <img src="/faheem.png" alt="فهيم" className="hc-fh" />
+              <img src="/faheem-sm.webp" alt="فهيم" className="hc-fh" />
               <div className="hc-bubble">
                 <p className="hc-riddle">{letter.riddle || 'مَا اسْمُ هَذِهِ الصُّورَةِ؟ اكْتُبْهُ 👇'}</p>
                 {letter.riddle_audio_url && (
@@ -246,7 +246,7 @@ export function RiddleSheet({
 
             {fb && (
               <div className={`hc-fb ${tone}`} role="status" aria-live="polite">
-                <img src="/faheem.png" alt="" className="hc-fb-fh" aria-hidden="true" />
+                <img src="/faheem-sm.webp" alt="" className="hc-fb-fh" aria-hidden="true" />
                 <div><p>{fb.msg}</p>{fb.tip && <small>💡 {fb.tip}</small>}</div>
               </div>
             )}

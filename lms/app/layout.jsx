@@ -31,11 +31,38 @@ const tajawal = Tajawal({
   preload:  false,
 });
 
+const SITE_TITLE = 'أكاديمية عارم';
+const SITE_DESC  = 'منصة تعليمية عربية متكاملة لتقييم وتطوير مهارات اللغة العربية';
+
+/* themeColor وأبعاد الشاشة في viewport (Next 14) — كانت في metadata فيُطبع تحذير لكل صفحة في البناء */
+export const viewport = {
+  width:        'device-width',
+  initialScale: 1,
+  viewportFit:  'cover',
+  themeColor:   '#1A2B4A',
+};
+
 export const metadata = {
-  title:       'أكاديمية عارم',
-  description: 'منصة تعليمية عربية متكاملة لتقييم وتطوير مهارات اللغة العربية',
+  metadataBase: new URL('https://www.aarem.net'),
+  title:       SITE_TITLE,
+  description: SITE_DESC,
   manifest:    '/manifest.json',
-  themeColor:  '#1A2B4A',
+  /* معاينة الرابط عند مشاركته في واتساب وفيسبوك وتويتر (مراجعة 2026-10-29: لم تكن هناك صورة) */
+  openGraph: {
+    type:        'website',
+    locale:      'ar_AR',
+    siteName:    SITE_TITLE,
+    title:       SITE_TITLE,
+    description: SITE_DESC,
+    url:         '/',
+    images:      [{ url: '/og.jpg', width: 1200, height: 630, alt: 'معلم وطالب يتعلمان مع الفيل فهيم — أكاديمية عارم' }],
+  },
+  twitter: {
+    card:        'summary_large_image',
+    title:       SITE_TITLE,
+    description: SITE_DESC,
+    images:      ['/og.jpg'],
+  },
   appleWebApp: {
     capable:         true,
     title:           'أكاديمية عارم',
@@ -44,7 +71,7 @@ export const metadata = {
   icons: {
     icon:     '/logo.svg',
     shortcut: '/logo.svg',
-    apple:    '/logo.svg',
+    apple:    '/apple-touch-icon.png', // iOS لا يقبل SVG أيقونةً للشاشة الرئيسية
   },
   other: {
     'mobile-web-app-capable':          'yes',
@@ -63,9 +90,6 @@ export default function RootLayout({ children }) {
       dir="rtl"
       className={`${cairo.className} ${cairo.variable} ${tajawal.variable} ${naskh.variable}`}
     >
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-      </head>
       <body style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
         <LanguageProvider>
           <main id="main-content" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>{children}</main>

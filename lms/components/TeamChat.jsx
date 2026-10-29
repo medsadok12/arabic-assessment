@@ -269,6 +269,10 @@ export default function TeamChat({ user }) {
   const myName   = user?.user_metadata?.full_name ?? user?.email ?? '';
   const myAvatar = user?.user_metadata?.avatar_url ?? null;
   const allowed  = ALLOWED.includes(role);
+  /* الدردشة للفريق فقط: لا جلب ولا قنوات ولا استطلاع لحساب طالب أو ولي أمر (كانت كل صفحة
+     طالب ترسل 3 طلبات مرفوضة 403 وتشترك في قنوات الفريق — مراجعة 2026-10-29) */
+  const liveId   = allowed ? myId : null;
+  const pollRef  = useRef(null);
 
   /* ── mobile detection + mount flag + audio unlock ── */
   useEffect(() => {
@@ -293,7 +297,7 @@ export default function TeamChat({ user }) {
 
   /* ── initial data load — guard with myId ── */
   useEffect(() => {
-    if (!myId) return;
+    if (!liveId) return;
     mountedAtRef.current = new Date().toISOString();
     Promise.all([
       fetch('/api/team-chat').then(r => r.json()),
@@ -309,11 +313,11 @@ export default function TeamChat({ user }) {
       setMembers(hasFahimDm ? [FAHIM_MEMBER, ...realMembers] : realMembers);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [myId]);
+  }, [liveId]);
 
   /* ── online presence ── */
   useEffect(() => {
-    if (!myId) return;
+    if (!liveId) return;
     const sb = createClient();
     const ch = sb.channel('team-presence-v2');
     ch
@@ -330,11 +334,11 @@ export default function TeamChat({ user }) {
         }
       });
     return () => { try { sb.removeChannel(ch); } catch (_) {} };
-  }, [myId]);
+  }, [liveId]);
 
   /* ── realtime: group + DMs ── */
   useEffect(() => {
-    if (!myId) return;
+    if (!liveId) return;
     const sb = createClient();
 
     /* ── postgres_changes: message delivery + unread badge ── */
@@ -404,30 +408,10 @@ export default function TeamChat({ user }) {
 
     /* broadcast: fast-path delivery (deduplication prevents double badge) */
     const bcastCh = sb.channel('tc-broadcast-v3', { config: { broadcast: { self: false } } })
-      .on('broadcast', { event: 'grp_msg' }, ({ payload: m }) => {
-        if (!m?.id) return;
-        if (seenGroupIds.current.has(m.id)) return; /* postgres_changes already handled */
-        seenGroupIds.current.add(m.id);
-        setGroupMsgs(prev => prev.some(e => e.id === m.id) ? prev : [...prev, m]);
-        if (!openRef.current || chatRef.current?.type !== 'group') {
-          setGroupUnread(n => n + 1);
-          playNotifSound(m.is_task);
-        }
-      })
-      .on('broadcast', { event: 'dm_msg' }, ({ payload: m }) => {
-        if (!m?.conv_key?.includes(myId)) return;
-        if (!seenDmIds.current[m.conv_key]) seenDmIds.current[m.conv_key] = new Set();
-        if (seenDmIds.current[m.conv_key].has(m.id)) return;
-        seenDmIds.current[m.conv_key].add(m.id);
-        setDmMsgs(prev => {
-          const ex = prev[m.conv_key] ?? [];
-          return ex.some(e => e.id === m.id) ? prev : { ...prev, [m.conv_key]: [...ex, m] };
-        });
-        if (!openRef.current || chatRef.current?.type !== 'dm' || chatRef.current?.key !== m.conv_key) {
-          setDmUnread(prev => ({ ...prev, [m.conv_key]: (prev[m.conv_key] ?? 0) + 1 }));
-          playNotifSound(m.is_task);
-        }
-      })
+      /* قناة البث عامة (يستطيع أي حامل للمفتاح العام الاستماع إليها) فلا تحمل نص الرسائل:
+         تنبيه «وصلت رسالة» فقط، والرسالة نفسها تُجلب فوراً عبر /api/team-chat/notify المحمي بالدور */
+      .on('broadcast', { event: 'grp_msg' }, () => { pollRef.current?.(); })
+      .on('broadcast', { event: 'dm_msg' }, () => { pollRef.current?.(); })
       .on('broadcast', { event: 'task_completed' }, ({ payload }) => {
         const { messageId, convKey, completedByName } = payload ?? {};
         if (!messageId) return;
@@ -459,7 +443,7 @@ export default function TeamChat({ user }) {
       try { sb.removeChannel(dmCh); }  catch (_) {}
       try { sb.removeChannel(bcastCh); } catch (_) {}
     };
-  }, [myId]);
+  }, [liveId]);
 
   /* ── scroll to bottom ── */
   useEffect(() => {
@@ -473,8 +457,8 @@ export default function TeamChat({ user }) {
 
   /* ── unified polling: group + DM notifications every 8s ── */
   useEffect(() => {
-    if (!myId) return;
-    const interval = setInterval(async () => {
+    if (!liveId) return;
+    const poll = async () => {
       /* use mountedAt (or 3 minutes ago as safety floor) */
       const floor = mountedAtRef.current
         ?? new Date(Date.now() - 3 * 60 * 1000).toISOString();
@@ -513,9 +497,11 @@ export default function TeamChat({ user }) {
           }
         }
       } catch (_) {}
-    }, 8000);
-    return () => clearInterval(interval);
-  }, [myId]);
+    };
+    pollRef.current = poll;
+    const interval = setInterval(poll, 8000);
+    return () => { clearInterval(interval); pollRef.current = null; };
+  }, [liveId]);
 
   /* ── early return AFTER all hooks ─────────────────────────────────────── */
   if (!allowed) return null;
@@ -612,7 +598,7 @@ export default function TeamChat({ user }) {
       const { message } = await res.json();
       if (message) {
         setGroupMsgs(prev => mergeDedup(prev, [message]));
-        try { clearChRef.current?.send({ type: 'broadcast', event: 'grp_msg', payload: message }); } catch (_) {}
+        try { clearChRef.current?.send({ type: 'broadcast', event: 'grp_msg', payload: {} }); } catch (_) {}
       }
     } else {
       setDmMsgs(prev => ({ ...prev, [chat.key]: [...(prev[chat.key] ?? []), opt] }));
@@ -620,7 +606,7 @@ export default function TeamChat({ user }) {
       const { message } = await res.json();
       if (message) {
         setDmMsgs(prev => ({ ...prev, [chat.key]: mergeDedup(prev[chat.key] ?? [], [message]) }));
-        try { clearChRef.current?.send({ type: 'broadcast', event: 'dm_msg', payload: message }); } catch (_) {}
+        try { clearChRef.current?.send({ type: 'broadcast', event: 'dm_msg', payload: {} }); } catch (_) {}
       }
     }
     setSending(false);

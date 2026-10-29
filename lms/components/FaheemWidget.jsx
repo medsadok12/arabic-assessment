@@ -453,7 +453,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
               background: 'radial-gradient(ellipse, rgba(15,23,42,.42), transparent 72%)',
               animation: 'fShadow 3s ease-in-out infinite',
             }} />
-            <img src="/faheem.png" alt="فَهِيمٌ" width={555} height={707}
+            <img src="/faheem-sm.webp" alt="فَهِيمٌ" width={555} height={707}
               style={{
                 position: 'absolute', bottom: 14, left: '50%', height: 128, width: 'auto',
                 filter: 'drop-shadow(0 10px 14px rgba(0,0,0,.22))',
@@ -498,7 +498,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
                 border: '2px solid rgba(255,255,255,.4)', background: 'rgba(255,255,255,.1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
               }}>
-                <img src="/faheem.png" alt="فَهِيمٌ" width={555} height={707}
+                <img src="/faheem-sm.webp" alt="فَهِيمٌ" width={555} height={707}
                   style={{ width: '82%', height: '82%', objectFit: 'contain' }} />
               </div>
               <div>
@@ -519,7 +519,7 @@ export default function FaheemWidget({ studentName = 'بطل', studentGender = '
             display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
             padding: '14px 0 4px', borderBottom: '1px solid #e8eef5', flexShrink: 0,
           }}>
-            <img src="/faheem.png" alt="فَهِيمٌ" width={555} height={707}
+            <img src="/faheem-sm.webp" alt="فَهِيمٌ" width={555} height={707}
               style={{ height: 112, width: 'auto', filter: 'drop-shadow(0 6px 16px rgba(0,0,0,.22))' }} />
           </div>
 

@@ -17,6 +17,10 @@ const UPDATE_PASSWORD_ROUTE = '/auth/update-password';
 // Onboarding screen for new Google OAuth users — must stay accessible even when logged in
 const ONBOARDING_ROUTE = '/auth/google-code';
 
+// مهلة فحص الجلسة: إن تأخر Supabase لا تُعلَّق الصفحة حتى يقطعها Vercel بعد 25 ثانية (حدث مرتين)،
+// بل تكمل كأن الفحص فشل — والصفحات المحمية تتحقق من الجلسة بنفسها على الخادم
+const AUTH_TIMEOUT_MS = 8000;
+
 export async function middleware(request) {
   let supabaseResponse = NextResponse.next({ request });
   const { pathname } = request.nextUrl;
@@ -39,7 +43,10 @@ export async function middleware(request) {
       }
     );
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await Promise.race([
+      supabase.auth.getUser(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('auth timeout')), AUTH_TIMEOUT_MS)),
+    ]);
 
     const isProtected       = PROTECTED.some(p => pathname === p || pathname.startsWith(p + '/'));
     const isRedirectIfLogIn = REDIRECT_IF_LOGGED_IN.some(p => pathname === p || pathname.startsWith(p + '/'));

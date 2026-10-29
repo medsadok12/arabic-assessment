@@ -1114,7 +1114,7 @@ export default function WordImageMatchPage() {
           border:1.5px solid rgba(251,191,36,.55); border-radius:99px;
           padding:6px 14px; font-family:inherit; font-weight:700;
           font-size:.8rem; text-decoration:none; cursor:pointer;
-          display:inline-flex; align-items:center; gap:5px;
+          display:inline-flex; align-items:center; gap:5px; min-height:44px;
           transition:background .15s, box-shadow .15s; white-space:nowrap;
           box-shadow:0 2px 6px rgba(0,0,0,.07);
         }

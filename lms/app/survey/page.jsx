@@ -205,7 +205,7 @@ export default function SurveyPage() {
   if (submitted) {
     return (
       <div className="cs-wrap" dir="rtl">
-        <style>{CS_STYLES}</style>
+        <style dangerouslySetInnerHTML={{ __html: CS_STYLES }} />
         <div className="cs-card cs-success">
           <div className="cs-success-icon">✓</div>
           <h2 className="cs-success-title">تم استلام البيانات بنجاح! ✅</h2>
@@ -221,7 +221,7 @@ export default function SurveyPage() {
 
   return (
     <div className="cs-wrap" dir="rtl">
-      <style>{CS_STYLES}</style>
+      <style dangerouslySetInnerHTML={{ __html: CS_STYLES }} />
       <form className="cs-card" onSubmit={handleSubmit}>
         <div className="cs-brand">
           <span className="cs-brand-badge">🎓 أكاديمية عارم</span>

@@ -140,7 +140,7 @@ const ttsUrl     = (text) => `/api/faheem/tts?c=1&t=${encodeURIComponent(text)}`
 function FaheemBuddy({ text, action, size = 66, hidden = false }) {
   return (
     <div style={{ ...S.buddy, height: size, visibility: hidden ? 'hidden' : 'visible' }}>
-      <img src="/faheem.png" alt="فهيم" style={{ width: size * 0.82, height: size, objectFit: 'contain', flexShrink: 0 }} />
+      <img src="/faheem-sm.webp" alt="فهيم" style={{ width: size * 0.82, height: size, objectFit: 'contain', flexShrink: 0 }} />
       {action || <div style={S.buddyBubble} aria-live="polite">{text}</div>}
     </div>
   );
@@ -678,7 +678,7 @@ export default function LetterCatcherGame() {
           )}
 
           <div style={{ ...S.glassCard, flexDirection: 'row', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
-            <img src="/faheem.png" alt="فهيم" style={{ width: 66, height: 80, objectFit: 'contain', flexShrink: 0 }} />
+            <img src="/faheem-sm.webp" alt="فهيم" style={{ width: 66, height: 80, objectFit: 'contain', flexShrink: 0 }} />
             <div style={{ flex: 1, textAlign: 'right' }}>
               <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, color: '#1A2B4A' }}>اِخْتَرْ مَجْمُوعَتَكَ!</h1>
               <p style={{ margin: '4px 0 0', fontSize: '.92rem', fontWeight: 700, color: '#5A3FBF', lineHeight: 1.7 }}>كُلُّ مَجْمُوعَةٍ عَالَمٌ جَدِيدٌ — اِصْطَدِ الْحَرْفَ النَّاقِصَ 🎯</p>
@@ -1156,7 +1156,7 @@ const S = {
     padding: '9px 12px', fontSize: '1rem', fontFamily:'inherit',
     boxSizing: 'border-box', outline: 'none',
   },
-  backLink: { color: '#9ca3af', fontSize: '0.87rem', textDecoration: 'none' },
+  backLink: { color: '#9ca3af', fontSize: '0.87rem', textDecoration: 'none', padding: '12px 0' }, // منطقة لمس ~44px دون تحريك ما حوله
   settingsOverlay: {
     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 20,

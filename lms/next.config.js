@@ -14,7 +14,9 @@ const SECURITY_HEADERS = [
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
   // Restrict browser features we don't need — الميكروفون مسموح لنفس الموقع فقط
   // (تسجيل صوت القصص في bogga + تسجيلات المعلم في الألعاب ومساحة المعلمين)
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=(), interest-cohort=()' },
+  // الميكروفون للموقع ولصفحة التقييم المضمَّنة في /assessment (أسئلة القراءة الصوتية) — بدون الأصل الثاني
+  // كان المتصفح يحجب الميكروفون عن الإطار فلا تعمل أسئلة الاستماع والنطق داخل المنصة (مراجعة 2026-10-29)
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(self "https://assessment.aarem.net"), geolocation=(), interest-cohort=()' },
   // Content Security Policy — permissive enough for Next.js inline styles/scripts
   {
     key: 'Content-Security-Policy',

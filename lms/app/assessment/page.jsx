@@ -33,7 +33,7 @@ export default function AssessmentPage() {
         src="https://assessment.aarem.net"
         style={{ width: '100%', height: 'calc(100% - 48px)', border: 'none', display: 'block' }}
         title="التقييم التشخيصي"
-        allow="microphone; camera"
+        allow="microphone"
       />
     </div>
   );

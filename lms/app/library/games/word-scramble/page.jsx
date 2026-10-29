@@ -1161,7 +1161,7 @@ const S = {
     cursor: 'pointer', fontFamily: 'inherit', width: '100%',
     boxShadow: '0 4px 16px rgba(245,158,11,0.4)',
   },
-  backLink: { color: '#9ca3af', fontSize: '0.87rem', textDecoration: 'none' },
+  backLink: { color: '#9ca3af', fontSize: '0.87rem', textDecoration: 'none', padding: '12px 0' }, // منطقة لمس ~44px دون تحريك ما حوله
   settingsOverlay: {
     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: '16px 12px',
