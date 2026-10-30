@@ -20,3 +20,34 @@
 .sb-listen-cap{margin:12px 0 0;font:500 17px/1.5 var(--font-naskh),Tahoma,serif;color:var(--sb-ink);opacity:.85;min-height:26px}
 .sb-still .sb-invite .sb-badge::after{animation:none;opacity:.9}.sb-still .sb-bars i{animation:none;transform:scaleY(.75)}
 @media(prefers-reduced-motion:reduce){.sb-invite .sb-badge::after{opacity:.9}.sb-bars i{transform:scaleY(.75)}}
+/* ═══ تخطيط «ب» (اختيار الأستاذ محمد 2026-10-30): كل شيء أمام الطفل بلا نزول ═══
+   كل جزء بقدر محتواه (كان صندوق الكلمات يحجز 155px لكلمات تحتاج 57، وزر «تحقّق» تحت حافة الحاسوب بـ227px)،
+   المساعدة والرصيد في سطر واحد، عمودان على الشاشات العريضة (الصورة يمينًا، الجملة والكلمات والتحقق يسارًا)،
+   وشريط التحقق يطفو فوق أسفل الشاشة على الشاشات الضيقة إن طالت الجملة (Game.jsx) */
+.sb-wrap{padding-top:4px}
+.sb-main{padding:18px 22px 0}
+.sb-top{margin-bottom:10px}
+.sb-wrap h1{font-size:24px;margin:0 0 4px}
+.sb-subtitle{margin:0 0 6px}
+.sb-dialogue{min-height:0;margin-bottom:6px;padding:4px 8px 0}
+.sb-picture{width:150px;height:150px;flex:0 0 auto;font-size:min(var(--sb-picture,120px),130px)}
+.sb-listen-cap{margin-top:10px;font-size:16px}
+.sb-answer{min-height:80px;margin-bottom:14px;padding:8px 0}
+.sb-bank{min-height:0;margin-bottom:12px}
+.sb-tools{display:flex;align-items:center;justify-content:center;gap:8px 18px;flex-wrap:wrap;padding-bottom:12px}
+.sb-tools .sb-help-row,.sb-tools .sb-wallet{padding:0}
+.sb-action{padding:12px 22px 16px}
+.sb-feedback:not(:empty){margin-bottom:10px;min-height:0}
+.sb-action-float{position:fixed;z-index:40;left:50%;transform:translateX(-50%);width:min(530px,100%);border-radius:18px 18px 0 0;box-shadow:0 -10px 24px #1a2b4a24;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+@media(max-width:640px){.sb-wrap{padding:0 0 12px}.sb-main{padding:14px 16px 0}.sb-wrap h1{font-size:22px}.sb-dialogue{min-height:0;padding:0}.sb-picture{width:128px;height:128px;flex-basis:auto;font-size:min(var(--sb-picture,120px),110px)}.sb-answer{min-height:76px}.sb-bank{min-height:0}.sb-action{padding:10px 16px 14px}}
+@media(min-width:980px){
+ .sb-board{max-width:980px;display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);grid-template-areas:"side play" "side action"}
+ .sb-board .sb-main{display:contents}
+ .sb-board .sb-side{grid-area:side;display:flex;flex-direction:column;padding:22px 24px;border-inline-end:1px solid #eeeae1}
+ .sb-board .sb-dialogue{flex:1;justify-content:center}
+ .sb-board .sb-picture{width:230px;height:230px;font-size:min(calc(var(--sb-picture,120px) * 1.4),200px)}
+ .sb-board .sb-play{grid-area:play;padding:26px 24px 0;display:flex;flex-direction:column;justify-content:center}
+ .sb-board .sb-action-slot{grid-area:action}
+ .sb-board .sb-action{border-top:0;padding:4px 24px 22px}
+}
+
