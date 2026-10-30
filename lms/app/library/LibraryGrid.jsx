@@ -9,6 +9,13 @@ import StoriesShelf from './stories-preview/StoriesPreview';
 
 const RESOURCES = [
   {
+    key: 'sentence-builder', icon: '💬', title: 'استمع ورتّب الكلمات',
+    desc: 'كوّن جملة من الكلمات، وتعلّم خطوة بخطوة!',
+    tag: 'بناء الجملة', link: '/library/games/sentence-builder', ready: true,
+    accent: '#B78628', dark: '#8A651E', rot: -2, bg: '#FFF7E3', border: '#E7D4A0', iconBg: '#FBE6AE',
+    btnBg: 'linear-gradient(135deg,#F3D17B,#E8B84B)',
+  },
+  {
     key: 'scrabble', icon: '🧩', title: 'سكرابل الصغار',
     desc: 'أضف الحروف واكتشف الكلمات المتقاطعة!',
     tag: 'تعزيزي', link: '/library/games/scrabble', ready: true,

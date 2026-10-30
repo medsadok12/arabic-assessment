@@ -1,3 +1,6 @@
+import {loadSentences,readSentenceRow} from './sentence-builder-server';
+import {activeSentences,sentenceStamp,SENTENCE_ID} from './sentence-builder';
+import {finiteProgress,unavailableProgress} from './library-progress';
 import { PRACTICE_GAMES, practiceProgress, unknownProgress, discoverLibraryProgress, huroofLibraryProgress, puzzleLibraryProgress } from './library-progress';
 import { loadDiscover, loadDiscoverSolved } from './discover-objects-server';
 import { loadSolved } from './huroof-server';
@@ -16,6 +19,12 @@ export async function loadLibraryProgress(admin, userId) {
   const progress = {};
   const read = async (key, fn) => { try { progress[key] = await fn(); } catch { progress[key] = unknownProgress(); } };
   await Promise.all([
+    read('sentence-builder',async()=>{
+      const {config}=await loadSentences(admin);if(!config.enabled)return unavailableProgress();
+      const items=activeSentences(config),row=await readSentenceRow(admin,`${SENTENCE_ID}:progress:${userId}:${config.epoch}`);
+      const done=new Set((row?.settings.completed||[]).filter(e=>items.some(item=>item.id===e.id&&sentenceStamp(item)===e.stamp)).map(e=>e.id));
+      return finiteProgress(done.size,items.length,'جملة',Boolean(row));
+    }),
     read('discover-objects', async () => {
       const { config } = await loadDiscover(admin);
       return discoverLibraryProgress(config, config.enabled ? await loadDiscoverSolved(admin, userId, config) : []);
