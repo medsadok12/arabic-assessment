@@ -64,6 +64,10 @@ npm run build
 
 مشروع Vercel مستقل باسم **masareef** (Root Directory = `masareef`)، إعداداته في `vercel.json`.
 
+- الرابط: **https://masareef-ochre.vercel.app**
+- المشروع غير مربوط بالدفع التلقائي من Git (حتى لا تفشل بناءات الفروع التي لا تحتوي هذا المجلد)؛
+  للتحديث: ادفع التعديلات ثم أنشئ نشراً إنتاجياً من الفرع (Vercel MCP `create_deployment` أو لوحة Vercel).
+
 ## إزالة التطبيق من قاعدة البيانات (عند الحاجة)
 
 ```sql

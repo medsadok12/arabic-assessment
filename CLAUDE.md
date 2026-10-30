@@ -13,6 +13,22 @@
 
 ---
 
+## تطبيق «مصاريف» (`masareef/`) — أُضيف 30 أكتوبر 2026
+
+تطبيق مستقل (Vite + React) ليس جزءاً من نظام التقييم: دفتر مشترك بين خطيبين لمصاريف تحضيرات الزواج.
+التفاصيل الكاملة في `masareef/README.md`.
+
+- **الرابط:** https://masareef-ochre.vercel.app ✅ (عام، بلا تسجيل دخول)
+- **Vercel:** مشروع مستقل `masareef` (Root Directory = `masareef`) **غير مربوط بالدفع التلقائي من Git**
+  حتى لا تفشل بناءات الفروع التي لا تحتوي المجلد. للتحديث: ادفع للفرع ثم أنشئ نشراً إنتاجياً
+  عبر Vercel MCP (`create_deployment` بـ `gitSource` للفرع و `target: production`).
+- **البيانات:** Supabase «Arem ACADEMY»، الجدولان `masareef_spaces` و `masareef_items` (migration `masareef_init`)،
+  محميان بـ RLS عبر الترويسة `x-masareef-key` (تُخزَّن بصمة SHA-256 للرمز فقط). المخطط في `masareef/supabase/schema.sql`.
+- **المزامنة:** تحديث فوري + طابور دون اتصال (`src/lib/syncStore.js`) + بث Realtime بين الجهازين + تحديث كل 30 ثانية.
+- **الاختبار:** `cd masareef && npm test && npm run lint && npm run build`.
+
+---
+
 ## سجل جلسة العمل — 23 مايو 2026
 
 ---
