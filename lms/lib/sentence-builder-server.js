@@ -29,20 +29,28 @@ async function settleReward(admin,auth,userId,config,state,event){
  const reward=await deliverVerifiedEffect(admin,`${SENTENCE_ID}:reward:${userId}:${reason}`,auth.user.id,()=>awardVerifiedPoints(admin,userId,reason,event.amount));
  if(reward.state!=='done')throw sentenceFailure('نؤكّد نقاطك. أعد تأكيد الجملة؛ لن تُحتسب مرتين.',409);return reward;
 }
-export async function startSentenceGame(admin,auth,userId){
+/* replay: «العب مجدداً» بعد إكمال كل الجمل — جولة مراجعة (state.review) بلا نقاط جديدة (نقاط كل جملة تُمنح مرة
+   واحدة لكل دورة) ومساعدتها مجانية، والتقدم الأصلي state.completed لا يُمس. جملة جديدة يضيفها المعلم تُنهي المراجعة
+   فيعود الطفل للمسار العادي بنقاطه */
+export async function startSentenceGame(admin,auth,userId,replay=false){
  const {config}=await loadSentences(admin);if(!config.enabled)throw sentenceFailure('التدريب يستريح الآن. عد لاحقًا.',409);
  const items=activeSentences(config);if(!items.length)throw sentenceFailure('نجهّز جملًا جديدة. عد قريبًا.',409);
  const state=await changeProgress(admin,auth.user.id,userId,config,state=>{
-  state.completed=validCompleted(state,items);const item=items.find(item=>!state.completed.some(done=>done.id===item.id));
+  state.completed=validCompleted(state,items);const fresh=items.find(item=>!state.completed.some(done=>done.id===item.id));
+  if(fresh){if(state.review){state.review=null;if(state.active?.review)state.active=null}}
+  else if(replay){state.review={completed:[]};state.active=null}
+  const review=!fresh&&Boolean(state.review);
+  if(review)state.review.completed=validCompleted(state.review,items);
+  const done=review?state.review.completed:state.completed,item=items.find(item=>!done.some(d=>d.id===item.id));
   if(!item){state.active=null;return state}
-  if(state.active?.id!==item.id||state.active.stamp!==sentenceStamp(item)||state.active.expiresAt<Date.now())state.active={id:item.id,stamp:sentenceStamp(item),nonce:randomUUID(),expiresAt:Date.now()+86400000};
+  if(state.active?.id!==item.id||state.active.stamp!==sentenceStamp(item)||state.active.expiresAt<Date.now()||Boolean(state.active.review)!==review)state.active={id:item.id,stamp:sentenceStamp(item),nonce:randomUUID(),expiresAt:Date.now()+86400000,...(review?{review:true}:{})};
   return state;
  });
- // استئناف منح آخر إجابة إن انقطع الاتصال بعد حفظ صحتها وقبل إتمام النقاط.
- const lastRight=[...state.events].reverse().find(e=>e.right);
+ // استئناف منح آخر إجابة إن انقطع الاتصال بعد حفظ صحتها وقبل إتمام النقاط (إجابات المراجعة بلا نقاط).
+ const lastRight=[...state.events].reverse().find(e=>e.right&&!e.review);
  if(lastRight)await settleReward(admin,auth,userId,config,state,lastRight);
  const item=items.find(item=>item.id===state.active?.id);
- return {finished:!item,sessionId:state.active?.nonce,question:item?publicSentence(item):null,index:item?items.indexOf(item):items.length,total:items.length,completed:state.completed.length,settings:config.settings,points:await sentenceBalance(admin,userId)};
+ return {finished:!item,review:Boolean(item&&state.active.review),sessionId:state.active?.nonce,question:item?publicSentence(item):null,index:item?items.indexOf(item):items.length,total:items.length,completed:state.completed.length,settings:config.settings,points:await sentenceBalance(admin,userId)};
 }
 export async function answerSentenceGame(admin,auth,userId,body){
  if(!sentenceUuid(body.requestId)||!sentenceUuid(body.sessionId))throw sentenceFailure('أكمل الجملة من التدريب.',400);
@@ -52,18 +60,19 @@ export async function answerSentenceGame(admin,auth,userId,body){
   const previous=state.events.find(e=>e.id===body.requestId);
   if(previous){if(previous.trace!==trace)throw sentenceFailure('هذا التأكيد يخص محاولة أخرى.',409);event=previous;item=config.lessons.find(x=>x.id===event.questionId);if(!item||sentenceStamp(item)!==event.stamp)throw sentenceFailure('تغيّرت الجملة. جدّد التدريب.',409);return state}
   item=assertActive(state,body,config);if(!sentenceSlots(item,body.slots))throw sentenceFailure('اختر كلمات الجملة من الصندوق.',400);
-  event={id:body.requestId,trace,questionId:item.id,stamp:sentenceStamp(item),right:sentenceRight(item,body.slots),amount:config.settings.reward};
+  const review=Boolean(state.active.review);
+  event={id:body.requestId,trace,questionId:item.id,stamp:sentenceStamp(item),right:sentenceRight(item,body.slots),amount:review?0:config.settings.reward,...(review?{review:true}:{})};
   state.events=[...state.events.slice(-199),event];
-  if(event.right){state.completed=[...state.completed.filter(x=>x.id!==item.id),{id:item.id,stamp:sentenceStamp(item)}];state.active=null}return state;
+  if(event.right){const mark=list=>[...(list||[]).filter(x=>x.id!==item.id),{id:item.id,stamp:sentenceStamp(item)}];if(review)state.review={completed:mark(state.review?.completed)};else state.completed=mark(state.completed);state.active=null}return state;
  });
  let reward={state:'done',amount:0};
- if(event.right){
+ if(event.right&&!event.review){
   reward=await settleReward(admin,auth,userId,config,state,event);
   if(validCompleted(state,activeSentences(config)).length===activeSentences(config).length){
    await deliverVerifiedEffect(admin,`${SENTENCE_ID}:result:${userId}:${state.generation}:${config.epoch}`,auth.user.id,async()=>{const {error}=await admin.from('game_results').insert({user_id:userId,game_id:SENTENCE_ID,category:config.title,correct:activeSentences(config).length,wrong:state.events.filter(e=>!e.right).length,total:activeSentences(config).length});return{state:error?'pending':'done'}});
   }
  }
- return{right:event.right,sentence:event.right?item.words.join(' ')+item.end:null,reward:event.right?(reward.amount??0):0,points:await sentenceBalance(admin,userId)};
+ return{right:event.right,review:Boolean(event.review),sentence:event.right?item.words.join(' ')+item.end:null,reward:event.right?(reward.amount??0):0,points:await sentenceBalance(admin,userId)};
 }
 async function debit(admin,userId,reason,amount){
  const {data:log,error}=await admin.from('points_log').select('id').eq('user_id',userId).eq('reason',reason).maybeSingle();if(error)return{state:'pending'};if(log||amount===0)return{state:'done'};
@@ -74,6 +83,7 @@ export async function hintSentenceGame(admin,auth,userId,body){
  const {config}=await loadSentences(admin);if(!config.enabled)throw sentenceFailure('التدريب يستريح الآن. عد لاحقًا.',409);
  const row=await readSentenceRow(admin,progressKey(userId,config.epoch));if(!row)throw sentenceFailure('هذه الجولة غير متاحة لهذا الحساب.',404);
  const item=assertActive(row.settings,body,config),hint=sentenceHint(item,body.slots,config.settings.hintMode);if(!hint)throw sentenceFailure('جرّب ترتيب الجملة ثم اضغط تحقّق.',400);
+ if(row.settings.active.review)return{state:'done',slots:hint.slots,cost:0,points:await sentenceBalance(admin,userId)};
  const cost=config.settings.helpCost;if(body.expectedCost!==cost)return{state:'cost_changed',cost,points:await sentenceBalance(admin,userId)};
  const key=`${SENTENCE_ID}:hint:${body.sessionId}:${hint.position}`;
  const result=await deliverVerifiedEffect(admin,key,auth.user.id,async()=>({...await debit(admin,userId,key,cost),cost}));

@@ -12,6 +12,8 @@ const RESOURCES = [
     key: 'sentence-builder', icon: '💬', title: 'استمع ورتّب الكلمات',
     desc: 'كوّن جملة من الكلمات، وتعلّم خطوة بخطوة!',
     tag: 'بناء الجملة', link: '/library/games/sentence-builder', ready: true,
+    // بعد الإكمال يبدأ «العب مجدداً» جولة مراجعة مباشرة (بلا نقاط جديدة) بدل شاشة «أكملت»
+    replayLink: '/library/games/sentence-builder?again=1',
     accent: '#B78628', dark: '#8A651E', rot: -2, bg: '#FFF7E3', border: '#E7D4A0', iconBg: '#FBE6AE',
     btnBg: 'linear-gradient(135deg,#F3D17B,#E8B84B)',
   },
@@ -662,7 +664,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialStories, ow
                 </p>
                 <p className="lib-banner-sub">{title}{continuingNext && ` · ${activityProgress[nextActivity.key].label}`}</p>
               </div>
-              <Link href={nextActivity.link} className="lib-banner-btn">
+              <Link href={replayNext ? (nextActivity.replayLink || nextActivity.link) : nextActivity.link} className="lib-banner-btn">
                 {continuingNext ? 'أكمل رحلتك ←' : replayNext ? 'ألعب مجدّدًا ←' : 'ابدأ الآن ←'}
               </Link>
               <button className="lib-banner-close" onClick={() => setBannerDismiss(true)}>✕</button>
@@ -780,7 +782,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialStories, ow
               <div className="sg-sheet-actions">
                 {r.ready
                   ? done
-                    ? <Link href={r.link} className="sg-sheet-cta" style={{ background:'linear-gradient(135deg,#22c55e,#16a34a)' }}>✓ العب مجدداً</Link>
+                    ? <Link href={r.replayLink || r.link} className="sg-sheet-cta" style={{ background:'linear-gradient(135deg,#22c55e,#16a34a)' }}>✓ العب مجدداً</Link>
                     : <Link href={r.link} className="sg-sheet-cta" style={{ background:r.btnBg }}>{started ? '✨ أكمل رحلتك ←' : ctaLabel}</Link>
                   : <div className="sg-sheet-locked">🔒 سيكون هذا النشاط متاحاً قريباً</div>
                 }

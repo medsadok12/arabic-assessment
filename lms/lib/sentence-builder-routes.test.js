@@ -44,3 +44,19 @@ describe('الرصيد والتدرج والمساعدة',()=>{
  it('فشل الكتابة لا يمنح مساعدة مجانية أو رصيدًا سالبًا',async()=>{const s=await start();db.fail='user_points:update';expect((await call(hint(s))).status).toBe(409);expect(balance()).toBe(40);db.fail=null;expect((await call(hint(s))).body.state).toBe('done');expect(balance()).toBe(35)});
  it('يستأنف نقاط إجابة صحيحة بعد تعطل قاعدة البيانات وإعادة فتح الصفحة',async()=>{const s=await start();db.fail='user_points:update';expect((await call(answer(s))).status).toBe(409);expect(balance()).toBe(40);db.fail=null;expect((await start()).question.id).toBe('cat');expect(balance()).toBe(43);await start();expect(balance()).toBe(43)});
 });
+describe('«العب مجدداً» — جولة مراجعة بعد إكمال كل الجمل',()=>{
+ const two=()=>{const c=freshSentences();c.lessons=c.lessons.slice(0,2);publishConfig(c);return c};
+ const finishAll=async()=>{let s=await start();await call(answer(s));s=await start();await call(answer(s,[3,0]));return start()};
+ it('بعد الإكمال تبدأ المراجعة من أول جملة دون نقاط جديدة ولا نتيجة مكررة، ويمكن تكرارها',async()=>{two();expect((await finishAll()).finished).toBe(true);expect(balance()).toBe(46);
+  let s=(await call({action:'replay'})).body;expect(s.finished).toBe(false);expect(s.review).toBe(true);expect(s.question.id).toBe('book');expect(s.question.words).toBeUndefined();
+  const r=await call(answer(s));expect(r.body.right).toBe(true);expect(r.body.review).toBe(true);expect(r.body.reward).toBe(0);expect(r.body.sentence).toBe('هٰذَا كِتَابِي.');expect(balance()).toBe(46);
+  s=await start();expect(s.review).toBe(true);expect(s.question.id).toBe('cat');expect((await call(answer(s,[0,3]))).body.right).toBe(false);await call(answer(s,[3,0]));
+  expect((await start()).finished).toBe(true);expect(balance()).toBe(46);expect(db.tables.points_log).toHaveLength(2);expect(db.tables.game_results).toHaveLength(1);
+  const again=(await call({action:'replay'})).body;expect(again.review).toBe(true);expect(again.question.id).toBe('book')});
+ it('المساعدة مجانية في المراجعة والتقدم الأصلي لا يُمس',async()=>{two();await finishAll();const s=(await call({action:'replay'})).body;const h=await call(hint(s));expect(h.body.state).toBe('done');expect(h.body.slots).toEqual([1]);expect(balance()).toBe(46);
+  const row=db.tables.game_settings.find(r=>r.game_id.startsWith(SENTENCE_ID+':progress:'));expect(row.settings.completed).toHaveLength(2)});
+ it('الإعادة قبل الإكمال تتابع الجولة العادية بنقاطها',async()=>{const s=(await call({action:'replay'})).body;expect(s.review).toBe(false);expect(s.question.id).toBe('book');expect((await call(answer(s))).body.reward).toBe(3);expect(balance()).toBe(43)});
+ it('جملة جديدة يضيفها المعلم أثناء المراجعة تعود بالطفل للمسار العادي ونقاطه',async()=>{const c=two();await finishAll();await call({action:'replay'});c.lessons=freshSentences().lessons.slice(0,3);publishConfig(c);
+  const s=await start();expect(s.review).toBe(false);expect(s.question.id).toBe('read');expect((await call(answer(s,[2,0]))).body.reward).toBe(3);expect(balance()).toBe(49)});
+ it('تكرار الإجابة نفسها في المراجعة لا يمنح شيئًا',async()=>{two();await finishAll();const s=(await call({action:'replay'})).body,body=answer(s);await Promise.all([call(body),call(body)]);await call(body);expect(balance()).toBe(46);expect(db.tables.points_log).toHaveLength(2)});
+});
