@@ -1,10 +1,87 @@
 /** @type {import('next').NextConfig} */
-const ASSESSMENT_URL = 'https://arabic-assessment.vercel.app';
+const ASSESSMENT_URL = 'https://assessment.aarem.net';
+
+const SECURITY_HEADERS = [
+  // Force HTTPS for 2 years
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  // Prevent MIME-type sniffing
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  // Block clickjacking — allow same-origin iframes only
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  // Limit referrer info sent to third parties
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  // Prevent opener attacks (e.g. tab-napping); allow-popups needed for Google Meet links
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+  // Restrict browser features we don't need — الميكروفون مسموح لنفس الموقع فقط
+  // (تسجيل صوت القصص في bogga + تسجيلات المعلم في الألعاب ومساحة المعلمين)
+  // الميكروفون للموقع ولصفحة التقييم المضمَّنة في /assessment (أسئلة القراءة الصوتية) — بدون الأصل الثاني
+  // كان المتصفح يحجب الميكروفون عن الإطار فلا تعمل أسئلة الاستماع والنطق داخل المنصة (مراجعة 2026-10-29)
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(self "https://assessment.aarem.net"), geolocation=(), interest-cohort=()' },
+  // Content Security Policy — permissive enough for Next.js inline styles/scripts
+  {
+    key: 'Content-Security-Policy',
+    value: [
+      "default-src 'self'",
+      // Next.js requires unsafe-inline + unsafe-eval for hydration scripts
+      // (بطل الاستوديو ثلاثي الأبعاد يُبنى بـthree.js من الحزمة نفسها — لا CDN خارجي)
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      // Inline styles are used extensively throughout the app
+      "style-src 'self' 'unsafe-inline'",
+      // Images from Supabase storage, data URIs, blobs (canvas games), and any HTTPS
+      "img-src 'self' data: blob: https:",
+      // Fonts self-hosted via next/font
+      "font-src 'self' data:",
+      // API connections: Supabase + Vercel Blob (تسجيلات صوت النطق
+      // في التقييم — تُشغَّل داخل درج تفاصيل التقييم بلوحة bogga) — AI/TTS
+      // keys are server-side, never called from the browser
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co " +
+        "https://*.public.blob.vercel-storage.com",
+      "worker-src blob: 'self'",
+      // Audio/video from Supabase storage and blobs (Web Audio API)
+      "media-src 'self' blob: https:",
+      // Allow iframes from same origin + the assessment app (embedded in /assessment)
+      "frame-src 'self' https://assessment.aarem.net",
+      // Prevent this page from being embedded elsewhere
+      "frame-ancestors 'self'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; '),
+  },
+];
 
 const nextConfig = {
+  // نسخة هذه النشرة داخل كود المتصفح — تُقارَن بـ/api/version لاكتشاف نشرة أحدث
+  env: { NEXT_PUBLIC_BUILD_SHA: process.env.VERCEL_GIT_COMMIT_SHA || '' },
+
   images: {
-    remotePatterns: [],
+    // Serve modern formats: AVIF first (40% smaller), WebP fallback
+    formats: ['image/avif', 'image/webp'],
+    // Cache optimized images for 30 days
+    minimumCacheTTL: 2592000,
+    remotePatterns: [
+      // Allow images from Supabase storage
+      { protocol: 'https', hostname: '*.supabase.co' },
+      { protocol: 'https', hostname: '*.supabase.in' },
+      // Google OAuth profile pictures
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+    ],
   },
+
+  async headers() {
+    return [
+      {
+        // Apply security headers to all routes
+        source: '/(.*)',
+        headers: SECURITY_HEADERS,
+      },
+    ];
+  },
+
+  // صفحة المعاينة صارت هي الصفحة الرئيسية (2026-10-16) — الرابط القديم يقود إليها
+  async redirects() {
+    return [{ source: '/landing-v2', destination: '/', permanent: true }];
+  },
+
   async rewrites() {
     return [
       // Proxy the assessment SPA and all its static assets

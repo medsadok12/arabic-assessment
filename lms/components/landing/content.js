@@ -1,0 +1,194 @@
+/* ════════════════════════════════════════════════════════════════
+   نصوص الصفحة الرئيسية (components/landing/LandingPage.jsx).
+   الأقسام المشتركة مع بقية الموقع (عنوان البداية، الأسعار، الأسئلة الشائعة،
+   التذييل) تبقى من translations/index.js؛ هنا نصوص أقسام الصفحة الخاصة بها.
+   قاعدة الأستاذ محمد: ميزات موجودة فعلاً، بلا أرقام ولا ادعاءات.
+════════════════════════════════════════════════════════════════ */
+
+export const V2_CONTENT = {
+  ar: {
+    trust: [
+      'بيئة آمنة وخالية تماماً من الإعلانات',
+      'تغطية شاملة لمهارات اللغة العربية',
+      'يعمل مباشرة عبر المتصفح على جميع الأجهزة',
+    ],
+    features: [
+      { title: 'تقييم تشخيصي شامل',     desc: 'قياس المهارات الأساسية (الاستماع، القراءة، القواعد، النطق، والمفردات) لتقديم صورة دقيقة عن مستوى الطالب.' },
+      { title: 'مكتبة قصصية تفاعلية',    desc: 'قصص مصورة ومسموعة بأسلوب شائق لتنمية مهارات القراءة والاستماع والفهم.' },
+      { title: 'ألعاب تعليمية ممتعة',    desc: 'ألعاب تفاعلية هادفة لترسيخ الحروف والمفردات والمفاهيم الأساسية عبر التعلم باللعب.' },
+      { title: 'تقارير تفصيلية (PDF)',   desc: 'تقارير فورية توضح النتيجة الإجمالية ونسبة الإتقان في كل مهارة لمتابعة ولي الأمر والمعلم.' },
+      { title: 'تحديد المستوى الفعلي',   desc: 'توجيه الطالب إلى المسار والمحتوى المناسبين لقدراته الحالية بناءً على نتائج التقييم.' },
+      { title: 'تغطية المهارات اللغوية', desc: 'العناية بجوانب الفهم القرائي والسمعي، التعبير الشفوي، والتطبيق النحوي لبناء لغوي متكامل.' },
+      { title: 'واجهة سهلة وسريعة',      desc: 'تجربة استخدام مرنة وبسيطة تمكّن الطالب والمعلم من التنقل وإجراء التقييمات بكل سهولة.' },
+      { title: 'يعمل على جميع الأجهزة',  desc: 'تصميم متجاوب يعمل بسلاسة على الحاسوب، الأجهزة اللوحية، والهواتف الذكية.' },
+      { title: 'بيئة آمنة وخاصة',        desc: 'حماية كاملة لبيانات الطلاب وتأمين حساباتهم لضمان بيئة تعلم آمنة وموثوقة.' },
+    ],
+    howTitle: 'كيف تعمل المنصة؟',
+    howSub: 'رحلة طفلك في ثلاث خطوات واضحة',
+    steps: [
+      { title: 'تقييم تشخيصي ذكي',   desc: 'أجرِ اختباراً تفاعلياً ممتعاً يحدد مستوى طفلك اللغوي في دقائق.' },
+      { title: 'تقرير وخطة مخصصة',   desc: 'احصل على تقرير PDF تفصيلي يبرز نقاط القوة والاحتياجات التعليمية.' },
+      { title: 'تعلّم ومرح مستمر',   desc: 'انطلق في رحلة التعلم عبر مكتبة القصص والألعاب التعليمية المتناسبة مع مستواه.' },
+    ],
+    stepLabel: 'الخطوة',
+    howCta: 'ابدأ الخطوة الأولى — مجاناً',
+    showTitle: 'معاينة من داخل المنصة',
+    showSub: 'جرّب بنفسك قبل التسجيل: قصة حقيقية، لعبتان تفاعليتان، ونموذج من التقرير',
+    story: {
+      tag: '📖 قصة تفاعلية',
+      caption: 'قصص مصورة بصوت حقيقي، يقرؤها الطفل ويستمع إليها صفحةً صفحة.',
+      listen: '🔊 استمع', pause: '⏸ إيقاف مؤقت',
+      readAll: 'اقرأ القصة كاملة ←',
+      heroBadge: 'بطلها فَهيم',
+      fallbackTitle: 'قِطَّتِي الصَّغِيرَة',
+      fallbackText: 'عِنْدِي قِطَّةٌ صَغِيرَةٌ،\nتُحِبُّ اللَّعِبَ مَعِي.',
+    },
+    game: {
+      tag: '🎮 لعبة تعليمية',
+      caption: 'من لعبة «صيّاد الحروف»: اختر الحرف الناقص، واسمع الكلمة حين تكتمل.',
+      prompt: 'ما الحرف الناقص؟',
+      right: '✅ أحسنت! 🎉', wrong: 'قريب! جرّب حرفاً آخر 💪',
+      replay: '🔊 اسمع الكلمة', next: 'التالي ←', finish: '🏁 النتيجة',
+      doneTitle: 'أحسنت!',
+      doneMsg: ['لا تيأس! المحاولة مفتاح النجاح 🌟', 'جيد! تستطيع أن تتحسن أكثر 💪', 'ممتاز! أنت صياد حروف بارع 🏆'],
+      again: '🔄 العب مرة أخرى',
+    },
+    wheel: {
+      tag: '🎡 لعبة تعليمية',
+      caption: 'من لعبة «عجلة الكلمات»: كوّن كلمات من حروف العجلة، والحرف الأوسط في كل كلمة.',
+      title: 'عجلة الكلمات',
+      goal: 'اكتشف {n} كلمات',
+      placeholder: 'اضغط على الحروف…',
+      del: '⌫ حذف', confirm: 'تأكيد ✓', clear: 'مسح ✕',
+      hint: '💡 تلميح', hintText: 'جرّب كلمة تبدأ هكذا:',
+      short: 'الكلمة تحتاج 3 حروف على الأقل 💪',
+      needCenter: 'تذكّر: الحرف «{c}» في كل كلمة 😉',
+      notInList: 'قريب! جرّب كلمة أخرى 💡',
+      dup: 'وجدتها من قبل! ابحث عن غيرها 🔍',
+      good: '+{p} — ممتاز! ✨',
+      doneTitle: 'أحسنت! اكتشفت {n} كلمات',
+      doneMore: 'في العجلة كلمات أخرى تنتظرك داخل المنصة',
+      points: 'مجموع نقاطك',
+      again: '🔄 عجلة أخرى',
+    },
+    report: {
+      tag: '📄 تقرير PDF',
+      caption: 'شكل التقرير الذي يصل بعد التقييم: النتيجة، المستوى، ونسبة الإتقان في كل مهارة.',
+      sample: 'نموذج توضيحي — البيانات افتراضية',
+      header: 'عارم أكاديمي — تقرير التقييم',
+      student: 'الطالب: (مثال)',
+      grade: 'جيد جداً', level: 'المستوى: متوسط 📚',
+      skillsTitle: 'تفاصيل المهارات',
+      recTitle: 'التوصيات',
+      rec: 'أداء جيد في المستوى متوسط. يُنصح بمراجعة بعض المهارات مع التركيز على: الكتابة والتعبير.',
+    },
+    fab: { wa: 'تواصل معنا عبر واتساب', sup: 'راسل المرشد' },
+  },
+
+  en: {
+    trust: [
+      'A safe environment, completely ad-free',
+      'Full coverage of Arabic language skills',
+      'Works right in the browser on every device',
+    ],
+    features: [
+      { title: 'Comprehensive Diagnostic Assessment', desc: 'Measures core skills (listening, reading, grammar, pronunciation, and vocabulary) to give an accurate picture of the student\'s level.' },
+      { title: 'Interactive Story Library',  desc: 'Illustrated, narrated stories told in an engaging way to build reading, listening, and comprehension.' },
+      { title: 'Fun Learning Games',         desc: 'Purposeful interactive games that reinforce letters, vocabulary, and core concepts through learning by play.' },
+      { title: 'Detailed Reports (PDF)',     desc: 'Instant reports showing the overall result and the mastery level in each skill for parents and teachers.' },
+      { title: 'Finding the Right Level',    desc: 'Guides the student to the path and content that suit their current abilities, based on the assessment results.' },
+      { title: 'Covering Language Skills',   desc: 'Attention to reading and listening comprehension, oral expression, and applied grammar for well-rounded language development.' },
+      { title: 'Simple, Fast Interface',     desc: 'A flexible, simple experience that lets students and teachers navigate and run assessments with ease.' },
+      { title: 'Works on All Devices',       desc: 'Responsive design that runs smoothly on computers, tablets, and smartphones.' },
+      { title: 'Safe & Private Environment', desc: 'Full protection of student data and secure accounts for a safe, trustworthy learning environment.' },
+    ],
+    howTitle: 'How Does It Work?',
+    howSub: 'Your child\'s journey in three clear steps',
+    steps: [
+      { title: 'Smart Diagnostic Assessment', desc: 'Take a fun, interactive test that identifies your child\'s language level in minutes.' },
+      { title: 'Report & Personal Plan',      desc: 'Get a detailed PDF report highlighting strengths and learning needs.' },
+      { title: 'Ongoing Learning & Fun',      desc: 'Start learning through the story library and educational games suited to their level.' },
+    ],
+    stepLabel: 'Step',
+    howCta: 'Start the first step — Free',
+    showTitle: 'A Look Inside the Platform',
+    showSub: 'Try it yourself before signing up: a real story, two interactive games, and a sample report',
+    story: {
+      tag: '📖 Interactive story',
+      caption: 'Illustrated stories with real narration that children read and listen to, page by page.',
+      listen: '🔊 Listen', pause: '⏸ Pause',
+      readAll: 'Read the full story →',
+      heroBadge: 'Starring Faheem',
+      fallbackTitle: 'قِطَّتِي الصَّغِيرَة',
+      fallbackText: 'عِنْدِي قِطَّةٌ صَغِيرَةٌ،\nتُحِبُّ اللَّعِبَ مَعِي.',
+    },
+    game: {
+      tag: '🎮 Learning game',
+      caption: 'From the "Letter Catcher" game: pick the missing letter, then hear the word once it\'s complete.',
+      prompt: 'Which letter is missing?',
+      right: '✅ Well done! 🎉', wrong: 'Close! Try another letter 💪',
+      replay: '🔊 Hear the word', next: 'Next →', finish: '🏁 Results',
+      doneTitle: 'Well done!',
+      doneMsg: ['Keep going! Practice is the key 🌟', 'Good! You can do even better 💪', 'Excellent! You\'re a letter-catching pro 🏆'],
+      again: '🔄 Play again',
+    },
+    wheel: {
+      tag: '🎡 Learning game',
+      caption: 'From the "Word Wheel" game: build words from the wheel\'s letters — the middle letter goes in every word.',
+      title: 'عجلة الكلمات',
+      goal: 'Find {n} words',
+      placeholder: 'Tap the letters…',
+      del: '⌫ Delete', confirm: 'Check ✓', clear: 'Clear ✕',
+      hint: '💡 Hint', hintText: 'Try a word that starts like this:',
+      short: 'A word needs at least 3 letters 💪',
+      needCenter: 'Remember: the letter «{c}» goes in every word 😉',
+      notInList: 'Close! Try another word 💡',
+      dup: 'You found that one already! Look for another 🔍',
+      good: '+{p} — Excellent! ✨',
+      doneTitle: 'Well done! You found {n} words',
+      doneMore: 'More words in this wheel are waiting inside the platform',
+      points: 'Your points',
+      again: '🔄 Another wheel',
+    },
+    report: {
+      tag: '📄 PDF report',
+      caption: 'What the report looks like after the assessment: the result, the level, and mastery in each skill.',
+      sample: 'Illustrative sample — made-up data',
+      header: 'عارم أكاديمي — تقرير التقييم',
+      student: 'الطالب: (مثال)',
+      grade: 'جيد جداً', level: 'المستوى: متوسط 📚',
+      skillsTitle: 'تفاصيل المهارات',
+      recTitle: 'التوصيات',
+      rec: 'أداء جيد في المستوى متوسط. يُنصح بمراجعة بعض المهارات مع التركيز على: الكتابة والتعبير.',
+    },
+    fab: { wa: 'Contact us on WhatsApp', sup: 'Message the advisor' },
+  },
+};
+
+/* إضافات قسم الأسئلة الشائعة ومساعد فهيم في المعاينة — بالعربية دائماً
+   مثل بقية أسئلة SmartFAQ */
+export const V2_FAQ_EXTRA = [
+  {
+    q: 'هل التقييم التشخيصي مجاني بالكامل؟',
+    a: 'نعم، يمكن لطفلك إجراء التقييم الأول مجاناً والحصول على التقرير التفصيلي فوراً دون أي التزام.',
+  },
+];
+export const V2_FAQ_MOBILE_PLACEHOLDER = 'مثال: كيف أبدأ التقييم؟';
+
+/* نموذج التقرير: نفس المهارات الخمس وأسمائها كما في التقرير الحقيقي
+   (SKILLS في src/data/questions.js) ونفس ألوان أشرطته — أرقام توضيحية فقط */
+export const SAMPLE_REPORT_SKILLS = [
+  { name: 'الاستماع والفهم السمعي', pct: 85 },
+  { name: 'المفردات والمعاني',       pct: 80 },
+  { name: 'القراءة والفهم',          pct: 76 },
+  { name: 'القواعد النحوية',         pct: 72 },
+  { name: 'الكتابة والتعبير',        pct: 62 },
+];
+
+/* كلمات احتياطية للعبة المعاينة — تظهر فقط إن تعذّر جلب كلمات اللعبة الحقيقية
+   (lib/game-preview.js). بلا تسجيل صوتي: تُنطق بصوت الجهاز كما في اللعبة. */
+export const SAMPLE_GAME_WORDS = [
+  { word: 'ف_ل', missing: 'ي', options: ['ب', 'ي', 'ن'], emoji: '🐘', image: null, audio: null },
+  { word: 'ق_ر', missing: 'م', options: ['م', 'ك', 'ت'], emoji: '🌙', image: null, audio: null },
+  { word: 'ق_م', missing: 'ل', options: ['ف', 'ج', 'ل'], emoji: '✏️', image: null, audio: null },
+];

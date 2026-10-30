@@ -1,0 +1,62 @@
+import { beforeEach,describe,it,expect,vi } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import {freshSentences,SENTENCE_ID} from './sentence-builder';
+const db=vi.hoisted(()=>({tables:{},user:null,child:null,fail:null,seq:0}));
+vi.mock('./supabase-server',()=>({createClient:()=>({auth:{getUser:async()=>({data:{user:db.user}})}})}));
+vi.mock('./active-child',()=>({resolveActiveIdentity:async u=>({effectiveUserId:db.child||u.id})}));
+vi.mock('./supabase-admin',()=>{
+ class Q{
+ constructor(t){this.t=t;this.filters=[];this.op='read';this.one=false;}
+ select(){return this}eq(k,v){this.filters.push(r=>{const [field,json]=k.split('->>');return String(json?r[field]?.[json]:r[k])===String(v)});return this}maybeSingle(){this.one=true;return this}single(){this.one=true;return this}
+ insert(p){this.op='insert';this.p=p;return this}update(p){this.op='update';this.p=p;return this}delete(){this.op='delete';return this}
+ then(ok,fail){return Promise.resolve().then(()=>{if(db.fail===`${this.t}:${this.op}`)return{data:null,error:{code:'FAILED'}};let rows=db.tables[this.t]||=[];let matches=rows.filter(r=>this.filters.every(f=>f(r)));if(this.op==='insert'){const key=this.t==='game_settings'?'game_id':this.t==='user_points'?'user_id':null;if(key&&rows.some(r=>r[key]===this.p[key]))return{data:null,error:{code:'23505'}};const r={id:String(++db.seq),...structuredClone(this.p)};rows.push(r);matches=[r]}else if(this.op==='update')matches.forEach(r=>Object.assign(r,structuredClone(this.p)));else if(this.op==='delete')db.tables[this.t]=rows.filter(r=>!matches.includes(r));return{data:structuredClone(this.one?matches[0]||null:matches),error:null}}).then(ok,fail)}
+ }
+ return{createAdminClient:()=>({from:t=>new Q(t)})};
+});
+const configApi=await import('../app/api/games/sentence-builder/route');
+const gameApi=await import('../app/api/games/sentence-builder/session/route');
+const request=(body,method='POST',suffix='')=>new Request('https://www.aarem.net/api/games/sentence-builder'+suffix,{method,body:body===null?undefined:JSON.stringify(body)});
+async function call(body,api=gameApi,method='POST',suffix=''){const r=await api[method](request(body,method,suffix));return {status:r.status,body:await r.json(),headers:r.headers}}
+const student='11111111-1111-4111-8111-111111111111';
+const teacher='22222222-2222-4222-8222-222222222222';
+beforeEach(()=>{db.user={id:student,app_metadata:{role:'student'}};db.child=null;db.fail=null;db.seq=0;db.tables={game_settings:[],user_points:[{user_id:student,total:40}],points_log:[],game_results:[]}});
+const start=async()=>{const r=await call({action:'start'});expect(r.status).toBe(200);return r.body};
+const answer=(s,slots=[1,2])=>({action:'answer',sessionId:s.sessionId,requestId:randomUUID(),slots});
+const hint=(s,slots=[])=>({action:'hint',sessionId:s.sessionId,slots,expectedCost:5});
+const balance=()=>db.tables.user_points.find(x=>x.user_id===(db.child||student))?.total;
+function publishConfig(config){const row=db.tables.game_settings.find(r=>r.game_id===SENTENCE_ID);if(row)row.settings=config;else db.tables.game_settings.push({game_id:SENTENCE_ID,settings:config,updated_at:'2026-10-29T10:00:00Z'})}
+describe('صلاحيات التدريب وحفظه',()=>{
+ it('يحجب غير المسجل والدور المزيف والموقوف وتحرير الطالب',async()=>{db.user=null;expect((await call(null,configApi,'GET')).status).toBe(401);db.user={id:student,user_metadata:{role:'admin'}};expect((await call(null,configApi,'GET')).status).toBe(401);db.user={id:student,app_metadata:{role:'student',status:'suspended'}};expect((await call(null,configApi,'GET')).status).toBe(401);db.user={id:student,app_metadata:{role:'student'}};expect((await call(null,configApi,'GET','?manage=1')).status).toBe(403);expect((await call({config:freshSentences()},configApi,'PUT')).status).toBe(403)});
+ it('قراءة حيّة لا تعرض الحلول للطالب',async()=>{const r=await call(null,configApi,'GET');expect(r.headers.get('cache-control')).toContain('no-store');expect(r.body.config.lessons).toBeUndefined();const s=await start();expect(s.question.words).toBeUndefined();expect(s.points).toBe(40)});
+ it('مسودات خاصة ونشر مشروط يمنع الكتابة فوق تعديل زميل',async()=>{db.user={id:teacher,app_metadata:{role:'teacher'}};const c=freshSentences();c.title='جمل جديدة';let draft=await call({config:c,action:'draft',version:null,draftVersion:null},configApi,'PUT');expect(draft.status).toBe(200);expect((await call(null,configApi,'GET')).body.config.title).not.toBe(c.title);expect((await call(null,configApi,'GET','?manage=1')).body.config.title).toBe(c.title);expect((await call({...draft.body,action:'publish'},configApi,'PUT')).status).toBe(200);expect((await call({config:c,action:'publish',version:null,draftVersion:null},configApi,'PUT')).status).toBe(409)});
+ it('معاينة الطاقم لا تغيّر نقاطًا أو نتائج',async()=>{db.user={id:teacher,app_metadata:{role:'teacher'}};expect((await call({action:'start'})).status).toBe(403);expect(db.tables.points_log).toHaveLength(0);expect(db.tables.game_settings).toHaveLength(0)});
+ it('التعطيل والأخطاء لا يعيدان محتوى افتراضيًا يتجاوز المعلم',async()=>{const c=freshSentences();c.enabled=false;publishConfig(c);expect((await call({action:'start'})).status).toBe(409);db.fail='game_settings:read';expect((await call(null,configApi,'GET')).status).toBe(503)});
+});
+describe('الرصيد والتدرج والمساعدة',()=>{
+ it('لا يكافئ الخطأ ويتحقق من البطاقات على الخادم',async()=>{const s=await start();expect((await call(answer(s,[1,1]))).status).toBe(400);expect((await call(answer(s,[2,1]))).body.right).toBe(false);expect(balance()).toBe(40);const r=await call({...answer(s),reward:5000});expect(r.body.right).toBe(true);expect(r.body.reward).toBe(3);expect(balance()).toBe(43);expect(r.body.sentence).toBe('هٰذَا كِتَابِي.');expect((await start()).question.id).toBe('cat')});
+ it('لا يكرر المنح مع إعادة الطلب أو الطلبات المتزامنة',async()=>{const s=await start(),body=answer(s);await Promise.all([call(body),call(body)]);await call(body);expect(balance()).toBe(43);expect(db.tables.points_log).toHaveLength(1);expect((await call({...body,slots:[2,1]})).status).toBe(409)});
+ it('يخصم المساعدة مرة ويستعمل السعر المنشور ويمنع نقص الرصيد',async()=>{const s=await start();const h=hint(s);expect((await call(h)).body.slots).toEqual([1]);expect(balance()).toBe(35);await call(h);expect(balance()).toBe(35);const c=freshSentences();c.settings.helpCost=9;publishConfig(c);expect((await call({...hint(s,[1]),expectedCost:5})).body.state).toBe('cost_changed');expect(balance()).toBe(35);expect((await call({...hint(s,[1]),expectedCost:9})).body.slots).toEqual([1,2]);expect(balance()).toBe(26)});
+ it('نقص الرصيد لا يحجز المساعدة وتعمل بعد اكتساب نقاط',async()=>{const s=await start();db.tables.user_points[0].total=0;expect((await call(hint(s))).body.state).toBe('insufficient');db.tables.user_points[0].total=10;expect((await call(hint(s))).body.state).toBe('done');expect(balance()).toBe(5)});
+ it('يحفظ المستوى ويعزل الإخوة والجلسات',async()=>{const a='33333333-3333-4333-8333-333333333333',b='44444444-4444-4444-8444-444444444444';db.child=a;db.tables.user_points.push({user_id:a,total:20},{user_id:b,total:60});const s=await start();await call(answer(s));expect(balance()).toBe(23);db.child=b;expect((await start()).question.id).toBe('book');expect((await call(answer(s))).status).toBe(409);expect(balance()).toBe(60)});
+ it('يتحقق من تعديل الجملة ويحافظ على التقدم عند تبديل صورتها',async()=>{let s=await start();const c=freshSentences();c.lessons[0].image_url='/new.webp';publishConfig(c);await call(answer(s));expect((await start()).question.id).toBe('cat');c.lessons[0].words.reverse();publishConfig(c);s=await start();expect(s.question.id).toBe('book');expect((await call(answer(s,[2,1]))).body.right).toBe(true)});
+ it('لا ينهي التدريب قبل آخر جملة ويحفظ نتيجة واحدة',async()=>{const c=freshSentences();c.lessons=c.lessons.slice(0,2);publishConfig(c);let s=await start();await call(answer(s));s=await start();await call(answer(s,[3,0]));expect((await start()).finished).toBe(true);expect(db.tables.game_results).toHaveLength(1);expect(balance()).toBe(46)});
+ it('إعادة التقدم للمعلم وحده ولا تمس الرصيد أو ألعابًا أخرى',async()=>{let s=await start();await call(answer(s));expect((await call({action:'reset',userId:student})).status).toBe(403);db.user={id:teacher,app_metadata:{role:'teacher'}};expect((await call({action:'reset',userId:student})).status).toBe(200);db.user={id:student,app_metadata:{role:'student'}};expect(balance()).toBe(43);s=await start();expect(s.question.id).toBe('book');await call(answer(s));expect(balance()).toBe(46)});
+ it('فشل الكتابة لا يمنح مساعدة مجانية أو رصيدًا سالبًا',async()=>{const s=await start();db.fail='user_points:update';expect((await call(hint(s))).status).toBe(409);expect(balance()).toBe(40);db.fail=null;expect((await call(hint(s))).body.state).toBe('done');expect(balance()).toBe(35)});
+ it('يستأنف نقاط إجابة صحيحة بعد تعطل قاعدة البيانات وإعادة فتح الصفحة',async()=>{const s=await start();db.fail='user_points:update';expect((await call(answer(s))).status).toBe(409);expect(balance()).toBe(40);db.fail=null;expect((await start()).question.id).toBe('cat');expect(balance()).toBe(43);await start();expect(balance()).toBe(43)});
+});
+describe('«العب مجدداً» — جولة مراجعة بعد إكمال كل الجمل',()=>{
+ const two=()=>{const c=freshSentences();c.lessons=c.lessons.slice(0,2);publishConfig(c);return c};
+ const finishAll=async()=>{let s=await start();await call(answer(s));s=await start();await call(answer(s,[3,0]));return start()};
+ it('بعد الإكمال تبدأ المراجعة من أول جملة دون نقاط جديدة ولا نتيجة مكررة، ويمكن تكرارها',async()=>{two();expect((await finishAll()).finished).toBe(true);expect(balance()).toBe(46);
+  let s=(await call({action:'replay'})).body;expect(s.finished).toBe(false);expect(s.review).toBe(true);expect(s.question.id).toBe('book');expect(s.question.words).toBeUndefined();
+  const r=await call(answer(s));expect(r.body.right).toBe(true);expect(r.body.review).toBe(true);expect(r.body.reward).toBe(0);expect(r.body.sentence).toBe('هٰذَا كِتَابِي.');expect(balance()).toBe(46);
+  s=await start();expect(s.review).toBe(true);expect(s.question.id).toBe('cat');expect((await call(answer(s,[0,3]))).body.right).toBe(false);await call(answer(s,[3,0]));
+  expect((await start()).finished).toBe(true);expect(balance()).toBe(46);expect(db.tables.points_log).toHaveLength(2);expect(db.tables.game_results).toHaveLength(1);
+  const again=(await call({action:'replay'})).body;expect(again.review).toBe(true);expect(again.question.id).toBe('book')});
+ it('المساعدة مجانية في المراجعة والتقدم الأصلي لا يُمس',async()=>{two();await finishAll();const s=(await call({action:'replay'})).body;const h=await call(hint(s));expect(h.body.state).toBe('done');expect(h.body.slots).toEqual([1]);expect(balance()).toBe(46);
+  const row=db.tables.game_settings.find(r=>r.game_id.startsWith(SENTENCE_ID+':progress:'));expect(row.settings.completed).toHaveLength(2)});
+ it('الإعادة قبل الإكمال تتابع الجولة العادية بنقاطها',async()=>{const s=(await call({action:'replay'})).body;expect(s.review).toBe(false);expect(s.question.id).toBe('book');expect((await call(answer(s))).body.reward).toBe(3);expect(balance()).toBe(43)});
+ it('جملة جديدة يضيفها المعلم أثناء المراجعة تعود بالطفل للمسار العادي ونقاطه',async()=>{const c=two();await finishAll();await call({action:'replay'});c.lessons=freshSentences().lessons.slice(0,3);publishConfig(c);
+  const s=await start();expect(s.review).toBe(false);expect(s.question.id).toBe('read');expect((await call(answer(s,[2,0]))).body.reward).toBe(3);expect(balance()).toBe(49)});
+ it('تكرار الإجابة نفسها في المراجعة لا يمنح شيئًا',async()=>{two();await finishAll();const s=(await call({action:'replay'})).body,body=answer(s);await Promise.all([call(body),call(body)]);await call(body);expect(balance()).toBe(46);expect(db.tables.points_log).toHaveLength(2)});
+});

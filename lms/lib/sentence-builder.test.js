@@ -1,0 +1,10 @@
+import {describe,it,expect} from 'vitest';
+import {freshSentences,validateSentences,sentenceHint,sentenceRight,sentenceSlots,publicSentence,sentenceStamp} from './sentence-builder';
+describe('تدريب بناء الجملة',()=>{
+ it('محتوى متدرج صحيح بعلامة سؤال عربية',()=>{const c=freshSentences();expect(validateSentences(c).config.lessons).toHaveLength(6);expect(c.lessons.at(-1).end).toBe('؟');expect(c.lessons.map(x=>x.level)).toEqual([1,1,2,2,3,3])});
+ it('لا يقبل كلمات غير موجودة أو استعمال البطاقة نفسها مرتين',()=>{const l=freshSentences().lessons[0];expect(sentenceSlots(l,[1,1])).toBe(false);expect(sentenceRight(l,[1,2])).toBe(true);expect(sentenceRight(l,[2,1])).toBe(false);expect(sentenceSlots(l,[1,999])).toBe(false)});
+ it('يصحح الترتيب الخاطئ بمساعدة كلمة واحدة ويحافظ على الصحيح',()=>{const l=freshSentences().lessons[0];expect(sentenceHint(l,[0])).toEqual({position:0,slots:[1]});expect(sentenceHint(l,[1])).toEqual({position:1,slots:[1,2]});expect(sentenceHint(l,[1,2])).toBeNull();expect(sentenceHint(l,[1],'first')).toBeNull();expect(sentenceHint(l,[],'off')).toBeNull()});
+ it('يدعم الكلمات المكررة ببطاقات مستقلة',()=>{const c=freshSentences();c.lessons[0].words=['فِي','فِي'];c.lessons[0].bank=['فِي'];expect(validateSentences(c).error).toBeTruthy();c.lessons[0].bank.push('فِي');expect(validateSentences(c).error).toBeUndefined();expect(sentenceHint(c.lessons[0],[0]).slots).toEqual([0,1])});
+ it('يرفض النقاط السالبة والمحتوى والروابط غير الآمنة',()=>{const c=freshSentences();c.settings.helpCost=-1;expect(validateSentences(c).error).toBeTruthy();c.settings.helpCost=5;c.lessons[0].image_url='javascript:alert(1)';expect(validateSentences(c).error).toBeTruthy();c.lessons[0].image_url='data:image/png;base64,xx';expect(validateSentences(c).error).toBeTruthy()});
+ it('لا يرسل الحل للطفل ولا يعيد التقدم عند تغيير صورة أو صوت',()=>{const l=freshSentences().lessons[0];expect(publicSentence(l).words).toBeUndefined();const stamp=sentenceStamp(l);l.image_url='/changed.webp';l.audio_url='/voice.mp3';expect(sentenceStamp(l)).toBe(stamp);l.words.reverse();expect(sentenceStamp(l)).not.toBe(stamp)});
+});

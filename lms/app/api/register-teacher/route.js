@@ -1,6 +1,16 @@
-import { createAdminClient } from '../../../lib/supabase-admin';
+import { createAdminClient }      from '../../../lib/supabase-admin';
+import { notify }                from '../../../lib/notify';
+import { getClientIP, ipRateCheck } from '../../../lib/ip-rate-check';
 
 export async function POST(request) {
+  const ip = getClientIP(request);
+  if (!await ipRateCheck(ip, 'rl:register-teacher', 3, 5)) {
+    return Response.json(
+      { error: 'عدد الطلبات تجاوز الحد المسموح. يرجى المحاولة بعد دقيقة.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
   let body;
   try { body = await request.json(); }
   catch { return Response.json({ error: 'طلب غير صالح' }, { status: 400 }); }
@@ -32,7 +42,8 @@ export async function POST(request) {
   const { data: created, error: signupErr } = await supabase.auth.admin.createUser({
     email,
     password,
-    user_metadata: { full_name: name, role: 'teacher' },
+    user_metadata: { full_name: name },
+    app_metadata:  { role: 'teacher' },
     email_confirm: true,
   });
 
@@ -54,6 +65,8 @@ export async function POST(request) {
     .from('teacher_invitation_codes')
     .update({ used_by: created.user.id, used_by_name: name, used_at: new Date().toISOString() })
     .eq('id', claimed.id);
+
+  await notify('teacher', '👨‍🏫 معلم جديد سجّل حساباً', `${name} — ${email}`, { name, email });
 
   return Response.json({ success: true });
 }

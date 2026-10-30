@@ -1,8 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient }          from '@supabase/supabase-js';
+import { notify }                from '../../../../lib/notify';
+import { getClientIP, ipRateCheck } from '../../../../lib/ip-rate-check';
+import { loadSignupCodes } from '../../../../lib/signup-codes';
 export const dynamic = 'force-dynamic';
 
 const CORS = {
-  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Origin':  'https://assessment.aarem.net',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
@@ -18,6 +21,14 @@ export async function OPTIONS() {
 }
 
 export async function POST(request) {
+  const ip = getClientIP(request);
+  if (!await ipRateCheck(ip, 'rl:code-validate', 10, 50)) {
+    return Response.json(
+      { valid: false, error: 'عدد المحاولات تجاوز الحد المسموح. يرجى الانتظار دقيقة قبل المحاولة مجدداً.' },
+      { status: 429, headers: { ...CORS, 'Retry-After': '60' } }
+    );
+  }
+
   let body;
   try { body = await request.json(); } catch {
     return Response.json({ valid: false, error: 'طلب غير صالح' }, { status: 400, headers: CORS });
@@ -26,11 +37,17 @@ export async function POST(request) {
   const code = body.code?.trim().toUpperCase();
   const name = body.name?.trim() || null;
 
-  if (!code) {
-    return Response.json({ valid: false, error: 'الكود مطلوب' }, { status: 400, headers: CORS });
-  }
-
   const supabase = getClient();
+
+  if (!code) {
+    // كود التقييم مخفي من لوحة bogga ← يبدأ الطالب بلا كود، ويبقى إشعار المشرف
+    const { assessment_code_required } = await loadSignupCodes(supabase);
+    if (assessment_code_required) {
+      return Response.json({ valid: false, need_code: true, error: 'الكود مطلوب' }, { status: 400, headers: CORS });
+    }
+    await notify('assessment', '📝 طالب بدأ تقييماً', name ? `الطالب: ${name} (بلا كود)` : 'بلا كود', { code: null, name });
+    return Response.json({ valid: true, code_required: false }, { status: 200, headers: CORS });
+  }
 
   const { data, error } = await supabase
     .from('assessment_codes')
@@ -56,6 +73,8 @@ export async function POST(request) {
     .from('assessment_codes')
     .update({ is_used: true, used_at: new Date().toISOString(), used_by_name: name })
     .eq('id', data.id);
+
+  await notify('assessment', '📝 طالب بدأ تقييماً', name ? `الطالب: ${name}` : null, { code, name });
 
   return Response.json({ valid: true }, { status: 200, headers: CORS });
 }

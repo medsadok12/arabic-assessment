@@ -1,6 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
+import { createClient as createServerClient } from '../../../lib/supabase-server';
+import { getRole } from '../../../lib/auth-role';
 
 export const dynamic = 'force-dynamic';
+
+const ADMIN_ROLES = new Set(['admin', 'super_admin']);
+
+async function requireAdmin() {
+  const supabase = createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || !ADMIN_ROLES.has(getRole(user))) return null;
+  return user;
+}
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -43,6 +54,8 @@ function getClient() {
 }
 
 export async function POST() {
+  if (!await requireAdmin()) return Response.json({ error: 'غير مخول' }, { status: 403 });
+
   const supabase = getClient();
 
   for (let attempt = 0; attempt < 3; attempt++) {
