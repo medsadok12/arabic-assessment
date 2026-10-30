@@ -73,4 +73,30 @@
  .sb-board .sb-feedback{font-size:24px}
  .sb-board .sb-cta{min-height:68px;font-size:25px}
 }
+/* ═══ الجوال فقط: شاشة لعب كاملة ثابتة (طلب الأستاذ محمد 2026-10-30) ═══
+   يختفي شريطا الموقع أعلى الشاشة وأسفلها وأي نافذة عائمة، وتملأ اللعبة الشاشة بلا نزول، ويُخرج زر «✕ خروج» إلى المكتبة.
+   Game.jsx يضع html.sb-focus خارج معاينة المعلم؛ الحاسوب والآيباد (أعرض من 700px) لا يتأثران */
+.sb-exit{display:none}
+@media (max-width:700px){
+ html.sb-focus,html.sb-focus body{overflow:hidden;overscroll-behavior:none}
+ html.sb-focus .navbar,html.sb-focus .nav-bottom-bar{display:none!important}
+ html.sb-focus .sb-wrap{position:fixed;inset:0;z-index:2000000;margin:0;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);background:var(--sb-bg);display:flex;flex-direction:column}
+ html.sb-focus .sb-staff{margin:8px 12px 4px}
+ html.sb-focus .sb-app{flex:1;min-height:0;width:100%;max-width:none;border-radius:0;box-shadow:none;display:flex;flex-direction:column}
+ html.sb-focus .sb-loading,html.sb-focus .sb-finish{flex:1;display:flex;flex-direction:column;justify-content:center;overflow-y:auto}
+ html.sb-focus .sb-loading .sb-exit{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));inset-inline-start:16px}
+ html.sb-focus .sb-board .sb-main{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;padding:10px 16px 0}
+ html.sb-focus .sb-board .sb-side{flex:1 0 auto;display:flex;flex-direction:column}
+ html.sb-focus .sb-board .sb-dialogue{flex:1;justify-content:center}
+ html.sb-focus .sb-board .sb-play{flex:0 0 auto}
+ html.sb-focus .sb-top{margin-bottom:6px;gap:10px}
+ html.sb-focus .sb-exit{display:inline-flex;order:-1;align-items:center;justify-content:center;flex:0 0 auto;min-height:44px;padding:0 14px;border-radius:12px;background:#1a2b4a;color:#fff;font:700 16px var(--font-cairo),Tahoma,sans-serif;text-decoration:none;white-space:nowrap}
+ html.sb-focus .sb-sound{flex-basis:44px;width:44px;height:44px}
+ html.sb-focus .sb-wrap h1{font-size:21px;margin:0 0 2px}
+ html.sb-focus .sb-review{font-size:13.5px;padding:3px 12px;margin:2px auto 4px}
+ /* الصورة تكبر على الجوال الطويل وتصغر على القصير لتبقى الجملة والكلمات و«تحقّق» في الشاشة */
+ html.sb-focus .sb-picture{width:clamp(110px,calc(100vh - 520px),220px);height:clamp(110px,calc(100vh - 520px),220px);font-size:clamp(80px,calc((100vh - 520px) * .7),150px)}
+ html.sb-focus .sb-picture{width:clamp(110px,calc(100dvh - 520px),220px);height:clamp(110px,calc(100dvh - 520px),220px);font-size:clamp(80px,calc((100dvh - 520px) * .7),150px)}
+ html.sb-focus .sb-board .sb-action{flex:0 0 auto;padding:10px 16px 12px}
+}
 
