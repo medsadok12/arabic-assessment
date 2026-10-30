@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useLearningStreak } from '../../lib/use-learning-streak';
 import Link from 'next/link';
 
 /* ══════════════════════════════════════════════════════
@@ -30,22 +31,22 @@ const PTS_LEVELS = [
 ];
 
 const BADGES = [
-  { id: 'pts_100',   icon: '💫', name: '١٠٠ نقطة',     desc: 'جمعت أول ١٠٠ نقطة!',             cat: 'نقاط',   color: '#F59E0B' },
-  { id: 'pts_500',   icon: '⭐', name: '٥٠٠ نقطة',     desc: 'نجم صاعد! ٥٠٠ نقطة!',            cat: 'نقاط',   color: '#F59E0B' },
-  { id: 'pts_1000',  icon: '🌟', name: 'ألف نقطة',     desc: 'بلغت ١٠٠٠ نقطة!',                cat: 'نقاط',   color: '#F59E0B' },
-  { id: 'pts_3000',  icon: '🏆', name: 'بطل النقاط',   desc: '٣٠٠٠ نقطة! أنت أسطورة!',          cat: 'نقاط',   color: '#F59E0B' },
+  { id: 'pts_100',   icon: '💫', name: '100 نقطة',     desc: 'جمعت أول 100 نقطة!',             cat: 'نقاط',   color: '#F59E0B' },
+  { id: 'pts_500',   icon: '⭐', name: '500 نقطة',     desc: 'نجم صاعد! 500 نقطة!',            cat: 'نقاط',   color: '#F59E0B' },
+  { id: 'pts_1000',  icon: '🌟', name: 'ألف نقطة',     desc: 'بلغت 1000 نقطة!',                cat: 'نقاط',   color: '#F59E0B' },
+  { id: 'pts_3000',  icon: '🏆', name: 'بطل النقاط',   desc: '3000 نقطة! أنت أسطورة!',          cat: 'نقاط',   color: '#F59E0B' },
   { id: 'fc_first',  icon: '🃏', name: 'بداية الرحلة', desc: 'بدأت بطاقات الحفظ!',              cat: 'بطاقات', color: '#059669' },
-  { id: 'fc_10',     icon: '📖', name: '١٠ كلمات',     desc: 'حفظت ١٠ كلمات!',                 cat: 'بطاقات', color: '#059669' },
-  { id: 'fc_50',     icon: '📚', name: '٥٠ كلمة',      desc: 'حفظت ٥٠ كلمة! مميز!',            cat: 'بطاقات', color: '#059669' },
-  { id: 'fc_100',    icon: '🎓', name: 'مئة كلمة',     desc: 'حفظت ١٠٠ كلمة! رائع!',           cat: 'بطاقات', color: '#059669' },
-  { id: 'streak_3',  icon: '🔥', name: '٣ أيام',       desc: '٣ أيام متواصلة!',                 cat: 'انتظام', color: '#DC2626' },
+  { id: 'fc_10',     icon: '📖', name: '10 كلمات',     desc: 'حفظت 10 كلمات!',                 cat: 'بطاقات', color: '#059669' },
+  { id: 'fc_50',     icon: '📚', name: '50 كلمة',      desc: 'حفظت 50 كلمة! مميز!',            cat: 'بطاقات', color: '#059669' },
+  { id: 'fc_100',    icon: '🎓', name: 'مئة كلمة',     desc: 'حفظت 100 كلمة! رائع!',           cat: 'بطاقات', color: '#059669' },
+  { id: 'streak_3',  icon: '🔥', name: '3 أيام',       desc: '3 أيام متواصلة!',                 cat: 'انتظام', color: '#DC2626' },
   { id: 'streak_7',  icon: '💪', name: 'أسبوع كامل',   desc: 'أسبوع متواصل! واصل!',             cat: 'انتظام', color: '#DC2626' },
-  { id: 'streak_30', icon: '👑', name: 'شهر متواصل',   desc: 'بطل المثابرة! ٣٠ يوماً!',         cat: 'انتظام', color: '#DC2626' },
+  { id: 'streak_30', icon: '👑', name: 'شهر متواصل',   desc: 'بطل المثابرة! 30 يوماً!',         cat: 'انتظام', color: '#DC2626' },
   { id: 'act_1',     icon: '🌱', name: 'أول خطوة',     desc: 'أتممت نشاطاً!',                   cat: 'أنشطة',  color: '#6366F1' },
-  { id: 'act_5',     icon: '🎯', name: '٥ أنشطة',      desc: 'أتممت ٥ أنشطة مختلفة!',           cat: 'أنشطة',  color: '#6366F1' },
+  { id: 'act_5',     icon: '🎯', name: '5 أنشطة',      desc: 'أتممت 5 أنشطة مختلفة!',           cat: 'أنشطة',  color: '#6366F1' },
   { id: 'act_all',   icon: '🌈', name: 'مستكشف شامل',  desc: 'جربت جميع الأنشطة العشرة!',       cat: 'أنشطة',  color: '#6366F1' },
-  { id: 'acc_80',    icon: '🎖️', name: 'دقة عالية',    desc: 'دقة إجابات ٨٠٪ أو أكثر!',         cat: 'دقة',    color: '#0EA5E9' },
-  { id: 'acc_90',    icon: '💎', name: 'شبه مثالي',    desc: 'دقة إجابات ٩٠٪ أو أكثر!',         cat: 'دقة',    color: '#0EA5E9' },
+  { id: 'acc_80',    icon: '🎖️', name: 'دقة عالية',    desc: 'دقة إجابات 80٪ أو أكثر!',         cat: 'دقة',    color: '#0EA5E9' },
+  { id: 'acc_90',    icon: '💎', name: 'شبه مثالي',    desc: 'دقة إجابات 90٪ أو أكثر!',         cat: 'دقة',    color: '#0EA5E9' },
 ];
 
 const BADGE_CATS = [
@@ -165,17 +166,17 @@ function StreakCalendar({ days }) {
       {days.map((d, i) => (
         <div
           key={i}
-          title={d.date}
+          title={`${d.date}: ${d.frozen ? 'تجميد' : d.legacy ? 'سجل سابق' : d.active ? 'تعلّم' : 'دون نشاط'}`}
           style={{
             width: 28, height: 28, borderRadius: 7,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '.6rem', fontWeight: 800,
-            background: d.isToday ? '#6366f1' : d.active ? '#c7d2fe' : '#f1f5f9',
-            color: d.isToday ? 'white' : d.active ? '#4338ca' : '#cbd5e1',
+            background: d.frozen ? '#EEF4FF' : d.active ? '#c7d2fe' : '#f1f5f9',
+            color: d.active ? '#4338ca' : '#64748b',
             border: d.isToday ? '1.5px solid #4f46e5' : 'none',
           }}
         >
-          {d.isToday ? '●' : d.active ? '✓' : ''}
+          {d.frozen ? '🧊' : d.legacy ? '◌' : d.active ? '✓' : d.day}
         </div>
       ))}
     </div>
@@ -285,16 +286,19 @@ function CelebrationPopup({ item, onDismiss }) {
 export default function ProgressDashboard({
   totalPoints, earnedPoints, thisWeekTotal, lastWeekTotal,
   weeklyData, flashLevels, masteredCount, totalFlash,
-  accuracy, currentStreak, bestStreak, last21Days,
+  accuracy, currentStreak: initialStreak, bestStreak: initialBest, last21Days: initialDays,
+  learningDays: initialLearning = 0, legacyDays: initialLegacy = 0, attendanceUserId,
   completed, completedCount, totalActivities,
   recentLogs, gameAccuracy, gamesPlayedCount,
   puzzleCount, earnedBadgeIds = [], currentLevelIdx = 0, user,
 }) {
+  const attendance = useLearningStreak({ streak: initialStreak, best: initialBest, last_21: initialDays, total_learning_days: initialLearning, legacy_days: initialLegacy }, attendanceUserId);
+  const { streak: currentStreak, best: bestStreak, last_21: last21Days, total_learning_days: learningDays, legacy_days: legacyDays } = attendance;
   const fullName = user?.user_metadata?.full_name ?? '';
   const [celebQueue, setCelebQueue] = useState([]);
 
   useEffect(() => {
-    const uid = user?.id;
+    const uid = attendanceUserId || user?.id;
     if (!uid) return;
     const seenBadgesKey = `arem_badges_${uid}`;
     const seenLevelKey  = `arem_level_${uid}`;
@@ -415,7 +419,7 @@ export default function ProgressDashboard({
             icon="🔥" iconBg="#fff7ed"
             value={currentStreak}
             label="أيام متواصلة"
-            sub={`أفضل سجل: ${bestStreak} يوم`}
+            sub={`أفضل سجل: ${bestStreak} · تعلّم فعلي: ${learningDays} يوم`}
             subColor={currentStreak >= 7 ? '#dc2626' : currentStreak >= 3 ? '#d97706' : '#94a3b8'}
           />
         </div>
@@ -451,6 +455,7 @@ export default function ProgressDashboard({
               🔥 {currentStreak} يوم متواصل
             </div>
             <StreakCalendar days={last21Days} />
+            <p style={{ fontSize: 12, color: '#64748b' }}>✓ تعلّم · 🧊 تجميد{legacyDays > 0 ? ' · ◌ سجل سابق غير مصنّف' : ''}</p>
             <div style={{ display: 'flex', gap: 14, marginTop: 10, fontSize: '.68rem', color: '#94a3b8', fontWeight: 600 }}>
               <span>
                 <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 2, background: '#6366f1', marginLeft: 3 }} />

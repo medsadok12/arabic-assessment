@@ -1,0 +1,15 @@
+import {it,expect} from 'vitest';
+import {learningDate,shiftDay,validDay,streakSummary,freezeGap} from './learning-streak';
+const today='2026-10-30',days=(actual=[],legacy=[],frozen=[])=>({actual,legacy,frozen});
+it('Qatar midnight',()=>{expect(learningDate('2026-10-29T20:59:59Z')).toBe('2026-10-29');expect(learningDate('2026-10-29T21:00:00Z')).toBe(today)});
+it('leap and year boundary',()=>{expect(shiftDay('2024-03-01',-1)).toBe('2024-02-29');expect(shiftDay('2027-01-01',-1)).toBe('2026-12-31')});
+it('invalid dates',()=>{expect(validDay('2026-02-30')).toBe(false);expect(validDay('2026-99-01')).toBe(false);expect(learningDate(null)).toBeNull()});
+it('no invented today',()=>{expect(streakSummary(days(),today)).toMatchObject({streak:0,best:0,logged_today:false,total_learning_days:0})});
+it('yesterday stays valid without today',()=>{expect(streakSummary(days(['2026-10-28','2026-10-29']),today)).toMatchObject({streak:2,logged_today:false})});
+it('absence breaks, real activity restarts',()=>{expect(streakSummary(days(['2026-10-28']),today).streak).toBe(0);expect(streakSummary(days(['2026-10-28',today]),today).streak).toBe(1)});
+it('unlimited distinct days',()=>{const dates=Array.from({length:430},(_,i)=>shiftDay(today,-i));expect(streakSummary(days([...dates,today]),today)).toMatchObject({streak:430,best:430,total_learning_days:430})});
+it('legacy preserved separately',()=>{expect(streakSummary(days([today],['2026-10-28','2026-10-29']),today)).toMatchObject({streak:3,total_learning_days:1,legacy_days:2})});
+it('freeze is absence, actual overrides',()=>{const r=streakSummary(days([today],[],['2026-10-29']),today);expect(r.streak).toBe(2);expect(r.total_learning_days).toBe(1);expect(r.last_7.at(-2).kind).toBe('freeze');expect(streakSummary(days([today],[],[today]),today).last_7.at(-1).kind).toBe('activity')});
+it('last seven end today',()=>{const r=streakSummary(days(),today);expect(r.last_7[0].date).toBe('2026-10-24');expect(r.last_7.at(-1).date).toBe(today);expect(r.last_7.every(d=>!d.isFuture)).toBe(true)});
+it('no future/malformed credit',()=>{expect(streakSummary(days(['2026-11-01','bad']),today).total_learning_days).toBe(0)});
+it('freeze only on actual return and entire gap covered',()=>{expect(freezeGap(days(['2026-10-28']),today,2)).toEqual([]);expect(freezeGap(days(['2026-10-27',today]),today,1)).toEqual([]);expect(freezeGap(days(['2026-10-27',today]),today,2)).toEqual(['2026-10-28','2026-10-29']);expect(freezeGap(days([today]),today,2)).toEqual([])});

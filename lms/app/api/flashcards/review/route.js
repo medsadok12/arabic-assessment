@@ -1,3 +1,4 @@
+import { recordLearningDay } from '../../../../lib/learning-streak-server';
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
 import { createClient } from '../../../../lib/supabase-server';
@@ -23,6 +24,7 @@ export async function POST(req){
    const level=difficulty==='easy'?(old?.last_reviewed===today?before:Math.min(before+1,5)):difficulty==='hard'?before:Math.max(0,before-1);
    const days=difficulty==='easy'?INTERVALS[level]:1,date=new Date();date.setUTCDate(date.getUTCDate()+days);const next=date.toISOString().slice(0,10);
    const {error:saveError}=await admin.from('flashcard_progress').upsert({user_id:effectiveUserId,word_id:wordId,level,next_review:next,last_reviewed:today},{onConflict:'user_id,word_id'});if(saveError)return {state:'pending'};
+   try { await recordLearningDay(admin,effectiveUserId); } catch { return {state:'pending'}; }
    const reward=difficulty==='easy'?await awardVerifiedPoints(admin,effectiveUserId,`fc:${wordId}`,3):{state:'done',amount:0};
    return {...reward,new_level:level,next_review:next,interval_days:days,self_assessment:true};
   },{difficulty});

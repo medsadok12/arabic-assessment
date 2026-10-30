@@ -1,3 +1,5 @@
+import { recordLearningDay } from '../../../../../lib/learning-streak-server';
+import { isStaff, isSuspended } from '../../../../../lib/auth-role';
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
 import { createClient }      from '../../../../../lib/supabase-server';
@@ -10,7 +12,7 @@ export async function POST(req, { params }) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
+    if (!user || isSuspended(user)) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
 
     const { id } = params;
     const admin = createAdminClient();
@@ -25,6 +27,9 @@ export async function POST(req, { params }) {
 
     if (storyErr || !story) return NextResponse.json({ error: 'القصة غير موجودة' }, { status: 404 });
     if (story.status !== 'published') return NextResponse.json({ error: 'القصة غير منشورة' }, { status: 400 });
+
+    if (isStaff(user)) return NextResponse.json({ success: true, preview: true, earned: 0 });
+    await recordLearningDay(admin, effectiveUserId);
 
     // Check if already read (idempotent)
     const { data: existing } = await admin

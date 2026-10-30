@@ -1,3 +1,4 @@
+import { loadLearningStreak } from '../../../../lib/learning-streak-server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createAdminClient } from '../../../../lib/supabase-admin';
@@ -6,22 +7,6 @@ import { getRole } from '../../../../lib/auth-role';
 import { itemLabel } from '../../../../lib/hero-catalog';
 
 /* ── helpers ── */
-function calcStreak(logDates) {
-  if (!logDates.length) return 0;
-  const todayStr     = new Date().toISOString().slice(0, 10);
-  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  if (logDates[0] !== todayStr && logDates[0] !== yesterdayStr) return 0;
-  let streak = 0, expected = logDates[0];
-  for (const d of logDates) {
-    if (d === expected) {
-      streak++;
-      const dt = new Date(expected); dt.setDate(dt.getDate() - 1);
-      expected = dt.toISOString().slice(0, 10);
-    } else break;
-  }
-  return streak;
-}
-
 const LEVEL_NAMES = { 0:'مبتدئ', 1:'مستكشف', 2:'بطل', 3:'محترف', 4:'أسطورة' };
 const ITEM_NAMES  = {
   star_halo:'هالة النجوم ⭐', smart_glasses:'نظارة ذكية 🕶️',
@@ -147,8 +132,9 @@ export default async function StudentViewPage({ params }) {
   const studiedCount  = (fcProgress ?? []).length;
 
   const logDates   = (logsRaw ?? []).map(r => r.log_date);
-  const streakCount= calcStreak(logDates);
-  const loggedToday= logDates[0] === today;
+  const attendance = await loadLearningStreak(admin, userId, { applyFreeze: false });
+  const streakCount= attendance.streak;
+  const loggedToday= attendance.logged_today;
 
   const balance    = pointsRow?.total ?? 0;
   const earned     = (logRows ?? []).reduce((s, r) => s + (r.delta || 0), 0);
@@ -578,7 +564,7 @@ export default async function StudentViewPage({ params }) {
               <div style={{ fontSize: '.78rem', color: '#92400e', fontWeight: 700 }}>يوم متتالي</div>
             </div>
             <div style={{ flex: 1, fontSize: '.82rem', color: '#64748b', lineHeight: 2 }}>
-              <div>📅 إجمالي أيام النشاط: <strong style={{ color: '#1e293b' }}>{logDates.length}</strong></div>
+              <div>📅 أيام التعلّم الفعلية: <strong style={{ color: '#1e293b' }}>{attendance.total_learning_days}</strong></div>
               <div>{loggedToday
                 ? '✅ سجّل نشاطاً اليوم'
                 : '⏸️ لم يسجّل نشاطاً اليوم'}</div>

@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { childFetch } from '../lib/child-fetch';
 
 const ORDINALS = ['','الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر'];
@@ -14,29 +13,26 @@ export default function StreakLogger() {
   const [streak, setStreak] = useState(null);
   const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
-    childFetch('/api/streak', { method: 'POST' })
-      .then(r => r.json())
-      .then(d => {
-        if (d.ok && d.streak > 0) {
-          const today = new Date().toISOString().slice(0, 10);
-          if (localStorage.getItem('streak_shown_date') === today) return;
-          localStorage.setItem('streak_shown_date', today);
-
-          setStreak(d.streak);
-          setVisible(true);
-          // أعد تحميل بيانات Server Component ليعكس اليوم المسجَّل للتو
-          router.refresh();
-          // بعد 7 ثوانٍ تبدأ رسوم الخروج
-          const t1 = setTimeout(() => setLeaving(true), 7000);
-          // بعد 7.5 ثانية تختفي كلياً
-          const t2 = setTimeout(() => setVisible(false), 7500);
-          return () => { clearTimeout(t1); clearTimeout(t2); };
-        }
-      })
-      .catch(() => {});
+    let alive = true, busy = false, hide, leave;
+    const check = async () => {
+      if (busy || document.visibilityState === 'hidden') return;
+      busy = true;
+      try {
+        const r = await childFetch('/api/streak', { cache: 'no-store' }), d = await r.json();
+        if (!alive || !r.ok || !d.logged_today || !d.user_id) return;
+        const key = `streak_shown_date:${d.user_id}`;
+        if (localStorage.getItem(key) === d.today) return;
+        localStorage.setItem(key, d.today);
+        setStreak(d.streak); setLeaving(false); setVisible(true);
+        clearTimeout(hide); clearTimeout(leave);
+        leave = setTimeout(() => setLeaving(true), 7000); hide = setTimeout(() => setVisible(false), 7500);
+      } catch {} finally { busy = false; }
+    };
+    check(); const interval = setInterval(check, 60000);
+    window.addEventListener('focus', check); document.addEventListener('visibilitychange', check);
+    return () => { alive = false; clearInterval(interval); clearTimeout(hide); clearTimeout(leave); window.removeEventListener('focus', check); document.removeEventListener('visibilitychange', check); };
   }, []);
 
   function dismiss() {

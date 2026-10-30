@@ -9,7 +9,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import TeamChat        from './TeamChat';
 import PointsBadge     from './PointsBadge';
 import { getRole } from '../lib/auth-role';
-import { childFetch } from '../lib/child-fetch';
+import { childFetch, getActiveChildTab } from '../lib/child-fetch';
 
 /* ── Global style injected once on mount (avoids SSR mismatch) ── */
 function useNavStyle() {
@@ -322,7 +322,7 @@ function BottomNav({ navLinks, pathname, role, viewingChildId }) {
     <div className="nav-bottom-bar">
       {navLinks.map(l => {
         const icon = l.icon ?? NAV_ICONS[l.href] ?? '📄';
-        const active = pathname.startsWith(l.href);
+        const active = pathname.startsWith(l.href.split('?')[0]);
         return (
           <Link key={l.href} href={l.href} className={`nav-bottom-item${active ? ' active' : ''}`}>
             <span className="nav-bottom-icon">{icon}</span>
@@ -351,7 +351,7 @@ function dashboardPath(role) {
   return '/dashboard';
 }
 
-export default function Navbar({ user: initialUser, sessionCountdown = null, viewingChildId = null, displayName = null }) {
+export default function Navbar({ user: initialUser, sessionCountdown = null, viewingChildId, displayName = null }) {
   useNavStyle();
   const pathname  = usePathname();
   const router    = useRouter();
@@ -432,6 +432,8 @@ export default function Navbar({ user: initialUser, sessionCountdown = null, vie
 
   const isAdmin   = role === 'admin' || role === 'super_admin';
   const isStudent = role === 'student';
+  const [progressChild, setProgressChild] = useState('self');
+  useEffect(() => { setProgressChild(viewingChildId !== undefined ? viewingChildId || 'self' : getActiveChildTab() || 'self'); }, [viewingChildId, pathname]);
   const navLinks = [
     {
       href:  destPath,
@@ -439,7 +441,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null, vie
       icon:  isAdmin ? '⚙️' : '🏠',
     },
     { href: '/library', label: t('nav.library'), icon: '📚' },
-    ...(isStudent ? [{ href: '/progress', label: 'تقدمي', icon: '📊' }] : []),
+    ...(isStudent ? [{ href: `/progress?child=${encodeURIComponent(progressChild)}`, label: 'تقدمي', icon: '📊' }] : []),
   ];
 
   return (
@@ -464,7 +466,7 @@ export default function Navbar({ user: initialUser, sessionCountdown = null, vie
           <ul className="navbar-links navbar-links-desktop">
             {navLinks.map(l => (
               <li key={l.href}>
-                <Link href={l.href} className={pathname.startsWith(l.href) ? 'active' : ''}>
+                <Link href={l.href} className={pathname.startsWith(l.href.split('?')[0]) ? 'active' : ''}>
                   {l.icon && <span style={{ fontSize: '1rem', lineHeight: 1 }}>{l.icon}</span>}
                   {l.label}
                 </Link>

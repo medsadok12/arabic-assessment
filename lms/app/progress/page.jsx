@@ -1,3 +1,5 @@
+import { loadLearningStreak } from '../../lib/learning-streak-server';
+import { resolveActiveIdentity } from '../../lib/active-child';
 import { redirect }        from 'next/navigation';
 import { createClient }      from '../../lib/supabase-server';
 import { createAdminClient } from '../../lib/supabase-admin';
@@ -19,7 +21,7 @@ const REASON_META = {
   word_word:           { name: 'عجلة الكلمات',      icon: '🎡', bg: '#fdf4ff' },
 };
 
-export default async function ProgressPage() {
+export default async function ProgressPage({ searchParams }) {
   // ── Auth ──────────────────────────────────────────────────────────
   let user;
   try {
@@ -35,7 +37,8 @@ export default async function ProgressPage() {
   if (['super_admin', 'admin', 'teacher'].includes(role)) redirect('/teacher');
 
   const admin = createAdminClient();
-  const uid   = user.id;
+  const { effectiveUserId: uid, viewingChild } = await resolveActiveIdentity(user, admin, searchParams?.child ? { url: `https://aarem.net/progress?child=${encodeURIComponent(searchParams.child)}` } : null);
+  const attendance = await loadLearningStreak(admin, uid);
 
   // ── Parallel data fetch ───────────────────────────────────────────
   const [pointsRow, logsRes, gamesRes, flashRes, puzzleRes] = await Promise.all([
@@ -132,49 +135,7 @@ export default async function ProgressPage() {
   const completedCount   = Object.values(completed).filter(Boolean).length;
   const totalActivities  = Object.keys(completed).length;
 
-  // ── Streak calculation ────────────────────────────────────────────
-  const activeDays = new Set();
-  logs.forEach(l  => { if (l.created_at && (l.delta || 0) > 0) activeDays.add(l.created_at.slice(0, 10)); });
-  games.forEach(g => { if (g.played_at)    activeDays.add(g.played_at.slice(0, 10)); });
-  flash.forEach(f => { if (f.last_reviewed) activeDays.add(f.last_reviewed); });
-
-  // Last 21 days for calendar display
-  const last21Days = [];
-  for (let i = 20; i >= 0; i--) {
-    const d  = new Date();
-    d.setUTCDate(d.getUTCDate() - i);
-    const ds = d.toISOString().slice(0, 10);
-    last21Days.push({
-      date:    ds,
-      active:  activeDays.has(ds),
-      isToday: ds === todayUTC,
-    });
-  }
-
-  // Current streak (working backwards from today)
-  let currentStreak = 0;
-  for (let i = last21Days.length - 1; i >= 0; i--) {
-    const d = last21Days[i];
-    if (d.active || d.isToday) {
-      currentStreak++;
-    } else {
-      break;
-    }
-  }
-
-  // Best streak (all historical data)
-  const sortedDates = [...activeDays].sort();
-  let bestStreak = currentStreak, bs = 0, prevD = null;
-  sortedDates.forEach(ds => {
-    if (prevD) {
-      const diff = Math.round((new Date(ds) - new Date(prevD)) / 86400000);
-      bs = diff === 1 ? bs + 1 : 1;
-    } else {
-      bs = 1;
-    }
-    bestStreak = Math.max(bestStreak, bs);
-    prevD = ds;
-  });
+  const currentStreak = attendance.streak, bestStreak = attendance.best, last21Days = attendance.last_21;
 
   // ── Achievement badges ────────────────────────────────────────────
   const currentLevelIdx = Math.min(4, Math.floor(earnedPoints / 1000));
@@ -217,10 +178,10 @@ export default async function ProgressPage() {
 
   return (
     <>
-      <Navbar user={user} />
+      <Navbar viewingChildId={viewingChild?.id || null} user={user} />
       <main className="page-wrap">
         <div className="container" style={{ maxWidth: 1100 }}>
-          <ProgressDashboard
+          <ProgressDashboard attendanceUserId={uid}
             totalPoints={totalPoints}
             earnedPoints={earnedPoints}
             thisWeekTotal={thisWeekTotal}
@@ -231,6 +192,7 @@ export default async function ProgressPage() {
             totalFlash={totalFlash}
             accuracy={accuracy}
             currentStreak={currentStreak}
+            learningDays={attendance.total_learning_days} legacyDays={attendance.legacy_days}
             bestStreak={bestStreak}
             last21Days={last21Days}
             completed={completed}
@@ -242,7 +204,7 @@ export default async function ProgressPage() {
             puzzleCount={puzzles.length}
             earnedBadgeIds={earnedBadgeIds}
             currentLevelIdx={currentLevelIdx}
-            user={user}
+            user={{ ...user, id: uid, user_metadata: { ...user.user_metadata, full_name: viewingChild?.full_name || user.user_metadata?.full_name } }}
           />
         </div>
       </main>

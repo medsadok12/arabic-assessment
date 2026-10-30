@@ -1,3 +1,4 @@
+import { loadLearningStreak } from '../../../../lib/learning-streak-server';
 import { NextResponse }     from 'next/server';
 import { createClient }    from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
@@ -64,18 +65,13 @@ export async function GET() {
       const ids = Object.values(emailToId);
       if (ids.length > 0) {
         // Fetch assessments, daily_logs, and flashcard_progress in parallel
-        const [{ data: asmts }, { data: logs }, { data: fcProgress }] = await Promise.all([
+        const [{ data: asmts }, attendanceRows, { data: fcProgress }] = await Promise.all([
           admin
             .from('assessments')
             .select('user_id, level, score, completed_at')
             .in('user_id', ids)
             .order('completed_at', { ascending: false }),
-          admin
-            .from('daily_logs')
-            .select('user_id, log_date')
-            .in('user_id', ids)
-            .order('log_date', { ascending: false })
-            .limit(ids.length * 30),
+          Promise.all(ids.map(async id => ({ id, attendance: await loadLearningStreak(admin, id, { applyFreeze: false }) }))),
           admin
             .from('flashcard_progress')
             .select('user_id, level')
@@ -85,9 +81,7 @@ export async function GET() {
 
         // Group logs and mastered words by user_id
         const latestLogByUser = {};
-        for (const l of (logs ?? [])) {
-          if (!latestLogByUser[l.user_id]) latestLogByUser[l.user_id] = l.log_date;
-        }
+        for (const row of attendanceRows) latestLogByUser[row.id] = row.attendance.last_learning_day;
         const masteredByUser = {};
         for (const p of (fcProgress ?? [])) {
           masteredByUser[p.user_id] = (masteredByUser[p.user_id] ?? 0) + 1;

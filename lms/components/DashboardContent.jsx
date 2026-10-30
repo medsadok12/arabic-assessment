@@ -6,6 +6,7 @@ import Navbar from './Navbar';
 import { useLanguage } from '../contexts/LanguageContext';
 import { createClient } from '../lib/supabase';
 import WordOfDay from './WordOfDay';
+import { useLearningStreak } from '../lib/use-learning-streak';
 import StreakFreeze from './StreakFreeze';
 import FlashcardReminderToast from './FlashcardReminderToast';
 import FamilySwitcher from './FamilySwitcher';
@@ -58,12 +59,15 @@ export default function DashboardContent({
   upcomingSessions, displayName, studentGender,
   attendancePct, attendedCount, attendanceTotal,
   homework = [], sessionNotes = [],
-  streakCount = 0, loggedToday = false, last7Days = [],
+  streakCount: initialStreak = 0, learningDays: initialLearning = 0, legacyDays: initialLegacy = 0, loggedToday: initialLogged = false, last7Days: initialDays = [],
   masteredCount = 0, studiedCount = 0,
   hasHero = false,
   myChildren = [], viewingChildId = null, rootName = '',
 }) {
   const { t, lang } = useLanguage();
+  const attendance = useLearningStreak({ streak: initialStreak, total_learning_days: initialLearning, legacy_days: initialLegacy, logged_today: initialLogged, last_7: initialDays }, viewingChildId || user?.id);
+  const { streak: streakCount, total_learning_days: learningDays, legacy_days: legacyDays, logged_today: loggedToday, last_7: last7Days } = attendance;
+
   const locale = 'en-GB';
 
   const nextSession = upcomingSessions[0] ?? null;
@@ -466,6 +470,7 @@ export default function DashboardContent({
           display:flex; align-items:center; justify-content:center;
           font-size:.78rem; font-weight:900;
         }
+        .streak-dot.frozen { background:#EEF4FF; border-color:#9cc9e5; color:#1A2B4A; }
         .streak-dot.on     { background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff;
                              box-shadow:0 3px 8px rgba(245,158,11,.4); font-size:1rem; }
         .streak-dot.off    { background:#f1f5f9; color:#94a3b8; border:1.5px dashed #cbd5e1; font-size:.72rem; font-weight:700; }
@@ -651,25 +656,27 @@ export default function DashboardContent({
                 <div className="streak-header">
                   <span className="streak-fire">{streakCount > 0 ? '🔥' : '💤'}</span>
                   <span className="streak-unit">
-                    {streakCount === 0 ? 'لا توجد سلسلة بعد' : `اليوم ${streakCount}`}
+                    {streakCount === 0 ? 'لا توجد سلسلة بعد' : `${streakCount} أيام متواصلة`}
                   </span>
-                  {loggedToday && <span className="streak-badge">✅ لعبت اليوم</span>}
+                  {loggedToday && <span className="streak-badge">✅ تعلّمت اليوم</span>}
                 </div>
 
                 <div className="streak-msg">{msg}</div>
+                <div style={{ fontSize: 14, marginTop: 6 }}>أيام التعلّم الفعلية: {learningDays}</div>
 
+                {legacyDays > 0 && <div style={{ fontSize: 12, marginTop: 4 }}>◌ سجل سابق محفوظ؛ لا يدخل ضمن أيام التعلّم المثبتة.</div>}
                 {/* خط الأيام: اليوم (اليمين) ← الأيام القادمة (اليسار) */}
                 <div className="streak-dots">
                   {last7Days.map((d) => {
                     const cls = [
                       'streak-dot',
-                      d.isFuture ? 'future' : d.active ? 'on' : 'off',
+                      d.frozen ? 'frozen' : d.active ? 'on' : 'off',
                       d.isToday  ? 'today'  : '',
                     ].filter(Boolean).join(' ');
                     return (
                       <div key={d.date} className="streak-dot-wrap">
-                        <div className={cls}>
-                          {d.active ? '★' : d.day}
+                        <div className={cls} title={`${d.date}: ${d.frozen ? 'تجميد' : d.legacy ? 'سجل سابق' : d.active ? 'تعلّم' : 'دون نشاط'}`}>
+                          {d.frozen ? '🧊' : d.legacy ? '◌' : d.active ? '★' : d.day}
                         </div>
                       </div>
                     );
@@ -680,7 +687,7 @@ export default function DashboardContent({
             );
           })()}
 
-          {isStudent && <StreakFreeze />}
+          {isStudent && <StreakFreeze key={viewingChildId || 'self'} childId={viewingChildId || 'self'} />}
 
           {isStudent && <WordOfDay />}
 

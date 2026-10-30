@@ -1,3 +1,4 @@
+import { loadLearningStreak } from '../../lib/learning-streak-server';
 import { redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase-server';
 import { createAdminClient } from '../../lib/supabase-admin';
@@ -178,39 +179,8 @@ export default async function DashboardPage({ searchParams }) {
 
   const upcomingSessions = merged;
 
-  /* ── Streak ── */
-  const logDates = (logsRaw || []).map(r => r.log_date);
-  const dateSet  = new Set(logDates);
-  const todayStr = new Date().toISOString().slice(0, 10);
-
-  function calcStreak(dates) {
-    if (!dates.length) return 0;
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    if (dates[0] !== todayStr && dates[0] !== yesterday) return 0;
-    let streak = 0, expected = dates[0];
-    for (const d of dates) {
-      if (d === expected) {
-        streak++;
-        const dt = new Date(expected); dt.setDate(dt.getDate() - 1);
-        expected = dt.toISOString().slice(0, 10);
-      } else break;
-    }
-    return streak;
-  }
-
-  const streakCount = calcStreak(logDates);
-  const loggedToday = dateSet.has(todayStr);
-  const last7Days   = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() + i);
-    const ds = d.toISOString().slice(0, 10);
-    return {
-      date:     ds,
-      active:   i === 0 && dateSet.has(ds),
-      day:      d.getDate(),
-      isToday:  i === 0,
-      isFuture: i > 0,
-    };
-  });
+  const attendance = await loadLearningStreak(admin, effectiveUserId);
+  const streakCount = attendance.streak, loggedToday = attendance.logged_today, last7Days = attendance.last_7;
 
   const rootName      = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '';
   const displayName   = viewingChild?.full_name ?? rootName;
@@ -232,6 +202,7 @@ export default async function DashboardPage({ searchParams }) {
       homework={homework}
       sessionNotes={sessionNotes}
       streakCount={streakCount}
+      learningDays={attendance.total_learning_days} legacyDays={attendance.legacy_days}
       loggedToday={loggedToday}
       last7Days={last7Days}
       masteredCount={masteredCount}

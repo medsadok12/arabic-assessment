@@ -5,7 +5,7 @@ import { childFetch } from '../lib/child-fetch';
 /* Streak-freeze store on the dashboard: the child spends points to hold up to `cap`
    freezes that automatically protect their streak on a day they miss. Purchase is
    fully atomic on the server (buy_streak_freeze). */
-export default function StreakFreeze() {
+export default function StreakFreeze({ childId = 'self' }) {
   const [balance, setBalance] = useState(null);
   const [cap,     setCap]     = useState(2);
   const [price,   setPrice]   = useState(100);
@@ -14,7 +14,7 @@ export default function StreakFreeze() {
 
   useEffect(() => {
     let alive = true;
-    childFetch('/api/streak/freeze')
+    childFetch(`/api/streak/freeze?child=${encodeURIComponent(childId)}`)
       .then(r => r.json())
       .then(d => {
         if (!alive) return;
@@ -22,13 +22,13 @@ export default function StreakFreeze() {
       })
       .catch(() => {});
     return () => { alive = false; };
-  }, []);
+  }, [childId]);
 
   async function buy() {
     if (busy || balance >= cap) return;
     setBusy(true); setMsg(null);
     try {
-      const res = await childFetch('/api/streak/freeze', { method: 'POST' });
+      const res = await childFetch(`/api/streak/freeze?child=${encodeURIComponent(childId)}`, { method: 'POST' });
       const j = await res.json();
       if (res.ok && j.ok) {
         setBalance(j.balance);
@@ -58,7 +58,7 @@ export default function StreakFreeze() {
         <div style={{ flex: 1, minWidth: 150 }}>
           <div style={{ fontWeight: 900, fontSize: '.98rem', color: '#1A2B4A' }}>تجميد السلسلة</div>
           <div style={{ fontSize: '.8rem', color: '#5A6B84', marginTop: 2 }}>
-            تحمي سلسلتك يوماً تغيب فيه — لديك <b>{balance}</b> من {cap}
+            تحمي السلسلة دون احتساب حضور — لديك <b>{balance}</b> من {cap}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
@@ -72,7 +72,7 @@ export default function StreakFreeze() {
         onClick={buy}
         disabled={busy || atCap}
         style={{
-          width: '100%', marginTop: 12,
+          width: '100%', minHeight: 48, marginTop: 12,
           background: atCap ? '#e6e0d4' : '#E8B84B',
           color: atCap ? '#8a94a6' : '#1A2B4A',
           border: 'none', borderRadius: 12, padding: '11px',

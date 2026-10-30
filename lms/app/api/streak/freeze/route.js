@@ -1,3 +1,4 @@
+import { isStaff, isSuspended } from '../../../../lib/auth-role';
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase-server';
 import { createAdminClient } from '../../../../lib/supabase-admin';
@@ -12,8 +13,9 @@ const FREEZE_CAP   = 2;
 export async function GET(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ balance: 0, price: FREEZE_PRICE, cap: FREEZE_CAP });
+  if (!user || isSuspended(user)) return NextResponse.json({ balance: 0, price: FREEZE_PRICE, cap: FREEZE_CAP });
 
+  if (isStaff(user)) return NextResponse.json({ error: 'هذه العملية للطلاب فقط.' }, { status: 403 });
   const admin = createAdminClient();
   const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
   const { data } = await admin
@@ -26,8 +28,9 @@ export async function GET(req) {
 export async function POST(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
+  if (!user || isSuspended(user)) return NextResponse.json({ error: 'غير مسجل' }, { status: 401 });
 
+  if (isStaff(user)) return NextResponse.json({ error: 'هذه العملية للطلاب فقط.' }, { status: 403 });
   const admin = createAdminClient();
   const { effectiveUserId } = await resolveActiveIdentity(user, admin, req);
   const { data, error } = await admin.rpc('buy_streak_freeze', {
