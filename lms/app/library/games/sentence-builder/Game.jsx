@@ -14,7 +14,7 @@ export default function Game({initialContent=null,staff=false,previewConfig=null
  const busy=useRef(false),generation=useRef(0),identity=useRef(null),pending=useRef(null),player=useRef(null),motion=useRef(null),finishFrom=useRef([]),answerRef=useRef(null),bankRef=useRef(null),sentenceRef=useRef(null),previewCursor=useRef(previewIndex),live=useRef(true),again=useRef(false);
  const reduced=()=>!settings?.animate||window.matchMedia('(prefers-reduced-motion: reduce)').matches;
  function audio(){return player.current ||=sentenceAudio()}
- function fx(kind,step=0){if(!muted&&settings?.sound)audio().effect(kind,step);else player.current?.stop()}
+ function fx(kind,step=0){if(muted||!settings?.sound){player.current?.stop();return}const url=settings.sounds?.[kind];if(!url){if(kind!=='wrong')audio().effect(kind,step);return}audio().clip(url).then(ok=>{if(ok===false&&kind!=='wrong'&&live.current)audio().effect(kind,step)})}
  async function api(body){const response=await childFetch('/api/games/sentence-builder/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),data=await response.json();if(!response.ok)throw new Error(data.error||'أعد المحاولة.');return data}
  function install(data){setSession(data);setListening(false);setHeard(false);setPicked([]);setPoints(data.points);setPhase(data.finished?'finish':'play');setMessage('');setRetry(false);setSentence('');setReward(0);pending.current=null}
  // mode==='replay': «العب مجدداً» بعد إكمال كل الجمل — جولة مراجعة بلا نقاط جديدة (الخادم يقرر)
@@ -39,6 +39,9 @@ export default function Game({initialContent=null,staff=false,previewConfig=null
   return()=>{live.current=false;busy.current=false;generation.current++;seq++;clearInterval(interval);window.removeEventListener('focus',refresh);window.removeEventListener('pageshow',refresh);document.removeEventListener('visibilitychange',visibility);player.current?.dispose();player.current=null};
  },[]);
  useEffect(()=>{if(config&&phase==='loading'&&!session&&!busy.current)begin()},[config]);
+ // أصوات المعلم تُجلب مسبقًا لتُسمع فور اللمس
+ const soundUrls=settings?.sound?Object.values(settings.sounds||{}).filter(Boolean).join('\n'):'';
+ useEffect(()=>{if(soundUrls)(player.current ||=sentenceAudio()).preload(soundUrls.split('\n'))},[soundUrls]);
  useLayoutEffect(()=>{
   if(!question||reduced())return;
   if(motion.current){const {slot,from,target}=motion.current,container=target==='answer'?answerRef.current:bankRef.current,to=container?.querySelector(`[data-slot="${slot}"]`);motion.current=null;if(to&&from){const d=to.getBoundingClientRect();to.animate([{transform:`translate(${from.left-d.left}px,${from.top-d.top}px) scale(.92)`},{transform:'translate(0,-12px) scale(1.06)',offset:.72},{transform:'translate(0,3px) scale(.98)',offset:.89},{transform:'translate(0,0) scale(1)'}],{duration:500*settings.speed,easing:'ease-out'})}}
@@ -55,7 +58,7 @@ export default function Game({initialContent=null,staff=false,previewConfig=null
   finishFrom.current=[...answerRef.current.querySelectorAll('button')].map(el=>el.getBoundingClientRect());
   const body=pending.current||{action:'answer',sessionId:session.sessionId,requestId:requestId(),slots:picked};pending.current=body;
   try{let data;if(preview){const item=activeSentences(config)[session.index];data={right:sentenceRight(item,picked),sentence:item.words.join(' ')+item.end,reward:settings.reward,points:null}}else data=await api(body);if(!live.current||token!==generation.current)return;
-   pending.current=null;setRetry(false);setPoints(data.points);if(data.right){setSentence(data.sentence);setReward(data.reward);setPhase('right');fx('success');window.dispatchEvent(new Event('points-updated'))}else{setPhase('wrong');setMessage(settings.retryText)}
+   pending.current=null;setRetry(false);setPoints(data.points);if(data.right){setSentence(data.sentence);setReward(data.reward);setPhase('right');fx('success');window.dispatchEvent(new Event('points-updated'))}else{setPhase('wrong');setMessage(settings.retryText);fx('wrong')}
   }catch(e){if(token===generation.current){setRetry(true);setPhase('play');setMessage(e.message||'أعد تأكيد الجملة.')}}finally{if(token===generation.current)busy.current=false}
  }
  async function help(){

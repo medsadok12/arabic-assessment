@@ -11,10 +11,12 @@ export function freshSentences(){
   ['question-book','📕','كتاب أحمر',['هَلْ','هٰذَا','كِتَابُكَ'],['كِتَابُكَ','أَيْنَ','هٰذَا','هَلْ','بَيْتِي'],'؟',3],
   ['question-house','🏠','بيت',['أَيْنَ','بَيْتِي'],['هَلْ','بَيْتِي','أَيْنَ','كِتَابِي'],'؟',3],
  ];
- return {title:'استمع ورتّب الكلمات',subtitle:'',enabled:true,epoch:0,settings:{reward:3,helpCost:5,hintMode:'word',speed:1,sound:true,animate:true,pictureSize:120,wordSize:24,background:'#fffdf7',ink:'#1a2b4a',gold:'#f4d78f',selected:'#eee8f8',success:'#f8e6b7',successText:'أحسنت، جملة صحيحة!',retryText:'حاول ترتيبًا آخر',helpText:'ساعدني',nextText:'المتابعة',checkText:'تحقّق',finishText:'أكملتَ التدريب!'},lessons:entries.map(([id,emoji,alt,words,bank,end,level])=>({id,enabled:true,topic:level===1?'البدايات':level===2?'ماذا أفعل؟':'نسأل ونتعلّم',level,emoji,alt,words,bank,end,image_url:'',audio_url:''}))};
+ return {title:'استمع ورتّب الكلمات',subtitle:'',enabled:true,epoch:0,settings:{reward:3,helpCost:5,hintMode:'word',speed:1,sound:true,animate:true,pictureSize:120,wordSize:24,background:'#fffdf7',ink:'#1a2b4a',gold:'#f4d78f',selected:'#eee8f8',success:'#f8e6b7',successText:'أحسنت، جملة صحيحة!',retryText:'حاول ترتيبًا آخر',helpText:'ساعدني',nextText:'المتابعة',checkText:'تحقّق',finishText:'أكملتَ التدريب!',sounds:{tap:'',success:'',wrong:''}},lessons:entries.map(([id,emoji,alt,words,bank,end,level])=>({id,enabled:true,topic:level===1?'البدايات':level===2?'ماذا أفعل؟':'نسأل ونتعلّم',level,emoji,alt,words,bank,end,image_url:'',audio_url:''}))};
 }
 const text=(v,max,empty=false)=>typeof v==='string'&&v.length<=max&&(empty||v.trim().length>0)&&!/[\u0000-\u0008<>]/.test(v);
 function media(v){if(v==='')return true;if(typeof v!=='string'||v.length>1500||v.includes('..')||/[\s\\]/.test(v))return false;if(/^\/(?!\/)[a-z\d/_\-.]+$/i.test(v))return true;try{const url=new URL(v),base=process.env.NEXT_PUBLIC_SUPABASE_URL;return Boolean(base)&&url.origin===new URL(base).origin&&url.pathname.startsWith('/storage/v1/object/public/media/')}catch{return false}}
+// أصوات اللعبة التي يرفعها المعلم: اختيار كلمة، جملة صحيحة، محاولة أخرى ('' = النغمة المدمجة، والمحاولة الأخرى صامتة)
+export const SENTENCE_SOUNDS=['tap','success','wrong'];
 export function validateSentences(input){
  const bad=error=>({error});
  if(!input||!text(input.title,80)||!text(input.subtitle,160,true)||typeof input.enabled!=='boolean'||!Number.isInteger(input.epoch)||input.epoch<0||input.epoch>100000)return bad('راجع عنوان التدريب وإتاحته.');
@@ -23,6 +25,8 @@ export function validateSentences(input){
  if(![.8,1,1.3].includes(s.speed))return bad('اختر سرعة الحركة.');
  for(const key of ['background','ink','gold','selected','success'])if(typeof s[key]!=='string'||!/^#[\da-f]{6}$/i.test(s[key]))return bad('اختر لونًا صالحًا.');
  for(const key of ['successText','retryText','helpText','nextText','checkText','finishText'])if(!text(s[key],100))return bad('أكمل نصوص التدريب.');
+ // الإعدادات المحفوظة قبل إضافة الأصوات لا تحملها — تُقبل كأنها فارغة
+ const sounds=s.sounds??{};if(typeof sounds!=='object'||Array.isArray(sounds)||!SENTENCE_SOUNDS.every(k=>media(sounds[k]??'')))return bad('ارفع أصوات اللعبة إلى المنصة.');
  if(!Array.isArray(input.lessons)||!input.lessons.length||input.lessons.length>200)return bad('أضف من 1 إلى 200 جملة.');
  const ids=new Set(),lessons=[];
  for(const item of input.lessons){
@@ -33,7 +37,7 @@ export function validateSentences(input){
   if(!media(item.image_url)||!media(item.audio_url))return bad('استخدم الملفات المرفوعة إلى المنصة.');
   lessons.push({id:item.id,enabled:item.enabled,topic:item.topic.trim(),level:item.level,emoji:item.emoji,alt:item.alt.trim(),words:item.words.map(w=>w.trim()),bank:item.bank.map(w=>w.trim()),end:item.end,image_url:item.image_url,audio_url:item.audio_url});
  }
- const keys=Object.keys(freshSentences().settings),settings=Object.fromEntries(keys.map(k=>[k,s[k]]));
+ const keys=Object.keys(freshSentences().settings),settings=Object.fromEntries(keys.map(k=>[k,s[k]]));settings.sounds=Object.fromEntries(SENTENCE_SOUNDS.map(k=>[k,sounds[k]??'']));
  return {config:{title:input.title.trim(),subtitle:input.subtitle.trim(),enabled:input.enabled,epoch:input.epoch,settings,lessons}};
 }
 export const activeSentences=config=>config.lessons.filter(item=>item.enabled);
