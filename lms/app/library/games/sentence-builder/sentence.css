@@ -50,4 +50,27 @@
  .sb-board .sb-action-slot{grid-area:action}
  .sb-board .sb-action{border-top:0;padding:4px 24px 22px}
 }
+/* ═══ الحاسوب فقط (فأرة: hover + pointer:fine) — طلب الأستاذ محمد 2026-10-30 ═══
+   الجملة والكلمات يمينًا والصورة يسارًا، والتدريب أكبر ويملأ الشاشة. الآيباد (حتى الأفقي) والجوال لم يتغيّرا.
+   العرض يترك مكانًا لعدّاد النقاط الثابت أعلى يمين الشاشة */
+@media (min-width:980px) and (hover:hover) and (pointer:fine){
+ .sb-wrap{padding-top:0}
+ .sb-board{max-width:min(1240px,calc(100vw - 220px));min-height:min(720px,calc(100vh - 150px));grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);grid-template-rows:1fr auto;grid-template-areas:"play side" "action side"}
+ .sb-board .sb-side{border-inline-end:0;border-inline-start:1px solid #eeeae1;padding:30px 34px}
+ .sb-board .sb-play{padding:40px 40px 0}
+ .sb-board .sb-action{padding:8px 40px 32px}
+ .sb-board .sb-top{margin-bottom:16px}
+ .sb-wrap .sb-board h1{font-size:32px}
+ .sb-board .sb-picture{width:clamp(240px,34vh,340px);height:clamp(240px,34vh,340px);font-size:min(calc(var(--sb-picture,120px) * 2),250px)}
+ .sb-board .sb-badge{width:72px;height:72px;font-size:32px}
+ .sb-board .sb-listen-cap{font-size:19px}
+ .sb-board .sb-answer{min-height:100px;margin-bottom:20px}
+ .sb-board .sb-word{font-size:calc(var(--sb-word,24px) * 1.25);min-height:66px;padding:8px 20px;border-radius:16px}
+ .sb-board .sb-bank{gap:14px;margin-bottom:18px}
+ .sb-board .sb-sentence{font-size:36px}
+ .sb-board .sb-tools{font-size:18px}
+ .sb-board .sb-help{font-size:20px;min-height:54px;padding:6px 18px}
+ .sb-board .sb-feedback{font-size:24px}
+ .sb-board .sb-cta{min-height:68px;font-size:25px}
+}
 
