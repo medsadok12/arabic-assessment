@@ -1,8 +1,10 @@
 // قناة واحدة للتسجيلات والمؤثرات؛ الضغط التالي يوقف السابق دائمًا.
+// onEnd يُستدعى مرة واحدة حين ينتهي التسجيل أو يتوقف (صوت آخر، جملة جديدة) أو يتعذّر تشغيله.
 export function sentenceAudio(){
- let audio=null,context=null,nodes=[],ticket=0;
- function stop(){ticket++;if(audio){audio.pause();audio.src='';audio=null}nodes.forEach(n=>{try{n.stop()}catch{}});nodes=[]}
- async function recording(url){stop();const token=ticket;if(!url)return false;const a=new Audio(url);audio=a;try{await a.play();return token===ticket?true:null}catch{return token===ticket?false:null}}
+ let audio=null,context=null,nodes=[],ticket=0,ending=null;
+ function finish(){const done=ending;ending=null;done?.()}
+ function stop(){ticket++;if(audio){audio.pause();audio.src='';audio=null}nodes.forEach(n=>{try{n.stop()}catch{}});nodes=[];finish()}
+ async function recording(url,onEnd){stop();const token=ticket;if(!url)return false;const a=new Audio(url);audio=a;ending=onEnd||null;a.onended=()=>{if(audio===a){audio=null;finish()}};try{await a.play();return token===ticket?true:null}catch{if(audio===a){audio=null;finish()}return token===ticket?false:null}}
  async function effect(kind,step=0){
   stop();const token=ticket;
   try{const Engine=window.AudioContext||window.webkitAudioContext;if(!Engine)return;context ||=new Engine();if(context.state==='suspended')await context.resume();if(token!==ticket)return;
