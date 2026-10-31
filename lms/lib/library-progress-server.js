@@ -1,3 +1,5 @@
+import {loadPictureQuest,questRow,questProgressKey,validQuestCompleted} from './picture-quest-server';
+import {activeQuestQuestions} from './picture-quest';
 import {loadSentences,readSentenceRow} from './sentence-builder-server';
 import {activeSentences,sentenceStamp,SENTENCE_ID} from './sentence-builder';
 import {finiteProgress,unavailableProgress} from './library-progress';
@@ -19,6 +21,11 @@ export async function loadLibraryProgress(admin, userId) {
   const progress = {};
   const read = async (key, fn) => { try { progress[key] = await fn(); } catch { progress[key] = unknownProgress(); } };
   await Promise.all([
+    read('picture-quest',async()=>{
+      const {config}=await loadPictureQuest(admin);if(!config.enabled)return unavailableProgress();
+      const items=activeQuestQuestions(config),row=await questRow(admin,questProgressKey(userId,config.epoch));
+      return finiteProgress(validQuestCompleted(row?.settings||{},items).length,items.length,'صورة',Boolean(row));
+    }),
     read('sentence-builder',async()=>{
       const {config}=await loadSentences(admin);if(!config.enabled)return unavailableProgress();
       const items=activeSentences(config),row=await readSentenceRow(admin,`${SENTENCE_ID}:progress:${userId}:${config.epoch}`);

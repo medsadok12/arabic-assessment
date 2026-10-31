@@ -1,0 +1,8 @@
+'use client';
+import{useEffect,useRef,useState}from'react';
+import Link from'next/link';
+import{QUEST_MARKUP}from'../../../../lib/picture-quest-shell';
+import{mountPictureQuest}from'../../../../lib/picture-quest-client';
+import{childFetch,getActiveChildTab}from'../../../../lib/child-fetch';
+import'./quest.css';
+export default function Game({staff=false,config,previewIndex=0,embedded=false}){const holder=useRef(null),[scope,setScope]=useState(()=>typeof window==='undefined'?null:getActiveChildTab());useEffect(()=>{const focus=()=>setScope(getActiveChildTab());focus();window.addEventListener('focus',focus);return()=>window.removeEventListener('focus',focus)},[]);useEffect(()=>{const h=holder.current;h.innerHTML=QUEST_MARKUP;const root=h.querySelector('#arem-quest');if(staff&&!config){root.textContent='تعذّر فتح المعاينة. أعد تحميل الصفحة.';return}return mountPictureQuest(root,{config,staff,previewIndex,request:async body=>{const expected=getActiveChildTab(),r=await childFetch('/api/games/picture-quest/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),cache:'no-store'}),d=await r.json();if(expected!==getActiveChildTab())throw Error('تغيّر الطفل النشط. أعد فتح التدريب.');if(!r.ok)throw Error(d.error||'تعذّر الحفظ.');return d},onPoints:()=>{window.dispatchEvent(new Event('points-updated'))}})},[config,staff,previewIndex,scope]);return <>{!embedded&&<div className="pq-page-tools" dir="rtl"><Link href="/library">← المكتبة</Link>{staff&&<><span>معاينة بلا نقاط فعلية</span><Link href="/library/games/picture-quest/manage">✎ تحرير التدريب</Link></>}</div>}<div ref={holder}/></>}

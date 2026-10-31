@@ -1,0 +1,4 @@
+Default illustrations: Twemoji graphics by Twitter, Inc. and contributors, CC-BY 4.0.
+https://github.com/twitter/twemoji
+https://creativecommons.org/licenses/by/4.0/
+Staff-uploaded pictures and recordings retain their respective ownership.

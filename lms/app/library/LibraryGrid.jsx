@@ -9,6 +9,14 @@ import StoriesShelf from './stories-preview/StoriesPreview';
 
 const RESOURCES = [
   {
+    key: 'picture-quest', icon: '🖼️', title: 'اكتشف الصورة',
+    desc: 'ما هذا؟ انظر إلى الصورة واختر الكلمة، واجمع نجومك!',
+    tag: 'المفردات والفهم', link: '/library/games/picture-quest', ready: true,
+    replayLink: '/library/games/picture-quest?again=1',
+    accent: '#B78628', dark: '#1A2B4A', rot: 1, bg: '#F4EFE6', border: '#E7D4A0', iconBg: '#FBE6AE',
+    btnBg: 'linear-gradient(135deg,#F3D17B,#E8B84B)',
+  },
+  {
     key: 'sentence-builder', icon: '💬', title: 'استمع ورتّب الكلمات',
     desc: 'كوّن جملة من الكلمات، وتعلّم خطوة بخطوة!',
     tag: 'بناء الجملة', link: '/library/games/sentence-builder', ready: true,

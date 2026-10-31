@@ -1,0 +1,11 @@
+import{beforeEach,it,expect,vi}from'vitest';
+const state=vi.hoisted(()=>({user:null,files:[]}));
+vi.mock('./supabase-server',()=>({createClient:()=>({auth:{getUser:async()=>({data:{user:state.user}})}})}));
+vi.mock('./supabase-admin',()=>({createAdminClient:()=>({storage:{from:()=>({upload:async(path,bytes,meta)=>{state.files.push({path,bytes,meta});return{error:null}}})}})}));
+const route=await import('../app/api/games/picture-quest/upload/route');
+const teacher='22222222-2222-4222-8222-222222222222';
+beforeEach(()=>{state.files=[];state.user={id:teacher,app_metadata:{role:'teacher'}};vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL','https://school.supabase.co')});
+const call=async(file,kind)=>{const form=new FormData();form.append('file',file);form.append('kind',kind);const r=await route.POST(new Request('https://www.aarem.net/api/games/picture-quest/upload',{method:'POST',body:form}));return{status:r.status,body:await r.json()}};
+it('only staff can upload',async()=>{state.user.app_metadata.role='student';expect((await call(new File(['x'],'x.png',{type:'image/png'}),'image')).status).toBe(403);expect(state.files).toHaveLength(0)});
+it('rejects SVG, invalid image signatures and oversize media',async()=>{expect((await call(new File(['<svg/>'],'x.svg',{type:'image/svg+xml'}),'image')).status).toBe(400);expect((await call(new File(['not a PNG'],'x.png',{type:'image/png'}),'image')).status).toBe(400);expect((await call(new File([new Uint8Array(3*1024*1024+1)],'big.mp3',{type:'audio/mpeg'}),'audio')).status).toBe(400);expect(state.files).toHaveLength(0)});
+it('stores images and recordings under a staff-scoped unique storage path',async()=>{const image=await call(new File([new Uint8Array([137,80,78,71,13,10,26,10])],'photo.png',{type:'image/png'}),'image');expect(image.status).toBe(200);expect(image.body.url).toContain('/media/picture-quest/'+teacher+'/image/');const audio=await call(new File(['audio'],'voice.mp3',{type:'audio/mpeg'}),'audio');expect(audio.status).toBe(200);expect(audio.body.url).toContain('/audio/');expect(state.files).toHaveLength(2)});
