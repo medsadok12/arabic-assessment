@@ -94,3 +94,8 @@
 #arem-quest .score.bump,#arem-quest .picture.help-focus{animation-duration:calc(1.1s * var(--pq-speed,1))}
 #arem-quest .stage.happy,#arem-quest .turn{animation-duration:calc(.85s * var(--pq-speed,1))}
 #arem-quest .answer.answer-enter{animation-duration:calc(.65s * var(--pq-speed,1))}
+/* تكبير الصورة داخل الدائرة (يضبطه المعلم لكل سؤال 50–250%): scale مستقلة عن transform فتبقى الحركات كما هي،
+   والدائرة تقصّ الصورة المكبّرة فيبقى الإطار دائريًا والصورة بتناسبها (object-fit:contain) */
+#arem-quest .picture img,#arem-quest .picture .fallback{scale:var(--pq-zoom,1)}
+#arem-quest .picture.zoomed{overflow:hidden}
+

@@ -1,1 +1,45 @@
 .pqe-wrap{max-width:1100px;margin:auto;padding:24px 16px 60px;direction:rtl;color:#1a2b4a;font-family:var(--font-cairo),Cairo,sans-serif}.pqe-wrap *{box-sizing:border-box}.pqe-wrap h1{font-size:25px;margin:0 0 8px}.pqe-wrap h2{font-size:20px;margin:0 0 12px}.pqe-wrap h3{font-size:16px}.pqe-wrap p{font-size:13px;line-height:1.9;color:#687064}.pqe-header,.pqe-row{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.pqe-header p{margin:8px 0}.pqe-actions{display:flex;flex-wrap:wrap;align-items:center;gap:7px}.pqe-wrap button{min-height:44px;padding:8px 13px;border:1px solid #d8cdb9;background:#faf7f2;border-radius:10px;color:#1a2b4a;font:inherit;font-size:13px;cursor:pointer}.pqe-wrap button:disabled{opacity:.45;cursor:default}.pqe-wrap button.pqe-publish{background:#1a2b4a;color:#faf7f2;border-color:#1a2b4a}.pqe-note{background:#f6e7bf;padding:12px 16px;border-radius:12px;min-height:48px;color:#64512d!important}.pqe-section{border:1px solid #e1d8c9;border-radius:18px;background:#fffdf8;padding:20px;margin:18px 0}.pqe-section summary{font-weight:800;min-height:44px;cursor:pointer}.pqe-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.pqe-wrap label{display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:700;min-width:0}.pqe-wrap input:not([type=checkbox]):not([type=radio]),.pqe-wrap textarea,.pqe-wrap select{width:100%;min-height:44px;padding:9px 10px;border:1px solid #d8cdb9;border-radius:10px;font:inherit;color:#1a2b4a;background:#fff;min-width:0}.pqe-wrap input[type=file]{font-size:12px!important;overflow:hidden}.pqe-wrap input[type=color]{padding:4px!important}.pqe-wrap .pqe-check{display:flex;flex-direction:row;align-items:center;gap:8px;min-height:44px}.pqe-wrap input[type=checkbox],.pqe-wrap input[type=radio]{width:20px;height:20px;accent-color:#1a2b4a}.pqe-fieldset{padding:0;margin:0;border:0;min-width:0}.pqe-question{margin:14px 0;border:1px solid #e5ddce;border-radius:14px;padding:14px}.pqe-row strong{font-size:14px}.pqe-form{margin-top:18px;border-top:1px solid #e5ddce;padding-top:18px}.pqe-option{display:flex;align-items:center;gap:7px;margin:9px 0}.pqe-option>input{flex:1}.pqe-option label{flex:0 0 26px}.pqe-option button{flex-shrink:0}.pqe-media{display:flex;flex-direction:column;gap:10px;padding:14px;background:#f4efe6;border-radius:12px;min-width:0}.pqe-media-grid{margin-top:20px}.pqe-thumb{max-width:100%;width:160px;height:140px;object-fit:contain;border-radius:10px;background:#fff}.pqe-media audio{width:100%;max-width:100%}.pqe-media button{align-self:flex-start}.pqe-wrap a{color:#1a2b4a;text-decoration:underline;min-height:44px;display:inline-flex;align-items:center}.pqe-wrap fieldset:disabled{opacity:.7}.pqe-wrap :focus-visible{outline:3px solid #3c9b89;outline-offset:3px}@media(max-width:700px){.pqe-grid{grid-template-columns:1fr}.pqe-wrap{padding:18px 12px 50px}.pqe-section{padding:15px}.pqe-wrap h1{font-size:21px}.pqe-row{align-items:flex-start}.pqe-actions{gap:5px}.pqe-option{gap:4px}.pqe-option button{padding:7px}.pqe-wrap input:not([type=checkbox]):not([type=radio]),.pqe-wrap textarea,.pqe-wrap select{font-size:16px}}
+/* ═══ المعاينة المباشرة وتكبير الصورة (طلب الأستاذ محمد 2026-11-01) ═══
+   الحاسوب (1100px فأعرض): المعاينة عمود ثابت يسار الصفحة، والتحرير يتمرّر بجانبها (لا position:sticky — overflow-x:hidden على html/body/main يعطّله).
+   أضيق: زر «👁 المعاينة المباشرة» يفتحها بملء الشاشة مع زر إغلاق */
+.pqe-live{background:#fffdf8;border:1px solid #e1d8c9;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.pqe-live-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.pqe-live-head strong{font-size:16px}
+.pqe-live-head small{display:block;font-size:12px;color:#687064;font-weight:600}
+.pqe-live-warn{background:#fdf0d8;border-radius:10px;padding:8px 12px;margin:0;color:#7a5410!important}
+.pqe-live #arem-quest{padding:4px 0}
+.pqe-zoom-title{font-size:13px;font-weight:700}
+.pqe-zoom-body{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.pqe-zoom-mini{flex:0 0 96px;width:96px;height:96px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:radial-gradient(circle,#fffef9 30%,#f3e2b7 73%,#e7cd91 100%);box-shadow:0 0 0 4px #fffdf5,0 0 0 5px #e9ddc5}
+.pqe-zoom-mini img{width:73%;height:73%;object-fit:contain;scale:var(--z,1)}
+.pqe-zoom-mini span{font-family:Arial,sans-serif;font-size:54px;line-height:1;scale:var(--z,1)}
+.pqe-zoom-ctl{flex:1;min-width:190px;display:grid;gap:8px}
+.pqe-zoom-row{display:flex;align-items:center;gap:8px}
+.pqe-wrap .pqe-zoom-row input[type=range]{flex:1;min-width:0;min-height:44px;padding:0;border:0;background:none;accent-color:#1a2b4a}
+.pqe-wrap .pqe-zoom-row button{min-width:44px;font-size:18px;font-weight:800}
+.pqe-zoom-row output{font-weight:800;font-size:17px;min-width:60px;text-align:center;font-variant-numeric:tabular-nums}
+.pqe-live-fab{display:none}
+html.pqe-lock,html.pqe-lock body{overflow:hidden}
+@media(min-width:1100px){
+ .pqe-wrap{max-width:1500px;height:calc(100vh - 128px);display:grid;grid-template-columns:minmax(0,1fr) minmax(380px,440px);grid-template-rows:auto auto minmax(0,1fr);column-gap:20px;padding-bottom:0}
+ .pqe-header{grid-column:1;grid-row:1}
+ .pqe-note{grid-column:1;grid-row:2}
+ .pqe-body{display:contents}
+ .pqe-main{grid-column:1;grid-row:3;min-height:0;overflow-y:auto;padding-inline-end:6px}
+ .pqe-main .pqe-section:first-child{margin-top:0}
+ .pqe-live{grid-column:2;grid-row:1 / 4;min-height:0;overflow-y:auto}
+ .pqe-wrap .pqe-live-open,.pqe-wrap .pqe-live-close{display:none}
+}
+@media(max-width:1099px){
+ .pqe-live{display:none}
+ .pqe-live.open{display:flex;position:fixed;inset:0;z-index:2000000;border:0;border-radius:0;overflow-y:auto;padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(18px + env(safe-area-inset-bottom,0px))}
+ .pqe-wrap .pqe-live-fab{display:inline-flex;align-items:center;gap:6px;position:fixed;z-index:50;inset-inline-start:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));min-height:52px;padding:0 20px;border-radius:999px;border:0;background:#1a2b4a;color:#faf7f2;font-size:15px;font-weight:800;box-shadow:0 8px 22px #1a2b4a40}
+}
+@media(min-width:769px) and (max-width:1099px){.pqe-wrap .pqe-live-fab{bottom:calc(20px + env(safe-area-inset-bottom,0px))}}
+.pqe-wrap .pqe-live-pick{flex-direction:row;align-items:center;gap:8px}
+.pqe-wrap .pqe-live-pick select{flex:1}
+/* رأس المعاينة (العنوان واختيار السؤال) ثابت أعلى عمودها أثناء التمرير — العمود نفسه حاوية التمرير فيعمل sticky داخله */
+.pqe-live-top{position:sticky;top:-14px;z-index:5;background:#fffdf8;margin:-14px -14px 0;padding:14px 14px 8px;display:grid;gap:8px;border-bottom:1px solid #eee5d6}
+@media(min-width:1100px){.pqe-live{padding-bottom:84px}}
+@media(max-width:1099px){.pqe-live.open .pqe-live-top{top:calc(-12px - env(safe-area-inset-top,0px));margin:calc(-12px - env(safe-area-inset-top,0px)) -12px 0;padding:calc(12px + env(safe-area-inset-top,0px)) 12px 8px}}
+
