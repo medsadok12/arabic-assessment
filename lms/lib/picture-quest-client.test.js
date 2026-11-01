@@ -79,3 +79,31 @@ describe('instant prepared next-picture navigation',()=>{
   const{root,request}=setup({finished:true});await Promise.resolve();root.querySelectorAll('.answer')[1].click();await Promise.resolve();root.querySelector('.next').click();expect(root.querySelector('.summary').hidden).toBe(false);expect(request).toHaveBeenCalledTimes(2);
  });
 });
+
+describe('first question image readiness',()=>{
+ it('keeps the initial shell in its loading state until the current image is decoded',async()=>{
+  let decoded;
+  vi.stubGlobal('Image',class{set src(value){this.url=value}decode(){return new Promise(resolve=>{if(this.url.includes('/cat.'))decoded=resolve})}});
+  const c=freshPictureQuest(),root=document.querySelector('#arem-quest');
+  expect(root.querySelector('.picture img').hidden).toBe(true);
+  const request=vi.fn(()=>Promise.resolve({question:publicQuestQuestion(c.questions[0]),settings:c.settings,index:0,total:6,points:628,title:c.title}));
+  dispose=mountPictureQuest(root,{request});await Promise.resolve();
+  expect(root.classList.contains('pq-loading')).toBe(true);
+  expect(root.getAttribute('aria-busy')).toBe('true');
+  expect(root.querySelector('.score strong').textContent).toBe('628');
+  decoded();await Promise.resolve();await Promise.resolve();
+  expect(root.classList.contains('pq-loading')).toBe(false);
+  expect(root.hasAttribute('aria-busy')).toBe(false);
+  expect(root.querySelector('.picture img').hidden).toBe(false);
+ });
+ it('opens the question with its fallback when the first image fails instead of leaving a broken image or loading forever',async()=>{
+  vi.stubGlobal('Image',class{decode(){return Promise.reject(Error('offline'))}});
+  const c=freshPictureQuest(),root=document.querySelector('#arem-quest');
+  dispose=mountPictureQuest(root,{request:()=>Promise.resolve({question:publicQuestQuestion(c.questions[0]),settings:c.settings,index:0,total:6,points:628,title:c.title})});
+  await Promise.resolve();await Promise.resolve();await Promise.resolve();
+  expect(root.classList.contains('pq-loading')).toBe(false);
+  expect(root.querySelector('.picture img').hidden).toBe(true);
+  expect(root.querySelector('.fallback').hidden).toBe(false);
+  expect(root.querySelector('.fallback').textContent).toBe(c.questions[0].emoji);
+ });
+});
