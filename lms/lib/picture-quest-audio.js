@@ -1,13 +1,14 @@
 // One unlocked WebAudio channel per game; recordings and effects cannot overlap.
 export function createQuestAudio(){
  let context,generation=0,disposed=false;const cache=new Map(),decoded=new Map(),sources=new Set();
- const open=()=>{if(disposed)return null;if(!context){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;context=new AC()}context.resume().catch(()=>{});return context};
+ const getContext=()=>{if(disposed)return null;if(!context){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;context=new AC()}return context};
+ const open=()=>{const c=getContext();c?.resume().catch(()=>{});return c};
  const preload=url=>{if(url&&!cache.has(url))cache.set(url,fetch(url).then(r=>{if(!r.ok)throw Error();return r.arrayBuffer()}).catch(()=>null));};
  const stop=()=>{generation++;for(const s of sources){try{s.stop()}catch{}}sources.clear()};
  const track=s=>{sources.add(s);s.onended=()=>{sources.delete(s);s.disconnect()};return s};
  function decode(c,url){if(!url)return Promise.resolve(null);if(!decoded.has(url)){preload(url);decoded.set(url,(async()=>{const data=await cache.get(url);if(!data||disposed)return null;try{return await c.decodeAudioData(data.slice(0))}catch{return null}})())}return decoded.get(url)}
- const prepare=url=>{preload(url);if(context&&url)void decode(context,url)};
- const unlock=()=>{const c=open();if(c)for(const url of cache.keys())void decode(c,url);return c};
+ const prepare=url=>{if(!url||disposed)return;preload(url);const c=getContext();if(c)void decode(c,url)};
+ const unlock=()=>open();
 
  function bufferSource(c,buffer,at,until){const s=track(c.createBufferSource());s.buffer=buffer;s.connect(c.destination);s.start(at);if(until!==undefined)s.stop(until)}
  async function play(url){const c=open();stop();const ticket=generation;if(!c||!url)return false;const buffer=await decode(c,url);if(disposed||ticket!==generation)return null;if(!buffer)return false;bufferSource(c,buffer,c.currentTime);return true}

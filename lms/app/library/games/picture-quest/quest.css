@@ -105,3 +105,5 @@
 #arem-quest .answer.pending-choice{transform:translateY(3px);outline:2px solid var(--pq-gold,#e8b84b);outline-offset:2px}
 #arem-quest .particles{contain:layout style paint}
 @media(pointer:coarse){#arem-quest .picture.pop,#arem-quest .picture.pop img,#arem-quest .stage.happy,#arem-quest .score.bump,#arem-quest .answer.correct{will-change:transform}#arem-quest .fx-star{filter:none;text-shadow:0 2px 2px #d29a2333}}
+
+#arem-quest .answer.correct{transition:none}
