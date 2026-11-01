@@ -128,13 +128,13 @@
 }
 @keyframes aq-touch-page{from{opacity:.75;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
 
-/* Standalone phone layout fills the actual space between the site navigation bars.
+/* Standalone phone layout; the mobile focus mode below owns the viewport.
    Embedded staff previews and other exercises keep their own layout. */
 #arem-quest .pq-mobile-back{display:none}
-@media(max-width:768px){
+@media(max-width:700px){
  body:has(.pq-page){padding-bottom:0;min-height:100dvh}
  .pq-page.page-wrap{padding:0;min-height:0}
- .pq-page .pq-screen{display:flex;flex-direction:column;min-height:calc(100vh - var(--pq-chrome-height,134px));min-height:calc(100dvh - var(--pq-chrome-height,134px))}
+ .pq-page .pq-screen{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
  .pq-page .pq-page-tools{display:none}
  .pq-page .pq-page-tools.pq-staff-tools{display:flex;margin:0;padding:0 10px;gap:4px;font-size:11px}
  .pq-page .pq-game-host,.pq-page #arem-quest{display:flex;flex:1;min-width:0}
@@ -162,4 +162,22 @@
  .pq-page #arem-quest .hint,.pq-page #arem-quest .next,.pq-page #arem-quest .question-audio{min-height:44px;padding:6px 10px;font-size:12px}
  .pq-page #arem-quest .footer{font-size:10px;margin:6px 0 0}
  .pq-page #arem-quest .summary{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center}
+}
+
+/* Same focused mobile screen as sentence-builder; desktop/editor previews stay in place. */
+@media(max-width:700px){
+ html.pq-focus,html.pq-focus body{overflow:hidden;overscroll-behavior:none}
+ html.pq-focus .navbar,html.pq-focus .nav-bottom-bar{display:none!important}
+ html.pq-focus .pq-page .pq-screen{position:fixed;inset:0;z-index:2000000;min-height:0;height:100vh;height:100dvh;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);background:var(--pq-background,#f4efe6)}
+ html.pq-focus .pq-page .pq-game-host,html.pq-focus .pq-page #arem-quest,html.pq-focus .pq-page #arem-quest .game,html.pq-focus .pq-page #arem-quest .body,html.pq-focus .pq-page #arem-quest .play{min-height:0}
+ html.pq-focus .pq-page #arem-quest .header,html.pq-focus .pq-page #arem-quest .hud,html.pq-focus .pq-page #arem-quest .trail,html.pq-focus .pq-page #arem-quest .feedback,html.pq-focus .pq-page #arem-quest .actions,html.pq-focus .pq-page #arem-quest .footer{flex-shrink:0}
+ html.pq-focus .pq-page #arem-quest .stage{min-height:0;overflow-y:auto;overscroll-behavior:contain;justify-content:flex-start}
+ html.pq-focus .pq-page #arem-quest .stage>h2{margin-top:auto}
+ html.pq-focus .pq-page #arem-quest .stage>.answers{margin-bottom:auto}
+ html.pq-focus .pq-page #arem-quest .stage>h2,html.pq-focus .pq-page #arem-quest .stage>.answers{flex-shrink:0}
+ html.pq-focus .pq-page #arem-quest .picture{width:min(var(--pq-picture,174px),clamp(100px,28dvh,220px),100%)}
+ html.pq-focus .pq-page #arem-quest .pq-mobile-back{font-size:15px;font-weight:700;min-height:44px;padding:0 10px;border:1px solid #ffffff25;border-radius:12px}
+ html.pq-focus .pq-page #arem-quest .summary{min-height:0;overflow-y:auto;justify-content:flex-start}
+ html.pq-focus .pq-page #arem-quest .summary .trophy{margin-top:auto}
+ html.pq-focus .pq-page #arem-quest .summary .again{margin:16px auto auto}
 }
