@@ -118,3 +118,12 @@
 @media(hover:none),(pointer:coarse){
  #arem-quest .fx-star{font-size:0;line-height:0;width:var(--size,22px);height:var(--size,22px);background:var(--fx-color,#e8b84b);clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 94%,50% 72%,21% 94%,32% 57%,2% 35%,39% 35%);filter:none;text-shadow:none;contain:strict}
 }
+
+/* A short compositor-only transition on phones; the next image is already decoded. */
+@media(hover:none),(pointer:coarse){
+ #arem-quest .turn{animation-name:aq-touch-page;animation-duration:calc(.28s * var(--pq-speed,1))}
+ #arem-quest .answer.answer-enter{animation-duration:calc(.24s * var(--pq-speed,1));animation-delay:0ms}
+ #arem-quest .next{transition:none}
+ #arem-quest .next.touch-pressed{transform:translateY(3px);box-shadow:none}
+}
+@keyframes aq-touch-page{from{opacity:.75;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}

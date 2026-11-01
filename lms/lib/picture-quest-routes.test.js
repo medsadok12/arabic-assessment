@@ -56,3 +56,26 @@ describe('correctness is independent of storage latency',()=>{
   }
  });
 });
+
+describe('prepared next-question sessions',()=>{
+ it('preloads only the upcoming image and persists an immediately usable successor with the answer',async()=>{
+  const s=await start();expect(s.upcomingImage).toBe('/picture-quest/apple.svg');
+  const a=(await call(answer(s))).body;expect(a.next.question.id).toBe('apple');expect(a.next.sessionId).not.toBe(s.sessionId);expect(a.next.points).toBe(50);expect(a.next.upcomingImage).toBe('/picture-quest/book.svg');
+  const second=await call(answer(a.next,'choice-2'));expect(second.status).toBe(200);expect(second.body.right).toBe(true);expect(second.body.next.question.id).toBe('book');expect(balance()).toBe(60);
+ });
+ it('keeps the successor nonce stable when an answer is retried or the page resumes',async()=>{
+  const s=await start(),body=answer(s),a=(await call(body)).body,b=(await call(body)).body;
+  expect(b.next.sessionId).toBe(a.next.sessionId);expect((await start()).sessionId).toBe(a.next.sessionId);expect(balance()).toBe(50);expect(db.tables.points_log).toHaveLength(1);
+ });
+ it('does not prepare the next question after a wrong answer',async()=>{
+  const s=await start(),a=(await call(answer(s,'choice-0'))).body;expect(a.next).toBeUndefined();expect((await start()).sessionId).toBe(s.sessionId);
+ });
+ it('supports completion and an entire review using prepared sessions without repeated rewards',async()=>{
+  const c=freshPictureQuest();c.questions=c.questions.slice(0,2);publishConfig(c);
+  let s=await start();s=(await call(answer(s))).body.next;s=(await call(answer(s,'choice-2'))).body.next;expect(s.finished).toBe(true);expect(s.upcomingImage).toBe('');expect(s.independent).toBe(2);expect(balance()).toBe(60);
+  s=(await call({action:'replay'})).body;expect(s.review).toBe(true);s=(await call(answer(s))).body.next;expect(s.review).toBe(true);s=(await call(answer(s,'choice-2'))).body.next;expect(s.finished).toBe(true);expect(s.review).toBe(true);expect(balance()).toBe(60);expect(db.tables.game_results).toHaveLength(1);
+ });
+ it('rejects a prepared session if the teacher changes its question before the next answer',async()=>{
+  const s=await start(),next=(await call(answer(s))).body.next,c=freshPictureQuest();c.questions[1].prompt='سؤال محدّث';publishConfig(c);expect((await call(answer(next,'choice-2'))).status).toBe(409);expect(balance()).toBe(50);
+ });
+});

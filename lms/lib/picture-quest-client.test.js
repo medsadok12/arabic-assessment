@@ -53,3 +53,29 @@ describe('network-independent active-question feedback',()=>{
   dispose=mountPictureQuest(root,{request});await Promise.resolve();const b=root.querySelectorAll('.answer')[1];b.click();expect(b.classList.contains('wrong')).toBe(true);verify({right:true,word:'قط',answer_audio:'/picture-quest/cat.mp3'});expect(b.classList.contains('wrong')).toBe(false);expect(b.classList.contains('correct')).toBe(true);complete({right:true,word:'قط',answer_audio:'/picture-quest/cat.mp3',points:50,reward:10});await Promise.resolve();expect(sound.success).toHaveBeenCalledTimes(1);expect(root.querySelector('.score strong').textContent).toBe('50');
  });
 });
+
+describe('instant prepared next-picture navigation',()=>{
+ function setup({finished=false}={}){
+  const c=freshPictureQuest(),root=document.querySelector('#arem-quest');
+  const session=(i)=>({question:publicQuestQuestion(c.questions[i]),feedback:{correctChoiceId:c.questions[i].correctId,word:c.questions[i].options.find(o=>o.id===c.questions[i].correctId).label},upcomingImage:c.questions[i+1]?.image_url||'',settings:c.settings,index:i,total:6,points:i?50:40,sessionId:'session-'+i,title:c.title});
+  const next=finished?{...session(1),finished:true,question:null,total:1,independent:1}:session(1);
+  const request=vi.fn(body=>body.action==='start'?Promise.resolve(session(0)):Promise.resolve({right:true,word:'قط',points:50,reward:10,next}));
+  dispose=mountPictureQuest(root,{request});return{root,request,c};
+ }
+ it('renders the saved next question synchronously on touch release, with no extra network request or duplicate advance',async()=>{
+  const{root,request,c}=setup();await Promise.resolve();root.querySelectorAll('.answer')[1].click();await Promise.resolve();const next=root.querySelector('.next');
+  expect(next.disabled).toBe(false);pointer(next,'pointerdown');expect(next.classList.contains('touch-pressed')).toBe(true);pointer(next,'pointerup');
+  expect(root.querySelector('.picture img').getAttribute('src')).toBe(c.questions[1].image_url);expect(root.querySelector('.round').textContent).toBe('الصورة 2 من 6');expect(request).toHaveBeenCalledTimes(2);
+  next.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:1}));expect(root.querySelector('.round').textContent).toBe('الصورة 2 من 6');expect(request).toHaveBeenCalledTimes(2);
+ });
+ it('fetches and decodes the upcoming image before next is pressed',async()=>{
+  const loaded=[],decode=vi.fn().mockResolvedValue();vi.stubGlobal('Image',class{set src(url){loaded.push(url)}decode(){return decode()}});
+  const{root,c}=setup();await Promise.resolve();expect(loaded).toContain(c.questions[1].image_url);expect(decode).toHaveBeenCalled();root.querySelectorAll('.answer')[1].click();await Promise.resolve();expect(loaded).toContain(c.questions[2].image_url);
+ });
+ it('does not navigate on a next-button drag and keeps keyboard navigation working',async()=>{
+  const{root}=setup();await Promise.resolve();root.querySelectorAll('.answer')[1].click();await Promise.resolve();const next=root.querySelector('.next');pointer(next,'pointerdown');pointer(next,'pointermove',{clientY:80});pointer(next,'pointerup');next.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:1}));expect(root.querySelector('.round').textContent).toBe('الصورة 1 من 6');next.click();expect(root.querySelector('.round').textContent).toBe('الصورة 2 من 6');
+ });
+ it('opens the prepared completion summary without a request',async()=>{
+  const{root,request}=setup({finished:true});await Promise.resolve();root.querySelectorAll('.answer')[1].click();await Promise.resolve();root.querySelector('.next').click();expect(root.querySelector('.summary').hidden).toBe(false);expect(request).toHaveBeenCalledTimes(2);
+ });
+});
