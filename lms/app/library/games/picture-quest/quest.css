@@ -108,6 +108,12 @@
 
 #arem-quest .answer.correct{transition:none}
 
+/* Touch press has no hover emulation or color/shadow tween to wait for. */
+@media(hover:none),(pointer:coarse){
+ #arem-quest .answer{transition:none}
+ #arem-quest .answer.touch-pressed{transform:translateY(3px);box-shadow:0 1px 0 #d7ccb4}
+}
+
 /* Touch particles are geometric stars: no font shaping/rasterization during the burst. */
 @media(hover:none),(pointer:coarse){
  #arem-quest .fx-star{font-size:0;line-height:0;width:var(--size,22px);height:var(--size,22px);background:var(--fx-color,#e8b84b);clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 94%,50% 72%,21% 94%,32% 57%,2% 35%,39% 35%);filter:none;text-shadow:none;contain:strict}

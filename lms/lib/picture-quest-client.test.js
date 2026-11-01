@@ -16,3 +16,40 @@ describe('responsive picture quest interaction',()=>{
  it('cancels queued celebration frames when moving to the next question',async()=>{dispose=mountPictureQuest(document.querySelector('#arem-quest'),{staff:true,config:freshPictureQuest()});document.querySelectorAll('.answer')[1].click();document.querySelector('.next').click();await vi.advanceTimersByTimeAsync(16);expect(document.querySelectorAll('.fx-star')).toHaveLength(0);expect(document.querySelector('.picture').classList.contains('pop')).toBe(false)});
  it('releases pending acknowledgement after a network failure',async()=>{const c=freshPictureQuest(),root=document.querySelector('#arem-quest');const request=body=>body.action==='start'?Promise.resolve({question:publicQuestQuestion(c.questions[0]),settings:c.settings,index:0,total:6,points:0,title:c.title}):Promise.reject(Error('retry'));dispose=mountPictureQuest(root,{request});await Promise.resolve();const b=root.querySelectorAll('.answer')[1];b.click();await Promise.resolve();expect(b.classList.contains('pending-choice')).toBe(false);expect(b.classList.contains('correct')).toBe(false);expect(root.hasAttribute('aria-busy')).toBe(false);expect(b.disabled).toBe(false)});
 });
+
+const pointer=(target,type,extra={})=>{const e=new Event(type,{bubbles:true});Object.assign(e,{pointerType:'touch',pointerId:1,isPrimary:true,clientX:20,clientY:20,...extra});target.dispatchEvent(e)};
+describe('mobile pointer input',()=>{
+ it('submits on touch release before click and ignores the duplicate synthesized click',async()=>{
+  const c=freshPictureQuest(),root=document.querySelector('#arem-quest');const request=vi.fn(body=>body.action==='start'?Promise.resolve({question:publicQuestQuestion(c.questions[0]),settings:c.settings,index:0,total:6,points:40,title:c.title}):new Promise(()=>{}));
+  dispose=mountPictureQuest(root,{request});await Promise.resolve();const b=root.querySelectorAll('.answer')[1];
+  pointer(b,'pointerdown');expect(b.classList.contains('touch-pressed')).toBe(true);expect(request).toHaveBeenCalledTimes(1);
+  pointer(b,'pointerup');expect(request).toHaveBeenCalledTimes(2);expect(b.classList.contains('pending-choice')).toBe(true);expect(b.classList.contains('touch-pressed')).toBe(false);
+  b.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:1}));expect(request).toHaveBeenCalledTimes(2);
+ });
+ it.each(['pointermove','pointercancel','pointerleave'])('does not submit when a touch is cancelled by %s or scrolling',async type=>{
+  const c=freshPictureQuest(),root=document.querySelector('#arem-quest');const request=vi.fn(()=>Promise.resolve({question:publicQuestQuestion(c.questions[0]),settings:c.settings,index:0,total:6,points:0,title:c.title}));
+  dispose=mountPictureQuest(root,{request});await Promise.resolve();const b=root.querySelector('.answer');pointer(b,'pointerdown');pointer(b,type,{clientY:80});pointer(b,'pointerup');b.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:1}));expect(request).toHaveBeenCalledTimes(1);expect(b.classList.contains('touch-pressed')).toBe(false);
+ });
+ it('shows an early wrong answer once, keeps saving locked, and unlocks the other choices after persistence',async()=>{
+  const c=freshPictureQuest(),root=document.querySelector('#arem-quest');let verify,complete;const request=(body,cb)=>body.action==='start'?Promise.resolve({question:publicQuestQuestion(c.questions[0]),settings:c.settings,index:0,total:6,points:40,title:c.title}):new Promise(resolve=>{verify=cb;complete=resolve});
+  dispose=mountPictureQuest(root,{request});await Promise.resolve();const b=root.querySelector('.answer');b.click();verify({right:false});expect(b.classList.contains('wrong')).toBe(true);expect(b.disabled).toBe(true);complete({right:false,points:40});await Promise.resolve();expect(root.querySelectorAll('.answer')[1].disabled).toBe(false);expect(b.disabled).toBe(true);expect(sound.effect.mock.calls.filter(([type])=>type==='wrong')).toHaveLength(1);
+ });
+ it('rolls back early correctness when progress cannot be persisted and can retry the same request',async()=>{
+  const c=freshPictureQuest(),root=document.querySelector('#arem-quest');let verify,reject;const request=vi.fn((body,cb)=>body.action==='start'?Promise.resolve({question:publicQuestQuestion(c.questions[0]),settings:c.settings,index:0,total:6,points:40,title:c.title}):new Promise((_,fail)=>{verify=cb;reject=fail}));
+  dispose=mountPictureQuest(root,{request});await Promise.resolve();const b=root.querySelectorAll('.answer')[1];b.click();verify({right:true,word:'قط'});reject(Error('retry'));await Promise.resolve();expect(b.classList.contains('correct')).toBe(false);expect(b.querySelector('.mark')).toBeNull();expect(root.querySelector('.score strong').textContent).toBe('40');expect(root.querySelector('.next').disabled).toBe(true);b.click();expect(request.mock.calls[1][0]).toEqual(request.mock.calls[2][0]);
+ });
+});
+
+describe('network-independent active-question feedback',()=>{
+ it.each([true,false])('renders correctness %s immediately even when the answer request never resolves',async right=>{
+  const c=freshPictureQuest(),root=document.querySelector('#arem-quest'),onPoints=vi.fn();c.questions[0].answer_audio='/picture-quest/cat.mp3';
+  const request=vi.fn(body=>body.action==='start'?Promise.resolve({question:publicQuestQuestion(c.questions[0]),feedback:{correctChoiceId:'choice-1',word:'قط',answer_audio:c.questions[0].answer_audio},settings:c.settings,index:0,total:6,points:40,title:c.title}):new Promise(()=>{}));
+  dispose=mountPictureQuest(root,{request,onPoints});await Promise.resolve();onPoints.mockClear();expect(sound.prepare).toHaveBeenCalledWith('/picture-quest/cat.mp3');
+  const b=root.querySelectorAll('.answer')[right?1:0];pointer(b,'pointerdown');pointer(b,'pointerup');expect(b.classList.contains(right?'correct':'wrong')).toBe(true);expect(root.querySelector('.score strong').textContent).toBe('40');expect(root.querySelector('.next').disabled).toBe(true);expect(onPoints).not.toHaveBeenCalled();
+ });
+ it('reconciles a stale local prediction with the server and never duplicates the success sound',async()=>{
+  const c=freshPictureQuest(),root=document.querySelector('#arem-quest');let verify,complete;
+  const request=(body,cb)=>body.action==='start'?Promise.resolve({question:publicQuestQuestion(c.questions[0]),feedback:{correctChoiceId:'choice-0',word:'كلب'},settings:c.settings,index:0,total:6,points:40,title:c.title}):new Promise(resolve=>{verify=cb;complete=resolve});
+  dispose=mountPictureQuest(root,{request});await Promise.resolve();const b=root.querySelectorAll('.answer')[1];b.click();expect(b.classList.contains('wrong')).toBe(true);verify({right:true,word:'قط',answer_audio:'/picture-quest/cat.mp3'});expect(b.classList.contains('wrong')).toBe(false);expect(b.classList.contains('correct')).toBe(true);complete({right:true,word:'قط',answer_audio:'/picture-quest/cat.mp3',points:50,reward:10});await Promise.resolve();expect(sound.success).toHaveBeenCalledTimes(1);expect(root.querySelector('.score strong').textContent).toBe('50');
+ });
+});

@@ -1,4 +1,4 @@
-// A verified answer can be shown before the authoritative reward ledger finishes.
+// Server-checked correctness can be shown before progress and reward writes finish.
 // Never treat that early frame as a score or as permission to advance.
 export async function readQuestResponse(response,onVerified=()=>{}){
  if(!response.ok||!response.headers.get('content-type')?.includes('application/x-ndjson'))return response.json();
