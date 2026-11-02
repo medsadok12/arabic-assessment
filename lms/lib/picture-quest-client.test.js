@@ -130,3 +130,6 @@ describe('time-up confirmation navigation',()=>{
 
 
 it('skips transition delays for reduced motion',async()=>{vi.stubGlobal('matchMedia',()=>({matches:true}));const c=freshPictureQuest();c.questions.forEach(q=>q.image_url='');const root=document.querySelector('#arem-quest');dispose=mountPictureQuest(root,{staff:true,config:c});await vi.advanceTimersByTimeAsync(18000);root.querySelector('.timeout-close').click();expect(root.querySelector('.round').textContent).toBe('الصورة 2 من 6');expect(root.querySelector('.stage').classList.contains('timeout-leave')).toBe(false)});
+
+
+it('uses independent recordings for a wrong choice and time expiry',async()=>{const c=freshPictureQuest();c.questions.forEach(q=>q.image_url='');c.settings.sounds.wrong='/picture-quest/retry.mp3';c.settings.sounds.timeout='/picture-quest/time-up.mp3';const root=document.querySelector('#arem-quest');dispose=mountPictureQuest(root,{staff:true,config:c});root.querySelectorAll('.answer')[0].click();expect(sound.effect).toHaveBeenCalledWith('wrong','/picture-quest/retry.mp3');sound.effect.mockClear();await vi.advanceTimersByTimeAsync(18000);expect(sound.effect).toHaveBeenCalledWith('timeout','/picture-quest/time-up.mp3');expect(sound.effect.mock.calls.some(([type])=>type==='wrong')).toBe(false)});

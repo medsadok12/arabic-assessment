@@ -10,3 +10,6 @@ describe('picture quest content',()=>{
  it('defaults legacy content to one second and validates saved recording delay',()=>{const c=freshPictureQuest();delete c.settings.answerDelayMs;expect(validatePictureQuest(c).config.settings.answerDelayMs).toBe(1000);c.settings.answerDelayMs=1500;expect(validatePictureQuest(c).config.settings.answerDelayMs).toBe(1500);for(const v of[-1,5001,1.5,'1000',null,NaN]){c.settings.answerDelayMs=v;expect(validatePictureQuest(c).error).toBeTruthy()}});
 
 });
+
+
+it('preserves legacy audio while adding a separately validated timeout recording',()=>{const c=freshPictureQuest();c.settings.sounds.wrong='/picture-quest/retry.mp3';delete c.settings.sounds.timeout;const normalized=validatePictureQuest(c);expect(normalized.error).toBeUndefined();expect(normalized.config.settings.sounds.timeout).toBe('');expect(normalized.config.settings.sounds.wrong).toBe('/picture-quest/retry.mp3');c.settings.sounds.timeout='/picture-quest/time-up.mp3';expect(validatePictureQuest(c).config.settings.sounds.timeout).toBe('/picture-quest/time-up.mp3');c.settings.sounds.timeout='https://evil.test/audio.mp3';expect(validatePictureQuest(c).error).toBeTruthy()});
