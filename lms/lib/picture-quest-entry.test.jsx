@@ -1,0 +1,14 @@
+import React from'react';
+import{beforeEach,it,expect,vi}from'vitest';
+const state=vi.hoisted(()=>({auth:null}));
+vi.mock('next/navigation',()=>({redirect:vi.fn(url=>{throw new Error('redirect:'+url)})}));
+vi.mock('../components/Navbar',()=>({default:()=>null}));
+vi.mock('./supabase-admin',()=>({createAdminClient:()=>({})}));
+vi.mock('./picture-quest-server',()=>({questUser:async()=>state.auth,loadPictureQuest:async()=>({config:{title:'التدريب الأصلي',questions:[],settings:{}}})}));
+vi.mock('../app/library/games/picture-quest/Game',()=>({default:()=>null}));
+vi.mock('./picture-quest',()=>({publicQuestConfig:c=>c}));
+import Page from'../app/library/games/picture-quest/page';
+beforeEach(()=>{vi.stubGlobal('React',React);state.auth={user:{id:'student'},staff:false}});
+it('opens topic selection from the standard training URL, including old replay links',async()=>{await expect(Page()).rejects.toThrow('redirect:/library/games/picture-quest/topics');await expect(Page({searchParams:{again:'1'}})).rejects.toThrow('redirect:/library/games/picture-quest/topics')});
+it('keeps the original game accessible explicitly for students and teachers',async()=>{for(const staff of[false,true]){state.auth.staff=staff;const page=await Page({searchParams:{classic:'1'}});const main=page.props.children[1],game=main.props.children;expect(game.props.staff).toBe(staff);expect(game.props.config.title).toBe('التدريب الأصلي')}});
+it('retains authentication before either training route',async()=>{state.auth={error:true};await expect(Page({searchParams:{classic:'1'}})).rejects.toThrow('redirect:/auth/login');await expect(Page()).rejects.toThrow('redirect:/auth/login')});
