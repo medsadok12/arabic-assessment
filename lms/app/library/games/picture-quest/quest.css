@@ -240,3 +240,12 @@
 #arem-quest .countdown.urgent{--timer-ring:#d95858;color:#b84444;box-shadow:0 0 13px 3px #dc555533}
 #arem-quest .trail span.wrong{background:#d9ae68}
 @media(max-width:460px){#arem-quest .hud{grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr);gap:6px}#arem-quest .countdown{width:56px;height:56px}#arem-quest .countdown strong{font-size:21px}}
+
+/* Transparent time-up dialog keeps the question visible behind it. */
+#arem-quest .timeout-overlay{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:24px;background:rgba(26,43,74,.22)}
+#arem-quest .timeout-card{width:min(100%,350px);padding:28px 24px 24px;border:1px solid rgba(255,255,255,.85);border-radius:28px;background:rgba(250,247,242,.82);box-shadow:0 18px 60px #1a2b4a33,inset 0 1px 0 #fff9;text-align:center;color:#1a2b4a}
+#arem-quest .timeout-icon{display:block;font-size:38px;line-height:1.4;margin-bottom:8px}
+#arem-quest .timeout-card h2{font-size:29px;margin:0;line-height:1.7}
+#arem-quest .timeout-card p{font-size:21px;font-weight:700;margin:4px 0 22px}
+#arem-quest .timeout-close{min-height:46px;min-width:120px;border:1px solid #cfaa54;border-radius:14px;padding:8px 22px;background:#e8b84b;color:#1a2b4a;font-size:17px;font-weight:800;box-shadow:0 3px 0 #bd9132}
+.pq-embedded #arem-quest{position:relative}.pq-embedded #arem-quest .timeout-overlay{position:absolute}
