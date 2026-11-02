@@ -17,3 +17,5 @@ describe('clock click audio',()=>{
  it('uses the unlocked channel without stopping a recording',async()=>{const{audio,nodes}=setup();expect(audio.tick()).toBe(false);await audio.play('/voice.mp3');const voice=nodes.find(n=>n.kind==='buffer');expect(audio.tick(0)).toBe(true);expect(audio.tick(1)).toBe(true);expect(voice.stop).not.toHaveBeenCalled();expect(nodes.filter(n=>n.kind==='tone')).toHaveLength(2);audio.stop();for(const n of nodes.filter(n=>n.kind==='tone'))expect(n.stop.mock.calls.at(-1)).toEqual([])});
  it('does not attempt autoplay on a suspended channel',()=>{const{audio,c,nodes}=setup();c.state='suspended';audio.prepare('/voice.mp3');expect(audio.tick()).toBe(false);expect(c.resume).not.toHaveBeenCalled();expect(nodes).toHaveLength(0);audio.dispose();expect(audio.tick()).toBe(false)});
 });
+
+it('plays narration without a built-in success tune when its independent switch is off',async()=>{const{audio,nodes}=setup();await audio.success('','/voice.mp3',0,false);expect(nodes.filter(n=>n.kind==='tone')).toHaveLength(0);expect(nodes.filter(n=>n.kind==='buffer')).toHaveLength(1)});
