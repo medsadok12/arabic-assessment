@@ -11,3 +11,9 @@ describe('picture quest success audio sequencing',()=>{
  it('stops scheduled synthesized notes as well as recordings',async()=>{const{audio,nodes}=setup();await audio.success('','/voice.mp3');const sounds=nodes.filter(n=>n.kind!=='gain');audio.stop();for(const n of sounds)expect(n.stop.mock.calls.at(-1)).toEqual([])});
  it('still plays the success tune if narration cannot load',async()=>{const{audio,nodes}=setup();vi.stubGlobal('fetch',vi.fn().mockRejectedValue(Error('offline')));expect(await audio.success('','/voice.mp3')).toBe(false);expect(nodes.filter(n=>n.kind==='tone')).toHaveLength(4)});
 });
+
+
+describe('clock click audio',()=>{
+ it('uses the unlocked channel without stopping a recording',async()=>{const{audio,nodes}=setup();expect(audio.tick()).toBe(false);await audio.play('/voice.mp3');const voice=nodes.find(n=>n.kind==='buffer');expect(audio.tick(0)).toBe(true);expect(audio.tick(1)).toBe(true);expect(voice.stop).not.toHaveBeenCalled();expect(nodes.filter(n=>n.kind==='tone')).toHaveLength(2);audio.stop();for(const n of nodes.filter(n=>n.kind==='tone'))expect(n.stop.mock.calls.at(-1)).toEqual([])});
+ it('does not attempt autoplay on a suspended channel',()=>{const{audio,c,nodes}=setup();c.state='suspended';audio.prepare('/voice.mp3');expect(audio.tick()).toBe(false);expect(c.resume).not.toHaveBeenCalled();expect(nodes).toHaveLength(0);audio.dispose();expect(audio.tick()).toBe(false)});
+});

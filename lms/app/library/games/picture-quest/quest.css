@@ -229,9 +229,14 @@
 #arem-quest.pq-loading.pq-load-error .stage::after{content:'تعذّر تحميل السؤال'}
 #arem-quest.pq-load-error .feedback{visibility:visible}
 
-/* Countdown sits directly below the points at the left of the RTL HUD. */
-#arem-quest .score-stack{display:flex;flex-direction:column;align-items:center;gap:4px}
-#arem-quest .countdown{display:flex;align-items:center;gap:5px;min-width:90px;justify-content:center;border:1px solid #e4dac9;border-radius:14px;padding:2px 10px;background:#faf7f2;color:#1a2b4a;font-size:12px;font-variant-numeric:tabular-nums}
-#arem-quest .countdown strong{font-size:16px;min-width:2ch;text-align:center}
-#arem-quest .countdown.urgent{background:#fff2de;border-color:#d9ae68}
+/* Equal outer columns keep the clock at the true centre of the RTL HUD. */
+#arem-quest .hud{display:grid;grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr);align-items:center;gap:8px}
+#arem-quest .round{grid-column:1;grid-row:1;justify-self:start}
+#arem-quest .score-stack{grid-column:3;grid-row:1;justify-self:end}
+#arem-quest .countdown{--timer-progress:100%;--timer-ring:#e8b84b;grid-column:2;grid-row:1;width:64px;height:64px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;isolation:isolate;flex-shrink:0;background:conic-gradient(var(--timer-ring) var(--timer-progress),#e4dac9 0);color:#1a2b4a;font-variant-numeric:tabular-nums;box-shadow:0 3px 8px #1a2b4a12}
+#arem-quest .countdown::before{content:'';position:absolute;inset:4px;border-radius:50%;background:#faf7f2;z-index:-1}
+#arem-quest .countdown strong{font-size:23px;line-height:1.1;min-width:2ch;text-align:center}
+#arem-quest .countdown>span{font-size:10px;line-height:1.4}
+#arem-quest .countdown.urgent{--timer-ring:#d95858;color:#b84444;box-shadow:0 0 13px 3px #dc555533}
 #arem-quest .trail span.wrong{background:#d9ae68}
+@media(max-width:460px){#arem-quest .hud{grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr);gap:6px}#arem-quest .countdown{width:56px;height:56px}#arem-quest .countdown strong{font-size:21px}}
