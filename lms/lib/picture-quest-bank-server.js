@@ -28,7 +28,7 @@ export function bankCatalog(bank,state={}){
  const ready=bank.words.filter(w=>w.stage!==4&&bankWordReady(w));
  const finalTopics=state.finalAccess?.topicIds||bank.topics.filter(t=>t.enabled).map(t=>t.id);
  const finalReady=!!finalTopics.length&&finalTopics.every(id=>stageReadiness(bank,id,4).ready)&& (!!state.completions['final:4']||!bank.words.some(w=>finalTopics.includes(w.topicId)&&w.stage===4&&state.mastery[w.id]?.seen));
- return{title:bank.title,settings:bank.settings,enabled:bank.enabled,reviewEnabled:bank.reviewEnabled,reviewCount:ready.filter(w=>state.mastery[w.id]?.seen).length,
+ return{title:bank.title,settings:bank.settings,enabled:bank.enabled,hubDepthEnabled:bank.hubDepthEnabled!==false,resume:state.round?.key&&!state.round.review&&state.round.index<state.round.questions.length?state.round.selection:null,reviewEnabled:bank.reviewEnabled,reviewCount:ready.filter(w=>state.mastery[w.id]?.seen).length,
   topics:bank.topics.filter(t=>t.enabled).map(t=>({...t,stages:[1,2,3].map(stage=>{const key=`${t.id}:${stage}`,completed=!!state.completions[key],attempt=state.attempts[key],unlocked=stage===1||!!state.completions[`${t.id}:${stage-1}`];return{...stageReadiness(bank,t.id,stage),completed,unlocked,resume:!completed&&!!attempt&&attempt.index<attempt.questions.length,index:attempt?.index||0};})})),
   final:{enabled:bank.finalEnabled!==false,unlocked:!!state.finalAccess,ready:finalReady,total:finalTopics.length*3,completed:!!state.completions['final:4'],resume:!!state.attempts['final:4']&&!state.completions['final:4'],index:state.attempts['final:4']?.index||0}};
 }
