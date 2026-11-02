@@ -257,3 +257,7 @@
 @keyframes pq-timeout-leave{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:.15;transform:translateY(-10px) scale(.985)}}
 @keyframes pq-timeout-arrive{0%{opacity:0;transform:translateY(16px) scale(.975) rotate(-.6deg)}70%{opacity:1;transform:translateY(-2px) scale(1.003) rotate(.2deg)}100%{opacity:1;transform:translateY(0) scale(1) rotate(0)}}
 @keyframes pq-timeout-spark{0%{opacity:0;transform:scale(.4) rotate(-20deg)}35%{opacity:.85;transform:scale(1.12) rotate(10deg)}100%{opacity:0;transform:translateY(-8px) scale(.75) rotate(30deg)}}
+
+/* Approved reading font: clear school-style letters and Arabic vowel marks. */
+#arem-quest .stage h2,
+#arem-quest .answer{font-family:var(--font-naskh),'Noto Naskh Arabic',serif;font-weight:700;line-height:2}
