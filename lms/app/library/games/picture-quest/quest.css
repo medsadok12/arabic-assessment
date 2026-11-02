@@ -249,3 +249,11 @@
 #arem-quest .timeout-card p{font-size:21px;font-weight:700;margin:4px 0 22px}
 #arem-quest .timeout-close{min-height:46px;min-width:120px;border:1px solid #cfaa54;border-radius:14px;padding:8px 22px;background:#e8b84b;color:#1a2b4a;font-size:17px;font-weight:800;box-shadow:0 3px 0 #bd9132}
 .pq-embedded #arem-quest{position:relative}.pq-embedded #arem-quest .timeout-overlay{position:absolute}
+
+/* A brief lift and soft landing, using only transform and opacity on mobile. */
+#arem-quest .stage.timeout-leave{animation:pq-timeout-leave 150ms ease-in forwards;pointer-events:none}
+#arem-quest .stage.timeout-arrive{animation:pq-timeout-arrive 380ms cubic-bezier(.2,.75,.25,1) both}
+#arem-quest .stage.timeout-arrive::after{content:'✦';position:absolute;inset-inline-start:18px;top:18px;font-size:25px;color:var(--pq-gold,#e8b84b);pointer-events:none;animation:pq-timeout-spark 480ms ease-out both}
+@keyframes pq-timeout-leave{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:.15;transform:translateY(-10px) scale(.985)}}
+@keyframes pq-timeout-arrive{0%{opacity:0;transform:translateY(16px) scale(.975) rotate(-.6deg)}70%{opacity:1;transform:translateY(-2px) scale(1.003) rotate(.2deg)}100%{opacity:1;transform:translateY(0) scale(1) rotate(0)}}
+@keyframes pq-timeout-spark{0%{opacity:0;transform:scale(.4) rotate(-20deg)}35%{opacity:.85;transform:scale(1.12) rotate(10deg)}100%{opacity:0;transform:translateY(-8px) scale(.75) rotate(30deg)}}
