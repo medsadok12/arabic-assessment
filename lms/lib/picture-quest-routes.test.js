@@ -79,3 +79,8 @@ describe('prepared next-question sessions',()=>{
   const s=await start(),next=(await call(answer(s))).body.next,c=freshPictureQuest();c.questions[1].prompt='سؤال محدّث';publishConfig(c);expect((await call(answer(next,'choice-2'))).status).toBe(409);expect(balance()).toBe(50);
  });
 });
+
+describe('time expired answers',()=>{
+ it('records a timeout without points, advances, and retries idempotently',async()=>{const s=await start(),body={...answer(s,''),timedOut:true};const first=await call(body);expect(first.status).toBe(200);expect(first.body).toMatchObject({right:false,timedOut:true,reward:0,points:40});expect(first.body.next.question.id).toBe('apple');expect((await call(body)).body.next.question.id).toBe('apple');expect(balance()).toBe(40);expect(db.tables.points_log).toHaveLength(0);expect((await call(answer(s))).status).toBe(409)});
+ it('persists an incorrect result when the last question times out',async()=>{const c=freshPictureQuest();c.questions=c.questions.slice(0,1);publishConfig(c);const s=await start();const result=await call({...answer(s,''),timedOut:true});expect(result.body.next.finished).toBe(true);expect(result.body.next.independent).toBe(0);expect(db.tables.game_results).toHaveLength(1);expect(db.tables.game_results[0]).toMatchObject({correct:0,wrong:1,total:1});expect(balance()).toBe(40)});
+});
