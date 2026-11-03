@@ -1,4 +1,4 @@
-export const JOURNEY_FLAGS=['journeyEnabled','journeySequential','journeyScenery','journeyPath','journeyEffects'];
+export const JOURNEY_FLAGS=['entranceEnabled','journeyEnabled','journeySequential','journeyScenery','journeyPath','journeyEffects'];
 export const JOURNEY_ART=[
  ['animals','الحيوانات'],['fruit','الفواكه'],['school','المدرسة'],['home','البيت'],['family','الأسرة'],['birds','الطيور'],['garden','الحديقة'],['vegetables','الخضروات'],['weather','الطقس'],['clothes','الملابس'],['food','الطعام'],['body','الجسم'],['toys','الألعاب'],['sports','الرياضة'],['transport','وسائل النقل'],['jobs','المهن'],['city','المدينة'],['shapes','الأشكال'],['sea','البحر'],['space','الفضاء']
 ];

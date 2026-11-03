@@ -18,10 +18,10 @@ it('assigns a word to the final reserve and preserves all its existing media and
 it('can turn off world-card depth without deleting word media or game settings',async()=>{await act(async()=>root.render(React.createElement(BankEditor)));const depth=label('التجسيم الخفيف لبطاقات العوالم').querySelector('input');await act(async()=>Simulate.change(depth,{target:{checked:false}}));await act(async()=>button('حفظ مسودة').click());expect(requests[0].config.hubDepthEnabled).toBe(false);expect(requests[0].config.words).toEqual(freshQuestBank().words);expect(requests[0].config.settings).toEqual(freshQuestBank().settings)});
 it('persists map controls, an independent uploaded world image switch and artwork choice in a draft',async()=>{
  await act(async()=>root.render(React.createElement(BankEditor)));
- for(const name of ['الخريطة المتصلة','فتح العوالم بالتتابع','الأشجار والمناظر المحيطة','المسار المنقّط والجسور','حركة الخريطة واحتفال فتح العالم'])await act(async()=>Simulate.change(label(name).querySelector('input'),{target:{checked:false}}));
+ for(const name of ['مدخل العالم المصوّر','الخريطة المتصلة','فتح العوالم بالتتابع','الأشجار والمناظر المحيطة','المسار المنقّط والجسور','حركة الخريطة واحتفال فتح العالم'])await act(async()=>Simulate.change(label(name).querySelector('input'),{target:{checked:false}}));
  await act(async()=>Simulate.change(label('صورة العالم في الخريطة').querySelector('input'),{target:{checked:false}}));
  await act(async()=>Simulate.change(label('رسم العالم في الخريطة').querySelector('select'),{target:{value:'19'}}));
  await act(async()=>button('حفظ مسودة').click());const config=requests[0].config;
- for(const key of ['journeyEnabled','journeySequential','journeyScenery','journeyPath','journeyEffects'])expect(config[key]).toBe(false);
+ for(const key of ['entranceEnabled','journeyEnabled','journeySequential','journeyScenery','journeyPath','journeyEffects'])expect(config[key]).toBe(false);
  expect(config.topics[0]).toMatchObject({mapArt:19,mapImageEnabled:false});expect(config.words).toEqual(freshQuestBank().words);
 });
