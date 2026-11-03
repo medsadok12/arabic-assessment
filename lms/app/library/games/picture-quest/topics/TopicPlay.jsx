@@ -5,10 +5,12 @@ import{mountPictureQuest}from'../../../../../lib/picture-quest-client';
 import{childFetch,getActiveChildTab}from'../../../../../lib/child-fetch';
 import{displayNumber}from'../../../../../lib/display-number';
 import'../quest.css';
-export default function TopicPlay({selection,onExit,settings}){
+export default function TopicPlay({selection,onExit,settings,exitRequest=0}){
  const holder=useRef(null),session=useRef(null),requestRef=useRef(null),[child,setChild]=useState(()=>getActiveChildTab()),[leaving,setLeaving]=useState(false),[exitBusy,setExitBusy]=useState(false),[error,setError]=useState(''),[checkpoint,setCheckpoint]=useState(null),continueRef=useRef(null),controls=useRef(null);
  useEffect(()=>{const focus=()=>setChild(getActiveChildTab());window.addEventListener('focus',focus);return()=>window.removeEventListener('focus',focus)},[]);
  useEffect(()=>{const root=holder.current?.querySelector('#arem-quest');if(root)root.inert=leaving||!!checkpoint;if(leaving||checkpoint)controls.current?.pause();else controls.current?.resume();},[leaving,checkpoint]);
+ const handledExit=useRef(exitRequest);
+ useEffect(()=>{if(handledExit.current===exitRequest)return;handledExit.current=exitRequest;if(session.current?.finished)onExit();else setLeaving(true)},[exitRequest,onExit]);
  useEffect(()=>{document.documentElement.classList.add('pq-focus');return()=>document.documentElement.classList.remove('pq-focus')},[]);
  useEffect(()=>{
   let disposed=false;const h=holder.current;h.innerHTML=QUEST_MARKUP;const root=h.querySelector('#arem-quest'),back=document.createElement('button');back.type='button';back.className='pq-mobile-back';back.textContent='✕ الموضوعات';back.addEventListener('click',()=>setLeaving(true));root.querySelector('.header').prepend(back);
