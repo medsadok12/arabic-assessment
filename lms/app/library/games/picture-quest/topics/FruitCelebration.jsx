@@ -1,6 +1,7 @@
 'use client';
 import{useEffect,useRef,useState}from'react';
 import'./fruit-celebration.css';
+import{HARVEST_FRUITS,HARVEST_START,HARVEST_STAGGER,HARVEST_CHEER,HARVEST_DONE,harvestFruitStyle}from'../../../../../lib/picture-quest-harvest';
 
 export default function FruitCelebration({data,completed=false,celebrate=false,onDone}){
  const[phase,setPhase]=useState('idle'),[landed,setLanded]=useState(0),[blocked,setBlocked]=useState(false),done=useRef(onDone),audio=useRef(null);
@@ -13,9 +14,9 @@ export default function FruitCelebration({data,completed=false,celebrate=false,o
   if(celebrate){
    later(()=>setPhase('opening'),reduced?0:50);
    later(()=>setPhase('released'),reduced?10:1050);
-   if(basket)for(let i=1;i<=3;i++)later(()=>setLanded(i),reduced||!jump?20:1950+(i-1)*700);
-   later(()=>{setPhase('cheering');if(faheem&&voice&&url){const player=new Audio(url);audio.current=player;player.play()?.catch(()=>{if(live)setBlocked(true)});}},reduced?40:basket&&jump?4350:1850);
-   later(()=>{setPhase('done');done.current?.();},reduced?100:basket&&jump?6500:4000);
+   if(basket)for(let i=1;i<=HARVEST_FRUITS.length;i++)later(()=>setLanded(i),reduced||!jump?20:HARVEST_START+(i-1)*HARVEST_STAGGER);
+   later(()=>{setPhase('cheering');if(faheem&&voice&&url){const player=new Audio(url);audio.current=player;player.play()?.catch(()=>{if(live)setBlocked(true)});}},reduced?40:basket&&jump?HARVEST_CHEER:1850);
+   later(()=>{setPhase('done');done.current?.();},reduced?100:basket&&jump?HARVEST_DONE:4000);
   }
   return()=>{live=false;timers.forEach(clearTimeout);if(audio.current){audio.current.pause();audio.current=null;}};
  },[celebrate,motion,awning,panel,basket,jump,faheem,voice,url]);
@@ -25,7 +26,7 @@ export default function FruitCelebration({data,completed=false,celebrate=false,o
   <span className="pqh-frame" aria-hidden="true"/>
   <div className="pqh-prize" aria-hidden="true">
    {basket&&<><span className="pqh-shadow"/><div className="pqh-basket"><span className="pqh-art pqh-basket-back"/><span className="pqh-art pqh-basket-front"/></div></>}
-   {['apple','orange','grapes'].map((name,i)=><span key={name} className={'pqh-fruit pqh-'+name+(basket&&(filled||landed>i)?' pqh-landed':'')+(filled?' pqh-settled':'')}><span className="pqh-art"/></span>)}
+   {HARVEST_FRUITS.map((fruit,i)=><span key={i} style={harvestFruitStyle(fruit)} hidden={i>=3&&(!basket||!filled&&landed<=i)} className={'pqh-fruit pqh-'+fruit.kind+(basket&&(filled||landed>i)?' pqh-landed':'')+(filled&&basket?' pqh-settled':'')}><span className="pqh-art"/></span>)}
    {basket&&<span className="pqh-art pqh-front-cover"/>}
   </div>
   <span className="pqh-panel" aria-hidden="true"/><span className="pqh-awning" aria-hidden="true"/>

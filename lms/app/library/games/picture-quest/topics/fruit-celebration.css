@@ -7,7 +7,7 @@
 .pqh-art{display:block;width:100%;height:100%;background:url('/picture-quest/fruit-harvest-v1.webp') no-repeat;background-size:300% 200%;pointer-events:none}
 .pqh-basket{position:absolute;inset:0;transform:translateY(0) scale(.4);transform-origin:50% 0;transition:transform .85s cubic-bezier(.22,.7,.28,1);z-index:2}
 .pqh-basket-back{position:absolute;inset:0;background-position:0 0;z-index:1}.pqh-basket-front{position:absolute;inset:0;background-position:50% 0;z-index:4}
-.pqh-fruit{position:absolute;left:50%;top:-2.4%;width:31.43%;height:31.43%;z-index:3;transform:translate(calc(-50% + var(--sx)),0) scale(.6);transform-origin:50% 80%}
+.pqh-fruit{position:absolute;left:50%;top:-2.4%;width:40%;height:40%;z-index:3;transform:translate(calc(-50% + var(--sx)),0) scale(.6);transform-origin:50% 80%}
 .pqh-apple{--sx:-79%;--dx:-50%;--dy:242%;--mid:-98%;--spin:-16deg}.pqh-orange{--sx:79%;--dx:52%;--dy:242%;--mid:100%;--spin:20deg}.pqh-grapes{--sx:0%;--dx:0%;--dy:212%;--mid:-18%;--spin:-8deg}
 .pqh-apple .pqh-art{background-position:100% 0}.pqh-orange .pqh-art{background-position:0 100%}.pqh-grapes .pqh-art{background-position:50% 100%}
 .pqh-released .pqh-basket{transform:translateY(45.238%) scale(1)}.pqh-released .pqh-prize,.pqh-flight .pqh-prize{z-index:8}
@@ -16,8 +16,11 @@
 .pqh-basket-exiting .pqh-basket{animation:pqh-basket-exit .85s cubic-bezier(.22,.7,.28,1) both;transition:none}
 @keyframes pqh-basket-exit{0%{transform:translateY(0) scale(.4)}25%{transform:translateY(-10%) scale(.48)}55%{transform:translateY(8%) scale(.7)}82%{transform:translateY(42%) scale(.98)}94%{transform:translateY(46%) scale(1.015,.985)}100%{transform:translateY(45.238%) scale(1)}}
 .pqh-fruit.pqh-landed{animation:pqh-hop .85s linear both}
-@keyframes pqh-hop{0%{transform:translate(calc(-50% + var(--sx)),0) rotate(0) scale(.6)}18%{transform:translate(calc(-50% + var(--sx)),8%) rotate(-5deg) scale(.67,.59)}42%{transform:translate(calc(-50% + var(--mid)),-126%) rotate(var(--spin)) scale(.85)}60%{transform:translate(calc(-50% + var(--dx)),-58%) rotate(8deg) scale(.91)}82%{transform:translate(calc(-50% + var(--dx)),var(--dy)) rotate(-4deg) scale(.85,.92)}91%{transform:translate(calc(-50% + var(--dx)),calc(var(--dy) + 5%)) rotate(2deg) scale(.96,.76)}100%{transform:translate(calc(-50% + var(--dx)),var(--dy)) rotate(0) scale(.87)}}
-.pqh-front-cover{position:absolute;inset:0;transform:translateY(45.238%);background-position:50% 0;z-index:4;display:none}.pqh-flight .pqh-front-cover{display:block}
+/* A rounded ascent eases into the apex, then gravity accelerates the drop.
+   Only a small damped landing remains; no long stop or exaggerated squash. */
+@keyframes pqh-hop{0%{transform:translate(calc(-50% + var(--sx)),0) rotate(0) scale(.6);animation-timing-function:cubic-bezier(.2,.65,.35,1)}35%{transform:translate(calc(-50% + var(--mid)),-85%) rotate(var(--spin)) scale(.9);animation-timing-function:cubic-bezier(.55,0,.85,.4)}84%{transform:translate(calc(-50% + var(--dx)),var(--dy)) rotate(var(--rest-angle)) scale(var(--rest-scale));animation-timing-function:ease-out}91%{transform:translate(calc(-50% + var(--dx)),calc(var(--dy) - 3%)) rotate(calc(var(--rest-angle) + 2deg)) scale(var(--rest-scale));animation-timing-function:ease-in}100%{transform:translate(calc(-50% + var(--dx)),var(--dy)) rotate(var(--rest-angle)) scale(var(--rest-scale))}}
+
+.pqh-front-cover{position:absolute;inset:0;transform:translateY(45.238%);background-position:50% 0;z-index:30;display:none}.pqh-flight .pqh-front-cover{display:block}
 .pqh-shadow{position:absolute;left:19%;top:128.57%;width:62%;height:4.76%;border-radius:50%;background:#526b3038;filter:blur(4px);opacity:0;z-index:0;transition:opacity .6s}.pqh-released .pqh-shadow{opacity:1}
 .pqh-cheer.pqh-has-basket .pqh-prize{translate:-16% 0}
 .pqh-welcome{position:absolute;inset:0;z-index:10;pointer-events:none}.pqh-faheem{position:absolute;left:75%;top:109%;width:75%;height:75%;background:url('/picture-quest/gate-celebration-v1.webp') no-repeat;background-size:200% 200%;background-position:0 100%;animation:pqh-clap .46s steps(1,end) 4}
@@ -26,5 +29,5 @@
 .pqh-welcome button{position:absolute;top:185%;right:-12%;min-height:44px;padding:7px 14px;border:1px solid #d8c18a;border-radius:13px;background:#fff8e8;color:#1a2b4a;font:inherit;pointer-events:auto}
 .pqe-fruit-celebrating .pqe-route{visibility:hidden;pointer-events:none}
 .pqh-no-awning-motion .pqh-awning,.pqh-no-panel-motion .pqh-panel,.pqh-still .pqh-awning,.pqh-still .pqh-panel,.pqh-still .pqh-prize,.pqh-still .pqh-basket,.pqh-still .pqh-shadow{transition:none}
-.pqh-no-jump .pqh-fruit.pqh-landed,.pqh-still .pqh-fruit.pqh-landed,.pqh-fruit.pqh-settled{animation:none;transform:translate(calc(-50% + var(--dx)),var(--dy)) scale(.87)}.pqh-still .pqh-faheem,.pqh-still .pqh-basket{animation:none}
-@media(prefers-reduced-motion:reduce){.pqh-awning,.pqh-panel,.pqh-prize,.pqh-basket,.pqh-shadow{transition:none}.pqh-fruit.pqh-landed{animation:none;transform:translate(calc(-50% + var(--dx)),var(--dy)) scale(.87)}.pqh-faheem,.pqh-basket-exiting .pqh-basket{animation:none}}
+.pqh-no-jump .pqh-fruit.pqh-landed,.pqh-still .pqh-fruit.pqh-landed,.pqh-fruit.pqh-settled{animation:none;transform:translate(calc(-50% + var(--dx)),var(--dy)) rotate(var(--rest-angle)) scale(var(--rest-scale))}.pqh-still .pqh-faheem,.pqh-still .pqh-basket{animation:none}
+@media(prefers-reduced-motion:reduce){.pqh-awning,.pqh-panel,.pqh-prize,.pqh-basket,.pqh-shadow{transition:none}.pqh-fruit.pqh-landed{animation:none;transform:translate(calc(-50% + var(--dx)),var(--dy)) rotate(var(--rest-angle)) scale(var(--rest-scale))}.pqh-faheem,.pqh-basket-exiting .pqh-basket{animation:none}}
