@@ -1,3 +1,4 @@
+import {JOURNEY_FLAGS,prepareWorldAccess,worldUnlocked,worldComplete} from './picture-quest-journey';
 import {completeQuestWorlds} from './picture-quest-content-pack';
 import {randomUUID} from 'node:crypto';
 import {QUEST_BANK_ID,freshQuestBank,validateQuestBank,bankReadiness,bankQuestion,selectBankWords,bankWordReady,stageReadiness,stageWords,mixedFinalWords} from './picture-quest-bank';
@@ -19,7 +20,7 @@ export async function writeQuestBank(admin,auth,body){if(!['draft','publish'].in
 export const bankProgressKey=(userId,epoch)=>`${QUEST_BANK_ID}:progress:${userId}:${epoch}`;
 const stageKey=s=>`${s.topicId}:${s.stage}`;
 function prepare(state,bank){
- state.mastery??={};state.events??=[];state.attempts??={};state.completions??={};
+ state.mastery??={};state.events??=[];state.attempts??={};state.completions??={};prepareWorldAccess(state,bank);
  if(state.round&&!state.round.key)state.legacyRound??=state.round;
  if(!state.finalAccess){const ids=bank.topics.filter(t=>t.enabled).map(t=>t.id);if(ids.length&&ids.every(id=>[1,2,3].every(stage=>state.completions[`${id}:${stage}`])))state.finalAccess={topicIds:ids,unlockedAt:Date.now()};}
  return state;
@@ -39,8 +40,8 @@ export function bankCatalog(bank,state={}){
  const ready=bank.words.filter(w=>w.stage!==4&&bankWordReady(w));
  const finalTopics=state.finalAccess?.topicIds||bank.topics.filter(t=>t.enabled).map(t=>t.id);
  const finalReady=!!finalTopics.length&&finalTopics.every(id=>stageReadiness(bank,id,4).ready)&& (!!state.completions['final:4']||!bank.words.some(w=>finalTopics.includes(w.topicId)&&w.stage===4&&state.mastery[w.id]?.seen));
- return{title:bank.title,settings:bank.settings,enabled:bank.enabled,hubDepthEnabled:bank.hubDepthEnabled!==false,resume:state.round?.key&&!state.round.review&&state.round.index<state.round.questions.length?state.round.selection:null,reviewEnabled:bank.reviewEnabled,reviewCount:ready.filter(w=>state.mastery[w.id]?.seen).length,
-  topics:bank.topics.filter(t=>t.enabled).map(t=>({...t,stages:[1,2,3].map(stage=>{const key=`${t.id}:${stage}`,completed=!!state.completions[key],attempt=state.attempts[key],unlocked=stage===1||!!state.completions[`${t.id}:${stage-1}`];return{...stageReadiness(bank,t.id,stage),completed,unlocked,resume:!completed&&!!attempt&&attempt.index<attempt.questions.length,index:attempt?.index||0};})})),
+ return{...Object.fromEntries(JOURNEY_FLAGS.map(k=>[k,bank[k]!==false])),epoch:bank.epoch,title:bank.title,settings:bank.settings,enabled:bank.enabled,hubDepthEnabled:bank.hubDepthEnabled!==false,resume:state.round?.key&&!state.round.review&&state.round.index<state.round.questions.length?state.round.selection:null,reviewEnabled:bank.reviewEnabled,reviewCount:ready.filter(w=>state.mastery[w.id]?.seen).length,
+  topics:bank.topics.filter(t=>t.enabled).map(t=>({...t,unlocked:worldUnlocked(bank,state,t.id),completed:worldComplete(state,t.id),stages:[1,2,3].map(stage=>{const key=`${t.id}:${stage}`,completed=!!state.completions[key],attempt=state.attempts[key],unlocked=worldUnlocked(bank,state,t.id)&&(stage===1||!!state.completions[`${t.id}:${stage-1}`]);return{...stageReadiness(bank,t.id,stage),completed,unlocked,resume:!completed&&!!attempt&&attempt.index<attempt.questions.length,index:attempt?.index||0};})})),
   final:{enabled:bank.finalEnabled!==false,unlocked:!!state.finalAccess,ready:finalReady,total:finalTopics.length*3,completed:!!state.completions['final:4'],resume:!!state.attempts['final:4']&&!state.completions['final:4'],index:state.attempts['final:4']?.index||0}};
 }
 export async function readBankCatalog(admin,auth,userId,bank){const state=await mutateProgress(admin,auth.user.id,userId,bank,s=>s);return bankCatalog(bank,state)}
@@ -63,6 +64,7 @@ function assertAvailable(bank,state,selection){
   if(!state.finalAccess.topicIds.every(id=>stageReadiness(bank,id,4).ready)||!state.completions['final:4']&&bank.words.some(w=>state.finalAccess.topicIds.includes(w.topicId)&&w.stage===4&&state.mastery[w.id]?.seen))throw questFailure('كلمات مرحلة الأذكياء قيد التجهيز.',409);return;
  }
  if(!bank.topics.some(t=>t.id===topicId&&t.enabled))throw questFailure('هذا الموضوع غير متاح.',409);
+ if(!worldUnlocked(bank,state,topicId))throw questFailure('أكمل العالم السابق أولًا، ثم نكمل المغامرة.',409);
  if(stage>1&&!state.completions[`${topicId}:${stage-1}`])throw questFailure('أكمل المرحلة السابقة أولًا.',409);
  if(!stageReadiness(bank,topicId,stage).ready)throw questFailure('هذه المرحلة قيد التجهيز. ستتاح بعد اكتمال كلماتها وصورها.',409);
 }
@@ -97,6 +99,7 @@ export async function questBankSession(admin,auth,userId,body){
  if(body.action==='start'||body.action==='replay'){
   let state=await mutateProgress(admin,auth.user.id,userId,bank,s=>{
    assertAvailable(bank,s,selection);
+   if(!['final','review'].includes(selection.topicId))s.worldAccess[selection.topicId]=true;
    const existing=s.attempts[key];if(existing&&(body.action==='start'||existing.index<existing.questions.length)){s.round=existing;return s;}
    const seed=`${userId}:${bank.epoch}:${key}`,words=selection.topicId==='final'?mixedFinalWords(bank,s.finalAccess.topicIds,seed):selection.topicId==='review'?selectBankWords(bank,{topicId:'review',level:3,round:0},s.mastery,seed):stageWords(bank,selection.topicId,selection.stage,seed);
    if(!words.length)throw questFailure('تعلّم كلمات أولًا، ثم عد للمراجعة.',409);

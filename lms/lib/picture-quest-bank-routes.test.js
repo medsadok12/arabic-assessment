@@ -30,7 +30,7 @@ describe('topic bank permissions and persistence',()=>{
  it('saves private drafts, publishes with version checks, and never writes to the original game',async()=>{const legacy=freshPictureQuest();db.tables.game_settings.push({game_id:PICTURE_QUEST_ID,settings:legacy,updated_at:'old'});db.user={id:teacher,app_metadata:{role:'teacher'}};const config=freshQuestBank();config.title='كلماتي';const draft=await call({action:'draft',config,version:null,draftVersion:null},bankApi,'PUT');expect(draft.status).toBe(200);expect((await call()).body.title).not.toBe(config.title);const saved=await call({...draft.body,action:'publish'},bankApi,'PUT');expect(saved.status).toBe(200);expect((await call()).body.title).toBe(config.title);expect((await call({...draft.body,action:'publish'},bankApi,'PUT')).status).toBe(409);expect(db.tables.game_settings.find(r=>r.game_id===PICTURE_QUEST_ID).settings).toEqual(legacy)});
  it('blocks publishing active words without imagery and keeps a draft',async()=>{db.user={id:teacher,app_metadata:{role:'teacher'}};const config=freshQuestBank();config.contentPackVersion=1;config.words[0].emoji='';config.words[0].image_url='';expect((await call({action:'publish',config,version:null,draftVersion:null},bankApi,'PUT')).status).toBe(400);expect((await call({action:'draft',config,version:null,draftVersion:null},bankApi,'PUT')).status).toBe(200)});
 });
-function readyBank(){const bank=freshQuestBank();bank.contentPackVersion=1;bank.shuffle=false;bank.topics.forEach(t=>{t.enabled=t.id==='animals'||t.id==='fruit'});for(const topic of bank.topics.filter(t=>t.enabled))for(const [stage,count]of[[1,5],[2,10],[3,15],[4,3]]){let n=bank.words.filter(w=>w.topicId===topic.id&&w.stage===stage).length;while(n<count){bank.words.push({...structuredClone(bank.words[0]),id:`${topic.id}-stage-${stage}-${n}`,topicId:topic.id,stage,label:`${topic.id} كلمة ${stage} ${n}`,emoji:'🐈',image_url:''});n++;}}return bank}
+function readyBank(){const bank=freshQuestBank();bank.journeySequential=false;bank.contentPackVersion=1;bank.shuffle=false;bank.topics.forEach(t=>{t.enabled=t.id==='animals'||t.id==='fruit'});for(const topic of bank.topics.filter(t=>t.enabled))for(const [stage,count]of[[1,5],[2,10],[3,15],[4,3]]){let n=bank.words.filter(w=>w.topicId===topic.id&&w.stage===stage).length;while(n<count){bank.words.push({...structuredClone(bank.words[0]),id:`${topic.id}-stage-${stage}-${n}`,topicId:topic.id,stage,label:`${topic.id} كلمة ${stage} ${n}`,emoji:'🐈',image_url:''});n++;}}return bank}
 const progress=()=>db.tables.game_settings.find(r=>r.game_id===`${QUEST_BANK_ID}:progress:${db.child||student}:0`)?.settings;
 async function finishStage(topicId='animals',stage=1){let s=await start({topicId,stage});while(!s.finished){const r=await call(answer(s,{topicId,stage}),sessionApi,'POST');expect(r.status).toBe(200);s=r.body.next;}return s;}
 describe('topic stages',()=>{
@@ -65,5 +65,22 @@ describe('world content pack live and editor integration',()=>{
   expect(loaded.body.config.words.filter(w=>w.topicId==='animals')).toHaveLength(33);
   const saved=await call({...loaded.body,action:'publish'},bankApi,'PUT');expect(saved.status).toBe(200);expect(saved.body.config.contentPackVersion).toBe(1);
   expect(db.tables.game_settings.find(r=>r.game_id===QUEST_BANK_ID).settings.words).toHaveLength(131);
+ });
+});
+
+describe('sequential world access is enforced by the server',()=>{
+ it('rejects a direct start of the next world until all three previous stages finish',async()=>{
+  const bank=readyBank();bank.journeySequential=true;publish(bank);
+  expect((await call()).body.topics.map(t=>t.unlocked)).toEqual([true,false]);
+  expect((await call({action:'start',topicId:'fruit',stage:1},sessionApi,'POST')).status).toBe(409);
+  await finishStage('animals',1);await finishStage('animals',2);
+  expect((await call({action:'start',topicId:'fruit',stage:1},sessionApi,'POST')).status).toBe(409);
+  await finishStage('animals',3);expect((await call()).body.topics[1].unlocked).toBe(true);
+  expect((await call({action:'start',topicId:'fruit',stage:1},sessionApi,'POST')).status).toBe(200);
+ });
+ it('keeps a world started under the old free-choice policy accessible without completing or rewarding it',async()=>{
+  const bank=readyBank();publish(bank);let s=await start({topicId:'fruit'});s=(await call(answer(s,{topicId:'fruit'}),sessionApi,'POST')).body.next;
+  db.tables.game_settings.find(r=>r.game_id===QUEST_BANK_ID).settings.journeySequential=true;
+  const catalog=(await call()).body;expect(catalog.topics[1].unlocked).toBe(true);expect((await start({topicId:'fruit'})).index).toBe(1);expect(balance()).toBe(40);expect(progress().completions['animals:1']).toBeUndefined();
  });
 });
