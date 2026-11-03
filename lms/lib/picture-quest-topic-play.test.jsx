@@ -20,3 +20,9 @@ it('phone Back uses the same confirmation dialog and sends no exit until the stu
  await act(async()=>root.render(<TopicPlay settings={globalThis.topicTestSession.settings} selection={selection} onExit={onExit} exitRequest={2}/>));
  await act(async()=>button('نعم، أخرج').click());expect(calls.at(-1).action).toBe('exit');expect(onExit).toHaveBeenCalledOnce();
 });
+it('marks only a freshly completed animal stage 3 for the gate celebration',async()=>{
+ const onWorldComplete=vi.fn();globalThis.topicTestSession={...globalThis.topicTestSession,finished:true,review:false,index:15,total:15,independent:15};
+ await act(async()=>root.render(<TopicPlay settings={globalThis.topicTestSession.settings} selection={{topicId:'animals',stage:3}} onExit={onExit} onWorldComplete={onWorldComplete}/>));expect(onWorldComplete).toHaveBeenCalledExactlyOnceWith('animals');
+ await act(async()=>root.unmount());root=createRoot(document.getElementById('host'));globalThis.topicTestSession.review=true;onWorldComplete.mockClear();
+ await act(async()=>root.render(<TopicPlay settings={globalThis.topicTestSession.settings} selection={{topicId:'animals',stage:3}} onExit={onExit} onWorldComplete={onWorldComplete}/>));expect(onWorldComplete).not.toHaveBeenCalled();
+});

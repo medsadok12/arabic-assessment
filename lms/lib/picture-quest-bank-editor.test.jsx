@@ -25,3 +25,9 @@ it('persists map controls, an independent uploaded world image switch and artwor
  for(const key of ['entranceEnabled','journeyEnabled','journeySequential','journeyScenery','journeyPath','journeyEffects'])expect(config[key]).toBe(false);
  expect(config.topics[0]).toMatchObject({mapArt:19,mapImageEnabled:false});expect(config.words).toEqual(freshQuestBank().words);
 });
+it('saves independent gate controls and retains a disabled Faheem recording',async()=>{
+ await act(async()=>root.render(React.createElement(BankEditor)));
+ const gateLabels=['حركة فتح بوابة الحيوانات','قفز القط وعبوره البوابة','ظهور فهيم وتصفيقه عند البوابة','صوت فهيم عند البوابة'];
+ for(const text of gateLabels)await act(async()=>Simulate.change(label(text).querySelector('input'),{target:{checked:false}}));
+ await act(async()=>button('حفظ مسودة').click());for(const key of ['gateDoorEnabled','gateCatEnabled','gateFaheemEnabled','gateVoiceEnabled'])expect(requests[0].config[key]).toBe(false);expect(requests[0].config.words).toEqual(freshQuestBank().words);expect(requests[0].config.settings).toEqual(freshQuestBank().settings);
+});
