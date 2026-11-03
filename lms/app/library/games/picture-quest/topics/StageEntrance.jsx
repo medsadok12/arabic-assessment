@@ -1,6 +1,5 @@
 'use client';
 import{useEffect,useRef,useState}from'react';
-import Link from'next/link';
 import{Check,LockKeyhole}from'lucide-react';
 import{displayNumber}from'../../../../../lib/display-number';
 import JourneyArt from'./JourneyArt';
@@ -29,7 +28,7 @@ export default function StageEntrance({data,topic,active,staff=false,embedded=fa
     {path&&<svg className="pqe-road" viewBox="0 0 600 234" preserveAspectRatio="none" aria-hidden="true"><path d={ROAD} className="pqe-road-shadow" transform="translate(0 4)"/><path d={ROAD} className="pqe-road-fill"/><path d={ROAD} className="pqe-road-dots"/></svg>}
     {topic.stages.map(s=><button type="button" key={s.stage} className={'pqe-station pqf-step pqe-station-'+s.stage+(s.stage===active.stage?' current':'')+(s.completed?' completed':'')} disabled={entering||!staff&&!s.unlocked} aria-pressed={s.stage===active.stage} onClick={()=>onChoose?.(s.stage)} aria-label={'المرحلة '+displayNumber(s.stage)+'، '+displayNumber(s.target)+' كلمات'+(s.completed?'، مكتملة':!s.unlocked?'، مقفلة':'')}><b className="pqe-disc" aria-hidden="true">{displayNumber(s.stage)}{s.completed?<span className="pqe-state"><Check/></span>:!staff&&!s.unlocked?<span className="pqe-state"><LockKeyhole/></span>:null}</b><small>{displayNumber(s.target)} {s.target===15?'كلمة':'كلمات'}</small></button>)}
    </div>
-   <div className="pqe-action pqf-action"><p className="pqe-status pqf-status" role="status">{status}</p>{staff?embedded?<button type="button" className="pqe-go pqf-go" onClick={onPreview}>معاينة المرحلة ←</button>:<Link className="pqe-go pqf-go" href={'/library/games/picture-quest/topics/manage?topic='+encodeURIComponent(topic.id)+'&stage='+active.stage}>معاينة المرحلة ←</Link>:<button type="button" className="pqe-go pqf-go" disabled={entering||!active.ready||!active.unlocked} onClick={begin}>{!active.ready?'قيد التجهيز':active.completed?'راجع ←':active.resume?'واصل ←':'ابدأ ←'}</button>}</div>
+   <div className="pqe-action pqf-action"><p className="pqe-status pqf-status" role="status">{status}</p>{staff?<button type="button" className="pqe-go pqf-go" onClick={()=>onPreview?onPreview():onBegin?.({topicId:topic.id,stage:active.stage})}>معاينة المرحلة ←</button>:<button type="button" className="pqe-go pqf-go" disabled={entering||!active.ready||!active.unlocked} onClick={begin}>{!active.ready?'قيد التجهيز':active.completed?'راجع ←':active.resume?'واصل ←':'ابدأ ←'}</button>}</div>
   </div>
  </section>;
 }

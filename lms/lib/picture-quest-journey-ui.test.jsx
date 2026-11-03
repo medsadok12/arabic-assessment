@@ -6,10 +6,11 @@ import{freshQuestBank}from'./picture-quest-bank';
 import{bankCatalog}from'./picture-quest-bank-server';
 import JourneyMap from'../app/library/games/picture-quest/topics/JourneyMap';
 import TopicHub from'../app/library/games/picture-quest/topics/TopicHub';
-const env=vi.hoisted(()=>({data:null,child:null,play:null}));
+const env=vi.hoisted(()=>({data:null,child:null,play:null,preview:null}));
 vi.mock('next/link',()=>({default:({href,children,...p})=><a href={href} {...p}>{children}</a>}));
 vi.mock('./child-fetch',()=>({getActiveChildTab:()=>env.child,childFetch:async()=>({ok:true,json:async()=>structuredClone(env.data)})}));
 vi.mock('../app/library/games/picture-quest/topics/TopicPlay',()=>({default:props=>{env.play=props;return <button data-training onClick={props.onExit}>عودة</button>}}));
+vi.mock('../app/library/games/picture-quest/topics/StaffTopicPreview',()=>({default:props=>{env.preview=props;return <button data-staff-training onClick={props.onExit}>عودة إلى المراحل</button>}}));
 let root,data,position,onOpen,onFinal;
 beforeEach(()=>{vi.stubGlobal('React',React);vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);vi.stubGlobal('matchMedia',()=>({matches:true}));vi.stubGlobal('Image',class{set src(value){this.url=value;queueMicrotask(()=>this.onload?.())}decode(){return Promise.resolve()}});history.replaceState({},'','/library/games/picture-quest/topics');env.child=null;env.play=null;data=bankCatalog(freshQuestBank());env.data=data;position={current:null};onOpen=vi.fn();onFinal=vi.fn();document.body.innerHTML='<div id="host"></div>';root=createRoot(document.getElementById('host'))});
 afterEach(async()=>{await act(async()=>root.unmount());vi.unstubAllGlobals()});
@@ -22,3 +23,5 @@ it('integrates with the existing Back stack and never reuses the prior child’s
 });
 
 it('can disable only the illustrated entrance while preserving the map and the prior stage screen',async()=>{env.data.entranceEnabled=false;await act(async()=>root.render(<TopicHub/>));expect(document.querySelector('.pqj-map')).toBeTruthy();await act(async()=>document.querySelector('[data-journey-index="0"]').click());expect(document.querySelector('.pqe')).toBeNull();expect(document.querySelector('.pqf-topic')).toBeTruthy();expect(document.querySelectorAll('.pqf-step')).toHaveLength(3);await act(async()=>{document.querySelector('.pqf-back').click();await new Promise(r=>setTimeout(r,30))});expect(document.querySelector('.pqj-map')).toBeTruthy()});
+
+it('opens the selected staff stage as a playable preview and returns to that stage instead of redirecting to the editor',async()=>{await act(async()=>root.render(<TopicHub staff/>));await act(async()=>document.querySelector('[data-journey-index="0"]').click());await act(async()=>document.querySelectorAll('.pqf-step')[1].click());await act(async()=>document.querySelector('.pqe-go').click());expect(env.preview.selection).toEqual({topicId:'animals',stage:2});expect(document.querySelector('[data-staff-training]')).toBeTruthy();await act(async()=>{document.querySelector('[data-staff-training]').click();await new Promise(r=>setTimeout(r,30))});expect(document.querySelector('.pqe-heading').textContent).toBe('الحيوانات');expect(document.querySelector('.pqf-step[aria-pressed="true"]').getAttribute('aria-label')).toContain('المرحلة 2');});
