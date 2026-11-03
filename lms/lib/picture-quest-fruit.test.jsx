@@ -41,3 +41,17 @@ it('round-trips fruit switches and uploaded voice through validation and the stu
 it('offers an explicit voice button when autoplay is blocked and retries the same recording',async()=>{
  vi.stubGlobal('Audio',class{constructor(url){this.url=url;this.play=vi.fn(()=>Promise.reject(Error('autoplay')));this.pause=vi.fn();players.push(this)}});data.fruitVoiceUrl='/picture-quest/fruit-voice.mp3';await render({celebrate:true});await act(async()=>vi.advanceTimersByTime(4500));const button=document.querySelector('.pqh-welcome button');expect(button.textContent).toBe('استمع إلى فهيم');players[0].play.mockResolvedValueOnce();await act(async()=>button.click());expect(players[0].play).toHaveBeenCalledTimes(2);expect(document.querySelector('.pqh-welcome button')).toBeNull();
 });
+it('keeps the basket above the opened counter throughout its exit, before any fruit starts flying',async()=>{
+ const {readFileSync}=await import('node:fs');const style=document.createElement('style');style.textContent=readFileSync(process.cwd()+'/app/library/games/picture-quest/topics/fruit-celebration.css','utf8');document.head.appendChild(style);
+ try{
+  await render({completed:true,celebrate:true});const prize=document.querySelector('.pqh-prize'),panel=document.querySelector('.pqh-panel');
+  expect(Number(getComputedStyle(prize).zIndex)).toBeLessThan(Number(getComputedStyle(panel).zIndex));
+  await act(async()=>vi.advanceTimersByTime(1040));expect(document.querySelector('.pqh-basket-exiting')).toBeNull();
+  await act(async()=>vi.advanceTimersByTime(20));expect(document.querySelector('.pqh-basket-exiting')).toBeTruthy();expect(document.querySelectorAll('.pqh-landed')).toHaveLength(0);expect(Number(getComputedStyle(prize).zIndex)).toBeGreaterThan(Number(getComputedStyle(panel).zIndex));
+  await act(async()=>vi.advanceTimersByTime(850));expect(document.querySelectorAll('.pqh-landed')).toHaveLength(0);expect(Number(getComputedStyle(prize).zIndex)).toBeGreaterThan(Number(getComputedStyle(panel).zIndex));
+  await render({completed:true,celebrate:false});expect(document.querySelector('.pqh-basket-exiting')).toBeNull();
+ }finally{style.remove();}
+});
+it('does not animate the basket on a completed revisit or with globally disabled motion',async()=>{
+ await render({completed:true});expect(document.querySelector('.pqh-basket-exiting')).toBeNull();data.settings.animate=false;await render({completed:true,celebrate:true});await act(async()=>vi.advanceTimersByTime(100));expect(document.querySelector('.pqh-basket-exiting')).toBeNull();expect(document.querySelector('.pqh-still')).toBeTruthy();
+});

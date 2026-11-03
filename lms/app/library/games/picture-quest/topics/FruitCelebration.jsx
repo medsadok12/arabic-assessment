@@ -21,7 +21,7 @@ export default function FruitCelebration({data,completed=false,celebrate=false,o
  },[celebrate,motion,awning,panel,basket,jump,faheem,voice,url]);
  const opened=celebrate?phase!=='idle':completed,released=opened&&(phase!=='opening'||completed&&!celebrate),cheer=celebrate&&['cheering','done'].includes(phase),filled=completed&&!celebrate;
  function replayVoice(){const p=audio.current;if(!p)return;p.currentTime=0;p.play()?.then(()=>setBlocked(false)).catch(()=>setBlocked(true));}
- return <div className={'pqh'+(basket?' pqh-has-basket':'')+(opened?' pqh-open':'')+(released?' pqh-released':'')+(landed||filled?' pqh-flight':'')+(cheer?' pqh-cheer':'')+(!motion?' pqh-still':'')+(!awning?' pqh-no-awning-motion':'')+(!panel?' pqh-no-panel-motion':'')+(!jump?' pqh-no-jump':'')} data-phase={phase}>
+ return <div className={'pqh'+(basket?' pqh-has-basket':'')+(opened?' pqh-open':'')+(released?' pqh-released':'')+(celebrate&&released&&motion?' pqh-basket-exiting':'')+(landed||filled?' pqh-flight':'')+(cheer?' pqh-cheer':'')+(!motion?' pqh-still':'')+(!awning?' pqh-no-awning-motion':'')+(!panel?' pqh-no-panel-motion':'')+(!jump?' pqh-no-jump':'')} data-phase={phase}>
   <span className="pqh-frame" aria-hidden="true"/>
   <div className="pqh-prize" aria-hidden="true">
    {basket&&<><span className="pqh-shadow"/><div className="pqh-basket"><span className="pqh-art pqh-basket-back"/><span className="pqh-art pqh-basket-front"/></div></>}
