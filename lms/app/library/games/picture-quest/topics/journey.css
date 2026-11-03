@@ -15,9 +15,8 @@
 @media(max-height:550px){.pqj .pqf-header{min-height:48px;padding-top:3px;padding-bottom:3px}.pqj-map-meta{min-height:25px}.pqj-footer{padding-top:4px;padding-bottom:6px}.pqj-footer small{display:none}}
 @media(prefers-reduced-motion:reduce){.pqj-petal,.pqj-water-shine,.pqj-node.current .pqj-node-art:before{animation:none!important}.pqj-node-art{transition:none!important}.pqj-celebration{display:none}}
 
-/* Phone map only: keep the existing stage screens, editor and desktop controls. */
+/* Edge-to-edge map at every size; stage screens and the editor stay unchanged. */
 .pqj-back-short{display:none}
-@media(max-width:640px),(hover:none) and (pointer:coarse) and (max-height:600px){
  .pqj.pqj-map-screen{padding:0}
  .pqj.pqj-map-screen .pqf-window{max-width:none;max-height:none;border:0;border-radius:0;box-shadow:none}
  .pqj.pqj-map-screen .pqf-header{position:absolute;inset:0 0 auto;min-height:0;padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));background:none;border:0;pointer-events:none;justify-content:flex-start}
@@ -28,4 +27,3 @@
  .pqj.pqj-map-screen .pqj-viewport{min-height:0}
  .pqj.pqj-map-screen .pqj-notice{bottom:max(20px,env(safe-area-inset-bottom,0px))}
  .pqj.pqj-map-screen .pqj-retry{top:max(12px,env(safe-area-inset-top,0px))}
-}
