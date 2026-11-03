@@ -1,0 +1,26 @@
+.pqh{position:relative;width:100%;height:100%;perspective:600px;isolation:isolate}
+.pqh-frame{position:absolute;inset:0;background:url('/picture-quest/fruit-kiosk-frame-v1.webp') center/100% 100% no-repeat;z-index:1;pointer-events:none}
+.pqh-awning{position:absolute;left:-6%;top:31%;width:112%;height:44%;background:url('/picture-quest/fruit-kiosk-awning-v1.webp') center/contain no-repeat;transform-origin:50% 8%;transition:transform .8s cubic-bezier(.25,.7,.25,1);z-index:7;pointer-events:none}
+.pqh-panel{position:absolute;left:13%;top:64%;width:74%;height:36%;background:url('/picture-quest/fruit-kiosk-panel-v1.webp') center/100% 100% no-repeat;transform-origin:center 94%;transition:transform .85s cubic-bezier(.3,.65,.2,1);transform-style:preserve-3d;z-index:6;pointer-events:none}
+.pqh-open .pqh-awning{transform:translateY(-7%) rotateX(-38deg)}.pqh-open .pqh-panel{transform:rotateX(-108deg)}
+.pqh-prize{position:absolute;left:50%;top:62.5%;width:88.235%;aspect-ratio:1;transform:translateX(-50%);z-index:3;transition:translate .6s cubic-bezier(.2,.7,.2,1)}
+.pqh-art{display:block;width:100%;height:100%;background:url('/picture-quest/fruit-harvest-v1.webp') no-repeat;background-size:300% 200%;pointer-events:none}
+.pqh-basket{position:absolute;inset:0;transform:translateY(0) scale(.4);transform-origin:50% 0;transition:transform .85s cubic-bezier(.22,.7,.28,1);z-index:2}
+.pqh-basket-back{position:absolute;inset:0;background-position:0 0;z-index:1}.pqh-basket-front{position:absolute;inset:0;background-position:50% 0;z-index:4}
+.pqh-fruit{position:absolute;left:50%;top:-2.4%;width:31.43%;height:31.43%;z-index:3;transform:translate(calc(-50% + var(--sx)),0) scale(.6);transform-origin:50% 80%}
+.pqh-apple{--sx:-79%;--dx:-50%;--dy:242%;--mid:-98%;--spin:-16deg}.pqh-orange{--sx:79%;--dx:52%;--dy:242%;--mid:100%;--spin:20deg}.pqh-grapes{--sx:0%;--dx:0%;--dy:212%;--mid:-18%;--spin:-8deg}
+.pqh-apple .pqh-art{background-position:100% 0}.pqh-orange .pqh-art{background-position:0 100%}.pqh-grapes .pqh-art{background-position:50% 100%}
+.pqh-released .pqh-basket{transform:translateY(45.238%) scale(1)}.pqh-flight .pqh-prize{z-index:8}
+.pqh-fruit.pqh-landed{animation:pqh-hop .85s linear both}
+@keyframes pqh-hop{0%{transform:translate(calc(-50% + var(--sx)),0) rotate(0) scale(.6)}18%{transform:translate(calc(-50% + var(--sx)),8%) rotate(-5deg) scale(.67,.59)}42%{transform:translate(calc(-50% + var(--mid)),-126%) rotate(var(--spin)) scale(.85)}60%{transform:translate(calc(-50% + var(--dx)),-58%) rotate(8deg) scale(.91)}82%{transform:translate(calc(-50% + var(--dx)),var(--dy)) rotate(-4deg) scale(.85,.92)}91%{transform:translate(calc(-50% + var(--dx)),calc(var(--dy) + 5%)) rotate(2deg) scale(.96,.76)}100%{transform:translate(calc(-50% + var(--dx)),var(--dy)) rotate(0) scale(.87)}}
+.pqh-front-cover{position:absolute;inset:0;transform:translateY(45.238%);background-position:50% 0;z-index:4;display:none}.pqh-flight .pqh-front-cover{display:block}
+.pqh-shadow{position:absolute;left:19%;top:128.57%;width:62%;height:4.76%;border-radius:50%;background:#526b3038;filter:blur(4px);opacity:0;z-index:0;transition:opacity .6s}.pqh-released .pqh-shadow{opacity:1}
+.pqh-cheer.pqh-has-basket .pqh-prize{translate:-16% 0}
+.pqh-welcome{position:absolute;inset:0;z-index:10;pointer-events:none}.pqh-faheem{position:absolute;left:75%;top:109%;width:75%;height:75%;background:url('/picture-quest/gate-celebration-v1.webp') no-repeat;background-size:200% 200%;background-position:0 100%;animation:pqh-clap .46s steps(1,end) 4}
+@keyframes pqh-clap{0%,100%{background-position:0 100%}50%{background-position:100% 100%}}
+.pqh-welcome p{position:absolute;top:195%;left:50%;transform:translateX(-50%);width:min(86vw,360px);padding:10px 16px;margin:0;border:1px solid #d8c18a;border-radius:22px;background:#fff8e8;box-shadow:0 4px #b29a64;text-align:center;font:700 clamp(18px,3vw,23px)/1.5 var(--font-naskh),'Noto Naskh Arabic',serif;color:#1a2b4a}
+.pqh-welcome button{position:absolute;top:185%;right:-12%;min-height:44px;padding:7px 14px;border:1px solid #d8c18a;border-radius:13px;background:#fff8e8;color:#1a2b4a;font:inherit;pointer-events:auto}
+.pqe-fruit-celebrating .pqe-route{visibility:hidden;pointer-events:none}
+.pqh-no-awning-motion .pqh-awning,.pqh-no-panel-motion .pqh-panel,.pqh-still .pqh-awning,.pqh-still .pqh-panel,.pqh-still .pqh-prize,.pqh-still .pqh-basket,.pqh-still .pqh-shadow{transition:none}
+.pqh-no-jump .pqh-fruit.pqh-landed,.pqh-still .pqh-fruit.pqh-landed,.pqh-fruit.pqh-settled{animation:none;transform:translate(calc(-50% + var(--dx)),var(--dy)) scale(.87)}.pqh-still .pqh-faheem{animation:none}
+@media(prefers-reduced-motion:reduce){.pqh-awning,.pqh-panel,.pqh-prize,.pqh-basket,.pqh-shadow{transition:none}.pqh-fruit.pqh-landed{animation:none;transform:translate(calc(-50% + var(--dx)),var(--dy)) scale(.87)}.pqh-faheem{animation:none}}

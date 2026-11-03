@@ -26,3 +26,7 @@ it('marks only a freshly completed animal stage 3 for the gate celebration',asyn
  await act(async()=>root.unmount());root=createRoot(document.getElementById('host'));globalThis.topicTestSession.review=true;onWorldComplete.mockClear();
  await act(async()=>root.render(<TopicPlay settings={globalThis.topicTestSession.settings} selection={{topicId:'animals',stage:3}} onExit={onExit} onWorldComplete={onWorldComplete}/>));expect(onWorldComplete).not.toHaveBeenCalled();
 });
+it('queues fruit celebration only for a newly finished stage 3, not a fruit review',async()=>{
+ const onWorldComplete=vi.fn();globalThis.topicTestSession={...globalThis.topicTestSession,finished:true,review:false,index:15,total:15,independent:15};await act(async()=>root.render(<TopicPlay settings={globalThis.topicTestSession.settings} selection={{topicId:'fruit',stage:3}} onExit={onExit} onWorldComplete={onWorldComplete}/>));expect(onWorldComplete).toHaveBeenCalledExactlyOnceWith('fruit');
+ await act(async()=>root.unmount());root=createRoot(document.getElementById('host'));globalThis.topicTestSession.review=true;onWorldComplete.mockClear();await act(async()=>root.render(<TopicPlay settings={globalThis.topicTestSession.settings} selection={{topicId:'fruit',stage:3}} onExit={onExit} onWorldComplete={onWorldComplete}/>));expect(onWorldComplete).not.toHaveBeenCalled();
+});

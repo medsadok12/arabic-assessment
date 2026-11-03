@@ -31,3 +31,7 @@ it('saves independent gate controls and retains a disabled Faheem recording',asy
  for(const text of gateLabels)await act(async()=>Simulate.change(label(text).querySelector('input'),{target:{checked:false}}));
  await act(async()=>button('حفظ مسودة').click());for(const key of ['gateDoorEnabled','gateCatEnabled','gateFaheemEnabled','gateVoiceEnabled'])expect(requests[0].config[key]).toBe(false);expect(requests[0].config.words).toEqual(freshQuestBank().words);expect(requests[0].config.settings).toEqual(freshQuestBank().settings);
 });
+it('saves independent fruit celebration switches without modifying animal sounds or word data',async()=>{
+ await act(async()=>root.render(React.createElement(BankEditor)));for(const text of ['حركة رفع مظلّة كشك الفواكه','حركة فتح واجهة كشك الفواكه','خروج سلّة الفواكه','قفز الفواكه إلى السلّة','ظهور فهيم في احتفال الفواكه','صوت فهيم في رحلة الفواكه'])await act(async()=>Simulate.change(label(text).querySelector('input'),{target:{checked:false}}));
+ await act(async()=>button('حفظ مسودة').click());for(const k of ['fruitAwningEnabled','fruitPanelEnabled','fruitBasketEnabled','fruitJumpEnabled','fruitFaheemEnabled','fruitVoiceEnabled'])expect(requests[0].config[k]).toBe(false);expect(requests[0].config.gateVoiceEnabled).toBe(true);expect(requests[0].config.words).toEqual(freshQuestBank().words);
+});
