@@ -11,7 +11,7 @@ const groups=[
  ['home','البيت','🏠',false,[['door','بَابٌ','🚪','m'],['window','نَافِذَةٌ','🪟','f'],['chair','كُرْسِيٌّ','🪑','m'],['table','طَاوِلَةٌ','','f'],['bed','سَرِيرٌ','🛏️','m'],['cup','كُوبٌ','🥛','m'],['plate','طَبَقٌ','🍽️','m'],['lamp','مِصْبَاحٌ','💡','m']]],
  ['transport','وسائل النقل','🚗',false,[['car','سَيَّارَةٌ','🚗','f','/picture-quest/car.svg'],['bus','حَافِلَةٌ','🚌','f'],['train','قِطَارٌ','🚆','m'],['plane','طَائِرَةٌ','✈️','f'],['bike','دَرَّاجَةٌ','🚲','f'],['boat','قَارِبٌ','🚣','m'],['truck','شَاحِنَةٌ','🚚','f'],['ship','سَفِينَةٌ','🚢','f']]],
  ['clothes','الملابس','👕',false,[['shirt','قَمِيصٌ','👕','m'],['trousers','سِرْوَالٌ','👖','m'],['shoe','حِذَاءٌ','👟','m'],['sock','جَوْرَبٌ','🧦','m'],['hat','قُبَّعَةٌ','🧢','f'],['dress','فُسْتَانٌ','👗','m'],['coat','مِعْطَفٌ','🧥','m'],['skirt','تَنُّورَةٌ','','f']]],
- ['body','الجسم','👋',false,[['eye','عَيْنٌ','👁️','f'],['ear','أُذُنٌ','👂','f'],['nose','أَنْفٌ','👃','m'],['mouth','فَمٌ','👄','m'],['hand','يَدٌ','✋','f'],['foot','قَدَمٌ','🦶','f'],['head','رَأْسٌ','','m'],['hair','شَعْرٌ','','m']]]
+ ['body','أعضاء الجسم','👋',false,[['eye','عَيْنٌ','👁️','f'],['ear','أُذُنٌ','👂','f'],['nose','أَنْفٌ','👃','m'],['mouth','فَمٌ','👄','m'],['hand','يَدٌ','✋','f'],['foot','قَدَمٌ','🦶','f'],['head','رَأْسٌ','','m'],['hair','شَعْرٌ','','m']]]
 ];
 export function freshQuestBank(settings){return migrateQuestBank({title:'مغامرات الكلمات',enabled:true,epoch:0,roundSize:8,reviewEnabled:true,autoChoices:true,shuffle:true,settings:structuredClone(settings||freshPictureQuest().settings),topics:groups.map(([id,title,emoji,enabled])=>({id,title,emoji,enabled})),words:groups.flatMap(([topicId,,,enabled,rows])=>rows.map(([id,label,emoji,gender,image_url=''])=>({id:topicId+'-'+id,topicId,label,emoji,gender,level:1,enabled:!!(emoji||image_url),image_url,audio_url:'',answer_audio:'',hint_audio:'',mediaEnabled:mediaFlags(),hint:'',distractors:[]})))})}
 const validId=v=>typeof v==='string'&&/^[a-z0-9][a-z0-9_-]{0,69}$/i.test(v);
@@ -48,6 +48,8 @@ export const BANK_STAGES=[{id:1,count:5,label:'المرحلة الأولى'},{id
 export function migrateQuestBank(input){
  if(!input||!Array.isArray(input.words))return input;
  const bank=structuredClone(input),counts={};
+ // Update only the former default title; keep teacher titles, IDs and progress intact.
+ for(const topic of bank.topics||[])if(topic.id==='body'&&bankKey(topic.title)===bankKey('الجسم'))topic.title='أعضاء الجسم';
  for(const key of JOURNEY_FLAGS)if(bank[key]===undefined)bank[key]=true;
  bank.schoolBellUrl??='';bank.schoolVoiceUrl??='';bank.gateVoiceUrl??='';bank.fruitVoiceUrl??='';
  bank.schema=2;bank.hubDepthEnabled??=true;bank.breaksEnabled??=true;bank.finalEnabled??=true;

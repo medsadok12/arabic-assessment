@@ -1,10 +1,11 @@
 export const JOURNEY_FLAGS=['schoolDoorEnabled','schoolBellEnabled','schoolLightsEnabled','schoolFaheemEnabled','schoolBookEnabled','schoolPagesEnabled','schoolBellSoundEnabled','schoolVoiceEnabled','fruitAwningEnabled','fruitPanelEnabled','fruitBasketEnabled','fruitJumpEnabled','fruitFaheemEnabled','fruitVoiceEnabled','gateDoorEnabled','gateCatEnabled','gateFaheemEnabled','gateVoiceEnabled','entranceEnabled','journeyEnabled','journeySequential','journeyScenery','journeyPath','journeyEffects'];
 export const JOURNEY_ART=[
- ['animals','الحيوانات'],['fruit','الفواكه'],['school','المدرسة'],['home','البيت'],['family','الأسرة'],['birds','الطيور'],['garden','الحديقة'],['vegetables','الخضروات'],['weather','الطقس'],['clothes','الملابس'],['food','الطعام'],['body','الجسم'],['toys','الألعاب'],['sports','الرياضة'],['transport','وسائل النقل'],['jobs','المهن'],['city','المدينة'],['shapes','الأشكال'],['sea','البحر'],['space','الفضاء']
+ ['animals','الحيوانات'],['fruit','الفواكه'],['school','المدرسة'],['home','البيت'],['family','الأسرة'],['birds','الطيور'],['garden','الحديقة'],['vegetables','الخضروات'],['weather','الطقس'],['clothes','الملابس'],['food','الطعام'],['body','أعضاء الجسم'],['toys','الألعاب'],['sports','الرياضة'],['transport','وسائل النقل'],['jobs','المهن'],['city','المدينة'],['shapes','الأشكال'],['sea','البحر'],['space','الفضاء']
 ];
 const norm=s=>String(s||'').replace(/[\u064b-\u065f\u0670\u0640\s_-]/g,'').replace(/[أإآٱ]/g,'ا').toLowerCase();
 export function journeyArt(topic){
  if(Number.isInteger(topic?.mapArt)&&topic.mapArt>=0&&topic.mapArt<20)return topic.mapArt;
+ if(norm(topic?.title)===norm('الجسم'))return 11;
  const index=JOURNEY_ART.findIndex(([id,label])=>norm(id)===norm(topic?.id)||norm(label)===norm(topic?.title));
  return index<0?16:index;
 }

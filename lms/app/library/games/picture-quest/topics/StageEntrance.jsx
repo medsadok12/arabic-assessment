@@ -31,7 +31,7 @@ export default function StageEntrance({data,topic,active,staff=false,embedded=fa
   onBegin?.(selection);
  }
  const status=active.completed?'مكتملة ✓':!active.ready?'قيد التجهيز':data.settings.controls?.progress!==false&&active.resume?'وصلت إلى '+displayNumber(active.index)+' من '+displayNumber(active.target):'';
- return <section className={'pqe'+(scenery?' pqe-scenery':'')+(entering?' pqe-entering':'')+(preparing?' pqe-preparing':'')+(embedded?' pqe-embedded':'')+(data.hubDepthEnabled===false?' pqe-flat':'')+(cheering?' pqe-celebrating':'')+(fruitGate&&celebrateGate?' pqe-fruit-celebrating':'')+(schoolGate&&celebrateGate?' pqe-school-celebrating':'')} aria-label={'مراحل '+topic.title} aria-busy={entering||preparing}>
+ return <section className={'pqe'+(topic.id==='body'?' pqe-body':'')+(scenery?' pqe-scenery':'')+(entering?' pqe-entering':'')+(preparing?' pqe-preparing':'')+(embedded?' pqe-embedded':'')+(data.hubDepthEnabled===false?' pqe-flat':'')+(cheering?' pqe-celebrating':'')+(fruitGate&&celebrateGate?' pqe-fruit-celebrating':'')+(schoolGate&&celebrateGate?' pqe-school-celebrating':'')} aria-label={'مراحل '+topic.title} aria-busy={entering||preparing}>
   {scenery&&<div className="pqe-landscape" aria-hidden="true"><i className="pqe-land pqe-land-left"/><i className="pqe-land pqe-land-right"/><i className="pqe-land pqe-land-bottom"/>{[[20,'tree-left'],[21,'tree-right'],[22,'flowers-left'],[23,'rocks-right'],[22,'flower-small']].map(([art,place])=><span key={place} className={'pqe-prop pqe-'+place}><JourneyArt index={art}/></span>)}</div>}
   <h2 className="pqe-heading">{topic.title}</h2>
   <div className="pqe-content">

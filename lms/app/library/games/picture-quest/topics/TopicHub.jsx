@@ -24,6 +24,7 @@ export default function TopicHub({staff,initialCatalog=null}){
  useEffect(()=>()=>imagePreparer.dispose(),[imagePreparer]);
  const pendingGate=useRef(null),mapPosition=useRef(null),playingRef=useRef(false),navigation=useRef(null),viewRef=useRef(null),selectionChild=useRef(child),back=useRef(null),menuButton=useRef(null),menuBox=useRef(null),worldButtons=useRef(new Map()),focusDetail=useRef(false),restoreTopic=useRef(null);
  const data=catalog?.child===child?catalog.value:null;
+ useEffect(()=>{if(data?.topics?.some(t=>t.id==='body'&&t.mapImageEnabled!==false&&!t.map_image_url))imagePreparer.prepare('/picture-quest/body-gate-v2.webp');},[data,imagePreparer]);
  const playing=!!(selection&&data&&selectionChild.current===child);playingRef.current=playing;
  const gameVisible=playing&&visibleSelection===selection;
  const gameReady=useCallback(()=>setVisibleSelection(viewRef.current?.selection),[]);

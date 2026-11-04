@@ -37,3 +37,8 @@
 .pqe-celebration-preview{flex-shrink:0;min-height:44px;padding:6px 14px;margin:8px 0 0;border:1px solid #b6c18b;border-radius:12px;background:#fff8e8;color:#38553d;font:inherit}
 @media(max-width:640px){.pqe{--pqe-route:clamp(220px,30dvh,260px)}.pqe .pqe-station.pqf-step{width:65px;min-height:65px;transform:translate(-50%,-50%)}}
 @media(max-height:520px) and (min-width:600px){.pqe:not(.pqe-embedded){--pqe-route:180px}.pqe:not(.pqe-embedded) .pqe-station.pqf-step{width:56px;min-height:56px;transform:translate(-50%,-50%)}}
+
+/* Keep the approved body gate legible without changing other world entrances. */
+.pqe.pqe-body:not(.pqe-embedded){--pqe-gate:clamp(160px,28dvh,250px)}
+@media(max-height:520px) and (min-width:600px){.pqe.pqe-body:not(.pqe-embedded){--pqe-gate:140px}}
+@media(max-width:640px){.pqe.pqe-body:not(.pqe-embedded){--pqe-gate:clamp(180px,36dvh,310px)}}
