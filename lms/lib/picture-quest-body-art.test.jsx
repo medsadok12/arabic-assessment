@@ -1,0 +1,10 @@
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {it,expect,vi,afterEach} from 'vitest';
+import JourneyArt from '../app/library/games/picture-quest/topics/JourneyArt';
+const draw=props=>{vi.stubGlobal('React',React);return renderToStaticMarkup(<JourneyArt {...props}/>)};
+afterEach(()=>vi.unstubAllGlobals());
+it('uses a neutral learning house and educational hand instead of the retired body illustration',()=>{const html=draw({topic:{id:'body'}});expect(html).toContain('data-body-learning-house');expect(html).toContain('/picture-quest/curriculum-v1/body-02.svg');expect(html).toContain('background-position:100% 0%');});
+it('blocks the retired cell for explicit indices and custom topic selections',()=>{for(const props of[{index:11},{topic:{id:'custom',mapArt:11}}])expect(draw(props)).toContain('data-body-learning-house')});
+it('keeps hiding and teacher uploads intact',()=>{expect(draw({topic:{id:'body',mapImageEnabled:false}})).toBe('');const html=draw({topic:{id:'body',map_image_url:'/picture-quest/custom.svg'}});expect(html).toContain('/picture-quest/custom.svg');expect(html).not.toContain('data-body-learning-house')});
+it('leaves all other worlds and scenery unchanged',()=>{for(const index of[0,1,2,3,4,5,6,7,8,9,10,12,13,14,15,16,17,18,19,20,21,22,23]){const html=draw({index});expect(html).not.toContain('data-body-learning-house');expect(html).toContain('pqj-sprite')}});
