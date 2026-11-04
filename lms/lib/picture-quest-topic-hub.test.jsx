@@ -5,13 +5,13 @@ import{beforeEach,afterEach,it,expect,vi}from'vitest';
 import{freshQuestBank}from'./picture-quest-bank';
 import{bankCatalog}from'./picture-quest-bank-server';
 import TopicHub from'../app/library/games/picture-quest/topics/TopicHub';
-const env=vi.hoisted(()=>({data:null,child:null,requests:[],play:null,preview:null,reply:null}));
+const env=vi.hoisted(()=>({data:null,child:null,requests:[],play:null,preview:null,reply:null,autoReady:true}));
 vi.mock('next/link',()=>({default:({href,children,...props})=>React.createElement('a',{href,...props},children)}));
 vi.mock('./child-fetch',()=>({getActiveChildTab:()=>env.child,childFetch:async(url,options)=>{env.requests.push({url,options});if(env.reply)return env.reply(url,options);return{ok:true,json:async()=>structuredClone(env.data)}}}));
-vi.mock('../app/library/games/picture-quest/topics/TopicPlay',()=>({default:props=>{env.play=props;return React.createElement('section',{'aria-label':'training'},React.createElement('button',{onClick:props.onExit},'العودة للعوالم'))}}));
-vi.mock('../app/library/games/picture-quest/topics/StaffTopicPreview',()=>({default:props=>{env.preview=props;return React.createElement('button',{'data-staff-preview':true,onClick:props.onExit},'عودة')}}));
+vi.mock('../app/library/games/picture-quest/topics/TopicPlay',()=>({default:props=>{env.play=props;React.useEffect(()=>{if(env.autoReady)props.onReady?.()},[props.onReady]);return React.createElement('section',{'aria-label':'training'},React.createElement('button',{onClick:props.onExit},'العودة للعوالم'))}}));
+vi.mock('../app/library/games/picture-quest/topics/StaffTopicPreview',()=>({default:props=>{env.preview=props;React.useEffect(()=>{if(env.autoReady)props.onReady?.()},[props.onReady]);return React.createElement('button',{'data-staff-preview':true,onClick:props.onExit},'عودة')}}));
 let root,bank;
-beforeEach(()=>{vi.stubGlobal('React',React);vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);window.history.replaceState({},'','/library/games/picture-quest/topics');bank=freshQuestBank();bank.journeyEnabled=false;bank.journeySequential=false;env.child=null;env.requests=[];env.reply=null;env.play=null;env.data={...bankCatalog(bank,{attempts:{'animals:1':{index:2,questions:Array(5)}},round:{key:'animals:1',index:2,questions:Array(5),selection:{topicId:'animals',stage:1}},completions:{'fruit:1':true}}),points:628};document.body.innerHTML='<div id="host"></div>';root=createRoot(document.getElementById('host'))});
+beforeEach(()=>{vi.stubGlobal('React',React);vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);window.history.replaceState({},'','/library/games/picture-quest/topics');bank=freshQuestBank();bank.journeyEnabled=false;bank.journeySequential=false;env.child=null;env.requests=[];env.reply=null;env.autoReady=true;env.play=null;env.data={...bankCatalog(bank,{attempts:{'animals:1':{index:2,questions:Array(5)}},round:{key:'animals:1',index:2,questions:Array(5),selection:{topicId:'animals',stage:1}},completions:{'fruit:1':true}}),points:628};document.body.innerHTML='<div id="host"></div>';root=createRoot(document.getElementById('host'))});
 afterEach(async()=>{await act(async()=>root.unmount());vi.unstubAllGlobals()});
 const render=staff=>act(async()=>root.render(<TopicHub staff={!!staff}/>));
 const world=title=>[...document.querySelectorAll('.pqw-world')].find(b=>b.querySelector('strong')?.textContent===title);
@@ -65,4 +65,10 @@ it('keeps an older prefetched catalog visible while checking fresh progress, eve
 it('refreshes a router-restored prefetched page after a completed or abandoned game',async()=>{
  const seed={child:'self',value:structuredClone(env.data),loadedAt:Date.now()-1000};await render();await act(async()=>world('الحيوانات').click());await act(async()=>document.querySelector('.pqf-action .pqf-go').click());await act(async()=>{env.play.onExit();await new Promise(r=>setTimeout(r,30))});
  await act(async()=>root.unmount());root=createRoot(document.getElementById('host'));env.requests=[];env.data={...bankCatalog(bank),points:0};await act(async()=>root.render(<TopicHub initialCatalog={seed}/>));expect(env.requests).toHaveLength(1);expect(document.querySelector('.pqf-resume')).toBeNull();
+});
+
+it('keeps the stage visible until the prepared first question is ready, without remounting play',async()=>{
+ env.autoReady=false;await render();await act(async()=>world('الحيوانات').click());await act(async()=>document.querySelector('.pqf-action .pqf-go').click());
+ expect(document.querySelector('.pqf-topic')).toBeTruthy();expect(document.querySelector('.pqw-preparing-game').getAttribute('aria-hidden')).toBe('true');const game=document.querySelector('[aria-label=training]');
+ await act(async()=>env.play.onReady());expect(document.querySelector('.pqf-topic')).toBeNull();expect(document.querySelector('.pqw-preparing-game')).toBeNull();expect(document.querySelector('[aria-label=training]')).toBe(game);
 });

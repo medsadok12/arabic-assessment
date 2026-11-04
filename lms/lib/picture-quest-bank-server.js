@@ -44,7 +44,7 @@ export function bankCatalog(bank,state={}){
   topics:bank.topics.filter(t=>t.enabled).map(t=>({...t,unlocked:worldUnlocked(bank,state,t.id),completed:worldComplete(state,t.id),stages:[1,2,3].map(stage=>{const key=`${t.id}:${stage}`,completed=!!state.completions[key],attempt=state.attempts[key],unlocked=worldUnlocked(bank,state,t.id)&&(stage===1||!!state.completions[`${t.id}:${stage-1}`]);return{...stageReadiness(bank,t.id,stage),completed,unlocked,resume:!completed&&!!attempt&&attempt.index<attempt.questions.length,index:attempt?.index||0};})})),
   final:{enabled:bank.finalEnabled!==false,unlocked:!!state.finalAccess,ready:finalReady,total:finalTopics.length*3,completed:!!state.completions['final:4'],resume:!!state.attempts['final:4']&&!state.completions['final:4'],index:state.attempts['final:4']?.index||0}};
 }
-export async function readBankCatalog(admin,auth,userId,bank){const state=await mutateProgress(admin,auth.user.id,userId,bank,s=>s);return bankCatalog(bank,state)}
+export async function readBankCatalog(admin,auth,userId,bank){const state=await mutateProgress(admin,auth.user.id,userId,bank,s=>s);const catalog=bankCatalog(bank,state);for(const topic of catalog.topics)for(const stage of topic.stages){if(!stage.unlocked||!stage.ready)continue;const attempt=state.attempts[`${topic.id}:${stage.stage}`],word=attempt?liveQuestion(bank,attempt.questions[attempt.index]):stageWords(bank,topic.id,stage.stage,`${userId}:${bank.epoch}:${topic.id}:${stage.stage}`)[0];stage.startImage=questRecording(word,'image_url');}return catalog}
 function selectionOf(body){
  // Old round-based requests cannot accidentally launch or finish a new stage.
  if(typeof body.topicId!=='string'||!/^[a-z0-9_-]{1,70}$/i.test(body.topicId)||![1,2,3,4].includes(body.stage)||body.topicId==='final'&&body.stage!==4||!['final','review'].includes(body.topicId)&&body.stage===4)throw questFailure('اختر مرحلة من صفحة الموضوعات.',400);
@@ -84,8 +84,8 @@ async function settleCompletions(admin,auth,userId,bank,state){
  }
  return state;
 }
-export async function questBankSession(admin,auth,userId,body){
- const{config:bank}=await loadQuestBank(admin);
+export async function questBankSession(admin,auth,userId,body,loadedBank=null){
+ const{config:bank}=loadedBank||await loadQuestBank(admin);
  const selection=selectionOf(body),key=stageKey(selection);
  if(body.action==='exit'){
   if(!questUuid(body.attemptId))throw questFailure('أعد فتح المرحلة قبل الخروج.',400);
