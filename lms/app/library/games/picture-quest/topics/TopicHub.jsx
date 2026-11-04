@@ -9,14 +9,16 @@ import JourneyMap from'./JourneyMap';
 import StageEntrance from'./StageEntrance';
 import JourneyArt from'./JourneyArt';
 import{createTopicNavigation}from'../../../../../lib/picture-quest-navigation';
+import{invalidateTopicCatalog,topicCatalogIsFresh}from'../../../../../lib/picture-quest-catalog-freshness';
 import WorldCard,{worldStyle,currentStage}from'./WorldCard';
 import'./topics.css';
 import'./worlds.css';
 import'./focus.css';
 
 const PAGE_SIZE=8;
-export default function TopicHub({staff}){
+export default function TopicHub({staff,initialCatalog=null}){
  const[catalog,setCatalog]=useState(null),[error,setError]=useState(''),[refreshError,setRefreshError]=useState(''),[selection,setSelection]=useState(null),[tick,setTick]=useState(0),[child,setChild]=useState(()=>getActiveChildTab()),[topicId,setTopicId]=useState(null),[stageId,setStageId]=useState(null),[menu,setMenu]=useState(false),[page,setPage]=useState(0),[exitRequest,setExitRequest]=useState(0);
+ const initialChild=useRef(child);
  const pendingGate=useRef(null),mapPosition=useRef(null),playingRef=useRef(false),navigation=useRef(null),viewRef=useRef(null),selectionChild=useRef(child),back=useRef(null),menuButton=useRef(null),menuBox=useRef(null),worldButtons=useRef(new Map()),focusDetail=useRef(false),restoreTopic=useRef(null);
  const data=catalog?.child===child?catalog.value:null;
  const playing=!!(selection&&data&&selectionChild.current===child);playingRef.current=playing;
@@ -24,12 +26,17 @@ export default function TopicHub({staff}){
  useEffect(()=>{const focus=()=>setChild(getActiveChildTab());window.addEventListener('focus',focus);return()=>window.removeEventListener('focus',focus)},[]);
  // Keep this child's last confirmed catalog visible while refreshing after play.
  // No shared/localStorage cache: a child switch must never reuse another balance.
- useEffect(()=>{let live=true;const controller=new AbortController();setError('');setRefreshError('');childFetch('/api/games/picture-quest/topics',{cache:'no-store',signal:controller.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);if(live&&getActiveChildTab()===child&&!playingRef.current)setCatalog({child,value:d})}).catch(e=>{if(live&&e.name!=='AbortError'&&getActiveChildTab()===child){if(data)setRefreshError('تعذّر تحديث التقدّم.');else setError(e.message)}});return()=>{live=false;controller.abort()}},[tick,child]);
+ useEffect(()=>{let live=true;const controller=new AbortController();setError('');setRefreshError('');
+  // Hydrate only after checking the per-tab child. An SSR cookie can belong to
+  // a sibling in another tab; never show that catalog or reuse it for a switch.
+  const seed=tick===0&&child===initialChild.current&&initialCatalog&&(child===null||initialCatalog.child===child)?initialCatalog:null;
+  if(seed){setCatalog({child,value:seed.value});if(topicCatalogIsFresh(seed.loadedAt))return()=>{live=false;controller.abort()};}
+  childFetch('/api/games/picture-quest/topics',{cache:'no-store',signal:controller.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);if(live&&getActiveChildTab()===child&&!playingRef.current)setCatalog({child,value:d})}).catch(e=>{if(live&&e.name!=='AbortError'&&getActiveChildTab()===child){if(data||seed)setRefreshError('تعذّر تحديث التقدّم.');else setError(e.message)}});return()=>{live=false;controller.abort()}},[tick,child]);
  useEffect(()=>{
   setMenu(false);setPage(0);mapPosition.current=null;selectionChild.current=child;viewRef.current=null;
   const nav=createTopicNavigation(window,{child,shouldConfirm:()=>playingRef.current&&!staff,onExitRequest:()=>setExitRequest(n=>n+1),onChange:view=>{
    const previous=viewRef.current;
-   if(previous?.selection&&!view.selection)setTick(n=>n+1);
+   if(previous?.selection&&!view.selection){invalidateTopicCatalog();setTick(n=>n+1);}
    if(previous?.topicId&&!view.topicId)restoreTopic.current=previous.topicId;
    if(view.topicId&&!view.selection)focusDetail.current=true;
    viewRef.current=view;setSelection(view.selection);setTopicId(view.topicId);setStageId(view.stageId);setMenu(false);

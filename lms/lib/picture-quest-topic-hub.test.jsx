@@ -51,3 +51,18 @@ it('does not restart an active game if the previous background refresh arrives l
  await act(async()=>document.querySelector('.pqf-action .pqf-go').click());const settings=env.play.settings;
  await act(async()=>resolve({ok:true,json:async()=>({...structuredClone(env.data),points:999})}));expect(env.play.settings).toBe(settings);expect(document.querySelector('[aria-label=training]')).toBeTruthy();
 });
+it('uses matching server data immediately without a second catalog request',async()=>{
+ env.child='second';await act(async()=>root.render(<TopicHub initialCatalog={{child:'second',value:env.data,loadedAt:Date.now()}}/>));expect(document.querySelector('.pqf-grid')).toBeTruthy();expect(env.requests).toHaveLength(0);await act(async()=>world('الحيوانات').click());expect(document.querySelector('.pqf-topic')).toBeTruthy();
+});
+it('never hydrates a sibling catalog and fetches for the actual tab instead',async()=>{
+ env.child='second';let resolve;env.reply=()=>new Promise(r=>{resolve=r});await act(async()=>root.render(<TopicHub initialCatalog={{child:'first',value:env.data,loadedAt:Date.now()}}/>));expect(document.querySelector('.pqf-grid')).toBeNull();expect(env.requests).toHaveLength(1);
+ await act(async()=>resolve({ok:true,json:async()=>({...bankCatalog(bank),points:0})}));expect(document.querySelector('.pqf-grid')).toBeTruthy();expect(document.querySelector('.pqf-resume')).toBeNull();
+});
+it('keeps an older prefetched catalog visible while checking fresh progress, even on failure',async()=>{
+ env.reply=async()=>{throw Error('offline')};await act(async()=>root.render(<TopicHub initialCatalog={{child:'self',value:env.data,loadedAt:Date.now()-30000}}/>));expect(document.querySelector('.pqf-grid')).toBeTruthy();expect(env.requests).toHaveLength(1);expect(document.querySelector('.pqf-refresh-error')).toBeTruthy();expect(document.querySelector('.pqf-message')).toBeNull();
+});
+
+it('refreshes a router-restored prefetched page after a completed or abandoned game',async()=>{
+ const seed={child:'self',value:structuredClone(env.data),loadedAt:Date.now()-1000};await render();await act(async()=>world('الحيوانات').click());await act(async()=>document.querySelector('.pqf-action .pqf-go').click());await act(async()=>{env.play.onExit();await new Promise(r=>setTimeout(r,30))});
+ await act(async()=>root.unmount());root=createRoot(document.getElementById('host'));env.requests=[];env.data={...bankCatalog(bank),points:0};await act(async()=>root.render(<TopicHub initialCatalog={seed}/>));expect(env.requests).toHaveLength(1);expect(document.querySelector('.pqf-resume')).toBeNull();
+});

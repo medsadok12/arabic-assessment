@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import Link from 'next/link';
+import QuestTopicsLink from '../../components/QuestTopicsLink';
 import { resizeImageToWebp } from '../../lib/image-resize';
 import { libraryOverview } from '../../lib/library-progress';
 import useLibraryProgress from './useLibraryProgress';
@@ -672,9 +673,9 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialStories, ow
                 </p>
                 <p className="lib-banner-sub">{title}{continuingNext && ` · ${activityProgress[nextActivity.key].label}`}</p>
               </div>
-              <Link href={replayNext ? (nextActivity.replayLink || nextActivity.link) : nextActivity.link} className="lib-banner-btn">
+              <QuestTopicsLink href={replayNext ? (nextActivity.replayLink || nextActivity.link) : nextActivity.link} className="lib-banner-btn">
                 {continuingNext ? 'أكمل رحلتك ←' : replayNext ? 'ألعب مجدّدًا ←' : 'ابدأ الآن ←'}
-              </Link>
+              </QuestTopicsLink>
               <button className="lib-banner-close" onClick={() => setBannerDismiss(true)}>✕</button>
             </div>
           );
@@ -790,8 +791,8 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialStories, ow
               <div className="sg-sheet-actions">
                 {r.ready
                   ? done
-                    ? <Link href={r.replayLink || r.link} className="sg-sheet-cta" style={{ background:'linear-gradient(135deg,#22c55e,#16a34a)' }}>✓ العب مجدداً</Link>
-                    : <Link href={r.link} className="sg-sheet-cta" style={{ background:r.btnBg }}>{started ? '✨ أكمل رحلتك ←' : ctaLabel}</Link>
+                    ? <QuestTopicsLink href={r.replayLink || r.link} className="sg-sheet-cta" style={{ background:'linear-gradient(135deg,#22c55e,#16a34a)' }}>✓ العب مجدداً</QuestTopicsLink>
+                    : <QuestTopicsLink href={r.link} className="sg-sheet-cta" style={{ background:r.btnBg }}>{started ? '✨ أكمل رحلتك ←' : ctaLabel}</QuestTopicsLink>
                   : <div className="sg-sheet-locked">🔒 سيكون هذا النشاط متاحاً قريباً</div>
                 }
                 {isTeacher && (

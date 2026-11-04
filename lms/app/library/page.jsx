@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
+import QuestTopicsLink from '../../components/QuestTopicsLink';
 import { createClient }      from '../../lib/supabase-server';
 import { createAdminClient } from '../../lib/supabase-admin';
 import Navbar       from '../../components/Navbar';
@@ -68,7 +68,7 @@ export default async function LibraryPage() {
               </p>
             )}
           </div>
-          <div style={{display:'flex',justifyContent:'center',margin:'10px 0 20px'}}><Link href="/library/games/picture-quest/topics" style={{display:'inline-flex',alignItems:'center',minHeight:44,padding:'10px 18px',borderRadius:14,background:'#E8B84B',color:'#1A2B4A',fontWeight:800,textDecoration:'none'}}>✦ جديد: مغامرات الكلمات حسب الموضوع</Link></div>
+          <div style={{display:'flex',justifyContent:'center',margin:'10px 0 20px'}}><QuestTopicsLink href="/library/games/picture-quest/topics" style={{display:'inline-flex',alignItems:'center',minHeight:44,padding:'10px 18px',borderRadius:14,background:'#E8B84B',color:'#1A2B4A',fontWeight:800,textDecoration:'none'}}>✦ جديد: مغامرات الكلمات حسب الموضوع</QuestTopicsLink></div>
           <LibraryGrid
             initialMeta={initialMeta}
             isTeacher={isTeacher}
