@@ -7,18 +7,18 @@ import{createQuestMapPan}from'../../../../../lib/picture-quest-map-client';
 import JourneyArt from'./JourneyArt';
 import JourneyScenery from'./JourneyScenery';
 import'./journey.css';
-let atlasPromise;
-function loadAtlas(){if(!atlasPromise)atlasPromise=new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>Promise.resolve(image.decode?.()).catch(()=>{}).then(resolve);image.onerror=()=>{atlasPromise=null;reject(Error('image'))};image.src='/picture-quest/journey-worlds-v1.webp';});return atlasPromise;}
+let atlasPromise,atlasReady=false;
+function loadAtlas(){if(!atlasPromise)atlasPromise=new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>Promise.resolve(image.decode?.()).catch(()=>{}).then(()=>{atlasReady=true;resolve()});image.onerror=()=>{atlasPromise=null;reject(Error('image'))};image.src='/picture-quest/journey-worlds-v1.webp';});return atlasPromise;}
 export default function JourneyMap({data,staff=false,onOpen,onFinal,positionRef,worldButtons}){
  const viewport=useRef(null),terrain=useRef(null),pan=useRef(null),keyboard=useRef(false),ownPosition=useRef(null),position=positionRef||ownPosition;
- const[size,setSize]=useState({width:375,height:560}),[region,setRegion]=useState('الغابة'),[art,setArt]=useState('loading'),[retry,setRetry]=useState(0),[dragged,setDragged]=useState(false),[notice,setNotice]=useState(''),[celebrating,setCelebrating]=useState(false);
+ const[size,setSize]=useState({width:375,height:560}),[region,setRegion]=useState('الغابة'),[art,setArt]=useState(()=>atlasReady?'ready':'loading'),[retry,setRetry]=useState(0),[dragged,setDragged]=useState(false),[notice,setNotice]=useState(''),[celebrating,setCelebrating]=useState(false);
  const timer=useRef(null),topics=data.topics||[],final=data.final,scenery=data.journeyScenery!==false,effects=data.journeyEffects!==false&&data.settings.animate!==false,showProgress=data.settings.controls?.progress!==false;
  const entries=useMemo(()=>[...topics,...(final?.enabled?[{id:'final',title:'الأذكياء',completed:final.completed,unlocked:final.unlocked&&final.ready,final:true}]:[])],[topics,final]);
  const geometry=useMemo(()=>journeyGeometry(entries.length,size.width,size.height),[entries.length,size]);
  const done=topics.filter(t=>t.completed||t.stages?.every(s=>s.completed)).length;
  const candidate=entries.findIndex(t=>!t.completed&&(staff||t.unlocked!==false)),current=candidate<0?Math.max(0,entries.length-1):candidate,target=entries[current];
  const needsAtlas=scenery||entries.some(t=>!t.final&&t.mapImageEnabled!==false&&!t.map_image_url);
- useEffect(()=>{let live=true;if(!needsAtlas){setArt('ready');return;}setArt('loading');const timeout=setTimeout(()=>{if(live)setArt('failed')},12000);loadAtlas().then(()=>{if(live){clearTimeout(timeout);setArt('ready')}}).catch(()=>{if(live){clearTimeout(timeout);setArt('failed')}});return()=>{live=false;clearTimeout(timeout)}},[needsAtlas,retry]);
+ useEffect(()=>{let live=true;if(!needsAtlas){setArt('ready');return;}if(atlasReady){setArt('ready');return;}setArt('loading');const timeout=setTimeout(()=>{if(live)setArt('failed')},12000);loadAtlas().then(()=>{if(live){clearTimeout(timeout);setArt('ready')}}).catch(()=>{if(live){clearTimeout(timeout);setArt('failed')}});return()=>{live=false;clearTimeout(timeout)}},[needsAtlas,retry]);
  useEffect(()=>{const v=viewport.current;const resize=()=>{const w=v.clientWidth,h=v.clientHeight;if(w&&h)setSize(old=>old.width===w&&old.height===h?old:{width:w,height:h})};resize();const observer=typeof ResizeObserver==='undefined'?null:new ResizeObserver(resize);observer?.observe(v);window.addEventListener('resize',resize);return()=>{observer?.disconnect();window.removeEventListener('resize',resize)}},[]);
  const restore=useRef(null);
  useEffect(()=>{
