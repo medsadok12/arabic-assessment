@@ -1,63 +1,66 @@
 import {describe,it,expect} from 'vitest';
 import {readFileSync,existsSync} from 'node:fs';
-import {freshQuestBank,validateQuestBank,stageReadiness,bankKey,bankQuestion,mixedFinalWords} from './picture-quest-bank';
+import {freshQuestBank,validateQuestBank,stageReadiness,bankKey,bankQuestion,mixedFinalWords,stageWords,bankWordReady} from './picture-quest-bank';
 import {freshPictureQuest,QUEST_SOUNDS} from './picture-quest';
 import {completeQuestWorlds} from './picture-quest-content-pack';
 import {QUEST_WORLD_CONTENT,contentImage} from './picture-quest-content-data';
+import {QUEST_CURRICULUM,installQuestCurriculum} from './picture-quest-curriculum';
+import {bankCatalog} from './picture-quest-bank-server';
+const active=b=>b.words.filter(w=>!w.curriculumExcluded);
+const find=(b,id)=>b.words.find(w=>w.id===id);
 
-describe('complete published worlds without replacing administration choices',()=>{
- it('provides 30 learning and 3 unseen final words in each of the three visible worlds',()=>{
+describe('reviewed twenty-world curriculum',()=>{
+ it('installs the document order and exactly 600 ordinary and 60 enrichment slots, all playable with two choices',()=>{
   const bank=completeQuestWorlds(freshQuestBank(),freshPictureQuest());
   expect(validateQuestBank(bank).error).toBeUndefined();
-  for(const id of ['animals','fruit','school']){
-   expect(bank.words.filter(w=>w.topicId===id)).toHaveLength(33);
-   for(const [stage,count]of [[1,5],[2,10],[3,15],[4,3]])expect(stageReadiness(bank,id,stage)).toMatchObject({ready:true,count,target:count});
+  expect(bank.topics.map(t=>t.id)).toEqual(['school','home','toys','body','clothes','food','fruit','vegetables','family','animals','birds','garden','sea','transport','city','jobs','sports','weather','shapes','space']);
+  expect(active(bank).filter(w=>w.stage!==4)).toHaveLength(600);expect(active(bank).filter(w=>w.stage===4)).toHaveLength(60);
+  const reserved=new Set(active(bank).filter(w=>w.stage===4).map(w=>bankKey(w.label)));
+  for(const topic of bank.topics)for(const [stage,count]of[[1,5],[2,10],[3,15],[4,3]]){
+   expect(stageReadiness(bank,topic.id,stage)).toMatchObject({ready:true,count,target:count});
+   const words=stageWords(bank,topic.id,stage,'test');expect(words.map(w=>w.curriculumOrder)).toEqual(words.map(w=>w.curriculumOrder).sort((a,b)=>a-b));
+   for(const w of words){const q=bankQuestion(bank,w,w.level);expect(q.options).toHaveLength(2);expect(new Set(q.options.map(o=>bankKey(o.label))).size).toBe(2);if(stage!==4)expect(q.options.some(o=>reserved.has(bankKey(o.label)))).toBe(false);}
   }
-  expect(new Set(bank.words.map(w=>bankKey(w.label))).size).toBe(bank.words.length);
-  const final=mixedFinalWords(bank,['animals','fruit','school'],'test');expect(final).toHaveLength(9);
-  const reserved=new Set(final.map(w=>bankKey(w.label)));
-  for(const w of bank.words.filter(w=>w.stage!==4&&['animals','fruit','school'].includes(w.topicId)))expect(bankQuestion(bank,w,3).options.some(o=>reserved.has(bankKey(o.label)))).toBe(false);
+  expect(mixedFinalWords(bank,bank.topics.map(t=>t.id),'test')).toHaveLength(60);
  });
- it('bundles a real SVG for every candidate including reserved words and spare candidates',()=>{
-  for(const row of Object.values(QUEST_WORLD_CONTENT).flat()){
-   const path=new URL('../public'+contentImage(row),import.meta.url);
-   expect(existsSync(path),row[1]).toBe(true);expect(readFileSync(path,'utf8')).toContain('<svg');
-  }
+ it('bundles a specific SVG for every curriculum entry and keeps all legacy packaged pictures',()=>{
+  for(const row of Object.values(QUEST_WORLD_CONTENT).flat())expect(existsSync(new URL('../public'+contentImage(row),import.meta.url))).toBe(true);
+  for(const world of QUEST_CURRICULUM)for(const row of world.words){const text=readFileSync(new URL('../public'+row.image_url,import.meta.url),'utf8');expect(text).toContain('<svg');expect(text).not.toMatch(/<script|<foreignObject|<image|https?:\/\/(?!www\.w3\.org)/);expect(text).not.toContain(row.label);}
  });
- it('preserves IDs, custom uploads, disabled words and stages, settings and hidden worlds',()=>{
-  const bank=freshQuestBank();bank.words[0].image_url='/picture-quest/custom.svg';bank.words[0].answer_audio='/picture-quest/custom.mp3';bank.words[0].enabled=false;bank.words[0].mediaEnabled.image_url=false;
-  bank.topics[0].stageEnabled={2:false};bank.settings.sound=false;
-  const result=completeQuestWorlds(bank,freshPictureQuest());
-  expect(result.words[0]).toEqual(bank.words[0]);expect(result.topics).toEqual(bank.topics);expect(result.settings.sound).toBe(false);
-  expect(result.words.filter(w=>w.topicId==='home')).toEqual(bank.words.filter(w=>w.topicId==='home'));
-  expect(stageReadiness(result,'animals',1).ready).toBe(false);expect(stageReadiness(result,'animals',2).ready).toBe(false);
-  expect(bank.words).toHaveLength(56);
+ it('retains IDs, uploads, independent off switches, points settings and epoch, and archives superseded words without deleting them',()=>{
+  const bank=freshQuestBank();bank.epoch=17;const old=bank.words[0];old.image_url='/picture-quest/custom-cat.svg';old.answer_audio='https://example.supabase.co/cat.mp3';old.enabled=false;old.mediaEnabled.image_url=false;
+  bank.topics[0].stageEnabled={2:false};bank.settings.sound=false;const result=completeQuestWorlds(bank,freshPictureQuest()),cat=find(result,old.id);
+  for(const k of['id','image_url','answer_audio','enabled','mediaEnabled'])expect(cat[k]).toEqual(old[k]);expect(result.epoch).toBe(17);expect(result.settings).toEqual(bank.settings);expect(stageReadiness(result,'animals',1).ready).toBe(false);expect(stageReadiness(result,'animals',2).ready).toBe(false);
+  expect(result.words.filter(w=>w.curriculumExcluded).length).toBeGreaterThan(0);for(const w of bank.words)expect(find(result,w.id)).toBeTruthy();expect(bank.words).toHaveLength(56);
  });
- it('copies each original recording to the same event only and preserves independent off switches',()=>{
-  const original=freshPictureQuest();for(const role of QUEST_SOUNDS)original.settings.sounds[role]='/picture-quest/'+role+'.mp3';
-  original.settings.soundEnabled.hint=false;
-  const bank=freshQuestBank();bank.settings.sounds.success='/picture-quest/custom-win.mp3';bank.settings.soundEnabled.wrong=false;
-  bank.settings.sounds.wrong=original.settings.sounds.wrong;bank.settings.sounds.timeout=original.settings.sounds.wrong;
-  const result=completeQuestWorlds(bank,original);
-  for(const role of QUEST_SOUNDS.filter(r=>r!=='success'))expect(result.settings.sounds[role]).toBe(original.settings.sounds[role]);
-  expect(result.settings.sounds.success).toBe('/picture-quest/custom-win.mp3');expect(result.settings.soundEnabled.wrong).toBe(false);expect(result.settings.soundEnabled.hint).toBe(false);
-  expect(original.questions[0].answer_audio).toBe('');
+ it('copies original event recordings once and never routes wrong-answer encouragement to the timeout',()=>{
+  const original=freshPictureQuest();for(const role of QUEST_SOUNDS)original.settings.sounds[role]='/picture-quest/'+role+'.mp3';original.settings.soundEnabled.hint=false;
+  const bank=freshQuestBank();bank.settings.sounds.success='/picture-quest/custom-win.mp3';bank.settings.soundEnabled.wrong=false;bank.settings.sounds.wrong=original.settings.sounds.wrong;bank.settings.sounds.timeout=original.settings.sounds.wrong;
+  const result=completeQuestWorlds(bank,original);for(const role of QUEST_SOUNDS.filter(r=>r!=='success'))expect(result.settings.sounds[role]).toBe(original.settings.sounds[role]);expect(result.settings.sounds.success).toBe('/picture-quest/custom-win.mp3');expect(result.settings.soundEnabled.wrong).toBe(false);expect(result.settings.soundEnabled.hint).toBe(false);
  });
- it('carries uploaded word media by correct word label without replacing custom recordings',()=>{
-  const original=freshPictureQuest();const cat=original.questions[0];cat.image_url='https://example.supabase.co/cat.png';cat.answer_audio='https://example.supabase.co/cat.mp3';cat.mediaEnabled.answer_audio=false;
-  const bank=freshQuestBank();const result=completeQuestWorlds(bank,original);const word=result.words.find(w=>w.id==='animals-cat');
-  expect(word.image_url).toBe(cat.image_url);expect(word.answer_audio).toBe(cat.answer_audio);expect(word.mediaEnabled.answer_audio).toBe(false);
-  bank.words[0].answer_audio='https://example.supabase.co/custom.mp3';expect(completeQuestWorlds(bank,original).words[0].answer_audio).toBe(bank.words[0].answer_audio);
+ it('retains uploaded correct-word media and never replaces a teacher recording',()=>{
+  const original=freshPictureQuest(),cat=original.questions[0];cat.image_url='https://example.supabase.co/cat.png';cat.answer_audio='https://example.supabase.co/cat.mp3';cat.mediaEnabled.answer_audio=false;
+  const bank=freshQuestBank();let result=completeQuestWorlds(bank,original);expect(find(result,'animals-cat').answer_audio).toBe(cat.answer_audio);expect(find(result,'animals-cat').mediaEnabled.answer_audio).toBe(false);
+  bank.words[0].answer_audio='https://example.supabase.co/custom.mp3';expect(find(completeQuestWorlds(bank,original),'animals-cat').answer_audio).toBe(bank.words[0].answer_audio);
  });
- it('never resurrects content or removed recordings after the administrator saves the pack',()=>{
-  const first=completeQuestWorlds(freshQuestBank(),freshPictureQuest());const bank=validateQuestBank(first).config;
-  bank.words=bank.words.filter(w=>w.id!==first.words[0].id);bank.settings.sounds.wrong='';
-  const original=freshPictureQuest();original.settings.sounds.wrong='/picture-quest/wrong.mp3';
-  expect(completeQuestWorlds(bank,original)).toEqual(bank);
+ it('never resurrects deleted words, re-enables worlds, rewrites ordering or removed media after installation is saved',()=>{
+  const bank=validateQuestBank(completeQuestWorlds(freshQuestBank(),freshPictureQuest())).config;bank.words=bank.words.filter(w=>w.id!=='animals-cat');bank.topics[0].enabled=false;bank.topics.reverse();bank.settings.sounds.wrong='';
+  expect(completeQuestWorlds(bank,freshPictureQuest())).toEqual(bank);expect(installQuestCurriculum(bank)).toBe(bank);
  });
- it('does not reclassify custom words, reuse a final word already taught or duplicate labels',()=>{
-  const bank=freshQuestBank();bank.words[0].label='غَزَالٌ';const result=completeQuestWorlds(bank,freshPictureQuest());
-  expect(result.words[0].stage).toBe(1);expect(result.words.filter(w=>bankKey(w.label)===bankKey('غَزَالٌ'))).toHaveLength(1);
-  expect(result.words.filter(w=>w.topicId==='animals'&&w.stage===4)).toHaveLength(3);
+ it('allows repeated vocabulary in different worlds but rejects duplicates within a world and carries curriculum metadata through publish validation',()=>{
+  const bank=completeQuestWorlds(freshQuestBank(),freshPictureQuest());expect(active(bank).filter(w=>bankKey(w.label)===bankKey('كُرْسِيّ'))).toHaveLength(2);const checked=validateQuestBank(bank);expect(checked.error).toBeUndefined();expect(checked.config.curriculumVersion).toBe(1);expect(find(checked.config,'home-chair').reviewOf).toBeTruthy();expect(checked.config.topics[0].curriculumScope).toBeTruthy();bank.words.push({...active(bank)[0],id:'bad-copy'});expect(validateQuestBank(bank).error).toContain('مكررة');
+ });
+ it('uses explicit colour, shape, action and relationship prompts and retains earned access/completions after reorder',()=>{
+  const bank=completeQuestWorlds(freshQuestBank(),freshPictureQuest()),word=(id,no)=>active(bank).find(w=>w.topicId===id&&w.curriculumOrder===no);
+  expect(bankQuestion(bank,word('shapes',6)).prompt).toBe('ما اللون؟');expect(bankQuestion(bank,word('shapes',1)).prompt).toBe('ما الشكل؟');expect(bankQuestion(bank,word('family',11)).prompt).toContain('أنا');expect(bankQuestion(bank,word('sports',1)).prompt).toBe('ما النشاط؟');
+  const old={completions:{'animals:1':{done:true}},attempts:{'fruit:2':{index:3,questions:[1,2,3,4]}},worldAccess:{animals:true,fruit:true}};const copy=structuredClone(old),catalog=bankCatalog(bank,old);expect(catalog.topics.find(t=>t.id==='animals').unlocked).toBe(true);expect(catalog.topics.find(t=>t.id==='animals').stages[0].completed).toBe(true);expect(catalog.topics.find(t=>t.id==='fruit').unlocked).toBe(true);expect(old).toEqual(copy);
+ });
+ it('excludes archived entries from selection and final readiness while keeping their data editable',()=>{
+  const bank=completeQuestWorlds(freshQuestBank(),freshPictureQuest());for(const w of bank.words.filter(w=>w.curriculumExcluded))expect(bankWordReady(w)).toBe(false);const c=validateQuestBank(bank).config;expect(c.words.filter(w=>w.curriculumExcluded).length).toBeGreaterThan(0);
  });
 });
+it('previews an incomplete new world with its own clearly marked examples, never substitutes animals',async()=>{
+ const{buildQuestStaffPreview}=await import('./picture-quest-staff-preview');const bank=completeQuestWorlds(freshQuestBank(),freshPictureQuest());bank.words=bank.words.filter(w=>w.topicId!=='weather');const preview=buildQuestStaffPreview(bank,{topicId:'weather',stage:1});expect(preview.demo).toBe(true);expect(preview.config.title).toContain('الطقس');expect(preview.config.questions[0].options.find(o=>o.id==='choice-0').label).toBe('شَمْس');
+});
+
+it('starts in document order and honours the teacher shuffle switch without changing stored order',()=>{const b=completeQuestWorlds(freshQuestBank(),freshPictureQuest());expect(b.shuffle).toBe(false);const ordered=stageWords(b,'school',3).map(w=>w.id);b.shuffle=true;expect(stageWords(b,'school',3,'shuffle').map(w=>w.id)).not.toEqual(ordered);b.shuffle=false;expect(stageWords(b,'school',3).map(w=>w.id)).toEqual(ordered)});

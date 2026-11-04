@@ -6,7 +6,7 @@ import {questRow,questBalance,questFailure,loadPictureQuest} from './picture-que
 import {publicQuestQuestion,questRecording,questUuid,questEnabled} from './picture-quest';
 import {deliverVerifiedEffect,awardVerifiedPoints} from './verified-effects';
 export async function prepareQuestBankContent(admin,config){
- if(config.contentPackVersion>=1)return config;
+ if(config.contentPackVersion>=1&&config.curriculumVersion>=1)return config;
  const original=await loadPictureQuest(admin);
  return completeQuestWorlds(config,original.config);
 }
@@ -39,7 +39,7 @@ export function bankCatalog(bank,state={}){
  state=prepare(structuredClone(state),bank);
  const ready=bank.words.filter(w=>w.stage!==4&&bankWordReady(w));
  const finalTopics=state.finalAccess?.topicIds||bank.topics.filter(t=>t.enabled).map(t=>t.id);
- const finalReady=!!finalTopics.length&&finalTopics.every(id=>stageReadiness(bank,id,4).ready)&& (!!state.completions['final:4']||!bank.words.some(w=>finalTopics.includes(w.topicId)&&w.stage===4&&state.mastery[w.id]?.seen));
+ const finalReady=!!finalTopics.length&&finalTopics.every(id=>stageReadiness(bank,id,4).ready)&& (!!state.completions['final:4']||!bank.words.some(w=>finalTopics.includes(w.topicId)&&w.stage===4&&!w.curriculumExcluded&&state.mastery[w.id]?.seen));
  return{...Object.fromEntries(JOURNEY_FLAGS.map(k=>[k,bank[k]!==false])),schoolVoiceUrl:bank.schoolVoiceUrl||'',schoolBellUrl:bank.schoolBellUrl||'',fruitVoiceUrl:bank.fruitVoiceUrl||'',gateVoiceUrl:bank.gateVoiceUrl||'',epoch:bank.epoch,title:bank.title,settings:bank.settings,enabled:bank.enabled,hubDepthEnabled:bank.hubDepthEnabled!==false,resume:state.round?.key&&!state.round.review&&state.round.index<state.round.questions.length?state.round.selection:null,reviewEnabled:bank.reviewEnabled,reviewCount:ready.filter(w=>state.mastery[w.id]?.seen).length,
   topics:bank.topics.filter(t=>t.enabled).map(t=>({...t,unlocked:worldUnlocked(bank,state,t.id),completed:worldComplete(state,t.id),stages:[1,2,3].map(stage=>{const key=`${t.id}:${stage}`,completed=!!state.completions[key],attempt=state.attempts[key],unlocked=worldUnlocked(bank,state,t.id)&&(stage===1||!!state.completions[`${t.id}:${stage-1}`]);return{...stageReadiness(bank,t.id,stage),completed,unlocked,resume:!completed&&!!attempt&&attempt.index<attempt.questions.length,index:attempt?.index||0};})})),
   final:{enabled:bank.finalEnabled!==false,unlocked:!!state.finalAccess,ready:finalReady,total:finalTopics.length*3,completed:!!state.completions['final:4'],resume:!!state.attempts['final:4']&&!state.completions['final:4'],index:state.attempts['final:4']?.index||0}};
@@ -61,7 +61,7 @@ function assertAvailable(bank,state,selection){
  if(topicId==='review'){if(!bank.reviewEnabled)throw questFailure('المراجعة متوقفة.',409);return}
  if(topicId==='final'){
   if(bank.finalEnabled===false||!state.finalAccess)throw questFailure('أكمل المراحل الثلاث في جميع الموضوعات أولًا.',409);
-  if(!state.finalAccess.topicIds.every(id=>stageReadiness(bank,id,4).ready)||!state.completions['final:4']&&bank.words.some(w=>state.finalAccess.topicIds.includes(w.topicId)&&w.stage===4&&state.mastery[w.id]?.seen))throw questFailure('كلمات مرحلة الأذكياء قيد التجهيز.',409);return;
+  if(!state.finalAccess.topicIds.every(id=>stageReadiness(bank,id,4).ready)||!state.completions['final:4']&&bank.words.some(w=>state.finalAccess.topicIds.includes(w.topicId)&&w.stage===4&&!w.curriculumExcluded&&state.mastery[w.id]?.seen))throw questFailure('كلمات مرحلة الأذكياء قيد التجهيز.',409);return;
  }
  if(!bank.topics.some(t=>t.id===topicId&&t.enabled))throw questFailure('هذا الموضوع غير متاح.',409);
  if(!worldUnlocked(bank,state,topicId))throw questFailure('أكمل العالم السابق أولًا، ثم نكمل المغامرة.',409);

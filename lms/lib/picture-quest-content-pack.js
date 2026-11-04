@@ -1,4 +1,5 @@
 import {bankKey,migrateQuestBank} from './picture-quest-bank';
+import {installQuestCurriculum} from './picture-quest-curriculum';
 import {QUEST_SOUNDS} from './picture-quest';
 import {QUEST_WORLD_CONTENT,contentImage} from './picture-quest-content-data';
 
@@ -11,7 +12,7 @@ const uploaded=url=>typeof url==='string'&&/^https:\/\//.test(url);
 // deletions and removals authoritative; reads never mutate the published row.
 export function completeQuestWorlds(input,original){
  const bank=migrateQuestBank(input);
- if((bank.contentPackVersion||0)>=QUEST_CONTENT_PACK_VERSION)return bank;
+ if((bank.contentPackVersion||0)>=QUEST_CONTENT_PACK_VERSION)return installQuestCurriculum(bank);
  const used=new Set(bank.words.map(w=>bankKey(w.label))),ids=new Set(bank.words.map(w=>w.id));
  for(const [topicId,rows]of Object.entries(QUEST_WORLD_CONTENT)){
   if(!bank.topics.some(t=>t.id===topicId))continue;
@@ -53,5 +54,5 @@ export function completeQuestWorlds(input,original){
   }
  }
  bank.contentPackVersion=QUEST_CONTENT_PACK_VERSION;
- return bank;
+ return installQuestCurriculum(bank);
 }

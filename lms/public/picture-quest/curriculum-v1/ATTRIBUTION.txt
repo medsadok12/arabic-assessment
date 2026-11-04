@@ -1,0 +1,10 @@
+Arem Academy picture vocabulary curriculum artwork v1
+Twemoji SVG graphics v15.0.0. Copyright Twitter, Inc. and other contributors.
+Graphics: Creative Commons Attribution 4.0 International.
+https://creativecommons.org/licenses/by/4.0/
+https://github.com/twitter/twemoji
+Some graphics are recomposed, annotated or recoloured for educational diagrams.
+Lucide vector icons: copyright Lucide contributors, ISC License.
+https://lucide.dev/license
+Additional original diagrams and arrangements: Arem Academy.
+Existing Arem Academy assets retain their original attribution.
