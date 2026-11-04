@@ -40,3 +40,8 @@ it('saves independent school animation and recording switches without discarding
  for(const name of ['حركة باب المدرسة','حركة جرس المدرسة','أضواء المدرسة','ظهور فهيم في احتفال المدرسة','دفتر المعرفة في احتفال المدرسة','قلب صفحات دفتر المعرفة'])await act(async()=>Simulate.change(label(name).querySelector('input'),{target:{checked:false}}));
  await act(async()=>button('حفظ مسودة').click());for(const k of ['schoolDoorEnabled','schoolBellEnabled','schoolLightsEnabled','schoolFaheemEnabled','schoolBookEnabled','schoolPagesEnabled'])expect(requests[0].config[k]).toBe(false);expect(requests[0].config.words).toEqual(freshQuestBank().words);expect(requests[0].config.schoolVoiceEnabled).toBe(true);expect(requests[0].config.schoolBellSoundEnabled).toBe(true);
 });
+it('persists all independent body celebration switches without changing student content',async()=>{
+ await act(async()=>root.render(React.createElement(BankEditor)));
+ for(const name of ['نبضة أرقام أعضاء الجسم','حركة بوابة أعضاء الجسم','ظهور فهيم في أعضاء الجسم','مشي فهيم نحو الطالب','تصفيق فهيم في أعضاء الجسم','شارة بطل أعضاء الجسم','ألبوم إنجازات أعضاء الجسم','لمعات إنجاز أعضاء الجسم'])await act(async()=>Simulate.change(label(name).querySelector('input'),{target:{checked:false}}));
+ await act(async()=>button('حفظ مسودة').click());for(const k of ['bodyPressEnabled','bodyDoorEnabled','bodyFaheemEnabled','bodyWalkEnabled','bodyClapEnabled','bodyBadgeEnabled','bodyAlbumEnabled','bodySparklesEnabled'])expect(requests[0].config[k]).toBe(false);expect(requests[0].config.words).toEqual(freshQuestBank().words);
+});

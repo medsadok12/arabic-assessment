@@ -12,7 +12,7 @@ import'./journey.css';
 import'./entrance.css';
 
 const ROAD='M440 350 C460 330 460 310 440 300 C410 255 160 250 160 180 C160 110 300 130 300 58 L300 0';
-export default function StageEntrance({data,topic,active,staff=false,embedded=false,onChoose,onBegin,onPreview,celebrate=false,onCelebrationDone,preparing=false,imagePreparer}){
+export default function StageEntrance({data,topic,active,staff=false,embedded=false,onChoose,onBegin,onPreview,celebrate=false,onCelebrationDone,preparing=false,imagePreparer,onNextWorld}){
  useEffect(()=>{imagePreparer?.prepare(active.startImage)},[imagePreparer,active.startImage]);
  const [entering,setEntering]=useState(false),pending=useRef(false),timer=useRef(null);
  const [previewCelebration,setPreviewCelebration]=useState(0),[cheering,setCheering]=useState(false);
@@ -33,7 +33,7 @@ export default function StageEntrance({data,topic,active,staff=false,embedded=fa
   onBegin?.(selection);
  }
  const status=active.completed?'مكتملة ✓':!active.ready?'قيد التجهيز':data.settings.controls?.progress!==false&&active.resume?'وصلت إلى '+displayNumber(active.index)+' من '+displayNumber(active.target):'';
- if(bodySceneEnabled(data,topic))return <BodyScene topic={topic} active={active} staff={staff} embedded={embedded} preparing={preparing} entering={entering} status={status} onChoose={onChoose} onBegin={staff?()=>onBegin?.({topicId:topic.id,stage:active.stage}):begin} onPreview={onPreview}/>;
+ if(bodySceneEnabled(data,topic))return <BodyScene data={data} celebrate={celebrate} onCelebrationDone={onCelebrationDone} onNextWorld={onNextWorld} topic={topic} active={active} staff={staff} embedded={embedded} preparing={preparing} entering={entering} status={status} onChoose={onChoose} onBegin={staff?()=>onBegin?.({topicId:topic.id,stage:active.stage}):begin} onPreview={onPreview}/>;
  return <section className={'pqe'+(topic.id==='body'?' pqe-body':'')+(scenery?' pqe-scenery':'')+(entering?' pqe-entering':'')+(preparing?' pqe-preparing':'')+(embedded?' pqe-embedded':'')+(data.hubDepthEnabled===false?' pqe-flat':'')+(cheering?' pqe-celebrating':'')+(fruitGate&&celebrateGate?' pqe-fruit-celebrating':'')+(schoolGate&&celebrateGate?' pqe-school-celebrating':'')} aria-label={'مراحل '+topic.title} aria-busy={entering||preparing}>
   {scenery&&<div className="pqe-landscape" aria-hidden="true"><i className="pqe-land pqe-land-left"/><i className="pqe-land pqe-land-right"/><i className="pqe-land pqe-land-bottom"/>{[[20,'tree-left'],[21,'tree-right'],[22,'flowers-left'],[23,'rocks-right'],[22,'flower-small']].map(([art,place])=><span key={place} className={'pqe-prop pqe-'+place}><JourneyArt index={art}/></span>)}</div>}
   <h2 className="pqe-heading">{topic.title}</h2>

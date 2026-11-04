@@ -20,3 +20,7 @@
 .pqb-embedded{flex:none;height:650px;min-height:650px}
 @media(max-width:640px){.pqj.pqj-entrance-screen:has(.pqb-scene) .pqf-back{min-width:84px;min-height:40px;font-size:18px;padding:4px 12px}}
 .pqb-wide .pqb-heading{width:auto;left:3%;padding:6px 14px;background:#fff8e9;border:1px solid #ead9b0;border-radius:14px;box-shadow:0 3px #b79c66;text-shadow:none}
+
+.pqb-face{position:absolute;inset:0;border-radius:50%;background-image:var(--pqb-art);background-repeat:no-repeat;pointer-events:none}
+.pqb-celebrate-preview{position:absolute;bottom:13%;left:50%;transform:translateX(-50%);z-index:2;min-height:44px;padding:6px 13px;border:1px solid #ddc891;border-radius:14px;background:#fff8e9;color:#1a2b4a;font:700 clamp(14px,4cqw,19px)/1.4 var(--font-naskh),serif;box-shadow:0 3px #b79c66;white-space:nowrap}
+.pqb-wide .pqb-celebrate-preview{bottom:13%;font-size:18px}
