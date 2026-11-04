@@ -35,3 +35,8 @@ it('saves independent fruit celebration switches without modifying animal sounds
  await act(async()=>root.render(React.createElement(BankEditor)));for(const text of ['حركة رفع مظلّة كشك الفواكه','حركة فتح واجهة كشك الفواكه','خروج سلّة الفواكه','قفز الفواكه إلى السلّة','ظهور فهيم في احتفال الفواكه','صوت فهيم في رحلة الفواكه'])await act(async()=>Simulate.change(label(text).querySelector('input'),{target:{checked:false}}));
  await act(async()=>button('حفظ مسودة').click());for(const k of ['fruitAwningEnabled','fruitPanelEnabled','fruitBasketEnabled','fruitJumpEnabled','fruitFaheemEnabled','fruitVoiceEnabled'])expect(requests[0].config[k]).toBe(false);expect(requests[0].config.gateVoiceEnabled).toBe(true);expect(requests[0].config.words).toEqual(freshQuestBank().words);
 });
+it('saves independent school animation and recording switches without discarding the uploaded files',async()=>{
+ await act(async()=>root.render(React.createElement(BankEditor)));
+ for(const name of ['حركة باب المدرسة','حركة جرس المدرسة','أضواء المدرسة','ظهور فهيم في احتفال المدرسة','دفتر المعرفة في احتفال المدرسة','قلب صفحات دفتر المعرفة'])await act(async()=>Simulate.change(label(name).querySelector('input'),{target:{checked:false}}));
+ await act(async()=>button('حفظ مسودة').click());for(const k of ['schoolDoorEnabled','schoolBellEnabled','schoolLightsEnabled','schoolFaheemEnabled','schoolBookEnabled','schoolPagesEnabled'])expect(requests[0].config[k]).toBe(false);expect(requests[0].config.words).toEqual(freshQuestBank().words);expect(requests[0].config.schoolVoiceEnabled).toBe(true);expect(requests[0].config.schoolBellSoundEnabled).toBe(true);
+});

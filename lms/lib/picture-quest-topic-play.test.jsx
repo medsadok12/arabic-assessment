@@ -35,3 +35,7 @@ it('waits for a pending start before confirming deliberate exit, then resets tha
  let release;calls.gate=new Promise(r=>release=r);await render();await act(async()=>button('← الموضوعات').click());await act(async()=>button('نعم، أخرج').click());expect(onExit).not.toHaveBeenCalled();expect(calls.map(c=>c.action)).toEqual(['start']);
  await act(async()=>release());expect(calls.map(c=>c.action)).toEqual(['start','exit']);expect(calls[1].attemptId).toBe('11111111-1111-4111-8111-111111111111');expect(onExit).toHaveBeenCalledOnce();
 });
+it('queues the school celebration only for a newly finished third stage and preserves review behaviour',async()=>{
+ const onWorldComplete=vi.fn();globalThis.topicTestSession={...globalThis.topicTestSession,finished:true,review:false,index:15,total:15,independent:15};await act(async()=>root.render(<TopicPlay settings={globalThis.topicTestSession.settings} selection={{topicId:'school',stage:3}} onExit={onExit} onWorldComplete={onWorldComplete}/>));expect(onWorldComplete).toHaveBeenCalledExactlyOnceWith('school');
+ await act(async()=>root.unmount());root=createRoot(document.getElementById('host'));globalThis.topicTestSession.review=true;onWorldComplete.mockClear();await act(async()=>root.render(<TopicPlay settings={globalThis.topicTestSession.settings} selection={{topicId:'school',stage:3}} onExit={onExit} onWorldComplete={onWorldComplete}/>));expect(onWorldComplete).not.toHaveBeenCalled();
+});
