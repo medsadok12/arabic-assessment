@@ -21,7 +21,8 @@ it('draws the cut-away house with real accessible stage buttons, locks and the s
  expect(html).toContain('<svg');expect(html).toContain('البيت');
  expect(html.match(/class="pqh-station[ "]/g)).toHaveLength(3);
  expect(html).toContain('المرحلة 3، مقفلة');expect(html).toContain('ابدأ');expect(html).toContain('disabled=""');
- expect(html).not.toContain('pqh-party');expect(html).not.toContain('pqh-lit-a');
+ expect(html).not.toContain('pqh-party');expect(html).not.toContain('pqh-on-1');
+ expect(html.match(/class="pqh-shade pqh-shade-\d"/g)).toHaveLength(3); // every floor starts with its lights off
 });
 
 it('keeps staff preview, completion, resume and lit-path states',()=>{
@@ -29,12 +30,16 @@ it('keeps staff preview, completion, resume and lit-path states',()=>{
  const staffHtml=draw({topic:{...topic,stages},active:stages[2],staff:true});
  expect(staffHtml).toContain('معاينة المرحلة');expect(staffHtml).toContain('pqh-station current');expect(staffHtml).toContain('pqh-station completed');
  expect(staffHtml).not.toContain('pqh-station locked');expect(staffHtml).toContain('جرّب احتفال البيت');
- expect(staffHtml).toContain('pqh-lit-a');expect(staffHtml).not.toContain('pqh-lit-b');
+ expect(staffHtml).not.toContain('pqh-on-1'); // with motion the earned lights switch on after the screen opens
+ const still={...data,settings:{animate:false,controls:{}}};
+ const stillHtml=draw({data:still,topic:{...topic,stages},active:stages[2]});
+ expect(stillHtml).toContain('pqh-on-1 pqh-lit-a');expect(stillHtml).not.toContain('pqh-on-2');expect(stillHtml).not.toContain('pqh-on-3');
  const resume=draw({topic:{...topic,stages},active:{...stages[1],resume:true},status:'وصلت إلى 4 من 10'});
  expect(resume).toContain('واصل');expect(resume).toContain('وصلت إلى 4 من 10');expect(resume).not.toContain('جرّب احتفال');
  const done=topic.stages.map(s=>({...s,completed:true,unlocked:true}));
  const review=draw({topic:{...topic,stages:done},active:done[0]});
- expect(review).toContain('راجع');expect(review).toContain('احتفال بيتي');expect(review).toContain('pqh-done-3');
+ expect(review).toContain('راجع');expect(review).toContain('احتفال بيتي');
+ expect(draw({data:{...data,settings:{animate:false,controls:{}}},topic:{...topic,stages:done},active:done[0]})).toContain('pqh-on-1 pqh-lit-a pqh-on-2 pqh-lit-b pqh-on-3');
  expect(draw({preparing:true})).toContain('نجهّز لعبتك');
 });
 

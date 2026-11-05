@@ -2,7 +2,8 @@
 // Coordinates match lib/picture-quest-home-scene.js — house centred on x=0, core scene y 0–1600.
 // Stage 1 sits in the living room, stage 2 at the top of the stairs, stage 3 in the attic under the roof.
 // Everything outside the central rooms (side rooms, garden, trees) only shows on wider screens.
-// The art is static and built once; progress only toggles classes on the root <svg>.
+// The art is static and built once; progress only toggles classes on the root <svg>:
+// every floor starts with its lights off and lights up when its stage is completed.
 
 const BULB_COLORS=['#ffd23f','#ff7aa8','#7fe0c4','#ffa94d','#8fc8ff'];
 const FLOWER_COLORS=['#ff7aa8','#ffd23f','#b98cff','#ff9f68','#7ad0ff'];
@@ -145,7 +146,7 @@ const ATTIC=<g>
  <polygon points="-858,600 0,214 858,600" fill="url(#pqh-attic-shade)"/>
  <polyline points="-870,615 0,226 870,615" fill="none" stroke="#b06f3a" strokeWidth="24" strokeLinejoin="round"/>
  <polyline points="-870,632 0,243 870,632" fill="none" stroke="#9a5d2e" strokeWidth="4" opacity=".35"/>
- <circle className="pqh-emblem-glow" cx="0" cy="330" r="170" fill="url(#pqh-glow)"/>
+ <circle className="pqh-emblem-glow pqh-light pqh-light-3" cx="0" cy="330" r="170" fill="url(#pqh-glow)"/>
  <g>
   <circle cx="0" cy="330" r="70" fill="#a8652f"/><circle cx="0" cy="330" r="64" fill="#c98448"/><circle cx="0" cy="330" r="55" fill="#ffd166"/>
   <circle cx="0" cy="330" r="47" fill="url(#pqh-emblem)"/>
@@ -178,7 +179,7 @@ const ATTIC=<g>
  <path d="M168 596C160 560 182 524 228 522C272 520 298 550 300 596Z" fill="#ff8a80"/><path d="M186 560C192 540 210 532 230 532" stroke="#ffb3ab" strokeWidth="8" fill="none" strokeLinecap="round"/>
  <path d="M206 548L230 556 254 548V566L230 574 206 566Z" fill="#fff" stroke="#e8d9c4" strokeWidth="2"/><path d="M230 556V574" stroke="#e8d9c4" strokeWidth="2"/>
  <rect x="312" y="566" width="50" height="12" rx="3" fill="#7fd8be"/><rect x="316" y="554" width="44" height="12" rx="3" fill="#ffd166"/><rect x="310" y="542" width="48" height="12" rx="3" fill="#ff8fab"/><rect x="318" y="530" width="40" height="12" rx="3" fill="#8fc8ff"/>
- <circle className="pqh-lampglow" cx="430" cy="556" r="80" fill="url(#pqh-glow)"/>
+ <circle className="pqh-lampglow pqh-light pqh-light-3" cx="430" cy="556" r="80" fill="url(#pqh-glow)"/>
  <g><rect x="414" y="584" width="32" height="10" rx="3" fill="#8a5428"/><rect x="418" y="542" width="24" height="42" rx="6" fill="#fff0b3" stroke="#c98448" strokeWidth="4"/><path d="M414 544L430 526 446 544Z" fill="#c98448"/><circle cx="430" cy="563" r="7" fill="#ffd23f"/></g>
  {/* Hatch and stage 3 cushion */}
  <rect x="-472" y="566" width="78" height="72" rx="4" fill="#6e4627"/><rect x="-466" y="570" width="66" height="8" fill="#8a5a33"/>
@@ -229,7 +230,7 @@ const UPPER=<g>
  <ellipse cx="-270" cy="984" rx="118" ry="9" fill="#5a3410" opacity=".14"/>
  <ellipse cx="-270" cy="976" rx="112" ry="17" fill="#7fd8be"/><ellipse cx="-270" cy="975" rx="86" ry="12" fill="#fff2b8"/><ellipse cx="-270" cy="974" rx="56" ry="7" fill="#ff9fb8"/>
  {/* Bedroom: window with curtains, lamp, bed with pillow, blanket and teddy */}
- <circle className="pqh-lampglow" cx="470" cy="724" r="175" fill="url(#pqh-glow)"/>
+ <circle className="pqh-lampglow pqh-light pqh-light-2" cx="470" cy="724" r="175" fill="url(#pqh-glow)"/>
  <path d="M232 828V742a98 74 0 0 1 196 0V828Z" fill="#fff8ee" stroke="#e6caa0" strokeWidth="4"/>
  <path d="M246 816V744a84 62 0 0 1 168 0V816Z" fill="url(#pqh-glass-dusk)"/>
  <g clipPath="url(#pqh-clip-bedwin)"><circle cx="372" cy="716" r="13" fill="#fff4c2"/><circle cx="368" cy="712" r="3" fill="#ffe7a0"/><path d={STAR} transform="translate(286 728) scale(.4)" fill="#fff"/><path d={STAR} transform="translate(326 700) scale(.3)" fill="#fff"/><path d={STAR} transform="translate(398 758) scale(.32)" fill="#fff"/><path d="M246 816V792Q290 772 330 790T414 786V816Z" fill="#9fcf86"/><circle cx="280" cy="792" r="10" fill="#6cbf55"/></g>
@@ -240,7 +241,7 @@ const UPPER=<g>
  <rect x="224" y="794" width="34" height="9" rx="4" fill="#ffd166"/><rect x="402" y="794" width="34" height="9" rx="4" fill="#ffd166"/>
  <rect x="204" y="660" width="252" height="8" rx="4" fill="#c98448"/><circle cx="204" cy="664" r="7" fill="#c98448"/><circle cx="456" cy="664" r="7" fill="#c98448"/>
  <path d="M210 666h240v14q-10 12-20 0t-20 0t-20 0t-20 0t-20 0t-20 0t-20 0t-20 0t-20 0t-20 0t-20 0t-20 0z" fill="#ff7fa8"/>
- <path d="M446 712L494 712 520 940 404 940Z" fill="url(#pqh-beam)" opacity=".45"/>
+ <path className="pqh-light pqh-light-2" d="M446 712L494 712 520 940 404 940Z" fill="url(#pqh-beam)"/>
  <path d="M470 640V690" stroke="#6b4a2e" strokeWidth="3"/><path d="M440 712Q440 686 470 686Q500 686 500 712Z" fill="#ffd166" stroke="#e8a93a" strokeWidth="3"/><circle cx="470" cy="714" r="8" fill="#fff7cf"/>
  <ellipse cx="330" cy="994" rx="170" ry="9" fill="#5a3410" opacity=".14"/>
  <path d="M470 990V858a18 18 0 0 1 36 0V990Z" fill="#c98448" stroke="#9a5d2e" strokeWidth="3"/><path d="M488 884c-6-4-9-7-9-10a4.5 4.5 0 0 1 9-2 4.5 4.5 0 0 1 9 2c0 3-3 6-9 10z" fill="#ff9fb8"/>
@@ -318,7 +319,7 @@ const GROUND=<g>
  <rect x="-480" y="1176" width="40" height="9" rx="4" fill="#ff8a65"/><rect x="-230" y="1176" width="40" height="9" rx="4" fill="#ff8a65"/>
  <rect x="-494" y="1060" width="318" height="8" rx="4" fill="#c98448"/><circle cx="-494" cy="1064" r="7" fill="#c98448"/><circle cx="-176" cy="1064" r="7" fill="#c98448"/>
  <path d="M-490 1064h310v14q-15.5 12-31 0t-31 0t-31 0t-31 0t-31 0t-31 0t-31 0t-31 0t-31 0t-31 0z" fill="#ffb347"/>
- <circle className="pqh-lampglow" cx="-160" cy="1150" r="210" fill="url(#pqh-glow)"/>
+ <circle className="pqh-lampglow pqh-light pqh-light-1" cx="-160" cy="1150" r="210" fill="url(#pqh-glow)"/>
  <ellipse cx="-330" cy="1346" rx="168" ry="10" fill="#5a3410" opacity=".14"/>
  <rect x="-460" y="1212" width="262" height="72" rx="26" fill="url(#pqh-sofa)"/><rect x="-448" y="1218" width="238" height="10" rx="5" fill="#8fe3d8" opacity=".6"/>
  <rect x="-470" y="1268" width="282" height="44" rx="18" fill="#3dbbab"/><rect x="-462" y="1271" width="266" height="10" rx="5" fill="#7ad8cb" opacity=".7"/>
@@ -357,7 +358,7 @@ const GROUND=<g>
  <ellipse cx="345" cy="1372" rx="140" ry="10" fill="#5a3410" opacity=".15"/>
  <ellipse cx="345" cy="1362" rx="134" ry="19" fill="#ff8fab"/><ellipse cx="345" cy="1361" rx="104" ry="14" fill="#ffd166"/><ellipse cx="345" cy="1360" rx="72" ry="9" fill="#7fd8be"/><ellipse cx="345" cy="1359" rx="40" ry="5" fill="#fff2b8"/>
  {/* Entrance hall: front door, doormat, coat stand, umbrella, shoes (wide screens) */}
- <circle className="pqh-lampglow" cx="606" cy="1140" r="110" fill="url(#pqh-glow)"/>
+ <circle className="pqh-lampglow pqh-light pqh-light-1" cx="606" cy="1140" r="110" fill="url(#pqh-glow)"/>
  <path d="M628 1330V1166a72 66 0 0 1 144 0V1330" fill="none" stroke="#fff8ee" strokeWidth="12"/>
  <path d="M640 1330V1172a60 56 0 0 1 120 0V1330Z" fill="#ff8a65" stroke="#d9653f" strokeWidth="4"/>
  <rect x="654" y="1226" width="38" height="50" rx="6" fill="#ff9f80" stroke="#e5764f" strokeWidth="2"/><rect x="708" y="1226" width="38" height="50" rx="6" fill="#ff9f80" stroke="#e5764f" strokeWidth="2"/>
@@ -421,6 +422,22 @@ const ROOF=<g>
  <Bird x={-300} y={285}/><Bird x={-246} y={261} flip/>
 </g>;
 
+// Lights-off shade over each floor's rooms (not the cut walls); a completed stage lifts its floor's shade.
+const ROOMS=[[-844,304],[-520,1040],[540,304]];
+const SHADES=<g>
+ {/* Warm wash that spreads through a floor once it is lit. */}
+ <g fill="#ffcf5a" fillOpacity=".13">
+  <g className="pqh-light pqh-light-1">{ROOMS.map(([x,w])=><rect key={x} x={x} y="1045" width={w} height="340"/>)}</g>
+  <g className="pqh-light pqh-light-2">{ROOMS.map(([x,w])=><rect key={x} x={x} y="640" width={w} height="360"/>)}<rect x="-140" y="1000" width="270" height="45"/></g>
+  <g className="pqh-light pqh-light-3"><polygon points="-858,600 0,214 858,600"/></g>
+ </g>
+ <g fill="#1f2d66">
+ <g className="pqh-shade pqh-shade-1" opacity=".36">{ROOMS.map(([x,w])=><rect key={x} x={x} y="1045" width={w} height="340"/>)}</g>
+ <g className="pqh-shade pqh-shade-2" opacity=".36">{ROOMS.map(([x,w])=><rect key={x} x={x} y="640" width={w} height="360"/>)}<rect x="-140" y="1000" width="270" height="45"/></g>
+ <g className="pqh-shade pqh-shade-3" opacity=".36"><polygon points="-858,600 0,214 858,600"/></g>
+ </g>
+</g>;
+
 const PATH=<g className="pqh-path">
  <g className="pqh-seg-a">{SEG_A.map(([x,y],i)=><Foot key={i} x={x} y={y} i={i}/>)}</g>
  <g className="pqh-seg-b">{SEG_B.map(([x,y],i)=><Foot key={i} x={x} y={y} i={i}/>)}</g>
@@ -428,7 +445,7 @@ const PATH=<g className="pqh-path">
 
 const SPARKLES=<g>{Object.entries(SPARKS).map(([floor,list])=><g key={floor} className={'pqh-spark pqh-spark-'+floor} opacity="0">{list.map(([x,y],i)=><g key={i} transform={`translate(${x} ${y}) scale(${.8+(i%3)*.25})`}><path className="pqh-twinkle" style={{animationDelay:i*.35+'s'}} d={STAR} fill="#fff7c2"/></g>)}</g>)}</g>;
 
-const ART=<>{DEFS}{OUTSIDE}{SHELL}{ATTIC}{UPPER}{GROUND}{STAIRS}{FRAME}{LADDER}{ROOF}{PATH}{SPARKLES}</>;
+const ART=<>{DEFS}{OUTSIDE}{SHELL}{ATTIC}{UPPER}{GROUND}{STAIRS}{FRAME}{LADDER}{SHADES}{ROOF}{PATH}{SPARKLES}</>;
 
 export default function HomeArt({layout,className=''}){
  return <svg className={'pqh-art '+className} viewBox={`${layout.x} ${layout.y} ${layout.w} ${layout.h}`} preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">{ART}</svg>;

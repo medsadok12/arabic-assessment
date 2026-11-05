@@ -12,7 +12,7 @@ const CONFETTI=Array.from({length:22},(_,i)=>({left:(i*37+11)%100,delay:(i*.23)%
 
 function HomeCelebration({motion,hasNext,onNext,onClose}){
  const first=useRef(null);
- useEffect(()=>{first.current?.focus({preventScroll:true})},[]);
+ useEffect(()=>{first.current?.focus({preventScroll:true,focusVisible:false})},[]);
  return <div className={'pqh-party'+(motion?' pqh-party-motion':'')} role="dialog" aria-modal="true" aria-label="احتفال إنجاز البيت">
   <div className="pqh-confetti" aria-hidden="true">{CONFETTI.map((c,i)=><i key={i} className={'pqh-bit pqh-bit-'+c.shape} style={{left:c.left+'%',animationDelay:c.delay+'s','--pqh-bit':c.color}}/>)}</div>
   <div className="pqh-party-card">
@@ -40,13 +40,23 @@ export default function HomeScene({data,topic,active,staff,embedded,preparing,en
  const layout=homeSceneLayout(box?.w,box?.h,side?{top:58,bottom:12,left:Math.min(300,box.w*.36)}:{top:80,bottom:showTrial?184:128,left:0});
  const motion=data.settings.animate!==false&&data.journeyEffects!==false;
  const done=n=>!!topic.stages.find(s=>s.stage===n)?.completed;
+ // Each completed stage lights its floor (1 living room, 2 bedroom, 3 attic). With motion on, the earned
+ // lights switch on one floor at a time after the screen opens, so the child sees their own progress light up.
+ const earned=[1,2,3].filter(done),earnedKey=earned.join(''),[lit,setLit]=useState(()=>motion?[]:earned);
+ useEffect(()=>{
+  const target=earnedKey.split('').map(Number);
+  setLit(old=>old.filter(n=>target.includes(n)));
+  if(!motion||window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches){setLit(target);return;}
+  const timers=target.map((n,i)=>setTimeout(()=>setLit(old=>old.includes(n)?old:[...old,n]),450+i*550));
+  return()=>timers.forEach(clearTimeout);
+ },[earnedKey,motion]);
  const focus=homeStationBox(layout,HOME_SCENE_STATIONS[active.stage]||HOME_SCENE_STATIONS[1]);
  function spring(button){
   if(!motion||window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)return;
   const medal=button.querySelector('.pqh-medal');medal?.getAnimations?.().forEach(a=>a.cancel());
   medal?.animate?.([{transform:'scale(1)'},{offset:.2,transform:'scale(.88,.92)'},{offset:.6,transform:'scale(1.1,1.06)'},{transform:'scale(1)'}],{duration:440,easing:'cubic-bezier(.22,.7,.25,1)'});
  }
- const artClass=[done(1)&&'pqh-lit-a pqh-done-1',done(2)&&'pqh-lit-b pqh-done-2',done(3)&&'pqh-done-3',celebration&&'pqh-celebrating'].filter(Boolean).join(' ');
+ const artClass=[lit.includes(1)&&'pqh-on-1 pqh-lit-a',lit.includes(2)&&'pqh-on-2 pqh-lit-b',lit.includes(3)&&'pqh-on-3',celebration&&'pqh-celebrating'].filter(Boolean).join(' ');
  return <section ref={root} className={'pqh-scene'+(motion?' pqh-motion':'')+(embedded?' pqh-embedded':'')+(side?' pqh-side':'')+(entering?' pqh-entering':'')+(data.hubDepthEnabled===false?' pqh-flat':'')} style={{'--pqh-ox':focus.left+'%','--pqh-oy':focus.top+'%'}} aria-label={'مراحل '+topic.title} aria-busy={preparing||entering}>
   <HomeArt layout={layout} className={artClass}/>
   <h2 className="pqh-heading"><span className="pqh-heading-icon" aria-hidden="true"><House/></span>{topic.title}</h2>
