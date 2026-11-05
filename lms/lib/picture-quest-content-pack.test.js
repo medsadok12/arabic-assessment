@@ -10,7 +10,7 @@ const active=b=>b.words.filter(w=>!w.curriculumExcluded);
 const find=(b,id)=>b.words.find(w=>w.id===id);
 
 describe('reviewed twenty-world curriculum',()=>{
- it('installs the document order and exactly 600 ordinary and 60 enrichment slots, all playable with two choices',()=>{
+ it('installs the document order and exactly 600 ordinary and 60 enrichment slots, all playable with scoped home choice progression',()=>{
   const bank=completeQuestWorlds(freshQuestBank(),freshPictureQuest());
   expect(validateQuestBank(bank).error).toBeUndefined();
   expect(bank.topics.map(t=>t.id)).toEqual(['school','home','toys','body','clothes','food','fruit','vegetables','family','animals','birds','garden','sea','transport','city','jobs','sports','weather','shapes','space']);
@@ -19,7 +19,7 @@ describe('reviewed twenty-world curriculum',()=>{
   for(const topic of bank.topics)for(const [stage,count]of[[1,5],[2,10],[3,15],[4,3]]){
    expect(stageReadiness(bank,topic.id,stage)).toMatchObject({ready:true,count,target:count});
    const words=stageWords(bank,topic.id,stage,'test');expect(words.map(w=>w.curriculumOrder)).toEqual(words.map(w=>w.curriculumOrder).sort((a,b)=>a-b));
-   for(const w of words){const q=bankQuestion(bank,w,w.level);expect(q.options).toHaveLength(2);expect(new Set(q.options.map(o=>bankKey(o.label))).size).toBe(2);if(stage!==4)expect(q.options.some(o=>reserved.has(bankKey(o.label)))).toBe(false);}
+   for(const w of words){const q=bankQuestion(bank,w,w.level);const choices=topic.id==='home'&&stage<4?stage+1:2;expect(q.options).toHaveLength(choices);expect(new Set(q.options.map(o=>bankKey(o.label))).size).toBe(choices);if(stage!==4)expect(q.options.some(o=>reserved.has(bankKey(o.label)))).toBe(false);}
   }
   expect(mixedFinalWords(bank,bank.topics.map(t=>t.id),'test')).toHaveLength(60);
  });

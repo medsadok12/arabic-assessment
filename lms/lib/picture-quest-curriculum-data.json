@@ -426,7 +426,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "🚪",
-          "image_url": "/picture-quest/curriculum-v1/home-01.svg"
+          "image_url": "/picture-quest/home-learning-v2/01.svg"
         },
         {
           "key": "w02-02",
@@ -438,7 +438,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "🪟",
-          "image_url": "/picture-quest/curriculum-v1/home-02.svg"
+          "image_url": "/picture-quest/home-learning-v2/02.svg"
         },
         {
           "key": "w02-03",
@@ -450,7 +450,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "🛏️",
-          "image_url": "/picture-quest/curriculum-v1/home-03.svg"
+          "image_url": "/picture-quest/home-learning-v2/03.svg"
         },
         {
           "key": "w02-04",
@@ -462,7 +462,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": "W01-S2-09",
           "artSpec": "🪑",
-          "image_url": "/picture-quest/curriculum-v1/home-04.svg"
+          "image_url": "/picture-quest/home-learning-v2/04.svg"
         },
         {
           "key": "w02-05",
@@ -474,7 +474,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": "W01-S2-10",
           "artSpec": "@table",
-          "image_url": "/picture-quest/curriculum-v1/home-05.svg"
+          "image_url": "/picture-quest/home-learning-v2/05.svg"
         },
         {
           "key": "w02-06",
@@ -486,7 +486,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "🏠",
-          "image_url": "/picture-quest/curriculum-v1/home-06.svg"
+          "image_url": "/picture-quest/home-learning-v2/06.svg"
         },
         {
           "key": "w02-07",
@@ -495,10 +495,10 @@
           "stage": 2,
           "order": 7,
           "academicId": "W02-S2-07",
-          "prompt": "ما الكلمة المناسبة؟",
+          "prompt": "ماذا يُظهر المشهد كاملًا؟",
           "reviewOf": null,
           "artSpec": "@room",
-          "image_url": "/picture-quest/curriculum-v1/home-07.svg"
+          "image_url": "/picture-quest/home-learning-v2/07.svg"
         },
         {
           "key": "w02-08",
@@ -507,10 +507,10 @@
           "stage": 2,
           "order": 8,
           "academicId": "W02-S2-08",
-          "prompt": "ما الكلمة المناسبة؟",
+          "prompt": "ما اسم هذه الغرفة؟",
           "reviewOf": null,
           "artSpec": "@kitchen",
-          "image_url": "/picture-quest/curriculum-v1/home-08.svg"
+          "image_url": "/picture-quest/home-learning-v2/08.svg"
         },
         {
           "key": "w02-09",
@@ -519,10 +519,10 @@
           "stage": 2,
           "order": 9,
           "academicId": "W02-S2-09",
-          "prompt": "ما الكلمة المناسبة؟",
+          "prompt": "ما اسم هذه الغرفة؟",
           "reviewOf": null,
           "artSpec": "🛁",
-          "image_url": "/picture-quest/curriculum-v1/home-09.svg"
+          "image_url": "/picture-quest/home-learning-v2/09.svg"
         },
         {
           "key": "w02-10",
@@ -534,7 +534,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "🛋️",
-          "image_url": "/picture-quest/curriculum-v1/home-10.svg"
+          "image_url": "/picture-quest/home-learning-v2/10.svg"
         },
         {
           "key": "w02-11",
@@ -546,7 +546,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "@wardrobe",
-          "image_url": "/picture-quest/curriculum-v1/home-11.svg"
+          "image_url": "/picture-quest/home-learning-v2/11.svg"
         },
         {
           "key": "w02-12",
@@ -558,7 +558,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "💡",
-          "image_url": "/picture-quest/curriculum-v1/home-12.svg"
+          "image_url": "/picture-quest/home-learning-v2/12.svg"
         },
         {
           "key": "w02-13",
@@ -570,7 +570,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "🪞",
-          "image_url": "/picture-quest/curriculum-v1/home-13.svg"
+          "image_url": "/picture-quest/home-learning-v2/13.svg"
         },
         {
           "key": "w02-14",
@@ -582,7 +582,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "@rug",
-          "image_url": "/picture-quest/curriculum-v1/home-14.svg"
+          "image_url": "/picture-quest/home-learning-v2/14.svg"
         },
         {
           "key": "w02-15",
@@ -594,7 +594,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "@curtain",
-          "image_url": "/picture-quest/curriculum-v1/home-15.svg"
+          "image_url": "/picture-quest/home-learning-v2/15.svg"
         },
         {
           "key": "w02-16",
@@ -603,10 +603,10 @@
           "stage": 3,
           "order": 16,
           "academicId": "W02-S3-16",
-          "prompt": "ما الكلمة المناسبة؟",
+          "prompt": "ما اسم هذه الغرفة؟",
           "reviewOf": null,
           "artSpec": "@bedroom",
-          "image_url": "/picture-quest/curriculum-v1/home-16.svg"
+          "image_url": "/picture-quest/home-learning-v2/16.svg"
         },
         {
           "key": "w02-17",
@@ -615,10 +615,10 @@
           "stage": 3,
           "order": 17,
           "academicId": "W02-S3-17",
-          "prompt": "ما الكلمة المناسبة؟",
+          "prompt": "ما اسم هذه الغرفة؟",
           "reviewOf": null,
           "artSpec": "@livingroom",
-          "image_url": "/picture-quest/curriculum-v1/home-17.svg"
+          "image_url": "/picture-quest/home-learning-v2/17.svg"
         },
         {
           "key": "w02-18",
@@ -630,7 +630,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "@garden",
-          "image_url": "/picture-quest/curriculum-v1/home-18.svg"
+          "image_url": "/picture-quest/home-learning-v2/18.svg"
         },
         {
           "key": "w02-19",
@@ -642,7 +642,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "@balcony",
-          "image_url": "/picture-quest/curriculum-v1/home-19.svg"
+          "image_url": "/picture-quest/home-learning-v2/19.svg"
         },
         {
           "key": "w02-20",
@@ -654,7 +654,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "@stairs",
-          "image_url": "/picture-quest/curriculum-v1/home-20.svg"
+          "image_url": "/picture-quest/home-learning-v2/20.svg"
         },
         {
           "key": "w02-21",
@@ -663,10 +663,10 @@
           "stage": 3,
           "order": 21,
           "academicId": "W02-S3-21",
-          "prompt": "ما الكلمة المناسبة؟",
+          "prompt": "إلى ماذا يشير السهم؟",
           "reviewOf": null,
           "artSpec": "@wall",
-          "image_url": "/picture-quest/curriculum-v1/home-21.svg"
+          "image_url": "/picture-quest/home-learning-v2/21.svg"
         },
         {
           "key": "w02-22",
@@ -675,10 +675,10 @@
           "stage": 3,
           "order": 22,
           "academicId": "W02-S3-22",
-          "prompt": "ما الكلمة المناسبة؟",
+          "prompt": "إلى ماذا يشير السهم؟",
           "reviewOf": null,
           "artSpec": "@ceiling",
-          "image_url": "/picture-quest/curriculum-v1/home-22.svg"
+          "image_url": "/picture-quest/home-learning-v2/22.svg"
         },
         {
           "key": "w02-23",
@@ -687,10 +687,10 @@
           "stage": 3,
           "order": 23,
           "academicId": "W02-S3-23",
-          "prompt": "ما الكلمة المناسبة؟",
+          "prompt": "إلى ماذا يشير السهم؟",
           "reviewOf": null,
           "artSpec": "@floor",
-          "image_url": "/picture-quest/curriculum-v1/home-23.svg"
+          "image_url": "/picture-quest/home-learning-v2/23.svg"
         },
         {
           "key": "w02-24",
@@ -702,7 +702,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "🔑",
-          "image_url": "/picture-quest/curriculum-v1/home-24.svg"
+          "image_url": "/picture-quest/home-learning-v2/24.svg"
         },
         {
           "key": "w02-25",
@@ -714,7 +714,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "@pillow",
-          "image_url": "/picture-quest/curriculum-v1/home-25.svg"
+          "image_url": "/picture-quest/home-learning-v2/25.svg"
         },
         {
           "key": "w02-26",
@@ -726,7 +726,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "@blanket",
-          "image_url": "/picture-quest/curriculum-v1/home-26.svg"
+          "image_url": "/picture-quest/home-learning-v2/26.svg"
         },
         {
           "key": "w02-27",
@@ -738,7 +738,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "@fridge",
-          "image_url": "/picture-quest/curriculum-v1/home-27.svg"
+          "image_url": "/picture-quest/home-learning-v2/27.svg"
         },
         {
           "key": "w02-28",
@@ -750,7 +750,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "@oven",
-          "image_url": "/picture-quest/curriculum-v1/home-28.svg"
+          "image_url": "/picture-quest/home-learning-v2/28.svg"
         },
         {
           "key": "w02-29",
@@ -762,7 +762,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "@sink",
-          "image_url": "/picture-quest/curriculum-v1/home-29.svg"
+          "image_url": "/picture-quest/home-learning-v2/29.svg"
         },
         {
           "key": "w02-30",
@@ -774,7 +774,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "@towel",
-          "image_url": "/picture-quest/curriculum-v1/home-30.svg"
+          "image_url": "/picture-quest/home-learning-v2/30.svg"
         },
         {
           "key": "w02-31",
@@ -783,10 +783,10 @@
           "stage": 4,
           "order": 31,
           "academicId": "W02-S4-31",
-          "prompt": "ما الكلمة المناسبة؟",
+          "prompt": "إلى ماذا يشير السهم؟",
           "reviewOf": null,
           "artSpec": "@chimney",
-          "image_url": "/picture-quest/curriculum-v1/home-31.svg"
+          "image_url": "/picture-quest/home-learning-v2/31.svg"
         },
         {
           "key": "w02-32",
@@ -795,10 +795,10 @@
           "stage": 4,
           "order": 32,
           "academicId": "W02-S4-32",
-          "prompt": "ما الكلمة المناسبة؟",
+          "prompt": "إلى ماذا يشير السهم؟",
           "reviewOf": null,
           "artSpec": "@latch",
-          "image_url": "/picture-quest/curriculum-v1/home-32.svg"
+          "image_url": "/picture-quest/home-learning-v2/32.svg"
         },
         {
           "key": "w02-33",
@@ -810,7 +810,7 @@
           "prompt": "ما الكلمة المناسبة؟",
           "reviewOf": null,
           "artSpec": "@mat",
-          "image_url": "/picture-quest/curriculum-v1/home-33.svg"
+          "image_url": "/picture-quest/home-learning-v2/33.svg"
         }
       ]
     },

@@ -261,3 +261,10 @@
 /* Approved reading font: clear school-style letters and Arabic vowel marks. */
 #arem-quest .stage h2,
 #arem-quest .answer{font-family:var(--font-naskh),'Noto Naskh Arabic',serif;font-weight:700;line-height:2}
+
+/* Home teaching pictures: show the whole room/target clearly without circular cropping. */
+#arem-quest.pq-home-learning .picture{width:min(calc(var(--pq-picture,174px) * 1.5),100%);height:auto;aspect-ratio:5/4;border-radius:20px;background:#fffcf5;box-shadow:0 0 0 1px #e6ddc9}
+#arem-quest.pq-home-learning .picture img{width:96%;height:96%;object-fit:contain}
+@media(max-width:700px){
+ html.pq-focus .pq-page #arem-quest.pq-home-learning .picture,.pq-page #arem-quest.pq-home-learning .picture{width:min(calc(var(--pq-picture,174px) * 1.5),32dvh,100%);height:auto;aspect-ratio:5/4}
+}

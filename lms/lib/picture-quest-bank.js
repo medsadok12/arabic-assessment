@@ -1,3 +1,4 @@
+import{HOME_CHOICE_FLAG,homeChoices,upgradeHomeLearningWord}from'./picture-quest-home-learning';
 import {JOURNEY_FLAGS} from './picture-quest-journey';
 import {freshPictureQuest,validatePictureQuest,questMedia,questRecording} from './picture-quest';
 export const QUEST_BANK_ID='picture-quest-word-bank-v1';
@@ -24,13 +25,15 @@ export function matchBankFile(fileName,words){const stem=fileName.replace(/\.[^.
 function distance(a,b){a=bankKey(a);b=bankKey(b);let row=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){const next=[i];for(let j=1;j<=b.length;j++)next[j]=Math.min(next[j-1]+1,row[j]+1,row[j-1]+(a[i-1]===b[j-1]?0:1));row=next}return row[b.length]}
 const rank=(seed,id)=>{let h=2166136261;for(const c of seed+':'+id)h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0};
 export function bankQuestion(bank,w,level=1,seed='preview'){
- const count=bank.choiceCount||(level===1?2:3),reserved=new Set(bank.words.filter(x=>x.stage===4&&!x.curriculumExcluded).map(x=>bankKey(x.label)));
+ const homeProgression=w.topicId==='home'&&[1,2,3].includes(w.stage)&&bank[HOME_CHOICE_FLAG]!==false;
+ const count=homeProgression?w.stage+1:bank.choiceCount||(level===1?2:3),reserved=new Set(bank.words.filter(x=>x.stage===4&&!x.curriculumExcluded).map(x=>bankKey(x.label)));
  const seen=new Set(),labels=[];
  const add=label=>{const k=bankKey(label);if(!seen.has(k)){seen.add(k);labels.push(label)}};
- add(w.label);for(const label of w.distractors)if(w.stage===4||!reserved.has(bankKey(label)))add(label);
+ add(w.label);if(homeProgression){for(const label of homeChoices(bank,w,bankKey))add(label)}
+ else for(const label of w.distractors)if(w.stage===4||!reserved.has(bankKey(label)))add(label);
  // Curated choices normally fill the pair. Avoid sorting hundreds of unrelated
  // words (and computing edit distances) for every question in a 15-word stage.
- if(bank.autoChoices&&labels.length<count){
+ if(!homeProgression&&bank.autoChoices&&labels.length<count){
   const topics=new Set(bank.topics.filter(t=>t.enabled).map(t=>t.id));
   const pool=bank.words.filter(x=>(w.stage===4||x.stage!==4)&&x.id!==w.id&&x.enabled&&!x.curriculumExcluded&&topics.has(x.topicId));
   pool.sort((a,b)=>level===3?distance(w.label,a.label)-distance(w.label,b.label)||rank(seed,a.id)-rank(seed,b.id):level===2?Number(b.topicId===w.topicId)-Number(a.topicId===w.topicId)||rank(seed,a.id)-rank(seed,b.id):Number(a.topicId===w.topicId)-Number(b.topicId===w.topicId)||rank(seed,a.id)-rank(seed,b.id));
@@ -53,7 +56,7 @@ export function migrateQuestBank(input){
  for(const key of JOURNEY_FLAGS)if(bank[key]===undefined)bank[key]=true;
  bank.schoolBellUrl??='';bank.schoolVoiceUrl??='';bank.gateVoiceUrl??='';bank.fruitVoiceUrl??='';
  bank.schema=2;bank.hubDepthEnabled??=true;bank.breaksEnabled??=true;bank.finalEnabled??=true;
- for(const w of bank.words){const n=counts[w.topicId]||0;counts[w.topicId]=n+1;if(w.stage===undefined)w.stage=n<5?1:n<15?2:n<30?3:4;}
+ for(const w of bank.words){upgradeHomeLearningWord(w);const n=counts[w.topicId]||0;counts[w.topicId]=n+1;if(w.stage===undefined)w.stage=n<5?1:n<15?2:n<30?3:4;}
  return bank;
 }
 export function stageReadiness(bank,topicId,stage){

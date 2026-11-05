@@ -97,6 +97,6 @@ it('prepares only enabled unlocked stage images and matches the actual first ses
 it('previews all sixty curriculum stages in their own worlds with exact ordered counts and no writes',async()=>{
  publish(freshQuestBank());db.user={id:teacher,app_metadata:{role:'teacher'}};const catalog=(await call()).body,before=structuredClone(db.tables);
  expect(catalog.topics).toHaveLength(20);
- for(const topic of catalog.topics)for(const stage of[1,2,3]){const r=await call(null,staffPreviewApi,'GET',`?topic=${topic.id}&stage=${stage}`);expect(r.status).toBe(200);expect(r.body.demo).toBe(false);expect(r.body.config.title).toContain(topic.title);expect(r.body.config.questions).toHaveLength([0,5,10,15][stage]);expect(r.body.config.questions.every(q=>q.image_url&&q.options.length===2)).toBe(true);}
+ for(const topic of catalog.topics)for(const stage of[1,2,3]){const r=await call(null,staffPreviewApi,'GET',`?topic=${topic.id}&stage=${stage}`);expect(r.status).toBe(200);expect(r.body.demo).toBe(false);expect(r.body.config.title).toContain(topic.title);expect(r.body.config.questions).toHaveLength([0,5,10,15][stage]);expect(r.body.config.questions.every(q=>q.image_url&&q.options.length===(topic.id==='home'?stage+1:2))).toBe(true);}
  expect(db.tables).toEqual(before);
 },20000);

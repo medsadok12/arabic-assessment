@@ -55,3 +55,22 @@ mobile, tablet and desktop. Assets are checked with a complete labelled gallery.
 
 The public SVG whitelist is restricted to the dedicated curriculum-v1 path; path
 traversal, arbitrary nested directories and remote URLs remain rejected.
+
+
+## Approved home-only revision (5 November 2026)
+
+Mohamed approved 2 / 3 / 4 alternatives in home stages 1 / 2 / 3. Other worlds
+and final enrichment retain their existing counts. The independent teacher
+switch `homeChoiceProgressionEnabled` restores the bank count when disabled;
+manual-only choice mode remains manual. Alternatives stay in enabled ordinary
+home vocabulary from the current/earlier stages. Room questions compare complete
+rooms, never their visible furniture or the general word “room”. Surface questions
+use precise arrows. Reviewed alternatives replace the former automatic “door” pair;
+compatible teacher alternatives and custom uploads retain priority.
+
+33 original local SVGs replace only the exact former packaged home URLs; custom
+URLs, deleted images, media switches, recordings, IDs, epoch and progress stay intact.
+New URLs avoid reusing cached icon images. Rooms show several spatial cues, and
+the home picture panel contains the full scene in a larger rectangular frame.
+The reproducible source is `scripts/curriculum/build-home-learning-art.py`.
+Existing attempt snapshots are preserved; newly opened stages/previews use this policy.
