@@ -1,5 +1,5 @@
 'use client';
-import{useEffect,useRef,useState}from'react';
+import{useEffect,useLayoutEffect,useRef,useState}from'react';
 import{Check,LockKeyhole}from'lucide-react';
 import{displayNumber}from'../../../../../lib/display-number';
 import{SCHOOL_SCENE_ART,SCHOOL_SCENE_STATIONS,schoolSceneLayout}from'../../../../../lib/picture-quest-school-scene';
@@ -13,7 +13,7 @@ export default function SchoolScene({data,topic,active,staff,embedded,preparing,
  const motion=data.settings.animate!==false&&data.journeyEffects!==false;
  function spring(button){if(!motion||data.schoolPressEnabled===false||window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)return;const face=button.querySelector('.pqb-face');face.getAnimations?.().forEach(a=>a.cancel());face.animate?.([{transform:'scale(1)'},{offset:.2,transform:'scale(.89,.93)'},{offset:.6,transform:'scale(1.09,1.06)'},{transform:'scale(1)'}],{duration:440,easing:'cubic-bezier(.22,.7,.25,1)'});}
  function trial(){setReplay(n=>n+1);setCelebration(true)}
- useEffect(()=>{const el=root.current;if(!el)return;const update=()=>{const next=schoolSceneLayout(el.clientWidth,el.clientHeight);setSize(old=>old?.width===next.width&&old?.height===next.height&&old?.wide===next.wide?old:next);};update();const observer=new ResizeObserver(update);observer.observe(el);return()=>observer.disconnect();},[]);
+ useLayoutEffect(()=>{const el=root.current;if(!el)return;const update=()=>{const next=schoolSceneLayout(el.clientWidth,el.clientHeight);setSize(old=>old?.width===next.width&&old?.height===next.height&&old?.wide===next.wide?old:next);};update();const observer=new ResizeObserver(update);observer.observe(el);return()=>observer.disconnect();},[]);
  const wide=false,src=SCHOOL_SCENE_ART;
  return <section ref={root} className={'pqb-scene pqschool-scene'+(embedded?' pqb-embedded':'')+(wide?' pqb-wide':'')} style={{'--pqb-art':`url("${src}")`}} aria-label={'مراحل '+topic.title} aria-busy={preparing||entering}>
   <div className="pqb-canvas" style={size?{width:size.width,height:size.height}:undefined}>

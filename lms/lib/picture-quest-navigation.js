@@ -10,7 +10,7 @@ function valid(entry,child){
 // Keep the App Router's history fields intact. Only the training's local views
 // are added; returning from the root still uses the browser's real previous page.
 export function createTopicNavigation(win,{child=null,onChange,onExitRequest,shouldConfirm=()=>true}){
- const history=win.history;
+ const history=win.history,route=win.location.href;
  let current=valid(history.state?.[KEY],child)?history.state[KEY]:{child,depth:0,view:empty()};
  let restoring=false,allowExit=false,queuedExit=false,disposed=false;
  const write=(entry,push=false)=>{
@@ -25,6 +25,11 @@ export function createTopicNavigation(win,{child=null,onChange,onExitRequest,sho
  }
  function pop(event){
   if(disposed)return;
+  // These history entries represent views inside this route, not a Next.js
+  // page navigation. Consume them before its popstate listener restores a
+  // stale route tree and remounts the catalog. Real cross-page Back stays native.
+  if(win.location.href!==route||!event.state?.[KEY])return;
+  event.stopImmediatePropagation?.();
   if(restoring){restoring=false;if(queuedExit){queuedExit=false;leave();}return;}
   const incoming=event.state?.[KEY];
   if(current.view.selection&&!allowExit&&shouldConfirm()){
@@ -36,7 +41,7 @@ export function createTopicNavigation(win,{child=null,onChange,onExitRequest,sho
   if(valid(incoming,child)){current=incoming;onChange(current.view);}
   else write({child,depth:0,view:empty()}); // Never restore another child's view.
  }
- win.addEventListener('popstate',pop);
+ win.addEventListener('popstate',pop,true);
  const push=view=>write({child,depth:current.depth+1,view},true);
  return{
   openTopic(topicId,stageId=null){push({topicId,stageId,selection:null});},
@@ -50,6 +55,6 @@ export function createTopicNavigation(win,{child=null,onChange,onExitRequest,sho
   },
   back(){if(current.view.selection)onExitRequest();else if(current.depth>0)history.back();},
   confirmExit:leave,
-  dispose(){disposed=true;win.removeEventListener('popstate',pop);}
+  dispose(){disposed=true;win.removeEventListener('popstate',pop,true);}
  };
 }

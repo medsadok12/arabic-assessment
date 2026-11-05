@@ -39,3 +39,8 @@ it('queues the school celebration only for a newly finished third stage and pres
  const onWorldComplete=vi.fn();globalThis.topicTestSession={...globalThis.topicTestSession,finished:true,review:false,index:15,total:15,independent:15};await act(async()=>root.render(<TopicPlay settings={globalThis.topicTestSession.settings} selection={{topicId:'school',stage:3}} onExit={onExit} onWorldComplete={onWorldComplete}/>));expect(onWorldComplete).toHaveBeenCalledExactlyOnceWith('school');
  await act(async()=>root.unmount());root=createRoot(document.getElementById('host'));globalThis.topicTestSession.review=true;onWorldComplete.mockClear();await act(async()=>root.render(<TopicPlay settings={globalThis.topicTestSession.settings} selection={{topicId:'school',stage:3}} onExit={onExit} onWorldComplete={onWorldComplete}/>));expect(onWorldComplete).not.toHaveBeenCalled();
 });
+
+it('queues body celebration only for a newly finished stage 3, not a body review',async()=>{
+ const onWorldComplete=vi.fn();globalThis.topicTestSession={...globalThis.topicTestSession,finished:true,review:false,index:15,total:15,independent:15};await act(async()=>root.render(<TopicPlay settings={globalThis.topicTestSession.settings} selection={{topicId:'body',stage:3}} onExit={onExit} onWorldComplete={onWorldComplete}/>));expect(onWorldComplete).toHaveBeenCalledExactlyOnceWith('body');
+ await act(async()=>root.unmount());root=createRoot(document.getElementById('host'));globalThis.topicTestSession.review=true;onWorldComplete.mockClear();await act(async()=>root.render(<TopicPlay settings={globalThis.topicTestSession.settings} selection={{topicId:'body',stage:3}} onExit={onExit} onWorldComplete={onWorldComplete}/>));expect(onWorldComplete).not.toHaveBeenCalled();
+});

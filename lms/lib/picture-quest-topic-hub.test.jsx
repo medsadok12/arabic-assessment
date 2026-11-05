@@ -5,13 +5,15 @@ import{beforeEach,afterEach,it,expect,vi}from'vitest';
 import{freshQuestBank}from'./picture-quest-bank';
 import{bankCatalog}from'./picture-quest-bank-server';
 import TopicHub from'../app/library/games/picture-quest/topics/TopicHub';
-const env=vi.hoisted(()=>({data:null,child:null,requests:[],play:null,preview:null,reply:null,autoReady:true}));
+const env=vi.hoisted(()=>({data:null,child:null,requests:[],play:null,preview:null,reply:null,autoReady:true,artReady:null,prepares:[]}));
+vi.mock('./picture-quest-image-ready',()=>({createQuestImagePreparer:()=>({prepare:url=>{env.prepares.push(url);return{ready:env.artReady||Promise.resolve(true)}},dispose(){}})}));
+vi.mock('../app/library/games/picture-quest/topics/JourneyMap',()=>({default:({data,onOpen})=>React.createElement('div',{'data-test-map':true},data.topics.map(t=>React.createElement('button',{key:t.id,className:'pqw-world',onClick:()=>onOpen(t.id)},React.createElement('strong',null,t.title))))}));
 vi.mock('next/link',()=>({default:({href,children,...props})=>React.createElement('a',{href,...props},children)}));
 vi.mock('./child-fetch',()=>({getActiveChildTab:()=>env.child,childFetch:async(url,options)=>{env.requests.push({url,options});if(env.reply)return env.reply(url,options);return{ok:true,json:async()=>structuredClone(env.data)}}}));
 vi.mock('../app/library/games/picture-quest/topics/TopicPlay',()=>({default:props=>{env.play=props;React.useEffect(()=>{if(env.autoReady)props.onReady?.()},[props.onReady]);return React.createElement('section',{'aria-label':'training'},React.createElement('button',{onClick:props.onExit},'العودة للعوالم'))}}));
 vi.mock('../app/library/games/picture-quest/topics/StaffTopicPreview',()=>({default:props=>{env.preview=props;React.useEffect(()=>{if(env.autoReady)props.onReady?.()},[props.onReady]);return React.createElement('button',{'data-staff-preview':true,onClick:props.onExit},'عودة')}}));
 let root,bank;
-beforeEach(()=>{vi.stubGlobal('React',React);vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);window.history.replaceState({},'','/library/games/picture-quest/topics');bank=freshQuestBank();bank.journeyEnabled=false;bank.journeySequential=false;env.child=null;env.requests=[];env.reply=null;env.autoReady=true;env.play=null;env.data={...bankCatalog(bank,{attempts:{'animals:1':{index:2,questions:Array(5)}},round:{key:'animals:1',index:2,questions:Array(5),selection:{topicId:'animals',stage:1}},completions:{'fruit:1':true}}),points:628};document.body.innerHTML='<div id="host"></div>';root=createRoot(document.getElementById('host'))});
+beforeEach(()=>{vi.stubGlobal('matchMedia',()=>({matches:false,addEventListener(){},removeEventListener(){}}));vi.stubGlobal('ResizeObserver',class{observe(){}disconnect(){}});vi.stubGlobal('React',React);vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);window.history.replaceState({},'','/library/games/picture-quest/topics');bank=freshQuestBank();bank.journeyEnabled=false;bank.journeySequential=false;env.child=null;env.requests=[];env.reply=null;env.autoReady=true;env.artReady=null;env.prepares=[];env.play=null;env.data={...bankCatalog(bank,{attempts:{'animals:1':{index:2,questions:Array(5)}},round:{key:'animals:1',index:2,questions:Array(5),selection:{topicId:'animals',stage:1}},completions:{'fruit:1':true}}),points:628};document.body.innerHTML='<div id="host"></div>';root=createRoot(document.getElementById('host'))});
 afterEach(async()=>{await act(async()=>root.unmount());vi.unstubAllGlobals()});
 const render=staff=>act(async()=>root.render(<TopicHub staff={!!staff}/>));
 const world=title=>[...document.querySelectorAll('.pqw-world')].find(b=>b.querySelector('strong')?.textContent===title);
@@ -69,6 +71,19 @@ it('refreshes a router-restored prefetched page after a completed or abandoned g
 
 it('keeps the stage visible until the prepared first question is ready, without remounting play',async()=>{
  env.autoReady=false;await render();await act(async()=>world('الحيوانات').click());await act(async()=>document.querySelector('.pqf-action .pqf-go').click());
- expect(document.querySelector('.pqf-topic')).toBeTruthy();expect(document.querySelector('.pqw-preparing-game').getAttribute('aria-hidden')).toBe('true');const game=document.querySelector('[aria-label=training]');
- await act(async()=>env.play.onReady());expect(document.querySelector('.pqf-topic')).toBeNull();expect(document.querySelector('.pqw-preparing-game')).toBeNull();expect(document.querySelector('[aria-label=training]')).toBe(game);
+ expect(document.querySelector('.pqf-topic')).toBeTruthy();expect(document.querySelector('.pqw-preparing-game').getAttribute('aria-hidden')).toBe('true');const game=document.querySelector('[aria-label=training]'),stage=document.querySelector('.pqf-topic');
+ await act(async()=>env.play.onReady());expect(document.querySelector('.pqf-topic')).toBe(stage);expect(document.querySelector('.pqw-game-background').getAttribute('aria-hidden')).toBe('true');expect(document.querySelector('.pqw-game-background').hasAttribute('inert')).toBe(true);expect(document.querySelector('.pqw-preparing-game')).toBeNull();expect(document.querySelector('[aria-label=training]')).toBe(game);
+ await act(async()=>{env.play.onExit();await new Promise(r=>setTimeout(r,30))});expect(document.querySelector('.pqf-topic')).toBe(stage);expect(document.querySelector('.pqw-game-background')).toBeNull();expect(document.body.textContent).not.toContain('نجهّز العوالم');
+});
+
+it('retains the map until the responsive scene artwork has decoded',async()=>{
+ env.data.journeyEnabled=true;env.data.topics=[{...env.data.topics[0],id:'body',title:'أعضاء الجسم',mapArt:11}];
+ let release;env.artReady=new Promise(r=>release=r);await render(true);
+ await act(async()=>world('أعضاء الجسم').click());expect(document.querySelector('[data-test-map]')).toBeTruthy();expect(document.querySelector('.pqb-scene')).toBeNull();expect(document.querySelector('.pqf-scene-preparing')).toBeTruthy();
+ await act(async()=>release(true));expect(document.querySelector('.pqb-scene')).toBeTruthy();expect(document.querySelector('.pqf-scene-preparing')).toBeNull();
+});
+it('does not reveal a blank scene on image failure or open a stale child scene when loading finishes late',async()=>{
+ env.data.journeyEnabled=true;env.data.topics=[{...env.data.topics[0],id:'body',title:'أعضاء الجسم',mapArt:11}];
+ let release;env.artReady=new Promise(r=>release=r);await render(true);await act(async()=>world('أعضاء الجسم').click());await act(async()=>release(false));expect(document.querySelector('[data-test-map]')).toBeTruthy();expect(document.querySelector('.pqb-scene')).toBeNull();expect(document.querySelector('.pqf-scene-preparing').textContent).toContain('تعذّر');
+ env.artReady=new Promise(r=>release=r);await act(async()=>world('أعضاء الجسم').click());env.child='another-child';env.data={...bankCatalog(bank),points:0};await act(async()=>window.dispatchEvent(new Event('focus')));await act(async()=>release(true));expect(document.querySelector('.pqb-scene')).toBeNull();expect(document.querySelector('.pqf-scene-preparing')).toBeNull();
 });

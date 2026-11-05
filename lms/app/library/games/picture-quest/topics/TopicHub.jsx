@@ -5,6 +5,8 @@ import{childFetch,getActiveChildTab}from'../../../../../lib/child-fetch';
 import{displayNumber}from'../../../../../lib/display-number';
 import TopicPlay from'./TopicPlay';
 import{createQuestImagePreparer}from'../../../../../lib/picture-quest-image-ready';
+import{bodySceneEnabled,BODY_SCENE_PORTRAIT,BODY_SCENE_LANDSCAPE}from'../../../../../lib/picture-quest-body-scene';
+import{schoolSceneEnabled,SCHOOL_SCENE_ART}from'../../../../../lib/picture-quest-school-scene';
 import StaffTopicPreview from'./StaffTopicPreview';
 import JourneyMap from'./JourneyMap';
 import StageEntrance from'./StageEntrance';
@@ -21,6 +23,7 @@ const PAGE_SIZE=8;
 export default function TopicHub({staff,initialCatalog=null}){
  const[catalog,setCatalog]=useState(null),[error,setError]=useState(''),[refreshError,setRefreshError]=useState(''),[selection,setSelection]=useState(null),[tick,setTick]=useState(0),[child,setChild]=useState(()=>getActiveChildTab()),[topicId,setTopicId]=useState(null),[stageId,setStageId]=useState(null),[menu,setMenu]=useState(false),[page,setPage]=useState(0),[exitRequest,setExitRequest]=useState(0);
  const initialChild=useRef(child),[visibleSelection,setVisibleSelection]=useState(null);
+ const opening=useRef(0),[openingTopic,setOpeningTopic]=useState(null),[sceneError,setSceneError]=useState('');
  const imagePreparer=useMemo(()=>createQuestImagePreparer(),[child]);
  useEffect(()=>()=>imagePreparer.dispose(),[imagePreparer]);
  const pendingGate=useRef(null),mapPosition=useRef(null),playingRef=useRef(false),navigation=useRef(null),viewRef=useRef(null),selectionChild=useRef(child),back=useRef(null),menuButton=useRef(null),menuBox=useRef(null),worldButtons=useRef(new Map()),focusDetail=useRef(false),restoreTopic=useRef(null);
@@ -42,7 +45,7 @@ export default function TopicHub({staff,initialCatalog=null}){
   if(seed){setCatalog({child,value:seed.value});if(topicCatalogIsFresh(seed.loadedAt))return()=>{live=false;controller.abort()};}
   childFetch('/api/games/picture-quest/topics',{cache:'no-store',signal:controller.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);if(live&&getActiveChildTab()===child&&!playingRef.current)setCatalog({child,value:d})}).catch(e=>{if(live&&e.name!=='AbortError'&&getActiveChildTab()===child){if(data||seed)setRefreshError('تعذّر تحديث التقدّم.');else setError(e.message)}});return()=>{live=false;controller.abort()}},[tick,child]);
  useEffect(()=>{
-  setMenu(false);setPage(0);mapPosition.current=null;selectionChild.current=child;viewRef.current=null;
+  opening.current++;setOpeningTopic(null);setSceneError('');setMenu(false);setPage(0);mapPosition.current=null;selectionChild.current=child;viewRef.current=null;
   const nav=createTopicNavigation(window,{child,shouldConfirm:()=>playingRef.current&&!staff,onExitRequest:()=>{setVisibleSelection(viewRef.current?.selection);setExitRequest(n=>n+1)},onChange:view=>{
    const previous=viewRef.current;
    if(previous?.selection&&!view.selection){invalidateTopicCatalog();setTick(n=>n+1);}
@@ -50,15 +53,23 @@ export default function TopicHub({staff,initialCatalog=null}){
    if(view.topicId&&!view.selection)focusDetail.current=true;
    viewRef.current=view;setSelection(view.selection);setTopicId(view.topicId);setStageId(view.stageId);setMenu(false);
   }});navigation.current=nav;
-  return()=>{nav.dispose();navigation.current=null;};
+  return()=>{opening.current++;nav.dispose();navigation.current=null;};
  },[child,staff]);
  useEffect(()=>{if(playing)return;if(focusDetail.current&&topicId&&back.current){back.current.focus({preventScroll:true});focusDetail.current=false;}else if(!topicId&&restoreTopic.current){worldButtons.current.get(restoreTopic.current)?.focus({preventScroll:true});restoreTopic.current=null;}},[topicId,data,playing]);
  useEffect(()=>{if(!menu)return;menuBox.current?.querySelector('a,button:not(:disabled)')?.focus({preventScroll:true});const outside=e=>{if(!menuBox.current?.contains(e.target)&&!menuButton.current?.contains(e.target))setMenu(false)};document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside)},[menu]);
  const worldFinished=useCallback(id=>{pendingGate.current={id,child:getActiveChildTab()};},[]);
  const gateDone=useCallback(()=>{pendingGate.current=null;},[]);
  const exit=useCallback(()=>navigation.current?.confirmExit(),[]);
- function openTopic(id,stage=null){if(playingRef.current)return;const t=data?.topics.find(t=>t.id===id);if(!staff&&t?.unlocked===false)return;navigation.current?.openTopic(id,stage);}
- function closeTopic(){navigation.current?.back();}
+ async function openTopic(id,stage=null){
+  if(playingRef.current)return;const t=data?.topics.find(t=>t.id===id);if(!t||!staff&&t.unlocked===false)return;
+  const ticket=++opening.current;setSceneError('');
+  const illustrated=data.journeyEnabled!==false&&data.entranceEnabled!==false;
+  const wide=window.innerWidth>window.innerHeight*1.1;
+  const art=illustrated&&bodySceneEnabled(data,t)?(wide?BODY_SCENE_LANDSCAPE:BODY_SCENE_PORTRAIT):illustrated&&schoolSceneEnabled(data,t)?SCHOOL_SCENE_ART:null;
+  if(art){setOpeningTopic(id);const entry=imagePreparer.prepare(art),ok=await(entry?.ready??true);if(ticket!==opening.current||getActiveChildTab()!==child)return;setOpeningTopic(null);if(!ok){setSceneError('تعذّر تحميل المشهد. حاول فتح العالم مرة أخرى.');return;}}
+  if(ticket===opening.current)navigation.current?.openTopic(id,stage);
+ }
+ function closeTopic(){opening.current++;setOpeningTopic(null);setSceneError('');navigation.current?.back();}
  function beginStage(next){if(playingRef.current)return;selectionChild.current=child;setMenu(false);navigation.current?.begin(next);}
  function onMenuKey(e){if(e.key==='Escape'){e.preventDefault();setMenu(false);menuButton.current?.focus()}if(e.key==='Tab'){const items=[...menuBox.current.querySelectorAll('a,button:not(:disabled)')],at=items.indexOf(document.activeElement);if(items.length){e.preventDefault();items[(at+(e.shiftKey?-1:1)+items.length)%items.length].focus()}}}
  const game=playing&&(staff?<StaffTopicPreview key={child} selection={selection} exitRequest={exitRequest} onExit={exit} onReady={gameReady} imagePreparer={imagePreparer}/>:<TopicPlay key={child} selection={selection} settings={data.settings} exitRequest={exitRequest} onExit={exit} onWorldComplete={worldFinished} onReady={gameReady} imagePreparer={imagePreparer}/>);
@@ -74,7 +85,8 @@ export default function TopicHub({staff,initialCatalog=null}){
  const entranceScreen=!!data?.enabled&&!error&&data.journeyEnabled!==false&&data.entranceEnabled!==false&&!!(topic&&active);
  const mapScreen=!!data?.enabled&&!error&&data.journeyEnabled!==false&&!(topic&&active);
  const finalStatus=!final?.unlocked?'أكمل العوالم لفتحه':!final.ready?'كلمات التحدّي قيد التجهيز':final.completed?'أكملت التحدّي ✓':'التحدّي جاهز لك';
- return <>{game&&<div className={!gameVisible?'pqw-preparing-game':''} inert={!gameVisible?'':undefined} aria-hidden={!gameVisible}>{game}</div>}{!gameVisible&&<div className={'pqw-focus-screen pqw pqf'+(data?.journeyEnabled!==false?' pqj':'')+(mapScreen?' pqj-map-screen':'')+(entranceScreen?' pqj-entrance-screen':'')+(data?.hubDepthEnabled===false?' pqw-flat':'')+(data?.settings.animate===false?' pqw-no-motion':'')} dir="rtl">
+ return <>{game&&<div className={!gameVisible?'pqw-preparing-game':''} inert={!gameVisible?'':undefined} aria-hidden={!gameVisible}>{game}</div>}<div className={'pqw-focus-screen pqw pqf'+(gameVisible?' pqw-game-background':'')+(data?.journeyEnabled!==false?' pqj':'')+(mapScreen?' pqj-map-screen':'')+(entranceScreen?' pqj-entrance-screen':'')+(data?.hubDepthEnabled===false?' pqw-flat':'')+(data?.settings.animate===false?' pqw-no-motion':'')} inert={gameVisible?'':undefined} aria-hidden={gameVisible} aria-busy={!!openingTopic} dir="rtl">
+  {(openingTopic||sceneError)&&<p className="pqf-scene-preparing" role="status">{sceneError||'نجهّز المشهد…'}</p>}
   <div className="pqf-window">
    <header className="pqf-header">{topic||playing?<button ref={back} type="button" className="pqf-back" onClick={closeTopic}>→ العوالم</button>:<Link className="pqf-back" href="/library" aria-label="العودة إلى المكتبة">{mapScreen?<><span className="pqj-back-short">→ رجوع</span><span className="pqj-back-full">← المكتبة</span></>:<>← المكتبة</>}</Link>}<h1>{topic?.title||'اختر عالمك'}</h1><button ref={menuButton} disabled={playing} type="button" className="pqf-more" onClick={()=>setMenu(x=>!x)} aria-expanded={menu} aria-controls="pqw-options" aria-label="خيارات إضافية">⋯</button></header>
    {menu&&<div ref={menuBox} id="pqw-options" className="pqf-menu" role="dialog" aria-label="خيارات إضافية" onKeyDown={onMenuKey}>{data&&!staff&&showScore&&Number.isFinite(data.points)&&<span className="pqf-score">⭐ {displayNumber(data.points)} نقطة</span>}{data?.reviewEnabled&&<button type="button" disabled={staff||!data.reviewCount} onClick={()=>beginStage({topicId:'review',stage:1})}>✦ المراجعة</button>}<Link href="/library/games/picture-quest?classic=1">التدريب الأصلي</Link>{staff&&<Link href={'/library/games/picture-quest/topics/manage'+(topic?'?topic='+topic.id+'&stage='+active.stage:'')}>✎ تحرير التدريب</Link>}<Link href="/library">العودة للمكتبة</Link></div>}
@@ -89,5 +101,5 @@ export default function TopicHub({staff,initialCatalog=null}){
     {!staff&&(resumeFinal||resumeTopic&&resumeStage)&&<button type="button" className="pqf-go pqf-resume" onClick={()=>resumeFinal?beginStage({topicId:'final',stage:4}):openTopic(resumeTopic.id,resumeStage.stage)}>واصل {resumeFinal?'الأذكياء':resumeTopic.title} ←</button>}
    </section>}
   </div>
- </div>}</>;
+ </div></>;
 }

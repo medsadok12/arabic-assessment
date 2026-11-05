@@ -49,3 +49,13 @@ it('does not trap Back if a restored game cannot load and no play screen is moun
  nav=createTopicNavigation(window,{child:'one',onChange:v=>{view=v},onExitRequest:ask,shouldConfirm:()=>false});
  history.back();await settle();expect(view.selection).toBeNull();expect(view.topicId).toBe('school');expect(ask).not.toHaveBeenCalled();
 });
+it('handles local Back before the framework router without swallowing real page navigation',async()=>{
+ const router=vi.fn();window.addEventListener('popstate',router);
+ try{
+  mount();nav.openTopic('body',1);nav.begin({topicId:'body',stage:1});
+  nav.confirmExit();await settle();expect(view.selection).toBeNull();expect(router).not.toHaveBeenCalled();
+  nav.back();await settle();expect(view.topicId).toBeNull();expect(router).not.toHaveBeenCalled();
+  history.replaceState({__NA:true},'','/library');history.pushState({__NA:true},'','/library/games/picture-quest/topics');nav.dispose();mount();
+  history.back();await settle();expect(location.pathname).toBe('/library');expect(router).toHaveBeenCalledTimes(1);
+ }finally{window.removeEventListener('popstate',router)}
+});
