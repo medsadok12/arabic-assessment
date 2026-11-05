@@ -70,3 +70,24 @@
 
 .pbc-shell .pbc-spark{position:absolute;width:6px;height:6px;border-radius:50%;background:#ffdf7a;box-shadow:0 0 8px #ffeaba;z-index:9;pointer-events:none}
 @media(min-aspect-ratio:11/10){.pbc-shell{background-image:url('/picture-quest/body-scene-wide-v3.webp')}}
+/* Match the active world canvas throughout the celebration; never insert a portrait
+   panel into the landscape scene. The wide plate shares the entrance camera. */
+.pbc-shell.pbc-wide{--bm-closed:url(/picture-quest/body-scene-wide-v3.webp);--bm-plate:url(/picture-quest/body-celebration-wide-v1.webp);background-image:var(--bm-plate)}
+.pbc-wide .bm-scene{aspect-ratio:3/2;perspective-origin:50% 36%}
+.pbc-wide .bm-heading{top:2%;left:3%;right:auto;padding:6px 14px;background:#fff8e9;border:1px solid #ead9b0;border-radius:14px;box-shadow:0 3px #b79c66;font-size:clamp(20px,2.5cqw,30px);text-shadow:none;z-index:5}
+.pbc-wide .bm-door{top:31.05%;height:10.06%;width:7.62%;background-size:1312.8% 994.2%}
+.pbc-wide .bm-door-left{left:42.45%;background-position:45.95% 34.53%}
+.pbc-wide .bm-door-right{left:50.07%;background-position:54.19% 34.53%}
+.pbc-wide .bw-gate-foreground{clip-path:polygon(evenodd,0 0,100% 0,100% 42%,0 42%,0 0,42.45% 41.2%,57.7% 41.2%,57.7% 32.5%,54% 31.4%,50% 31%,46% 31.4%,42.45% 32.5%,42.45% 41.2%)}
+.pbc-wide .bw-faheem{width:24%;top:41%}
+.pbc-wide .bw-badge{left:27%;top:45%;width:12%;font-size:clamp(14px,1.8cqw,22px)}
+.pbc-wide .bw-album{left:35%;top:69%;width:30%;height:17%}
+.pbc-wide .bw-album-title,.pbc-wide .bw-album-label{font-size:clamp(12px,1.5cqw,18px)}
+.pbc-wide .bw-other{font-size:clamp(12px,1.5cqw,18px)}
+.pbc-wide .bw-book-stars{font-size:clamp(24px,4cqw,42px)}
+.pbc-wide .bm-message{top:3%;left:29%;right:29%;font-size:clamp(15px,1.9cqw,22px)}
+.pbc-wide .bm-actions{left:35%;right:35%;bottom:3%}
+.pbc-wide .bm-complete{font-size:clamp(19px,2.4cqw,28px);padding:6px 12px}
+
+.pbc-shell .pbc-scene-transition{position:absolute;inset:0;background:var(--bm-closed) center/100% 100%;z-index:2;pointer-events:none}
+.pbc-shell[aria-busy=true]{background-image:var(--bm-closed)}
