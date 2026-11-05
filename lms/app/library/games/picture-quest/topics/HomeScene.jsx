@@ -1,78 +1,46 @@
 'use client';
-import{useEffect,useLayoutEffect,useRef,useState}from'react';
-import{Award,Check,House,LockKeyhole}from'lucide-react';
+import{useEffect,useLayoutEffect,useMemo,useRef,useState}from'react';
+import{Award,Check,LockKeyhole}from'lucide-react';
 import{displayNumber}from'../../../../../lib/display-number';
-import{HOME_SCENE_STATIONS,homeSceneLayout,homeStationBox}from'../../../../../lib/picture-quest-home-scene';
-import HomeArt from'./HomeArt';
+import{HOME_SCENE_PORTRAIT,HOME_SCENE_LANDSCAPE,HOME_OPEN_PORTRAIT,HOME_OPEN_LANDSCAPE,HOME_FAHEEM_ART,HOME_ROOM_LIGHTS,homeSceneLayout,homeStationBox,homeDoorBox}from'../../../../../lib/picture-quest-home-scene';
+import{animateHomeCelebration}from'../../../../../lib/picture-quest-home-celebration';
 import'./home-scene.css';
-
 const useBrowserLayoutEffect=typeof window==='undefined'?useEffect:useLayoutEffect;
-// Falling hearts, stars and confetti for the celebration: fixed positions keep server and client markup identical.
-const CONFETTI=Array.from({length:22},(_,i)=>({left:(i*37+11)%100,delay:(i*.23)%2.4,shape:['heart','star','dot'][i%3],color:['#ff7aa8','#ffd23f','#7fe0c4','#ff9f68','#8fc8ff'][i%5]}));
 
-function HomeCelebration({motion,hasNext,onNext,onClose}){
- const first=useRef(null);
- useEffect(()=>{first.current?.focus({preventScroll:true,focusVisible:false})},[]);
- return <div className={'pqh-party'+(motion?' pqh-party-motion':'')} role="dialog" aria-modal="true" aria-label="احتفال إنجاز البيت">
-  <div className="pqh-confetti" aria-hidden="true">{CONFETTI.map((c,i)=><i key={i} className={'pqh-bit pqh-bit-'+c.shape} style={{left:c.left+'%',animationDelay:c.delay+'s','--pqh-bit':c.color}}/>)}</div>
-  <div className="pqh-party-card">
-   <span className="pqh-party-badge" aria-hidden="true"><Award/></span>
-   <h3 className="pqh-party-title">بطل البيت!</h3>
-   <p className="pqh-party-text" role="status">أضأتَ كلَّ غرف البيت بكلماتك ✨</p>
-   <button ref={first} type="button" className="pqh-go" onClick={hasNext?onNext:onClose}>{hasNext?'العالم التالي ←':'العودة إلى المراحل ←'}</button>
-   {hasNext&&<button type="button" className="pqh-party-stay" onClick={onClose}>سأبقى في البيت 🏠</button>}
-  </div>
+function HomeCelebration({host,data,layout,onClose,onNext,hasNext,onSettled}){
+ const dialog=useRef(null),[message,setMessage]=useState('فهيم يفتح الباب ليحتفل معك…'),[settled,setSettled]=useState(false);
+ const closeRef=useRef(onClose);closeRef.current=onClose;
+ useEffect(()=>{setSettled(false);const cleanup=animateHomeCelebration(host.current,{data,layout,reduced:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,onMessage:setMessage,onSettled:()=>{setSettled(true);onSettled?.()}});dialog.current?.querySelector('button')?.focus({preventScroll:true});return cleanup},[host,data,layout,onSettled]);
+ useEffect(()=>{if(settled)dialog.current?.querySelector('.pqhome-complete')?.focus({preventScroll:true})},[settled]);
+ function keys(event){if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeRef.current();}if(event.key==='Tab'){const items=[...dialog.current.querySelectorAll('button:not(:disabled)')],i=items.indexOf(document.activeElement);if(items.length){event.preventDefault();items[(i+(event.shiftKey?-1:1)+items.length)%items.length].focus()}}}
+ return <div ref={dialog} className="pqhome-celebration-layer" role="dialog" aria-modal="true" aria-label="احتفال إنجاز البيت" onKeyDown={keys}>
+  <p className="pqhome-message" role="status" aria-live="polite">{message}</p>
+  {data.homeFaheemEnabled!==false&&<div className="pqhome-person-layer" aria-hidden="true"><div className="pqhome-faheem"><span className="pqhome-shadow"/><span className="pqhome-pose"/></div></div>}
+  <div className="pqhome-particles" aria-hidden="true"/>
+  {data.homeBadgeEnabled!==false&&<div className="pqhome-badge" aria-hidden="true"><Award/><b>بطل البيت</b></div>}
+  {data.homeAlbumEnabled!==false&&<div className="pqhome-album" aria-label="ألبوم الإنجازات" aria-hidden="true"><div className="pqhome-page"><b>ألبوم إنجازاتي</b>{data.homeBadgeEnabled!==false&&<><span className="pqhome-album-slot"><Award aria-hidden="true"/></span><span>بطل البيت</span></>}</div><div className="pqhome-page pqhome-other"><span className="pqhome-book-star" aria-hidden="true">✦</span><span>رحلة جديدة تنتظرك</span></div></div>}
+  {settled?<div className="pqhome-party-actions"><button type="button" className="pqhome-go pqhome-complete" onClick={hasNext?onNext:onClose}>{hasNext?'العالم التالي ←':'العودة إلى المراحل ←'}</button>{hasNext&&<button type="button" className="pqhome-stay" onClick={onClose}>العودة إلى المراحل</button>}</div>:<button type="button" className="pqhome-skip" onClick={onClose}>العودة إلى المراحل</button>}
  </div>;
 }
 
 export default function HomeScene({data,topic,active,staff,embedded,preparing,entering,status,onChoose,onBegin,onPreview,celebrate=false,onCelebrationDone,onNextWorld}){
- const root=useRef(null),notified=useRef(false),[box,setBox]=useState(null),[celebration,setCelebration]=useState(false),[replay,setReplay]=useState(0);
- const completed=topic.stages.length===3&&topic.stages.every(s=>s.completed);
+ const root=useRef(null),trialButton=useRef(null),notified=useRef(false),[box,setBox]=useState(null),[celebration,setCelebration]=useState(false),[replay,setReplay]=useState(0),[assetsReady,setAssetsReady]=useState(false),[assetError,setAssetError]=useState(false),[retry,setRetry]=useState(0);
+ const completed=topic.stages.length===3&&topic.stages.every(s=>s.completed),motion=data.settings?.animate!==false&&data.journeyEffects!==false,showTrial=staff||completed;
  useEffect(()=>{if(celebrate&&completed&&!notified.current){notified.current=true;setCelebration(true);onCelebrationDone?.()}if(!celebrate)notified.current=false},[celebrate,completed,onCelebrationDone]);
- useBrowserLayoutEffect(()=>{
-  const el=root.current;if(!el)return;
-  const update=()=>{const w=el.clientWidth,h=el.clientHeight;if(w&&h)setBox(old=>old&&old.w===w&&old.h===h?old:{w,h})};
-  update();if(typeof ResizeObserver==='undefined')return;
-  const observer=new ResizeObserver(update);observer.observe(el);return()=>observer.disconnect();
- },[]);
- // Short landscape phones keep the start button in a side panel; elsewhere it sits under the house.
- const side=!!box&&box.h<520&&box.w/box.h>1.5,showTrial=staff||completed;
- const layout=homeSceneLayout(box?.w,box?.h,side?{top:58,bottom:12,left:Math.min(300,box.w*.36)}:{top:80,bottom:showTrial?184:128,left:0});
- const motion=data.settings.animate!==false&&data.journeyEffects!==false;
- const done=n=>!!topic.stages.find(s=>s.stage===n)?.completed;
- // Each completed stage lights its floor (1 living room, 2 bedroom, 3 attic). With motion on, the earned
- // lights switch on one floor at a time after the screen opens, so the child sees their own progress light up.
- const earned=[1,2,3].filter(done),earnedKey=earned.join(''),[lit,setLit]=useState(()=>motion?[]:earned);
- useEffect(()=>{
-  const target=earnedKey.split('').map(Number);
-  setLit(old=>old.filter(n=>target.includes(n)));
-  if(!motion||window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches){setLit(target);return;}
-  const timers=target.map((n,i)=>setTimeout(()=>setLit(old=>old.includes(n)?old:[...old,n]),450+i*550));
-  return()=>timers.forEach(clearTimeout);
- },[earnedKey,motion]);
- const focus=homeStationBox(layout,HOME_SCENE_STATIONS[active.stage]||HOME_SCENE_STATIONS[1]);
- function spring(button){
-  if(!motion||window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)return;
-  const medal=button.querySelector('.pqh-medal');medal?.getAnimations?.().forEach(a=>a.cancel());
-  medal?.animate?.([{transform:'scale(1)'},{offset:.2,transform:'scale(.88,.92)'},{offset:.6,transform:'scale(1.1,1.06)'},{transform:'scale(1)'}],{duration:440,easing:'cubic-bezier(.22,.7,.25,1)'});
- }
- const artClass=[lit.includes(1)&&'pqh-on-1 pqh-lit-a',lit.includes(2)&&'pqh-on-2 pqh-lit-b',lit.includes(3)&&'pqh-on-3',celebration&&'pqh-celebrating'].filter(Boolean).join(' ');
- return <section ref={root} className={'pqh-scene'+(motion?' pqh-motion':'')+(embedded?' pqh-embedded':'')+(side?' pqh-side':'')+(entering?' pqh-entering':'')+(data.hubDepthEnabled===false?' pqh-flat':'')} style={{'--pqh-ox':focus.left+'%','--pqh-oy':focus.top+'%'}} aria-label={'مراحل '+topic.title} aria-busy={preparing||entering}>
-  <HomeArt layout={layout} className={artClass}/>
-  <h2 className="pqh-heading"><span className="pqh-heading-icon" aria-hidden="true"><House/></span>{topic.title}</h2>
-  <div className="pqh-stations" role="group" aria-label={'مراحل '+topic.title}>{topic.stages.map(s=>{
-   const spot=HOME_SCENE_STATIONS[s.stage];if(!spot)return null;
-   const{left,top,size}=homeStationBox(layout,spot),locked=!staff&&!s.unlocked;
-   return <button type="button" key={s.stage} className={'pqh-station'+(active.stage===s.stage?' current':'')+(s.completed?' completed':'')+(locked?' locked':'')} style={{left:left+'%',top:top+'%',width:size,height:size,'--pqh-font':Math.round(size*.44)+'px'}} disabled={preparing||entering||locked} aria-label={'المرحلة '+displayNumber(s.stage)+(s.completed?'، مكتملة':locked?'، مقفلة':'')} aria-pressed={active.stage===s.stage} onClick={e=>{spring(e.currentTarget);onChoose?.(s.stage)}}>
-    <span className="pqh-medal" aria-hidden="true"><b className="pqh-num">{displayNumber(s.stage)}</b></span>
-    {s.completed?<span className="pqh-state" aria-hidden="true"><Check/></span>:locked?<span className="pqh-state" aria-hidden="true"><LockKeyhole/></span>:null}
-   </button>;
-  })}</div>
-  <div className="pqh-action">
-   {showTrial&&<button type="button" className="pqh-celebrate-preview" disabled={preparing||entering} onClick={()=>{setReplay(n=>n+1);setCelebration(true)}}>{staff?'جرّب احتفال البيت':'احتفال بيتي ✨'}</button>}
-   <p className="pqh-status" role="status">{status}</p>
-   <button type="button" className="pqh-go" disabled={preparing||entering||!staff&&(!active.ready||!active.unlocked)} onClick={()=>staff?(onPreview?onPreview():onBegin?.()):onBegin?.()}>{preparing?'نجهّز لعبتك…':staff?'معاينة المرحلة ←':!active.ready?'قيد التجهيز':active.completed?'راجع ←':active.resume?'واصل ←':'ابدأ ←'}</button>
-  </div>
-  {celebration&&<HomeCelebration key={replay} motion={motion} hasNext={!staff&&!!onNextWorld} onNext={onNextWorld} onClose={()=>setCelebration(false)}/>}
+ useBrowserLayoutEffect(()=>{const el=root.current;if(!el)return;const update=()=>{const w=el.clientWidth,h=el.clientHeight;if(w&&h)setBox(old=>old?.w===w&&old?.h===h?old:{w,h})};update();if(typeof ResizeObserver==='undefined')return;const ro=new ResizeObserver(update);ro.observe(el);return()=>ro.disconnect()},[]);
+ const layout=useMemo(()=>homeSceneLayout(box?.w,box?.h),[box]),src=layout.wide?HOME_SCENE_LANDSCAPE:HOME_SCENE_PORTRAIT,openSrc=layout.wide?HOME_OPEN_LANDSCAPE:HOME_OPEN_PORTRAIT,door=homeDoorBox(layout),side=layout.wide&&layout.height<520;
+ useEffect(()=>{let live=true;setAssetsReady(false);setAssetError(false);const files=[openSrc,...(data.homeFaheemEnabled!==false?[HOME_FAHEEM_ART]:[])];Promise.all(files.map(url=>new Promise(resolve=>{const image=new Image();image.onload=()=>{if(image.decode)image.decode().then(()=>resolve(true),()=>resolve(false));else resolve(true)};image.onerror=()=>resolve(false);image.src=url;if(image.complete&&image.naturalWidth)image.onload()}))).then(result=>{if(live){setAssetsReady(result.every(Boolean));setAssetError(!result.every(Boolean))}});return()=>{live=false}},[openSrc,data.homeFaheemEnabled,retry]);
+ const earned=topic.stages.filter(s=>s.completed).map(s=>s.stage),earnedKey=earned.join(''),[lit,setLit]=useState(()=>motion?[]:earned);
+ useEffect(()=>{const target=earnedKey.split('').filter(Boolean).map(Number);setLit(old=>old.filter(n=>target.includes(n)));if(!motion||window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches){setLit(target);return;}const timers=target.map((n,i)=>setTimeout(()=>setLit(old=>old.includes(n)?old:[...old,n]),350+i*400));return()=>timers.forEach(clearTimeout)},[earnedKey,motion]);
+ function close(){setCelebration(false);requestAnimationFrame(()=>trialButton.current?.focus({preventScroll:true}))}
+ function spring(event){if(!motion||data.homePressEnabled===false||window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)return;event.currentTarget.querySelector('.pqhome-medal')?.animate?.([{transform:'scale(1)'},{transform:'scale(.9)',offset:.25},{transform:'scale(1.1)',offset:.6},{transform:'scale(1)'}],{duration:400,easing:'ease-out'})}
+ const blocked=preparing||entering,reserve=showTrial?(status?160:132):(status?102:82),lights=HOME_ROOM_LIGHTS[layout.wide?'landscape':'portrait'];
+ const doorStyle={left:door.left,top:door.top,width:door.width,height:door.height},crop={backgroundSize:door.backgroundSize,backgroundPosition:door.backgroundPosition};
+ return <section ref={root} className={'pqhome-scene'+(embedded?' pqhome-embedded':'')+(side?' pqhome-side':'')+(motion?' pqhome-motion':'')+(celebration?' pqhome-celebrating':'')+(data.hubDepthEnabled===false?' pqhome-flat':'')} aria-label={'مراحل '+topic.title} aria-busy={blocked}>
+  <div className="pqhome-plane" style={{width:layout.widthArt,height:layout.heightArt,left:layout.left,top:layout.top}}><img className="pqhome-art" src={src} alt="" draggable={false} decoding="async"/>{data.homeLightsEnabled!==false&&lights.map(([x,y,w,h],i)=><span key={i} className={'pqhome-room-light'+(lit.includes(i+1)||celebration?' lit':'')} style={{left:x+'%',top:y+'%',width:w+'%',height:h+'%'}} aria-hidden="true"/>)}</div>
+  <h2 className="pqhome-heading">{topic.title}</h2>
+  <div className="pqhome-stations" role="group" aria-label={'مراحل '+topic.title} inert={celebration?'':undefined} aria-hidden={celebration}>{topic.stages.map(s=>{const spot=homeStationBox(layout,s.stage,reserve),locked=!staff&&!s.unlocked;return <button type="button" key={s.stage} className={'pqhome-station'+(active.stage===s.stage?' current':'')+(s.completed?' completed':'')+(locked?' locked':'')} style={{left:spot.left,top:spot.top,width:spot.size,height:spot.size}} disabled={blocked||locked} aria-label={'المرحلة '+displayNumber(s.stage)+(s.completed?'، مكتملة':locked?'، مقفلة':'')} aria-pressed={active.stage===s.stage} onClick={event=>{spring(event);onChoose?.(s.stage)}}><span className="pqhome-medal" aria-hidden="true">{displayNumber(s.stage)}</span>{s.completed?<span className="pqhome-state" aria-hidden="true"><Check/></span>:locked?<span className="pqhome-state" aria-hidden="true"><LockKeyhole/></span>:null}</button>})}</div>
+  <div className="pqhome-action" inert={celebration?'':undefined} aria-hidden={celebration}>{showTrial&&<button ref={trialButton} type="button" className="pqhome-celebrate-preview" disabled={blocked} onClick={()=>{setReplay(n=>n+1);setCelebration(true)}}>{staff?'جرّب احتفال البيت':'ألبوم إنجازاتي'}</button>}<p className="pqhome-status" role="status">{status}</p><button type="button" className="pqhome-go" disabled={blocked||!staff&&(!active.ready||!active.unlocked)} onClick={()=>staff?(onPreview?onPreview():onBegin?.()):onBegin?.()}>{preparing?'نجهّز لعبتك…':staff?'معاينة المرحلة ←':!active.ready?'قيد التجهيز':active.completed?'راجع ←':active.resume?'واصل ←':'ابدأ ←'}</button></div>
+  {celebration&&<><div className="pqhome-door-interior" style={{...doorStyle,...crop,backgroundImage:`url("${openSrc}")`}} aria-hidden="true"/><div className="pqhome-door-hinge" style={doorStyle} aria-hidden="true"><div className="pqhome-door-leaf" style={{...crop,backgroundImage:`url("${src}")`}}/></div>{assetsReady?<HomeCelebration key={replay} host={root} data={data} layout={layout} onClose={close} hasNext={!staff&&!!onNextWorld} onNext={onNextWorld}/>:<div className="pqhome-wait" role="status"><p>{assetError?'تعذّر تجهيز الاحتفال.':'نجهّز الاحتفال…'}</p>{assetError&&<button type="button" onClick={()=>setRetry(n=>n+1)}>حاول مجددًا</button>}<button type="button" onClick={close}>العودة إلى المراحل</button></div>}</>}
  </section>;
 }

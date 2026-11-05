@@ -5,7 +5,7 @@ import{displayNumber}from'../../../../../lib/display-number';
 import JourneyArt from'./JourneyArt';
 import BodyScene from'./BodyScene';
 import SchoolScene from'./SchoolScene';
-import dynamic from'next/dynamic';
+import HomeScene from'./HomeScene';
 import{schoolSceneEnabled}from'../../../../../lib/picture-quest-school-scene';
 import{bodySceneEnabled}from'../../../../../lib/picture-quest-body-scene';
 import{homeSceneEnabled}from'../../../../../lib/picture-quest-home-scene';
@@ -14,9 +14,6 @@ import FruitCelebration from'./FruitCelebration';
 import SchoolCelebration,{SchoolBuilding}from'./SchoolCelebration';
 import'./journey.css';
 import'./entrance.css';
-
-// The hand-drawn house (~20KB) downloads only for the home world; TopicHub warms it while the map shows.
-const HomeScene=dynamic(()=>import('./HomeScene'),{loading:()=><section className="pqh-scene" style={{flex:1,minHeight:0,width:'100%',background:'#cfe6ff'}} aria-busy="true" aria-label="نجهّز البيت…"/>});
 
 const ROAD='M440 350 C460 330 460 310 440 300 C410 255 160 250 160 180 C160 110 300 130 300 58 L300 0';
 export default function StageEntrance({data,topic,active,staff=false,embedded=false,onChoose,onBegin,onPreview,celebrate=false,onCelebrationDone,preparing=false,imagePreparer,onNextWorld}){

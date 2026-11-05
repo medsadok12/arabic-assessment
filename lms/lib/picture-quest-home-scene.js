@@ -1,22 +1,16 @@
-// The home world's stage screen: a hand-drawn, cut-away house whose staircase is the stage path.
-// Art coordinates: the house is centred on x=0, 1760 units wide; the roof's heart tops out near y=90
-// and the stone foundation ends at y=1440. Outside that box the drawing continues (sky, garden,
-// side rooms) so any screen shape is filled without stretching or cropping the stations.
-export const HOME_SCENE_TOP=90;
-export const HOME_SCENE_BOTTOM=1440;
-export const HOME_SCENE_MIN_WIDTH=1010; // the central rooms, always shown whole
-// [x, y, diameter] in art units — measured on the drawing: living room, top of the stairs, attic.
-export const HOME_SCENE_STATIONS={1:[345,1256,196],2:[-270,878,182],3:[40,494,168]};
+export const HOME_SCENE_PORTRAIT='/picture-quest/home-story-portrait-v1.webp';
+export const HOME_SCENE_LANDSCAPE='/picture-quest/home-story-wide-v1.webp';
+export const HOME_OPEN_PORTRAIT='/picture-quest/home-story-open-portrait-v1.webp';
+export const HOME_OPEN_LANDSCAPE='/picture-quest/home-story-open-wide-v1.webp';
+export const HOME_FAHEEM_ART='/picture-quest/body-faheem-front-v1.webp';
+export const HOME_EFFECTS=[['homeLightsEnabled','إضاءة غرف البيت المكتملة'],['homePressEnabled','نبضة أرقام مراحل البيت'],['homeDoorEnabled','حركة فتح باب البيت'],['homeFaheemEnabled','ظهور فهيم في البيت'],['homeWalkEnabled','خروج فهيم ومشيه من باب البيت'],['homeClapEnabled','تصفيق فهيم في البيت'],['homeBadgeEnabled','شارة بطل البيت'],['homeAlbumEnabled','ألبوم إنجازات البيت'],['homeSparklesEnabled','لمعات احتفال البيت']];
+export const HOME_SCENE_STATIONS={portrait:{1:[47,70],2:[40,53],3:[60,37]},landscape:{1:[45.5,69],2:[49.5,58],3:[59,37]}};
+export const HOME_ROOM_LIGHTS={portrait:[[65,70,68,24],[37,52,69,24],[68,34,64,25]],landscape:[[56.5,72,22,28],[43.5,49,23,28],[57,28,24,29]]};
 export function homeSceneEnabled(data,topic){return topic?.id==='home'&&topic.mapImageEnabled!==false&&!topic.map_image_url&&(topic.mapArt==null||topic.mapArt===3)&&data?.journeyScenery!==false&&data?.journeyPath!==false;}
-// Fits the house between the title (top), the start button (bottom) and, on short landscape phones,
-// the side panel (left). Returns the SVG viewBox in art units and the pixel scale.
-export function homeSceneLayout(width,height,reserve={}){
- const w=width>0?width:390,h=height>0?height:844,top=reserve.top??80,bottom=reserve.bottom??128,left=reserve.left??0;
- const tall=HOME_SCENE_BOTTOM-HOME_SCENE_TOP;
- const scale=Math.max(.05,Math.min((w-left)/HOME_SCENE_MIN_WIDTH,(h-top-bottom)/tall));
- const free=Math.max(0,h-top-bottom-tall*scale);
- return{width:w,height:h,x:-(left+(w-left)/2)/scale,y:HOME_SCENE_TOP-(top+free/2)/scale,w:w/scale,h:h/scale,scale};
-}
-export function homeStationBox(layout,[x,y,diameter]){
- return{left:(x-layout.x)/layout.w*100,top:(y-layout.y)/layout.h*100,size:Math.max(48,diameter*layout.scale)};
-}
+// The source canvas stays mounted through stage selection, arrival, celebration and return.
+export function homeSceneLayout(width,height){const w=width>0?width:390,h=height>0?height:844,wide=w>h*1.1,iw=wide?1672:852,ih=wide?941:1846,scale=Math.max(w/iw,h/ih),artH=ih*scale,top=Math.max(h-artH,Math.min((h-artH)/2,h*.82-artH*(wide?771/941:1346/1846)));return{width:w,height:h,wide,widthArt:iw*scale,heightArt:ih*scale,left:(w-iw*scale)/2,top};}
+export function homeStationBox(layout,stage,reserve=132){const[x,y]=HOME_SCENE_STATIONS[layout.wide?'landscape':'portrait'][stage],size=layout.wide?54:48,side=layout.wide&&layout.height<520;return{left:Math.max(size/2+8,Math.min(layout.width-size/2-8,layout.left+layout.widthArt*x/100)),top:Math.max(90,Math.min(layout.height-(side?16:reserve)-size/2-12,layout.top+layout.heightArt*y/100)),size};}
+export function homeDoorBox(layout){const g=layout.wide?{x:599/1672,y:609/941,w:75/1672,h:162/941}:{x:75/852,y:1137/1846,w:113/852,h:209/1846};return{left:layout.left+g.x*layout.widthArt,top:layout.top+g.y*layout.heightArt,width:g.w*layout.widthArt,height:g.h*layout.heightArt,backgroundSize:layout.widthArt+'px '+layout.heightArt+'px',backgroundPosition:(-g.x*layout.widthArt)+'px '+(-g.y*layout.heightArt)+'px'};}
+export function homeArrivalFrames(layout,personSize){const d=homeDoorBox(layout),from={x:d.left+d.width*.52,y:d.top+d.height*.98},to={x:Math.min(layout.width*.55,from.x+layout.width*.10),y:Math.min(layout.height*.89,Math.max(layout.height*.87,from.y+layout.height*.035))},scale=Math.min(.6,d.width*.85/personSize);return[{offset:0,left:from.x+'px',top:from.y+'px',transform:`translate(-50%,-100%) scale(${scale})`,opacity:1},{offset:.16,left:(from.x+(to.x-from.x)*.08)+'px',top:(from.y+(to.y-from.y)*.12)+'px',transform:`translate(-50%,-100%) scale(${scale+.08})`,opacity:1},{offset:.55,left:(from.x+(to.x-from.x)*.45)+'px',top:(from.y+(to.y-from.y)*.5)+'px',transform:'translate(-50%,-100%) scale(.70)',opacity:1},{offset:1,left:to.x+'px',top:to.y+'px',transform:'translate(-50%,-100%) scale(1)',opacity:1}];}
+// Above the threshold, only the arch is visible. All terrain below stays in front of the backdrop.
+export function homePortalMask(layout){const r=homeDoorBox(layout),x=r.left,y=r.top,w=r.width,h=r.height,b=y+h,W=layout.width,H=layout.height;return `polygon(0px ${b}px,${x}px ${b}px,${x}px ${y+h*.23}px,${x+w*.12}px ${y+h*.08}px,${x+w*.35}px ${y}px,${x+w*.65}px ${y}px,${x+w*.88}px ${y+h*.08}px,${x+w}px ${y+h*.23}px,${x+w}px ${b}px,${W}px ${b}px,${W}px ${H}px,0px ${H}px)`;}

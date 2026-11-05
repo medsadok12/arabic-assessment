@@ -11,7 +11,7 @@ import StaffTopicPreview from'./StaffTopicPreview';
 import JourneyMap from'./JourneyMap';
 import StageEntrance from'./StageEntrance';
 import JourneyArt from'./JourneyArt';
-import{homeSceneEnabled}from'../../../../../lib/picture-quest-home-scene';
+import{homeSceneEnabled,HOME_SCENE_PORTRAIT,HOME_SCENE_LANDSCAPE}from'../../../../../lib/picture-quest-home-scene';
 import{createTopicNavigation}from'../../../../../lib/picture-quest-navigation';
 import{invalidateTopicCatalog,topicCatalogIsFresh}from'../../../../../lib/picture-quest-catalog-freshness';
 import WorldCard,{worldStyle,currentStage}from'./WorldCard';
@@ -29,8 +29,6 @@ export default function TopicHub({staff,initialCatalog=null}){
  const pendingGate=useRef(null),mapPosition=useRef(null),playingRef=useRef(false),navigation=useRef(null),viewRef=useRef(null),selectionChild=useRef(child),back=useRef(null),menuButton=useRef(null),menuBox=useRef(null),worldButtons=useRef(new Map()),focusDetail=useRef(false),restoreTopic=useRef(null);
  const data=catalog?.child===child?catalog.value:null;
  useEffect(()=>{if(data?.topics?.some(t=>t.id==='body'&&t.mapImageEnabled!==false&&!t.map_image_url)){imagePreparer.prepare('/picture-quest/body-gate-v2.webp');imagePreparer.prepare('/picture-quest/body-celebration-plate-v1.webp');imagePreparer.prepare('/picture-quest/body-faheem-front-v1.webp');imagePreparer.prepare(window.matchMedia('(min-aspect-ratio: 11/10)').matches?'/picture-quest/body-scene-wide-v3.webp':'/picture-quest/body-scene-v3.webp');}},[data,imagePreparer]);
- // Warm the home world's drawing in the background so opening البيت feels instant.
- useEffect(()=>{if(data?.topics?.some(t=>homeSceneEnabled(data,t)))import('./HomeScene').catch(()=>{});},[data]);
  const playing=!!(selection&&data&&selectionChild.current===child);playingRef.current=playing;
  const gameVisible=playing&&visibleSelection===selection;
  const gameReady=useCallback(()=>setVisibleSelection(viewRef.current?.selection),[]);
@@ -65,7 +63,7 @@ export default function TopicHub({staff,initialCatalog=null}){
   const ticket=++opening.current;setSceneError('');
   const illustrated=data.journeyEnabled!==false&&data.entranceEnabled!==false;
   const wide=window.innerWidth>window.innerHeight*1.1;
-  const art=illustrated&&bodySceneEnabled(data,t)?(wide?BODY_SCENE_LANDSCAPE:BODY_SCENE_PORTRAIT):illustrated&&schoolSceneEnabled(data,t)?SCHOOL_SCENE_ART:null;
+  const art=illustrated&&bodySceneEnabled(data,t)?(wide?BODY_SCENE_LANDSCAPE:BODY_SCENE_PORTRAIT):illustrated&&schoolSceneEnabled(data,t)?SCHOOL_SCENE_ART:illustrated&&homeSceneEnabled(data,t)?(wide?HOME_SCENE_LANDSCAPE:HOME_SCENE_PORTRAIT):null;
   if(art){setOpeningTopic(id);const entry=imagePreparer.prepare(art),ok=await(entry?.ready??true);if(ticket!==opening.current||getActiveChildTab()!==child)return;setOpeningTopic(null);if(!ok){setSceneError('تعذّر تحميل المشهد. حاول فتح العالم مرة أخرى.');return;}}
   if(ticket===opening.current)navigation.current?.openTopic(id,stage);
  }

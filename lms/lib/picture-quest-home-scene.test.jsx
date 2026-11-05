@@ -1,73 +1,40 @@
-import React from'react';
-import{renderToStaticMarkup}from'react-dom/server';
-import{afterEach,it,expect,vi}from'vitest';
-import{homeSceneEnabled,homeSceneLayout,homeStationBox,HOME_SCENE_STATIONS,HOME_SCENE_TOP,HOME_SCENE_BOTTOM,HOME_SCENE_MIN_WIDTH}from'./picture-quest-home-scene';
+// @vitest-environment jsdom
+import React,{act}from'react';
+import{createRoot}from'react-dom/client';
+import{beforeEach,afterEach,it,expect,vi}from'vitest';
 import HomeScene from'../app/library/games/picture-quest/topics/HomeScene';
-import StageEntrance from'../app/library/games/picture-quest/topics/StageEntrance';
-const data={settings:{animate:true,controls:{}}},topic={id:'home',title:'البيت',stages:[1,2,3].map(stage=>({stage,unlocked:stage===1,completed:false,ready:true}))};
-const draw=(patch={})=>{vi.stubGlobal('React',React);return renderToStaticMarkup(<HomeScene data={data} topic={topic} active={topic.stages[0]} status="" {...patch}/>)};
-afterEach(()=>vi.unstubAllGlobals());
-
-it('routes the home world to its own scene and leaves other worlds on the shared entrance',()=>{
- vi.stubGlobal('React',React);
- const home=renderToStaticMarkup(<StageEntrance data={data} topic={topic} active={topic.stages[0]}/>);
- expect(home).toContain('pqh-scene');expect(home).not.toContain('pqe-road');
- const family=renderToStaticMarkup(<StageEntrance data={data} topic={{...topic,id:'family',title:'الأسرة'}} active={topic.stages[0]}/>);
- expect(family).not.toContain('pqh-scene');expect(family).toContain('pqe-road');
+import{HOME_EFFECTS,HOME_SCENE_STATIONS,homeSceneEnabled,homeSceneLayout,homeStationBox,homeDoorBox,homeArrivalFrames,homePortalMask}from'./picture-quest-home-scene';
+import{animateHomeCelebration}from'./picture-quest-home-celebration';
+import{freshQuestBank,validateQuestBank}from'./picture-quest-bank';
+let root;const data={settings:{animate:true,controls:{}}},stages=[1,2,3].map(stage=>({stage,unlocked:stage===1,completed:false,ready:true})),topic={id:'home',title:'البيت',stages};
+beforeEach(()=>{vi.stubGlobal('React',React);vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);vi.stubGlobal('ResizeObserver',class{observe(){}disconnect(){}});vi.stubGlobal('Image',class{set src(value){this.complete=true;this.naturalWidth=100;queueMicrotask(()=>this.onload?.())}decode(){return Promise.resolve()}});vi.stubGlobal('requestAnimationFrame',fn=>setTimeout(fn,0));document.body.innerHTML='<div id="host"></div>';root=createRoot(document.getElementById('host'))});
+afterEach(async()=>{await act(async()=>root.unmount());vi.useRealTimers();vi.unstubAllGlobals()});
+const render=patch=>act(async()=>root.render(<HomeScene data={data} topic={topic} active={stages[0]} status="" {...patch}/>));
+it('keeps real stage locks, callbacks and staff previews on the approved illustrated scene',async()=>{
+ const choose=vi.fn(),begin=vi.fn(),preview=vi.fn();await render({onChoose:choose,onBegin:begin});expect(document.querySelector('.pqhome-art').getAttribute('src')).toContain('home-story-portrait');expect(document.querySelectorAll('.pqhome-station')).toHaveLength(3);expect(document.querySelector('[aria-label="المرحلة 3، مقفلة"]').disabled).toBe(true);expect(document.querySelector('.pqhome-celebrate-preview')).toBeNull();
+ await act(async()=>document.querySelector('.pqhome-go').click());expect(begin).toHaveBeenCalledOnce();await render({staff:true,onChoose:choose,onBegin:begin,onPreview:preview});await act(async()=>document.querySelectorAll('.pqhome-station')[2].click());expect(choose).toHaveBeenCalledWith(3);await act(async()=>document.querySelector('.pqhome-go').click());expect(preview).toHaveBeenCalledOnce();expect(document.body.textContent).toContain('جرّب احتفال البيت');
+});
+it('lights only earned rooms, keeps progress controls and suppresses disabled effects',async()=>{
+ const state={...topic,stages:stages.map(s=>({...s,completed:s.stage===1,unlocked:true}))};await render({data:{...data,settings:{animate:false}},topic:state,active:{...state.stages[1],resume:true},status:'وصلت إلى 4 من 10'});expect(document.querySelectorAll('.pqhome-room-light.lit')).toHaveLength(1);expect(document.body.textContent).toContain('واصل');expect(document.body.textContent).toContain('وصلت إلى 4 من 10');
+ await render({data:{...data,homeLightsEnabled:false,journeyEffects:false},topic:state});expect(document.querySelectorAll('.pqhome-room-light')).toHaveLength(0);expect(document.querySelector('.pqhome-motion')).toBeNull();await render({preparing:true});expect(document.querySelector('.pqhome-go').disabled).toBe(true);expect(document.body.textContent).toContain('نجهّز لعبتك');
+});
+it('plays completion once only after all stages complete, keeps the same canvas and resets on return',async()=>{
+ vi.useFakeTimers();const notified=vi.fn();await render({celebrate:true,onCelebrationDone:notified});expect(document.querySelector('[role="dialog"]')).toBeNull();const art=document.querySelector('.pqhome-art'),done={...topic,stages:stages.map(s=>({...s,completed:true,unlocked:true}))};await render({topic:done,celebrate:true,onCelebrationDone:notified});expect(notified).toHaveBeenCalledOnce();expect(document.querySelector('.pqhome-art')).toBe(art);expect(document.querySelector('.pqhome-stations').hasAttribute('inert')).toBe(true);await act(async()=>vi.advanceTimersByTimeAsync(10000));expect(document.querySelector('.pqhome-message').textContent).toContain('أُضيفت');await act(async()=>document.querySelector('.pqhome-complete').click());expect(document.querySelector('[role="dialog"]')).toBeNull();expect(document.querySelector('.pqhome-door-hinge')).toBeNull();expect(document.querySelector('.pqhome-art')).toBe(art);expect(document.querySelector('.pqhome-stations').hasAttribute('inert')).toBe(false);
+});
+it('does not show disabled characters, badge, album or claim an unawarded badge',async()=>{
+ vi.useFakeTimers();await render({staff:true,data:{...data,settings:{animate:false},homeFaheemEnabled:false,homeBadgeEnabled:false,homeAlbumEnabled:false,homeSparklesEnabled:false}});await act(async()=>document.querySelector('.pqhome-celebrate-preview').click());await act(async()=>vi.advanceTimersByTimeAsync(1000));for(const cls of['.pqhome-faheem','.pqhome-album','.pqhome-badge'])expect(document.querySelector(cls)).toBeNull();expect(document.querySelector('.pqhome-message').textContent).toBe('أحسنت! أكملت رحلة البيت.');expect(document.querySelector('.pqhome-complete')).toBeTruthy();
+});
+it('cancels every pending animation callback when the scene is closed or unmounted',()=>{
+ vi.useFakeTimers();const stage=document.createElement('div');stage.innerHTML='<div class="pqhome-door-leaf"></div><div class="pqhome-particles"></div>';const settled=vi.fn(),message=vi.fn();const stop=animateHomeCelebration(stage,{data:{...data,homeFaheemEnabled:false,homeBadgeEnabled:false,homeAlbumEnabled:false},layout:homeSceneLayout(390,844),onMessage:message,onSettled:settled});stop();vi.runAllTimers();expect(settled).not.toHaveBeenCalled();expect(message).toHaveBeenCalledTimes(1);
+});
+it('preserves custom teacher art and non-home worlds',()=>{expect(homeSceneEnabled(data,topic)).toBe(true);for(const t of[{...topic,mapImageEnabled:false},{...topic,map_image_url:'/upload.webp'},{...topic,mapArt:2},{...topic,id:'body'}])expect(homeSceneEnabled(data,t)).toBe(false);for(const flag of['journeyScenery','journeyPath'])expect(homeSceneEnabled({...data,[flag]:false},topic)).toBe(false)});
+it('persists every independent home effect through bank validation and rejects invalid toggle values',()=>{const bank=freshQuestBank();for(const[key]of HOME_EFFECTS){const input=structuredClone(bank);input[key]=false;const result=validateQuestBank(input);expect(result.error).toBeUndefined();expect(result.config[key]).toBe(false);expect(result.config.epoch).toBe(bank.epoch);for(const[other]of HOME_EFFECTS)if(other!==key)expect(result.config[other]).toBe(true);input[key]='false';expect(validateQuestBank(input).error).toBeTruthy()}});
+it.each([[320,568],[375,667],[390,844],[412,915],[820,1180],[1180,820],[1280,800],[1440,900],[1920,1080],[2560,1080],[844,390]])('keeps the door, targets and forward approach on a %d × %d canvas',(w,h)=>{
+ const g=homeSceneLayout(w,h),d=homeDoorBox(g);expect(g.left).toBeLessThanOrEqual(0);expect(g.top).toBeLessThanOrEqual(0);expect(g.left+g.widthArt).toBeGreaterThanOrEqual(w-1e-6);expect(g.top+g.heightArt).toBeGreaterThanOrEqual(h-1e-6);
+ for(const stage of[1,2,3]){const b=homeStationBox(g,stage,160);expect(b.size).toBeGreaterThanOrEqual(48);expect(b.left-b.size/2).toBeGreaterThan(0);expect(b.left+b.size/2).toBeLessThan(w);expect(b.top-b.size/2).toBeGreaterThanOrEqual(60);expect(b.top+b.size/2).toBeLessThan(h)}
+ const frames=homeArrivalFrames(g,140),ys=frames.map(f=>parseFloat(f.top)),scales=frames.map(f=>Number(f.transform.match(/scale\(([^)]+)\)/)[1]));expect(ys).toEqual([...ys].sort((a,b)=>a-b));expect(scales).toEqual([...scales].sort((a,b)=>a-b));expect(parseFloat(frames[0].left)).toBeGreaterThan(d.left);expect(parseFloat(frames[0].left)).toBeLessThan(d.left+d.width);expect(ys[0]).toBeCloseTo(d.top+d.height*.98);expect(homePortalMask(g)).toContain(`0px ${d.top+d.height}px`);
 });
 
-it('draws the cut-away house with real accessible stage buttons, locks and the start action',()=>{
- const html=draw();
- expect(html).toContain('<svg');expect(html).toContain('البيت');
- expect(html.match(/class="pqh-station[ "]/g)).toHaveLength(3);
- expect(html).toContain('المرحلة 3، مقفلة');expect(html).toContain('ابدأ');expect(html).toContain('disabled=""');
- expect(html).not.toContain('pqh-party');expect(html).not.toContain('pqh-on-1');
- expect(html.match(/class="pqh-shade pqh-shade-\d"/g)).toHaveLength(3); // every floor starts with its lights off
-});
-
-it('keeps staff preview, completion, resume and lit-path states',()=>{
- const stages=topic.stages.map(s=>({...s,completed:s.stage===1,unlocked:true}));
- const staffHtml=draw({topic:{...topic,stages},active:stages[2],staff:true});
- expect(staffHtml).toContain('معاينة المرحلة');expect(staffHtml).toContain('pqh-station current');expect(staffHtml).toContain('pqh-station completed');
- expect(staffHtml).not.toContain('pqh-station locked');expect(staffHtml).toContain('جرّب احتفال البيت');
- expect(staffHtml).not.toContain('pqh-on-1'); // with motion the earned lights switch on after the screen opens
- const still={...data,settings:{animate:false,controls:{}}};
- const stillHtml=draw({data:still,topic:{...topic,stages},active:stages[2]});
- expect(stillHtml).toContain('pqh-on-1 pqh-lit-a');expect(stillHtml).not.toContain('pqh-on-2');expect(stillHtml).not.toContain('pqh-on-3');
- const resume=draw({topic:{...topic,stages},active:{...stages[1],resume:true},status:'وصلت إلى 4 من 10'});
- expect(resume).toContain('واصل');expect(resume).toContain('وصلت إلى 4 من 10');expect(resume).not.toContain('جرّب احتفال');
- const done=topic.stages.map(s=>({...s,completed:true,unlocked:true}));
- const review=draw({topic:{...topic,stages:done},active:done[0]});
- expect(review).toContain('راجع');expect(review).toContain('احتفال بيتي');
- expect(draw({data:{...data,settings:{animate:false,controls:{}}},topic:{...topic,stages:done},active:done[0]})).toContain('pqh-on-1 pqh-lit-a pqh-on-2 pqh-lit-b pqh-on-3');
- expect(draw({preparing:true})).toContain('نجهّز لعبتك');
-});
-
-it('respects teacher uploads, disabled artwork, art overrides, motion and the scenery/path switches',()=>{
- for(const t of[{...topic,mapImageEnabled:false},{...topic,map_image_url:'/picture-quest/upload.webp'},{...topic,mapArt:2},{...topic,id:'fruit'}])expect(homeSceneEnabled(data,t)).toBe(false);
- for(const flag of['journeyScenery','journeyPath'])expect(homeSceneEnabled({...data,[flag]:false},topic)).toBe(false);
- expect(homeSceneEnabled(data,topic)).toBe(true);expect(homeSceneEnabled(data,{...topic,mapArt:3})).toBe(true);
- expect(draw()).toContain('pqh-motion');
- expect(draw({data:{...data,settings:{animate:false,controls:{}}}})).not.toContain('pqh-motion');
- expect(draw({data:{...data,journeyEffects:false}})).not.toContain('pqh-motion');
-});
-
-it('fits the whole house and every stage on phones, tablets and computers without tiny targets',()=>{
- const cases=[[320,568],[375,667],[390,844],[412,915],[820,1180],[1180,820],[1280,800],[1440,900],[1920,1080],[2560,1080],[600,650]];
- for(const[w,h]of cases){
-  const reserve={top:80,bottom:184,left:0},g=homeSceneLayout(w,h,reserve);
-  expect(g.w/g.h).toBeCloseTo(w/h,6); // never stretched
-  expect(g.w).toBeGreaterThanOrEqual(HOME_SCENE_MIN_WIDTH-1e-6); // the central rooms stay whole
-  expect((HOME_SCENE_TOP-g.y)*g.scale).toBeGreaterThanOrEqual(reserve.top-1e-6); // below the title
-  expect((HOME_SCENE_BOTTOM-g.y)*g.scale).toBeLessThanOrEqual(h-reserve.bottom+1e-6); // above the start button
-  for(const spot of Object.values(HOME_SCENE_STATIONS)){
-   const b=homeStationBox(g,spot);
-   expect(b.size).toBeGreaterThanOrEqual(48);
-   expect(b.left*w/100-b.size/2).toBeGreaterThan(0);expect(b.left*w/100+b.size/2).toBeLessThan(w);
-   expect(b.top*h/100-b.size/2).toBeGreaterThan(reserve.top-1);expect(b.top*h/100+b.size/2).toBeLessThan(h-reserve.bottom);
-  }
- }
- // Short landscape phones: the start panel sits on the left and the house moves beside it.
- const g=homeSceneLayout(844,390,{top:58,bottom:12,left:300});
- for(const spot of Object.values(HOME_SCENE_STATIONS)){const b=homeStationBox(g,spot);expect(b.left*844/100-b.size/2).toBeGreaterThan(300);expect(b.size).toBeGreaterThanOrEqual(48);}
+it('sizes the first doorway pose from the untransformed sprite, avoiding a scale jump before walking',()=>{
+ vi.useFakeTimers();const stage=document.createElement('div');stage.innerHTML='<div class="pqhome-door-leaf"></div><div class="pqhome-person-layer"><div class="pqhome-faheem"><span class="pqhome-pose"></span></div></div>';const person=stage.querySelector('.pqhome-faheem');Object.defineProperty(person,'offsetWidth',{value:160});person.getBoundingClientRect=()=>({width:person.style.transform?43:160});const layout=homeSceneLayout(390,844);const stop=animateHomeCelebration(stage,{data,layout});expect(person.style.transform).toBe(homeArrivalFrames(layout,160)[0].transform);vi.advanceTimersByTime(700);expect(person.style.opacity).toBe('1');stop();
 });
