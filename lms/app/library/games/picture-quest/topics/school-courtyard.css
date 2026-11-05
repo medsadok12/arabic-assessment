@@ -1,0 +1,10 @@
+.pqschool-scene .pqb-canvas{aspect-ratio:944/1666}.pqschool-scene .pqb-heading{top:.3%;left:12%;right:27%;font-size:clamp(20px,5.5cqw,27px)}
+.pqschool-celebration{--bm-closed:url(/picture-quest/school-scene-v1.webp);--bm-plate:url(/picture-quest/school-celebration-plate-v1.webp);--bw-faheem:url(/picture-quest/school-faheem-backpack-v1.webp);background-image:var(--bm-plate)}
+.pqschool-celebration .bm-scene{aspect-ratio:944/1666;perspective-origin:50% 34%}
+.pqschool-celebration .bm-heading{top:.3%;left:12%;right:27%;font-size:clamp(20px,5.5cqw,27px);z-index:5}
+.pqschool-celebration .bm-message{top:83%;left:6%;right:6%;font-size:clamp(14px,4cqw,20px)}
+.pqschool-celebration .pqschool-audio{position:absolute;top:78%;left:25%;right:25%;z-index:10;min-height:44px;border-radius:12px;background:#fff8e9;border:1px solid #ddc891}
+.pqschool-celebration .bm-door-left{left:40.572%;top:28.5114%;width:9.428%;height:11.0444%;background-size:1060.674% 905.435%;background-position:44.7953% 32.0513%;clip-path:polygon(0 39%,8% 25%,28% 12%,55% 4%,100% 0,100% 100%,0 100%)}
+.pqschool-celebration .bm-door-right{left:50%;top:28.5114%;width:9.2161%;height:11.0444%;background-size:1085.0575% 905.435%;background-position:55.0758% 32.0513%;clip-path:polygon(0 0,45% 4%,72% 12%,92% 25%,100% 39%,100% 100%,0 100%)}
+.pqschool-celebration .sc-bell{position:absolute;left:45.8686%;top:10.8043%;width:8.3686%;height:5.2821%;background-image:var(--bm-closed);background-size:1194.9367% 1893.1818%;background-position:50.0578% 11.4068%;background-repeat:no-repeat;transform-origin:50% 8%;z-index:4;clip-path:polygon(48% 0,60% 5%,62% 20%,75% 30%,83% 65%,100% 80%,95% 88%,60% 94%,60% 100%,38% 100%,38% 94%,5% 88%,0 80%,17% 65%,25% 30%,38% 20%,38% 5%)}
+.pqschool-celebration .bw-gate-foreground{clip-path:polygon(evenodd,0 0,100% 0,100% 40%,0 40%,0 0,40.4% 39.7%,59.3% 39.7%,59.3% 32.3%,55% 29%,50% 28.5%,45% 29%,40.4% 32.3%,40.4% 39.7%)}
