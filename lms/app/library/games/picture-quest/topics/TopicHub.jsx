@@ -9,6 +9,7 @@ import StaffTopicPreview from'./StaffTopicPreview';
 import JourneyMap from'./JourneyMap';
 import StageEntrance from'./StageEntrance';
 import JourneyArt from'./JourneyArt';
+import{homeSceneEnabled}from'../../../../../lib/picture-quest-home-scene';
 import{createTopicNavigation}from'../../../../../lib/picture-quest-navigation';
 import{invalidateTopicCatalog,topicCatalogIsFresh}from'../../../../../lib/picture-quest-catalog-freshness';
 import WorldCard,{worldStyle,currentStage}from'./WorldCard';
@@ -25,6 +26,8 @@ export default function TopicHub({staff,initialCatalog=null}){
  const pendingGate=useRef(null),mapPosition=useRef(null),playingRef=useRef(false),navigation=useRef(null),viewRef=useRef(null),selectionChild=useRef(child),back=useRef(null),menuButton=useRef(null),menuBox=useRef(null),worldButtons=useRef(new Map()),focusDetail=useRef(false),restoreTopic=useRef(null);
  const data=catalog?.child===child?catalog.value:null;
  useEffect(()=>{if(data?.topics?.some(t=>t.id==='body'&&t.mapImageEnabled!==false&&!t.map_image_url)){imagePreparer.prepare('/picture-quest/body-gate-v2.webp');imagePreparer.prepare('/picture-quest/body-celebration-plate-v1.webp');imagePreparer.prepare('/picture-quest/body-faheem-front-v1.webp');imagePreparer.prepare(window.matchMedia('(min-aspect-ratio: 11/10)').matches?'/picture-quest/body-scene-wide-v3.webp':'/picture-quest/body-scene-v3.webp');}},[data,imagePreparer]);
+ // Warm the home world's drawing in the background so opening البيت feels instant.
+ useEffect(()=>{if(data?.topics?.some(t=>homeSceneEnabled(data,t)))import('./HomeScene').catch(()=>{});},[data]);
  const playing=!!(selection&&data&&selectionChild.current===child);playingRef.current=playing;
  const gameVisible=playing&&visibleSelection===selection;
  const gameReady=useCallback(()=>setVisibleSelection(viewRef.current?.selection),[]);
