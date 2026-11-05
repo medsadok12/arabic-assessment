@@ -8,3 +8,10 @@ html.pqw-focus,html.pqw-focus body{overflow:hidden;overscroll-behavior:none}
 .pqe.pqe-preparing .pqe-content{animation:none;pointer-events:none}.pqe-preparing .pqe-go{opacity:.85}
 
 .pqf-scene-preparing{position:absolute;left:50%;bottom:max(24px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:30;max-width:calc(100% - 32px);margin:0;padding:8px 16px;border-radius:14px;background:#fff8e9;color:#1a2b4a;box-shadow:0 3px 12px #1a2b4a18;font:700 18px/1.5 var(--font-naskh),serif;text-align:center;pointer-events:none}
+
+/* Staff must reach the editor from the actual world screens, including immersive maps. */
+.pqf .pqf-manage{display:inline-flex;align-items:center;justify-content:center;gap:7px;align-self:flex-start;min-height:44px;max-width:calc(100% - 24px);margin:0 12px 8px;padding:8px 12px;border:1px solid #dcc99f;border-radius:14px;background:#fff8e9;color:#1a2b4a;box-shadow:0 3px 0 #b69b65;font:700 16px/1.5 var(--font-naskh),'Noto Naskh Arabic',serif;text-decoration:none;pointer-events:auto}
+.pqf-manage svg{width:18px;height:18px;flex-shrink:0}
+.pqj.pqj-map-screen .pqf-manage,.pqj.pqj-entrance-screen .pqf-manage{position:absolute;top:calc(max(12px,env(safe-area-inset-top,0px)) + 60px);right:max(12px,env(safe-area-inset-right,0px));z-index:21;margin:0}
+.pqf .pqf-manage:active{transform:translateY(2px);box-shadow:0 1px 0 #b69b65}
+@media(max-width:350px){.pqf .pqf-manage{font-size:14px;padding-inline:10px;gap:5px}}
