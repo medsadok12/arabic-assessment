@@ -15,3 +15,5 @@ html.pqw-focus,html.pqw-focus body{overflow:hidden;overscroll-behavior:none}
 .pqj.pqj-map-screen .pqf-manage,.pqj.pqj-entrance-screen .pqf-manage{position:absolute;top:calc(max(12px,env(safe-area-inset-top,0px)) + 60px);right:max(12px,env(safe-area-inset-right,0px));z-index:21;margin:0}
 .pqf .pqf-manage:active{transform:translateY(2px);box-shadow:0 1px 0 #b69b65}
 @media(max-width:350px){.pqf .pqf-manage{font-size:14px;padding-inline:10px;gap:5px}}
+/* Modal celebrations keep focus and their visual space until the user returns. */
+.pqf-window:has([aria-modal="true"])>.pqf-manage{display:none}
