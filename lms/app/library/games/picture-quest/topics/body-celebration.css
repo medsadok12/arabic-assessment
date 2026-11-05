@@ -59,7 +59,7 @@
 .pbc-shell .bw-pose{background-size:400% 400%;background-position:0 0}
 .pbc-shell .bw-clap{display:none}
 .pbc-shell .bw-shadow{position:absolute;left:28%;right:24%;bottom:2%;height:5%;border-radius:50%;background:#634e3250;filter:blur(2px)}
-.pbc-shell .bw-gate-foreground{position:absolute;inset:0;z-index:2;pointer-events:none;background:var(--bm-plate) center/100% 100%;clip-path:polygon(evenodd,18% 14%,83% 14%,83% 43%,18% 43%,18% 14%,27% 42%,72% 42%,72% 30%,27% 30%,27% 42%)}
+.pbc-shell .bw-gate-foreground{position:absolute;inset:0;z-index:2;pointer-events:none;background:var(--bm-plate) center/100% 100%;clip-path:polygon(18% 14%,83% 14%,83% 43%,72% 43%,72% 30%,27% 30%,27% 43%,18% 43%)}
 .pbc-shell .bw-faheem{width:44%}
 .pbc-shell .bw-badge{left:5%;top:53%;width:24%}
 
@@ -78,7 +78,7 @@
 .pbc-wide .bm-door{top:31.05%;height:10.06%;width:7.62%;background-size:1312.8% 994.2%}
 .pbc-wide .bm-door-left{left:42.45%;background-position:45.95% 34.53%}
 .pbc-wide .bm-door-right{left:50.07%;background-position:54.19% 34.53%}
-.pbc-wide .bw-gate-foreground{clip-path:polygon(evenodd,0 0,100% 0,100% 42%,0 42%,0 0,42.45% 41.2%,57.7% 41.2%,57.7% 32.5%,54% 31.4%,50% 31%,46% 31.4%,42.45% 32.5%,42.45% 41.2%)}
+.pbc-wide .bw-gate-foreground{clip-path:polygon(34% 3%,66% 3%,66% 42%,57.7% 42%,57.7% 31%,42.45% 31%,42.45% 42%,34% 42%)}
 .pbc-wide .bw-faheem{width:24%;top:41%}
 .pbc-wide .bw-badge{left:27%;top:45%;width:12%;font-size:clamp(14px,1.8cqw,22px)}
 .pbc-wide .bw-album{left:35%;top:69%;width:30%;height:17%}
@@ -91,3 +91,6 @@
 
 .pbc-shell .pbc-scene-transition{position:absolute;inset:0;background:var(--bm-closed) center/100% 100%;z-index:2;pointer-events:none}
 .pbc-shell[aria-busy=true]{background-image:var(--bm-closed)}
+
+/* Only the gate arch and columns occlude arrival. The opening stays connected
+   to the entire path: no lower crossbar may paint stones over Faheem. */
