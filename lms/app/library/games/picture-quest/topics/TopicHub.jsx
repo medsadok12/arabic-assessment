@@ -6,7 +6,7 @@ import{displayNumber}from'../../../../../lib/display-number';
 import TopicPlay from'./TopicPlay';
 import{createQuestImagePreparer}from'../../../../../lib/picture-quest-image-ready';
 import{bodySceneEnabled,BODY_SCENE_PORTRAIT,BODY_SCENE_LANDSCAPE}from'../../../../../lib/picture-quest-body-scene';
-import{schoolSceneEnabled,SCHOOL_SCENE_ART}from'../../../../../lib/picture-quest-school-scene';
+import{schoolSceneEnabled,SCHOOL_SCENE_ART,SCHOOL_SCENE_WIDE_ART}from'../../../../../lib/picture-quest-school-scene';
 import StaffTopicPreview from'./StaffTopicPreview';
 import JourneyMap from'./JourneyMap';
 import StageEntrance from'./StageEntrance';
@@ -63,7 +63,7 @@ export default function TopicHub({staff,initialCatalog=null}){
   const ticket=++opening.current;setSceneError('');
   const illustrated=data.journeyEnabled!==false&&data.entranceEnabled!==false;
   const wide=window.innerWidth>window.innerHeight*1.1;
-  const art=illustrated&&bodySceneEnabled(data,t)?(wide?BODY_SCENE_LANDSCAPE:BODY_SCENE_PORTRAIT):illustrated&&schoolSceneEnabled(data,t)?SCHOOL_SCENE_ART:illustrated&&homeSceneEnabled(data,t)?(wide?HOME_SCENE_LANDSCAPE:HOME_SCENE_PORTRAIT):null;
+  const art=illustrated&&bodySceneEnabled(data,t)?(wide?BODY_SCENE_LANDSCAPE:BODY_SCENE_PORTRAIT):illustrated&&schoolSceneEnabled(data,t)?(wide?SCHOOL_SCENE_WIDE_ART:SCHOOL_SCENE_ART):illustrated&&homeSceneEnabled(data,t)?(wide?HOME_SCENE_LANDSCAPE:HOME_SCENE_PORTRAIT):null;
   if(art){setOpeningTopic(id);const entry=imagePreparer.prepare(art),ok=await(entry?.ready??true);if(ticket!==opening.current||getActiveChildTab()!==child)return;setOpeningTopic(null);if(!ok){setSceneError('تعذّر تحميل المشهد. حاول فتح العالم مرة أخرى.');return;}}
   if(ticket===opening.current)navigation.current?.openTopic(id,stage);
  }

@@ -7,13 +7,26 @@
 .pqschool-celebration .bm-door-left{left:40.572%;top:28.5114%;width:9.428%;height:11.0444%;background-size:1060.674% 905.435%;background-position:44.7953% 32.0513%;clip-path:polygon(0 39%,8% 25%,28% 12%,55% 4%,100% 0,100% 100%,0 100%)}
 .pqschool-celebration .bm-door-right{left:50%;top:28.5114%;width:9.2161%;height:11.0444%;background-size:1085.0575% 905.435%;background-position:55.0758% 32.0513%;clip-path:polygon(0 0,45% 4%,72% 12%,92% 25%,100% 39%,100% 100%,0 100%)}
 .pqschool-celebration .sc-bell{position:absolute;left:45.8686%;top:10.8043%;width:8.3686%;height:5.2821%;background-image:var(--bm-closed);background-size:1194.9367% 1893.1818%;background-position:50.0578% 11.4068%;background-repeat:no-repeat;transform-origin:50% 8%;z-index:4;clip-path:polygon(48% 0,60% 5%,62% 20%,75% 30%,83% 65%,100% 80%,95% 88%,60% 94%,60% 100%,38% 100%,38% 94%,5% 88%,0 80%,17% 65%,25% 30%,38% 20%,38% 5%)}
-.pqschool-celebration .bw-gate-foreground{clip-path:polygon(evenodd,0 0,100% 0,100% 40%,0 40%,0 0,40.4% 39.7%,59.3% 39.7%,59.3% 32.3%,55% 29%,50% 28.5%,45% 29%,40.4% 32.3%,40.4% 39.7%)}
-/* Quiet desktop surround: the school artwork appears once, on the playable canvas.
-   Portrait displays and phone landscape keep their existing presentation. */
-@media (min-width:1024px) and (min-aspect-ratio:11/10){
- .pqschool-scene{background:#f4efe6}
- .pqschool-scene:before{background:#f4efe6;background-image:none}
- .pqschool-scene .pqb-canvas{box-shadow:0 0 0 1px #1a2b4a0a,0 10px 36px #1a2b4a14}
- .pbc-shell.pqschool-celebration{background:#f4efe6}
- .pqschool-celebration .bm-scene{box-shadow:0 0 0 1px #1a2b4a0a,0 10px 36px #1a2b4a14}
-}
+.pqschool-celebration .bw-gate-foreground{clip-path:polygon(evenodd,0 0,100% 0,100% 39.55%,0 39.55%,0 0,40.4% 39.55%,59.3% 39.55%,59.3% 32.3%,55% 29%,50% 28.5%,45% 29%,40.4% 32.3%,40.4% 39.55%)}
+/* Desktop uses one landscape canvas, with the same camera throughout the celebration. */
+.pqschool-wide .pqb-canvas,.pqschool-celebration.pqschool-wide .bm-scene{max-width:none;max-height:none;aspect-ratio:1672/941;box-shadow:none}
+.pqschool-wide:before{display:none}
+.pqschool-scene.pqschool-wide,.pbc-shell.pqschool-celebration.pqschool-wide{background:#75b649;background-image:none}
+.pqschool-wide .pqb-heading,.pqschool-celebration.pqschool-wide .bm-heading{width:auto;padding:6px 16px;background:#fff8e9;border:1px solid #ead9b0;border-radius:14px;box-shadow:0 3px #b79c66;text-shadow:none;font-size:28px;text-align:center;line-height:1.25}
+.pqschool-wide .pqb-action{gap:3px}.pqschool-wide .pqb-go{font-size:24px;min-height:52px}
+.pqschool-wide .pqb-celebrate-preview{font-size:18px;min-height:44px;white-space:normal}
+.pqschool-celebrating>.pqb-canvas{visibility:hidden}
+.pqschool-celebration.pqschool-wide .bm-scene{perspective-origin:50% 39%}
+.pqschool-celebration.pqschool-wide .bm-message{font-size:20px;line-height:1.35}
+.pqschool-celebration.pqschool-wide .bm-door-left{left:46.591%;top:32.625%;width:3.409%;height:12.434%;background-size:2933.33% 804.274%;background-position:48.235% 37.257%}
+.pqschool-celebration.pqschool-wide .bm-door-right{left:50%;top:32.625%;width:3.409%;height:12.434%;background-size:2933.33% 804.274%;background-position:51.765% 37.257%}
+.pqschool-celebration.pqschool-wide .sc-bell{left:48.625%;top:13.815%;width:2.811%;height:4.676%;background-size:3557.447% 2138.636%;background-position:50.092% 14.493%}
+.pqschool-celebration.pqschool-wide .bw-gate-foreground{clip-path:polygon(evenodd,0 0,100% 0,100% 45.05%,0 45.05%,0 0,46.5% 45.05%,53.5% 45.05%,53.5% 37.5%,52.5% 33.8%,50% 32.5%,47.5% 33.8%,46.5% 37.5%,46.5% 45.05%)}
+.pqschool-celebration.pqschool-wide .bw-album-title,.pqschool-celebration.pqschool-wide .bw-album-label{font-size:19px}
+.pqschool-celebration.pqschool-wide .bw-badge{font-size:18px}
+.pqschool-celebration.pqschool-wide .pqschool-audio{top:19%;left:67%;right:5%;font-size:16px}
+
+/* Clipped camera planes must never scroll when a dialog or return button receives focus. */
+.pqschool-scene,.pqschool-celebration{overflow:clip}
+.pqschool-celebration.pqschool-wide .bm-complete{font-size:24px;line-height:1.35;min-height:52px;padding:8px 12px}
+@media(max-height:519px){.pqschool-celebration.pqschool-wide .bm-complete{font-size:20px}.pqschool-celebration.pqschool-wide .bw-album-title,.pqschool-celebration.pqschool-wide .bw-album-label{font-size:12px}.pqschool-celebration.pqschool-wide .bw-other{font-size:12px}.pqschool-celebration.pqschool-wide .bw-book-stars{font-size:26px}.pqschool-celebration.pqschool-wide .bm-message{font-size:16px}}

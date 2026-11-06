@@ -1,3 +1,4 @@
+export const SCHOOL_CELEBRATION_WIDE_ART='/picture-quest/school-celebration-wide-v1.webp';
 export const SCHOOL_CELEBRATION_ART='/picture-quest/school-celebration-plate-v1.webp';
 export const SCHOOL_FAHEEM_ART='/picture-quest/school-faheem-backpack-v1.webp';
 export const SCHOOL_EFFECTS=[
@@ -7,18 +8,24 @@ export const SCHOOL_EFFECTS=[
  ['schoolAlbumEnabled','ألبوم إنجازات المدرسة'],['schoolSparklesEnabled','لمعات إنجاز المدرسة']
 ];
 // Fixed camera-facing artwork; ground-contact position advances down the center.
-export function schoolArrivalFrames(){return [
+export function schoolArrivalFrames(wide=false){if(wide)return [
+ {offset:0,left:'50%',top:'45%',transform:'translate(-50%,-100%) scale(.28)',opacity:0},
+ {offset:.12,left:'50%',top:'48%',transform:'translate(-50%,-100%) scale(.35)',opacity:1},
+ {offset:.35,left:'50%',top:'55%',transform:'translate(-50%,-100%) scale(.50)',opacity:1},
+ {offset:.65,left:'50%',top:'65%',transform:'translate(-50%,-100%) scale(.75)',opacity:1},
+ {offset:1,left:'50%',top:'78%',transform:'translate(-50%,-100%) scale(1)',opacity:1}
+ ];return [
  {offset:0,left:'50%',top:'39%',transform:'translate(-50%,-100%) scale(.20)',opacity:0},
  {offset:.12,left:'50%',top:'42%',transform:'translate(-50%,-100%) scale(.28)',opacity:1},
  {offset:.35,left:'50%',top:'47%',transform:'translate(-50%,-100%) scale(.45)',opacity:1},
  {offset:.65,left:'50%',top:'55%',transform:'translate(-50%,-100%) scale(.70)',opacity:1},
  {offset:1,left:'50%',top:'65%',transform:'translate(-50%,-100%) scale(1)',opacity:1}
 ];}
-export function animateSchoolCelebration(root,{data,reduced=false,onMessage=()=>{},onSettled=()=>{}}){
+export function animateSchoolCelebration(root,{data,wide=false,reduced=false,onMessage=()=>{},onSettled=()=>{}}){
  let live=true;const timers=new Set(),animations=new Set();
  const later=(fn,ms)=>{const id=setTimeout(()=>{timers.delete(id);if(live)fn()},ms);timers.add(id)};
  const motion=!reduced&&data.settings?.animate!==false&&data.journeyEffects!==false;
- const animate=(el,frames,options)=>{if(!el)return;if(!motion||!el.animate){Object.entries(frames.at(-1)).forEach(([k,v])=>{if(!['offset','easing'].includes(k))el.style[k]=v});return;}const a=el.animate(frames,options);animations.add(a);a.onfinish=()=>animations.delete(a);};
+ const animate=(el,frames,options)=>{if(!el)return;if(!motion||!el.animate){Object.entries(frames.at(-1)).forEach(([k,v])=>{if(!['offset','easing'].includes(k))el.style[k]=v});return;}const a=el.animate(frames,options);animations.add(a);/* Keep filled animations until cleanup too. */};
  const person=root.querySelector('.bw-faheem'),pose=root.querySelector('.bw-rest'),badge=root.querySelector('.bw-badge'),album=root.querySelector('.bw-album');
  const hasPerson=data.schoolFaheemEnabled!==false,hasBadge=data.schoolBadgeEnabled!==false,hasAlbum=data.schoolAlbumEnabled!==false;
  const frame=n=>{if(!pose)return;const f=n;pose.style.transform='scaleX(1)';pose.style.backgroundPosition=(f%4/3*100)+'% '+(Math.floor(f/4)/3*100)+'%';};
@@ -37,7 +44,7 @@ export function animateSchoolCelebration(root,{data,reduced=false,onMessage=()=>
   if(!hasPerson){collect();return;}
   person.style.opacity='1';person.style.zIndex='1';frame(0);
   const walk=motion&&data.schoolWalkEnabled!==false,walkTime=walk?2880:0;
-  if(walk){animate(person,schoolArrivalFrames(),{duration:walkTime,easing:'linear',fill:'forwards'});for(let k=0;k<24;k++)later(()=>frame(k%8),k*120);later(()=>person.style.zIndex='5',950);}else{const {offset,...arrival}=schoolArrivalFrames().at(-1);Object.assign(person.style,arrival);person.style.zIndex='5';frame(8);}
+  if(walk){animate(person,schoolArrivalFrames(wide),{duration:walkTime,easing:'linear',fill:'forwards'});for(let k=0;k<24;k++)later(()=>frame(k%8),k*120);later(()=>person.style.zIndex='5',wide?380:500);}else{const {offset,...arrival}=schoolArrivalFrames(wide).at(-1);Object.assign(person.style,arrival);person.style.zIndex='5';frame(8);}
   later(()=>{frame(8);onMessage('أحسنت يا بطل! لقد أكملت رحلة المدرسة!');},walkTime);
   [9,10,11].forEach((n,i)=>later(()=>frame(n),walkTime+(motion?120+i*160:0)));
   if(motion&&data.schoolClapEnabled!==false)[12,13,14,15,12,13,14,15,12,13,14,15].forEach((n,i)=>later(()=>frame(n),walkTime+620+i*110));
