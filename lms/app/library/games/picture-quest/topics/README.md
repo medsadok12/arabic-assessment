@@ -108,3 +108,9 @@
 نسخة أفقية متصلة للمدرسة وصفيحة احتفال مطابقة، بدل فرض العمود العمودي والحاشيتين. `schoolSceneLayout` يقيس اللوحة مرة واحدة ويشاركها مع الاحتفال: الصورة والكاميرا والبوابة والمراحل لا تتغير عند الانتقال أو الرجوع. تغطي اللوحة الأفقية الشاشة بتناسبها وتُقص الأطراف اللازمة دون تمديد؛ تبقى قياسات الهاتف وصورته السابقة. المراحل لها إحداثيات خاصة بالمشهد الأفقي، والأزرار تبقى في مساحة الشاشة المرئية حتى على الحاسوب العريض والهاتف الأفقي القصير.
 
 الباب والجرس وفهيم بالحقيبة يستخدمون إحداثيات اللوحة نفسها. قناع الواجهة ينتهي عند عتبة الباب، ولا يشمل الأرض أو الحجارة؛ يعلو فهيم القناع بعد أول خطوة. الألبوم والشارة والرسالة وأزرار الرجوع داخل مساحة العرض، مع احترام جميع مفاتيح الإدارة والصوت والحركة وتقليل الحركة. صورة المعلم المرفوعة والأقفال والرصيد والتقدم لم تتغير.
+
+### Teacher word-bank workspace
+
+The existing in-site management route now opens on the selected world and stage's words. Five sections group words/images, stage readiness, world appearance, world-specific celebrations, and shared training settings. The word dialog edits a separate copy: Cancel discards it, Apply updates the current draft, Save retains the authenticated draft, and publication requires an explicit review of the complete bank. Existing version checks, upload validation, optional media switches, word IDs, progress and file URLs remain in use. Batch import/upload and archived words are retained under additional tools.
+
+The shared `bankChoiceCount` rule governs normal stages across every world: 2/3/4 total choices including the correct answer, with unchanged 5/10/15 word targets. Readiness requires enough distinct choices; home curated-distractor settings only affect the choice content. Preview questions use this same server/client bank generator. The quick staff preview is local and has no timer or point writes; the full staff training remains available explicitly.
