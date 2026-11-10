@@ -157,6 +157,14 @@ const RESOURCES = [
     accent: '#7C5CD9', dark: '#6141AF', rot: -3, bg: '#F4EEFC', border: '#D7C7F0', iconBg: '#E9DFF7',
     btnBg: 'linear-gradient(135deg,#7C5CD9,#6141AF)',
   },
+  {
+    key: 'learn-arabic',
+    icon: '📖', title: 'أتعلّم العربية',
+    desc: 'رحلة الكتاب وحرف الباء: أستمع، أكتشف، أتدرّب وأكتب، مع ألعاب ومراجعة قصيرة.',
+    tag: 'تعلّم وتأسيس', link: 'https://arem-book-baa-lesson.glossyhill18.chatgpt.site/play.html', ready: true, tracksProgress: false,
+    accent: '#E8B84B', dark: '#B78628', rot: 2, bg: '#FFF7E3', border: '#E7D4A0', iconBg: '#FBE6AE',
+    btnBg: 'linear-gradient(135deg,#F3D17B,#E8B84B)',
+  },
 ];
 
 /* STORIES loaded dynamically from DB — see initialStories prop */
@@ -732,7 +740,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialStories, ow
                   {!r.ready && <span className="sg-card-lock">🔒</span>}
                 </div>
                 <span className="sg-card-title">{displayTitle}</span>
-                {r.ready && !isTeacher && !preview && <ActivityProgress progress={activityProgress[r.key]} ready={progressReady} />}
+                {r.ready && r.tracksProgress !== false && !isTeacher && !preview && <ActivityProgress progress={activityProgress[r.key]} ready={progressReady} />}
               </button>
             );
           };
@@ -786,7 +794,7 @@ export default function LibraryGrid({ initialMeta, isTeacher, initialStories, ow
                 <span className="sg-sheet-tag">{r.tag}</span>
                 <p className="sg-sheet-title">{displayTitle}</p>
                 <p className="sg-sheet-desc">{displayDesc}</p>
-                {r.ready && !isTeacher && !preview && <ActivityProgress progress={activityProgress[r.key]} ready={progressReady} detail />}
+                {r.ready && r.tracksProgress !== false && !isTeacher && !preview && <ActivityProgress progress={activityProgress[r.key]} ready={progressReady} detail />}
               </div>
               <div className="sg-sheet-actions">
                 {r.ready
