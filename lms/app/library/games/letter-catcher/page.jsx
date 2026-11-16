@@ -127,7 +127,7 @@ function useViewportHeight() {
    شرائط وبطاقة زجاجية، وألوان الهوية — لكل زر حرف حافة سفلية بدرجة من ألوانها، ولا أحمر عند الخطأ ── */
 const TILE_TINTS = ['#E8B84B', '#A48BE6', '#8798B3', '#6CCFA0', '#D9CCB6'];
 const MAX_TRIES  = 2; // محاولتان لكل كلمة قبل كشف الحرف
-const CHEER_MS   = 3000; // مقطع فهيم «أحسنت يا بطل» ثم السؤال التالي تلقائياً
+const CHEER_MS   = 3000; // مدة مقطع فهيم؛ تبقى الكلمة حتى يضغط الطفل «التالي»
 const CHEER_FADE = 400;  // اختفاء ناعم في آخر المقطع
 const CHEER_AT   = 2000; // فهيم بعد ثانيتين من لمسة الطفل (الكلمة تُنطق في أولهما)
 const WORD_PAUSE = 250;  // إن طالت الكلمة: فهيم بعد انتهائها بربع ثانية — لا يتداخل الصوتان
@@ -244,7 +244,7 @@ export default function LetterCatcherGame() {
   useEffect(() => stopWordAudio, [stopWordAudio]);
 
   /* احتفال الإجابة الصحيحة (طلب الأستاذ محمد): يسمع الطفل الكلمة أولاً، وبعد ثانيتين من لمسته
-     يظهر فهيم بجانب الصورة يلوّح ويقول «أحسنت يا بطل» 3 ثوانٍ، ثم يختفي بنعومة وينتقل للسؤال التالي.
+     يظهر فهيم بجانب الصورة يلوّح ويقول «أحسنت يا بطل» 3 ثوانٍ، ثم يختفي بنعومة ويظهر زر «التالي».
      الكلمة كاملة ظاهرة طوال الوقت. صوت فهيم مدموج في مقطعه فيبقيان متزامنين.
      سفاري لا يسمح بصوت يبدأ بعد اللمسة بثوانٍ، فيُفتح صوت المقطع داخل اللمسة نفسها (تشغيل صامت
      ثم إيقاف فوري)، وإن مُنع رغم ذلك يظهر المقطع صامتاً */
@@ -252,7 +252,6 @@ export default function LetterCatcherGame() {
   const cheerTimers = useRef([]);
   const cheerRun    = useRef(0);   // كل احتفال برقم — ما يصل متأخراً من احتفال أُلغي يُهمل
   const fahimOn     = useRef(false);
-  const nextRef     = useRef(() => {});
   const [cheer, setCheer] = useState(null); // null | 'word' | 'in' | 'out'
   const clearCheerTimers = () => { cheerTimers.current.forEach(clearTimeout); cheerTimers.current = []; };
   const clearCheer = useCallback(() => {
@@ -275,9 +274,9 @@ export default function LetterCatcherGame() {
     setCheer('in');
     cheerTimers.current = [
       setTimeout(() => setCheer('out'), CHEER_MS - CHEER_FADE),
-      setTimeout(() => nextRef.current(), CHEER_MS),
+      setTimeout(clearCheer, CHEER_MS),
     ];
-  }, [stopWordAudio]);
+  }, [clearCheer, stopWordAudio]);
   const preparedWord = useRef(null);
   useEffect(()=>()=>{preparedWord.current?.audio.pause();preparedWord.current=null;},[]);
   const celebrate = useCallback((wd) => {
@@ -533,7 +532,6 @@ export default function LetterCatcherGame() {
     if (n >= queue.length) setPhase('finished');
     else { setCur(n); setChosen(null); setCorrect(null); setTried([]); }
   }, [cur, queue.length, stopWordAudio, clearCheer, verified]);
-  nextRef.current = next;
 
   const restart = () => startGame(selectedCategory);
 
@@ -906,7 +904,9 @@ export default function LetterCatcherGame() {
   const pill = correct === true
     ? fahimShown
       ? { text: tried.length ? '✅ أَحْسَنْتَ! وَجَدْتَهُ 🎉' : '✅ أَحْسَنْتَ! 🎉', style: S.pillOk }
-      : { text: '🔊 اِسْمَعِ الْكَلِمَةَ', style: null }
+      : cheer === 'word'
+        ? { text: '🔊 اِسْمَعِ الْكَلِمَةَ', style: null }
+        : { text: 'اِقْرَأِ الْكَلِمَةَ', style: S.pillOk }
     : correct === false
       ? { text: `💡 قَرِيبٌ! الْحَرْفُ النَّاقِصُ هُوَ «${w.missing_letter}»`, style: S.pillSoft }
       : retrying
