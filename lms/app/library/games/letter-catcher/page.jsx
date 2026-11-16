@@ -107,6 +107,59 @@ function WordImage({ imageUrl, emoji, size = 150 }) {
 
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
+/* مساحة الحركات جزء من الكلمة. نقيس خط النسخ نفسه بعد تحميله، لا عدد محارف Unicode،
+   ثم نوسّط الرسم الفعلي (بما فيه الشدة والتنوين) داخل الإطار من دون فصل الحروف. */
+function CompletedWord({ text, compact, children }) {
+  const rowRef = useRef(null);
+  const [fit, setFit] = useState(null);
+  useIsoLayoutEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    let active = true;
+    const context = document.createElement('canvas').getContext('2d');
+    const measure = () => {
+      if (!active || !context || !row.clientWidth) return;
+      const style = window.getComputedStyle(row);
+      const base = parseFloat(style.fontSize);
+      context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      context.direction = 'rtl';
+      context.textAlign = 'center';
+      const metrics = context.measureText(text.replace(/\s+/g, ' ').trim());
+      const inkWidth = (metrics.actualBoundingBoxLeft || 0) + (metrics.actualBoundingBoxRight || 0);
+      const scale = Math.min(1, Math.max(1, row.clientWidth - 52) / Math.max(1, metrics.width, inkWidth));
+      const hasBounds = Number.isFinite(metrics.fontBoundingBoxAscent) && Number.isFinite(metrics.fontBoundingBoxDescent);
+      const nextFit = {
+        size: base * scale,
+        x: ((metrics.actualBoundingBoxLeft || 0) - (metrics.actualBoundingBoxRight || 0)) * scale / 2,
+        y: hasBounds ? (metrics.fontBoundingBoxDescent - metrics.fontBoundingBoxAscent + metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) * scale / 2 : 0,
+      };
+      setFit(prev => prev && Math.abs(prev.size - nextFit.size) < 0.1 && Math.abs(prev.x - nextFit.x) < 0.1 && Math.abs(prev.y - nextFit.y) < 0.1 ? prev : nextFit);
+    };
+    measure();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(row);
+    window.addEventListener('resize', measure);
+    document.fonts?.ready.then(measure);
+    document.fonts?.addEventListener('loadingdone', measure);
+    return () => {
+      active = false;
+      observer?.disconnect();
+      window.removeEventListener('resize', measure);
+      document.fonts?.removeEventListener('loadingdone', measure);
+    };
+  }, [text, compact]);
+
+  const height = compact ? 76 : 92;
+  return (
+    <div ref={rowRef} style={{ ...S.completedWordRow, minHeight: height, fontSize: compact ? '2.1rem' : '2.7rem' }}>
+      {children}
+      <div style={{ ...S.completedWordFrame, minHeight: height }}>
+        <span dir="rtl" style={{ ...S.completedWordText, fontSize: fit ? fit.size : 'inherit', transform: fit ? `translate(${fit.x}px, ${fit.y}px)` : undefined }}>{text}</span>
+      </div>
+    </div>
+  );
+}
+
 /* ارتفاع الشاشة المرئي فعلاً (يتغير مع شريط المتصفح) — يختار أحجاماً أصغر للشاشات القصيرة */
 function useViewportHeight() {
   const [h, setH] = useState(800);
@@ -922,18 +975,12 @@ export default function LetterCatcherGame() {
           100% { opacity: 0; transform: translateY(-48px) scale(0.9); }
         }
         @keyframes lcWordReveal {
-          0%   { opacity:0; transform:scale(.15) rotate(-10deg); filter:blur(12px); }
-          55%  { transform:scale(1.18) rotate(2deg);  filter:blur(0); }
-          75%  { transform:scale(.95)  rotate(-1deg); }
-          100% { opacity:1; transform:scale(1)   rotate(0); }
+          0%   { opacity:0; transform:scale(.94); }
+          100% { opacity:1; transform:scale(1); }
         }
         @keyframes lcWordFloat {
           0%,100% { transform:translateY(0px); }
           50%     { transform:translateY(-6px); }
-        }
-        @keyframes lcWordShimmer {
-          0%   { background-position: 200% center; }
-          100% { background-position:-200% center; }
         }
         @keyframes lcWrongShake {
           0%,100%{ transform:translateX(0); }
@@ -1018,9 +1065,9 @@ export default function LetterCatcherGame() {
               </button>
             </div>
 
-            {/* ── الكلمة: مربعات الحروف، أو الكلمة كاملة عند الصح — بالارتفاع نفسه ── */}
+            {/* ── ارتفاع محجوز للحركات قبل الإجابة وبعدها، حتى لا تقفز الصورة أو الأزرار ── */}
             {correct === true ? (
-              <div style={{ position:'relative', height: sz.word + 6, display:'flex', alignItems:'center', justifyContent:'center', overflow:'visible' }}>
+              <CompletedWord key={cur} text={fullWordDisplay} compact={compact}>
                 {[
                   { em:'✨', an:'lcSpark0', delay:'0ms',   fs:'1.3rem' },
                   { em:'⭐', an:'lcSpark1', delay:'80ms',  fs:'1.1rem' },
@@ -1036,32 +1083,9 @@ export default function LetterCatcherGame() {
                     animation: `${p.an} .9s ${p.delay} cubic-bezier(.25,.46,.45,.94) both`,
                   }}>{p.em}</span>
                 ))}
-                <div style={{
-                  display:'inline-flex', alignItems:'center', height: sz.word + 6, boxSizing:'border-box',
-                  background:'linear-gradient(135deg,#F2FBF6,#DCF3E8)',
-                  borderRadius:22, padding:'0 26px',
-                  border:'2.5px solid #6CCFA0',
-                  animation:'lcGlowPulse 1.8s .4s ease-in-out infinite, lcWordReveal .55s cubic-bezier(.34,1.56,.64,1) both',
-                }}>
-                  <div style={{
-                    fontSize: compact ? '2.1rem' : (fullWordDisplay.length > 6 ? '2.3rem' : '2.7rem'),
-                    fontWeight:900,
-                    fontFamily:'inherit',
-                    direction:'rtl',
-                    background:'linear-gradient(90deg,#E8B84B,#2ABB7A,#1A2B4A,#7C5CD9,#E8B84B)',
-                    backgroundSize:'300% auto',
-                    WebkitBackgroundClip:'text',
-                    WebkitTextFillColor:'transparent',
-                    backgroundClip:'text',
-                    lineHeight:1.3,
-                    animation:'lcWordShimmer 2.5s .55s linear infinite',
-                  }}>
-                    {fullWordDisplay}
-                  </div>
-                </div>
-              </div>
+              </CompletedWord>
             ) : (
-              <div key={`row-${cur}-${tried.length}`} ref={setWordRowEl} style={{ ...S.wordRow, ...(isPhrase ? compactRowStyle : null), minHeight: sz.word + 6, animation: tried.length ? 'lcWrongShake .45s cubic-bezier(.36,.07,.19,.97) both' : 'none' }}>
+              <div key={`row-${cur}-${tried.length}`} ref={setWordRowEl} style={{ ...S.wordRow, ...(isPhrase ? compactRowStyle : null), minHeight: compact ? 76 : 92, animation: tried.length ? 'lcWrongShake .45s cubic-bezier(.36,.07,.19,.97) both' : 'none' }}>
                 {mi < 0 ? (
                   <>
                     <span style={{ ...S.wordLetterBox, height: sz.word }}>{w.word}</span>
@@ -1299,6 +1323,23 @@ const S = {
   emojiBox: {
     width: 150, height: 150, background: '#FAF7F2', borderRadius: 20,
     fontSize: '4.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  },
+  completedWordRow: {
+    position: 'relative', width: '100%', minWidth: 0, flexShrink: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible',
+    fontFamily: 'inherit', fontWeight: 700,
+  },
+  completedWordFrame: {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: 'max-content', minWidth: 'min(132px, 100%)', maxWidth: '100%', boxSizing: 'border-box',
+    padding: '4px 20px', borderRadius: 22, border: '2.5px solid #6CCFA0',
+    background: 'linear-gradient(135deg,#F2FBF6,#DCF3E8)', overflow: 'visible',
+    animation: 'lcGlowPulse 1.8s .4s ease-in-out infinite, lcWordReveal .4s ease-out both',
+  },
+  completedWordText: {
+    display: 'block', flexShrink: 0, fontFamily: 'inherit', fontWeight: 700,
+    color: '#1A2B4A', lineHeight: 1.8, whiteSpace: 'nowrap', textAlign: 'center',
+    letterSpacing: 'normal', wordSpacing: 'normal', unicodeBidi: 'isolate', overflow: 'visible',
   },
   wordRow: {
     width: '100%',
