@@ -10,7 +10,8 @@ import { childFetch, getActiveChildTab } from '../../../../lib/child-fetch';
 import { LC_DEFAULT_SETTINGS, LEN_NO_LIMIT, normalizeLcSettings, roundSize, pickRotation, markSeen } from '../../../../lib/letter-catcher';
 import { freshFetch } from '../../../../lib/fresh-fetch';
 import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useElementWidth } from '../../../../lib/fit-tiles';
-import { stripDia, isGap, getLetterForm, toContextual } from '../../../../lib/letter-forms';
+import { stripDia, getLetterForm, toContextual } from '../../../../lib/letter-forms';
+import { letterCatcherTiles, contextualTile } from '../../../../lib/letter-catcher-tiles';
 import { speakArabic } from '../../../../lib/speak-arabic';
 import { playCelebrationVideo } from '../../../../lib/celebration-video';
 import GameScene, { SceneThumb } from '../../../../components/GameScene';
@@ -23,19 +24,19 @@ const SettingsPanel = dynamic(() => import('./_teacher-panel'), { ssr: false, lo
 
 /* ────────────────────────── fallback words (instant start) ─── */
 const LC_FALLBACK = [
-  { id:'f1',  word:'قِطَّة',   missing_letter:'ق', options:['ق','ك','ع','ج','ح'], emoji:'🐱', topic:'الحيوانات', grade_level:1, category:'الحيوانات' },
-  { id:'f2',  word:'كَلْب',   missing_letter:'ك', options:['ك','ق','ع','غ','ج'], emoji:'🐶', topic:'الحيوانات', grade_level:1, category:'الحيوانات' },
-  { id:'f3',  word:'بَيْت',   missing_letter:'ب', options:['ب','ت','ن','ف','ث'], emoji:'🏠', topic:'المنزل',    grade_level:1, category:'المنزل' },
-  { id:'f4',  word:'شَمْس',   missing_letter:'ش', options:['ش','س','ص','ض','ز'], emoji:'☀️', topic:'الطبيعة',   grade_level:1, category:'الطبيعة' },
-  { id:'f5',  word:'نَجْم',   missing_letter:'ن', options:['ن','م','ب','ت','ي'], emoji:'⭐', topic:'الطبيعة',   grade_level:1, category:'الطبيعة' },
-  { id:'f6',  word:'سَمَك',   missing_letter:'س', options:['س','ش','ص','ث','ز'], emoji:'🐟', topic:'الحيوانات', grade_level:1, category:'الحيوانات' },
-  { id:'f7',  word:'تُفَّاح', missing_letter:'ت', options:['ت','ث','ن','ب','ف'], emoji:'🍎', topic:'الفواكه',   grade_level:1, category:'الفواكه' },
-  { id:'f8',  word:'مَاء',    missing_letter:'م', options:['م','ن','ب','ه','و'], emoji:'💧', topic:'الطبيعة',   grade_level:1, category:'الطبيعة' },
-  { id:'f9',  word:'كِتَاب',  missing_letter:'ك', options:['ك','ق','ع','غ','خ'], emoji:'📚', topic:'المدرسة',   grade_level:1, category:'المدرسة' },
-  { id:'f10', word:'قَمَر',   missing_letter:'ق', options:['ق','ك','ع','غ','خ'], emoji:'🌙', topic:'الطبيعة',   grade_level:1, category:'الطبيعة' },
+  { id:'f1',  word:'قِطَّةٌ', missing_letter:'ق', options:['ق','ك','ع','ج','ح'], emoji:'🐱', topic:'الحيوانات', grade_level:1, category:'الحيوانات' },
+  { id:'f2',  word:'كَلْبٌ',  missing_letter:'ك', options:['ك','ق','ع','غ','ج'], emoji:'🐶', topic:'الحيوانات', grade_level:1, category:'الحيوانات' },
+  { id:'f3',  word:'بَيْتٌ',  missing_letter:'ب', options:['ب','ت','ن','ف','ث'], emoji:'🏠', topic:'المنزل',    grade_level:1, category:'المنزل' },
+  { id:'f4',  word:'شَمْسٌ',  missing_letter:'ش', options:['ش','س','ص','ض','ز'], emoji:'☀️', topic:'الطبيعة',   grade_level:1, category:'الطبيعة' },
+  { id:'f5',  word:'نَجْمٌ',  missing_letter:'ن', options:['ن','م','ب','ت','ي'], emoji:'⭐', topic:'الطبيعة',   grade_level:1, category:'الطبيعة' },
+  { id:'f6',  word:'سَمَكٌ',  missing_letter:'س', options:['س','ش','ص','ث','ز'], emoji:'🐟', topic:'الحيوانات', grade_level:1, category:'الحيوانات' },
+  { id:'f7',  word:'تُفَّاحٌ', missing_letter:'ت', options:['ت','ث','ن','ب','ف'], emoji:'🍎', topic:'الفواكه', grade_level:1, category:'الفواكه' },
+  { id:'f8',  word:'مَاءٌ',   missing_letter:'م', options:['م','ن','ب','ه','و'], emoji:'💧', topic:'الطبيعة',   grade_level:1, category:'الطبيعة' },
+  { id:'f9',  word:'كِتَابٌ', missing_letter:'ك', options:['ك','ق','ع','غ','خ'], emoji:'📚', topic:'المدرسة',   grade_level:1, category:'المدرسة' },
+  { id:'f10', word:'قَمَرٌ',  missing_letter:'ق', options:['ق','ك','ع','غ','خ'], emoji:'🌙', topic:'الطبيعة',   grade_level:1, category:'الطبيعة' },
 ];
 
-const LC_CACHE_KEY = 'lc_words_cache_v2';
+const LC_CACHE_KEY = 'lc_words_cache_v3';
 const LC_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 function getCachedWords() {
@@ -547,9 +548,7 @@ export default function LetterCatcherGame() {
   const buildQueue = useCallback((words, optCount) => {
     return words.map(w => {
       const correctLetter = stripDia(w.missing_letter);
-      const strippedW     = stripDia(w.word);
-      const missingIdx    = strippedW.indexOf(correctLetter);
-      const form          = missingIdx >= 0 ? getLetterForm(strippedW, missingIdx) : 'isolated';
+      const form          = letterCatcherTiles(w).missingForm;
       const pool2         = (w.options || []).filter(Boolean).filter(o => stripDia(o) !== correctLetter);
       const distractors   = shuffle(pool2).slice(0, optCount - 1);
       const opts          = shuffle([w.missing_letter, ...distractors]);
@@ -963,33 +962,13 @@ export default function LetterCatcherGame() {
   const w    = queue[cur];
   const opts = w._opts || [];
 
-  // Resolve blank position: use explicit '_' marker if present, else fall back to indexOf
-  let sw, mi;
-  if ((w.word || '').includes('_')) {
-    const [bef, aft] = w.word.split('_');
-    const bs = stripDia(bef  || '');
-    const as = stripDia(aft  || '');
-    sw = bs + stripDia(w.missing_letter) + as;
-    mi = bs.length;
-  } else {
-    sw = stripDia(w.word);
-    mi = sw.indexOf(stripDia(w.missing_letter));
-  }
+  // الحركات تبقى مع حرفها داخل مربّع واحد؛ موضع الفراغ وأشكال الوصل تُحسب بالحروف فقط.
+  const { letters, baseLetters, missingIndex: mi, letterGroups, fullWord: fullWordDisplay } = letterCatcherTiles(w);
   const isLast        = cur + 1 >= queue.length;
-  const fullWordDisplay = w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word;
 
   // عبارة من كلمتين أو أكثر (مثل «حمار وحشي»): كل كلمة مجموعة مربعات مستقلة
   // وبينها مسافة — لا مربع فارغ للمسافة يبدو كأنه حرف ناقص، ولا تنكسر الكلمة
   // الواحدة على سطرين
-  const wordGroups = [[]];
-  sw.split('').forEach((ch, i) => {
-    if (isGap(ch) && i !== mi) {
-      if (wordGroups[wordGroups.length - 1].length) wordGroups.push([]);
-    } else {
-      wordGroups[wordGroups.length - 1].push(i);
-    }
-  });
-  const letterGroups = wordGroups.filter(g => g.length);
   // اسم من كلمتين فأكثر: مربعات أصغر في سطر واحد (lib/fit-tiles.js). الكلمة الواحدة كما هي.
   const isPhrase = mi >= 0 && letterGroups.length > 1;
   const tile = isPhrase
@@ -1135,17 +1114,17 @@ export default function LetterCatcherGame() {
                 ) : letterGroups.map((group, gi) => (
                   <span key={gi} style={isPhrase ? { ...S.wordGroup, ...compactGroupStyle } : S.wordGroup}>
                     {group.map(i => {
-                      const form = getLetterForm(sw, i);
+                      const form = getLetterForm(baseLetters, i);
                       if (i === mi) {
                         return (
                           <span key={i} style={{ ...S.blank, height: sz.word, ...tile, ...(correct === null ? S.blankOpen : S.blankShown) }}>
-                            {correct !== null ? toContextual(w.missing_letter, form) : '؟'}
+                            {correct !== null ? contextualTile(letters[i], form) : '؟'}
                           </span>
                         );
                       }
                       return (
                         <span key={i} style={tile ? { ...S.wordLetterBox, height: sz.word, ...tile } : { ...S.wordLetterBox, height: sz.word }}>
-                          {toContextual(sw[i], form)}
+                          {contextualTile(letters[i], form)}
                         </span>
                       );
                     })}
