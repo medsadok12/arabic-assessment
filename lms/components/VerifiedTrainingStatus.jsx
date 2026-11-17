@@ -1,7 +1,7 @@
 'use client';
-export default function VerifiedTrainingStatus({ training }) {
+export default function VerifiedTrainingStatus({ training, compact = false }) {
   if (!training.note && !training.saved) return null;
-  return <div role="status" style={{ width: '100%', maxWidth: 560, margin: '8px auto', padding: '10px 12px', boxSizing: 'border-box', borderRadius: 12, background: '#FAF7F1', color: '#1A2B4A', fontSize: '.85rem', lineHeight: 1.8, textAlign: 'center' }}>
+  return <div role="status" style={{ width: '100%', maxWidth: 560, margin: compact ? '2px auto' : '8px auto', padding: compact ? '4px 10px' : '10px 12px', boxSizing: 'border-box', borderRadius: 12, background: '#FAF7F1', color: '#1A2B4A', fontSize: compact ? '.78rem' : '.85rem', lineHeight: compact ? 1.5 : 1.8, textAlign: 'center', flexShrink: compact ? 0 : undefined }}>
     {training.note}
     {training.summary?.complete&&training.game!=='word_wheel'&&<div>من أول محاولة: {training.summary.correct} من {training.summary.total}</div>}
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>

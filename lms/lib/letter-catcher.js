@@ -10,7 +10,7 @@ export const LC_GAME_ID = 'letter-catcher';
 /* 0 = كل كلمات المجموعة في جولة واحدة */
 export const WORDS_PER_ROUND_CHOICES = [5, 10, 15, 20, 30, 0];
 export const OPTIONS_COUNT_CHOICES = [3, 4, 5];
-export const LC_DEFAULT_SETTINGS = { words_per_round: 20, options_count: 5 };
+export const LC_DEFAULT_SETTINGS = { words_per_round: 20, options_count: 5, progress_motion: true };
 
 /* أقصى قيمة لمنزلق «طول الكلمة» في معاينة المعلم = بلا حد */
 export const LEN_NO_LIMIT = 20;
@@ -23,6 +23,7 @@ export function normalizeLcSettings(raw) {
   return {
     words_per_round: WORDS_PER_ROUND_CHOICES.includes(wpr) ? wpr : LC_DEFAULT_SETTINGS.words_per_round,
     options_count: OPTIONS_COUNT_CHOICES.includes(opt) ? opt : LC_DEFAULT_SETTINGS.options_count,
+    progress_motion: typeof s.progress_motion === 'boolean' ? s.progress_motion : LC_DEFAULT_SETTINGS.progress_motion,
   };
 }
 
@@ -31,7 +32,11 @@ export function validateLcSettings(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
   if (!WORDS_PER_ROUND_CHOICES.includes(Number(s.words_per_round))) return null;
   if (!OPTIONS_COUNT_CHOICES.includes(Number(s.options_count))) return null;
-  return { words_per_round: Number(s.words_per_round), options_count: Number(s.options_count) };
+  if (Object.prototype.hasOwnProperty.call(s, 'progress_motion') && typeof s.progress_motion !== 'boolean') return null;
+  return {
+    words_per_round: Number(s.words_per_round), options_count: Number(s.options_count),
+    progress_motion: Object.prototype.hasOwnProperty.call(s, 'progress_motion') ? s.progress_motion : LC_DEFAULT_SETTINGS.progress_motion,
+  };
 }
 
 /* عدد كلمات الجولة الفعلي لمجموعة فيها total كلمة */

@@ -81,9 +81,21 @@ describe('settings', () => {
     expect(roundSize(4, 10)).toBe(4);
   });
   it('normalize يعيد القيم غير المعروفة للافتراضي، وvalidate يرفضها', () => {
-    expect(normalizeLcSettings({ words_per_round: 7, options_count: 9 })).toEqual({ words_per_round: 20, options_count: 5 });
-    expect(normalizeLcSettings({ words_per_round: 0, options_count: 3 })).toEqual({ words_per_round: 0, options_count: 3 });
+    expect(normalizeLcSettings({ words_per_round: 7, options_count: 9 })).toEqual({ words_per_round: 20, options_count: 5, progress_motion: true });
+    expect(normalizeLcSettings({ words_per_round: 0, options_count: 3 })).toEqual({ words_per_round: 0, options_count: 3, progress_motion: true });
     expect(validateLcSettings({ words_per_round: 7, options_count: 4 })).toBeNull();
-    expect(validateLcSettings({ words_per_round: '15', options_count: '4' })).toEqual({ words_per_round: 15, options_count: 4 });
+    expect(validateLcSettings({ words_per_round: '15', options_count: '4' })).toEqual({ words_per_round: 15, options_count: 4, progress_motion: true });
+  });
+  it('defaults old settings to motion enabled and preserves an explicit disabled state', () => {
+    expect(normalizeLcSettings(null).progress_motion).toBe(true);
+    const stored = { words_per_round: 0, options_count: 3, progress_motion: false };
+    expect(normalizeLcSettings(stored)).toEqual(stored);
+    expect(validateLcSettings(stored)).toEqual(stored);
+    expect(validateLcSettings({ ...stored, progress_motion: true })).toEqual({ ...stored, progress_motion: true });
+  });
+  it.each(['false', 0, 1, null, undefined, {}, []])('rejects a supplied non-boolean motion value %j', progress_motion => {
+    const raw = { words_per_round: 15, options_count: 4, progress_motion };
+    expect(validateLcSettings(raw)).toBeNull();
+    expect(normalizeLcSettings(raw)).toEqual({ words_per_round: 15, options_count: 4, progress_motion: true });
   });
 });

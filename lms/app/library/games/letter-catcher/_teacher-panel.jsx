@@ -3,7 +3,7 @@
 import { useState, useRef, Fragment } from 'react';
 import { keepRowInPlace, returnRow, revealBelow, flashRow } from '../../../../lib/edit-scroll';
 import AudioUploadButton from '../../../../components/AudioUploadButton';
-import { WORDS_PER_ROUND_CHOICES, OPTIONS_COUNT_CHOICES, LEN_NO_LIMIT } from '../../../../lib/letter-catcher';
+import { WORDS_PER_ROUND_CHOICES, OPTIONS_COUNT_CHOICES, LEN_NO_LIMIT, normalizeLcSettings } from '../../../../lib/letter-catcher';
 
 /* ── constants (duplicated here so this chunk loads independently) ── */
 const TOPICS = ['الحيوانات', 'الأشكال', 'الأسرة', 'الألوان', 'الفواكه', 'المدرسة', 'الطقس', 'الأرقام'];
@@ -532,10 +532,11 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
 /* ════════════════════════ SettingsPanel (default export) ════════════════════════ */
 export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved, onClose, dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
   const [cfgOpen, setCfgOpen] = useState(false);
-  const [draft,   setDraft]   = useState(settings);
+  const [draft,   setDraft]   = useState(() => normalizeLcSettings(settings));
   const [stSaving, setStSaving] = useState(false);
   const [stMsg,   setStMsg]   = useState(null);
-  const dirty = draft.words_per_round !== settings.words_per_round || draft.options_count !== settings.options_count;
+  const savedSettings = normalizeLcSettings(settings);
+  const dirty = draft.words_per_round !== savedSettings.words_per_round || draft.options_count !== savedSettings.options_count || draft.progress_motion !== savedSettings.progress_motion;
 
   const saveSettings = async () => {
     setStSaving(true); setStMsg(null);
@@ -545,6 +546,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || 'فشل الحفظ');
+      setDraft(normalizeLcSettings(json.settings));
       onSettingsSaved?.(json.settings);
       setStMsg({ ok: true, text: '✅ حُفظت — تُطبَّق على كل الطلاب من جولتهم القادمة' });
     } catch (e) { setStMsg({ ok: false, text: `❌ ${e.message}` }); }
@@ -600,6 +602,13 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
                     </button>
                   ))}
                 </div>
+
+                <label style={{ display:'flex', alignItems:'center', gap:10, minHeight:44, marginBottom:12, fontSize:'.88rem', fontWeight:700, color:'#374151', cursor:'pointer' }}>
+                  <input type="checkbox" checked={draft.progress_motion}
+                    onChange={e => { setDraft(d => ({ ...d, progress_motion: e.target.checked })); setStMsg(null); }}
+                    style={{ width:20, height:20, accentColor:'#C59A2E', flexShrink:0 }} />
+                  حركة مسار التقدّم
+                </label>
 
                 <div style={{ fontSize:'.78rem', color:'#6b7280', marginBottom:10, lineHeight:1.6 }}>
                   🔄 الكلمات تُختار بالتدوير: لا تتكرر كلمة على الطفل حتى يمرّ على كل كلمات المجموعة، ثم تبدأ دورة جديدة.

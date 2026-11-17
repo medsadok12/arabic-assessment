@@ -1,6 +1,7 @@
 'use client';
 import useVerifiedTraining from '../../../../lib/use-verified-training';
 import VerifiedTrainingStatus from '../../../../components/VerifiedTrainingStatus';
+import LetterCatcherProgress from '../../../../components/LetterCatcherProgress';
 
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
@@ -277,6 +278,7 @@ export default function LetterCatcherGame() {
   const [totalPoints,   setTotalPoints]   = useState(0);
   const [ptPopupKey,    setPtPopupKey]    = useState(0);
   const [ptPopupActive, setPtPopupActive] = useState(false);
+  const [ptPopupAmount, setPtPopupAmount] = useState(0);
   const [catResults,    setCatResults]    = useState({});  // category → {correct,wrong,total}
   const [currentUser,   setCurrentUser]   = useState(null);
   /* عرض صف مربعات الكلمة — لتصغير مربعات الاسم المكوّن من كلمتين ليسع سطراً واحداً */
@@ -287,10 +289,11 @@ export default function LetterCatcherGame() {
   /* شاشة اللعب بلا تمرير: الصورة وحدها تكبر وتصغر لتملأ ما بقي من الشاشة. نقيس الفراغ الفعلي
      بعد الرسم (يشمل حواف الشاشة الآمنة في التطبيق المثبّت وشريط المتصفح) ثم نعدّل الصورة بقدره */
   const stageRef  = useRef(null);
+  const columnRef = useRef(null);
   const middleRef = useRef(null);
   const cardRef   = useRef(null);
   const [imgH, setImgH] = useState(150);
-  const imgMax = vh >= 1000 ? 280 : 190; // الآيباد: صورة أكبر بدل فراغ حول البطاقة
+  const imgMax = vh >= 1000 ? 340 : 230; // الصورة أكبر بنحو 20% حين تسمح مساحة الشاشة
   useIsoLayoutEffect(() => {
     if (phase !== 'playing') return;
     const fit = () => {
@@ -304,7 +307,7 @@ export default function LetterCatcherGame() {
     };
     fit();
     const ro = new ResizeObserver(fit);
-    [stageRef.current, cardRef.current].forEach(el => el && ro.observe(el));
+    [stageRef.current, columnRef.current, middleRef.current, cardRef.current].forEach(el => el && ro.observe(el));
     return () => ro.disconnect();
   }, [phase, imgMax]);
 
@@ -615,7 +618,7 @@ export default function LetterCatcherGame() {
       setChosen(opt); setCorrect(true);
       if (firstTry) {
         setScore(j.summary.correct);
-        if (j.awarded > 0) setPtPopupKey(k => k + 1);
+        if (j.awarded > 0) { setPtPopupAmount(j.awarded); setPtPopupKey(k => k + 1); }
         if (j.awarded > 0) setPtPopupActive(true);
         setTimeout(() => setPtPopupActive(false), 1200);
 
@@ -1041,42 +1044,20 @@ export default function LetterCatcherGame() {
       {/* في «العب الكل» يتغير العالم مع مجموعة كل كلمة */}
       <GameScene category={catLabel} />
 
-      <div style={S.stageColumn}>
-        <VerifiedTrainingStatus training={verified} />
-        {/* الترويسة: رجوع + العنوان + النقاط، وتحتها التقدم */}
-        <div style={S.glassHeader}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              onClick={() => { stopWordAudio(); setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]); }}
-              style={S.roundBlueBtn}
-              aria-label="رجوع إلى المجموعات"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
-            </button>
-            <div style={S.barTitle}>
-              صَيَّادُ الْحُرُوفِ{catLabel ? <span style={{ color: '#4A5A75', fontWeight: 800 }}> — {catLabel}</span> : null}
-            </div>
-            <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-              <span style={S.pointsPill}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="#E8B84B" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" /></svg>
-                {totalPoints.toLocaleString('en-US')}
-              </span>
-              {ptPopupActive && (
-                <span key={ptPopupKey} style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', color: '#E8B84B', fontWeight: 900, fontSize: '1.05rem', pointerEvents: 'none', whiteSpace: 'nowrap', animation: 'ptFloatUp 1.1s ease forwards', textShadow: '0 1px 6px rgba(26,43,74,.45)' }}>+5 ⭐</span>
-              )}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 6px' }}>
-            <span style={S.qCount}>السؤال {cur + 1} من {queue.length}</span>
-            <div style={S.bar}>
-              <div style={{ ...S.barFill, width: `${((cur + 1) / queue.length) * 100}%` }} />
-            </div>
-            <span style={S.scoreChip} aria-label={`إجابات صحيحة: ${score}`}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#E8B84B" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" /></svg>
-              {score}
-            </span>
-          </div>
-        </div>
+      <div ref={columnRef} style={S.stageColumn}>
+        <VerifiedTrainingStatus training={verified} compact />
+        <LetterCatcherProgress
+          category={catLabel}
+          totalPoints={totalPoints}
+          score={score}
+          completed={Math.min(queue.length, cur + (chosen !== null ? 1 : 0))}
+          total={queue.length}
+          motionEnabled={settings.progress_motion}
+          pointsPopupKey={ptPopupKey}
+          showPointsPopup={ptPopupActive}
+          pointsAward={ptPopupAmount}
+          onBack={() => { stopWordAudio(); clearCheer(); setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]); }}
+        />
 
         {/* البطاقة في وسط المساحة المتبقية */}
         <div ref={middleRef} style={S.stageMiddle}>
