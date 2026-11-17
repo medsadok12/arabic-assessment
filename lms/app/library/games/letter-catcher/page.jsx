@@ -149,11 +149,12 @@ function CelebrationPicture({ word, size, cheer, videoRef, onListen }) {
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 // Keep the existing button and usual letter size; fit only an extended choice
-// when its two-sided arms would overflow a narrow phone button.
+// when its two-sided arms would overflow a narrow phone button. Shorten only
+// the outer tips of those arms, without squeezing or resizing the letter body.
 function AnswerChoiceLetter({ letter, form, baseSize }) {
   const text = extendedChoiceLetter(letter, form);
   const ref = useRef(null);
-  const [fontSize, setFontSize] = useState(null);
+  const [fit, setFit] = useState(null);
   useIsoLayoutEffect(() => {
     const button = ref.current?.parentElement;
     if (!button) return;
@@ -169,7 +170,13 @@ function AnswerChoiceLetter({ letter, form, baseSize }) {
       const metrics = context.measureText(text);
       const width = Math.max(1, metrics.width, (metrics.actualBoundingBoxLeft || 0) + (metrics.actualBoundingBoxRight || 0));
       const fitted = size * Math.min(1, available / width);
-      setFontSize(previous => previous !== null && Math.abs(previous - fitted) < .1 ? previous : fitted);
+      const trim = context.measureText('ــ').width * (fitted / size) * .18;
+      const nextFit = {
+        size: fitted,
+        right: text.startsWith('ــ') ? trim : 0,
+        left: text.endsWith('ــ') ? trim : 0,
+      };
+      setFit(previous => previous && Object.keys(nextFit).every(key => Math.abs(previous[key] - nextFit[key]) < .1) ? previous : nextFit);
     };
     measure();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
@@ -178,7 +185,7 @@ function AnswerChoiceLetter({ letter, form, baseSize }) {
     document.fonts?.addEventListener?.('loadingdone', measure);
     return () => { active = false; observer?.disconnect(); document.fonts?.removeEventListener?.('loadingdone', measure); };
   }, [text, baseSize]);
-  return <span ref={ref} style={{ display: 'inline-block', minWidth: 0, maxWidth: '100%', fontSize: fontSize ?? undefined, lineHeight: 1.4, whiteSpace: 'nowrap', direction: 'rtl', unicodeBidi: 'isolate' }}>{text}</span>;
+  return <span ref={ref} style={{ display: 'inline-block', minWidth: 0, maxWidth: '100%', fontSize: fit?.size ?? undefined, lineHeight: 1.4, whiteSpace: 'nowrap', direction: 'rtl', unicodeBidi: 'isolate', clipPath: fit && (fit.right || fit.left) ? `inset(-100% ${fit.right ? `${fit.right}px` : '-100%'} -100% ${fit.left ? `${fit.left}px` : '-100%'})` : undefined, transform: fit ? `translateX(${(fit.right - fit.left) / 2}px)` : undefined }}>{text}</span>;
 }
 
 /* مساحة الحركات جزء من الكلمة. نقيس خط النسخ نفسه بعد تحميله، لا عدد محارف Unicode،
