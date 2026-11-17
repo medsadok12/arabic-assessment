@@ -963,7 +963,7 @@ export default function LetterCatcherGame() {
   const opts = w._opts || [];
 
   // الحركات تبقى مع حرفها داخل مربّع واحد؛ موضع الفراغ وأشكال الوصل تُحسب بالحروف فقط.
-  const { letters, baseLetters, missingIndex: mi, letterGroups, fullWord: fullWordDisplay } = letterCatcherTiles(w);
+  const { displayLetters: letters, baseLetters, missingIndex: mi, letterGroups, displayWord: fullWordDisplay } = letterCatcherTiles(w);
   const isLast        = cur + 1 >= queue.length;
 
   // عبارة من كلمتين أو أكثر (مثل «حمار وحشي»): كل كلمة مجموعة مربعات مستقلة
@@ -1108,7 +1108,7 @@ export default function LetterCatcherGame() {
               <div key={`row-${cur}-${tried.length}`} ref={setWordRowEl} style={{ ...S.wordRow, ...(isPhrase ? compactRowStyle : null), minHeight: compact ? 76 : 92, animation: tried.length ? 'lcWrongShake .45s cubic-bezier(.36,.07,.19,.97) both' : 'none' }}>
                 {mi < 0 ? (
                   <>
-                    <span style={{ ...S.wordLetterBox, height: sz.word }}>{w.word}</span>
+                    <span style={{ ...S.wordLetterBox, height: sz.word }}>{fullWordDisplay}</span>
                     <span style={{ ...S.blank, ...S.blankOpen, height: sz.word }}>؟</span>
                   </>
                 ) : letterGroups.map((group, gi) => (

@@ -1,6 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import { getLetterForm, ZWJ } from './letter-forms';
-import { contextualTile, letterCatcherTiles, splitVocalizedLetters } from './letter-catcher-tiles';
+import { contextualTile, letterCatcherTiles, letterCatcherDisplayWord, splitVocalizedLetters } from './letter-catcher-tiles';
+
+describe('Letter Catcher long-vowel display convention', () => {
+  it.each([
+    ['زَرَافَةٌ', 'زَرافَةٌ'], ['فِيلٌ', 'فيلٌ'], ['عُصْفُورٌ', 'عُصْفورٌ'],
+    ['سِنْجَابٌ', 'سِنْجابٌ'], ['حِمَارٌ وَحْشِيٌّ', 'حِمارٌ وَحْشِيٌّ'],
+    ['سَيَّارَةٌ', 'سَيّارَةٌ'], ['رَمَى', 'رَمى'], ['كِتَابًا', 'كِتابًا'],
+    ['مُوسَى', 'موسى'], ['حَيَوَانٌ', 'حَيَوانٌ'], ['سُؤَالٌ', 'سُؤالٌ'],
+  ])('formats %s as %s', (source, display) => {
+    expect(letterCatcherDisplayWord(source)).toBe(display);
+    expect(letterCatcherDisplayWord(source.normalize('NFD'))).toBe(display.normalize('NFD'));
+  });
+
+  it.each(['بَيْتٌ', 'ثَوْرٌ', 'قُوَّةٌ', 'نَبِيٌّ', 'هِيَ', 'رَأْسٌ', 'سَأَلَ', 'فَتًى', 'قِطٌّ'])('preserves consonants, tanwin and other marks in %s', word => {
+    expect(letterCatcherDisplayWord(word)).toBe(word);
+  });
+
+  it('uses the same display in tiles and the completed word while retaining the source', () => {
+    const result = letterCatcherTiles({ word: 'سِنْ_ابٌ', missing_letter: 'جَ' });
+    expect(result.fullWord).toBe('سِنْجَابٌ');
+    expect(result.displayWord).toBe('سِنْجابٌ');
+    expect(result.letters[result.missingIndex]).toBe('جَ');
+    expect(result.displayLetters[result.missingIndex]).toBe('ج');
+    expect(result.displayLetters.join('')).toBe(result.displayWord);
+    expect(result.displayLetters).toHaveLength(result.letters.length);
+  });
+});
 
 describe('Letter Catcher vocalized tiles', () => {
   it('keeps shadda, vowels, tanwin and dagger alif attached to a single base letter', () => {

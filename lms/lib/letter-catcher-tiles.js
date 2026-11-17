@@ -15,6 +15,20 @@ export function splitVocalizedLetters(text = '') {
   return letters;
 }
 
+// Mohamed's reading convention: the plain madd letter already indicates the long
+// vowel, so omit only its matching short vowel on the preceding letter. Keep the
+// fully vocalized source for speech, editing and answer verification.
+export function letterCatcherDisplayWord(text = '') {
+  const letters = splitVocalizedLetters(text);
+  const shortVowel = { 'ا': '\u064e', 'ى': '\u064e', 'و': '\u064f', 'ي': '\u0650' };
+  return letters.map((letter, index) => {
+    const next = letters[index + 1];
+    const vowel = shortVowel[next];
+    // A marked waw/ya is not a plain madd: preserve بَيْتٌ، ثَوْرٌ، قُوَّةٌ، نَبِيٌّ.
+    return vowel ? letter.replace(vowel, '') : letter;
+  }).join('');
+}
+
 export function letterCatcherTiles({ word = '', missing_letter = '' }) {
   const marker = word.indexOf('_');
   const fullWord = marker < 0 ? word : word.replace('_', missing_letter);
@@ -32,8 +46,10 @@ export function letterCatcherTiles({ word = '', missing_letter = '' }) {
     } else group.push(index);
   });
   if (group.length) letterGroups.push(group);
+  const displayWord = letterCatcherDisplayWord(fullWord);
   return {
     fullWord, letters, baseLetters, missingIndex, letterGroups,
+    displayWord, displayLetters: splitVocalizedLetters(displayWord),
     missingForm: missingIndex < 0 ? 'isolated' : getLetterForm(baseLetters, missingIndex),
   };
 }
