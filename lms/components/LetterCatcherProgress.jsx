@@ -79,7 +79,7 @@ const styles = `
 .lc-progress-points{display:inline-flex;align-items:center;gap:5px;direction:ltr;white-space:nowrap;padding:5px 11px;border-radius:999px;background:#1a2b4a;color:#fff;font-size:1.1rem;font-weight:900;line-height:1.4;font-variant-numeric:tabular-nums}
 .lc-progress-points svg{color:#e8b84b;flex-shrink:0}
 .lc-progress-bottom{height:32px;display:flex;align-items:center;gap:8px;min-width:0}
-.lc-progress-counter{flex-shrink:0;white-space:nowrap;font-size:.82rem;line-height:1.4;color:#586781}
+.lc-progress-counter{flex-shrink:0;white-space:nowrap;font-size:.88rem;line-height:1.4;color:#586781}
 .lc-progress-counter bdi{font-weight:900;color:#1a2b4a;font-variant-numeric:tabular-nums}
 .lc-progress-trail{position:relative;height:32px;flex:1;min-width:0;overflow:hidden;direction:ltr;isolation:isolate}
 .lc-progress-track{position:absolute;inset:0 13px 0 22px}
@@ -95,7 +95,7 @@ const styles = `
 .lc-progress-score svg{color:#e8b84b;flex-shrink:0}
 .lc-progress-award{position:absolute;left:50%;top:25px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:3px;direction:ltr;z-index:2;color:#b07f1e;font-size:.95rem;font-weight:900;white-space:nowrap;pointer-events:none;animation:lcProgressAward 1.1s ease-out both}
 @keyframes lcProgressAward{from{opacity:1;transform:translate(-50%,0) scale(1.05)}to{opacity:0;transform:translate(-50%,-24px) scale(1)}}
-@media(max-width:520px){.lc-progress{padding-inline:10px;border-radius:23px}.lc-progress-top{gap:7px}.lc-progress-title{font-size:1rem}.lc-progress-points{font-size:1rem;padding-inline:9px}.lc-progress-bottom{gap:6px}.lc-progress-counter,.lc-progress-score{font-size:.76rem}}
+@media(max-width:520px){.lc-progress{padding-inline:10px;border-radius:23px}.lc-progress-top{gap:7px}.lc-progress-title{font-size:1rem}.lc-progress-points{font-size:1rem;padding-inline:9px}.lc-progress-bottom{gap:6px}.lc-progress-counter,.lc-progress-score{font-size:.84rem}}
 .lc-progress[data-motion=off] *{animation:none!important;transition:none!important}
 @media(prefers-reduced-motion:reduce){.lc-progress *{animation:none!important;transition:none!important}}
 `;
