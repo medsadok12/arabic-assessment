@@ -16,6 +16,7 @@ import { letterCatcherTiles, contextualTile, extendedChoiceLetter } from '../../
 import { playLetterCatcherWord } from '../../../../lib/letter-catcher-audio';
 import { preloadLetterCatcherImage, warmLetterCatcherImages } from '../../../../lib/letter-catcher-images';
 import { letterCatcherPictureLayout } from '../../../../lib/letter-catcher-picture';
+import { createLetterCatcherAnswerFeedback, letterCatcherAnswerMatches } from '../../../../lib/letter-catcher-answer-feedback';
 import { playCelebrationVideo } from '../../../../lib/celebration-video';
 import GameScene, { SceneThumb } from '../../../../components/GameScene';
 // بطل الطالب من «عالم الأبطال» يحتفل معه في شاشة النهاية — المكوّن خفيف، وthree.js يُحمَّل عند ظهوره فقط
@@ -312,6 +313,15 @@ export default function LetterCatcherGame() {
   const [preparingPicture, setPreparingPicture] = useState(false);
   const pictureTransition = useRef(0);
   const nextInFlight = useRef(false);
+  const answerFeedback = useRef(null);
+  if (!answerFeedback.current) answerFeedback.current = createLetterCatcherAnswerFeedback();
+  const confirmedAnswer = useRef(false);
+  const [answerConfirmed, setAnswerConfirmed] = useState(false);
+  const resetAnswerFeedback = useCallback(() => {
+    answerFeedback.current.invalidate();
+    confirmedAnswer.current = false;
+    setAnswerConfirmed(false);
+  }, []);
   /* محاولة ثانية (صفر إحباط): الحرف الخطأ الأول يبهت ويجرّب الطفل مرة أخرى قبل كشف الجواب.
      النقاط والنتيجة للمحاولة الأولى فقط — فتبقى نتائج المجموعة صادقة */
   const [tried,      setTried]      = useState([]);
@@ -431,10 +441,7 @@ export default function LetterCatcherGame() {
       fadeMs: CHEER_FADE,
     });
   }, [clearCheer, stopWordAudio]);
-  const preparedWord = useRef(null);
-  useEffect(()=>()=>{preparedWord.current?.audio.pause();preparedWord.current=null;},[]);
   const celebrate = useCallback((wd) => {
-    const prepared=preparedWord.current;preparedWord.current=null;
     const run = ++cheerRun.current;
     const text = fullWordOf(wd);
     stopWordAudio();
@@ -453,7 +460,6 @@ export default function LetterCatcherGame() {
     };
     wordPlayback.current = playLetterCatcherWord({
       text, url: wd.audio_url || ttsUrl(text),
-      audio: prepared?.id === String(wd.id) ? prepared.audio : undefined,
       onEnd: afterWord,
     });
   }, [stopWordAudio, startFahim]);
@@ -474,7 +480,10 @@ export default function LetterCatcherGame() {
       warmLetterCatcherImages(queue, cur);
     }
   }, [phase, cur, queue]);
-  useEffect(() => () => { pictureTransition.current += 1; nextInFlight.current = false; }, []);
+  useEffect(() => () => {
+    pictureTransition.current += 1; nextInFlight.current = false;
+    answerFeedback.current.invalidate(); confirmedAnswer.current = false;
+  }, []);
 
   /* ── detect teacher/admin role + load user + load past results ── */
   useEffect(() => {
@@ -619,11 +628,13 @@ export default function LetterCatcherGame() {
   const verified = useVerifiedTraining('letter_catcher', {
     onPoints: setTotalPoints,
     onIdentityChange: () => {
+      resetAnswerFeedback();
       pictureTransition.current += 1; nextInFlight.current = false;
       setPreparingPicture(false); setWordFinished(false); stopWordAudio(); clearCheer();
       setPhase('start'); setQueue([]); setScore(0); setCatResults({});
     },
     onStart: async j => {
+      resetAnswerFeedback();
       const transition = ++pictureTransition.current;
       const nextQueue = buildQueue(j.items, settings.options_count);
       const cursor = Math.max(0, j.summary.cursor);
@@ -646,58 +657,70 @@ export default function LetterCatcherGame() {
   };
 
   const pick = useCallback((opt) => {
-    if (chosen !== null || tried.includes(opt) || !verified.canAct()) return;
-    const localWord=queue[cur];
-    if(stripDia(opt)===stripDia(localWord.missing_letter)){
-      preparedWord.current?.audio.pause();
-      const audio=new Audio(localWord.audio_url||ttsUrl(fullWordOf(localWord))),entry={audio,id:String(localWord.id)};preparedWord.current=entry;audio.muted=true;
-      audio.play()?.then(()=>{if(preparedWord.current===entry){audio.pause();try{audio.currentTime=0;}catch{}}}).catch(()=>{});
-      const video = cheerVidRef.current;
-      if (video) {
-        const preparation = {};
-        cheerPreparation.current = preparation;
-        video.muted = true;
-        video.play()?.then(() => {
-          if (cheerPreparation.current !== preparation || fahimOn.current) return;
-          video.pause();
-          try { if (video.currentTime > 0) video.currentTime = 0; } catch {}
-        }).catch(() => {});
-      }
-    }
-    verified.answer(cur, opt, j => {
-    const w        = queue[cur];
-    const isRight  = j.right;
-    const firstTry = tried.length === 0;
-    const fullWord = w.word.includes('_') ? w.word.replace('_', w.missing_letter) : w.word;
-    // الكلمة تُحسب «مرّ عليها» عند أول إجابة — ما لم يصله الطفل يبقى للجولة القادمة
-    if (firstTry) {
-      const { key, ids } = roundRef.current;
-      if (key) writeSeen(key, markSeen(ids, readSeen(key), String(w.id)));
-    }
-    if (isRight) {
-      setChosen(opt); setCorrect(true);
-      if (firstTry) {
-        setScore(j.summary.correct);
-        if (j.awarded > 0) { setPtPopupAmount(j.awarded); setPtPopupKey(k => k + 1); }
-        if (j.awarded > 0) setPtPopupActive(true);
-        setTimeout(() => setPtPopupActive(false), 1200);
-
-      }
-      celebrate(w);
-      return;
-    }
-    // أول خطأ: الكلمة تذهب لبطاقات المراجعة (مرة واحدة)
-    if (firstTry) {
-      childFetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: fullWord, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
-    }
-    const nextTried = [...tried, opt];
-    setTried(nextTried);
-    if (j.questionDone || nextTried.length >= MAX_TRIES) { setChosen(opt); setCorrect(false); setWordFinished(true); }
+    if (chosen !== null || tried.includes(opt) || answerFeedback.current.isPending() || !verified.canAct()) return;
+    const w = queue[cur];
+    answerFeedback.current.begin({ word: w, index: cur, option: opt, tried }, {
+      // Feedback is part of the tap itself. Saving the answer is not a paint/audio gate.
+      onPreview: attempt => {
+        confirmedAnswer.current = false; setAnswerConfirmed(false);
+        if (attempt.localRight) {
+          const video = cheerVidRef.current;
+          if (video) {
+            try {
+              const preparation = {};
+              cheerPreparation.current = preparation;
+              video.muted = true;
+              video.play()?.then(() => {
+                if (cheerPreparation.current !== preparation || fahimOn.current) return;
+                video.pause();
+                try { if (video.currentTime > 0) video.currentTime = 0; } catch {}
+              }).catch(() => {});
+            } catch { /* Optional video preparation must not block the word or saving. */ }
+          }
+          setChosen(opt); setCorrect(true);
+          // Start the actual word once, inside the original gesture (also on Safari).
+          celebrate(w);
+        } else {
+          const nextTried = [...attempt.priorTried, opt];
+          setTried(nextTried);
+          if (nextTried.length >= MAX_TRIES) { setChosen(opt); setCorrect(false); setWordFinished(true); }
+        }
+      },
+      submit: (index, option, settle) => verified.answer(index, option, settle),
+      onConfirmed: (j, attempt) => {
+        confirmedAnswer.current = true; setAnswerConfirmed(true);
+        const firstTry = attempt.priorTried.length === 0;
+        const fullWord = fullWordOf(w);
+        // Persistent results, progress and points remain server-authoritative.
+        if (firstTry) {
+          const { key, ids } = roundRef.current;
+          if (key) writeSeen(key, markSeen(ids, readSeen(key), String(w.id)));
+        }
+        if (j.right) {
+          setChosen(opt); setCorrect(true); setTried(attempt.priorTried);
+          if (firstTry) {
+            setScore(j.summary.correct);
+            if (j.awarded > 0) { setPtPopupAmount(j.awarded); setPtPopupKey(k => k + 1); setPtPopupActive(true); }
+            setTimeout(() => setPtPopupActive(false), 1200);
+          }
+          // A retry/confirmation must not repeat the word or the celebration.
+          if (!attempt.localRight) celebrate(w);
+          return;
+        }
+        if (attempt.localRight) { stopWordAudio(); clearCheer(); }
+        if (firstTry) {
+          childFetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: fullWord, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
+        }
+        const nextTried = [...attempt.priorTried, opt];
+        setTried(nextTried);
+        const done = j.questionDone || nextTried.length >= MAX_TRIES;
+        setChosen(done ? opt : null); setCorrect(done ? false : null); setWordFinished(Boolean(done));
+      },
     });
-  }, [chosen, tried, cur, queue, celebrate, verified]);
+  }, [chosen, tried, cur, queue, celebrate, stopWordAudio, clearCheer, verified]);
 
   const next = useCallback(async () => {
-    if (chosen === null || !wordFinished || nextInFlight.current || verified.busy || verified.pending) return;
+    if (chosen === null || !wordFinished || !confirmedAnswer.current || nextInFlight.current || verified.busy || verified.pending) return;
     nextInFlight.current = true;
     const transition = ++pictureTransition.current;
     stopWordAudio();
@@ -706,11 +729,12 @@ export default function LetterCatcherGame() {
     setPreparingPicture(true);
     if (n < queue.length) await preloadLetterCatcherImage(queue[n]?.image_url);
     if (transition !== pictureTransition.current) return;
+    resetAnswerFeedback();
     nextInFlight.current = false; setPreparingPicture(false); setWordFinished(false);
     stopWordAudio();
     if (n >= queue.length) setPhase('finished');
     else { setCur(n); setChosen(null); setCorrect(null); setTried([]); }
-  }, [cur, queue, chosen, wordFinished, stopWordAudio, clearCheer, verified]);
+  }, [cur, queue, chosen, wordFinished, stopWordAudio, clearCheer, resetAnswerFeedback, verified]);
 
   const restart = () => startGame(selectedCategory);
 
@@ -1018,6 +1042,7 @@ export default function LetterCatcherGame() {
               <button
                 style={S.whiteBtn}
                 onClick={() => {
+                  resetAnswerFeedback();
                   pictureTransition.current += 1; nextInFlight.current = false;
                   setPreparingPicture(false); setWordFinished(false); stopWordAudio(); clearCheer();
                   setPhase('start'); setPendingCategory(undefined); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]);
@@ -1121,13 +1146,14 @@ export default function LetterCatcherGame() {
           category={catLabel}
           totalPoints={totalPoints}
           score={score}
-          completed={Math.min(queue.length, cur + (chosen !== null ? 1 : 0))}
+          completed={Math.min(queue.length, cur + (chosen !== null && answerConfirmed ? 1 : 0))}
           total={queue.length}
           motionEnabled={settings.progress_motion}
           pointsPopupKey={ptPopupKey}
           showPointsPopup={ptPopupActive}
           pointsAward={ptPopupAmount}
           onBack={() => {
+            resetAnswerFeedback();
             pictureTransition.current += 1; nextInFlight.current = false;
             setPreparingPicture(false); setWordFinished(false);
             stopWordAudio(); clearCheer(); setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]);
@@ -1191,7 +1217,7 @@ export default function LetterCatcherGame() {
 
             <div style={{ ...S.optRow, gridTemplateColumns: `repeat(${Math.min(opts.length, 5)}, minmax(0, 1fr))` }}>
               {opts.filter(Boolean).map((opt, idx) => {
-                const isRight  = stripDia(opt) === stripDia(w.missing_letter);
+                const isRight  = letterCatcherAnswerMatches(opt, w.missing_letter);
                 const isTried  = tried.includes(opt);
                 const revealed = chosen !== null;
                 let btn = { ...S.optBtn, maxHeight: sz.opt, fontSize: compact ? '1.95rem' : '2.3rem', borderBottom: `6px solid ${TILE_TINTS[idx % TILE_TINTS.length]}` };
@@ -1201,7 +1227,7 @@ export default function LetterCatcherGame() {
                   else              btn = { ...btn, opacity: 0.35 };
                 } else if (isTried) btn = { ...btn, ...S.optTried };
                 return (
-                  <button key={`${cur}-${opt}-${idx}`} style={btn} onClick={() => pick(opt)} disabled={revealed || isTried} aria-label={`الحرف ${opt}`}>
+                  <button key={`${cur}-${opt}-${idx}`} style={btn} onClick={() => pick(opt)} disabled={revealed || isTried || answerFeedback.current.isPending() || verified.busy || verified.pending} aria-label={`الحرف ${opt}`}>
                     <AnswerChoiceLetter letter={opt} form={w._form || 'isolated'} baseSize={compact ? '1.95rem' : '2.3rem'} />
                   </button>
                 );
@@ -1216,7 +1242,7 @@ export default function LetterCatcherGame() {
           hideMascot={fahimShown}
           text={buddyText}
           action={chosen !== null && wordFinished && (
-            <button style={{ ...S.goldBtn, minHeight: compact ? 50 : 56, flex: 1, opacity: preparingPicture ? .7 : 1 }} onClick={next} disabled={preparingPicture || verified.busy || verified.pending} aria-busy={preparingPicture}>
+            <button style={{ ...S.goldBtn, minHeight: compact ? 50 : 56, flex: 1, opacity: preparingPicture ? .7 : 1 }} onClick={next} disabled={!answerConfirmed || preparingPicture || verified.busy || verified.pending} aria-busy={preparingPicture || !answerConfirmed}>
               {preparingPicture ? 'لَحْظَةٌ…' : isLast ? '🏁 النَّتِيجَةُ النِّهَائِيَّةُ' : 'التَّالِي ←'}
             </button>
           )}
@@ -1448,6 +1474,7 @@ const S = {
   optRow: { display: 'grid', gap: 9, width: '100%', boxSizing: 'border-box' },
   // مربّع يملأ عموده فقط: لا حدّ أدنى للارتفاع — مع aspectRatio كان يوسّع الزر فيخرج الصف عن البطاقة
   optBtn: {
+    touchAction: 'manipulation',
     width: '100%', maxHeight: 92,
     aspectRatio: '1 / 1',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
