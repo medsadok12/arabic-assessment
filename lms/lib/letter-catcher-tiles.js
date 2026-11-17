@@ -62,3 +62,15 @@ export function contextualTile(letter, form) {
   if (form === 'final') return ZWJ + letter;
   return letter;
 }
+
+const CHOICE_DUAL_JOINERS = new Set('بتثجحخسشصضطظعغفقكلمنهيئ');
+const CHOICE_RIGHT_JOINERS = new Set([...CHOICE_DUAL_JOINERS, ...'اأإآٱدذرزوةىؤ']);
+
+// Only answer choices get the two-stroke extension approved in the preview.
+// A distractor such as د in a medial slot must not receive a detached left arm.
+export function extendedChoiceLetter(letter, form) {
+  const base = (letter || '').normalize('NFC').replace(MARKS, '');
+  const before = (form === 'final' || form === 'medial') && CHOICE_RIGHT_JOINERS.has(base);
+  const after = (form === 'initial' || form === 'medial') && CHOICE_DUAL_JOINERS.has(base);
+  return `${before ? 'ــ' : ''}${base}${after ? 'ــ' : ''}`;
+}

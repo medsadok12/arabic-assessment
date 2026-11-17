@@ -1,6 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import { getLetterForm, ZWJ } from './letter-forms';
-import { contextualTile, letterCatcherTiles, letterCatcherDisplayWord, splitVocalizedLetters } from './letter-catcher-tiles';
+import { contextualTile, extendedChoiceLetter, letterCatcherTiles, letterCatcherDisplayWord, splitVocalizedLetters } from './letter-catcher-tiles';
+
+describe('extended answer-choice connectors', () => {
+  it.each([
+    ['لٌ', 'final', 'ــل'], ['ج', 'final', 'ــج'],
+    ['بِ', 'initial', 'بــ'], ['م', 'medial', 'ــمــ'],
+    ['ل', 'isolated', 'ل'],
+  ])('extends only the joining sides of %s in %s form', (letter, form, expected) => {
+    expect(extendedChoiceLetter(letter, form)).toBe(expected);
+  });
+
+  it.each([...'دذرزواأإآؤٱةى'])('does not add a detached left arm to the distractor %s', letter => {
+    expect(extendedChoiceLetter(letter, 'initial')).toBe(letter);
+    expect(extendedChoiceLetter(letter, 'medial')).toBe(`ــ${letter}`);
+    expect(extendedChoiceLetter(letter, 'final')).toBe(`ــ${letter}`);
+  });
+
+  it.each(['isolated', 'initial', 'medial', 'final'])('keeps standalone hamza unjoined in %s slots', form => {
+    expect(extendedChoiceLetter('ء', form)).toBe('ء');
+  });
+
+  it('keeps the source, completed word and word tiles at their original lengths', () => {
+    const word = { word: 'جَمَ_', missing_letter: 'لٌ' };
+    const before = letterCatcherTiles(word);
+    expect(extendedChoiceLetter(word.missing_letter, before.missingForm)).toBe('ــل');
+    expect(letterCatcherTiles(word)).toEqual(before);
+    expect(before.fullWord).toBe('جَمَلٌ');
+    expect(before.displayWord).not.toContain('ـ');
+    expect(contextualTile(before.displayLetters[2], 'final')).toBe(`${ZWJ}لٌ`);
+  });
+});
 
 describe('Letter Catcher long-vowel display convention', () => {
   it.each([

@@ -11,8 +11,8 @@ import { childFetch, getActiveChildTab } from '../../../../lib/child-fetch';
 import { LC_DEFAULT_SETTINGS, LEN_NO_LIMIT, normalizeLcSettings, roundSize, pickRotation, markSeen } from '../../../../lib/letter-catcher';
 import { freshFetch } from '../../../../lib/fresh-fetch';
 import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useElementWidth } from '../../../../lib/fit-tiles';
-import { stripDia, getLetterForm, toContextual } from '../../../../lib/letter-forms';
-import { letterCatcherTiles, contextualTile } from '../../../../lib/letter-catcher-tiles';
+import { stripDia, getLetterForm } from '../../../../lib/letter-forms';
+import { letterCatcherTiles, contextualTile, extendedChoiceLetter } from '../../../../lib/letter-catcher-tiles';
 import { speakArabic } from '../../../../lib/speak-arabic';
 import { playCelebrationVideo } from '../../../../lib/celebration-video';
 import GameScene, { SceneThumb } from '../../../../components/GameScene';
@@ -147,6 +147,39 @@ function CelebrationPicture({ word, size, cheer, videoRef, onListen }) {
 }
 
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
+
+// Keep the existing button and usual letter size; fit only an extended choice
+// when its two-sided arms would overflow a narrow phone button.
+function AnswerChoiceLetter({ letter, form, baseSize }) {
+  const text = extendedChoiceLetter(letter, form);
+  const ref = useRef(null);
+  const [fontSize, setFontSize] = useState(null);
+  useIsoLayoutEffect(() => {
+    const button = ref.current?.parentElement;
+    if (!button) return;
+    let active = true;
+    const context = document.createElement('canvas').getContext('2d');
+    const measure = () => {
+      if (!active || !context || !button.clientWidth) return;
+      const style = window.getComputedStyle(button);
+      const size = parseFloat(style.fontSize);
+      const available = Math.max(1, button.clientWidth - parseFloat(style.paddingLeft || 0) - parseFloat(style.paddingRight || 0) - 4);
+      context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      context.direction = 'rtl';
+      const metrics = context.measureText(text);
+      const width = Math.max(1, metrics.width, (metrics.actualBoundingBoxLeft || 0) + (metrics.actualBoundingBoxRight || 0));
+      const fitted = size * Math.min(1, available / width);
+      setFontSize(previous => previous !== null && Math.abs(previous - fitted) < .1 ? previous : fitted);
+    };
+    measure();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(button);
+    document.fonts?.ready.then(measure);
+    document.fonts?.addEventListener?.('loadingdone', measure);
+    return () => { active = false; observer?.disconnect(); document.fonts?.removeEventListener?.('loadingdone', measure); };
+  }, [text, baseSize]);
+  return <span ref={ref} style={{ display: 'inline-block', minWidth: 0, maxWidth: '100%', fontSize: fontSize ?? undefined, lineHeight: 1.4, whiteSpace: 'nowrap', direction: 'rtl', unicodeBidi: 'isolate' }}>{text}</span>;
+}
 
 /* مساحة الحركات جزء من الكلمة. نقيس خط النسخ نفسه بعد تحميله، لا عدد محارف Unicode،
    ثم نوسّط الرسم الفعلي (بما فيه الشدة والتنوين) داخل الإطار من دون فصل الحروف. */
@@ -1127,7 +1160,7 @@ export default function LetterCatcherGame() {
                 } else if (isTried) btn = { ...btn, ...S.optTried };
                 return (
                   <button key={`${cur}-${opt}-${idx}`} style={btn} onClick={() => pick(opt)} disabled={revealed || isTried} aria-label={`الحرف ${opt}`}>
-                    {toContextual(opt, w._form || 'isolated')}
+                    <AnswerChoiceLetter letter={opt} form={w._form || 'isolated'} baseSize={compact ? '1.95rem' : '2.3rem'} />
                   </button>
                 );
               })}
