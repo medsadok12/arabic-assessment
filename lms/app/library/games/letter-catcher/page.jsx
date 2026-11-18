@@ -129,7 +129,7 @@ function WordImage({ imageUrl, emoji, size = 150 }) {
 
 /* سطح الفيديو ثابت المقاس حتى وهو مخفي. الصورة تنزاح بتحويل بصري فقط؛
    لا يتغير عرض الفيديو ولا يعاد توزيع البطاقة في كل إطار من حركة الدخول. */
-function CelebrationPicture({ word, size, cheer, videoRef, onListen }) {
+function CelebrationPicture({ word, size, cheer, videoRef }) {
   const [pictureEl, setPictureEl] = useState(null);
   const [imageEl, setImageEl] = useState(null);
   const pictureWidth = useElementWidth(pictureEl);
@@ -152,12 +152,6 @@ function CelebrationPicture({ word, size, cheer, videoRef, onListen }) {
       <div ref={setImageEl} style={{ ...S.wordPicture, transform: shown ? `translate3d(-${imageOffset}px, 0, 0) scale(${imageScale})` : 'translate3d(0, 0, 0) scale(1)' }}>
         <WordImage key={word.image_url || word.id} imageUrl={word.image_url} emoji={word.emoji} size={size} />
       </div>
-      <button style={{ ...S.listenChip, visibility: cheer === 'word' || cheer === 'loading' ? 'hidden' : 'visible' }} onClick={onListen} aria-label="اسمع الكلمة">
-        <span style={S.listenBtn}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>
-        </span>
-        <span style={{ fontSize: '.85rem', fontWeight: 800, color: '#8A6212' }}>اِسْمَعْ</span>
-      </button>
     </div>
   );
 }
@@ -351,6 +345,8 @@ export default function LetterCatcherGame() {
   /* عرض صف مربعات الكلمة — لتصغير مربعات الاسم المكوّن من كلمتين ليسع سطراً واحداً */
   const [wordRowEl, setWordRowEl] = useState(null);
   const wordRowWidth = useElementWidth(wordRowEl);
+  const [wordControlsEl, setWordControlsEl] = useState(null);
+  const wordControlsWidth = useElementWidth(wordControlsEl);
   const vh = useViewportHeight();
 
   /* شاشة اللعب بلا تمرير: الصورة وحدها تكبر وتصغر لتملأ ما بقي من الشاشة. نقيس الفراغ الفعلي
@@ -1070,8 +1066,16 @@ export default function LetterCatcherGame() {
   // الواحدة على سطرين
   // اسم من كلمتين فأكثر: مربعات أصغر في سطر واحد (lib/fit-tiles.js). الكلمة الواحدة كما هي.
   const isPhrase = mi >= 0 && letterGroups.length > 1;
-  const tile = isPhrase
-    ? compactTileStyle(fitTileSize(wordRowWidth, letterGroups.reduce((n, g) => n + g.length, 0), letterGroups.length))
+  const tileCount = letterGroups.reduce((n, g) => n + g.length, 0);
+  const naturalTilesWidth = tileCount * 46 + (mi >= 0 ? 4 : 0) + Math.max(0, tileCount - letterGroups.length) * 6 + Math.max(0, letterGroups.length - 1) * 26;
+  // Mirror the left control when space allows, so short words keep their exact
+  // center. Longer words can use the empty right gutter rather than wrap or clip.
+  const balanceListenRow = wordControlsWidth >= naturalTilesWidth + 112;
+  const fitWordTiles = isPhrase || (wordRowWidth > 0 && naturalTilesWidth > wordRowWidth);
+  const tightWordGaps = fitWordTiles && tileCount * 12 + Math.max(0, tileCount - letterGroups.length) * 4 + Math.max(0, letterGroups.length - 1) * 14 > wordRowWidth;
+  const tileSize = fitWordTiles ? fitTileSize(wordRowWidth, tileCount, letterGroups.length, { max: isPhrase ? 40 : 46, ...(tightWordGaps ? { tileGap: 2, wordGap: 8 } : null) }) : null;
+  const tile = fitWordTiles
+    ? { ...compactTileStyle(tileSize), ...(!isPhrase ? { fontSize: `${2.35 * tileSize / 46}rem` } : null) }
     : null;
 
   const catLabel = selectedCategory ?? w.category ?? '';
@@ -1165,9 +1169,17 @@ export default function LetterCatcherGame() {
           <div ref={cardRef} style={{ ...S.glassCard, padding: sz.pad, gap: sz.gap }}>
             <h1 aria-live="polite" style={{ ...S.questionPill, ...pill.style, minHeight: sz.pill, fontSize: compact ? '1.12rem' : '1.25rem' }}>{pill.text}</h1>
 
-            <CelebrationPicture word={w} size={imgH} cheer={cheer} videoRef={cheerVidRef} onListen={() => { if (nextInFlight.current) return; clearCheer(); playWord(w); }} />
+            <CelebrationPicture word={w} size={imgH} cheer={cheer} videoRef={cheerVidRef} />
 
             {/* ── ارتفاع محجوز للحركات قبل الإجابة وبعدها، حتى لا تقفز الصورة أو الأزرار ── */}
+            <div ref={setWordControlsEl} style={{ ...S.wordControls, gridTemplateColumns: balanceListenRow ? '48px minmax(0, 1fr) 48px' : '48px minmax(0, 1fr)' }}>
+              <button type="button" style={{ ...S.wordListenBtn, opacity: preparingPicture ? .55 : 1 }}
+                disabled={preparingPicture || cheer === 'word' || cheer === 'loading'}
+                onClick={() => { if (nextInFlight.current) return; clearCheer(); playWord(w); }}
+                aria-label="اسمع الكلمة" title="اسمع الكلمة">
+                <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>
+              </button>
+              <div style={{ minWidth: 0, width: '100%', direction: 'rtl' }}>
             {correct === true ? (
               <CompletedWord key={cur} text={fullWordDisplay} compact={compact}>
                 {[
@@ -1187,14 +1199,14 @@ export default function LetterCatcherGame() {
                 ))}
               </CompletedWord>
             ) : (
-              <div key={`row-${cur}-${tried.length}`} ref={setWordRowEl} style={{ ...S.wordRow, ...(isPhrase ? compactRowStyle : null), minHeight: compact ? 76 : 92, animation: tried.length ? 'lcWrongShake .45s cubic-bezier(.36,.07,.19,.97) both' : 'none' }}>
+              <div key={`row-${cur}-${tried.length}`} ref={setWordRowEl} style={{ ...S.wordRow, ...(fitWordTiles ? compactRowStyle : null), ...(tightWordGaps ? { gap: 8 } : null), minHeight: compact ? 76 : 92, animation: tried.length ? 'lcWrongShake .45s cubic-bezier(.36,.07,.19,.97) both' : 'none' }}>
                 {mi < 0 ? (
                   <>
                     <span style={{ ...S.wordLetterBox, height: sz.word }}>{fullWordDisplay}</span>
                     <span style={{ ...S.blank, ...S.blankOpen, height: sz.word }}>؟</span>
                   </>
                 ) : letterGroups.map((group, gi) => (
-                  <span key={gi} style={isPhrase ? { ...S.wordGroup, ...compactGroupStyle } : S.wordGroup}>
+                  <span key={gi} style={fitWordTiles ? { ...S.wordGroup, ...compactGroupStyle, ...(tightWordGaps ? { gap: 2 } : null) } : S.wordGroup}>
                     {group.map(i => {
                       const form = getLetterForm(baseLetters, i);
                       if (i === mi) {
@@ -1214,6 +1226,9 @@ export default function LetterCatcherGame() {
                 ))}
               </div>
             )}
+              </div>
+              {balanceListenRow && <span aria-hidden="true" />}
+            </div>
 
             <div style={{ ...S.optRow, gridTemplateColumns: `repeat(${Math.min(opts.length, 5)}, minmax(0, 1fr))` }}>
               {opts.filter(Boolean).map((opt, idx) => {
@@ -1416,16 +1431,15 @@ const S = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', maxWidth: '100%', minWidth: 0,
     transition: 'transform .28s ease-out', willChange: 'transform',
   },
-  // «اسمع» فوق زاوية الصورة — لا يأخذ سطراً خاصاً به
-  listenChip: {
-    position: 'absolute', bottom: 8, left: 8, display: 'inline-flex', alignItems: 'center', gap: 6,
-    background: 'rgba(255,255,255,0.94)', border: '1.5px solid #F1DDA6', borderRadius: 999,
-    padding: '3px 3px 3px 12px', minHeight: 48, cursor: 'pointer', fontFamily: 'inherit',
-    boxShadow: '0 3px 10px rgba(26,43,74,0.12)', boxSizing: 'border-box',
+  // زر الاستماع يسار الكلمة، خارج إطارها وبعيداً عن الصورة.
+  wordControls: {
+    display: 'grid', direction: 'ltr', gap: 8, alignItems: 'center', width: '100%', minWidth: 0,
   },
-  listenBtn: {
-    width: 42, height: 42, borderRadius: '50%', background: '#E8B84B', borderBottom: '4px solid #C99A2E',
-    color: '#1A2B4A', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box',
+  wordListenBtn: {
+    width: 48, height: 48, minWidth: 48, borderRadius: '50%', padding: 0,
+    border: 'none', borderBottom: '4px solid #C99A2E', background: '#E8B84B', color: '#1A2B4A',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box',
+    boxShadow: '0 4px 10px rgba(26,43,74,0.12)', cursor: 'pointer', touchAction: 'manipulation',
   },
   emojiBox: {
     width: 150, height: 150, background: '#FAF7F2', borderRadius: 20,
