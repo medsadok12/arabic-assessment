@@ -4,6 +4,7 @@ import { createClient }      from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/auth-role';
 import { storableAudioUrl, healAudioRows } from '../../../../lib/game-audio';
 import { LC_GAME_ID, letterCount, normalizeLcSettings } from '../../../../lib/letter-catcher';
+import { canonicalLcWord, lcCategoryMatchesWord } from '../../../../lib/letter-catcher-categories';
 
 export const runtime = 'edge';
 // المعلم يعدّل الكلمات من لوحة اللعبة، فالقراءة حيّة دائماً (القسم 9.5):
@@ -44,9 +45,7 @@ export async function GET(request) {
       .from('letter_catcher_words')
       .select('id, word, missing_letter, options, emoji, image_url, audio_url, topic, grade_level, category')
       .order('id');
-    if (topic)    query = query.eq('topic', topic);
     if (grade > 0) query = query.eq('grade_level', grade);
-    if (category) query = query.eq('category', category);
 
     // إعدادات الجولة (عدد الكلمات والخيارات) تصل مع الكلمات في نفس الطلب
     const [{ data, error }, { data: settingsRow }] = await Promise.all([
@@ -61,9 +60,11 @@ export async function GET(request) {
 
     await healAudioRows(admin, 'letter_catcher_words', 'letter-catcher', data);
 
-    const valid = data.filter(w => {
+    const valid = data.map(canonicalLcWord).filter(w => {
       if (!w.word || !w.missing_letter) return false;
       if (!Array.isArray(w.options) || w.options.filter(Boolean).length === 0) return false;
+      if (topic && !lcCategoryMatchesWord(w, topic)) return false;
+      if (category && !lcCategoryMatchesWord(w, category)) return false;
       const len = letterCount(w.word); // الحروف فقط — المسافة بين كلمتين لا تُحسب
       if (minLen > 0 && len < minLen) return false;
       if (maxLen < 99 && len > maxLen) return false;
@@ -113,6 +114,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'الكلمة والحرف الناقص مطلوبان' }, { status: 400 });
     }
 
+    const grouping = canonicalLcWord({ word: word.trim(), missing_letter: missing_letter.trim(), topic: topic?.trim(), category: category?.trim() });
     const options = buildOptions(missing_letter.trim());
     const admin   = createAdminClient();
     const audio   = await storableAudioUrl(admin, 'letter-catcher', audio_url);
@@ -126,9 +128,9 @@ export async function POST(request) {
         emoji:       emoji?.trim()       || null,
         image_url:   image_url           || null,
         audio_url:   audio               || null,
-        topic:       topic?.trim()       || null,
+        topic:       grouping.topic      || null,
         grade_level: grade_level ? Number(grade_level) : null,
-        category:    category?.trim()    || null,
+        category:    grouping.category   || null,
       })
       .select()
       .single();
@@ -157,6 +159,7 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'الكلمة والحرف الناقص مطلوبان' }, { status: 400 });
     }
 
+    const grouping = canonicalLcWord({ word: word.trim(), missing_letter: missing_letter.trim(), topic: topic?.trim(), category: category?.trim() });
     const options = buildOptions(missing_letter.trim());
     const admin   = createAdminClient();
     const audio   = await storableAudioUrl(admin, 'letter-catcher', audio_url);
@@ -170,9 +173,9 @@ export async function PUT(request) {
         emoji:       emoji?.trim()       || null,
         image_url:   image_url           || null,
         audio_url:   audio               || null,
-        topic:       topic?.trim()       || null,
+        topic:       grouping.topic      || null,
         grade_level: grade_level ? Number(grade_level) : null,
-        category:    category?.trim()    || null,
+        category:    grouping.category   || null,
       })
       .eq('id', id)
       .select()

@@ -69,6 +69,56 @@ describe('تعميم تصحيح التدريبات — الإجابة والخا
   const s=await start('letter_catcher',['lc'],'__all__');await call(answer(s,0,'ك'));const r=await call(answer(s,0,'ق'));expect(r.body).toMatchObject({right:true,awarded:0,summary:{correct:0,complete:true}});expect(db.tables.user_points[0].total).toBe(100);
   const t=await start('letter_catcher',['lc'],'__all__');await call(answer(t,0,'ك'));expect((await call(answer(t,0,'م'))).body).toMatchObject({right:false,questionDone:true,summary:{complete:true}});
  });
+ it('صياد الحروف: يبدأ الاسم القديم بعد ترحيل الكلمات ويحفظ النتيجة تحت الهوية الجديدة',async()=>{
+  const s=await start('letter_catcher',['lc'],'أدوات');
+  expect(s.category).toBe('المدرسة');expect(s.items[0].category).toBe('المدرسة');
+  await call(answer(s,0,'ق'));
+  expect(db.tables.game_results).toMatchObject([{category:'المدرسة',correct:1,total:1}]);
+ });
+ it('صياد الحروف: اختيار مهن محفوظ قبل نقل تلميذ يبقى صالحًا دون إعادته إلى القسم الجديد',async()=>{
+  const pupil='b9e76e35-9365-4c84-aee1-cd690c95bb1d';
+  db.tables.letter_catcher_words=[
+   {id:'job',word:'طبيب',missing_letter:'ط',options:['ط','ب','ق'],category:'المهن'},
+   {id:pupil,word:'تلميذ',missing_letter:'ت',options:['ت','ب','ق'],category:'المدرسة'},
+  ];
+  const old=await start('letter_catcher',['job',pupil],'المهن');expect(old.items).toHaveLength(2);
+  const current=await start('letter_catcher',['job'],'المهن');expect(current.items).toHaveLength(1);
+  const resumed=await call({action:'resume',game:old.game,roundId:old.roundId});expect(resumed.body.items).toHaveLength(2);
+ });
+ it('صياد الحروف: تقرير الأماكن القديم لا يُنسخ إلى فروعه ولا يقبل بركان الطقس فيه',async()=>{
+  const volcano='c9067b00-3b4e-4f20-8ba3-570776880968';
+  db.tables.letter_catcher_words=[
+   {id:'sea',word:'بحر',missing_letter:'ب',options:['ب','ق','ت'],category:'الطبيعة'},
+   {id:'country',word:'تونس',missing_letter:'ت',options:['ت','ق','ب'],category:'بلدان ومدن'},
+   {id:'place',word:'مكتبة',missing_letter:'م',options:['م','ق','ب'],category:'أماكن من حولنا'},
+   {id:volcano,word:'بركان',missing_letter:'ب',options:['ب','ق','ت'],category:'الطبيعة'},
+  ];
+  const old=await start('letter_catcher',['sea','country','place'],'الأماكن والمدن');
+  expect(old.category).toBe('الأماكن والمدن');expect(old.items).toHaveLength(3);
+  await call(answer(old,0,'ب'));await call(answer(old,1,'ت'));await call(answer(old,2,'م'));
+  expect(db.tables.game_results).toMatchObject([{category:'الأماكن والمدن',total:3}]);
+  expect((await call({action:'start',game:'letter_catcher',roundId:randomUUID(),ids:['sea','country','place',volcano],category:'الأماكن والمدن',filters:{}})).status).toBe(409);
+ });
+ it('صياد الحروف: الصفر يظهر في الأعداد الجديدة والنسخة القديمة ذات التسعة تبقى متوافقة',async()=>{
+  db.tables.letter_catcher_words=[
+   {id:'zero',word:'صِفْرٌ',missing_letter:'ص',options:['ص','ق','ت'],category:'الأعداد'},
+   {id:'one',word:'وَاحِدٌ',missing_letter:'و',options:['و','ق','ب'],category:'الأعداد'},
+  ];
+  const old=await start('letter_catcher',['one'],'الأرقام');expect(old.items).toHaveLength(1);expect(old.category).toBe('الأعداد');
+  const current=await start('letter_catcher',['zero','one'],'الأعداد');expect(current.items).toHaveLength(2);
+  expect((await call({action:'start',game:'letter_catcher',roundId:randomUUID(),ids:['one'],category:'الأعداد',filters:{}})).status).toBe(409);
+ });
+ it('صياد الحروف: كل الكلمات المحفوظة قبل إضافة الصفر لا تتعطل ولا تسمح بحذف سؤال آخر',async()=>{
+  db.tables.game_settings.push({game_id:'letter-catcher',settings:{words_per_round:0,options_count:3}});
+  db.tables.letter_catcher_words=[
+   {id:'zero',word:'صِفْرٌ',missing_letter:'ص',options:['ص','ق','ت'],category:'الأعداد'},
+   {id:'one',word:'وَاحِدٌ',missing_letter:'و',options:['و','ق','ب'],category:'الأعداد'},
+   {id:'cat',word:'قِطٌّ',missing_letter:'ق',options:['ق','ب','ت'],category:'الحيوانات'},
+  ];
+  expect((await start('letter_catcher',['one','cat'],'__all__')).items).toHaveLength(2);
+  expect((await start('letter_catcher',['zero','one','cat'],'__all__')).items).toHaveLength(3);
+  expect((await call({action:'start',game:'letter_catcher',roundId:randomUUID(),ids:['zero','one'],category:'__all__',filters:{}})).status).toBe(409);
+ });
  it('التفكيك يقارن المقاطع كاملةً، لا وجود جزء صحيح فيها',async()=>{
   const s=await start('word_smash',['sm']);const r=await call(answer(s,0,['قَ','خطأ']));expect(r.body).toMatchObject({right:false,questionDone:true,summary:{correct:0,complete:true}});expect(db.tables.points_log).toHaveLength(0);
  });

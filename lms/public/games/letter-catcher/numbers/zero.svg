@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img" aria-labelledby="title desc">
+  <title id="title">0</title>
+  <desc id="desc">العدد صفر</desc>
+  <defs>
+    <linearGradient id="background" x2="0" y2="1">
+      <stop stop-color="#DDE2FA"/>
+      <stop offset="1" stop-color="#BDC8EE"/>
+    </linearGradient>
+    <linearGradient id="front" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#86BFEA"/>
+      <stop offset="0.45" stop-color="#5999D0"/>
+      <stop offset="1" stop-color="#2E649D"/>
+    </linearGradient>
+    <linearGradient id="depth" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#537EB9"/>
+      <stop offset="1" stop-color="#1A2B4A"/>
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-200%" width="200%" height="500%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <path id="zero" fill-rule="evenodd" d="M400 130C288 130 239 222 239 391C239 568 291 660 400 660C509 660 561 568 561 391C561 222 512 130 400 130ZM400 223C446 223 468 272 468 393C468 515 446 568 400 568C354 568 332 515 332 393C332 272 354 223 400 223Z"/>
+  </defs>
+  <rect width="800" height="800" rx="40" fill="url(#background)"/>
+  <ellipse cx="412" cy="688" rx="164" ry="20" fill="#1A2B4A" opacity="0.18" filter="url(#shadow)"/>
+  <use href="#zero" transform="translate(14 18)" fill="url(#depth)"/>
+  <use href="#zero" fill="url(#front)" stroke="#A6CEE9" stroke-width="3"/>
+  <path d="M382 156C303 164 267 247 265 369" fill="none" stroke="#D9EBF8" stroke-width="8" stroke-linecap="round" opacity="0.55"/>
+</svg>

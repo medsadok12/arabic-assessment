@@ -4,9 +4,9 @@ import { useState, useRef, Fragment } from 'react';
 import { keepRowInPlace, returnRow, revealBelow, flashRow } from '../../../../lib/edit-scroll';
 import AudioUploadButton from '../../../../components/AudioUploadButton';
 import { WORDS_PER_ROUND_CHOICES, OPTIONS_COUNT_CHOICES, LEN_NO_LIMIT, normalizeLcSettings } from '../../../../lib/letter-catcher';
+import { sortLcCategories, sortLcCategoryWords } from '../../../../lib/letter-catcher-categories';
 
-/* ── constants (duplicated here so this chunk loads independently) ── */
-const TOPICS = ['الحيوانات', 'الأشكال', 'الأسرة', 'الألوان', 'الفواكه', 'المدرسة', 'الطقس', 'الأرقام'];
+/* ── category styles; topic choices come from the actual word bank ── */
 
 const CAT_META = {
   'الحيوانات': { emoji:'🦁', grad:'linear-gradient(135deg,#f59e0b,#f97316)' },
@@ -19,6 +19,15 @@ const CAT_META = {
   'المدرسة':   { emoji:'📚', grad:'linear-gradient(135deg,#06b6d4,#0ea5e9)' },
   'الطقس':     { emoji:'⛅', grad:'linear-gradient(135deg,#818cf8,#60a5fa)' },
   'الأرقام':   { emoji:'🔢', grad:'linear-gradient(135deg,#84cc16,#10b981)' },
+  'الأعداد':   { emoji:'🔢', grad:'linear-gradient(135deg,#84cc16,#10b981)' },
+  'الجوّ والفصول': { emoji:'⛅', grad:'linear-gradient(135deg,#818cf8,#60a5fa)' },
+  'المزرعة': { emoji:'🌾', grad:'linear-gradient(135deg,#84cc16,#10b981)' },
+  'المهن': { emoji:'🧑‍🔧', grad:'linear-gradient(135deg,#f59e0b,#f97316)' },
+  'الرياضة والألعاب': { emoji:'⚽', grad:'linear-gradient(135deg,#7c3aed,#8b5cf6)' },
+  'الملابس والزينة': { emoji:'👕', grad:'linear-gradient(135deg,#ec4899,#f43f5e)' },
+  'أماكن من حولنا': { emoji:'🏙️', grad:'linear-gradient(135deg,#3b82f6,#06b6d4)' },
+  'بلدان ومدن': { emoji:'🌍', grad:'linear-gradient(135deg,#3b82f6,#06b6d4)' },
+  'الطبيعة': { emoji:'🏞️', grad:'linear-gradient(135deg,#10b981,#84cc16)' },
 };
 const FALLBACK_CAT_STYLES = [
   { emoji:'🌟', grad:'linear-gradient(135deg,#f59e0b,#f97316)' },
@@ -393,7 +402,7 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
           placeholder="التصنيف التعليمي: الحيوانات، الفواكه... (اختياري)"
           style={{ ...P.input, marginTop:8 }} dir="rtl" />
         <datalist id="lc-cat-list">
-          {Object.keys(CAT_META).map(c => <option key={c} value={c} />)}
+          {sortLcCategories(dbWords.map(w => w.category).filter(Boolean)).map(c => <option key={c} value={c} />)}
         </datalist>
         <div style={{ fontSize:'.72rem', color:'#7c3aed', marginTop:3, textAlign:'right', fontWeight:600 }}>
           💡 التصنيف يُظهر الكلمة في دائرة مجموعتها في شاشة الاختيار
@@ -429,12 +438,12 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
       ) : (() => {
         const groups = {};
         dbWords.forEach(w => { const key = w.category || '__none__'; (groups[key] = groups[key] || []).push(w); });
-        const keys = Object.keys(groups).sort((a, b) => { if (a==='__none__') return 1; if (b==='__none__') return -1; return a.localeCompare(b,'ar'); });
+        const keys = [...sortLcCategories(Object.keys(groups).filter(k => k !== '__none__')), ...(groups.__none__ ? ['__none__'] : [])];
         return (
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {keys.map((key, gIdx) => {
               const cat = key === '__none__' ? null : key;
-              const words = groups[key];
+              const words = sortLcCategoryWords(groups[key], cat);
               const cs = getCatStyle(cat, gIdx);
               const customMeta = catMeta?.[cat];
               const displayEmoji = customMeta?.emoji || cs.emoji;
@@ -531,6 +540,7 @@ function WordManager({ dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
 
 /* ════════════════════════ SettingsPanel (default export) ════════════════════════ */
 export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved, onClose, dbWords, onRefresh, catMeta, onCatMetaRefresh }) {
+  const topics = sortLcCategories(dbWords.map(w => w.topic || w.category).filter(Boolean));
   const [cfgOpen, setCfgOpen] = useState(false);
   const [draft,   setDraft]   = useState(() => normalizeLcSettings(settings));
   const [stSaving, setStSaving] = useState(false);
@@ -611,7 +621,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
                 </label>
 
                 <div style={{ fontSize:'.78rem', color:'#6b7280', marginBottom:10, lineHeight:1.6 }}>
-                  🔄 الكلمات تُختار بالتدوير: لا تتكرر كلمة على الطفل حتى يمرّ على كل كلمات المجموعة، ثم تبدأ دورة جديدة.
+                  🔄 الكلمات تُختار بالتدوير: لا تتكرر كلمة على الطفل حتى يمرّ على كل كلمات المجموعة، ثم تبدأ دورة جديدة. الأعداد تتقدّم بالترتيب من الصفر.
                 </div>
 
                 {stMsg && (
@@ -633,7 +643,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
                 الموضوع
                 <select value={cfg.topic} onChange={e => onChange({ ...cfg, topic: e.target.value })} style={P.select}>
                   <option value=''>كل المواضيع</option>
-                  {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
+                  {topics.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </label>
               <label style={P.label}>

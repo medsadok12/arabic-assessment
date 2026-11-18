@@ -8,8 +8,10 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { getRole } from '../../../../lib/auth-role';
 import { childFetch, getActiveChildTab } from '../../../../lib/child-fetch';
-import { LC_DEFAULT_SETTINGS, LEN_NO_LIMIT, normalizeLcSettings, roundSize, pickRotation, markSeen } from '../../../../lib/letter-catcher';
+import { LC_DEFAULT_SETTINGS, LEN_NO_LIMIT, normalizeLcSettings, roundSize, pickRotation } from '../../../../lib/letter-catcher';
 import { freshFetch } from '../../../../lib/fresh-fetch';
+import { canonicalLcWord, normalizeLcCategory, lcCategoryKey, sortLcCategories, sortLcCategoryWords, pickLcOrderedRound, lcCategoryScene, normalizeLcCategoryResults, isLcCategoryUnlocked } from '../../../../lib/letter-catcher-categories';
+import { readLcCategorySeen, rememberLcAnsweredWord } from '../../../../lib/letter-catcher-progress-memory';
 import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useElementWidth } from '../../../../lib/fit-tiles';
 import { stripDia, getLetterForm } from '../../../../lib/letter-forms';
 import { letterCatcherTiles, contextualTile, extendedChoiceLetter } from '../../../../lib/letter-catcher-tiles';
@@ -49,7 +51,7 @@ function getCachedWords() {
     if (!raw) return null;
     const { words, ts } = JSON.parse(raw);
     if (Date.now() - ts > LC_CACHE_TTL) return null;
-    return words;
+    return Array.isArray(words) ? words.map(canonicalLcWord) : null;
   } catch { return null; }
 }
 
@@ -67,15 +69,8 @@ function getCachedSettings() {
 
 /* ذاكرة التدوير: الكلمات التي أجاب عنها الطفل في الدورة الحالية لكل مجموعة.
    منفصلة لكل حساب ولكل طفل في حساب العائلة (القسم 13.9) */
-function seenKey(userId, catKey) {
-  return `lc_seen_v1:${userId || 'guest'}:${getActiveChildTab() || 'self'}:${catKey}`;
-}
-function readSeen(key) {
-  try { const v = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(v) ? v : []; }
-  catch { return []; }
-}
-function writeSeen(key, ids) {
-  try { localStorage.setItem(key, JSON.stringify(ids)); } catch {}
+function readCategorySeen(userId, category) {
+  return readLcCategorySeen(userId, getActiveChildTab(), category);
 }
 
 /* ────────────────────────── helpers ────────────────────────── */
@@ -87,8 +82,6 @@ function shuffle(arr) {
   }
   return a;
 }
-
-const TOPICS = ['الحيوانات', 'الأشكال', 'الأسرة', 'الألوان', 'الفواكه', 'المدرسة', 'الطقس', 'الأرقام'];
 
 /* ── رمز معروف لكل مجموعة (يظهر شارةً على صورة عالمها إن لم يضع المعلم صورة/رمزاً) ── */
 const CAT_META = {
@@ -102,6 +95,15 @@ const CAT_META = {
   'المدرسة':   { emoji:'📚' },
   'الطقس':     { emoji:'⛅' },
   'الأرقام':   { emoji:'🔢' },
+  'الأعداد':   { emoji:'🔢' },
+  'الجوّ والفصول': { emoji:'⛅' },
+  'المزرعة': { emoji:'🌾' },
+  'المهن': { emoji:'🧑‍🔧' },
+  'الرياضة والألعاب': { emoji:'⚽' },
+  'الملابس والزينة': { emoji:'👕' },
+  'أماكن من حولنا': { emoji:'🏙️' },
+  'بلدان ومدن': { emoji:'🌍' },
+  'الطبيعة': { emoji:'🏞️' },
 };
 
 /* ────────────────────── image with fallback ─────────────────── */
@@ -294,7 +296,7 @@ export default function LetterCatcherGame() {
   const [dbWords,    setDbWords]    = useState([]);
   const [gameWords,  setGameWords]  = useState(() => {
     const cached = getCachedWords();
-    return (cached && cached.length > 0 ? cached : LC_FALLBACK).filter(
+    return (cached && cached.length > 0 ? cached : LC_FALLBACK).map(canonicalLcWord).filter(
       w => w.word && w.missing_letter && Array.isArray(w.options) && w.options.filter(Boolean).length >= 2
     );
   });
@@ -494,9 +496,7 @@ export default function LetterCatcherGame() {
           childFetch('/api/game-results?game=letter_catcher')
             .then(r => r.json())
             .then(j => {
-              const map = {};
-              (j.results ?? []).forEach(r => { map[r.category] = r; });
-              setCatResults(map);
+              setCatResults(normalizeLcCategoryResults(j.results ?? []));
             })
             .catch(() => {});
         }
@@ -512,7 +512,7 @@ export default function LetterCatcherGame() {
     try {
       const res  = await freshFetch('/api/games/letter-catcher');
       const json = await res.json();
-      setDbWords((json.words || []).filter(isValid));
+      setDbWords((json.words || []).filter(isValid).map(canonicalLcWord));
     } catch {
       setDbWords([]);
     }
@@ -538,7 +538,7 @@ export default function LetterCatcherGame() {
         setSettings(st);
         try { localStorage.setItem(LC_SETTINGS_KEY, JSON.stringify(st)); } catch {}
       }
-      const fresh = (json.words || []).filter(isValid);
+      const fresh = (json.words || []).filter(isValid).map(canonicalLcWord);
       if (fresh.length > 0) {
         setGameWords(fresh);
         setCachedWords(fresh);
@@ -552,7 +552,13 @@ export default function LetterCatcherGame() {
       const res  = await freshFetch('/api/games/letter-catcher/categories');
       const json = await res.json();
       const m = {};
-      (json.categories || []).forEach(c => { m[c.name] = c; });
+      (json.categories || []).forEach(c => {
+        const name = normalizeLcCategory(c.name);
+        // Prefer a teacher's existing image over an old placeholder emoji.
+        if (!m[name] || (c.image_url && !m[name].image_url) || (Boolean(c.image_url) === Boolean(m[name].image_url) && c.name === name)) {
+          m[name] = { ...c, name };
+        }
+      });
       setCatMeta(m);
     } catch {}
   }, []);
@@ -582,7 +588,7 @@ export default function LetterCatcherGame() {
   useEffect(() => {
     if (phase !== 'finished' || !currentUser) return;
     childFetch('/api/game-results?game=letter_catcher').then(r => {if(!r.ok)throw new Error();return r.json();}).then(j => {
-      const map = {}; (j.results || []).forEach(r => { map[r.category] = r; }); setCatResults(map);
+      setCatResults(normalizeLcCategoryResults(j.results || []));
     }).catch(() => {});
   }, [phase, currentUser]);
 
@@ -613,11 +619,14 @@ export default function LetterCatcherGame() {
 
   /* ── كلمات الجولة بالتدوير: ما لم يُجب عنه الطفل بعد في هذه المجموعة أولاً ── */
   const pickRoundWords = useCallback((words, catKey) => {
-    const ids = words.map(w => String(w.id));
-    const key = seenKey(currentUser?.id, catKey);
-    const { picked } = pickRotation(ids, readSeen(key), roundSize(words.length, settings.words_per_round));
-    roundRef.current = { key, ids };
-    const byId = new Map(words.map(w => [String(w.id), w]));
+    const ordered = sortLcCategoryWords(words, catKey);
+    const ids = ordered.map(w => String(w.id));
+    const { key, ids: seen } = readCategorySeen(currentUser?.id, catKey);
+    // Numbers stay in numeric order, including across shorter teacher-set rounds.
+    const pickRound = lcCategoryKey(catKey) === 'numbers' ? pickLcOrderedRound : pickRotation;
+    const { picked } = pickRound(ids, seen, roundSize(ordered.length, settings.words_per_round));
+    roundRef.current = { key, ids, category: catKey };
+    const byId = new Map(ordered.map(w => [String(w.id), w]));
     return picked.map(id => byId.get(id));
   }, [currentUser, settings.words_per_round]);
 
@@ -632,7 +641,12 @@ export default function LetterCatcherGame() {
     onStart: async j => {
       resetAnswerFeedback();
       const transition = ++pictureTransition.current;
-      const nextQueue = buildQueue(j.items, settings.options_count);
+      // A resumed round keeps its exact question order and cursor.
+      const category = j.category === '__all__' ? '__all__' : normalizeLcCategory(j.category);
+      const nextQueue = buildQueue(j.items.map(canonicalLcWord), settings.options_count);
+      const pool = category === '__all__' ? gameWords : gameWords.filter(w => normalizeLcCategory(w.category) === category);
+      const { key } = readCategorySeen(currentUser?.id, category);
+      roundRef.current = { key, ids: (pool.length ? pool : j.items).map(w => String(w.id)), category };
       const cursor = Math.max(0, j.summary.cursor);
       setPreparingPicture(true);
       if (!j.summary.complete) await preloadLetterCatcherImage(nextQueue[cursor]?.image_url);
@@ -689,8 +703,9 @@ export default function LetterCatcherGame() {
         const fullWord = fullWordOf(w);
         // Persistent results, progress and points remain server-authoritative.
         if (firstTry) {
-          const { key, ids } = roundRef.current;
-          if (key) writeSeen(key, markSeen(ids, readSeen(key), String(w.id)));
+          rememberLcAnsweredWord({
+            userId: currentUser?.id, childId: getActiveChildTab(), word: w, round: roundRef.current,
+          });
         }
         if (j.right) {
           setChosen(opt); setCorrect(true); setTried(attempt.priorTried);
@@ -713,7 +728,7 @@ export default function LetterCatcherGame() {
         setChosen(done ? opt : null); setCorrect(done ? false : null); setWordFinished(Boolean(done));
       },
     });
-  }, [chosen, tried, cur, queue, celebrate, stopWordAudio, clearCheer, verified]);
+  }, [chosen, tried, cur, queue, currentUser, celebrate, stopWordAudio, clearCheer, verified]);
 
   const next = useCallback(async () => {
     if (chosen === null || !wordFinished || !confirmedAnswer.current || nextInFlight.current || verified.busy || verified.pending) return;
@@ -732,11 +747,20 @@ export default function LetterCatcherGame() {
     else { setCur(n); setChosen(null); setCorrect(null); setTried([]); }
   }, [cur, queue, chosen, wordFinished, stopWordAudio, clearCheer, resetAnswerFeedback, verified]);
 
-  const restart = () => startGame(selectedCategory);
+  const restart = () => {
+    // A legacy mixed Places round may finish after its content was split.
+    // Its saved report stays intact; the next game starts from the new groups.
+    const category = selectedCategory == null ? null : normalizeLcCategory(selectedCategory);
+    if (category && !gameWords.some(w => w.category === category)) {
+      setPhase('start'); setPendingCategory(undefined); setQueue([]); setCur(0);
+      return;
+    }
+    startGame(category);
+  };
 
   /* ══════════════════════ RENDER: START ══════════════════════ */
   if (phase === 'start') {
-    const categories = [...new Set(gameWords.map(w => w.category).filter(Boolean))];
+    const categories = sortLcCategories(gameWords.map(w => w.category).filter(Boolean));
 
     /* modal data when a category was tapped */
     const modalCatLabel = pendingCategory === '__all__' ? 'كل المجموعات' : pendingCategory;
@@ -817,9 +841,9 @@ export default function LetterCatcherGame() {
               <div style={{ position:'relative', height:150, borderRadius:20, overflow:'hidden', marginBottom:16 }}>
                 {pendingCategory === '__all__'
                   ? <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', height:'100%' }}>
-                      {categories.slice(0, 3).map(c => <SceneThumb key={c} category={c} />)}
+                      {categories.slice(0, 3).map(c => <SceneThumb key={c} category={c} scene={lcCategoryScene(c)} />)}
                     </div>
-                  : <SceneThumb category={pendingCategory} />}
+                  : <SceneThumb category={pendingCategory} scene={lcCategoryScene(pendingCategory)} />}
                 <span style={{ position:'absolute', bottom:10, right:10, display:'inline-flex', alignItems:'center', gap:6, background:'#1A2B4A', color:'#fff', borderRadius:999, padding:'6px 14px', fontWeight:800, fontSize:'.95rem' }}>
                   {modalCatObj?.image_url
                     ? <img src={modalCatObj.image_url} alt="" style={{ width:24, height:24, borderRadius:6, objectFit:'cover' }} />
@@ -938,19 +962,15 @@ export default function LetterCatcherGame() {
 
               {/* category grid — الحيوانات first, progressive unlock */}
               {categories.length > 0 && (() => {
-                const FIRST = 'الحيوانات';
-                const sorted = [
-                  ...(categories.includes(FIRST) ? [FIRST] : []),
-                  ...categories.filter(c => c !== FIRST),
-                ];
+                const sorted = categories;
                 return (
                   <div style={S.catGrid}>
                     {sorted.map((cat, idx) => {
-                                            const custom   = catMeta[cat];
+                      const custom   = catMeta[cat];
                       const count    = gameWords.filter(w => w.category === cat).length;
                       const res      = catResults[cat];
                       const stars    = starsOf(res);
-                      const unlocked = isTeacher || idx === 0 || !!catResults[sorted[idx - 1]];
+                      const unlocked = isTeacher || isLcCategoryUnlocked(cat, catResults, sorted);
                       const prevCat  = sorted[idx - 1];
                       return (
                         <button
@@ -967,7 +987,7 @@ export default function LetterCatcherGame() {
                           onClick={() => unlocked && setPendingCategory(cat)}
                         >
                           <span style={S.catThumb}>
-                            <SceneThumb category={cat} />
+                            <SceneThumb category={cat} scene={lcCategoryScene(cat)} />
                             {/* شارة المجموعة: صورة/رمز المعلم أو رمز معروف — لا رموز عشوائية فوق العالم */}
                             {(custom?.image_url || custom?.emoji || CAT_META[cat]) && (
                               <span style={S.catBadge} aria-hidden="true">
@@ -1016,7 +1036,7 @@ export default function LetterCatcherGame() {
       : 'لا تيأس! المحاولة مفتاح النجاح 🌟';
     return (
       <div key="finished" style={S.stage}>
-        <GameScene category={selectedCategory} />
+        <GameScene category={selectedCategory} scene={lcCategoryScene(selectedCategory)} />
         <div style={S.stageColumn}>
           <VerifiedTrainingStatus training={verified} />
           <div style={S.stageMiddle}>
@@ -1142,7 +1162,7 @@ export default function LetterCatcherGame() {
       `}</style>
 
       {/* في «العب الكل» يتغير العالم مع مجموعة كل كلمة */}
-      <GameScene category={catLabel} />
+      <GameScene category={catLabel} scene={lcCategoryScene(catLabel)} />
 
       <div ref={columnRef} style={S.stageColumn}>
         <VerifiedTrainingStatus training={verified} compact />

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../../lib/supabase-admin';
 import { createClient }      from '../../../../../lib/supabase-server';
 import { getRole } from '../../../../../lib/auth-role';
+import { lcCategoryAliases, normalizeLcCategory, normalizeLcCategoryMeta } from '../../../../../lib/letter-catcher-categories';
 
 async function checkAuth() {
   const supabase = createClient();
@@ -16,7 +17,7 @@ export async function GET() {
     const admin = createAdminClient();
     const { data, error } = await admin.from('lc_category_meta').select('*');
     if (error) return NextResponse.json({ categories: [] });
-    return NextResponse.json({ categories: data || [] });
+    return NextResponse.json({ categories: normalizeLcCategoryMeta(data) });
   } catch {
     return NextResponse.json({ categories: [] });
   }
@@ -35,7 +36,7 @@ export async function PUT(request) {
     const { data, error } = await admin
       .from('lc_category_meta')
       .upsert(
-        { name: name.trim(), emoji: emoji?.trim() || null, image_url: image_url || null, updated_at: new Date().toISOString() },
+        { name: normalizeLcCategory(name), emoji: emoji?.trim() || null, image_url: image_url || null, updated_at: new Date().toISOString() },
         { onConflict: 'name' }
       )
       .select()
@@ -59,7 +60,7 @@ export async function DELETE(request) {
     if (!name) return NextResponse.json({ error: 'اسم التصنيف مطلوب' }, { status: 400 });
 
     const admin = createAdminClient();
-    const { error } = await admin.from('lc_category_meta').delete().eq('name', name);
+    const { error } = await admin.from('lc_category_meta').delete().in('name', lcCategoryAliases(name));
     if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (e) {

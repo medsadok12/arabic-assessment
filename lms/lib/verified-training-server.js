@@ -3,6 +3,7 @@ import { scrambleId } from './verified-scramble';
 import { deliverVerifiedEffect, awardVerifiedPoints } from './verified-effects';
 import { normalizeGlobalConfig, wheelForPlay, defaultChallengeRows, cardFor, missingIndex } from './word-wheel';
 import { normalizeLcSettings, roundSize, letterCount, LEN_NO_LIMIT } from './letter-catcher';
+import { canonicalLcWord, lcCategoryKey, lcCategoryMatchesWord, lcNumberValue, lcUsesLegacySelection, normalizeLcCategory } from './letter-catcher-categories';
 import { randomUUID } from 'node:crypto';
 const tables = { letter_catcher: 'letter_catcher_words', vowel_balloon: 'vowel_balloon_games', word_smash: 'syllable_games', word_image_match: 'word_image_matches' };
 const key = (game, id) => `verified:round:${game}:${id}`;
@@ -53,11 +54,14 @@ export async function startTraining(admin, user, userId, body, preview) {
     const f = body.filters || {}, grade = Number(f.grade || 0);
     if (!Number.isInteger(grade) || grade < 0 || grade > 12 || (f.topic && (typeof f.topic !== 'string' || f.topic.length > 120))) throw verifiedError('اختر إعدادات التدريب من جديد.');
     let pool = await sourceRows(admin, tables[game]);
-    pool = pool.filter(r => (!grade || Number(r.grade_level) === grade) && (!f.topic || r.topic === f.topic));
+    const legacyLc = game === 'letter_catcher' && lcUsesLegacySelection(category, Array.isArray(body.ids) ? body.ids : []);
+    if (game === 'letter_catcher') pool = pool.map(canonicalLcWord);
+    pool = pool.filter(r => (!grade || Number(r.grade_level) === grade) && (!f.topic || (game === 'letter_catcher' ? lcCategoryMatchesWord(r, f.topic, { legacy: legacyLc }) : r.topic === f.topic)));
     if (game === 'letter_catcher') {
       const min = Number(f.minLen || 0), max = Number(f.maxLen || LEN_NO_LIMIT);
       if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 || max < min || max > 200) throw verifiedError('اختر طول الكلمات من جديد.');
-      pool = pool.filter(r => r.word && r.missing_letter && Array.isArray(r.options) && r.options.filter(Boolean).length && (category === '__all__' || r.category === category) && letterCount(r.word) >= min && (max >= LEN_NO_LIMIT || letterCount(r.word) <= max));
+      pool = pool.filter(r => r.word && r.missing_letter && Array.isArray(r.options) && r.options.filter(Boolean).length && lcCategoryMatchesWord(r, category, { legacy: legacyLc }) && letterCount(r.word) >= min && (max >= LEN_NO_LIMIT || letterCount(r.word) <= max));
+      category = category === '__all__' ? category : normalizeLcCategory(category);
     } else if (game === 'word_smash') pool = pool.filter(r => r.word_text && r.correct_segments?.length && r.wrong_options?.length >= 2 && r.rule_text && (category === 'عام' || r.topic === category));
     else if (game === 'word_image_match') pool = pool.filter(r => r.word_text && r.image_url && (r.topic || 'عام') === category);
     else pool = pool.filter(r => r.target_text && r.correct_option && r.rule_text);
@@ -70,7 +74,17 @@ export async function startTraining(admin, user, userId, body, preview) {
     if (!preview) {
       let expected;
       if (game === 'letter_catcher') {
-        const row = await read(admin, 'letter-catcher'); expected = roundSize(pool.length, normalizeLcSettings(row?.settings).words_per_round);
+        const row = await read(admin, 'letter-catcher'), count = normalizeLcSettings(row?.settings).words_per_round;
+        expected = roundSize(pool.length, count);
+        // A full-bank selection cached just before adding zero is still valid.
+        // This exception removes only the newly added zero, never arbitrary items.
+        if (category === '__all__' && items.length !== expected) {
+          const withoutZero = pool.filter(item => !(lcCategoryKey(item.category) === 'numbers' && lcNumberValue(item) === 0));
+          const selected = new Set(ids.map(String));
+          if (withoutZero.length + 1 === pool.length && selected.size === withoutZero.length && withoutZero.every(item => selected.has(String(item.id)))) {
+            expected = roundSize(withoutZero.length, count);
+          }
+        }
       } else if (game === 'word_image_match') expected = Math.min(pool.length, 4);
       else if (game === 'word_smash') expected = Math.min(pool.length, category === 'عام' ? 15 : 12);
       else expected = pool.length;
