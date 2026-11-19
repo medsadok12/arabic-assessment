@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1024 1024" role="img" aria-label="بُرْتُقَالِيٌّ"><defs>
+ <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6c9ad1"/><stop offset=".45" stop-color="#4777af"/><stop offset="1" stop-color="#294c7e"/></linearGradient>
+ <radialGradient id="sphere" cx="32%" cy="27%" r="74%"><stop stop-color="#c2ddf1"/><stop offset=".35" stop-color="#76a9d4"/><stop offset=".8" stop-color="#4173a5"/><stop offset="1" stop-color="#2c5282"/></radialGradient>
+ <linearGradient id="top" x2=".5" y2="1"><stop stop-color="#b6d5e9"/><stop offset="1" stop-color="#8eb5d6"/></linearGradient>
+ <linearGradient id="left" x2="1" y2="1"><stop stop-color="#86b2d7"/><stop offset="1" stop-color="#5a89b7"/></linearGradient>
+ <linearGradient id="right" x2="1" y2="1"><stop stop-color="#5d90bd"/><stop offset="1" stop-color="#2f598a"/></linearGradient>
+ <linearGradient id="cone" x1="0" y1="0" x2="1" y2=".1"><stop stop-color="#4d7eae"/><stop offset=".35" stop-color="#a3c7e3"/><stop offset=".7" stop-color="#77a5cd"/><stop offset="1" stop-color="#365e8d"/></linearGradient>
+ <filter id="soft" x="-.5" y="-2" width="2" height="5"><feGaussianBlur stdDeviation="14"/></filter>
+</defs><rect width="1024" height="1024" fill="#fff"/><ellipse cx="512" cy="899" rx="280" ry="19" fill="#718298" opacity=".14" filter="url(#soft)"/><circle cx="512" cy="493" r="350" fill="#ed8a28" stroke="#ed8a28" stroke-width="2"/></svg>

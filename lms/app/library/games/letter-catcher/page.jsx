@@ -17,6 +17,7 @@ import { stripDia, getLetterForm } from '../../../../lib/letter-forms';
 import { letterCatcherTiles, contextualTile, extendedChoiceLetter } from '../../../../lib/letter-catcher-tiles';
 import { playLetterCatcherWord } from '../../../../lib/letter-catcher-audio';
 import { preloadLetterCatcherImage, warmLetterCatcherImages } from '../../../../lib/letter-catcher-images';
+import { refreshLcRoundImages } from '../../../../lib/letter-catcher-live-images';
 import { letterCatcherPictureLayout } from '../../../../lib/letter-catcher-picture';
 import { createLetterCatcherAnswerFeedback, letterCatcherAnswerMatches } from '../../../../lib/letter-catcher-answer-feedback';
 import { playCelebrationVideo } from '../../../../lib/celebration-video';
@@ -567,6 +568,11 @@ export default function LetterCatcherGame() {
   useEffect(() => { loadGameWords(); }, [loadGameWords]);
   useEffect(() => { loadCatMeta(); }, [loadCatMeta]);
 
+  // A fresh illustration also reaches an unfinished round without resetting it.
+  useEffect(() => {
+    setQueue(items => refreshLcRoundImages(items, gameWords));
+  }, [gameWords, queue]);
+
   /* عودة الطفل لتبويب مفتوح مسبقاً: يجلب آخر ما عدّله المعلم بدل نسخة قديمة */
   useEffect(() => {
     const onVisible = () => {
@@ -607,7 +613,7 @@ export default function LetterCatcherGame() {
 
   /* ── build round queue ── */
   const buildQueue = useCallback((words, optCount) => {
-    return words.map(w => {
+    return refreshLcRoundImages(words, gameWords).map(w => {
       const correctLetter = stripDia(w.missing_letter);
       const form          = letterCatcherTiles(w).missingForm;
       const pool2         = (w.options || []).filter(Boolean).filter(o => stripDia(o) !== correctLetter);
@@ -615,7 +621,7 @@ export default function LetterCatcherGame() {
       const opts          = shuffle([w.missing_letter, ...distractors]);
       return { ...w, _opts: opts, _form: form };
     });
-  }, []);
+  }, [gameWords]);
 
   /* ── كلمات الجولة بالتدوير: ما لم يُجب عنه الطفل بعد في هذه المجموعة أولاً ── */
   const pickRoundWords = useCallback((words, catKey) => {
