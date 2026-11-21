@@ -18,6 +18,7 @@ import { letterCatcherTiles, contextualTile, extendedChoiceLetter } from '../../
 import { playLetterCatcherWord } from '../../../../lib/letter-catcher-audio';
 import { preloadLetterCatcherImage, warmLetterCatcherImages } from '../../../../lib/letter-catcher-images';
 import { refreshLcRoundImages } from '../../../../lib/letter-catcher-live-images';
+import { refreshLcRoundAudio } from '../../../../lib/letter-catcher-live-audio';
 import { letterCatcherPictureLayout } from '../../../../lib/letter-catcher-picture';
 import { createLetterCatcherAnswerFeedback, letterCatcherAnswerMatches } from '../../../../lib/letter-catcher-answer-feedback';
 import { playCelebrationVideo } from '../../../../lib/celebration-video';
@@ -568,9 +569,9 @@ export default function LetterCatcherGame() {
   useEffect(() => { loadGameWords(); }, [loadGameWords]);
   useEffect(() => { loadCatMeta(); }, [loadCatMeta]);
 
-  // A fresh illustration also reaches an unfinished round without resetting it.
+  // Fresh media also reaches an unfinished round without resetting it.
   useEffect(() => {
-    setQueue(items => refreshLcRoundImages(items, gameWords));
+    setQueue(items => refreshLcRoundAudio(refreshLcRoundImages(items, gameWords), gameWords));
   }, [gameWords, queue]);
 
   /* عودة الطفل لتبويب مفتوح مسبقاً: يجلب آخر ما عدّله المعلم بدل نسخة قديمة */
@@ -613,7 +614,7 @@ export default function LetterCatcherGame() {
 
   /* ── build round queue ── */
   const buildQueue = useCallback((words, optCount) => {
-    return refreshLcRoundImages(words, gameWords).map(w => {
+    return refreshLcRoundAudio(refreshLcRoundImages(words, gameWords), gameWords).map(w => {
       const correctLetter = stripDia(w.missing_letter);
       const form          = letterCatcherTiles(w).missingForm;
       const pool2         = (w.options || []).filter(Boolean).filter(o => stripDia(o) !== correctLetter);
