@@ -2,6 +2,7 @@
 import useVerifiedTraining from '../../../../lib/use-verified-training';
 import VerifiedTrainingStatus from '../../../../components/VerifiedTrainingStatus';
 import LetterCatcherProgress from '../../../../components/LetterCatcherProgress';
+import LetterCatcherWordFrame from '../../../../components/LetterCatcherWordFrame';
 
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
@@ -15,6 +16,7 @@ import { readLcCategorySeen, rememberLcAnsweredWord } from '../../../../lib/lett
 import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useElementWidth } from '../../../../lib/fit-tiles';
 import { stripDia, getLetterForm } from '../../../../lib/letter-forms';
 import { letterCatcherTiles, contextualTile, extendedChoiceLetter } from '../../../../lib/letter-catcher-tiles';
+import { usesAnimalWordFrame } from '../../../../lib/letter-catcher-word-frame';
 import { playLetterCatcherWord } from '../../../../lib/letter-catcher-audio';
 import { preloadLetterCatcherImage, warmLetterCatcherImages } from '../../../../lib/letter-catcher-images';
 import { refreshLcRoundImages } from '../../../../lib/letter-catcher-live-images';
@@ -1086,6 +1088,8 @@ export default function LetterCatcherGame() {
 
   // الحركات تبقى مع حرفها داخل مربّع واحد؛ موضع الفراغ وأشكال الوصل تُحسب بالحروف فقط.
   const { displayLetters: letters, baseLetters, missingIndex: mi, letterGroups, displayWord: fullWordDisplay } = letterCatcherTiles(w);
+  // Animal words alone use the approved whole-word frame, including in mixed rounds.
+  const animalWordFrame = usesAnimalWordFrame(w);
   const isLast        = cur + 1 >= queue.length;
 
   // عبارة من كلمتين أو أكثر (مثل «حمار وحشي»): كل كلمة مجموعة مربعات مستقلة
@@ -1097,7 +1101,7 @@ export default function LetterCatcherGame() {
   const naturalTilesWidth = tileCount * 46 + (mi >= 0 ? 4 : 0) + Math.max(0, tileCount - letterGroups.length) * 6 + Math.max(0, letterGroups.length - 1) * 26;
   // Mirror the left control when space allows, so short words keep their exact
   // center. Longer words can use the empty right gutter rather than wrap or clip.
-  const balanceListenRow = wordControlsWidth >= naturalTilesWidth + 112;
+  const balanceListenRow = animalWordFrame || wordControlsWidth >= naturalTilesWidth + 112;
   const fitWordTiles = isPhrase || (wordRowWidth > 0 && naturalTilesWidth > wordRowWidth);
   const tightWordGaps = fitWordTiles && tileCount * 12 + Math.max(0, tileCount - letterGroups.length) * 4 + Math.max(0, letterGroups.length - 1) * 14 > wordRowWidth;
   const tileSize = fitWordTiles ? fitTileSize(wordRowWidth, tileCount, letterGroups.length, { max: isPhrase ? 40 : 46, ...(tightWordGaps ? { tileGap: 2, wordGap: 8 } : null) }) : null;
@@ -1225,6 +1229,8 @@ export default function LetterCatcherGame() {
                   }}>{p.em}</span>
                 ))}
               </CompletedWord>
+            ) : animalWordFrame ? (
+              <LetterCatcherWordFrame key={cur} word={w} compact={compact} revealed={correct !== null} retryKey={tried.length} />
             ) : (
               <div key={`row-${cur}-${tried.length}`} ref={setWordRowEl} style={{ ...S.wordRow, ...(fitWordTiles ? compactRowStyle : null), ...(tightWordGaps ? { gap: 8 } : null), minHeight: compact ? 76 : 92, animation: tried.length ? 'lcWrongShake .45s cubic-bezier(.36,.07,.19,.97) both' : 'none' }}>
                 {mi < 0 ? (
