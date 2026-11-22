@@ -15,6 +15,20 @@ const render = (word, props = {}) => renderToStaticMarkup(<LetterCatcherWordFram
 const marker = html => html.match(/<svg\b[\s\S]*?<\/svg>/)?.[0];
 
 describe('whole-word animal challenge', () => {
+  it('renders a server-prepared challenge without receiving its missing answer', () => {
+    const html = render(undefined, { preparedFrame: { before: 'بَ\u200D', after: '\u200Dرَةٌ' } });
+    expect(html).toContain('بَ\u200D');
+    expect(html).toContain('\u200Dرَة\u08F1');
+    expect(html.match(/data-lc-missing-mark=/g)).toHaveLength(1);
+    expect(html).not.toContain('بَقَرَة');
+    expect(marker(html)).toContain('width="16" height="26"');
+  });
+
+  it('normalizes a revealed word rather than showing raw prepared review text', () => {
+    const html = render({ word: 'فِيلٌ' }, { revealed: true, preparedFrame: { before: '', after: '', text: 'فِيلٌ' } });
+    expect(html).toContain('aria-label="فيلٌ">فيل\u08F1</span>');
+  });
+
   it('uses one shared frame and one identical small marker across words and viewport modes', () => {
     const markers = new Set();
     for (const word of examples) for (const compact of [true, false]) {

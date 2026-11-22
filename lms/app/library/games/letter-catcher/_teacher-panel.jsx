@@ -6,6 +6,8 @@ import AudioUploadButton from '../../../../components/AudioUploadButton';
 import { WORDS_PER_ROUND_CHOICES, OPTIONS_COUNT_CHOICES, LEN_NO_LIMIT, normalizeLcSettings } from '../../../../lib/letter-catcher';
 import { sortLcCategories, sortLcCategoryWords } from '../../../../lib/letter-catcher-categories';
 import { prepareLetterCatcherImageUpload } from '../../../../lib/letter-catcher-image-upload';
+import { childFetch } from '../../../../lib/child-fetch';
+import { displayNumber } from '../../../../lib/display-number';
 
 /* ── category styles; topic choices come from the actual word bank ── */
 
@@ -532,8 +534,30 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
   const [draft,   setDraft]   = useState(() => normalizeLcSettings(settings));
   const [stSaving, setStSaving] = useState(false);
   const [stMsg,   setStMsg]   = useState(null);
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetMsg, setResetMsg] = useState(null);
   const savedSettings = normalizeLcSettings(settings);
-  const dirty = draft.words_per_round !== savedSettings.words_per_round || draft.options_count !== savedSettings.options_count || draft.progress_motion !== savedSettings.progress_motion;
+  const dirty = draft.words_per_round !== savedSettings.words_per_round || draft.options_count !== savedSettings.options_count || draft.progress_motion !== savedSettings.progress_motion || JSON.stringify(draft.duel) !== JSON.stringify(savedSettings.duel);
+
+  const changeDuel = (values) => {
+    setDraft(d => ({ ...d, duel: { ...d.duel, ...values } }));
+    setStMsg(null);
+  };
+
+  const resetOpenDuels = async () => {
+    setResetting(true); setResetMsg(null);
+    try {
+      const res = await childFetch('/api/games/letter-catcher/duel', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reset' }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'تعذر إنهاء التحديات. حاول مرة أخرى.');
+      setResetMsg({ ok: true, text: `أُنهيت ${displayNumber(json.resetCount ?? 0)} من التحديات المفتوحة.${json.remaining ? ' بقيت تحديات مفتوحة؛ اضغط مجددًا لإنهائها.' : ''}` });
+      setResetConfirm(false);
+    } catch (e) { setResetMsg({ ok: false, text: e.message }); }
+    setResetting(false);
+  };
 
   const saveSettings = async () => {
     setStSaving(true); setStMsg(null);
@@ -569,7 +593,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
         <div style={{ marginBottom:16, borderRadius:12, border:'1.5px solid #e5e7eb', overflow:'hidden', flexShrink:0 }}>
           <button onClick={() => setCfgOpen(o => !o)} style={{ width:'100%', background: cfgOpen ? '#f5f3ff' : '#f9fafb', border:'none', padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:'inherit' }}>
             <span style={{ fontWeight:700, color:'#5b4fc4', fontSize:'.9rem' }}>
-              ⚙️ إعدادات الجولة — {settings.words_per_round === 0 ? 'كل كلمات المجموعة' : `${settings.words_per_round} كلمة`}
+              ⚙️ إعدادات الجولة — {savedSettings.words_per_round === 0 ? 'كل كلمات المجموعة' : `${displayNumber(savedSettings.words_per_round)} كلمة`}
             </span>
             <span style={{ color:'#9ca3af', fontSize:'.78rem' }}>{cfgOpen ? '▲ طي' : '▼ توسيع'}</span>
           </button>
@@ -611,6 +635,45 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
                   🔄 الكلمات تُختار بالتدوير: لا تتكرر كلمة على الطفل حتى يمرّ على كل كلمات المجموعة، ثم تبدأ دورة جديدة. الأعداد تتقدّم بالترتيب من الصفر.
                 </div>
 
+                <div style={{ borderTop:'1px solid #e8d9ad', paddingTop:12, marginTop:12, marginBottom:14 }}>
+                  <label style={{ display:'flex', alignItems:'center', gap:10, minHeight:44, fontSize:'.9rem', fontWeight:800, color:'#1A2B4A', cursor:'pointer' }}>
+                    <input type="checkbox" checked={draft.duel.enabled} onChange={e => changeDuel({ enabled: e.target.checked })}
+                      style={{ width:20, height:20, accentColor:'#C59A2E', flexShrink:0 }} />
+                    تفعيل تحدي صديق — الحيوانات
+                  </label>
+                  <div style={{ fontSize:'.76rem', color:'#6b7280', lineHeight:1.7, marginBottom:10 }}>
+                    يستخدم كلمات الحيوانات وصورها وتسجيلاتها من القائمة أدناه. يحتفظ التعطيل بالإعدادات والمحتوى.
+                  </div>
+                  <label style={{ ...P.label, fontSize:'.85rem', marginBottom:10 }}>
+                    عنوان التحدي
+                    <input value={displayNumber(draft.duel.title)} onChange={e => changeDuel({ title: e.target.value })} maxLength={80} style={P.input} />
+                  </label>
+                  <label style={{ ...P.label, fontSize:'.85rem', marginBottom:10 }}>
+                    وصف التحدي
+                    <input value={displayNumber(draft.duel.subtitle)} onChange={e => changeDuel({ subtitle: e.target.value })} maxLength={160} style={P.input} />
+                  </label>
+                  <label style={{ ...P.label, fontSize:'.85rem', marginBottom:8 }}>
+                    عدد أسئلة التحدي
+                    <select value={draft.duel.questionCount} onChange={e => changeDuel({ questionCount: Number(e.target.value) })} style={P.select}>
+                      {[5, 6, 7, 8, 9, 10].map(n => <option key={n} value={n}>{displayNumber(n)} أسئلة</option>)}
+                    </select>
+                  </label>
+                  <div style={{ fontSize:'.76rem', color:'#6b7280', lineHeight:1.7, marginBottom:8 }}>
+                    {displayNumber(draft.duel.optionsCount)} خيارات لكل سؤال.
+                  </div>
+                  {[
+                    ['soundEnabled', 'الأصوات والتسجيلات'],
+                    ['motionEnabled', 'حركة النجوم والمكافآت'],
+                    ['encouragementEnabled', 'ظهور فهيم وتشجيعه'],
+                  ].map(([key, label]) => (
+                    <label key={key} style={{ display:'flex', alignItems:'center', gap:10, minHeight:44, fontSize:'.85rem', fontWeight:700, color:'#374151', cursor:'pointer' }}>
+                      <input type="checkbox" checked={draft.duel[key]} onChange={e => changeDuel({ [key]: e.target.checked })}
+                        style={{ width:20, height:20, accentColor:'#C59A2E', flexShrink:0 }} />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+
                 {stMsg && (
                   <div style={{ marginBottom:8, padding:'8px 12px', borderRadius:8, fontSize:'.85rem', fontWeight:700, background: stMsg.ok ? '#d4edda' : '#f8d7da', color: stMsg.ok ? '#155724' : '#721c24' }}>
                     {stMsg.text}
@@ -621,6 +684,28 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
                     background:'#E8B84B', color:'#1A2B4A', cursor: (stSaving || !dirty) ? 'not-allowed' : 'pointer', opacity: (stSaving || !dirty) ? 0.55 : 1 }}>
                   {stSaving ? 'جارٍ الحفظ…' : '💾 حفظ لكل الطلاب'}
                 </button>
+
+                <div style={{ marginTop:12, borderTop:'1px solid #e8d9ad', paddingTop:12 }}>
+                  {!resetConfirm ? (
+                    <button type="button" onClick={() => { setResetConfirm(true); setResetMsg(null); }}
+                      style={{ width:'100%', minHeight:44, background:'#fff', color:'#b45309', border:'1px solid #f4c26a', borderRadius:10, fontFamily:'inherit', fontSize:'.84rem', fontWeight:700, cursor:'pointer' }}>
+                      إنهاء التحديات المفتوحة
+                    </button>
+                  ) : (
+                    <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:10, padding:10 }}>
+                      <div style={{ color:'#9a3412', fontSize:'.82rem', lineHeight:1.7, marginBottom:8 }}>سيتم إنهاء التحديات المفتوحة والجارية، مع الاحتفاظ بالنتائج والنقاط السابقة.</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                        <button type="button" onClick={resetOpenDuels} disabled={resetting}
+                          style={{ minHeight:44, padding:'8px 12px', background:'#b45309', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontWeight:700, cursor:resetting ? 'wait' : 'pointer' }}>
+                          {resetting ? 'جارٍ الإنهاء…' : 'نعم، إنهاء التحديات'}
+                        </button>
+                        <button type="button" onClick={() => setResetConfirm(false)} disabled={resetting}
+                          style={{ minHeight:44, padding:'8px 12px', background:'#fff', color:'#374151', border:'1px solid #d1d5db', borderRadius:8, fontFamily:'inherit', fontWeight:700, cursor:'pointer' }}>إلغاء</button>
+                      </div>
+                    </div>
+                  )}
+                  {resetMsg && <div role="status" style={{ marginTop:8, fontSize:'.8rem', lineHeight:1.7, color:resetMsg.ok ? '#15803d' : '#b91c1c' }}>{resetMsg.text}</div>}
+                </div>
               </div>
 
               {/* ── معاينة عندك فقط ── */}

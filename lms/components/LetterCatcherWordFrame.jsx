@@ -25,8 +25,13 @@ export function MissingLetterMark() {
   );
 }
 
-export default function LetterCatcherWordFrame({ word, compact = false, revealed = false, retryKey = 0 }) {
-  const source = letterCatcherWordFrame(word);
+export default function LetterCatcherWordFrame({ word, preparedFrame, compact = false, revealed = false, retryKey = 0 }) {
+  // Multiplayer receives only the shaped surviving runs until review. Revealed
+  // words retain the same shared reading and long-vowel convention as solo play.
+  const source = preparedFrame && !(revealed && word?.word)
+    ? { before: String(preparedFrame.before || ''), after: String(preparedFrame.after || ''),
+        text: String(preparedFrame.text || ''), hasMissing: preparedFrame.hasMissing !== false }
+    : letterCatcherWordFrame(word);
   const { hasMissing } = source;
   const before = withSeparatedDammatan(source.before);
   const after = withSeparatedDammatan(source.after);

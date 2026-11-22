@@ -33,6 +33,7 @@ import HeroAvatar3D from '../../../../components/HeroAvatar3D';
 
 /* teacher-only panel loads only when the teacher opens it — not in students' bundle */
 const SettingsPanel = dynamic(() => import('./_teacher-panel'), { ssr: false, loading: () => null });
+const FriendChallenge = dynamic(() => import('../../../../components/LetterCatcherDuel'), { ssr: false, loading: () => <div style={{ padding: 24, textAlign: 'center', color: '#1A2B4A' }}>نستعد للتحدّي…</div> });
 
 /* ────────────────────────── fallback words (instant start) ─── */
 const LC_FALLBACK = [
@@ -311,8 +312,7 @@ export default function LetterCatcherGame() {
   const [phase,      setPhase]      = useState('start');
   const [dbWords,    setDbWords]    = useState([]);
   const [gameWords,  setGameWords]  = useState(() => {
-    const cached = getCachedWords();
-    return (cached && cached.length > 0 ? cached : LC_FALLBACK).map(canonicalLcWord).filter(
+    return LC_FALLBACK.map(canonicalLcWord).filter(
       w => w.word && w.missing_letter && Array.isArray(w.options) && w.options.filter(Boolean).length >= 2
     );
   });
@@ -352,7 +352,15 @@ export default function LetterCatcherGame() {
     maxLen: LEN_NO_LIMIT,
   });
   /* إعدادات الجولة المحفوظة لكل الطلاب */
-  const [settings, setSettings] = useState(() => (typeof window === 'undefined' ? { ...LC_DEFAULT_SETTINGS } : getCachedSettings()));
+  const [settings, setSettings] = useState(() => normalizeLcSettings(LC_DEFAULT_SETTINGS));
+  // Restore browser caches after hydration so the first render matches the server.
+  useEffect(() => {
+    const cached = getCachedWords();
+    if (cached?.length) setGameWords(cached.map(canonicalLcWord).filter(
+      w => w.word && w.missing_letter && Array.isArray(w.options) && w.options.filter(Boolean).length >= 2
+    ));
+    setSettings(getCachedSettings());
+  }, []);
   const roundRef = useRef({ key: null, ids: [] });
   const [totalPoints,   setTotalPoints]   = useState(0);
   const [ptPopupKey,    setPtPopupKey]    = useState(0);
@@ -790,6 +798,11 @@ export default function LetterCatcherGame() {
     startGame(category);
   };
 
+  if (phase === 'duel') return <FriendChallenge settings={settings.duel} onExit={() => {
+    setPhase('start'); loadGameWords({ quiet: true });
+    childFetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
+  }} />;
+
   /* ══════════════════════ RENDER: START ══════════════════════ */
   if (phase === 'start') {
     const categories = sortLcCategories(gameWords.map(w => w.category).filter(Boolean));
@@ -937,6 +950,17 @@ export default function LetterCatcherGame() {
               <p style={{ margin: '4px 0 0', fontSize: '.92rem', fontWeight: 700, color: '#5A3FBF', lineHeight: 1.7 }}>كُلُّ مَجْمُوعَةٍ عَالَمٌ جَدِيدٌ — اِصْطَدِ الْحَرْفَ النَّاقِصَ 🎯</p>
             </div>
           </div>
+
+          {settings.duel?.enabled && (
+            <button type="button" data-lc-duel-entry="" style={{ ...S.goldBtn, display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', textAlign: 'right' }}
+              onClick={() => { stopWordAudio(); clearCheer(); setPendingCategory(undefined); setPhase('duel'); }}>
+              <span aria-hidden="true" style={{ fontSize: '2rem' }}>👥</span>
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span>{settings.duel.title}</span>
+                <span style={{ fontSize: '.9rem', fontWeight: 600 }}>{settings.duel.subtitle}</span>
+              </span>
+            </button>
+          )}
 
           {/* ── empty / lock ── */}
           {gameWords.length === 0 ? (
