@@ -3,6 +3,7 @@ import useVerifiedTraining from '../../../../lib/use-verified-training';
 import VerifiedTrainingStatus from '../../../../components/VerifiedTrainingStatus';
 import LetterCatcherProgress from '../../../../components/LetterCatcherProgress';
 import LetterCatcherWordFrame from '../../../../components/LetterCatcherWordFrame';
+import LetterCatcherFahimOverlay from '../../../../components/LetterCatcherFahimOverlay';
 
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
@@ -24,6 +25,7 @@ import { refreshLcRoundAudio } from '../../../../lib/letter-catcher-live-audio';
 import { letterCatcherPictureLayout } from '../../../../lib/letter-catcher-picture';
 import { createLetterCatcherAnswerFeedback, letterCatcherAnswerMatches } from '../../../../lib/letter-catcher-answer-feedback';
 import { playCelebrationVideo } from '../../../../lib/celebration-video';
+import { playAnimalFahimCelebration } from '../../../../lib/letter-catcher-animal-celebration';
 import GameScene, { SceneThumb } from '../../../../components/GameScene';
 // بطل الطالب من «عالم الأبطال» يحتفل معه في شاشة النهاية — المكوّن خفيف، وthree.js يُحمَّل عند ظهوره فقط
 // (استيراد مباشر لا dynamic(): نحتاج ref ليقوم البطل بحركته الخاصة)
@@ -111,6 +113,15 @@ const CAT_META = {
 };
 
 /* ────────────────────── image with fallback ─────────────────── */
+function preloadQuestionPicture(word) {
+  return Promise.all([
+    preloadLetterCatcherImage(word?.image_url),
+    usesAnimalWordFrame(word)
+      ? preloadLetterCatcherImage('/media/fahim-cheer-frames.webp')
+      : Promise.resolve(),
+  ]);
+}
+
 function WordImage({ imageUrl, emoji, size = 150 }) {
   const [err, setErr] = useState(false);
   const [ready, setReady] = useState(false);
@@ -414,6 +425,7 @@ export default function LetterCatcherGame() {
   const fahimOn     = useRef(false);
   const cheerPlayback = useRef(null);
   const cheerPreparation = useRef(null);
+  const animalCheer = useRef(false);
   const [cheer, setCheer] = useState(null); // null | 'word' | 'loading' | 'in' | 'out'
   const clearCheerTimers = () => { cheerTimers.current.forEach(clearTimeout); cheerTimers.current = []; };
   const clearCheer = useCallback(() => {
@@ -434,6 +446,15 @@ export default function LetterCatcherGame() {
     cheerPreparation.current = null;
     const v = cheerVidRef.current;
     if (!v) { clearCheer(); return; }
+    if (animalCheer.current) {
+      cheerPlayback.current = playAnimalFahimCelebration(v, {
+        isCurrent: () => run === cheerRun.current,
+        onReady: () => setCheer('in'),
+        onFade: () => setCheer('out'),
+        onFinish: clearCheer,
+      });
+      return;
+    }
     setCheer('loading');
     cheerPlayback.current = playCelebrationVideo(v, {
       isCurrent: () => run === cheerRun.current,
@@ -446,6 +467,7 @@ export default function LetterCatcherGame() {
   }, [clearCheer, stopWordAudio]);
   const celebrate = useCallback((wd) => {
     const run = ++cheerRun.current;
+    animalCheer.current = usesAnimalWordFrame(wd);
     const text = fullWordOf(wd);
     stopWordAudio();
     clearCheerTimers();
@@ -659,7 +681,7 @@ export default function LetterCatcherGame() {
       roundRef.current = { key, ids: (pool.length ? pool : j.items).map(w => String(w.id)), category };
       const cursor = Math.max(0, j.summary.cursor);
       setPreparingPicture(true);
-      if (!j.summary.complete) await preloadLetterCatcherImage(nextQueue[cursor]?.image_url);
+      if (!j.summary.complete) await preloadQuestionPicture(nextQueue[cursor]);
       if (transition !== pictureTransition.current) return;
       nextInFlight.current = false; setPreparingPicture(false); setWordFinished(false);
       setPendingCategory(undefined);
@@ -748,7 +770,7 @@ export default function LetterCatcherGame() {
     clearCheer();
     const n = cur + 1;
     setPreparingPicture(true);
-    if (n < queue.length) await preloadLetterCatcherImage(queue[n]?.image_url);
+    if (n < queue.length) await preloadQuestionPicture(queue[n]);
     if (transition !== pictureTransition.current) return;
     resetAnswerFeedback();
     nextInFlight.current = false; setPreparingPicture(false); setWordFinished(false);
@@ -1127,7 +1149,7 @@ export default function LetterCatcherGame() {
   // «أحسنت» تظهر مع فهيم وصوته معاً — أثناء نطق الكلمة يقول السطر «اسمع الكلمة» فقط
   const pill = correct === true
     ? fahimShown
-      ? { text: tried.length ? '✅ أَحْسَنْتَ! وَجَدْتَهُ 🎉' : '✅ أَحْسَنْتَ! 🎉', style: S.pillOk }
+      ? { text: animalWordFrame ? 'أَحْسَنْتَ!' : tried.length ? '✅ أَحْسَنْتَ! وَجَدْتَهُ 🎉' : '✅ أَحْسَنْتَ! 🎉', style: S.pillOk }
       : cheer === 'word' || cheer === 'loading'
         ? { text: '🔊 اِسْمَعِ الْكَلِمَةَ', style: null }
         : { text: 'اِقْرَأِ الْكَلِمَةَ', style: S.pillOk }
@@ -1177,7 +1199,13 @@ export default function LetterCatcherGame() {
       <GameScene category={catLabel} scene={lcCategoryScene(catLabel)} />
 
       <div ref={columnRef} style={S.stageColumn}>
-        <VerifiedTrainingStatus training={verified} compact />
+        {animalWordFrame ? (
+          // Reserve both the save message and final summary, so the last answer
+          // cannot push the scene down when its second status line appears.
+          <div style={{ minHeight: 'calc(2.34rem + 12px)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+            <VerifiedTrainingStatus training={verified} compact />
+          </div>
+        ) : <VerifiedTrainingStatus training={verified} compact />}
         <LetterCatcherProgress
           category={catLabel}
           totalPoints={totalPoints}
@@ -1199,9 +1227,16 @@ export default function LetterCatcherGame() {
         {/* البطاقة في وسط المساحة المتبقية */}
         <div ref={middleRef} style={S.stageMiddle}>
           <div ref={cardRef} style={{ ...S.glassCard, padding: sz.pad, gap: sz.gap }}>
-            <h1 aria-live="polite" style={{ ...S.questionPill, ...pill.style, minHeight: sz.pill, fontSize: compact ? '1.12rem' : '1.25rem' }}>{pill.text}</h1>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <h1 aria-live="polite" style={{ ...S.questionPill, ...pill.style, minHeight: sz.pill, fontSize: compact ? '1.12rem' : '1.25rem' }}>{pill.text}</h1>
+              {animalWordFrame && <LetterCatcherFahimOverlay cheer={cheer} mediaRef={cheerVidRef} wordKey={w.id || cur} compact={compact} />}
+            </div>
 
-            <CelebrationPicture word={w} size={imgH} cheer={cheer} videoRef={cheerVidRef} />
+            {animalWordFrame ? (
+              <div data-lc-animal-picture="" style={{ ...S.pictureCard, height: imgH + 20 }}>
+                <WordImage key={w.image_url || w.id} imageUrl={w.image_url} emoji={w.emoji} size={imgH} />
+              </div>
+            ) : <CelebrationPicture word={w} size={imgH} cheer={cheer} videoRef={cheerVidRef} />}
 
             {/* ── ارتفاع محجوز للحركات قبل الإجابة وبعدها، حتى لا تقفز الصورة أو الأزرار ── */}
             <div ref={setWordControlsEl} style={{ ...S.wordControls, gridTemplateColumns: balanceListenRow ? '48px minmax(0, 1fr) 48px' : '48px minmax(0, 1fr)' }}>
@@ -1288,7 +1323,7 @@ export default function LetterCatcherGame() {
         {/* الأسفل ثابت: فهيم يشجّع، وبعد الإجابة زر «التالي» بجانبه — لا شيء يدفع البطاقة */}
         <FaheemBuddy
           size={sz.foot}
-          hideMascot={fahimShown}
+          hideMascot={animalWordFrame || fahimShown}
           text={buddyText}
           action={chosen !== null && wordFinished && (
             <button style={{ ...S.goldBtn, minHeight: compact ? 50 : 56, flex: 1, opacity: preparingPicture ? .7 : 1 }} onClick={next} disabled={!answerConfirmed || preparingPicture || verified.busy || verified.pending} aria-busy={preparingPicture || !answerConfirmed}>
