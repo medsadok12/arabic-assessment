@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { letterCatcherWordFrame } from '../lib/letter-catcher-word-frame';
+import { letterCatcherWordFrame, withSeparatedDammatan } from '../lib/letter-catcher-word-frame';
 
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 const MARKER_WIDTH = 16;
@@ -26,7 +26,11 @@ export function MissingLetterMark() {
 }
 
 export default function LetterCatcherWordFrame({ word, compact = false, revealed = false, retryKey = 0 }) {
-  const { before, after, text, hasMissing } = letterCatcherWordFrame(word);
+  const source = letterCatcherWordFrame(word);
+  const { hasMissing } = source;
+  const before = withSeparatedDammatan(source.before);
+  const after = withSeparatedDammatan(source.after);
+  const text = withSeparatedDammatan(source.text);
   const rowRef = useRef(null);
   const [fontSize, setFontSize] = useState(null);
   const showMissing = hasMissing && !revealed;
@@ -88,10 +92,10 @@ export default function LetterCatcherWordFrame({ word, compact = false, revealed
           fontSize: fontSize === null ? 'inherit' : fontSize,
         }}>
           {showMissing ? <>
-            {before && <span dir="rtl" style={{ unicodeBidi: 'isolate' }}>{before}</span>}
+            {before && <span dir="rtl" aria-label={source.before} style={{ unicodeBidi: 'isolate' }}>{before}</span>}
             <MissingLetterMark />
-            {after && <span dir="rtl" style={{ unicodeBidi: 'isolate' }}>{after}</span>}
-          </> : <span dir="rtl">{text}</span>}
+            {after && <span dir="rtl" aria-label={source.after} style={{ unicodeBidi: 'isolate' }}>{after}</span>}
+          </> : <span dir="rtl" aria-label={source.text}>{text}</span>}
         </span>
       </span>
     </div>

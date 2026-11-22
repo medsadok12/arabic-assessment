@@ -48,4 +48,18 @@ describe('whole-word animal challenge', () => {
     expect(html).not.toContain('ّ');
     expect(html).not.toContain('ٌ');
   });
+
+  it('uses the existing font open dammatan while preserving the original accessible word', () => {
+    const word = { word: 'ثَعْلَبٌ', missing_letter: 'ع', category: 'الحيوانات' };
+    const html = render(word, { revealed: true });
+    expect(html).toContain('aria-label="ثَعْلَبٌ">ثَعْلَب\u08F1</span>');
+    expect(html).toContain('font-family:inherit');
+  });
+
+  it('keeps shadda and contextual joins when showing separated dammas on a known final letter', () => {
+    const html = render({ word: '_طٌّ', missing_letter: 'قِ', category: 'الحيوانات' });
+    expect(html).toContain('\u200Dطّ\u08F1</span>');
+    expect(html).toContain('aria-label="\u200Dطٌّ"');
+    expect(html.match(/data-lc-missing-mark=/g)).toHaveLength(1);
+  });
 });

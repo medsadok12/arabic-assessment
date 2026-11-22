@@ -16,7 +16,7 @@ import { readLcCategorySeen, rememberLcAnsweredWord } from '../../../../lib/lett
 import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useElementWidth } from '../../../../lib/fit-tiles';
 import { stripDia, getLetterForm } from '../../../../lib/letter-forms';
 import { letterCatcherTiles, contextualTile, extendedChoiceLetter } from '../../../../lib/letter-catcher-tiles';
-import { usesAnimalWordFrame } from '../../../../lib/letter-catcher-word-frame';
+import { usesAnimalWordFrame, withSeparatedDammatan } from '../../../../lib/letter-catcher-word-frame';
 import { playLetterCatcherWord } from '../../../../lib/letter-catcher-audio';
 import { preloadLetterCatcherImage, warmLetterCatcherImages } from '../../../../lib/letter-catcher-images';
 import { refreshLcRoundImages } from '../../../../lib/letter-catcher-live-images';
@@ -206,7 +206,8 @@ function AnswerChoiceLetter({ letter, form, baseSize }) {
 
 /* مساحة الحركات جزء من الكلمة. نقيس خط النسخ نفسه بعد تحميله، لا عدد محارف Unicode،
    ثم نوسّط الرسم الفعلي (بما فيه الشدة والتنوين) داخل الإطار من دون فصل الحروف. */
-function CompletedWord({ text, compact, children }) {
+function CompletedWord({ text, compact, children, separateTanwin = false }) {
+  const displayText = separateTanwin ? withSeparatedDammatan(text) : text;
   const rowRef = useRef(null);
   const [fit, setFit] = useState(null);
   useIsoLayoutEffect(() => {
@@ -221,7 +222,7 @@ function CompletedWord({ text, compact, children }) {
       context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
       context.direction = 'rtl';
       context.textAlign = 'center';
-      const metrics = context.measureText(text.replace(/\s+/g, ' ').trim());
+      const metrics = context.measureText(displayText.replace(/\s+/g, ' ').trim());
       const inkWidth = (metrics.actualBoundingBoxLeft || 0) + (metrics.actualBoundingBoxRight || 0);
       const scale = Math.min(1, Math.max(1, row.clientWidth - 52) / Math.max(1, metrics.width, inkWidth));
       const hasBounds = Number.isFinite(metrics.fontBoundingBoxAscent) && Number.isFinite(metrics.fontBoundingBoxDescent);
@@ -244,14 +245,14 @@ function CompletedWord({ text, compact, children }) {
       window.removeEventListener('resize', measure);
       document.fonts?.removeEventListener('loadingdone', measure);
     };
-  }, [text, compact]);
+  }, [displayText, compact]);
 
   const height = compact ? 76 : 92;
   return (
     <div ref={rowRef} style={{ ...S.completedWordRow, minHeight: height, fontSize: compact ? '2.1rem' : '2.7rem' }}>
       {children}
       <div style={{ ...S.completedWordFrame, minHeight: height }}>
-        <span dir="rtl" style={{ ...S.completedWordText, fontSize: fit ? fit.size : 'inherit', transform: fit ? `translate(${fit.x}px, ${fit.y}px)` : undefined }}>{text}</span>
+        <span dir="rtl" aria-label={separateTanwin ? text : undefined} style={{ ...S.completedWordText, fontSize: fit ? fit.size : 'inherit', transform: fit ? `translate(${fit.x}px, ${fit.y}px)` : undefined }}>{displayText}</span>
       </div>
     </div>
   );
@@ -1212,7 +1213,7 @@ export default function LetterCatcherGame() {
               </button>
               <div style={{ minWidth: 0, width: '100%', direction: 'rtl' }}>
             {correct === true ? (
-              <CompletedWord key={cur} text={fullWordDisplay} compact={compact}>
+              <CompletedWord key={cur} text={fullWordDisplay} compact={compact} separateTanwin={animalWordFrame}>
                 {[
                   { em:'✨', an:'lcSpark0', delay:'0ms',   fs:'1.3rem' },
                   { em:'⭐', an:'lcSpark1', delay:'80ms',  fs:'1.1rem' },

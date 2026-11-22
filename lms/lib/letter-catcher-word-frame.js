@@ -17,6 +17,14 @@ export function usesAnimalWordFrame(wordRow) {
   return lcCategoryKey(wordRow?.category || wordRow?.topic) === 'animals';
 }
 
+// Display only: Noto Naskh Arabic includes its own open-dammatan glyph (two
+// separate dammas). U+064C and U+08F1 share combining class 28 and native GPOS
+// mark/mkmk attachment, preserving the letter, shadda and font underneath.
+// Stored words, pronunciation and answer checks keep their original U+064C.
+export function withSeparatedDammatan(text = '') {
+  return text.replace(/\u064c/g, '\u08f1');
+}
+
 // Shape each surviving text run naturally. A zero-width joiner preserves only
 // connections that the hidden letter originally made; no visible tatweel is added.
 // The shared tiles helper owns grapheme grouping and the existing madd convention.

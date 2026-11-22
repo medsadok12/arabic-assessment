@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ZWJ } from './letter-forms';
-import { letterCatcherWordFrame, usesAnimalWordFrame } from './letter-catcher-word-frame';
+import { letterCatcherWordFrame, usesAnimalWordFrame, withSeparatedDammatan } from './letter-catcher-word-frame';
 
 describe('animal-only word-frame rollout', () => {
   it.each([
@@ -136,5 +136,39 @@ describe('word-frame vocalization and source integrity', () => {
     expect(letterCatcherWordFrame({ word: 'بَ_رَةٌ', missing_letter: '' })).toMatchObject({ hasMissing: false, missingIndex: -1 });
     expect(letterCatcherWordFrame()).toMatchObject({ before: '', after: '', hasMissing: false });
     expect(letterCatcherWordFrame(null)).toMatchObject({ before: '', after: '', hasMissing: false });
+  });
+});
+
+describe('native separate-damma display', () => {
+  it('changes only dammatan while retaining letters, shadda and other vowel marks', () => {
+    const source = 'قِطٌّ بَطَّةٌ كَلْبٌ';
+    const display = withSeparatedDammatan(source);
+    expect(display).toBe('قِطّ\u08f1 بَطَّة\u08f1 كَلْب\u08f1');
+    expect(display.replace(/\u08f1/g, '\u064c')).toBe(source);
+  });
+
+  it('formats the existing madd display without changing stored or pronunciation words', () => {
+    const row = Object.freeze({ word: 'سِنْ_ابٌ', missing_letter: 'جَ', category: 'الحيوانات' });
+    const frame = letterCatcherWordFrame(row);
+    expect(withSeparatedDammatan(frame.displayWord)).toBe('سِنْجاب\u08f1');
+    expect(frame.fullWord).toBe('سِنْجَابٌ');
+    expect(frame.displayWord).toBe('سِنْجابٌ');
+    expect(row).toEqual({ word: 'سِنْ_ابٌ', missing_letter: 'جَ', category: 'الحيوانات' });
+  });
+
+  it('formats after removing the hidden letter together with its shadda and tanwin', () => {
+    const frame = letterCatcherWordFrame({ word: 'قِ_ٌّ', missing_letter: 'ط' });
+    expect(withSeparatedDammatan(frame.before)).toBe(`قِ${ZWJ}`);
+    expect(withSeparatedDammatan(frame.after)).toBe('');
+    expect(withSeparatedDammatan(frame.before + frame.after)).not.toMatch(/[\u0651\u064c\u08f1]/);
+    expect(frame.fullWord).toBe('قِطٌّ');
+  });
+
+  it('is idempotent and preserves decomposed letters without normalizing the text', () => {
+    const source = 'أَسَدٌ'.normalize('NFD');
+    const display = withSeparatedDammatan(source);
+    expect(display).toBe(source.replace('\u064c', '\u08f1'));
+    expect(withSeparatedDammatan(display)).toBe(display);
+    expect(withSeparatedDammatan()).toBe('');
   });
 });
