@@ -29,6 +29,10 @@
 .joinInput { min-width:0; min-height:58px; width:100%; border:2px solid #dcd4e9; border-radius:16px; padding:6px 10px; background:#fff; color:var(--duel-navy); font-size:28px !important; font-weight:800 !important; text-align:center; direction:ltr; letter-spacing:6px; font-variant-numeric:tabular-nums; }
 .joinInput::placeholder { color:#a0a6b0; opacity:1; }
 .joinForm .secondary { padding-inline:8px; }
+.waitingJoin { margin-top:13px; padding:0 2px; }
+.waitingJoin .divider { margin:0 0 9px; }
+.joinMessage { margin:9px 0 0; padding:7px 10px; border-radius:13px; background:#FFF5DC; color:#795919; font-size:18px; line-height:1.6; font-weight:700; }
+.joinMessage:empty { display:none; }
 .codeLabel { margin:8px 0 0; font-size:21px; color:#52627b; }
 .code { display:block; font-size:43px; font-weight:800; line-height:1.4; letter-spacing:8px; font-variant-numeric:tabular-nums; direction:ltr; }
 .copy { min-height:48px; padding:6px 15px; border:1px solid #d9c9fa; border-radius:14px; color:#6442b4; background:#f2ecff; font-size:19px !important; font-weight:700 !important; margin-top:6px; }

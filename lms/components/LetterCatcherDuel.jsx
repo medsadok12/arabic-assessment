@@ -25,6 +25,17 @@ function Speaker() {
   return <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>;
 }
 
+function DuelJoinForm({ code, onCodeChange, onSubmit, disabled, pending, message }) {
+  return <form onSubmit={onSubmit} data-lc-duel-join-form="">
+    <label htmlFor="lc-duel-code" className={styles.joinLabel}>معك رمز صديقك؟</label>
+    <div className={styles.joinForm}>
+      <input id="lc-duel-code" className={styles.joinInput} value={code} onChange={event => onCodeChange(codeDigits(event.target.value))} inputMode="numeric" pattern="[0-9]{6}" autoComplete="off" maxLength={6} placeholder="000000" aria-label="رمز صديقك، ستة أرقام" aria-invalid={message ? true : undefined} aria-describedby={message ? 'lc-duel-join-message' : undefined} disabled={disabled} data-lc-duel-join-code="" />
+      <button type="submit" className={styles.secondary} disabled={code.length !== 6 || disabled} data-lc-duel-join-submit="">{pending ? 'لحظة…' : 'انضم'}</button>
+    </div>
+    <p id="lc-duel-join-message" className={styles.joinMessage} role="status" aria-live="polite" data-lc-duel-join-message="">{message}</p>
+  </form>;
+}
+
 function AnimalPicture({ question, review }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [question?.image_url, question?.id]);
@@ -41,6 +52,7 @@ export default function LetterCatcherDuel({ settings = {}, currentPlayer, onExit
   const [connection, setConnection] = useState('online');
   const [notice, setNotice] = useState(null);
   const [joinCode, setJoinCode] = useState('');
+  const [joinMessage, setJoinMessage] = useState('');
   const [lastCode, setLastCode] = useState('');
   const [restoring, setRestoring] = useState(false);
   const [identityChanged, setIdentityChanged] = useState(false);
@@ -144,11 +156,13 @@ export default function LetterCatcherDuel({ settings = {}, currentPlayer, onExit
       });
       const data = await response.json().catch(() => ({}));
       if (!activeRef.current || scope !== getActiveChildTab() || !checkIdentity()) throw Object.assign(new Error(), { ignored: true });
+      if (!replace && requestedCode && roomRef.current?.code && requestedCode !== roomRef.current.code) throw Object.assign(new Error(), { ignored: true });
       if (!response.ok) throw Object.assign(new Error(data.error || 'تعذّر الاتصال. حاول مرة أخرى.'), { status: response.status });
       if (!data.room) throw new Error('لم تصل الجولة كاملة. أعد المحاولة.');
       applyRoom(data.room, started, Date.now(), { replace, requestedCode });
       return data;
     } catch (error) {
+      if (!replace && requestedCode && roomRef.current?.code && requestedCode !== roomRef.current.code) throw Object.assign(new Error(), { ignored: true });
       if (timedOut && activeRef.current) throw new Error('الاتصال بطيء قليلًا. أعد المحاولة.');
       throw error;
     } finally {
@@ -163,13 +177,18 @@ export default function LetterCatcherDuel({ settings = {}, currentPlayer, onExit
     setNotice({ message: error.message || 'تعذّر الاتصال. حاول مرة أخرى.', kind: network ? 'network' : kind });
   }, [checkIdentity]);
 
-  const sendAction = useCallback(async (action, extra = {}) => {
+  const sendAction = useCallback(async (action, extra = {}, { onError } = {}) => {
     if (pendingRef.current || !checkIdentity()) return null;
     pendingRef.current = action; setPending(action); setNotice(null);
     try {
       const data = await request({ action, ...(roomRef.current?.code ? { code: roomRef.current.code } : {}), ...extra }, { replace: action === 'create' || action === 'join' });
       return data;
-    } catch (error) { showError(error); return null; }
+    } catch (error) {
+      if (onError) {
+        if (activeRef.current && !exitingRef.current && checkIdentity() && !isAbort(error)) onError(error);
+      } else showError(error);
+      return null;
+    }
     finally {
       if (pendingRef.current === action) {
         pendingRef.current = null;
@@ -183,7 +202,7 @@ export default function LetterCatcherDuel({ settings = {}, currentPlayer, onExit
     if (!code || pendingRef.current || refreshPending.current || !checkIdentity()) return;
     refreshPending.current = true;
     try { await request({ code }, { timeout: 6500 }); }
-    catch (error) { showError(error, 'network'); }
+    catch (error) { if (roomRef.current?.code === code) showError(error, 'network'); }
     finally { refreshPending.current = false; }
   }, [checkIdentity, request, showError]);
   refreshRef.current = refresh;
@@ -232,6 +251,7 @@ export default function LetterCatcherDuel({ settings = {}, currentPlayer, onExit
   }, []);
 
   const roomCode = room?.code || '';
+  useEffect(() => setJoinMessage(''), [roomCode, room?.players?.length]);
   const terminal = room?.status === 'finished' || room?.status === 'cancelled';
   useEffect(() => {
     if (!roomCode || terminal || identityChanged) return undefined;
@@ -310,14 +330,31 @@ export default function LetterCatcherDuel({ settings = {}, currentPlayer, onExit
     if (pendingRef.current || !checkIdentity()) return;
     abortRequests(); stopMedia(); pendingAnswer.current = null;
     roomRef.current = null; setRoom(null); setUncertainAnswer(false); setClaim(null); setClaimError('');
+    setJoinCode(''); setJoinMessage('');
     await sendAction('create');
   };
 
   const join = async event => {
     event?.preventDefault();
-    if (joinCode.length !== 6) return;
-    await sendAction('join', { code: joinCode });
+    if (joinCode.length !== 6 || pendingRef.current || restoring || !checkIdentity()) return;
+    const current = roomRef.current;
+    if (current && (current.status !== 'waiting' || current.players?.length !== 1)) {
+      setJoinMessage('صديقك انضم إلى تحدّيك. أكملا اللعب معًا، أو عُد إلى اللعبة للمغادرة.');
+      return;
+    }
+    if (current?.code === joinCode) {
+      setJoinMessage('هذا رمز تحدّيك. أرسله لصديقك، أو أدخل رمز صديقك هنا.');
+      return;
+    }
+    setJoinMessage('');
+    const result = await sendAction('join', { code: joinCode }, { onError: error => {
+      setJoinMessage(!error.status || error.status >= 500 ? current ? 'تعذّر الاتصال بتحدّي صديقك. رمزك الحالي محفوظ؛ حاول مرة أخرى.' : 'تعذّر الاتصال بتحدّي صديقك. حاول مرة أخرى.' : error.message || 'لم نصل إلى تحدّي صديقك. تحقّق من الرمز وحاول مرة أخرى.');
+      if (!error.status || error.status >= 500) setConnection('offline');
+    } });
+    if (result && activeRef.current && !exitingRef.current && checkIdentity()) { setJoinCode(''); setJoinMessage(''); }
   };
+
+  const changeJoinCode = code => { setJoinCode(code); setJoinMessage(''); };
 
   const resume = async () => {
     if (pendingRef.current || !lastCode || !checkIdentity()) return;
@@ -429,19 +466,14 @@ export default function LetterCatcherDuel({ settings = {}, currentPlayer, onExit
         <div className={styles.facts}><span className={styles.fact}>🦁 الحيوانات</span><span className={styles.fact}><bdi>{displayNumber(total)}</bdi> كلمات</span><span className={styles.fact}><bdi>20</bdi> ثانية</span></div>
         <button type="button" className={styles.primary} disabled={Boolean(pending) || restoring} onClick={newRoom}>{pending === 'create' ? 'نجهّز رمزك…' : restoring ? 'نستعيد جولتك…' : 'أنشئ تحديًا لصديقي'}</button>
         <div className={styles.divider}>أو</div>
-        <form onSubmit={join}>
-          <label htmlFor="lc-duel-code" className={styles.joinLabel}>معك رمز صديقك؟</label>
-          <div className={styles.joinForm}>
-            <input id="lc-duel-code" className={styles.joinInput} value={joinCode} onChange={event => setJoinCode(codeDigits(event.target.value))} inputMode="numeric" pattern="[0-9]{6}" autoComplete="off" maxLength={6} placeholder="000000" aria-label="رمز التحدي، ستة أرقام" disabled={Boolean(pending) || restoring} />
-            <button type="submit" className={styles.secondary} disabled={joinCode.length !== 6 || Boolean(pending) || restoring}>{pending === 'join' ? 'لحظة…' : 'انضم'}</button>
-          </div>
-        </form>
+        <DuelJoinForm code={joinCode} onCodeChange={changeJoinCode} onSubmit={join} disabled={Boolean(pending) || restoring} pending={pending === 'join'} message={joinMessage} />
         {lastCode && !restoring && <div className={styles.saved}><p>رمز جولتك محفوظ: <bdi>{displayNumber(lastCode)}</bdi></p><button type="button" className={styles.linkButton} disabled={Boolean(pending)} onClick={resume}>العودة إلى جولتي</button></div>}
       </section></div> : waiting ? <div className={styles.lobbyWrap}><section className={styles.lobby}>
         <h2>{opponent ? 'صديقك هنا!' : 'ادعُ صديقك'}</h2>
-        <p className={styles.codeLabel}>رمز التحدي</p>
-        <bdi className={styles.code} style={{ userSelect: 'all' }}>{displayNumber(roomCode)}</bdi>
+        <p className={styles.codeLabel}>رمز تحدّيك</p>
+        <bdi className={styles.code} style={{ userSelect: 'all' }} data-lc-duel-room-code="">{displayNumber(roomCode)}</bdi>
         <button type="button" className={styles.copy} onClick={copyCode}>{copied ? 'تم نسخ الرمز ✓' : 'انسخ الرمز'}</button>
+        {players.length === 1 && <div className={styles.waitingJoin}><div className={styles.divider}>أو</div><DuelJoinForm code={joinCode} onCodeChange={changeJoinCode} onSubmit={join} disabled={Boolean(pending)} pending={pending === 'join'} message={joinMessage} /></div>}
         <div className={styles.lobbyPlayers}>
           <div className={styles.lobbyPlayer}><LetterCatcherPlayerAvatar player={me} className={`${styles.lobbyAvatar} ${styles.selfAvatar}`} /><strong>{displayNumber(me?.name || 'أنت')}</strong><small className={me?.ready ? styles.readyTag : ''}>{me?.ready ? 'أنت جاهز ✓' : 'أنت'}</small></div>
           <div className={`${styles.lobbyPlayer} ${styles.otherLobby}`}><LetterCatcherPlayerAvatar player={opponent} className={`${styles.lobbyAvatar} ${styles.otherAvatar}`} /><strong>{displayNumber(opponent?.name || 'صديقك')}</strong><small className={opponent?.ready ? styles.readyTag : ''}>{opponent?.ready ? 'جاهز ✓' : opponent ? 'انضم إليك' : 'ننتظر انضمامه'}</small></div>
