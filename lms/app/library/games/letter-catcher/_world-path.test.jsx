@@ -10,6 +10,15 @@ const gameWords = worlds.map((category, index) => ({ id: `word-${index}`, catego
 const island = (html, category) => html.match(new RegExp(`<button[^>]*data-lc-world-island="${category}"[^>]*>`))?.[0];
 
 describe('Letter Catcher world selection path', () => {
+  it('uses the active account photo in the invitation and leaves the unknown friend as a placeholder', () => {
+    const html = render({ duelSettings: { enabled: true }, currentPlayer: { id: 'active-child', name: 'علي', avatar_url: '/my-uploaded-photo.webp?t=2' } });
+    expect(html).toContain('data-lc-entry-self=""');
+    expect(html.match(/src="\/my-uploaded-photo.webp\?t=2"/g)).toHaveLength(1);
+    const hidden = render({ duelSettings: { enabled: false }, currentPlayer: { id: 'active-child', avatar_url: '/my-uploaded-photo.webp' } });
+    expect(hidden).not.toContain('src="/my-uploaded-photo.webp"');
+    expect(render({ duelSettings: { enabled: true } }).match(/data-lc-avatar-fallback=/g)).toHaveLength(2);
+  });
+
   it('fills only the approved animal scene while keeping teacher replacements and other worlds unchanged', () => {
     const categories = worlds.slice(0, 2);
     const props = { categories, gameWords, catMeta: {

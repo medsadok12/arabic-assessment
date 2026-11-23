@@ -30,17 +30,44 @@ export function duelRoomCode(value) {
   return typeof value === 'string' && /^[0-9]{6}$/.test(value) ? value : null;
 }
 
-// The display identity is server resolved. Never share an email, parent account,
-// auth metadata, or a client-supplied player name with the other participant.
-export function duelParticipant(user, identity) {
+function profilePhotoUrl(value) {
+  if (typeof value !== 'string') return null;
+  const url = value.trim();
+  if (!url || url.length >= 2000 || /[\u0000-\u0020\u007f\\]/.test(url)) return null;
+  if (url.startsWith('/') && !url.startsWith('//')) return url;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && !parsed.username && !parsed.password ? url : null;
+  } catch { return null; }
+}
+
+function profilePhoto(user) {
+  const durable = profilePhotoUrl(user?.app_metadata?.custom_avatar_url);
+  const current = profilePhotoUrl(user?.user_metadata?.avatar_url);
+  // /profile stores the durable URL without ?t while the current profile keeps
+  // that cache-buster. Preserve a fresh upload without letting Google replace it.
+  if (durable && current && durable.split(/[?#]/)[0] === current.split(/[?#]/)[0]) return current;
+  return durable || current;
+}
+
+// The display identity is server resolved. A child's photo belongs to that exact
+// Auth user; a missing child photo must never inherit the guardian's profile.
+// Only public presentation fields leave this helper, never Auth metadata/email.
+export async function duelParticipant(user, identity, admin) {
   const child = identity.viewingChild;
   const source = child?.full_name || (!child && (user.app_metadata?.display_name || user.user_metadata?.full_name)) || 'صديقي';
   const name = String(source).replace(/[\u0000-\u001f\u007f<>]/g, '').trim().split(/\s+/)[0].slice(0, 24) || 'صديقي';
-  const avatar = !child && user.app_metadata?.custom_avatar_url;
+  let profile = !child && identity.effectiveUserId === user.id ? user : null;
+  if (!profile) {
+    try {
+      const { data, error } = await admin.auth.admin.getUserById(identity.effectiveUserId);
+      if (!error && data?.user?.id === identity.effectiveUserId) profile = data.user;
+    } catch { /* A missing/unavailable child photo keeps the neutral placeholder. */ }
+  }
   return {
     id: identity.effectiveUserId,
     name,
-    ...(typeof avatar === 'string' && avatar.length < 2000 && /^https:\/\//.test(avatar) ? { avatar_url: avatar } : {}),
+    avatar_url: profilePhoto(profile),
   };
 }
 
@@ -171,6 +198,16 @@ export async function updateDuelRoom(admin, actor, body, now = Date.now()) {
     changed = changed || result.changed;
     if (body.action === 'join' && actor.staff && !result.error && !state.preview) {
       state = { ...state, preview: true };
+      changed = true;
+    }
+    const ownPlayer = state.participants.find(player => player.id === actor.participant.id);
+    const avatar = actor.participant.avatar_url || null;
+    if (ownPlayer && ownPlayer.avatar_url !== avatar) {
+      state = {
+        ...state,
+        participants: state.participants.map(player => player.id === actor.participant.id ? { ...player, avatar_url: avatar } : player),
+        updatedAt: Math.max(now, state.updatedAt || 0), revision: (state.revision || 0) + 1,
+      };
       changed = true;
     }
     const stored = changed ? await compareAndSwap(admin, row, state, now) : row;

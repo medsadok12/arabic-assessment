@@ -16,7 +16,7 @@ async function authenticate(request) {
   if (!user || !getRole(user) || isSuspended(user)) throw failure('سجّل الدخول لتلعب مع صديقك.', 401);
   const admin = createAdminClient();
   const identity = await resolveActiveIdentity(user, admin, request);
-  return { admin, actor: { user, participant: duelParticipant(user, identity), staff: isStaff(user) } };
+  return { admin, actor: { user, participant: await duelParticipant(user, identity, admin), staff: isStaff(user) } };
 }
 
 async function throttle(request, actor, kind) {
@@ -35,7 +35,9 @@ function errorResponse(error) {
 export async function GET(request) {
   try {
     const { admin, actor } = await authenticate(request);
-    const code = new URL(request.url).searchParams.get('code');
+    const searchParams = new URL(request.url).searchParams;
+    if (searchParams.get('profile') === '1') return json({ player: actor.participant });
+    const code = searchParams.get('code');
     if (!duelRoomCode(code)) throw failure('اكتب رمز التحدي المكوّن من 6 أرقام.', 400);
     try { return json(await updateDuelRoom(admin, actor, { action: 'sync', code })); }
     catch (error) { if (error.status === 404) await throttle(request, actor, 'join'); throw error; }

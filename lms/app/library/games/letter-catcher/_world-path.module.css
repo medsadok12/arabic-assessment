@@ -10,7 +10,11 @@
 .teacherTools { display:flex; justify-content:flex-start; width:min(100%,1080px); margin:10px auto 0; }
 .settings { display:inline-flex; justify-content:center; align-items:center; gap:7px; min-height:48px; padding:5px 15px; border:2px solid #fff; border-radius:17px; background:#fffdf8e8; color:var(--navy); font-size:19px !important; font-weight:800 !important; }
 .duel { display:flex; align-items:center; justify-content:center; gap:16px; width:min(100%,720px); min-height:84px; margin:18px auto 0; padding:6px 20px; border:2px solid #fff2c6; border-bottom:5px solid #C99A2E; border-radius:29px; background:linear-gradient(125deg,#F4CF68,var(--gold)); box-shadow:0 5px 11px #9a73261a; }
-.friends { flex:0 0 105px; width:105px; height:73px; margin-top:-6px; }
+.friends { position:relative; display:flex; align-items:center; flex:0 0 80px; width:80px; height:52px; }
+.selfPortrait, .friendPortrait { position:relative; display:flex; flex:0 0 48px; }
+.selfPortrait { z-index:2; }
+.friendPortrait { margin-inline-start:-16px; }
+.inviteBadge { position:absolute; bottom:-1px; inset-inline-end:-2px; display:flex; align-items:center; justify-content:center; width:19px; height:19px; border:2px solid #fffdf4; border-radius:50%; background:#1A2B4A; color:#fffdf4; font:700 16px/1 Arial,sans-serif; }
 .duelCopy { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; min-width:0; text-align:center; }
 .duelCopy strong { display:block; font-size:29px; font-weight:900; line-height:1.4; overflow-wrap:anywhere; }
 .duelCopy>span { font-size:18px; font-weight:700; line-height:1.5; }
@@ -79,7 +83,7 @@
 @media(max-width:640px) {
   .root { --row-height:250px; }
   .duel { min-height:68px; margin-top:12px; padding:3px 11px; }
-  .friends { flex-basis:80px; width:80px; height:55px; margin-top:0; }
+  .friends { flex-basis:80px; width:80px; height:52px; margin-top:0; }
   .intro { margin-top:8px; }
   .intro h2 { font-size:26px; line-height:1.4; }
   .journey { margin-top:0; padding-top:0; }

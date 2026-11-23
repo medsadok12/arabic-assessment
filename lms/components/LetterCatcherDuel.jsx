@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { childFetch, getActiveChildTab } from '../lib/child-fetch';
 import { displayNumber } from '../lib/display-number';
 import { playLetterCatcherWord } from '../lib/letter-catcher-audio';
@@ -9,7 +9,8 @@ import { withSeparatedDammatan } from '../lib/letter-catcher-word-frame';
 import GameScene from './GameScene';
 import LetterCatcherWordFrame from './LetterCatcherWordFrame';
 import LetterCatcherFahimOverlay from './LetterCatcherFahimOverlay';
-import LetterCatcherDuelScores from './LetterCatcherDuelScores';
+import LetterCatcherDuelScores, { LetterCatcherDuelResultPlayers } from './LetterCatcherDuelScores';
+import LetterCatcherPlayerAvatar from './LetterCatcherPlayerAvatar';
 import styles from './LetterCatcherDuel.module.css';
 
 const ENDPOINT = '/api/games/letter-catcher/duel';
@@ -24,12 +25,6 @@ function Speaker() {
   return <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>;
 }
 
-function LobbyAvatar({ player }) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [player?.avatar_url]);
-  return <span className={styles.lobbyAvatar} aria-hidden="true">{player?.avatar_url && !failed ? <img src={player.avatar_url} alt="" onError={() => setFailed(true)} /> : '🧒'}</span>;
-}
-
 function AnimalPicture({ question, review }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [question?.image_url, question?.id]);
@@ -40,7 +35,7 @@ function AnimalPicture({ question, review }) {
   </div>;
 }
 
-export default function LetterCatcherDuel({ settings = {}, onExit }) {
+export default function LetterCatcherDuel({ settings = {}, currentPlayer, onExit }) {
   const [room, setRoom] = useState(null);
   const [pending, setPending] = useState(null);
   const [connection, setConnection] = useState('online');
@@ -358,8 +353,8 @@ export default function LetterCatcherDuel({ settings = {}, onExit }) {
   };
 
   const players = Array.isArray(room?.players) ? room.players : [];
-  const me = players.find(player => player.id === room?.meId || player.isSelf) || players[0];
-  const opponent = players.find(player => player.id !== me?.id);
+  const me = room?.meId ? players.find(player => player.id === room.meId) : players.find(player => player.isSelf);
+  const opponent = me ? players.find(player => player.id !== me.id) : undefined;
   const own = room?.ownAnswer || {};
   const countdown = Math.max(0, Math.ceil((Number(room?.countdownUntil || room?.startsAt) - now) / 1000));
   const remaining = room?.status === 'paused' ? Math.ceil(Math.max(0, Number(room.remainingMs) || 0) / 1000) : Math.max(0, Math.ceil((Number(room?.deadlineAt) - now) / 1000));
@@ -371,7 +366,7 @@ export default function LetterCatcherDuel({ settings = {}, onExit }) {
   const locallyOffline = connection === 'offline';
   const cooldown = Number(own.cooldownUntil || 0) > now;
   const activeQuestion = ['playing', 'countdown'].includes(room?.status) && now >= Number(room?.startsAt || 0) && remaining > 0;
-  const canAnswer = activeQuestion && !own.done && !pending && !cooldown && !uncertainAnswer && !locallyOffline && !identityChanged;
+  const canAnswer = Boolean(me) && activeQuestion && !own.done && !pending && !cooldown && !uncertainAnswer && !locallyOffline && !identityChanged;
   const title = displayNumber(config.title || 'تحدي صديق');
   const total = room?.totalQuestions || config.questionCount || 10;
 
@@ -424,11 +419,11 @@ export default function LetterCatcherDuel({ settings = {}, onExit }) {
       </div>}
 
       {identityChanged ? <div className={styles.lobbyWrap}><section className={styles.lobby}>
-        <div className={styles.lobbyIcon} aria-hidden="true">🧒</div><h2>تغيّر اللاعب</h2>
+        <div className={styles.currentPlayer}><LetterCatcherPlayerAvatar size={64} /></div><h2>تغيّر اللاعب</h2>
         <p className={styles.intro}>لنفتح التحدي من جديد باسم اللاعب الحالي.</p>
         <button type="button" className={styles.primary} onClick={() => onExit?.()}>العودة إلى اللعبة</button>
       </section></div> : !room ? <div className={styles.lobbyWrap}><section className={styles.lobby} aria-busy={restoring || Boolean(pending)}>
-        <div className={styles.lobbyIcon} aria-hidden="true">🌟</div>
+        <div className={styles.currentPlayer} data-lc-duel-current-player=""><LetterCatcherPlayerAvatar player={currentPlayer} className={`${styles.currentPlayerAvatar} ${styles.selfAvatar}`} />{currentPlayer?.name && <strong>{displayNumber(currentPlayer.name)}</strong>}</div>
         <h2>نلعب معًا!</h2>
         <p className={styles.intro}>{displayNumber(config.subtitle || 'العب مع صديقك واجمع النجوم')}</p>
         <div className={styles.facts}><span className={styles.fact}>🦁 الحيوانات</span><span className={styles.fact}><bdi>{displayNumber(total)}</bdi> كلمات</span><span className={styles.fact}><bdi>20</bdi> ثانية</span></div>
@@ -448,8 +443,8 @@ export default function LetterCatcherDuel({ settings = {}, onExit }) {
         <bdi className={styles.code} style={{ userSelect: 'all' }}>{displayNumber(roomCode)}</bdi>
         <button type="button" className={styles.copy} onClick={copyCode}>{copied ? 'تم نسخ الرمز ✓' : 'انسخ الرمز'}</button>
         <div className={styles.lobbyPlayers}>
-          <div className={styles.lobbyPlayer}><LobbyAvatar player={me} /><strong>{me?.name || 'أنت'}</strong><small className={me?.ready ? styles.readyTag : ''}>{me?.ready ? 'أنت جاهز ✓' : 'أنت'}</small></div>
-          <div className={`${styles.lobbyPlayer} ${styles.otherLobby}`}><LobbyAvatar player={opponent} /><strong>{opponent?.name || 'صديقك'}</strong><small className={opponent?.ready ? styles.readyTag : ''}>{opponent?.ready ? 'جاهز ✓' : opponent ? 'انضم إليك' : 'ننتظر انضمامه'}</small></div>
+          <div className={styles.lobbyPlayer}><LetterCatcherPlayerAvatar player={me} className={`${styles.lobbyAvatar} ${styles.selfAvatar}`} /><strong>{displayNumber(me?.name || 'أنت')}</strong><small className={me?.ready ? styles.readyTag : ''}>{me?.ready ? 'أنت جاهز ✓' : 'أنت'}</small></div>
+          <div className={`${styles.lobbyPlayer} ${styles.otherLobby}`}><LetterCatcherPlayerAvatar player={opponent} className={`${styles.lobbyAvatar} ${styles.otherAvatar}`} /><strong>{displayNumber(opponent?.name || 'صديقك')}</strong><small className={opponent?.ready ? styles.readyTag : ''}>{opponent?.ready ? 'جاهز ✓' : opponent ? 'انضم إليك' : 'ننتظر انضمامه'}</small></div>
         </div>
         <p className={styles.lobbyNote} role="status">{!opponent ? 'أعطِ الرمز لصديقك ليفتحه على شاشته.' : me?.ready ? `ننتظر ${opponent.name} ليكون جاهزًا.` : 'عندما تكونان جاهزين، نبدأ معًا!'}</p>
         <button type="button" className={styles.primary} disabled={!opponent || me?.ready || Boolean(pending) || locallyOffline} onClick={() => sendAction('ready', { questionIndex: -1 })}>{pending === 'ready' ? 'لحظة…' : me?.ready ? 'أنا جاهز ✓' : 'أنا جاهز!'}</button>
@@ -460,12 +455,12 @@ export default function LetterCatcherDuel({ settings = {}, onExit }) {
         <button type="button" className={styles.primary} disabled={Boolean(pending)} onClick={newRoom}>تحدٍّ جديد</button>
         <button type="button" className={styles.linkButton} onClick={leave}>العودة إلى اللعبة</button>
       </section></div> : <>
-        <LetterCatcherDuelScores me={me} opponent={opponent} award={room.roundAwards?.[me?.id] ?? own.award ?? 0} awardKey={reviewKey} settled={settled} motionEnabled={motionEnabled && pending !== 'leave'} />
+        {!showResultScreen && <LetterCatcherDuelScores me={me} opponent={opponent} award={room.roundAwards?.[me?.id] ?? own.award ?? 0} awardKey={reviewKey} settled={settled} motionEnabled={motionEnabled && pending !== 'leave'} />}
         {!showResultScreen && <div className={styles.roundBar}><span>الكلمة <bdi>{displayNumber((room.questionIndex || 0) + 1)}</bdi> من <bdi>{displayNumber(total)}</bdi></span><span className={`${styles.clock} ${remaining <= 5 && activeQuestion ? styles.urgent : ''}`} aria-label={settled ? 'اكتملت إجابتكما' : `الوقت المتبقي ${displayNumber(Number.isFinite(remaining) ? remaining : 20)} ثانية`}><bdi>{settled ? '✓' : displayNumber(Number.isFinite(remaining) ? remaining : 20)}</bdi><span aria-hidden="true">⏱</span></span></div>}
         <main className={styles.playArea}>
           {showResultScreen ? <section className={styles.result}>
-            <div className={styles.resultIcon} aria-hidden="true">{tied ? '🌟' : ownWon ? '🏆' : '🤝'}</div>
             <h2>{tied ? 'نجومكما متساوية!' : ownWon ? `أحسنت يا ${me?.name || 'بطل'}!` : 'أحسنتما اللعب معًا!'}</h2>
+            <LetterCatcherDuelResultPlayers me={me} opponent={opponent} />
             <p>{tied ? 'تعلّمنا وربحنا معًا.' : ownWon ? 'جمعت نجومًا رائعة مع صديقك.' : `${opponent?.name || 'صديقك'} جمع نجومًا أكثر هذه المرة. نلعب من جديد!`}</p>
             <div className={styles.awardNote} role="status" aria-live="polite">{claim?.state === 'done' ? claim.preview ? 'اكتملت جولة المعاينة.' : `أُضيفت ${displayNumber(claim.amount || 0)} نجمة إلى رصيدك ⭐` : pending === 'result' ? 'نحفظ نجومك…' : claimError || 'حُفظت النتيجة؛ نؤكّد نجومك.'}</div>
             {claim?.state !== 'done' && pending !== 'result' && <button type="button" className={styles.secondary} disabled={Boolean(pending)} onClick={claimResult}>تأكيد نجومي</button>}

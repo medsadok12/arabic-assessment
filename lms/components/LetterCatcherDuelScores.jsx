@@ -1,17 +1,19 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { displayNumber } from '../lib/display-number';
+import LetterCatcherPlayerAvatar from './LetterCatcherPlayerAvatar';
 import styles from './LetterCatcherDuel.module.css';
 
-function Avatar({ player, small = false }) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [player?.avatar_url]);
-  return <span className={`${styles.avatar} ${small ? styles.smallAvatar : ''}`} aria-hidden="true">
-    {player?.avatar_url && !failed
-      ? <img src={player.avatar_url} alt="" onError={() => setFailed(true)} />
-      : <span>🧒</span>}
-  </span>;
+export function LetterCatcherDuelResultPlayers({ me, opponent }) {
+  return <div className={styles.resultPlayers} data-lc-duel-result-players="" role="group" aria-label="نجومكما في التحدي">
+    {[{ player: me, self: true }, { player: opponent, self: false }].map(({ player, self }) => <div key={self ? 'self' : 'opponent'} className={`${styles.resultPlayer} ${self ? styles.resultSelf : ''}`} data-lc-duel-result-player={self ? 'self' : 'opponent'}>
+      <LetterCatcherPlayerAvatar player={player} className={`${styles.resultAvatar} ${self ? styles.selfAvatar : styles.otherAvatar}`} />
+      <strong className={styles.resultPlayerName}>{displayNumber(player?.name || (self ? 'أنت' : 'صديقك'))}</strong>
+      <span className={styles.resultPlayerLabel}>{self ? 'أنت' : 'صديقك'}</span>
+      <span className={styles.resultPlayerScore} aria-label={`${displayNumber(player?.score || 0)} نجمة`}><bdi>{displayNumber(player?.score || 0)}</bdi><span aria-hidden="true">⭐</span></span>
+    </div>)}
+  </div>;
 }
 
 /** Only the current child's settled award travels; the other score changes quietly. */
@@ -75,7 +77,7 @@ export default function LetterCatcherDuelScores({ me, opponent, award = 0, award
   return <div className={styles.scoreArea} data-lc-duel-scores="">
     <div className={styles.players}>
       <div className={`${styles.player} ${styles.self}`} aria-label={`نقاط ${me?.name || 'اللاعب'}: ${displayNumber(shownScore)}`}>
-        <Avatar player={me} />
+        <LetterCatcherPlayerAvatar player={me} className={`${styles.avatar} ${styles.selfAvatar}`} />
         <div className={styles.playerName}><span>{me?.name || 'أنت'}</span><small>أنت</small></div>
         <div ref={counterRef} className={`${styles.total} ${arrived && motionEnabled ? styles.arrived : ''}`} data-lc-duel-own-score="">
           <bdi>{displayNumber(shownScore)}</bdi><span aria-hidden="true">⭐</span>
@@ -83,7 +85,7 @@ export default function LetterCatcherDuelScores({ me, opponent, award = 0, award
         <div className={styles.scoreLabel}>نقاطك</div>
       </div>
       <div className={`${styles.player} ${styles.other}`} aria-label={`نقاط ${opponent?.name || 'صديقك'}: ${displayNumber(opponent?.score || 0)}`}>
-        <Avatar player={opponent} small />
+        <LetterCatcherPlayerAvatar player={opponent} className={`${styles.avatar} ${styles.smallAvatar} ${styles.otherAvatar}`} />
         <div className={styles.playerName}><span>{opponent?.name || 'صديقك'}</span></div>
         <div className={styles.total}><bdi>{displayNumber(opponent?.score || 0)}</bdi><span aria-hidden="true">⭐</span></div>
         <div className={styles.scoreLabel}>نقاط صديقك</div>

@@ -6,7 +6,7 @@ const PARENT = '10000000-0000-4000-8000-000000000001';
 const A = '20000000-0000-4000-8000-000000000001';
 const B = '20000000-0000-4000-8000-000000000002';
 const C = '20000000-0000-4000-8000-000000000003';
-const db = vi.hoisted(() => ({ tables: {}, user: null, fail: null, conflicts: 0, rateAllowed: true, attempts: [], identities: [] }));
+const db = vi.hoisted(() => ({ tables: {}, user: null, fail: null, conflicts: 0, rateAllowed: true, attempts: [], identities: [], authUsers: {}, authRequests: [] }));
 
 vi.mock('./supabase-server', () => ({ createClient: () => ({ auth: { getUser: async () => ({ data: { user: db.user } }) } }) }));
 vi.mock('./active-child', () => ({ resolveActiveIdentity: async (user, _admin, request) => {
@@ -49,7 +49,10 @@ vi.mock('./supabase-admin', () => {
       }).then(resolve, reject);
     }
   }
-  return { createAdminClient: () => ({ from: table => new Query(table), rpc: async () => ({ data: db.rateAllowed }) }) };
+  return { createAdminClient: () => ({
+    from: table => new Query(table), rpc: async () => ({ data: db.rateAllowed }),
+    auth: { admin: { getUserById: async id => { db.authRequests.push(id); return { data: { user: db.authUsers[id] || null } }; } } },
+  }) };
 });
 
 const api = await import('../app/api/games/letter-catcher/duel/route');
@@ -100,11 +103,61 @@ beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date('2026-11-22T12:00:00Z'));
   db.user = { id: PARENT, app_metadata: { role: 'student' }, user_metadata: { full_name: 'اسم الوالد', role: 'super_admin' } };
   db.fail = null; db.conflicts = 0; db.rateAllowed = true; db.attempts = []; db.identities = [];
+  db.authUsers = {}; db.authRequests = [];
   db.tables = { game_settings: [{ game_id: 'letter-catcher', settings: { duel: { enabled: true, questionCount: 5 } } }], letter_catcher_words: words(), letter_catcher_duels: [], points_log: [], user_points: [{ user_id: A, total: 10 }, { user_id: B, total: 20 }] };
 });
 afterEach(() => vi.useRealTimers());
 
 describe('Letter Catcher duel server and routes', () => {
+  it('returns an authenticated private active profile without creating rooms, points or reading settings', async () => {
+    db.user.app_metadata.custom_avatar_url = '/qa-avatars/guardian.png';
+    db.authUsers[A] = { id: A, app_metadata: { custom_avatar_url: '/qa-avatars/ali.webp' }, user_metadata: { avatar_url: '/qa-avatars/ali.webp?t=fresh' } };
+    const before = structuredClone(db.tables);
+    db.fail = 'game_settings:read';
+    const response = await api.GET(new Request(`https://www.aarem.net/api/games/letter-catcher/duel?profile=1&child=${A}&avatar_url=/forged.png`));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ player: { id: A, name: 'سارة', avatar_url: '/qa-avatars/ali.webp?t=fresh' } });
+    expect(response.headers.get('cache-control')).toContain('private, no-store');
+    expect(db.tables).toEqual(before);
+    expect(db.authRequests).toEqual([A]);
+    const sibling = await api.GET(new Request(`https://www.aarem.net/api/games/letter-catcher/duel?profile=1&child=${B}`));
+    expect((await sibling.json()).player).toMatchObject({ id: B, avatar_url: null });
+    db.user = null;
+    expect((await api.GET(new Request('https://www.aarem.net/api/games/letter-catcher/duel?profile=1'))).status).toBe(401);
+  });
+
+  it('shares only each authenticated participant photo with both players and ignores injected body avatars', async () => {
+    db.authUsers[A] = { id: A, user_metadata: { avatar_url: '/qa-avatars/ali.webp?t=1' } };
+    db.authUsers[B] = { id: B, app_metadata: { custom_avatar_url: '/qa-avatars/fatima.png' } };
+    const room = await create({ avatar_url: '/forged-host.png', participant: { id: B, avatar_url: '/forged.png' } });
+    const joined = await call({ action: 'join', code: room.code, avatar_url: '/forged-friend.png' }, B);
+    const expected = ['/qa-avatars/ali.webp?t=1', '/qa-avatars/fatima.png'];
+    expect(joined.body.room.players.map(player => player.avatar_url)).toEqual(expected);
+    expect((await poll(room.code, A)).body.room.players.map(player => player.avatar_url)).toEqual(expected);
+    expect((await poll(room.code, B)).body.room.players.map(player => player.avatar_url)).toEqual(expected);
+  });
+
+  it('refreshes only an existing participant photo using CAS and preserves membership, questions and scores', async () => {
+    const room = await create();
+    await call({ action: 'join', code: room.code }, B);
+    const before = structuredClone(stored(room.code).state);
+    db.authUsers[A] = { id: A, user_metadata: { avatar_url: '/qa-avatars/new-ali.webp?t=2' } };
+    db.authUsers[B] = { id: B, user_metadata: { avatar_url: '/qa-avatars/new-fatima.png?t=3' } };
+    db.authRequests = [];
+    const refreshed = await poll(room.code, A);
+    expect(refreshed.body.room.players[0].avatar_url).toBe('/qa-avatars/new-ali.webp?t=2');
+    expect(refreshed.body.room.players[1].avatar_url).toBeNull();
+    expect(db.authRequests).toEqual([A]);
+    expect(stored(room.code).state.questions).toEqual(before.questions);
+    expect(stored(room.code).state.participants.map(player => [player.id, player.score])).toEqual(before.participants.map(player => [player.id, player.score]));
+    const version = stored(room.code).version;
+    await poll(room.code, A);
+    expect(stored(room.code).version).toBe(version);
+    await poll(room.code, B);
+    expect((await poll(room.code, A)).body.room.players[1].avatar_url).toBe('/qa-avatars/new-fatima.png?t=3');
+    expect(db.tables.points_log).toHaveLength(0);
+  });
+
   it('authenticates trusted roles and rejects guests, suspension and metadata role forgery', async () => {
     db.user = null; expect((await call({ action: 'create' })).status).toBe(401);
     db.user = { id: PARENT, app_metadata: { role: 'student', status: 'suspended' } }; expect((await call({ action: 'create' })).status).toBe(401);

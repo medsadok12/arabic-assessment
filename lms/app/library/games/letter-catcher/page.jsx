@@ -369,6 +369,8 @@ export default function LetterCatcherGame() {
   const [ptPopupAmount, setPtPopupAmount] = useState(0);
   const [catResults,    setCatResults]    = useState({});  // category → {correct,wrong,total}
   const [currentUser,   setCurrentUser]   = useState(null);
+  const [duelProfile, setDuelProfile] = useState(null);
+  const duelProfileOwner = useRef();
   /* عرض صف مربعات الكلمة — لتصغير مربعات الاسم المكوّن من كلمتين ليسع سطراً واحداً */
   const [wordRowEl, setWordRowEl] = useState(null);
   const wordRowWidth = useElementWidth(wordRowEl);
@@ -539,6 +541,38 @@ export default function LetterCatcherGame() {
       }).catch(() => {});
     }).catch(() => {});
   }, []);
+
+  // Read the photo of this tab's verified player, including a selected child.
+  // Recheck on return so an account-photo edit appears without a new sign-in.
+  useEffect(() => {
+    if (!['start', 'duel'].includes(phase) || !settings.duel.enabled) return;
+    const controller = new AbortController();
+    let version = 0;
+    const refreshProfile = async () => {
+      if (document.hidden) return;
+      const child = getActiveChildTab();
+      if (duelProfileOwner.current !== child) {
+        duelProfileOwner.current = child;
+        setDuelProfile(null);
+      }
+      const requestVersion = ++version;
+      try {
+        const response = await childFetch('/api/games/letter-catcher/duel?profile=1', { cache: 'no-store', signal: controller.signal });
+        const data = response.ok ? await response.json() : null;
+        if (!controller.signal.aborted && requestVersion === version && getActiveChildTab() === child) setDuelProfile(data?.player || null);
+      } catch {}
+    };
+    refreshProfile();
+    window.addEventListener('focus', refreshProfile);
+    window.addEventListener('pageshow', refreshProfile);
+    document.addEventListener('visibilitychange', refreshProfile);
+    return () => {
+      controller.abort();
+      window.removeEventListener('focus', refreshProfile);
+      window.removeEventListener('pageshow', refreshProfile);
+      document.removeEventListener('visibilitychange', refreshProfile);
+    };
+  }, [phase, settings.duel.enabled]);
 
   const isValid = w => w.word && w.missing_letter && Array.isArray(w.options) && w.options.filter(Boolean).length >= 2;
 
@@ -799,7 +833,7 @@ export default function LetterCatcherGame() {
     startGame(category);
   };
 
-  if (phase === 'duel') return <FriendChallenge settings={settings.duel} onExit={() => {
+  if (phase === 'duel') return <FriendChallenge settings={settings.duel} currentPlayer={duelProfile} onExit={() => {
     setPhase('start'); loadGameWords({ quiet: true });
     childFetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
   }} />;
@@ -919,6 +953,7 @@ export default function LetterCatcherGame() {
           isTeacher={isTeacher}
           totalPoints={totalPoints}
           duelSettings={settings.duel}
+          currentPlayer={duelProfile}
           onCategorySelect={setPendingCategory}
           onDuel={() => { stopWordAudio(); clearCheer(); setPendingCategory(undefined); setPhase('duel'); }}
           onSettings={() => setShowCfg(true)}
