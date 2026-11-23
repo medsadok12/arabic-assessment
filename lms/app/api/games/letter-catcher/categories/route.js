@@ -4,6 +4,9 @@ import { createClient }      from '../../../../../lib/supabase-server';
 import { getRole } from '../../../../../lib/auth-role';
 import { lcCategoryAliases, normalizeLcCategory, normalizeLcCategoryMeta } from '../../../../../lib/letter-catcher-categories';
 
+export const dynamic = 'force-dynamic';
+const liveCategories = categories => NextResponse.json({ categories }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
+
 async function checkAuth() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -16,10 +19,10 @@ export async function GET() {
   try {
     const admin = createAdminClient();
     const { data, error } = await admin.from('lc_category_meta').select('*');
-    if (error) return NextResponse.json({ categories: [] });
-    return NextResponse.json({ categories: normalizeLcCategoryMeta(data) });
+    if (error) return liveCategories([]);
+    return liveCategories(normalizeLcCategoryMeta(data));
   } catch {
-    return NextResponse.json({ categories: [] });
+    return liveCategories([]);
   }
 }
 

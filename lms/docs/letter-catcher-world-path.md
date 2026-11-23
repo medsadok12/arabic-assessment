@@ -31,3 +31,13 @@ Before release, verify dynamic/custom worlds, live teacher artwork and emojis, e
 - A locked island could not open a question; the teacher could open the last island. Its bottom remained about 80px above the fixed play-all button after scrolling. Play-all opened the existing round modal, and the friend entry opened the existing duel lobby. Disabling the duel hid the entry; failed category images returned to their scene/emoji fallback without a broken-image icon.
 - A real solo round started from an island, accepted an answer, credited 5 fixture points and returned to the path. Its word frame, three choices, recording/celebration and next control remained on the existing question implementation. No production learner records were written during QA.
 - Teacher artwork now uses contain sizing so the animal remains whole inside its world preview. The compact header and invitation leave more room for the path; the configured duel subtitle remains available to assistive technology and in the existing lobby/settings.
+
+## Animal island scene — 2026-11-23
+
+Mohamed requested naturally spaced animals within the savanna, replacing the rectangular animal collage. The animal category now uses a single coherent scene with a zebra, elephant and giraffe on shared ground. The optimized asset is `/media/letter-catcher-worlds/animals-savanna-v1.webp` (1200×800, 129,400 bytes).
+
+Update only `lc_category_meta.image_url` for `الحيوانات`, after the asset is deployed. The source-specific `worldSceneImage` style fills the island window without padding; it applies only to this asset in the animal category. Future teacher image replacements keep their original contain sizing. All other category pictures, word-bank media, Fahim, labels, stars, locks and gameplay remain unchanged. Category GET responses are dynamic with `Cache-Control: no-store, max-age=0`, and the service-worker cache advances from `aarem-v12` to `aarem-v13`.
+
+The previous category image is retained for rollback: `https://uqspozzkzyytwwidojxv.supabase.co/storage/v1/object/public/media/lc-category/migrated-19756a76-5001-4407-ab31-bdb8ff583bc0-1782885814894.jpeg`. Its URL MD5 is `ef9d4bd52790fb89e15f7a75ebc076e3`; use a matching-value update to avoid overwriting a concurrent teacher edit. No schema migration is required.
+
+Verification: all 1,396 tests across 108 files passed, including new checks for fresh category metadata and the source/category-specific scene style. The production build completed with exit 0. The actual Next UI loaded the new asset and was visually checked at phone 390×844, tablet 820×1024 and desktop 1280×800: all three animals remain complete and separated, without the old rectangular collage. No production learner records were written during QA.

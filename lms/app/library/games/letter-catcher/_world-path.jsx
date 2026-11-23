@@ -3,11 +3,12 @@
 import React, { memo, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { SceneThumb } from '../../../../components/GameScene';
-import { isLcCategoryUnlocked, lcCategoryScene } from '../../../../lib/letter-catcher-categories';
+import { isLcCategoryUnlocked, lcCategoryKey, lcCategoryScene } from '../../../../lib/letter-catcher-categories';
 import { displayNumber } from '../../../../lib/display-number';
 import styles from './_world-path.module.css';
 
 const pointsFormatter = new Intl.NumberFormat('en-US', { numberingSystem: 'latn', maximumFractionDigits: 0 });
+export const LC_ANIMALS_SCENE = '/media/letter-catcher-worlds/animals-savanna-v1.webp';
 const countValue = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 const wordLabel = count => count >= 3 && count <= 10 ? 'كلمات' : 'كلمة';
 const masteryValue = result => {
@@ -61,6 +62,7 @@ const WorldIsland = memo(function WorldIsland({ category, count, result, imageUr
   const [imageFailed, setImageFailed] = useState(false);
   useEffect(() => setImageFailed(false), [imageUrl]);
   const showImage = Boolean(imageUrl) && !imageFailed;
+  const wholeScene = lcCategoryKey(category) === 'animals' && imageUrl === LC_ANIMALS_SCENE;
   return <button type="button" className={`${styles.island} ${unlocked ? styles.openIsland : styles.lockedIsland}`} data-lc-world-island={category} data-unlocked={unlocked} aria-disabled={!unlocked}
     aria-label={unlocked ? `${displayNumber(category)}، ${displayNumber(count)} ${wordLabel(count)}${result ? `، ${displayNumber(countValue(result.correct))} إجابات صحيحة، ${displayNumber(countValue(result.wrong))} تحتاج إلى تدريب${masteryValue(result) ? `، ${displayNumber(masteryValue(result))} من 3 نجوم` : ''}` : ''}` : `${displayNumber(category)}، أكمل ${displayNumber(previousCategory || 'المجموعة السابقة')} أولًا`}
     onClick={() => { if (unlocked) onSelect?.(category); }}>
@@ -68,7 +70,7 @@ const WorldIsland = memo(function WorldIsland({ category, count, result, imageUr
     <span className={styles.land} aria-hidden="true">
       <span className={styles.worldWindow}>
         <SceneThumb category={category} scene={lcCategoryScene(category)} />
-        {showImage ? <img className={styles.worldImage} src={imageUrl} alt="" width="340" height="200" loading={first ? 'eager' : 'lazy'} decoding="async" onError={() => setImageFailed(true)} /> : <span className={styles.worldEmoji}>{emoji || '🌟'}</span>}
+        {showImage ? <img className={`${styles.worldImage} ${wholeScene ? styles.worldSceneImage : ''}`} data-lc-world-scene={wholeScene ? 'animals' : undefined} src={imageUrl} alt="" width="340" height="200" loading={first ? 'eager' : 'lazy'} decoding="async" onError={() => setImageFailed(true)} /> : <span className={styles.worldEmoji}>{emoji || '🌟'}</span>}
         {!unlocked && <FriendlyLock />}
       </span>
       <span className={styles.soil} />

@@ -2,7 +2,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { LC_CATEGORY_ORDER } from '../../../../lib/letter-catcher-categories';
-import LetterCatcherWorldPath from './_world-path';
+import LetterCatcherWorldPath, { LC_ANIMALS_SCENE } from './_world-path';
 
 const render = props => renderToStaticMarkup(<LetterCatcherWorldPath {...props} />);
 const worlds = [...LC_CATEGORY_ORDER, 'عالم الفضاء'];
@@ -10,6 +10,21 @@ const gameWords = worlds.map((category, index) => ({ id: `word-${index}`, catego
 const island = (html, category) => html.match(new RegExp(`<button[^>]*data-lc-world-island="${category}"[^>]*>`))?.[0];
 
 describe('Letter Catcher world selection path', () => {
+  it('fills only the approved animal scene while keeping teacher replacements and other worlds unchanged', () => {
+    const categories = worlds.slice(0, 2);
+    const props = { categories, gameWords, catMeta: {
+      [categories[0]]: { image_url: LC_ANIMALS_SCENE },
+      [categories[1]]: { image_url: '/teacher-weather.webp' },
+    } };
+    const html = render(props);
+    expect(html.match(/data-lc-world-scene="animals"/g)).toHaveLength(1);
+    expect(html).toContain(`src="${LC_ANIMALS_SCENE}"`);
+    expect(html).toContain('src="/teacher-weather.webp"');
+    const replaced = render({ ...props, catMeta: { [categories[0]]: { image_url: '/teacher-cow.webp' }, [categories[1]]: { image_url: LC_ANIMALS_SCENE } } });
+    expect(replaced).not.toContain('data-lc-world-scene=');
+    expect(replaced).toContain('src="/teacher-cow.webp"');
+  });
+
   it('keeps every canonical and custom world, its order and its own scene', () => {
     const html = render({ categories: worlds, gameWords, totalPoints: 1353 });
     expect(html.match(/data-lc-world-island=/g)).toHaveLength(17);
