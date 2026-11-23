@@ -4,6 +4,7 @@ import VerifiedTrainingStatus from '../../../../components/VerifiedTrainingStatu
 import LetterCatcherProgress from '../../../../components/LetterCatcherProgress';
 import LetterCatcherWordFrame from '../../../../components/LetterCatcherWordFrame';
 import LetterCatcherFahimOverlay from '../../../../components/LetterCatcherFahimOverlay';
+import LetterCatcherWorldPath from './_world-path';
 
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
@@ -12,7 +13,7 @@ import { getRole } from '../../../../lib/auth-role';
 import { childFetch, getActiveChildTab } from '../../../../lib/child-fetch';
 import { LC_DEFAULT_SETTINGS, LEN_NO_LIMIT, normalizeLcSettings, roundSize, pickRotation } from '../../../../lib/letter-catcher';
 import { freshFetch } from '../../../../lib/fresh-fetch';
-import { canonicalLcWord, normalizeLcCategory, lcCategoryKey, sortLcCategories, sortLcCategoryWords, pickLcOrderedRound, lcCategoryScene, normalizeLcCategoryResults, isLcCategoryUnlocked } from '../../../../lib/letter-catcher-categories';
+import { canonicalLcWord, normalizeLcCategory, lcCategoryKey, sortLcCategories, sortLcCategoryWords, pickLcOrderedRound, lcCategoryScene, normalizeLcCategoryResults } from '../../../../lib/letter-catcher-categories';
 import { readLcCategorySeen, rememberLcAnsweredWord } from '../../../../lib/letter-catcher-progress-memory';
 import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useElementWidth } from '../../../../lib/fit-tiles';
 import { stripDia, getLetterForm } from '../../../../lib/letter-forms';
@@ -821,44 +822,26 @@ export default function LetterCatcherGame() {
       startGame(catArg);
     };
 
-    const resultChips = (res) => (
-      <span style={{ display: 'inline-flex', gap: 5, flexWrap: 'wrap', justifyContent: 'center' }}>
-        <span style={S.chipOk}>✓ {res.correct}</span>
-        <span style={S.chipSoft}>✗ {res.wrong}</span>
-      </span>
-    );
-    const starsOf = (res) => {
-      const pct = res ? Math.round((res.correct / res.total) * 100) : null;
-      return pct === null ? 0 : pct >= 80 ? 3 : pct >= 50 ? 2 : 1;
-    };
-
     return (
       <div key="start" style={S.stage}>
-      <VerifiedTrainingStatus training={preparingPicture ? { ...verified, busy: true, note: 'لَحْظَةٌ… نَسْتَعِدُّ لِلَّعِبِ' } : verified} />
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <VerifiedTrainingStatus training={preparingPicture ? { ...verified, busy: true, note: 'لَحْظَةٌ… نَسْتَعِدُّ لِلَّعِبِ' } : verified} />
+        </div>
         {/* non-blocking progress strip */}
         {loadProgress > 0 && loadProgress < 100 && (
           <div style={{ position:'fixed', top:0, left:0, right:0, height:3, zIndex:9999, background:'#EDE5D8' }}>
             <div style={{ height:'100%', width:`${loadProgress}%`, background:'#E8B84B', transition:'width .4s ease' }} />
           </div>
         )}
-        <style>{`
-          @keyframes lcCatIn {
-            0%  { opacity:0; transform:scale(.6) translateY(16px); }
-            60% { transform:scale(1.04) translateY(0); }
-            100%{ opacity:1; transform:scale(1); }
-          }
+        <style dangerouslySetInnerHTML={{ __html: `
           @keyframes lcModalIn {
-            0%  { opacity:0; transform:scale(.88) translateY(24px); }
-            100%{ opacity:1; transform:scale(1)   translateY(0); }
+            from { opacity:0; transform:scale(.88) translateY(24px); }
+            to { opacity:1; transform:scale(1) translateY(0); }
           }
-          .lc-cat {
-            cursor:pointer;
-            transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease;
+          @media (prefers-reduced-motion: reduce) {
+            [data-lc-start-modal] { animation:none !important; }
           }
-          .lc-cat:hover  { transform:translateY(-4px) scale(1.03); box-shadow:0 18px 36px rgba(26,43,74,.22) !important; }
-          .lc-cat:active { transform:scale(0.96); }
-          @media (prefers-reduced-motion: reduce) { .lc-cat, .lc-anim { animation:none !important; transition:none !important; } }
-        `}</style>
+        ` }} />
 
         {/* مرجٌ هادئ خلف قائمة المجموعات — وكل بطاقة تُري عالمها */}
         <GameScene scene="meadow" />
@@ -878,7 +861,7 @@ export default function LetterCatcherGame() {
             }}
             onClick={(e) => { if (e.target === e.currentTarget && !preparingPicture && !verified.busy) setPendingCategory(undefined); }}
           >
-            <div role="dialog" aria-modal="true" aria-label={`ابدأ ${modalCatLabel}`} style={{
+            <div data-lc-start-modal="" role="dialog" aria-modal="true" aria-label={`ابدأ ${modalCatLabel}`} style={{
               background:'#fff', borderRadius:28, padding:14, maxWidth:360, width:'100%',
               textAlign:'center', boxShadow:'0 24px 64px rgba(26,43,74,.4)',
               animation:'lcModalIn .28s cubic-bezier(.34,1.56,.64,1) both',
@@ -927,157 +910,19 @@ export default function LetterCatcherGame() {
           </div>
         )}
 
-        <div style={{ ...S.stageColumn, maxWidth: 680 }}>
-          <div style={S.glassBar}>
-            <Link href="/library" style={S.roundBlueBtn} aria-label="العودة للمكتبة">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
-            </Link>
-            <div style={S.barTitle}>صَيَّادُ الْحُرُوفِ</div>
-            <span style={S.pointsPill}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#E8B84B" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" /></svg>
-              {totalPoints.toLocaleString('en-US')}
-            </span>
-          </div>
-
-          {isTeacher && (
-            <button style={S.teacherBtn} onClick={() => setShowCfg(true)}>⚙️ الإعدادات</button>
-          )}
-
-          <div style={{ ...S.glassCard, flexDirection: 'row', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
-            <img src="/faheem-sm.webp" alt="فهيم" style={{ width: 66, height: 80, objectFit: 'contain', flexShrink: 0 }} />
-            <div style={{ flex: 1, textAlign: 'right' }}>
-              <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, color: '#1A2B4A' }}>اِخْتَرْ مَجْمُوعَتَكَ!</h1>
-              <p style={{ margin: '4px 0 0', fontSize: '.92rem', fontWeight: 700, color: '#5A3FBF', lineHeight: 1.7 }}>كُلُّ مَجْمُوعَةٍ عَالَمٌ جَدِيدٌ — اِصْطَدِ الْحَرْفَ النَّاقِصَ 🎯</p>
-            </div>
-          </div>
-
-          {settings.duel?.enabled && (
-            <button type="button" data-lc-duel-entry="" style={{ ...S.goldBtn, display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', textAlign: 'right' }}
-              onClick={() => { stopWordAudio(); clearCheer(); setPendingCategory(undefined); setPhase('duel'); }}>
-              <span aria-hidden="true" style={{ fontSize: '2rem' }}>👥</span>
-              <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span>{settings.duel.title}</span>
-                <span style={{ fontSize: '.9rem', fontWeight: 600 }}>{settings.duel.subtitle}</span>
-              </span>
-            </button>
-          )}
-
-          {/* ── empty / lock ── */}
-          {gameWords.length === 0 ? (
-            <div style={{ ...S.glassCard, alignItems: 'center', textAlign: 'center', padding: '28px 20px' }}>
-              {isTeacher ? (
-                <>
-                  <div style={{ fontSize:'3rem' }}>📭</div>
-                  <p style={{ color:'#1A2B4A', fontSize:'.97rem', fontWeight:700, lineHeight:1.9, margin:0 }}>
-                    عذراً، لا توجد كلمات مضافة.<br />أضف كلمات أولاً من لوحة الإعدادات.
-                  </p>
-                  <button style={S.whiteBtn} onClick={() => setShowCfg(true)}>⚙️ إضافة كلمات</button>
-                </>
-              ) : (
-                <>
-                  <div style={{ fontSize:'3rem' }}>🔒</div>
-                  <p style={{ color:'#1A2B4A', fontSize:'.97rem', fontWeight:700, lineHeight:1.9, margin:0 }}>
-                    اللعبة غير متاحة حالياً.<br />تواصل مع معلمك لإعداد الكلمات.
-                  </p>
-                </>
-              )}
-            </div>
-
-          ) : (
-            /* ── STEP 1: always show category grid ── */
-            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-
-              {/* play-all card */}
-              {(() => {
-                const allRes   = catResults['__all__'];
-                const allStars = starsOf(allRes);
-                return (
-                  <button
-                    type="button"
-                    className="lc-cat lc-anim"
-                    style={{ ...S.playAllCard, animation:'lcCatIn .4s cubic-bezier(.34,1.56,.64,1) both' }}
-                    onClick={() => setPendingCategory('__all__')}
-                  >
-                    <span style={S.playAllStar} aria-hidden="true">
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="#1A2B4A"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" /></svg>
-                    </span>
-                    <span style={{ flex:1, textAlign:'right', display:'flex', flexDirection:'column', gap:2 }}>
-                      <span style={{ fontSize:'1.1rem', fontWeight:900, color:'#1A2B4A' }}>العب الكل</span>
-                      <span style={{ fontSize:'.8rem', fontWeight:700, color:'#4A5A75' }}>{gameWords.length} كلمة من كل العوالم</span>
-                      {allRes && (
-                        <span style={{ display:'flex', alignItems:'center', gap:8, marginTop:3, flexWrap:'wrap' }}>
-                          <span style={{ fontSize:'.85rem', color:'#B07F1E' }}>{'★'.repeat(allStars)}{'☆'.repeat(3 - allStars)}</span>
-                          {resultChips(allRes)}
-                        </span>
-                      )}
-                    </span>
-                    <span style={{ fontSize:'1.4rem', color:'#1A2B4A', flexShrink:0 }} aria-hidden="true">←</span>
-                  </button>
-                );
-              })()}
-
-              {/* category grid — الحيوانات first, progressive unlock */}
-              {categories.length > 0 && (() => {
-                const sorted = categories;
-                return (
-                  <div style={S.catGrid}>
-                    {sorted.map((cat, idx) => {
-                      const custom   = catMeta[cat];
-                      const count    = gameWords.filter(w => w.category === cat).length;
-                      const res      = catResults[cat];
-                      const stars    = starsOf(res);
-                      const unlocked = isTeacher || isLcCategoryUnlocked(cat, catResults, sorted);
-                      const prevCat  = sorted[idx - 1];
-                      return (
-                        <button
-                          type="button"
-                          key={cat}
-                          className={unlocked ? 'lc-cat lc-anim' : 'lc-anim'}
-                          aria-disabled={!unlocked}
-                          aria-label={unlocked ? cat : `${cat} — مقفلة، أكمل ${prevCat} أولاً`}
-                          style={{
-                            ...S.catCard,
-                            animation: `lcCatIn .45s ${Math.min(idx + 1, 10) * 0.05}s cubic-bezier(.34,1.56,.64,1) both`,
-                            cursor: unlocked ? 'pointer' : 'not-allowed',
-                          }}
-                          onClick={() => unlocked && setPendingCategory(cat)}
-                        >
-                          <span style={S.catThumb}>
-                            <SceneThumb category={cat} scene={lcCategoryScene(cat)} />
-                            {/* شارة المجموعة: صورة/رمز المعلم أو رمز معروف — لا رموز عشوائية فوق العالم */}
-                            {(custom?.image_url || custom?.emoji || CAT_META[cat]) && (
-                              <span style={S.catBadge} aria-hidden="true">
-                                {custom?.image_url
-                                  ? <img src={custom.image_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                                  : (custom?.emoji || CAT_META[cat].emoji)}
-                              </span>
-                            )}
-                            {idx === 0 && <span style={S.startHere}>ابدأ هنا ⭐</span>}
-                            {/* مقفلة: العالم يظهر خافتاً بقفل — يتشوّق الطفل لما ينتظره */}
-                            {!unlocked && <span style={S.lockOverlay} aria-hidden="true">🔒</span>}
-                          </span>
-                          <span style={S.catName}>{cat}</span>
-                          {!unlocked ? (
-                            <span style={S.lockedNote}>أكمل «{prevCat}» أولاً</span>
-                          ) : res ? (
-                            <span style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
-                              <span style={{ fontSize:'.85rem', color:'#B07F1E', letterSpacing:1 }}>{'★'.repeat(stars)}{'☆'.repeat(3 - stars)}</span>
-                              {resultChips(res)}
-                            </span>
-                          ) : (
-                            <span style={{ fontSize:'.75rem', color:'#4A5A75', fontWeight:700 }}>{count} كلمة</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-
-          <Link href="/library" style={S.backPill}>← العودة للمكتبة</Link>
-        </div>
+        <LetterCatcherWorldPath
+          categories={categories}
+          gameWords={gameWords}
+          catMeta={catMeta}
+          categoryIcons={CAT_META}
+          catResults={catResults}
+          isTeacher={isTeacher}
+          totalPoints={totalPoints}
+          duelSettings={settings.duel}
+          onCategorySelect={setPendingCategory}
+          onDuel={() => { stopWordAudio(); clearCheer(); setPendingCategory(undefined); setPhase('duel'); }}
+          onSettings={() => setShowCfg(true)}
+        />
       </div>
     );
   }
@@ -1415,46 +1260,6 @@ const S = {
   teacherBtn: {
     alignSelf: 'flex-start', background: 'rgba(255,255,255,0.85)', border: '1.5px solid #EDE5D8', borderRadius: 999,
     padding: '8px 16px', fontSize: '.88rem', fontWeight: 800, color: '#1A2B4A', cursor: 'pointer', fontFamily: 'inherit', minHeight: 40,
-  },
-  playAllCard: {
-    display: 'flex', alignItems: 'center', gap: 14, width: '100%', boxSizing: 'border-box', padding: '14px 16px',
-    borderRadius: 22, border: '1.5px solid rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.78)',
-    WebkitBackdropFilter: 'blur(12px)', backdropFilter: 'blur(12px)', boxShadow: '0 10px 26px rgba(26,43,74,0.16)',
-    fontFamily: 'inherit', textAlign: 'right',
-  },
-  playAllStar: {
-    width: 52, height: 52, borderRadius: '50%', background: '#E8B84B', borderBottom: '4px solid #C99A2E',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box',
-  },
-  catGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))', gap: 12 },
-  catCard: {
-    position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-    padding: 6, paddingBottom: 10, borderRadius: 22, border: '2px solid #fff', background: '#fff',
-    boxShadow: '0 8px 22px rgba(26,43,74,0.16)', fontFamily: 'inherit', overflow: 'hidden', minHeight: 44,
-  },
-  catThumb: { position: 'relative', display: 'block', width: '100%', height: 96, borderRadius: 16, overflow: 'hidden' },
-  catBadge: {
-    position: 'absolute', bottom: 6, right: 6, width: 36, height: 36, borderRadius: '50%', background: '#fff',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', boxShadow: '0 2px 8px rgba(26,43,74,0.25)',
-  },
-  startHere: {
-    position: 'absolute', top: 6, right: 6, background: '#E8B84B', color: '#1A2B4A', borderRadius: 999,
-    padding: '2px 8px', fontSize: '.66rem', fontWeight: 900, boxShadow: '0 2px 6px rgba(26,43,74,0.25)',
-  },
-  catName: { fontSize: '.85rem', fontWeight: 900, color: '#1A2B4A', lineHeight: 1.35, textAlign: 'center', padding: '0 2px' },
-  lockOverlay: {
-    position: 'absolute', inset: 0, background: 'rgba(26,43,74,0.55)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.9rem',
-  },
-  lockedNote: {
-    fontSize: '.7rem', fontWeight: 800, color: '#4A5A75', background: '#EDE5D8', borderRadius: 999,
-    padding: '3px 8px', lineHeight: 1.5, textAlign: 'center',
-  },
-  chipOk:   { fontSize: '.72rem', background: '#DCF3E8', color: '#17784C', borderRadius: 999, padding: '2px 8px', fontWeight: 800 },
-  chipSoft: { fontSize: '.72rem', background: '#EDE5D8', color: '#4A5A75', borderRadius: 999, padding: '2px 8px', fontWeight: 800 },
-  backPill: {
-    alignSelf: 'center', marginTop: 8, background: 'rgba(255,255,255,0.85)', borderRadius: 999, padding: '10px 18px',
-    color: '#1A2B4A', fontWeight: 800, fontSize: '.9rem', textDecoration: 'none',
   },
   /* ── شاشة اللعب بعوالم المجموعات ──
      «مسرح» ثابت بحجم الشاشة: الصفحة خلفه لا تتحرك (حشوة body السفلية للجوال لا تضيف فراغاً)،
