@@ -4,6 +4,7 @@ import VerifiedTrainingStatus from '../../../../components/VerifiedTrainingStatu
 import LetterCatcherProgress from '../../../../components/LetterCatcherProgress';
 import LetterCatcherWordFrame from '../../../../components/LetterCatcherWordFrame';
 import LetterCatcherFahimOverlay from '../../../../components/LetterCatcherFahimOverlay';
+import LetterCatcherWorldLoading from './_world-loading';
 import LetterCatcherWorldPath from './_world-path';
 
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
@@ -885,14 +886,9 @@ export default function LetterCatcherGame() {
           <SettingsPanel cfg={cfg} onChange={setCfg} settings={settings} onSettingsSaved={(st) => { setSettings(st); try { localStorage.setItem(LC_SETTINGS_KEY, JSON.stringify(st)); } catch {} }} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={refreshAfterEdit} catMeta={catMeta} onCatMetaRefresh={loadCatMeta} />
         )}
 
-        {!ready ? <section data-lc-world-loading="" role="status" aria-live="polite" style={{ position: 'relative', zIndex: 1, margin: 'max(24px, 10vh) auto', padding: '30px 22px', width: 'min(90%, 500px)', boxSizing: 'border-box', borderRadius: 28, background: '#FAF7F2', color: '#1A2B4A', textAlign: 'center' }}>
-          <h1 style={{ margin: '0 0 16px', fontSize: '1.7rem', fontWeight: 900 }}>صيّاد الحروف</h1>
-          <p style={{ fontSize: '1.2rem', lineHeight: 1.8 }}>{failed ? 'لنعرض عوالمك من جديد.' : 'لحظة… نجهّز عوالمك.'}</p>
-          {failed && <button type="button" style={{ ...S.goldBtn, marginBottom: 12 }} onClick={() => {
+        {!ready ? <LetterCatcherWorldLoading failed={failed} welcome={settings.loading_welcome} motion={settings.loading_welcome_motion} onRetry={() => {
             loadGameWords(); loadCatMeta(); loadPlayerState(); loadWorldAccess();
-          }}>حاول مرة أخرى</button>}
-          <Link href="/library" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 48, padding: '0 15px', color: '#1A2B4A', fontWeight: 800 }}>العودة إلى المكتبة</Link>
-        </section> : <LetterCatcherWorldPath
+          }} /> : <LetterCatcherWorldPath
           categories={categories}
           gameWords={gameWords}
           catMeta={catMeta}

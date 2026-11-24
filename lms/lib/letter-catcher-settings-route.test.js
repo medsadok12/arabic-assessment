@@ -30,7 +30,7 @@ vi.mock('./supabase-admin', () => ({
 }));
 
 const { PUT } = await import('../app/api/games/letter-catcher/settings/route.js');
-const SOLO = { words_per_round: 15, stage_size: 5, options_count: 4, progress_motion: false };
+const SOLO = { words_per_round: 15, stage_size: 5, options_count: 4, progress_motion: false, loading_welcome: true, loading_welcome_motion: true };
 const DUEL = {
   enabled: false,
   title: 'تحدي صديق',
@@ -108,6 +108,37 @@ describe('PUT /api/games/letter-catcher/settings', () => {
     expect(await save(SOLO)).toEqual({ status: 200, body: { settings: { ...SOLO, duel: DUEL } } });
   });
 
+  it('preserves both saved welcome flags when an older editor omits them', async () => {
+    const { loading_welcome, loading_welcome_motion, ...legacy } = { ...SOLO, duel: DUEL };
+    state.stored = { ...SOLO, loading_welcome: false, loading_welcome_motion: false, duel: DUEL };
+    expect(await save(legacy)).toEqual({ status: 200, body: { settings: state.stored } });
+    expect(state.calls).toContainEqual(['select', 'settings']);
+    expect(state.writes[0].settings).toEqual(state.stored);
+  });
+
+  it.each(['loading_welcome', 'loading_welcome_motion'])('preserves omitted %s independently while updating the other flag', async omitted => {
+    const supplied = omitted === 'loading_welcome' ? 'loading_welcome_motion' : 'loading_welcome';
+    state.stored = { ...SOLO, [omitted]: false, [supplied]: true, duel: DUEL };
+    const request = { ...SOLO, [supplied]: false, duel: DUEL };
+    delete request[omitted];
+    const expected = { ...SOLO, [omitted]: false, [supplied]: false, duel: DUEL };
+    expect(await save(request)).toEqual({ status: 200, body: { settings: expected } });
+    expect(state.writes[0].settings).toEqual(expected);
+  });
+
+  it('applies welcome defaults for an old installation without changing unrelated solo values', async () => {
+    const { loading_welcome, loading_welcome_motion, ...legacy } = { ...SOLO, duel: DUEL };
+    state.stored = { words_per_round: 5, options_count: 3 };
+    expect(await save(legacy)).toEqual({ status: 200, body: { settings: { ...SOLO, duel: DUEL } } });
+  });
+
+  it('saves explicitly disabled welcome flags without resetting progress or duel effects', async () => {
+    const settings = { ...SOLO, loading_welcome: false, loading_welcome_motion: false, duel: { ...DUEL, enabled: true, motionEnabled: false } };
+    expect(await save(settings)).toEqual({ status: 200, body: { settings } });
+    expect(state.calls).not.toContainEqual(['select', 'settings']);
+    expect(state.writes[0].settings).toEqual(settings);
+  });
+
   it('disables duel while preserving its text, question count, and optional effects', async () => {
     const duel = { ...DUEL, title: 'لعبتنا', subtitle: 'مع الأصدقاء', questionCount: 8, soundEnabled: false };
     expect(await save({ ...SOLO, duel })).toEqual({ status: 200, body: { settings: { ...SOLO, duel } } });
@@ -122,6 +153,10 @@ describe('PUT /api/games/letter-catcher/settings', () => {
     { stage_size: null },
     { options_count: 9 },
     { progress_motion: 'false' },
+    { loading_welcome: 'false' },
+    { loading_welcome: 0 },
+    { loading_welcome_motion: null },
+    { loading_welcome_motion: [] },
     { duel: null },
     { duel: { ...DUEL, enabled: 'true' } },
     { duel: { ...DUEL, questionCount: 4 } },

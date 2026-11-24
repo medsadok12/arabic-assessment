@@ -20,17 +20,16 @@ export async function PUT(request) {
     if (!settings) return NextResponse.json({ error: 'قيم الإعدادات غير صالحة' }, { status: 400 });
 
     const admin = createAdminClient();
-    // Older editors omit newer settings. Preserve the existing challenge and
-    // stage size independently instead of silently resetting either value.
-    const missingDuel = !Object.prototype.hasOwnProperty.call(raw, 'duel');
-    const missingStageSize = !Object.prototype.hasOwnProperty.call(raw, 'stage_size');
-    if (missingDuel || missingStageSize) {
+    // Older editors omit newer settings. Preserve each saved value independently
+    // rather than silently re-enabling a welcome effect or resetting a challenge.
+    const missingSettings = ['duel', 'stage_size', 'loading_welcome', 'loading_welcome_motion']
+      .filter(key => !Object.prototype.hasOwnProperty.call(raw, key));
+    if (missingSettings.length) {
       const { data: current, error: readError } = await admin.from('game_settings')
         .select('settings').eq('game_id', LC_GAME_ID).maybeSingle();
       if (readError) throw readError;
       const previous = normalizeLcSettings(current?.settings);
-      if (missingDuel) settings.duel = previous.duel;
-      if (missingStageSize) settings.stage_size = previous.stage_size;
+      for (const key of missingSettings) settings[key] = previous[key];
     }
     const { error } = await admin.from('game_settings').upsert(
       { game_id: LC_GAME_ID, settings, updated_at: new Date().toISOString(), updated_by: user.id },

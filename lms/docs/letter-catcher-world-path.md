@@ -1,5 +1,13 @@
 # Letter Catcher: «مسار العوالم»
 
+## Welcoming wait — 2026-11-24
+
+Mohamed requested Fahim welcoming the learner during the initial wait instead of the plain text-only loading card. Use the existing transparent `/faheem-loading-sm.webp` (15,712 bytes), the short greeting «أهلًا بك يا بطل!» and gentle CSS motion inside the current world scenery. The card adapts to short phone screens. No audio or artificial minimum waiting time is added; the worlds replace the greeting immediately when the existing readiness gates pass. Failed loads retain retry and library navigation, with motion stopped.
+
+Teacher settings `loading_welcome` and `loading_welcome_motion` independently control visibility and motion; both default to true. Reduced-motion preferences suppress the animation. Old editors must preserve either saved setting when omitted. The progress-path and friend-duel motion settings remain independent.
+
+Validation: all 1,493 tests across 113 files passed, including independent flag validation, persistence and omitted-setting compatibility. The actual Next UI was checked with held metadata at phone 360×640, tablet 820×1024 and desktop 1280×800: the smiling mascot and greeting fit without horizontal overflow, and loading completion removed the welcome immediately. Separate fixture settings confirmed a still mascot and fully disabled welcome; a metadata error stopped motion, retained retry, and recovered to the 16-world path. No production learner records were written. The production build passed. Cache version: `aarem-v20`.
+
 ## Initial world artwork — 2026-11-24
 
 Mohamed reported that the animal island first showed a stock lion and then changed to the configured savanna image. His correction applies to every world, including custom topics.

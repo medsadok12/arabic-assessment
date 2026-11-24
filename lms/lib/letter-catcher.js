@@ -14,7 +14,7 @@ export const LC_GAME_ID = 'letter-catcher';
    اللعب الفردي الجديد يعرض الموضوع كاملًا ولا يعتمد عليهما. 0 كان يعني كل الكلمات. */
 export const WORDS_PER_ROUND_CHOICES = [5, 10, 15, 20, 30, 0];
 export const OPTIONS_COUNT_CHOICES = [3, 4, 5];
-export const LC_DEFAULT_SETTINGS = { words_per_round: 20, stage_size: 5, options_count: 5, progress_motion: true, duel: { ...duelDefaults } };
+export const LC_DEFAULT_SETTINGS = { words_per_round: 20, stage_size: 5, options_count: 5, progress_motion: true, loading_welcome: true, loading_welcome_motion: true, duel: { ...duelDefaults } };
 
 /* أقصى قيمة لمنزلق «طول الكلمة» في معاينة المعلم = بلا حد */
 export const LEN_NO_LIMIT = 20;
@@ -30,6 +30,8 @@ export function normalizeLcSettings(raw) {
     stage_size: LC_STAGE_SIZE_CHOICES.includes(stageSize) ? stageSize : LC_DEFAULT_SETTINGS.stage_size,
     options_count: OPTIONS_COUNT_CHOICES.includes(opt) ? opt : LC_DEFAULT_SETTINGS.options_count,
     progress_motion: typeof s.progress_motion === 'boolean' ? s.progress_motion : LC_DEFAULT_SETTINGS.progress_motion,
+    loading_welcome: typeof s.loading_welcome === 'boolean' ? s.loading_welcome : LC_DEFAULT_SETTINGS.loading_welcome,
+    loading_welcome_motion: typeof s.loading_welcome_motion === 'boolean' ? s.loading_welcome_motion : LC_DEFAULT_SETTINGS.loading_welcome_motion,
     duel: normalizeDuelSettings(s.duel),
   };
 }
@@ -41,12 +43,17 @@ export function validateLcSettings(raw) {
   if (!OPTIONS_COUNT_CHOICES.includes(Number(s.options_count))) return null;
   if (Object.prototype.hasOwnProperty.call(s, 'stage_size') && (!['number', 'string'].includes(typeof s.stage_size) || !LC_STAGE_SIZE_CHOICES.includes(Number(s.stage_size)))) return null;
   if (Object.prototype.hasOwnProperty.call(s, 'progress_motion') && typeof s.progress_motion !== 'boolean') return null;
+  for (const key of ['loading_welcome', 'loading_welcome_motion']) {
+    if (Object.prototype.hasOwnProperty.call(s, key) && typeof s[key] !== 'boolean') return null;
+  }
   const duel = Object.prototype.hasOwnProperty.call(s, 'duel') ? validateDuelSettings(s.duel) : normalizeDuelSettings();
   if (!duel) return null;
   return {
     words_per_round: Number(s.words_per_round), options_count: Number(s.options_count),
     stage_size: Object.prototype.hasOwnProperty.call(s, 'stage_size') ? Number(s.stage_size) : LC_DEFAULT_SETTINGS.stage_size,
     progress_motion: Object.prototype.hasOwnProperty.call(s, 'progress_motion') ? s.progress_motion : LC_DEFAULT_SETTINGS.progress_motion,
+    loading_welcome: Object.prototype.hasOwnProperty.call(s, 'loading_welcome') ? s.loading_welcome : LC_DEFAULT_SETTINGS.loading_welcome,
+    loading_welcome_motion: Object.prototype.hasOwnProperty.call(s, 'loading_welcome_motion') ? s.loading_welcome_motion : LC_DEFAULT_SETTINGS.loading_welcome_motion,
     duel,
   };
 }

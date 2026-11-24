@@ -538,7 +538,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
   const [resetting, setResetting] = useState(false);
   const [resetMsg, setResetMsg] = useState(null);
   const savedSettings = normalizeLcSettings(settings);
-  const dirty = draft.options_count !== savedSettings.options_count || draft.progress_motion !== savedSettings.progress_motion || JSON.stringify(draft.duel) !== JSON.stringify(savedSettings.duel);
+  const dirty = draft.options_count !== savedSettings.options_count || draft.progress_motion !== savedSettings.progress_motion || draft.loading_welcome !== savedSettings.loading_welcome || draft.loading_welcome_motion !== savedSettings.loading_welcome_motion || JSON.stringify(draft.duel) !== JSON.stringify(savedSettings.duel);
 
   const changeDuel = (values) => {
     setDraft(d => ({ ...d, duel: { ...d.duel, ...values } }));
@@ -625,6 +625,16 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
                     style={{ width:20, height:20, accentColor:'#C59A2E', flexShrink:0 }} />
                   حركة مسار التقدّم
                 </label>
+
+                {[
+                  ['loading_welcome', 'ترحيب فهيم أثناء تحميل العوالم'],
+                  ['loading_welcome_motion', 'حركة فهيم أثناء الترحيب'],
+                ].map(([key, label]) => <label key={key} style={{ display:'flex', alignItems:'center', gap:10, minHeight:44, marginBottom:12, fontSize:'.88rem', fontWeight:700, color:'#374151', cursor:'pointer' }}>
+                  <input type="checkbox" checked={draft[key]}
+                    onChange={e => { setDraft(d => ({ ...d, [key]: e.target.checked })); setStMsg(null); }}
+                    style={{ width:20, height:20, accentColor:'#7C5CD9', flexShrink:0 }} />
+                  {label}
+                </label>)}
 
                 <div style={{ fontSize:'.78rem', color:'#6b7280', marginBottom:10, lineHeight:1.6 }}>
                   يكون التقدّم بين المواضيع فقط، وتبدأ الأعداد من 0.

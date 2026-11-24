@@ -1,0 +1,20 @@
+.card { position: relative; z-index: 1; box-sizing: border-box; width: min(90%, 500px); margin: clamp(20px, 6vh, 64px) auto 24px; padding: clamp(20px, 4vw, 30px) 22px 16px; border: 2px solid rgba(255,255,255,.85); border-radius: 32px; background: #FAF7F2; color: #1A2B4A; text-align: center; box-shadow: 0 10px 28px rgba(26,43,74,.06); }
+.title { margin: 0 0 14px; font-size: clamp(1.45rem, 5vw, 1.8rem); font-weight: 900; line-height: 1.5; }
+.portrait { position: relative; isolation: isolate; display: grid; place-items: center; width: clamp(150px, 46vw, 210px); aspect-ratio: 279 / 208; margin: 12px auto 20px; }
+.halo { position: absolute; z-index: -1; width: 84%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #FBE9B2, #F7E9C7 66%, transparent 68%); opacity: .72; }
+.fahim { display: block; width: 100%; height: auto; object-fit: contain; filter: drop-shadow(0 8px 8px rgba(26,43,74,.1)); transform-origin: 50% 80%; }
+.greeting { margin: 0 0 8px; font-size: clamp(1.3rem, 4.8vw, 1.55rem); font-weight: 900; line-height: 1.7; }
+.message { margin: 0; font-size: 1.1rem; line-height: 1.9; }
+.dots { display: flex; align-items: center; justify-content: center; gap: 8px; height: 20px; margin: 10px 0 2px; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; background: #D6AC41; }
+.card[data-motion="true"] .fahim { animation: welcomeBob 2.6s ease-in-out infinite; }
+.card[data-motion="true"] .dots i { animation: welcomeDot 1.5s ease-in-out infinite; }
+.card[data-motion="true"] .dots i:nth-child(2) { animation-delay: .18s; }
+.card[data-motion="true"] .dots i:nth-child(3) { animation-delay: .36s; }
+.back { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; margin-top: 2px; padding: 0 15px; color: #1A2B4A; font-weight: 800; text-underline-offset: 4px; }
+.retry { display: block; width: min(100%, 280px); min-height: 50px; margin: 16px auto 8px; padding: 10px 20px; border: 0; border-radius: 20px; background: #E8B84B; color: #1A2B4A; box-shadow: 0 4px 0 #C59A2E; font: inherit; font-size: 1.1rem; font-weight: 900; cursor: pointer; }
+.retry:focus-visible, .back:focus-visible { outline: 3px solid #1A2B4A; outline-offset: 4px; }
+@keyframes welcomeBob { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-6px) rotate(2deg); } }
+@keyframes welcomeDot { 0%,70%,100% { opacity: .4; transform: translateY(0); } 35% { opacity: 1; transform: translateY(-3px); } }
+@media (max-height: 650px) { .card { margin-top: 16px; padding-top: 14px; } .title { margin-bottom: 8px; } .portrait { width: 140px; margin: 8px auto 12px; } .greeting { margin-bottom: 4px; } .dots { margin-top: 6px; } }
+@media (prefers-reduced-motion: reduce) { .card[data-motion="true"] .fahim, .card[data-motion="true"] .dots i { animation: none; transform: none; } }
