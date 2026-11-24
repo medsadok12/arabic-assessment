@@ -1,18 +1,25 @@
 # Letter Catcher: «مسار العوالم»
 
-## Sequential stages — 2026-11-24
+## Current contract: topics only — 2026-11-24 clarification
 
-Mohamed requested removal of «العب الكل» and sequential play within each world. This supersedes the older play-all entry and direct whole-world round described below.
+Mohamed explicitly rejected division within a topic: «أريد يدخل الحيوانات فيلعب حيوانات، التقسيم يكون خارجيا في المواضيع يعني لا يكون داخل نفس الموضوع تقسيم آخر».
 
-- Each world now opens a numbered stage selector. Stages contain 5 words by default; the teacher can set 5, 10 or 15 words per stage independently of the retained legacy round setting. Every playable word appears in exactly one stage, including a shorter final stage. Numbers remain ordered from 0.
-- A completed stage unlocks the next. The following world opens after all stages of its predecessor are complete. Historical world access stays available, without treating earlier random rounds as new stage completions.
-- Stage identity includes its canonical world, position and the exact ordered word IDs. Changed partitions do not inherit unrelated completion; image/audio edits retain progress. Start requests and exact stage membership are checked on the server.
-- Child-scoped progress is stored in private `game_settings` rows under `lc-stage:<effective-user-id>:<stage-id>`. Enrollment never means completion. Completion settles through the existing verified effects and CAS flow; retries cannot duplicate points or completion. Existing `game_results` records remain intact and retain readable world names.
-- New student starts require a valid stage. Already saved legacy and mixed rounds can still resume. Teacher previews and fallback demos do not write official progress or points; demo progress stays in the current component only.
-- The stage dialog includes loading/retry states, keyboard focus handling and save-retry controls. Results offer the next stage, replay and the world's stage selector. The world path, friend duel, word frames, audio and celebrations retain their existing implementations.
-- Service-worker cache advances to `aarem-v16`.
+- Selecting a world starts its full set of live playable words directly. «الحيوانات» starts the animal words; it does not open a second screen of numbered stages or divide those words into groups of 5. The same rule applies to canonical and custom topics. Numbers remain ordered from 0.
+- Progression and locks belong to the topic path. Completing a topic opens the following topic; there are no additional locks within the same topic. Existing historical access and saved progress remain preserved.
+- «العب الكل» stays removed. New play selects one topic rather than mixing all worlds.
+- The teacher editor explains that the complete topic is played and that its word bank determines the question count. Stored `stage_size` and `words_per_round` values may remain for compatibility with existing data and saved rounds; they do not shorten new topic play.
+- Server validation checks the selected topic's complete playable word set and topic access. Previously saved internal-stage or mixed rounds remain resumable without deleting learner records or duplicating rewards.
+- Preserve the island path, live teacher artwork, word frames, audio, celebrations, scoring, active-child identity and optional friend-duel behavior.
 
-Validation: 1,472 tests across 113 files passed, including stage partitioning, locks, legacy access, verified completion/retries, sibling isolation, teacher settings and stage selector states. The production build passed. The actual Next UI was checked against an isolated local fixture at phone 390×844, tablet 820×1024 and desktop 1280×800: play-all absent, five-word stage completion, reload/resume at the exact unfinished question, next-stage start, subsequent stage/world locks, retained progress after resizing, dialog focus and Escape restoration. The tablet/desktop dialog measured 560px without horizontal overflow. No production learner records were written during QA.
+Validation for this correction: 1,467 tests across 112 files passed, including full-topic starts, rejected five-word subsets, topic locks, saved old rounds, sibling isolation and idempotent completion. The actual Next UI was checked with isolated fixture data at phone 390×844, tablet 820×1024 and desktop 1280×800: choosing animals started 31 words directly without an internal selector; an answered question was retained when resuming the same 31-word topic. No production learner records were written during QA. The service-worker cache advances to `aarem-v17`. The production build passed before release.
+
+## Superseded internal-stage attempt — 2026-11-24
+
+The assistant chose a default split of 5 words per internal stage during implementation, including six stages of 5 animal words and a final stage of 1. This was not a teaching method agreed with Mohamed. He subsequently rejected that split and clarified the topic-only contract above. Do not restore the internal stage selector or treat its former documentation as authorization.
+
+The superseded attempt stored child-scoped stage records under `lc-stage:<effective-user-id>:<stage-id>` and used cache version `aarem-v16`. Retain historical records and saved-round compatibility where needed; they are not new topic subdivisions.
+
+Historical validation of that superseded attempt: 1,472 tests across 113 files passed, with a production build and local browser checks of the former stage selector. These results describe that earlier implementation only.
 
 On 2026-11-23, Mohamed selected the third start-screen concept: worlds displayed as islands along a path. This is a change to world selection only. The existing question screen, teaching sequence, animal word rendering and celebrations retain their approved appearance and behavior.
 
@@ -24,18 +31,18 @@ On 2026-11-23, Mohamed selected the third start-screen concept: worlds displayed
 | Names, pictures and emojis | Live category metadata and existing fallbacks; teacher edits remain visible. |
 | Student progress and stars | Existing saved results and star calculations; decorative path states do not invent completion. |
 | Locked worlds | Existing unlock rules and teacher access bypass; the visual path does not change access. |
-| World selection | Existing selection callbacks and start flow; selecting an island opens the same training. |
-| Main actions | Sticky play-all access and the existing optional «تحدي صديق» entry, following its current settings and animal-only scope. |
+| World selection | Selecting an island starts that topic's complete playable word set directly, following the current topic-only contract. |
+| Main actions | The optional «تحدي صديق» entry follows its current settings and animal-only scope; «العب الكل» is removed. |
 
-The path adapts to the actual available worlds and viewport. Keep labels, images, stars and locks readable on phone, tablet and desktop. Scrolling must leave the sticky actions usable without covering the last world or trapping teacher controls.
+The path adapts to the actual available worlds and viewport. Keep labels, images, stars and topic locks readable on phone, tablet and desktop. Keep the last world and teacher controls reachable without a play-all dock or reserved gap for it.
 
 ## Scope and release
 
-No word-bank, answer, scoring, reward, progress-storage or database migration changes are part of this design. Mixed rounds, individual world training and the friend-duel mechanics keep their existing contracts.
+The current correction does not delete word-bank media, answers, learner records or existing rewards. New starts follow the topic-only contract. Saved earlier rounds and the friend-duel mechanics retain their compatibility contracts.
 
-The service-worker cache advances from `aarem-v11` to `aarem-v12` for existing installations. API requests remain uncached.
+API requests remain uncached. The `aarem-v11` to `aarem-v12` cache change belonged to the original 2026-11-23 path release; the final cache version for the current correction is set during implementation.
 
-Before release, verify dynamic/custom worlds, live teacher artwork and emojis, empty and completed progress, locks, teacher bypass, world selection, play-all and duel availability across phone, tablet and desktop. Record the final test, build and browser validation after QA.
+Before release, verify direct complete-topic play, absence of internal stage controls and play-all, dynamic/custom worlds, live teacher artwork and emojis, topic locks, historical and unfinished progress, teacher bypass and duel availability across phone, tablet and desktop. Record the final test, build and browser validation after QA.
 
 ## Verification — 2026-11-23
 

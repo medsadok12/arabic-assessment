@@ -44,6 +44,7 @@ describe('Letter Catcher world selection path', () => {
     expect(html).toContain('رصيدك 1,353 نجمة');
     expect(html).not.toContain('data-lc-play-all');
     expect(html).not.toContain('العب الكل');
+    expect(html).not.toContain('مراحل');
     expect(html).not.toContain('data-scene=');
   });
 

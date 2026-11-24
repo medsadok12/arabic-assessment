@@ -2,10 +2,10 @@ import { VERIFIED_GAMES, applyTrainingEvent, trainingSummary, trainingStars, ver
 import { scrambleId } from './verified-scramble';
 import { deliverVerifiedEffect, awardVerifiedPoints } from './verified-effects';
 import { normalizeGlobalConfig, wheelForPlay, defaultChallengeRows, cardFor, missingIndex } from './word-wheel';
-import { normalizeLcSettings, roundSize, letterCount, LEN_NO_LIMIT } from './letter-catcher';
-import { canonicalLcWord, lcCategoryKey, lcCategoryMatchesWord, lcNumberValue, lcUsesLegacySelection, normalizeLcCategory } from './letter-catcher-categories';
-import { isLcStageUnlocked } from './letter-catcher-stages';
-import { completeLcStage, enrollLcStage, lcStageDescriptor, readLcStageContext, requestedLcStage } from './letter-catcher-stage-progress-server';
+import { letterCount, LEN_NO_LIMIT } from './letter-catcher';
+import { canonicalLcWord, lcCategoryKey, lcCategoryMatchesWord, lcUsesLegacySelection, normalizeLcCategory, sortLcCategoryWords } from './letter-catcher-categories';
+import { completeLcStage } from './letter-catcher-stage-progress-server';
+import { completeLcTopic, readLcTopicContext } from './letter-catcher-topic-progress-server';
 import { randomUUID } from 'node:crypto';
 const tables = { letter_catcher: 'letter_catcher_words', vowel_balloon: 'vowel_balloon_games', word_smash: 'syllable_games', word_image_match: 'word_image_matches' };
 const key = (game, id) => `verified:round:${game}:${id}`;
@@ -17,7 +17,7 @@ async function cas(admin, row, settings) {
 }
 const own = (row, user, id) => { if (!row || row.settings.owner !== user.id || row.settings.userId !== id) throw verifiedError('هذه الجولة غير متاحة لهذا الطفل.', 404); return row.settings; };
 const safeItem = item => Object.fromEntries(Object.entries(item).filter(([, v]) => typeof v !== 'string' || !v.startsWith('data:') || v.length < 8192));
-function publicRound(r, items = r.items) { return { roundId: r.id, preview: r.preview, game: r.game, items, wheel: r.wheel, category: r.category, ...(r.lcStage ? { lcStage: r.lcStage } : {}), summary: trainingSummary(r), answers: r.answers, clock: r.clock, pointsPerWord: r.points, stars: trainingStars(r), snapshot: r }; }
+function publicRound(r, items = r.items) { return { roundId: r.id, preview: r.preview, game: r.game, items, wheel: r.wheel, category: r.category, ...(r.lcStage ? { lcStage: r.lcStage } : {}), ...(r.lcWorld ? { lcWorld: r.lcWorld } : {}), summary: trainingSummary(r), answers: r.answers, clock: r.clock, pointsPerWord: r.points, stars: trainingStars(r), snapshot: r }; }
 async function sourceRows(admin, table) {
   let rows = [];
   for (let offset = 0; offset < 3000; offset += 1000) {
@@ -32,10 +32,11 @@ export async function startTraining(admin, user, userId, body, preview) {
   if (!VERIFIED_GAMES.includes(game) || !scrambleId(body.roundId)) throw verifiedError('ابدأ التدريب من صفحته.');
   const existing = preview ? null : await read(admin, key(game, body.roundId));
   if (existing) {const saved=own(existing,user,userId);if(saved.expiresAt<Date.now())throw verifiedError('انتهت مهلة الجولة. ابدأ جولة جديدة.',409);return publicRound(saved);}
-  // Already-saved rounds above, including old mixed rounds, remain resumable.
-  // Every new learner round must enter the server-validated stage sequence.
-  if (game === 'letter_catcher' && !preview && !Object.prototype.hasOwnProperty.call(body.filters || {}, 'lcStage')) throw verifiedError('اختر مرحلة من عالمك لتبدأ اللعب.', 409);
-  let items, questions, wheel, clock, lcStage, points = 5, category = typeof body.category === 'string' ? body.category : 'عام', bonus = 0;
+  // Saved mixed/staged rounds remain resumable. New play starts directly in
+  // one whole topic; internal stages and mixed starts are no longer offered.
+  if (game === 'letter_catcher' && Object.prototype.hasOwnProperty.call(body.filters || {}, 'lcStage')) throw verifiedError('تغيّرت طريقة اللعب. حدّث الصفحة واختر عالمك.', 409);
+  if (game === 'letter_catcher' && !preview && (typeof body.category !== 'string' || !body.category.trim() || body.category === '__all__')) throw verifiedError('اختر عالمًا واحدًا لتبدأ اللعب.', 409);
+  let items, questions, wheel, clock, lcWorld, points = 5, category = typeof body.category === 'string' ? body.category : 'عام', bonus = 0;
   if (category.length > 160) throw verifiedError('اختر الفصل من جديد.');
   if (game === 'word_wheel') {
     // قراءة صارمة: لا نحول خطأ القاعدة إلى محتوى افتراضي يمنح مكافآت.
@@ -59,17 +60,15 @@ export async function startTraining(admin, user, userId, body, preview) {
     const f = body.filters || {}, grade = Number(f.grade || 0);
     if (!Number.isInteger(grade) || grade < 0 || grade > 12 || (f.topic && (typeof f.topic !== 'string' || f.topic.length > 120))) throw verifiedError('اختر إعدادات التدريب من جديد.');
     let pool = await sourceRows(admin, tables[game]);
-    const stagedLc = game === 'letter_catcher' && Object.prototype.hasOwnProperty.call(f, 'lcStage');
-    if (stagedLc && (typeof f.lcStage !== 'string' || !/^lc-stage-[\da-z-]{1,90}$/i.test(f.lcStage) || category === '__all__')) throw verifiedError('اختر مرحلة من عالمك.');
-    const legacyLc = game === 'letter_catcher' && !stagedLc && lcUsesLegacySelection(category, Array.isArray(body.ids) ? body.ids : []);
+    const legacyLc = game === 'letter_catcher' && preview && lcUsesLegacySelection(category, Array.isArray(body.ids) ? body.ids : []);
     if (game === 'letter_catcher') pool = pool.map(canonicalLcWord);
     const allLcWords = game === 'letter_catcher' ? pool : null;
     pool = pool.filter(r => (!grade || Number(r.grade_level) === grade) && (!f.topic || (game === 'letter_catcher' ? lcCategoryMatchesWord(r, f.topic, { legacy: legacyLc }) : r.topic === f.topic)));
     if (game === 'letter_catcher') {
       const min = Number(f.minLen || 0), max = Number(f.maxLen || LEN_NO_LIMIT);
       if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 || max < min || max > 200) throw verifiedError('اختر طول الكلمات من جديد.');
-      if (stagedLc && !preview && (grade || f.topic || min > 2 || max < LEN_NO_LIMIT)) throw verifiedError('مراحل الطالب تتبع كلمات العالم كاملةً. افتح المرحلة من جديد.', 409);
-      pool = pool.filter(r => r.word && r.missing_letter && Array.isArray(r.options) && r.options.filter(Boolean).length >= (stagedLc ? 2 : 1) && lcCategoryMatchesWord(r, category, { legacy: legacyLc }) && letterCount(r.word) >= (stagedLc && !preview ? 0 : min) && (max >= LEN_NO_LIMIT || letterCount(r.word) <= max));
+      if (!preview && (grade || f.topic || min > 2 || max < LEN_NO_LIMIT)) throw verifiedError('العب كلمات العالم كاملةً. افتح العالم من جديد.', 409);
+      pool = pool.filter(r => r.word && r.missing_letter && Array.isArray(r.options) && r.options.filter(Boolean).length >= (preview ? 1 : 2) && lcCategoryMatchesWord(r, category, { legacy: legacyLc }) && letterCount(r.word) >= (!preview ? 0 : min) && (max >= LEN_NO_LIMIT || letterCount(r.word) <= max));
       category = category === '__all__' ? category : normalizeLcCategory(category);
     } else if (game === 'word_smash') pool = pool.filter(r => r.word_text && r.correct_segments?.length && r.wrong_options?.length >= 2 && r.rule_text && (category === 'عام' || r.topic === category));
     else if (game === 'word_image_match') pool = pool.filter(r => r.word_text && r.image_url && (r.topic || 'عام') === category);
@@ -80,40 +79,27 @@ export async function startTraining(admin, user, userId, body, preview) {
     items = ids.map(id => byId.get(String(id)));
     if (items.some(x => !x)) throw verifiedError('عدّل المعلم بعض المحتوى. حدّث القائمة وابدأ من جديد.', 409);
     if (!preview && new Set(ids.map(String)).size !== ids.length) throw verifiedError('لا نكرر السؤال في الجولة نفسها.');
-    if (stagedLc) {
-      const row = await read(admin, 'letter-catcher');
-      const { stage, stages } = requestedLcStage(pool, category, normalizeLcSettings(row?.settings).stage_size, f.lcStage, ids);
+    if (game === 'letter_catcher') {
       if (!preview) {
-        const context = await readLcStageContext(admin, user, userId, { words: allLcWords, settings: row?.settings });
-        if (!context.unlockedCategories.includes(category)) throw verifiedError('أكمل مراحل العالم السابق أولًا.', 409);
-        if (!isLcStageUnlocked(stage, stages, context.progress)) throw verifiedError('أكمل المرحلة السابقة أولًا.', 409);
-        await enrollLcStage(admin, user, userId, stage, context);
-      }
-      lcStage = lcStageDescriptor(stage);
-    } else if (!preview) {
-      let expected;
-      if (game === 'letter_catcher') {
-        const row = await read(admin, 'letter-catcher'), count = normalizeLcSettings(row?.settings).words_per_round;
-        expected = roundSize(pool.length, count);
-        // A full-bank selection cached just before adding zero is still valid.
-        // This exception removes only the newly added zero, never arbitrary items.
-        if (category === '__all__' && items.length !== expected) {
-          const withoutZero = pool.filter(item => !(lcCategoryKey(item.category) === 'numbers' && lcNumberValue(item) === 0));
-          const selected = new Set(ids.map(String));
-          if (withoutZero.length + 1 === pool.length && selected.size === withoutZero.length && withoutZero.every(item => selected.has(String(item.id)))) {
-            expected = roundSize(withoutZero.length, count);
-          }
+        if (items.length !== pool.length) throw verifiedError('تغيّرت كلمات العالم. حدّث القائمة والعب الموضوع كاملًا.', 409);
+        if (lcCategoryKey(category) === 'numbers') {
+          const ordered = sortLcCategoryWords(pool, category);
+          if (items.some((item, index) => String(item.id) !== String(ordered[index].id))) throw verifiedError('تبدأ الأعداد من الصفر بالترتيب. افتح العالم من جديد.', 409);
         }
-      } else if (game === 'word_image_match') expected = Math.min(pool.length, 4);
-      else if (game === 'word_smash') expected = Math.min(pool.length, category === 'عام' ? 15 : 12);
-      else expected = pool.length;
+        const row = await read(admin, 'letter-catcher');
+        const context = await readLcTopicContext(admin, user, userId, { words: allLcWords, settings: row?.settings });
+        if (!context.unlockedCategories.includes(category)) throw verifiedError('أكمل العالم السابق أولًا.', 409);
+      }
+      lcWorld = { category, wordIds: items.map(item => String(item.id)), total: items.length };
+    } else if (!preview) {
+      const expected = game === 'word_image_match' ? Math.min(pool.length, 4) : game === 'word_smash' ? Math.min(pool.length, category === 'عام' ? 15 : 12) : pool.length;
       if (items.length !== expected) throw verifiedError('تغيّر عدد أسئلة الجولة. حدّث القائمة وابدأ من جديد.', 409);
     }
     items = items.map(r => ({ ...r, id: String(r.id) }));
     questions = items.map(r => ({ id: r.id, expected: game === 'letter_catcher' ? r.missing_letter : game === 'vowel_balloon' ? r.correct_option : game === 'word_smash' ? r.correct_segments : r.id }));
   }
   if (!questions.length) throw verifiedError('لا يوجد محتوى مفعّل لهذه الجولة.');
-  const round = { id: body.roundId, game, userId, owner: user.id, preview, category, ...(lcStage ? { lcStage } : {}), revision: 0, items: items.map(safeItem), questions, wheel, clock,
+  const round = { id: body.roundId, game, userId, owner: user.id, preview, category, ...(lcWorld ? { lcWorld } : {}), revision: 0, items: items.map(safeItem), questions, wheel, clock,
     points, bonus, hints: 0, answers: questions.map(() => ({ done: false, right: false, wrong: 0, hints: 0, status: 'play' })),
     events: [], closed: false, expiresAt: Date.now() + 86400000 };
   if (!preview) {
@@ -125,10 +111,11 @@ export async function startTraining(admin, user, userId, body, preview) {
 }
 async function effects(admin, user, r, event, repeated) {
   const summary = trainingSummary(r), prefix = `verified:${r.game}:${r.id}`;
-  let award = { state: 'none' }, bonus = { state: 'none' }, result = { state: 'none' }, stageProgress = { state: 'none' };
+  let award = { state: 'none' }, bonus = { state: 'none' }, result = { state: 'none' }, stageProgress = { state: 'none' }, topicProgress = { state: 'none' };
   if (event.reward > 0) award = await deliverVerifiedEffect(admin, `${prefix}:reward:${event.index}`, user.id, () => awardVerifiedPoints(admin, r.userId, `${r.game}:${r.id}:${event.index}`, event.reward));
   if (r.closed) {
     if (r.lcStage) stageProgress = await deliverVerifiedEffect(admin, `${prefix}:stage`, user.id, () => completeLcStage(admin, user, r, summary));
+    if (r.lcWorld) topicProgress = await deliverVerifiedEffect(admin, `${prefix}:topic`, user.id, () => completeLcTopic(admin, user, r, summary));
     if (r.bonus && trainingStars(r) > 0) bonus = await deliverVerifiedEffect(admin, `${prefix}:bonus`, user.id, () => awardVerifiedPoints(admin, r.userId, `word_wheel_win:${r.id}`, r.bonus));
     result = await deliverVerifiedEffect(admin, `${prefix}:result`, user.id, async () => {
       const { error } = await admin.from('game_results').insert({ user_id: r.userId, game_id: r.game, category: r.category, correct: summary.correct, wrong: summary.total - summary.correct, total: summary.total });
@@ -136,7 +123,7 @@ async function effects(admin, user, r, event, repeated) {
     });
   }
   return { verified: true, right: event.right, questionDone: event.done, outcome: event.status, expired: event.expired, message: event.message,
-    summary, answers: r.answers, clock: r.clock, reward: award.state, result: result.state, bonus: bonus.state, stageProgress: stageProgress.state,
+    summary, answers: r.answers, clock: r.clock, reward: award.state, result: result.state, bonus: bonus.state, stageProgress: stageProgress.state, topicProgress: topicProgress.state,
     awarded: !repeated && award.state === 'done' ? event.reward : 0, points: bonus.points ?? award.points, stars: trainingStars(r), repeated };
 }
 export async function trainingEvent(admin, user, userId, body) {

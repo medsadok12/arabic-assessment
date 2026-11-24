@@ -16,6 +16,8 @@ vi.mock('./supabase-admin',()=>{
   then(ok,fail){return Promise.resolve().then(()=>{
    if(db.fail===`${this.t}:${this.op}`)return{data:null,error:{code:'FAILED'}};
    const rows=db.tables[this.t]||=[];let m=rows.filter(r=>this.f.every(f=>f(r)));
+   if(db.fail==='lc-topic:read'&&this.t==='game_settings'&&this.op==='read'&&m.some(r=>r.game_id.startsWith('lc-topic:')))return{data:null,error:{code:'FAILED'}};
+   if(db.fail==='lc-topic:write'&&this.t==='game_settings'&&this.op!=='read'&&(this.p?.game_id?.startsWith('lc-topic:')||m.some(r=>r.game_id.startsWith('lc-topic:'))))return{data:null,error:{code:'FAILED'}};
    if(db.fail==='lc-stage:read'&&this.t==='game_settings'&&this.op==='read'&&m.some(r=>r.game_id.startsWith('lc-stage:')))return{data:null,error:{code:'FAILED'}};
    if(this.op==='insert'){const k=this.t==='game_settings'?'game_id':this.t==='user_points'?'user_id':null;if(k&&rows.some(r=>r[k]===this.p[k]))return{data:null,error:{code:'23505'}};const r={id:String(++db.seq),...structuredClone(this.p)};rows.push(r);m=[r];}
    else if(this.op==='update')m.forEach(r=>Object.assign(r,structuredClone(this.p)));
@@ -44,7 +46,7 @@ const start=async(game,ids,category='عام',extra={})=>{const r=await call({act
 const savedLcRound=async(ids,category='عام')=>{
  const role=db.user.app_metadata.role;db.user.app_metadata.role='teacher';
  const preview=await start('letter_catcher',ids,category);db.user.app_metadata.role=role;
- const snapshot={...preview.snapshot,preview:false};
+ const snapshot={...preview.snapshot,preview:false};delete snapshot.lcWorld;
  db.tables.game_settings.push({game_id:`verified:round:letter_catcher:${snapshot.id}`,settings:snapshot,updated_at:new Date().toISOString()});
  const resumed=await call({action:'resume',game:'letter_catcher',roundId:snapshot.id});expect(resumed.status).toBe(200);return resumed.body;
 };
@@ -62,102 +64,118 @@ beforeEach(()=>{
  };
 });
 
-describe('مراحل صياد الحروف الموثوقة', () => {
+describe('مواضيع صياد الحروف الكاملة', () => {
  const category='الحيوانات', nextCategory='الجوّ والفصول';
  const fixture=()=>{
-  db.tables.letter_catcher_words=Array.from({length:6},(_,index)=>({id:`animal-${index}`,word:'قِطٌّ',missing_letter:'ق',options:['ق','ك','ب'],category})).concat([
-   {id:'weather',word:'شَمْسٌ',missing_letter:'ش',options:['ش','س','ب'],category:nextCategory},
-  ]);
+  const animals=Array.from({length:31},(_,index)=>({id:`animal-${String(index).padStart(2,'0')}`,word:'قِطٌّ',missing_letter:'ق',options:['ق','ك','ب'],category}));
+  db.tables.letter_catcher_words=animals.concat([{id:'weather',word:'شَمْسٌ',missing_letter:'ش',options:['ش','س','ب'],category:nextCategory}]);
   db.tables.game_settings.push({game_id:'letter-catcher',settings:{words_per_round:20,options_count:3,stage_size:5}});
-  return lcStagesForCategory(db.tables.letter_catcher_words,category,5);
+  return animals;
  };
- const staged=(stage,extra={})=>call({action:'start',game:'letter_catcher',roundId:randomUUID(),ids:stage.wordIds,category:stage.category,filters:{lcStage:stage.id},...extra});
+ const topic=(animals,extra={})=>call({action:'start',game:'letter_catcher',roundId:randomUUID(),ids:animals.map(word=>word.id),category,filters:{},...extra});
  const progress=async()=>{const response=await lcProgress.GET(new Request('https://www.aarem.net/api/games/letter-catcher/progress'));return{status:response.status,body:await response.json(),headers:response.headers};};
  const finish=async round=>{let last;for(let index=0;index<round.items.length;index++)last=await call(answer(round,index,round.items[index].missing_letter));return last;};
+ const savedStage=async animals=>{
+  const stage=lcStagesForCategory(animals,category,5)[0];
+  const round=await savedLcRound(stage.wordIds,category);
+  const {id,number,wordIds,total}=stage;
+  row(round).settings.lcStage={id,number,category,wordIds,total};
+  db.tables.game_settings.push({game_id:`lc-stage:${db.child||db.user.id}:${id}`,settings:{id,number,category,wordIds,total,userId:db.child||db.user.id,owner:db.user.id,complete:false,legacyAccess:false},updated_at:new Date().toISOString()});
+  const resumed=await call({action:'resume',game:'letter_catcher',roundId:round.roundId});expect(resumed.status).toBe(200);return resumed.body;
+ };
 
- it('يرفض القفز والتلاعب بالقائمة والفلاتر والتجميع الحر',async()=>{
-  const stages=fixture();
-  expect((await staged(stages[0],{filters:{}})).status).toBe(409);
-  expect((await staged(stages[0],{category:'__all__',filters:{}})).status).toBe(409);
-  expect((await staged(stages[1])).status).toBe(409);
-  expect((await staged(stages[0],{ids:[...stages[0].wordIds].reverse()})).status).toBe(409);
-  expect((await staged(stages[0],{filters:{lcStage:stages[0].id,minLen:3}})).status).toBe(409);
-  expect((await staged(stages[0],{category:'__all__'})).status).toBe(400);
-  const weather=lcStagesForCategory(db.tables.letter_catcher_words,nextCategory,5)[0];
-  expect((await staged(weather)).status).toBe(409);
+ it('يبدأ كل كلمات الموضوع مباشرة بلا تقسيم أو اعتماد على حجم الجولة القديم',async()=>{
+  const animals=fixture(),result=await topic(animals);
+  expect(result.status).toBe(200);expect(result.body.items).toHaveLength(31);
+  expect(result.body.summary).toMatchObject({total:31,done:0,complete:false});
+  expect(result.body.snapshot.lcWorld).toMatchObject({category,total:31,wordIds:animals.map(word=>word.id)});
+  expect(result.body.lcStage).toBeUndefined();expect(result.body.snapshot.lcStage).toBeUndefined();
   expect(db.tables.game_settings.filter(row=>row.game_id.startsWith('lc-stage:'))).toHaveLength(0);
  });
 
- it('لا يفتح المرحلة التالية قبل الإكمال ولا العالم التالي قبل كل مراحله',async()=>{
-  const stages=fixture(), started=await staged(stages[0]);
-  expect(started.status).toBe(200);expect(started.body.lcStage).toMatchObject({id:stages[0].id,wordIds:stages[0].wordIds});
-  let state=await progress();expect(state.body.progress[stages[0].id]).toMatchObject({complete:false,legacyAccess:false});
-  expect(state.body.unlockedCategories).toEqual([category]);
-  await call(answer(started.body,0,'ق'));
-  expect((await staged(stages[1])).status).toBe(409);
-  for(let index=1;index<started.body.items.length;index++)await call(answer(started.body,index,'ق'));
-  state=await progress();expect(state.body.progress[stages[0].id]).toMatchObject({complete:true,correct:5,total:5});
-  expect(state.body.unlockedCategories).toEqual([category]);
-  const second=await staged(stages[1]);expect(second.status).toBe(200);
-  expect((await finish(second.body)).body.stageProgress).toBe('done');
-  expect((await progress()).body.unlockedCategories).toEqual([category,nextCategory]);
-  expect(db.tables.game_results.map(row=>row.category)).toEqual([category,category]);
+ it('يرفض اقتطاع خمس كلمات والتكرار والتجميع الحر وطلبات المراحل القديمة الجديدة',async()=>{
+  const animals=fixture();
+  expect((await topic(animals.slice(0,5))).status).toBe(409);
+  expect((await topic(animals,{ids:[...animals.map(word=>word.id).slice(0,-1),animals[0].id]})).status).toBe(400);
+  expect((await topic(animals,{category:'__all__'})).status).toBe(409);
+  const stage=lcStagesForCategory(animals,category,5)[0];
+  expect((await topic(animals,{ids:stage.wordIds,filters:{lcStage:stage.id}})).status).toBe(409);
+  for(const filters of [{grade:1},{topic:category},{minLen:3},{maxLen:3}])expect((await topic(animals,{filters})).status).toBe(409);
  });
 
- it('تأكيد آخر إجابة مرتين يحفظ الإنجاز والنقاط والنتيجة مرة واحدة',async()=>{
-  const stages=fixture(), started=(await staged(stages[0])).body;
-  for(let index=0;index<4;index++)await call(answer(started,index,'ق'));
-  const last=answer(started,4,'ق');
-  const confirmed=await call(last);expect(confirmed.body.stageProgress).toBe('done');
-  const repeated=await call(last);expect(repeated.body).toMatchObject({stageProgress:'done',repeated:true,awarded:0});
-  expect(db.tables.user_points[0].total).toBe(125);expect(db.tables.game_results).toHaveLength(1);
-  expect(db.tables.game_settings.filter(row=>row.game_id.startsWith('lc-stage:')&&row.settings.complete)).toHaveLength(1);
+ it('لا يفتح الموضوع التالي قبل إنهاء كلمات الموضوع كله',async()=>{
+  const animals=fixture(),started=(await topic(animals)).body;
+  const weather=()=>topic([{id:'weather'}],{category:nextCategory});
+  expect((await progress()).body.unlockedCategories).toEqual([category]);expect((await weather()).status).toBe(409);
+  await call(answer(started,0,'ق'));expect((await weather()).status).toBe(409);
+  for(let index=1;index<started.items.length;index++)await call(answer(started,index,'ق'));
+  expect((await progress()).body.unlockedCategories).toEqual([category,nextCategory]);expect((await weather()).status).toBe(200);
+  expect(db.tables.game_results).toMatchObject([{category,total:31,correct:31}]);
+ });
+
+ it('تأكيد آخر إجابة مرتين يحفظ الموضوع والنقاط والنتيجة مرة واحدة',async()=>{
+  const animals=fixture(),started=(await topic(animals)).body;
+  for(let index=0;index<30;index++)await call(answer(started,index,'ق'));
+  const last=answer(started,30,'ق');
+  expect((await call(last)).body.topicProgress).toBe('done');
+  expect((await call(last)).body).toMatchObject({topicProgress:'done',repeated:true,awarded:0});
+  expect(db.tables.user_points[0].total).toBe(255);expect(db.tables.game_results).toHaveLength(1);
+  expect(db.tables.game_settings.filter(row=>row.game_id.startsWith('lc-topic:')&&row.settings.complete)).toHaveLength(1);
   const resumed=await call({action:'resume',game:'letter_catcher',roundId:started.roundId});
-  expect(resumed.body).toMatchObject({lcStage:{id:stages[0].id},confirmation:{stageProgress:'done'}});
+  expect(resumed.body).toMatchObject({confirmation:{topicProgress:'done'},summary:{total:31,complete:true}});
  });
 
- it('تبقى صلاحية العالم القديم بعد بدء أول مرحلة جديدة دون اختلاق إكمال',async()=>{
-  const stages=fixture();db.tables.game_results.push({user_id:'student',game_id:'letter_catcher',category,correct:4,total:5,wrong:1,played_at:'2026-11-01T00:00:00Z'});
+ it('يحافظ على الوصول التاريخي دون ادعاء إتمام موضوع جديد',async()=>{
+  const animals=fixture();db.tables.game_results.push({user_id:'student',game_id:'letter_catcher',category,correct:4,total:5,wrong:1,played_at:'2026-11-01T00:00:00Z'});
   expect((await progress()).body.unlockedCategories).toEqual([category,nextCategory]);
-  expect((await staged(stages[0])).status).toBe(200);
-  const state=await progress();expect(state.body.progress[stages[0].id]).toMatchObject({complete:false,legacyAccess:true});
-  expect(state.body.unlockedCategories).toEqual([category,nextCategory]);
+  expect((await topic(animals)).status).toBe(200);
+  expect((await progress()).body.unlockedCategories).toEqual([category,nextCategory]);
+  expect(db.tables.game_settings.filter(row=>row.game_id.startsWith('lc-topic:')&&row.settings.complete)).toHaveLength(0);
  });
 
- it('تعذر قراءة حفظ المرحلة يبقى قابلاً للإعادة دون تكرار المكافأة',async()=>{
-  const stages=fixture(), started=(await staged(stages[0])).body;
-  for(let index=0;index<4;index++)await call(answer(started,index,'ق'));
-  db.fail='lc-stage:read';const last=answer(started,4,'ق');
-  expect((await call(last)).body.stageProgress).toBe('pending');
-  db.fail=null;expect((await call(last)).body).toMatchObject({stageProgress:'done',repeated:true,awarded:0});
-  expect((await progress()).body.progress[stages[0].id].complete).toBe(true);
-  expect(db.tables.user_points[0].total).toBe(125);expect(db.tables.game_results).toHaveLength(1);
+ it('الجولة المرحلية المحفوظة تبقى قابلة للتسوية ولا تفتح العالم التالي وحدها',async()=>{
+  const animals=fixture(),old=await savedStage(animals);
+  expect(old.lcStage).toMatchObject({number:1,total:5});expect(old.items).toHaveLength(5);
+  const last=await finish(old);expect(last.body.stageProgress).toBe('done');
+  expect((await progress()).body.unlockedCategories).toEqual([category]);
+  const whole=(await topic(animals)).body;expect(whole.items).toHaveLength(31);
+  expect((await finish(whole)).body.topicProgress).toBe('done');
+  expect((await progress()).body.unlockedCategories).toEqual([category,nextCategory]);
  });
 
- it('يحفظ التقدم للطفل النشط وحده ويمنع استئناف جولة أخيه',async()=>{
-  const stages=fixture();db.child='child-a';const started=(await staged(stages[0])).body;await finish(started);
-  expect((await progress()).body.progress[stages[0].id].complete).toBe(true);
-  db.child='child-b';expect((await progress()).body.progress).toEqual({});
-  expect((await staged(stages[1])).status).toBe(409);
+ it('تعذّر حفظ إتمام الموضوع قابل للإعادة بلا تكرار المكافأة',async()=>{
+  const animals=fixture(),started=(await topic(animals)).body;
+  for(let index=0;index<30;index++)await call(answer(started,index,'ق'));
+  db.fail='lc-topic:write';const last=answer(started,30,'ق');
+  expect((await call(last)).body.topicProgress).toBe('pending');
+  db.fail=null;expect((await call(last)).body).toMatchObject({topicProgress:'done',repeated:true,awarded:0});
+  expect((await progress()).body.unlockedCategories).toEqual([category,nextCategory]);
+  expect(db.tables.user_points[0].total).toBe(255);expect(db.tables.game_results).toHaveLength(1);
+ });
+
+ it('يحفظ إتمام الموضوع للطفل النشط وحده ويمنع استئناف جولة أخيه',async()=>{
+  const animals=fixture();db.child='child-a';const started=(await topic(animals)).body;await finish(started);
+  expect((await progress()).body.unlockedCategories).toEqual([category,nextCategory]);
+  db.child='child-b';expect((await progress()).body.unlockedCategories).toEqual([category]);
+  expect((await topic([{id:'weather'}],{category:nextCategory})).status).toBe(409);
   expect((await call({action:'resume',game:'letter_catcher',roundId:started.roundId})).status).toBe(404);
  });
 
- it('لا تعتبر بصمة المرحلة القديمة إكمالاً لقائمة كلمات جديدة',async()=>{
-  const stages=fixture(), started=(await staged(stages[0])).body;await finish(started);
-  db.tables.letter_catcher_words.unshift({id:'animal--new',word:'فِيلٌ',missing_letter:'ف',options:['ف','ق','ب'],category});
-  const changed=lcStagesForCategory(db.tables.letter_catcher_words,category,5);
-  expect(changed[0].id).not.toBe(stages[0].id);
-  expect((await staged(stages[0])).status).toBe(409);
-  expect((await staged(changed[1])).status).toBe(409);
- });
-
- it('معاينة المعلم تتجاوز الأقفال دون إنشاء تقدم أو نتائج أو مكافآت',async()=>{
-  const stages=fixture();db.user.app_metadata.role='teacher';const before=structuredClone(db.tables);
-  const preview=await staged(stages[1]);expect(preview.status).toBe(200);expect(preview.body).toMatchObject({preview:true,lcStage:{id:stages[1].id}});
+ it('معاينة المعلم تتجاوز قفل المواضيع وتتيح فلاتره دون تقدم أو مكافآت',async()=>{
+  const animals=fixture();db.user.app_metadata.role='teacher';const before=structuredClone(db.tables);
+  const preview=await topic([{id:'weather'}],{category:nextCategory,filters:{grade:0,minLen:2}});
+  expect(preview.status).toBe(200);expect(preview.body.preview).toBe(true);
+  const shortened=await topic(animals.slice(0,5));expect(shortened.status).toBe(200);
   expect((await progress()).body.progress).toEqual({});expect(db.tables).toEqual(before);
  });
 
- it('يحمي قراءة المراحل ويمنع التخزين المؤقت والتقرير الناقص عند تعذر القاعدة',async()=>{
+ it('الأعداد في الموضوع الواحد تقبل التسلسل من الصفر',async()=>{
+  db.tables.letter_catcher_words=[{id:'zero',word:'صِفْرٌ',missing_letter:'ص',options:['ص','ق','ت'],category:'الأعداد'},{id:'one',word:'وَاحِدٌ',missing_letter:'و',options:['و','ق','ب'],category:'الأعداد'}];
+  const round=await topic([{id:'zero'},{id:'one'}],{category:'الأعداد'});
+  expect(round.status).toBe(200);expect(round.body.items.map(word=>word.id)).toEqual(['zero','one']);
+ });
+
+ it('يحمي قراءة المواضيع ويمنع التخزين المؤقت والتقرير الناقص عند تعذر القاعدة',async()=>{
   fixture();const state=await progress();expect(state.headers.get('cache-control')).toContain('private, no-store');
   db.fail='game_settings:read';expect((await progress()).status).toBe(503);db.fail=null;
   for(const user of [null,{id:'s',app_metadata:{role:'student',status:'suspended'}},{id:'s',user_metadata:{role:'teacher'}}]){

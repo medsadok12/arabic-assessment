@@ -40,13 +40,13 @@ export default function useVerifiedTraining(game, { onStart, onPoints, onIdentit
       }
       if (t !== ticket.current || child !== getActiveChildTab()) return null;
       if(j.summary)setSummary(j.summary);
-      const retryable = ['reward', 'result', 'bonus', 'stageProgress'].some(k => j[k] === 'pending' || j.confirmation?.[k] === 'pending');
+      const retryable = ['reward', 'result', 'bonus', 'stageProgress', 'topicProgress'].some(k => j[k] === 'pending' || j.confirmation?.[k] === 'pending');
       if (body.action === 'start' || body.action === 'resume') {
         session.current = j.snapshot; if (!j.preview) remember(j.summary.complete && !retryable ? null : j.roundId);
       }
       if (j.summary?.complete && !j.preview && !retryable) remember(null);
       if (retryable) { setPending(true); setNote('حُفظت الإجابة؛ نحتاج تأكيد مزامنة المكافأة أو التقرير. أعد التأكيد.'); return null; }
-      const review = ['reward', 'result', 'bonus', 'stageProgress'].some(k => ['working', 'review'].includes(j[k]));
+      const review = ['reward', 'result', 'bonus', 'stageProgress', 'topicProgress'].some(k => ['working', 'review'].includes(j[k]));
       setNote(session.current?.demo ? 'تدريب تجريبي: بلا نقاط أو نتائج رسمية.' : j.preview || session.current?.preview ? 'معاينة المعلم: بلا نقاط أو نتائج طلاب.' : review ? 'حُفظت إجابتك. بعض المكافآت تنتظر تأكيدًا دون احتسابها مرتين.' : body.action==='start'?'جولتك جاهزة. لنبدأ!':body.action==='resume'?'استعدنا جولتك المحفوظة.':j.summary?.complete?'حُفظت نتيجة الجولة بعد التحقق.':body.action==='answer'?'حُفظت الإجابة بعد التحقق منها.':'جولتك محفوظة.');
       request.current = null; setPending(false);
       const pts = j.points ?? j.confirmation?.points; if (Number.isFinite(pts)) handlers.current.onPoints?.(pts);

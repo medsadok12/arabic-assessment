@@ -4,7 +4,6 @@ import { useState, useRef, Fragment } from 'react';
 import { keepRowInPlace, returnRow, revealBelow, flashRow } from '../../../../lib/edit-scroll';
 import AudioUploadButton from '../../../../components/AudioUploadButton';
 import { OPTIONS_COUNT_CHOICES, LEN_NO_LIMIT, normalizeLcSettings } from '../../../../lib/letter-catcher';
-import { LC_STAGE_SIZE_CHOICES } from '../../../../lib/letter-catcher-stages';
 import { sortLcCategories, sortLcCategoryWords } from '../../../../lib/letter-catcher-categories';
 import { prepareLetterCatcherImageUpload } from '../../../../lib/letter-catcher-image-upload';
 import { childFetch } from '../../../../lib/child-fetch';
@@ -539,7 +538,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
   const [resetting, setResetting] = useState(false);
   const [resetMsg, setResetMsg] = useState(null);
   const savedSettings = normalizeLcSettings(settings);
-  const dirty = draft.stage_size !== savedSettings.stage_size || draft.words_per_round !== savedSettings.words_per_round || draft.options_count !== savedSettings.options_count || draft.progress_motion !== savedSettings.progress_motion || JSON.stringify(draft.duel) !== JSON.stringify(savedSettings.duel);
+  const dirty = draft.options_count !== savedSettings.options_count || draft.progress_motion !== savedSettings.progress_motion || JSON.stringify(draft.duel) !== JSON.stringify(savedSettings.duel);
 
   const changeDuel = (values) => {
     setDraft(d => ({ ...d, duel: { ...d.duel, ...values } }));
@@ -570,7 +569,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
       if (!res.ok) throw new Error(json.error || 'فشل الحفظ');
       setDraft(normalizeLcSettings(json.settings));
       onSettingsSaved?.(json.settings);
-      setStMsg({ ok: true, text: '✅ حُفظت — تُطبَّق على كل الطلاب عند بدء مرحلة جديدة' });
+      setStMsg({ ok: true, text: '✅ حُفظت — تُطبَّق على كل الطلاب عند بدء موضوع جديد' });
     } catch (e) { setStMsg({ ok: false, text: `❌ ${e.message}` }); }
     setStSaving(false);
   };
@@ -594,7 +593,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
         <div style={{ marginBottom:16, borderRadius:12, border:'1.5px solid #e5e7eb', overflow:'hidden', flexShrink:0 }}>
           <button onClick={() => setCfgOpen(o => !o)} style={{ width:'100%', background: cfgOpen ? '#f5f3ff' : '#f9fafb', border:'none', padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:'inherit' }}>
             <span style={{ fontWeight:700, color:'#5b4fc4', fontSize:'.9rem' }}>
-              ⚙️ إعدادات المراحل — {displayNumber(savedSettings.stage_size)} {savedSettings.stage_size <= 10 ? 'كلمات' : 'كلمة'}
+              ⚙️ إعدادات اللعب — الموضوع كاملًا
             </span>
             <span style={{ color:'#9ca3af', fontSize:'.78rem' }}>{cfgOpen ? '▲ طي' : '▼ توسيع'}</span>
           </button>
@@ -605,14 +604,9 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
               <div style={{ background:'#fffbeb', border:'1.5px solid #E8B84B', borderRadius:12, padding:'12px 12px 14px', marginBottom:14 }}>
                 <div style={{ fontWeight:800, color:'#1A2B4A', fontSize:'.9rem', marginBottom:10 }}>👥 تُطبَّق على كل الطلاب</div>
 
-                <div style={{ fontSize:'.88rem', fontWeight:700, color:'#374151', marginBottom:6 }}>عدد كلمات المرحلة</div>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
-                  {LC_STAGE_SIZE_CHOICES.map(n => (
-                    <button key={n} type="button" style={chip(draft.stage_size === n)}
-                      onClick={() => { setDraft(d => ({ ...d, stage_size: n })); setStMsg(null); }}>
-                      {displayNumber(n)}
-                    </button>
-                  ))}
+                <div style={{ fontSize:'.88rem', fontWeight:700, color:'#374151', marginBottom:6 }}>كلمات الموضوع كاملة</div>
+                <div style={{ fontSize:'.82rem', color:'#6b7280', marginBottom:12, lineHeight:1.7 }}>
+                  يبدأ الطالب الموضوع مباشرةً، ويلعب جميع كلماته دون تقسيم داخلي. يمكنك إضافة الكلمات وتعديلها من القائمة أدناه.
                 </div>
 
                 <div style={{ fontSize:'.88rem', fontWeight:700, color:'#374151', marginBottom:6 }}>عدد الخيارات لكل سؤال</div>
@@ -633,7 +627,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
                 </label>
 
                 <div style={{ fontSize:'.78rem', color:'#6b7280', marginBottom:10, lineHeight:1.6 }}>
-                  تُقسَّم كلمات كل عالم إلى مراحل متتابعة بلا تكرار. تُفتح المرحلة التالية بعد إكمال السابقة، وتبدأ الأعداد من 0.
+                  يكون التقدّم بين المواضيع فقط، وتبدأ الأعداد من 0.
                 </div>
 
                 <div style={{ borderTop:'1px solid #e8d9ad', paddingTop:12, marginTop:12, marginBottom:14 }}>

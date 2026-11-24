@@ -1,4 +1,4 @@
-const CACHE = 'aarem-v16';
+const CACHE = 'aarem-v17';
 
 const PRECACHE = [
   '/',

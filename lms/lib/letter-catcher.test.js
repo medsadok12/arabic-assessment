@@ -76,7 +76,7 @@ describe('letterCount', () => {
 });
 
 describe('settings', () => {
-  it('adds five-word stages for old settings without changing legacy round values', () => {
+  it('retains legacy round and stage values for saved clients without altering other settings', () => {
     const old = { words_per_round: 0, options_count: 3 };
     expect(normalizeLcSettings(old)).toMatchObject({ ...old, stage_size: 5 });
     expect(validateLcSettings(old)).toMatchObject({ ...old, stage_size: 5 });
