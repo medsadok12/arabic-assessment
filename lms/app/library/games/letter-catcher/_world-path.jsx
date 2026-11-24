@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useEffect, useMemo, useState } from 'react';
+import React, { memo, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { SceneThumb } from '../../../../components/GameScene';
 import LetterCatcherPlayerAvatar from '../../../../components/LetterCatcherPlayerAvatar';
@@ -12,6 +12,7 @@ const pointsFormatter = new Intl.NumberFormat('en-US', { numberingSystem: 'latn'
 export const LC_ANIMALS_SCENE = '/media/letter-catcher-worlds/animals-savanna-v1.webp';
 const countValue = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 const wordLabel = count => count >= 3 && count <= 10 ? 'كلمات' : 'كلمة';
+const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 const masteryValue = result => {
   const total = countValue(result?.total);
   if (!result || !total) return 0;
@@ -49,10 +50,47 @@ function Friends({ currentPlayer }) {
   </span>;
 }
 
-const WorldIsland = memo(function WorldIsland({ category, count, result, imageUrl, emoji, unlocked, previousCategory, first, onSelect, busy }) {
-  const [imageFailed, setImageFailed] = useState(false);
-  useEffect(() => setImageFailed(false), [imageUrl]);
-  const showImage = Boolean(imageUrl) && !imageFailed;
+const WorldIsland = memo(function WorldIsland({ category, count, result, imageUrl, emoji, unlocked, previousCategory, first, onSelect, busy, artworkReady }) {
+  const [imageNode, setImageNode] = useState(null);
+  const [loadedImage, setLoadedImage] = useState(null);
+  const [failedImage, setFailedImage] = useState(null);
+  const hasImage = artworkReady && Boolean(imageUrl);
+  const matchesImage = value => value?.image === imageNode && value?.url === imageUrl;
+  const imageReady = hasImage && matchesImage(loadedImage) && !matchesImage(failedImage);
+  const showEmoji = artworkReady && !imageUrl;
+  const pendingArtwork = !artworkReady || (hasImage && !imageReady);
+
+  useIsoLayoutEffect(() => {
+    const image = imageNode;
+    if (!hasImage) { setLoadedImage(null); setFailedImage(null); return; }
+    if (!image || image.getAttribute('src') !== imageUrl) return;
+    let current = true, decoding = false;
+    const failed = () => { if (current) setFailedImage({ image, url: imageUrl }); };
+    const reveal = () => {
+      if (!current) return;
+      setFailedImage(null);
+      setLoadedImage({ image, url: imageUrl });
+    };
+    const loaded = () => {
+      if (!image.complete || decoding) return;
+      if (!image.naturalWidth) { failed(); return; }
+      decoding = true;
+      if (typeof image.decode !== 'function') { reveal(); return; }
+      try { Promise.resolve(image.decode()).then(reveal, failed); }
+      catch { failed(); }
+    };
+    image.addEventListener('load', loaded);
+    image.addEventListener('error', failed);
+    // A browser-cached image may have completed before its event was observed.
+    // Check it before paint; a new URL never inherits the previous image's state.
+    loaded();
+    return () => {
+      current = false;
+      image.removeEventListener('load', loaded);
+      image.removeEventListener('error', failed);
+    };
+  }, [hasImage, imageNode, imageUrl]);
+
   const wholeScene = lcCategoryKey(category) === 'animals' && imageUrl === LC_ANIMALS_SCENE;
   return <button type="button" className={`${styles.island} ${unlocked ? styles.openIsland : styles.lockedIsland}`} data-lc-world-island={category} data-unlocked={unlocked} aria-disabled={!unlocked || busy} disabled={!unlocked || busy}
     aria-label={unlocked ? `${displayNumber(category)}، ${displayNumber(count)} ${wordLabel(count)}${result ? `، ${displayNumber(countValue(result.correct))} إجابات صحيحة، ${displayNumber(countValue(result.wrong))} تحتاج إلى تدريب${masteryValue(result) ? `، ${displayNumber(masteryValue(result))} من 3 نجوم` : ''}` : ''}` : `${displayNumber(category)}، أكمل ${displayNumber(previousCategory || 'المجموعة السابقة')} أولًا`}
@@ -60,8 +98,10 @@ const WorldIsland = memo(function WorldIsland({ category, count, result, imageUr
     {first && <span className={styles.startBadge}>ابدأ هنا</span>}
     <span className={styles.land} aria-hidden="true">
       <span className={styles.worldWindow}>
-        <SceneThumb category={category} scene={lcCategoryScene(category)} />
-        {showImage ? <img className={`${styles.worldImage} ${wholeScene ? styles.worldSceneImage : ''}`} data-lc-world-scene={wholeScene ? 'animals' : undefined} src={imageUrl} alt="" width="340" height="200" loading={first ? 'eager' : 'lazy'} decoding="async" onError={() => setImageFailed(true)} /> : <span className={styles.worldEmoji}>{emoji || '🌟'}</span>}
+        {(showEmoji || imageReady) && <SceneThumb category={category} scene={lcCategoryScene(category)} />}
+        {pendingArtwork && <span className={styles.artworkPlaceholder} data-lc-world-artwork-placeholder="" />}
+        {hasImage && <img ref={setImageNode} key={imageUrl} className={`${styles.worldImage} ${wholeScene ? styles.worldSceneImage : ''}`} data-lc-world-scene={wholeScene ? 'animals' : undefined} data-lc-world-image-state={imageReady ? 'ready' : matchesImage(failedImage) ? 'error' : 'loading'} src={imageUrl} alt="" width="340" height="200" loading={first ? 'eager' : 'lazy'} decoding="async" style={{ visibility: imageReady ? 'visible' : 'hidden' }} />}
+        {showEmoji && <span className={styles.worldEmoji}>{emoji || '🌟'}</span>}
         {!unlocked && <FriendlyLock />}
       </span>
       <span className={styles.soil} />
@@ -94,7 +134,7 @@ function Trail({ count }) {
   </svg>;
 }
 
-export default function LetterCatcherWorldPath({ categories = [], gameWords = [], catMeta = {}, categoryIcons = {}, catResults = {}, isTeacher = false, totalPoints = 0, duelSettings = {}, currentPlayer = null, onCategorySelect, onDuel, onSettings, unlockedCategories = null, busy = false }) {
+export default function LetterCatcherWorldPath({ categories = [], gameWords = [], catMeta = {}, categoryIcons = {}, catResults = {}, isTeacher = false, totalPoints = 0, duelSettings = {}, currentPlayer = null, onCategorySelect, onDuel, onSettings, unlockedCategories = null, busy = false, artworkReady = true }) {
   const hasWords = gameWords.length > 0;
   const counts = useMemo(() => {
     const result = new Map();
@@ -125,7 +165,7 @@ export default function LetterCatcherWorldPath({ categories = [], gameWords = []
           const unlocked = isTeacher || (Array.isArray(unlockedCategories) ? unlockedCategories.includes(category) : isLcCategoryUnlocked(category, catResults, categories));
           return <li key={category} className={`${styles.worldRow} ${index % 2 ? styles.leftWorld : styles.rightWorld}`}>
             {index === 0 && <img className={styles.fahim} src="/faheem-sm.webp" alt="فهيم يرحّب بك في مسار العوالم" width="240" height="306" decoding="async" />}
-            <WorldIsland category={category} count={counts.get(category) || 0} result={catResults[category]} imageUrl={metadata.image_url} emoji={metadata.emoji || categoryIcons[category]?.emoji} unlocked={unlocked} previousCategory={categories[index - 1]} first={index === 0} onSelect={onCategorySelect} busy={busy} />
+            <WorldIsland category={category} count={counts.get(category) || 0} result={catResults[category]} imageUrl={metadata.image_url} emoji={metadata.emoji || categoryIcons[category]?.emoji} unlocked={unlocked} previousCategory={categories[index - 1]} first={index === 0} onSelect={onCategorySelect} busy={busy} artworkReady={artworkReady} />
           </li>;
         })}
       </ol>

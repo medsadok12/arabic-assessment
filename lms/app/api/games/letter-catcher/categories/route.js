@@ -6,6 +6,10 @@ import { lcCategoryAliases, normalizeLcCategory, normalizeLcCategoryMeta } from 
 
 export const dynamic = 'force-dynamic';
 const liveCategories = categories => NextResponse.json({ categories }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
+const categoryLoadFailure = () => NextResponse.json(
+  { categories: [], error: 'تعذّر عرض صور العوالم. حاول مرة أخرى.' },
+  { status: 503, headers: { 'Cache-Control': 'no-store, max-age=0' } }
+);
 
 async function checkAuth() {
   const supabase = createClient();
@@ -19,10 +23,10 @@ export async function GET() {
   try {
     const admin = createAdminClient();
     const { data, error } = await admin.from('lc_category_meta').select('*');
-    if (error) return liveCategories([]);
+    if (error) return categoryLoadFailure();
     return liveCategories(normalizeLcCategoryMeta(data));
   } catch {
-    return liveCategories([]);
+    return categoryLoadFailure();
   }
 }
 

@@ -305,6 +305,15 @@ export default function LetterCatcherGame() {
   const [tried,      setTried]      = useState([]);
   const [showCfg,    setShowCfg]    = useState(false);
   const [catMeta,    setCatMeta]    = useState({});
+  const [artworkReady, setArtworkReady] = useState(false);
+  const [artworkError, setArtworkError] = useState(false);
+  const [wordsReady, setWordsReady] = useState(false);
+  const [wordsError, setWordsError] = useState(false);
+  const [playerReady, setPlayerReady] = useState(false);
+  const [playerError, setPlayerError] = useState(false);
+  const artworkRequest = useRef(0);
+  const wordsRequest = useRef(0);
+  const playerRequest = useRef(0);
   const [isTeacher,        setIsTeacher]        = useState(false);
   const [contentSource,setContentSource]=useState('cached');
   const [loadProgress,     setLoadProgress]     = useState(0);
@@ -474,25 +483,41 @@ export default function LetterCatcherGame() {
     answerFeedback.current.invalidate(); confirmedAnswer.current = false;
   }, []);
 
-  /* ── detect teacher/admin role + load user + load past results ── */
-  useEffect(() => {
-    childFetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
-    import('../../../../lib/supabase').then(({ createClient }) => {
-      const supabase = createClient();
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        const role = getRole(user) ?? '';
-        setIsTeacher(['super_admin', 'admin', 'teacher'].includes(role));
-        if (user) {
-          setCurrentUser(user);
-          childFetch('/api/game-results?game=letter_catcher')
-            .then(r => r.json())
-            .then(j => {
-              setCatResults(normalizeLcCategoryResults(j.results ?? []));
-            })
-            .catch(() => {});
-        }
-      }).catch(() => {});
-    }).catch(() => {});
+  /* لا نعرض رصيدًا أو أقفالًا مؤقتة قبل وصول بيانات الطفل الفعلية. */
+  const loadPlayerState = useCallback(async () => {
+    const ticket = ++playerRequest.current;
+    const child = getActiveChildTab();
+    setPlayerError(false);
+    try {
+      const [points, { user, results }] = await Promise.all([
+        childFetch('/api/points', { cache: 'no-store' }).then(async response => {
+          if (!response.ok) throw new Error();
+          return response.json();
+        }),
+        import('../../../../lib/supabase').then(async ({ createClient }) => {
+          const { data: { user }, error } = await createClient().auth.getUser();
+          if (error) throw error;
+          if (!user) return { user: null, results: [] };
+          const response = await childFetch('/api/game-results?game=letter_catcher', { cache: 'no-store' });
+          if (!response.ok) throw new Error();
+          return { user, results: (await response.json()).results || [] };
+        }),
+      ]);
+      if (ticket !== playerRequest.current || child !== getActiveChildTab()) return;
+      setTotalPoints(points.points ?? 0);
+      setCurrentUser(user || null);
+      setIsTeacher(['super_admin', 'admin', 'teacher'].includes(getRole(user) ?? ''));
+      setCatResults(normalizeLcCategoryResults(results));
+      setPlayerReady(true);
+    } catch {
+      if (ticket === playerRequest.current && child === getActiveChildTab()) setPlayerError(true);
+    }
+  }, []);
+  useEffect(() => { loadPlayerState(); }, [loadPlayerState]);
+  useEffect(() => () => {
+    playerRequest.current += 1;
+    wordsRequest.current += 1;
+    artworkRequest.current += 1;
   }, []);
 
   // Read the photo of this tab's verified player, including a selected child.
@@ -541,10 +566,11 @@ export default function LetterCatcherGame() {
     }
   }, [isTeacher]);
 
-  /* ── fetch fresh words from API silently in background (never blocks UI) ──
-     القراءة حيّة دائماً (القسم 9.5): الكاش المحلي يُظهر الكلمات فوراً عند الفتح فقط،
-     ثم تحلّ محله النسخة الحالية من قاعدة البيانات. quiet: بلا شريط تحميل (العودة للتبويب) */
+  /* القراءة حيّة دائمًا. ننتظر المصدر الحالي عند الفتح الأول، ثم نبقي آخر محتوى
+     مؤكد أثناء التحديث الهادئ دون عرض كلمات أو رسوم مؤقتة. */
   const loadGameWords = useCallback(async ({ quiet = false } = {}) => {
+    const ticket = ++wordsRequest.current;
+    setWordsError(false);
     if (!quiet) setLoadProgress(10);
     try {
       const p = new URLSearchParams();
@@ -555,6 +581,8 @@ export default function LetterCatcherGame() {
       if (!quiet) setLoadProgress(50);
       const res  = await freshFetch(`/api/games/letter-catcher?${p}`);
       const json = await res.json();
+      if (!res.ok || json.source === 'error' || !Array.isArray(json.words)) throw new Error();
+      if (ticket !== wordsRequest.current) return;
       setContentSource(json.source||'cached');
       if (json.settings) {
         const st = normalizeLcSettings(json.settings);
@@ -566,14 +594,21 @@ export default function LetterCatcherGame() {
         setGameWords(fresh);
         setCachedWords(fresh);
       }
-    } catch { /* keep fallback/cached words already shown */ }
-    if (!quiet) setLoadProgress(100);
+      setWordsReady(true);
+    } catch {
+      if (ticket === wordsRequest.current) setWordsError(true);
+    }
+    if (ticket === wordsRequest.current) setLoadProgress(100);
   }, [cfg.topic, cfg.grade, cfg.minLen, cfg.maxLen]);
 
   const loadCatMeta = useCallback(async () => {
+    const ticket = ++artworkRequest.current;
+    setArtworkError(false);
     try {
       const res  = await freshFetch('/api/games/letter-catcher/categories');
       const json = await res.json();
+      if (!res.ok || !Array.isArray(json.categories)) throw new Error();
+      if (ticket !== artworkRequest.current) return;
       const m = {};
       (json.categories || []).forEach(c => {
         const name = normalizeLcCategory(c.name);
@@ -583,7 +618,10 @@ export default function LetterCatcherGame() {
         }
       });
       setCatMeta(m);
-    } catch {}
+      setArtworkReady(true);
+    } catch {
+      if (ticket === artworkRequest.current) setArtworkError(true);
+    }
   }, []);
 
   useEffect(() => { loadWords(); }, [loadWords]);
@@ -638,9 +676,15 @@ export default function LetterCatcherGame() {
   // النتيجة تُكتب من الجولة المدقّقة؛ هذا الطلب قراءة للتقرير فقط.
   useEffect(() => {
     if (phase !== 'finished' || !currentUser) return;
+    let active = true;
+    const child = getActiveChildTab();
+    const ticket = playerRequest.current;
     childFetch('/api/game-results?game=letter_catcher').then(r => {if(!r.ok)throw new Error();return r.json();}).then(j => {
-      setCatResults(normalizeLcCategoryResults(j.results || []));
+      if (active && ticket === playerRequest.current && child === getActiveChildTab()) {
+        setCatResults(normalizeLcCategoryResults(j.results || []));
+      }
     }).catch(() => {});
+    return () => { active = false; };
   }, [phase, currentUser]);
 
   /* بطل الطالب (إن صنعه) — يُجلب مرة واحدة عند أول نهاية جولة، في عالم الاستوديو الشفاف */
@@ -684,6 +728,7 @@ export default function LetterCatcherGame() {
       setPreparingPicture(false); setWordFinished(false); stopWordAudio(); clearCheer();
       setPhase('start'); setQueue([]); setScore(0); setCatResults({});
       setDemoResults({}); setUnlockedCategories(null); loadWorldAccess();
+      setPlayerReady(false); loadPlayerState();
     },
     onStart: async j => {
       resetAnswerFeedback();
@@ -812,18 +857,20 @@ export default function LetterCatcherGame() {
 
   if (phase === 'duel') return <FriendChallenge settings={settings.duel} currentPlayer={duelProfile} onExit={() => {
     setPhase('start'); loadGameWords({ quiet: true });
-    childFetch('/api/points').then(r => r.json()).then(j => setTotalPoints(j.points ?? 0)).catch(() => {});
+    loadPlayerState();
   }} />;
 
   /* ══════════════════════ RENDER: START ══════════════════════ */
   if (phase === 'start') {
     const categories = sortLcCategories(gameWords.map(w => w.category).filter(Boolean));
+    const ready = wordsReady && artworkReady && playerReady && (contentSource === 'fallback' || unlockedCategories !== null);
+    const failed = (!wordsReady && wordsError) || (!artworkReady && artworkError) || (!playerReady && playerError) || (unlockedCategories === null && worldAccessError && contentSource !== 'fallback');
 
     return (
       <div key="start" style={S.stage}>
         <div style={{ position: 'relative', zIndex: 2 }}>
           <VerifiedTrainingStatus training={preparingPicture ? { ...verified, busy: true, note: 'لَحْظَةٌ… نَسْتَعِدُّ لِلَّعِبِ' } : verified} />
-          {worldAccessError && contentSource !== 'fallback' && <div style={{ textAlign: 'center', padding: 8 }}><button type="button" style={{ ...S.whiteBtn, minHeight: 48 }} onClick={loadWorldAccess}>لنعرض تقدّمك من جديد — حاول مرة أخرى</button></div>}
+          {ready && worldAccessError && contentSource !== 'fallback' && <div style={{ textAlign: 'center', padding: 8 }}><button type="button" style={{ ...S.whiteBtn, minHeight: 48 }} onClick={loadWorldAccess}>لنعرض تقدّمك من جديد — حاول مرة أخرى</button></div>}
         </div>
         {/* non-blocking progress strip */}
         {loadProgress > 0 && loadProgress < 100 && (
@@ -838,10 +885,18 @@ export default function LetterCatcherGame() {
           <SettingsPanel cfg={cfg} onChange={setCfg} settings={settings} onSettingsSaved={(st) => { setSettings(st); try { localStorage.setItem(LC_SETTINGS_KEY, JSON.stringify(st)); } catch {} }} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={refreshAfterEdit} catMeta={catMeta} onCatMetaRefresh={loadCatMeta} />
         )}
 
-        <LetterCatcherWorldPath
+        {!ready ? <section data-lc-world-loading="" role="status" aria-live="polite" style={{ position: 'relative', zIndex: 1, margin: 'max(24px, 10vh) auto', padding: '30px 22px', width: 'min(90%, 500px)', boxSizing: 'border-box', borderRadius: 28, background: '#FAF7F2', color: '#1A2B4A', textAlign: 'center' }}>
+          <h1 style={{ margin: '0 0 16px', fontSize: '1.7rem', fontWeight: 900 }}>صيّاد الحروف</h1>
+          <p style={{ fontSize: '1.2rem', lineHeight: 1.8 }}>{failed ? 'لنعرض عوالمك من جديد.' : 'لحظة… نجهّز عوالمك.'}</p>
+          {failed && <button type="button" style={{ ...S.goldBtn, marginBottom: 12 }} onClick={() => {
+            loadGameWords(); loadCatMeta(); loadPlayerState(); loadWorldAccess();
+          }}>حاول مرة أخرى</button>}
+          <Link href="/library" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 48, padding: '0 15px', color: '#1A2B4A', fontWeight: 800 }}>العودة إلى المكتبة</Link>
+        </section> : <LetterCatcherWorldPath
           categories={categories}
           gameWords={gameWords}
           catMeta={catMeta}
+          artworkReady={artworkReady}
           categoryIcons={CAT_META}
           catResults={catResults}
           isTeacher={isTeacher}
@@ -855,7 +910,7 @@ export default function LetterCatcherGame() {
           onCategorySelect={startGame}
           onDuel={() => { stopWordAudio(); clearCheer(); setPhase('duel'); }}
           onSettings={() => setShowCfg(true)}
-        />
+        />}
       </div>
     );
   }

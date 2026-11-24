@@ -1,5 +1,21 @@
 # Letter Catcher: «مسار العوالم»
 
+## Initial world artwork — 2026-11-24
+
+Mohamed reported that the animal island first showed a stock lion and then changed to the configured savanna image. His correction applies to every world, including custom topics.
+
+- Do not treat missing initial metadata as evidence that a world has no configured image. Use a neutral reserved loading state until live metadata is known.
+- When a teacher image is configured, show only that artwork after it is ready. Loading and image errors must not substitute a lion, category emoji or another representational illustration. Keep the island window's dimensions stable.
+- A category genuinely configured without an image may use its final configured/default emoji after metadata has loaded successfully.
+- Preserve current good artwork while refreshing metadata in the background. Reject stale metadata/image completions so a delayed old request cannot replace a later teacher edit.
+- Category GET failures return HTTP 503 with a friendly message and `Cache-Control: no-store, max-age=0`; a successful empty configuration remains HTTP 200. The page must offer retry for failures instead of presenting them as an empty successful configuration.
+
+The initial path also waits for live words and the active learner's points, saved results and topic access, so it does not briefly show zero points or incorrect locks. Background refresh retains confirmed data; request tickets and active-child checks reject obsolete responses, including the end-of-round results refresh.
+
+Browser validation used the actual Next UI with isolated local fixture data: metadata was held separately from image requests at phone 390×844. Before metadata, only the neutral loading screen appeared; after metadata, configured image windows stayed neutral until the approved files loaded and decoded. The first animal picture was the savanna, with no lion emoji; its card dimensions stayed 248×236.9375 CSS pixels before and after reveal. HTTP 503 metadata failure offered retry and recovered through the real retry button. Broken-image responses remained neutral at tablet 820×1024. Normal and repeat entry at desktop 1280×800, including the lazy school image after scrolling, loaded the configured artwork without horizontal overflow. No production learner records were written during QA.
+
+Release checks: all 1,478 tests across 113 files passed, including the A → B → A image-element readiness regression and explicit metadata-failure responses. The production build passed. The service-worker cache advances to `aarem-v19`.
+
 ## Current contract: topics only — 2026-11-24 clarification
 
 Mohamed explicitly rejected division within a topic: «أريد يدخل الحيوانات فيلعب حيوانات، التقسيم يكون خارجيا في المواضيع يعني لا يكون داخل نفس الموضوع تقسيم آخر».

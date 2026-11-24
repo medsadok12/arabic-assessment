@@ -61,7 +61,12 @@ describe('Letter Catcher live category metadata', () => {
     expect(db.reads).toHaveBeenCalledTimes(2);
   });
 
-  it('returns a friendly uncached empty list for query errors and unexpected failures', async () => {
+  it('distinguishes an empty successful configuration from a failed metadata load', async () => {
+    const result = await getCategories();
+    expect(result).toEqual({ status: 200, cacheControl: 'no-store, max-age=0', body: { categories: [] } });
+  });
+
+  it('returns an explicit friendly uncached failure rather than treating metadata errors as missing artwork', async () => {
     db.rows = [{ name: 'الحيوانات', image_url: '/stale.png' }];
     db.error = { message: 'private database diagnostic' };
     const queryFailure = await getCategories();
@@ -69,7 +74,11 @@ describe('Letter Catcher live category metadata', () => {
     db.throws = true;
     const unexpectedFailure = await getCategories();
     for (const result of [queryFailure, unexpectedFailure]) {
-      expect(result).toEqual({ status: 200, cacheControl: 'no-store, max-age=0', body: { categories: [] } });
+      expect(result).toEqual({
+        status: 503,
+        cacheControl: 'no-store, max-age=0',
+        body: { categories: [], error: 'تعذّر عرض صور العوالم. حاول مرة أخرى.' },
+      });
     }
   });
 });
