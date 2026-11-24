@@ -1,4 +1,4 @@
-.root { --navy:#1A2B4A; --gold:#E8B84B; --cream:#F4EFE6; --island-width:340px; --row-height:310px; --fahim-width:136px; position:relative; z-index:1; min-height:100%; width:100%; padding:14px 18px calc(150px + env(safe-area-inset-bottom)); color:var(--navy); direction:rtl; }
+.root { --navy:#1A2B4A; --gold:#E8B84B; --cream:#F4EFE6; --island-width:340px; --row-height:310px; --fahim-width:136px; position:relative; z-index:1; min-height:100%; width:100%; padding:14px 18px calc(28px + env(safe-area-inset-bottom)); color:var(--navy); direction:rtl; }
 .root *, .root *::before, .root *::after { box-sizing:border-box; }
 .root button { font:inherit; color:inherit; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .root button:focus-visible, .root a:focus-visible { outline:4px solid var(--navy); outline-offset:6px; }
@@ -40,6 +40,7 @@
 .shrubLeft { left:16px; }
 .shrubRight { right:15px; transform:rotate(14deg) scale(.9); }
 .namePlate { position:relative; z-index:4; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:1px; width:89%; min-height:100px; margin-top:-19px; padding:7px 10px 9px; border:2px solid #f9f1d4; border-radius:46% 46% 40% 40% / 27% 27% 38% 38%; background:#FFF9E9; box-shadow:0 3px 0 #c0bc6f33; }
+.stageNote { color:#52605f; font-size:17px; font-weight:700; line-height:1.5; }
 .categoryName { display:block; max-width:100%; font-size:28px; font-weight:900; line-height:1.35; overflow-wrap:anywhere; text-wrap:balance; }
 .mastery { display:inline-flex; align-items:center; justify-content:center; gap:5px; min-height:28px; direction:ltr; }
 .mastery svg { display:block; width:24px; height:24px; flex-shrink:0; }
@@ -58,27 +59,27 @@
 .lockedIsland { cursor:default !important; }
 .lock { position:absolute; z-index:3; top:34%; left:50%; transform:translate(-50%,-20%); display:flex; align-items:center; justify-content:center; width:77px; height:77px; border-radius:50%; background:#fffdf149; filter:drop-shadow(0 3px 2px #1a2b4a25); }
 .lockNote { position:relative; z-index:4; display:block; max-width:100%; padding:0 2px; color:#59614c; font-size:18px; font-weight:700; line-height:1.5; }
-.playAllDock { position:fixed; z-index:100; left:0; right:0; bottom:0; padding:15px 18px max(14px,env(safe-area-inset-bottom)); background:linear-gradient(transparent,#d6e4b9b8 58%,#d6e4b9e8); pointer-events:none; }
-.playAll { display:flex; align-items:center; justify-content:center; gap:13px; width:min(100%,680px); min-height:78px; margin:0 auto; padding:9px 20px; border:2px solid #fff; border-bottom:5px solid #ded7b9; border-radius:32px; background:#fffdf8; box-shadow:0 6px 16px #1a2b4a1c; pointer-events:auto; }
-.playAllStar { display:flex; align-items:center; justify-content:center; width:52px; height:52px; border-radius:50%; flex-shrink:0; background:var(--gold); color:var(--navy); }
-.playAllStar svg { width:29px; height:29px; }
-.playAllCopy { display:flex; flex-direction:column; justify-content:center; min-width:0; gap:0; text-align:right; }
-.playAllCopy strong { font-size:29px; font-weight:900; line-height:1.2; }
-.playAllCopy>span { color:#52605f; font-size:18px; font-weight:700; line-height:1.4; }
-.playAllArrow { flex-shrink:0; margin-inline-start:auto; }
-.allResult { display:flex; flex-direction:column; align-items:center; gap:2px; margin-inline-start:auto; font-size:18px; font-weight:700; }
-.allResult .mastery { gap:2px; }
-.allResult .mastery svg { width:19px; height:19px; }
-.allCounts { display:flex; gap:7px; }
+
+
+
+
+
+
+
+
+
+
+
+
 .empty { width:min(100%,600px); margin:30px auto; padding:15px 22px 25px; text-align:center; }
 .empty>img { display:block; width:125px; height:auto; margin:0 auto 14px; }
 .empty h2 { margin:0 0 7px; font-size:30px; font-weight:900; line-height:1.4; }
 .empty p { margin:0 auto 18px; max-width:420px; font-size:22px; line-height:1.6; }
 .addWords { min-height:54px; width:min(100%,320px); padding:7px 18px; border:2px solid #fff0be; border-bottom:5px solid #c99a2e; border-radius:18px; background:var(--gold); color:var(--navy); font-size:23px !important; font-weight:800 !important; }
-@media(hover:hover) and (pointer:fine) { .openIsland:hover .namePlate { box-shadow:0 0 0 3px #e8b84b,0 5px 12px #1a2b4a18; } .duel:hover,.playAll:hover { filter:brightness(1.025); } }
+@media(hover:hover) and (pointer:fine) { .openIsland:hover .namePlate { box-shadow:0 0 0 3px #e8b84b,0 5px 12px #1a2b4a18; } .duel:hover { filter:brightness(1.025); } }
 @media(max-width:900px) { .root { --island-width:300px; --row-height:300px; --fahim-width:123px; } .land { height:174px; } .categoryName { font-size:27px; } .rightWorld .island { margin-left:29%; } .leftWorld .island { margin-right:29%; } }
-@media(max-width:640px) { .root { --island-width:248px; --row-height:290px; --fahim-width:105px; padding:10px 10px calc(145px + env(safe-area-inset-bottom)); } .header { min-height:64px; grid-template-columns:48px minmax(0,1fr) auto; gap:7px; padding:6px 7px; border-radius:26px; } .back { width:48px; height:48px; } .title { font-size:25px; white-space:nowrap; } .balance { min-width:95px; min-height:44px; gap:5px; padding:6px 9px; font-size:21px; } .balance svg { width:21px; height:21px; } .teacherTools { margin-top:8px; } .duel { min-height:80px; gap:8px; margin-top:14px; padding:5px 11px; border-radius:25px; } .friends { flex-basis:87px; width:87px; height:65px; } .duelCopy strong { font-size:27px; } .duelCopy>span { font-size:18px; } .duelArrow { width:19px; } .intro { margin-top:15px; } .intro h2 { font-size:28px; } .intro p { font-size:19px; } .journey { margin-top:10px; padding-top:19px; } .worldRow { padding-top:20px; padding-bottom:30px; } .rightWorld .island { margin-left:29%; } .leftWorld .island { margin-right:29%; } .land { height:157px; } .worldWindow { inset-inline:6px; border-width:5px; } .worldEmoji { top:22%; font-size:80px; } .soil { height:69px; bottom:-24px; border-bottom-width:7px; } .shrub { width:11px; height:30px; bottom:8px; } .shrubLeft { left:11px; } .shrubRight { right:11px; } .shrub::before { width:3px; height:29px; top:10px; left:4px; } .namePlate { min-height:94px; width:91%; padding:6px 8px 8px; margin-top:-18px; } .categoryName { font-size:25px; } .mastery { min-height:26px; gap:4px; } .mastery svg { width:22px; height:22px; } .worldStats { gap:5px 9px; font-size:18px; min-height:25px; } .startBadge { top:-24px; min-width:105px; min-height:40px; font-size:22px; padding:3px 12px; } .fahim { top:42px; left:calc(64.5% - var(--island-width)/2 - var(--fahim-width) + 9px); } .lock { width:69px; height:69px; top:31%; } .lock svg { width:52px; height:59px; } .lockNote { padding:2px 10px; margin-top:5px; font-size:18px; } .playAllDock { padding:14px 13px max(12px,env(safe-area-inset-bottom)); } .playAll { min-height:78px; gap:9px; padding:8px 13px; border-radius:30px; } .playAllStar { width:48px; height:48px; } .playAllCopy strong { font-size:27px; } .playAllCopy>span { font-size:18px; } .playAllArrow { width:21px; } .allResult { font-size:18px; } .allResult .mastery svg { width:17px; height:17px; } .allResult .mastery { gap:1px; } .allCounts { gap:4px; } .allResult+.playAllArrow { display:none; } }
-@media(max-width:370px) { .root { --island-width:236px; --fahim-width:95px; padding-inline:7px; } .title { font-size:23px; } .balance { min-width:85px; padding-inline:8px; font-size:19px; } .duel { gap:5px; padding-inline:9px; } .friends { flex-basis:77px; width:77px; } .duelCopy strong { font-size:25px; } .duelArrow { display:none; } .rightWorld .island { margin-left:26%; } .leftWorld .island { margin-right:26%; } .fahim { left:calc(63% - var(--island-width)/2 - var(--fahim-width) + 9px); } .playAll { padding-inline:11px; } .playAllStar { width:45px; height:45px; } .playAllCopy strong { font-size:25px; } .allResult { margin-inline-start:0; } }
+@media(max-width:640px) { .root { --island-width:248px; --row-height:290px; --fahim-width:105px; padding:10px 10px calc(24px + env(safe-area-inset-bottom)); } .header { min-height:64px; grid-template-columns:48px minmax(0,1fr) auto; gap:7px; padding:6px 7px; border-radius:26px; } .back { width:48px; height:48px; } .title { font-size:25px; white-space:nowrap; } .balance { min-width:95px; min-height:44px; gap:5px; padding:6px 9px; font-size:21px; } .balance svg { width:21px; height:21px; } .teacherTools { margin-top:8px; } .duel { min-height:80px; gap:8px; margin-top:14px; padding:5px 11px; border-radius:25px; } .friends { flex-basis:87px; width:87px; height:65px; } .duelCopy strong { font-size:27px; } .duelCopy>span { font-size:18px; } .duelArrow { width:19px; } .intro { margin-top:15px; } .intro h2 { font-size:28px; } .intro p { font-size:19px; } .journey { margin-top:10px; padding-top:19px; } .worldRow { padding-top:20px; padding-bottom:30px; } .rightWorld .island { margin-left:29%; } .leftWorld .island { margin-right:29%; } .land { height:157px; } .worldWindow { inset-inline:6px; border-width:5px; } .worldEmoji { top:22%; font-size:80px; } .soil { height:69px; bottom:-24px; border-bottom-width:7px; } .shrub { width:11px; height:30px; bottom:8px; } .shrubLeft { left:11px; } .shrubRight { right:11px; } .shrub::before { width:3px; height:29px; top:10px; left:4px; } .namePlate { min-height:94px; width:91%; padding:6px 8px 8px; margin-top:-18px; } .categoryName { font-size:25px; } .mastery { min-height:26px; gap:4px; } .mastery svg { width:22px; height:22px; } .worldStats { gap:5px 9px; font-size:18px; min-height:25px; } .startBadge { top:-24px; min-width:105px; min-height:40px; font-size:22px; padding:3px 12px; } .fahim { top:42px; left:calc(64.5% - var(--island-width)/2 - var(--fahim-width) + 9px); } .lock { width:69px; height:69px; top:31%; } .lock svg { width:52px; height:59px; } .lockNote { padding:2px 10px; margin-top:5px; font-size:18px; }            }
+@media(max-width:370px) { .root { --island-width:236px; --fahim-width:95px; padding-inline:7px; } .title { font-size:23px; } .balance { min-width:85px; padding-inline:8px; font-size:19px; } .duel { gap:5px; padding-inline:9px; } .friends { flex-basis:77px; width:77px; } .duelCopy strong { font-size:25px; } .duelArrow { display:none; } .rightWorld .island { margin-left:26%; } .leftWorld .island { margin-right:26%; } .fahim { left:calc(63% - var(--island-width)/2 - var(--fahim-width) + 9px); }     }
 @media(prefers-reduced-motion:reduce) { .root *, .root *::before, .root *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
 @media(max-width:640px) {
   .root { --row-height:250px; }

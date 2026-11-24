@@ -20,13 +20,17 @@ export async function PUT(request) {
     if (!settings) return NextResponse.json({ error: 'قيم الإعدادات غير صالحة' }, { status: 400 });
 
     const admin = createAdminClient();
-    // Older editors save only the solo-round fields. Keep the current challenge
-    // configuration when they have not sent a challenge section at all.
-    if (!Object.prototype.hasOwnProperty.call(raw, 'duel')) {
+    // Older editors omit newer settings. Preserve the existing challenge and
+    // stage size independently instead of silently resetting either value.
+    const missingDuel = !Object.prototype.hasOwnProperty.call(raw, 'duel');
+    const missingStageSize = !Object.prototype.hasOwnProperty.call(raw, 'stage_size');
+    if (missingDuel || missingStageSize) {
       const { data: current, error: readError } = await admin.from('game_settings')
         .select('settings').eq('game_id', LC_GAME_ID).maybeSingle();
       if (readError) throw readError;
-      settings.duel = normalizeLcSettings(current?.settings).duel;
+      const previous = normalizeLcSettings(current?.settings);
+      if (missingDuel) settings.duel = previous.duel;
+      if (missingStageSize) settings.stage_size = previous.stage_size;
     }
     const { error } = await admin.from('game_settings').upsert(
       { game_id: LC_GAME_ID, settings, updated_at: new Date().toISOString(), updated_by: user.id },

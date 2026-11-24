@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { applyTrainingEvent, trainingSummary, verifyWheelTrace } from './verified-training';
 import { challengeOutcome } from './challenge-verified';
+import { lcStagesForCategory } from './letter-catcher-stages';
 const db=vi.hoisted(()=>({tables:{},user:null,child:null,fail:null,seq:0}));
 vi.mock('next/headers',()=>({cookies:()=>({get:()=>undefined})}));
 vi.mock('./supabase-server',()=>({createClient:()=>({auth:{getUser:async()=>({data:{user:db.user}})}})}));
@@ -15,6 +16,7 @@ vi.mock('./supabase-admin',()=>{
   then(ok,fail){return Promise.resolve().then(()=>{
    if(db.fail===`${this.t}:${this.op}`)return{data:null,error:{code:'FAILED'}};
    const rows=db.tables[this.t]||=[];let m=rows.filter(r=>this.f.every(f=>f(r)));
+   if(db.fail==='lc-stage:read'&&this.t==='game_settings'&&this.op==='read'&&m.some(r=>r.game_id.startsWith('lc-stage:')))return{data:null,error:{code:'FAILED'}};
    if(this.op==='insert'){const k=this.t==='game_settings'?'game_id':this.t==='user_points'?'user_id':null;if(k&&rows.some(r=>r[k]===this.p[k]))return{data:null,error:{code:'23505'}};const r={id:String(++db.seq),...structuredClone(this.p)};rows.push(r);m=[r];}
    else if(this.op==='update')m.forEach(r=>Object.assign(r,structuredClone(this.p)));
    else if(this.op==='upsert'){const old=rows.find(r=>r.user_id===this.p.user_id&&r.word_id===this.p.word_id);if(old)Object.assign(old,structuredClone(this.p));else rows.push(structuredClone(this.p));m=[old||this.p];}
@@ -33,9 +35,19 @@ const chResult=await import('../app/api/challenge/result/route');
 const huroof=await import('../app/api/huroof/progress/route');
 const points=await import('../app/api/points/route');
 const results=await import('../app/api/game-results/route');
+const lcProgress=await import('../app/api/games/letter-catcher/progress/route');
 const req=b=>new Request('https://www.aarem.net/api/test',{method:'POST',body:JSON.stringify(b)});
 const call=async(b,route=api)=>{const r=await route.POST(req(b));return{status:r.status,body:await r.json(),headers:r.headers};};
 const start=async(game,ids,category='عام',extra={})=>{const r=await call({action:'start',game,roundId:randomUUID(),ids,category,filters:{},...extra});expect(r.status).toBe(200);return r.body;};
+// Simulate a snapshot created before staged starts were introduced. New
+// learner starts are separately tested to reject the old mixed/free flow.
+const savedLcRound=async(ids,category='عام')=>{
+ const role=db.user.app_metadata.role;db.user.app_metadata.role='teacher';
+ const preview=await start('letter_catcher',ids,category);db.user.app_metadata.role=role;
+ const snapshot={...preview.snapshot,preview:false};
+ db.tables.game_settings.push({game_id:`verified:round:letter_catcher:${snapshot.id}`,settings:snapshot,updated_at:new Date().toISOString()});
+ const resumed=await call({action:'resume',game:'letter_catcher',roundId:snapshot.id});expect(resumed.status).toBe(200);return resumed.body;
+};
 const answer=(s,index,value,extra={})=>({action:'answer',game:s.game,roundId:s.roundId,eventId:randomUUID(),index,value,...extra});
 const row=s=>db.tables.game_settings.find(r=>r.game_id===`verified:round:${s.game}:${s.roundId}`);
 beforeEach(()=>{
@@ -48,6 +60,110 @@ beforeEach(()=>{
   word_wheel_configs:[{id:'wheel',name:'المكتب',mode:'picture',center_letter:'ك',outer_letters:['ت','ب'],valid_words:['كتب'],is_active:true,settings:{shuffle_words:false,show_card:false,max_attempts:2,hints_enabled:true,hints_limit:2,instant_check:true}}],word_wheel_words:[],lexicon_words:[{id:'w',word:'قلم'}],flashcard_progress:[],
   challenge_rooms:[{id:'room',player1_id:'student',player2_id:'friend',player1_score:0,player2_score:0,questions:[{correct_option:'فتحة'},{correct_option:'ضمة'}],status:'playing',cur_q_index:0,round_winner:null}],
  };
+});
+
+describe('مراحل صياد الحروف الموثوقة', () => {
+ const category='الحيوانات', nextCategory='الجوّ والفصول';
+ const fixture=()=>{
+  db.tables.letter_catcher_words=Array.from({length:6},(_,index)=>({id:`animal-${index}`,word:'قِطٌّ',missing_letter:'ق',options:['ق','ك','ب'],category})).concat([
+   {id:'weather',word:'شَمْسٌ',missing_letter:'ش',options:['ش','س','ب'],category:nextCategory},
+  ]);
+  db.tables.game_settings.push({game_id:'letter-catcher',settings:{words_per_round:20,options_count:3,stage_size:5}});
+  return lcStagesForCategory(db.tables.letter_catcher_words,category,5);
+ };
+ const staged=(stage,extra={})=>call({action:'start',game:'letter_catcher',roundId:randomUUID(),ids:stage.wordIds,category:stage.category,filters:{lcStage:stage.id},...extra});
+ const progress=async()=>{const response=await lcProgress.GET(new Request('https://www.aarem.net/api/games/letter-catcher/progress'));return{status:response.status,body:await response.json(),headers:response.headers};};
+ const finish=async round=>{let last;for(let index=0;index<round.items.length;index++)last=await call(answer(round,index,round.items[index].missing_letter));return last;};
+
+ it('يرفض القفز والتلاعب بالقائمة والفلاتر والتجميع الحر',async()=>{
+  const stages=fixture();
+  expect((await staged(stages[0],{filters:{}})).status).toBe(409);
+  expect((await staged(stages[0],{category:'__all__',filters:{}})).status).toBe(409);
+  expect((await staged(stages[1])).status).toBe(409);
+  expect((await staged(stages[0],{ids:[...stages[0].wordIds].reverse()})).status).toBe(409);
+  expect((await staged(stages[0],{filters:{lcStage:stages[0].id,minLen:3}})).status).toBe(409);
+  expect((await staged(stages[0],{category:'__all__'})).status).toBe(400);
+  const weather=lcStagesForCategory(db.tables.letter_catcher_words,nextCategory,5)[0];
+  expect((await staged(weather)).status).toBe(409);
+  expect(db.tables.game_settings.filter(row=>row.game_id.startsWith('lc-stage:'))).toHaveLength(0);
+ });
+
+ it('لا يفتح المرحلة التالية قبل الإكمال ولا العالم التالي قبل كل مراحله',async()=>{
+  const stages=fixture(), started=await staged(stages[0]);
+  expect(started.status).toBe(200);expect(started.body.lcStage).toMatchObject({id:stages[0].id,wordIds:stages[0].wordIds});
+  let state=await progress();expect(state.body.progress[stages[0].id]).toMatchObject({complete:false,legacyAccess:false});
+  expect(state.body.unlockedCategories).toEqual([category]);
+  await call(answer(started.body,0,'ق'));
+  expect((await staged(stages[1])).status).toBe(409);
+  for(let index=1;index<started.body.items.length;index++)await call(answer(started.body,index,'ق'));
+  state=await progress();expect(state.body.progress[stages[0].id]).toMatchObject({complete:true,correct:5,total:5});
+  expect(state.body.unlockedCategories).toEqual([category]);
+  const second=await staged(stages[1]);expect(second.status).toBe(200);
+  expect((await finish(second.body)).body.stageProgress).toBe('done');
+  expect((await progress()).body.unlockedCategories).toEqual([category,nextCategory]);
+  expect(db.tables.game_results.map(row=>row.category)).toEqual([category,category]);
+ });
+
+ it('تأكيد آخر إجابة مرتين يحفظ الإنجاز والنقاط والنتيجة مرة واحدة',async()=>{
+  const stages=fixture(), started=(await staged(stages[0])).body;
+  for(let index=0;index<4;index++)await call(answer(started,index,'ق'));
+  const last=answer(started,4,'ق');
+  const confirmed=await call(last);expect(confirmed.body.stageProgress).toBe('done');
+  const repeated=await call(last);expect(repeated.body).toMatchObject({stageProgress:'done',repeated:true,awarded:0});
+  expect(db.tables.user_points[0].total).toBe(125);expect(db.tables.game_results).toHaveLength(1);
+  expect(db.tables.game_settings.filter(row=>row.game_id.startsWith('lc-stage:')&&row.settings.complete)).toHaveLength(1);
+  const resumed=await call({action:'resume',game:'letter_catcher',roundId:started.roundId});
+  expect(resumed.body).toMatchObject({lcStage:{id:stages[0].id},confirmation:{stageProgress:'done'}});
+ });
+
+ it('تبقى صلاحية العالم القديم بعد بدء أول مرحلة جديدة دون اختلاق إكمال',async()=>{
+  const stages=fixture();db.tables.game_results.push({user_id:'student',game_id:'letter_catcher',category,correct:4,total:5,wrong:1,played_at:'2026-11-01T00:00:00Z'});
+  expect((await progress()).body.unlockedCategories).toEqual([category,nextCategory]);
+  expect((await staged(stages[0])).status).toBe(200);
+  const state=await progress();expect(state.body.progress[stages[0].id]).toMatchObject({complete:false,legacyAccess:true});
+  expect(state.body.unlockedCategories).toEqual([category,nextCategory]);
+ });
+
+ it('تعذر قراءة حفظ المرحلة يبقى قابلاً للإعادة دون تكرار المكافأة',async()=>{
+  const stages=fixture(), started=(await staged(stages[0])).body;
+  for(let index=0;index<4;index++)await call(answer(started,index,'ق'));
+  db.fail='lc-stage:read';const last=answer(started,4,'ق');
+  expect((await call(last)).body.stageProgress).toBe('pending');
+  db.fail=null;expect((await call(last)).body).toMatchObject({stageProgress:'done',repeated:true,awarded:0});
+  expect((await progress()).body.progress[stages[0].id].complete).toBe(true);
+  expect(db.tables.user_points[0].total).toBe(125);expect(db.tables.game_results).toHaveLength(1);
+ });
+
+ it('يحفظ التقدم للطفل النشط وحده ويمنع استئناف جولة أخيه',async()=>{
+  const stages=fixture();db.child='child-a';const started=(await staged(stages[0])).body;await finish(started);
+  expect((await progress()).body.progress[stages[0].id].complete).toBe(true);
+  db.child='child-b';expect((await progress()).body.progress).toEqual({});
+  expect((await staged(stages[1])).status).toBe(409);
+  expect((await call({action:'resume',game:'letter_catcher',roundId:started.roundId})).status).toBe(404);
+ });
+
+ it('لا تعتبر بصمة المرحلة القديمة إكمالاً لقائمة كلمات جديدة',async()=>{
+  const stages=fixture(), started=(await staged(stages[0])).body;await finish(started);
+  db.tables.letter_catcher_words.unshift({id:'animal--new',word:'فِيلٌ',missing_letter:'ف',options:['ف','ق','ب'],category});
+  const changed=lcStagesForCategory(db.tables.letter_catcher_words,category,5);
+  expect(changed[0].id).not.toBe(stages[0].id);
+  expect((await staged(stages[0])).status).toBe(409);
+  expect((await staged(changed[1])).status).toBe(409);
+ });
+
+ it('معاينة المعلم تتجاوز الأقفال دون إنشاء تقدم أو نتائج أو مكافآت',async()=>{
+  const stages=fixture();db.user.app_metadata.role='teacher';const before=structuredClone(db.tables);
+  const preview=await staged(stages[1]);expect(preview.status).toBe(200);expect(preview.body).toMatchObject({preview:true,lcStage:{id:stages[1].id}});
+  expect((await progress()).body.progress).toEqual({});expect(db.tables).toEqual(before);
+ });
+
+ it('يحمي قراءة المراحل ويمنع التخزين المؤقت والتقرير الناقص عند تعذر القاعدة',async()=>{
+  fixture();const state=await progress();expect(state.headers.get('cache-control')).toContain('private, no-store');
+  db.fail='game_settings:read';expect((await progress()).status).toBe(503);db.fail=null;
+  for(const user of [null,{id:'s',app_metadata:{role:'student',status:'suspended'}},{id:'s',user_metadata:{role:'teacher'}}]){
+   db.user=user;expect((await progress()).status).toBe(401);
+  }
+ });
 });
 describe('تعميم تصحيح التدريبات — الإجابة والخادم',()=>{
  it.each(['letter_catcher','vowel_balloon','word_smash','word_image_match','word_wheel'])('معاينة %s لا تغيّر بيانات أو نقاطًا',async game=>{
@@ -66,23 +182,23 @@ describe('تعميم تصحيح التدريبات — الإجابة والخا
   await call(b);expect(db.tables.game_results).toHaveLength(1);expect(db.tables.user_points[0].total).toBe(105);
  });
  it('صياد الحروف: محاولتان، والتصحيح بعد الخطأ لا يكسب نقاط أول محاولة',async()=>{
-  const s=await start('letter_catcher',['lc'],'__all__');await call(answer(s,0,'ك'));const r=await call(answer(s,0,'ق'));expect(r.body).toMatchObject({right:true,awarded:0,summary:{correct:0,complete:true}});expect(db.tables.user_points[0].total).toBe(100);
-  const t=await start('letter_catcher',['lc'],'__all__');await call(answer(t,0,'ك'));expect((await call(answer(t,0,'م'))).body).toMatchObject({right:false,questionDone:true,summary:{complete:true}});
+  const s=await savedLcRound(['lc'],'__all__');await call(answer(s,0,'ك'));const r=await call(answer(s,0,'ق'));expect(r.body).toMatchObject({right:true,awarded:0,summary:{correct:0,complete:true}});expect(db.tables.user_points[0].total).toBe(100);
+  const t=await savedLcRound(['lc'],'__all__');await call(answer(t,0,'ك'));expect((await call(answer(t,0,'م'))).body).toMatchObject({right:false,questionDone:true,summary:{complete:true}});
  });
- it('صياد الحروف: يبدأ الاسم القديم بعد ترحيل الكلمات ويحفظ النتيجة تحت الهوية الجديدة',async()=>{
-  const s=await start('letter_catcher',['lc'],'أدوات');
+ it('صياد الحروف: يستأنف الاسم القديم بعد ترحيل الكلمات ويحفظ النتيجة تحت الهوية الجديدة',async()=>{
+  const s=await savedLcRound(['lc'],'أدوات');
   expect(s.category).toBe('المدرسة');expect(s.items[0].category).toBe('المدرسة');
   await call(answer(s,0,'ق'));
   expect(db.tables.game_results).toMatchObject([{category:'المدرسة',correct:1,total:1}]);
  });
- it('صياد الحروف: اختيار مهن محفوظ قبل نقل تلميذ يبقى صالحًا دون إعادته إلى القسم الجديد',async()=>{
+ it('صياد الحروف: جولة مهن محفوظة قبل نقل تلميذ تبقى قابلة للاستئناف دون تغيير محتواها',async()=>{
   const pupil='b9e76e35-9365-4c84-aee1-cd690c95bb1d';
   db.tables.letter_catcher_words=[
    {id:'job',word:'طبيب',missing_letter:'ط',options:['ط','ب','ق'],category:'المهن'},
    {id:pupil,word:'تلميذ',missing_letter:'ت',options:['ت','ب','ق'],category:'المدرسة'},
   ];
-  const old=await start('letter_catcher',['job',pupil],'المهن');expect(old.items).toHaveLength(2);
-  const current=await start('letter_catcher',['job'],'المهن');expect(current.items).toHaveLength(1);
+  const old=await savedLcRound(['job',pupil],'المهن');expect(old.items).toHaveLength(2);
+  const current=await savedLcRound(['job'],'المهن');expect(current.items).toHaveLength(1);
   const resumed=await call({action:'resume',game:old.game,roundId:old.roundId});expect(resumed.body.items).toHaveLength(2);
  });
  it('صياد الحروف: تقرير الأماكن القديم لا يُنسخ إلى فروعه ولا يقبل بركان الطقس فيه',async()=>{
@@ -93,7 +209,7 @@ describe('تعميم تصحيح التدريبات — الإجابة والخا
    {id:'place',word:'مكتبة',missing_letter:'م',options:['م','ق','ب'],category:'أماكن من حولنا'},
    {id:volcano,word:'بركان',missing_letter:'ب',options:['ب','ق','ت'],category:'الطبيعة'},
   ];
-  const old=await start('letter_catcher',['sea','country','place'],'الأماكن والمدن');
+  const old=await savedLcRound(['sea','country','place'],'الأماكن والمدن');
   expect(old.category).toBe('الأماكن والمدن');expect(old.items).toHaveLength(3);
   await call(answer(old,0,'ب'));await call(answer(old,1,'ت'));await call(answer(old,2,'م'));
   expect(db.tables.game_results).toMatchObject([{category:'الأماكن والمدن',total:3}]);
@@ -104,8 +220,8 @@ describe('تعميم تصحيح التدريبات — الإجابة والخا
    {id:'zero',word:'صِفْرٌ',missing_letter:'ص',options:['ص','ق','ت'],category:'الأعداد'},
    {id:'one',word:'وَاحِدٌ',missing_letter:'و',options:['و','ق','ب'],category:'الأعداد'},
   ];
-  const old=await start('letter_catcher',['one'],'الأرقام');expect(old.items).toHaveLength(1);expect(old.category).toBe('الأعداد');
-  const current=await start('letter_catcher',['zero','one'],'الأعداد');expect(current.items).toHaveLength(2);
+  const old=await savedLcRound(['one'],'الأرقام');expect(old.items).toHaveLength(1);expect(old.category).toBe('الأعداد');
+  const current=await savedLcRound(['zero','one'],'الأعداد');expect(current.items).toHaveLength(2);
   expect((await call({action:'start',game:'letter_catcher',roundId:randomUUID(),ids:['one'],category:'الأعداد',filters:{}})).status).toBe(409);
  });
  it('صياد الحروف: كل الكلمات المحفوظة قبل إضافة الصفر لا تتعطل ولا تسمح بحذف سؤال آخر',async()=>{
@@ -115,8 +231,8 @@ describe('تعميم تصحيح التدريبات — الإجابة والخا
    {id:'one',word:'وَاحِدٌ',missing_letter:'و',options:['و','ق','ب'],category:'الأعداد'},
    {id:'cat',word:'قِطٌّ',missing_letter:'ق',options:['ق','ب','ت'],category:'الحيوانات'},
   ];
-  expect((await start('letter_catcher',['one','cat'],'__all__')).items).toHaveLength(2);
-  expect((await start('letter_catcher',['zero','one','cat'],'__all__')).items).toHaveLength(3);
+  expect((await savedLcRound(['one','cat'],'__all__')).items).toHaveLength(2);
+  expect((await savedLcRound(['zero','one','cat'],'__all__')).items).toHaveLength(3);
   expect((await call({action:'start',game:'letter_catcher',roundId:randomUUID(),ids:['zero','one'],category:'__all__',filters:{}})).status).toBe(409);
  });
  it('التفكيك يقارن المقاطع كاملةً، لا وجود جزء صحيح فيها',async()=>{

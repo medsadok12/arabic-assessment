@@ -6,13 +6,14 @@
 ════════════════════════════════════════════════════════════════ */
 
 import { duelDefaults, normalizeDuelSettings, validateDuelSettings } from './letter-catcher-duel';
+import { LC_STAGE_SIZE_CHOICES } from './letter-catcher-stages';
 
 export const LC_GAME_ID = 'letter-catcher';
 
 /* 0 = كل كلمات المجموعة في جولة واحدة */
 export const WORDS_PER_ROUND_CHOICES = [5, 10, 15, 20, 30, 0];
 export const OPTIONS_COUNT_CHOICES = [3, 4, 5];
-export const LC_DEFAULT_SETTINGS = { words_per_round: 20, options_count: 5, progress_motion: true, duel: { ...duelDefaults } };
+export const LC_DEFAULT_SETTINGS = { words_per_round: 20, stage_size: 5, options_count: 5, progress_motion: true, duel: { ...duelDefaults } };
 
 /* أقصى قيمة لمنزلق «طول الكلمة» في معاينة المعلم = بلا حد */
 export const LEN_NO_LIMIT = 20;
@@ -21,9 +22,11 @@ export const LEN_NO_LIMIT = 20;
 export function normalizeLcSettings(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
   const wpr = Number(s.words_per_round);
+  const stageSize = ['number', 'string'].includes(typeof s.stage_size) ? Number(s.stage_size) : NaN;
   const opt = Number(s.options_count);
   return {
     words_per_round: WORDS_PER_ROUND_CHOICES.includes(wpr) ? wpr : LC_DEFAULT_SETTINGS.words_per_round,
+    stage_size: LC_STAGE_SIZE_CHOICES.includes(stageSize) ? stageSize : LC_DEFAULT_SETTINGS.stage_size,
     options_count: OPTIONS_COUNT_CHOICES.includes(opt) ? opt : LC_DEFAULT_SETTINGS.options_count,
     progress_motion: typeof s.progress_motion === 'boolean' ? s.progress_motion : LC_DEFAULT_SETTINGS.progress_motion,
     duel: normalizeDuelSettings(s.duel),
@@ -35,11 +38,13 @@ export function validateLcSettings(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
   if (!WORDS_PER_ROUND_CHOICES.includes(Number(s.words_per_round))) return null;
   if (!OPTIONS_COUNT_CHOICES.includes(Number(s.options_count))) return null;
+  if (Object.prototype.hasOwnProperty.call(s, 'stage_size') && (!['number', 'string'].includes(typeof s.stage_size) || !LC_STAGE_SIZE_CHOICES.includes(Number(s.stage_size)))) return null;
   if (Object.prototype.hasOwnProperty.call(s, 'progress_motion') && typeof s.progress_motion !== 'boolean') return null;
   const duel = Object.prototype.hasOwnProperty.call(s, 'duel') ? validateDuelSettings(s.duel) : normalizeDuelSettings();
   if (!duel) return null;
   return {
     words_per_round: Number(s.words_per_round), options_count: Number(s.options_count),
+    stage_size: Object.prototype.hasOwnProperty.call(s, 'stage_size') ? Number(s.stage_size) : LC_DEFAULT_SETTINGS.stage_size,
     progress_motion: Object.prototype.hasOwnProperty.call(s, 'progress_motion') ? s.progress_motion : LC_DEFAULT_SETTINGS.progress_motion,
     duel,
   };

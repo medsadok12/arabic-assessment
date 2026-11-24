@@ -5,15 +5,18 @@ import LetterCatcherProgress from '../../../../components/LetterCatcherProgress'
 import LetterCatcherWordFrame from '../../../../components/LetterCatcherWordFrame';
 import LetterCatcherFahimOverlay from '../../../../components/LetterCatcherFahimOverlay';
 import LetterCatcherWorldPath from './_world-path';
+import LetterCatcherStagePicker from './_stage-picker';
 
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { getRole } from '../../../../lib/auth-role';
 import { childFetch, getActiveChildTab } from '../../../../lib/child-fetch';
-import { LC_DEFAULT_SETTINGS, LEN_NO_LIMIT, normalizeLcSettings, roundSize, pickRotation } from '../../../../lib/letter-catcher';
+import { LC_DEFAULT_SETTINGS, LEN_NO_LIMIT, normalizeLcSettings } from '../../../../lib/letter-catcher';
+import { lcStagesForCategory, lcStageDone, isLcStageUnlocked, isLcStagedCategoryUnlocked } from '../../../../lib/letter-catcher-stages';
+import { displayNumber } from '../../../../lib/display-number';
 import { freshFetch } from '../../../../lib/fresh-fetch';
-import { canonicalLcWord, normalizeLcCategory, lcCategoryKey, sortLcCategories, sortLcCategoryWords, pickLcOrderedRound, lcCategoryScene, normalizeLcCategoryResults } from '../../../../lib/letter-catcher-categories';
+import { canonicalLcWord, normalizeLcCategory, sortLcCategories, lcCategoryScene, normalizeLcCategoryResults } from '../../../../lib/letter-catcher-categories';
 import { readLcCategorySeen, rememberLcAnsweredWord } from '../../../../lib/letter-catcher-progress-memory';
 import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useElementWidth } from '../../../../lib/fit-tiles';
 import { stripDia, getLetterForm } from '../../../../lib/letter-forms';
@@ -27,7 +30,7 @@ import { letterCatcherPictureLayout } from '../../../../lib/letter-catcher-pictu
 import { createLetterCatcherAnswerFeedback, letterCatcherAnswerMatches } from '../../../../lib/letter-catcher-answer-feedback';
 import { playCelebrationVideo } from '../../../../lib/celebration-video';
 import { playAnimalFahimCelebration } from '../../../../lib/letter-catcher-animal-celebration';
-import GameScene, { SceneThumb } from '../../../../components/GameScene';
+import GameScene from '../../../../components/GameScene';
 // بطل الطالب من «عالم الأبطال» يحتفل معه في شاشة النهاية — المكوّن خفيف، وthree.js يُحمَّل عند ظهوره فقط
 // (استيراد مباشر لا dynamic(): نحتاج ref ليقوم البطل بحركته الخاصة)
 import HeroAvatar3D from '../../../../components/HeroAvatar3D';
@@ -343,8 +346,16 @@ export default function LetterCatcherGame() {
   const [isTeacher,        setIsTeacher]        = useState(false);
   const [contentSource,setContentSource]=useState('cached');
   const [loadProgress,     setLoadProgress]     = useState(0);
-  const [pendingCategory,  setPendingCategory]  = useState(undefined); // undefined=grid shown; string/'__all__'=modal open
+  const [pendingCategory,  setPendingCategory]  = useState(undefined);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [activeStage, setActiveStage] = useState(null);
+  const [stageProgress, setStageProgress] = useState({});
+  const [demoProgress, setDemoProgress] = useState({});
+  const [unlockedCategories, setUnlockedCategories] = useState(null);
+  const [progressLoading, setProgressLoading] = useState(true);
+  const [progressError, setProgressError] = useState(false);
+  const stageProgressTicket = useRef(0);
+  const progressForStages = contentSource === 'fallback' ? demoProgress : stageProgress;
   /* فلاتر معاينة للمعلم فقط (لا تُحفظ ولا تؤثر على الطلاب) — بلا حد للطول افتراضياً */
   const [cfg, setCfg] = useState({
     topic: '',
@@ -659,6 +670,32 @@ export default function LetterCatcherGame() {
     [loadWords, loadGameWords]
   );
 
+  const loadStageProgress = useCallback(async () => {
+    const requestTicket = ++stageProgressTicket.current;
+    const child = getActiveChildTab();
+    setProgressLoading(true); setProgressError(false);
+    try {
+      const response = await childFetch('/api/games/letter-catcher/progress', { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok || !data.progress || !Array.isArray(data.unlockedCategories)) throw new Error();
+      if (requestTicket !== stageProgressTicket.current || child !== getActiveChildTab()) return;
+      setStageProgress(data.progress); setUnlockedCategories(data.unlockedCategories);
+    } catch {
+      if (requestTicket === stageProgressTicket.current && child === getActiveChildTab()) setProgressError(true);
+    } finally {
+      if (requestTicket === stageProgressTicket.current && child === getActiveChildTab()) setProgressLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    loadStageProgress();
+    const onVisible = () => { if (!document.hidden) loadStageProgress(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { stageProgressTicket.current += 1; document.removeEventListener('visibilitychange', onVisible); };
+  }, [loadStageProgress, settings.stage_size, gameWords]);
+  useEffect(() => {
+    if (phase === 'finished' && activeStage && contentSource !== 'fallback' && !isTeacher) loadStageProgress();
+  }, [phase, activeStage, contentSource, isTeacher, loadStageProgress]);
+
   // النتيجة تُكتب من الجولة المدقّقة؛ هذا الطلب قراءة للتقرير فقط.
   useEffect(() => {
     if (phase !== 'finished' || !currentUser) return;
@@ -692,26 +729,15 @@ export default function LetterCatcherGame() {
     });
   }, [gameWords]);
 
-  /* ── كلمات الجولة بالتدوير: ما لم يُجب عنه الطفل بعد في هذه المجموعة أولاً ── */
-  const pickRoundWords = useCallback((words, catKey) => {
-    const ordered = sortLcCategoryWords(words, catKey);
-    const ids = ordered.map(w => String(w.id));
-    const { key, ids: seen } = readCategorySeen(currentUser?.id, catKey);
-    // Numbers stay in numeric order, including across shorter teacher-set rounds.
-    const pickRound = lcCategoryKey(catKey) === 'numbers' ? pickLcOrderedRound : pickRotation;
-    const { picked } = pickRound(ids, seen, roundSize(ordered.length, settings.words_per_round));
-    roundRef.current = { key, ids, category: catKey };
-    const byId = new Map(ordered.map(w => [String(w.id), w]));
-    return picked.map(id => byId.get(id));
-  }, [currentUser, settings.words_per_round]);
-
   const verified = useVerifiedTraining('letter_catcher', {
     onPoints: setTotalPoints,
     onIdentityChange: () => {
       resetAnswerFeedback();
       pictureTransition.current += 1; nextInFlight.current = false;
       setPreparingPicture(false); setWordFinished(false); stopWordAudio(); clearCheer();
-      setPhase('start'); setQueue([]); setScore(0); setCatResults({});
+      setPhase('start'); setPendingCategory(undefined); setQueue([]); setScore(0); setCatResults({});
+      setActiveStage(null); setStageProgress({}); setDemoProgress({}); setUnlockedCategories(null);
+      loadStageProgress();
     },
     onStart: async j => {
       resetAnswerFeedback();
@@ -729,17 +755,24 @@ export default function LetterCatcherGame() {
       nextInFlight.current = false; setPreparingPicture(false); setWordFinished(false);
       setPendingCategory(undefined);
       setSelectedCategory(j.category === '__all__' ? null : j.category);
+      setActiveStage(j.lcStage || null);
       setQueue(nextQueue); setCur(cursor); setScore(j.summary.correct);
       setChosen(null); setCorrect(null); setTried(j.snapshot.events.filter(e=>e.action==='answer'&&e.command.index===j.summary.cursor&&!e.right).map(e=>e.command.value)); setPhase(j.summary.complete ? 'finished' : 'playing');
     },
   });
-  const startGame = catFilter => {
-    if (preparingPicture || nextInFlight.current) return;
-    const filtered = catFilter === null ? gameWords : gameWords.filter(w => w.category === catFilter);
-    if (!filtered.length) return;
-    const picked = pickRoundWords(filtered, catFilter ?? '__all__');
-    if(contentSource==='fallback')verified.demo(picked,catFilter??'__all__');else verified.start(picked.map(w => w.id), catFilter ?? '__all__', cfg);
+  const startGame = (category, stage) => {
+    if (!category || category === '__all__' || !stage || preparingPicture || nextInFlight.current || verified.busy || verified.pending) return;
+    const stages = lcStagesForCategory(gameWords, category, settings.stage_size);
+    const current = stages.find(item => item.id === stage.id);
+    if (!current || (!isTeacher && ((contentSource !== 'fallback' && (progressLoading || progressError)) || !isLcStageUnlocked(current, stages, progressForStages)))) return;
+    if (contentSource === 'fallback') verified.demo(current.words, category, current);
+    else verified.start(current.wordIds, category, { ...cfg, lcStage: current.id });
   };
+
+  useEffect(() => {
+    if (phase !== 'finished' || contentSource !== 'fallback' || !activeStage || !verified.summary?.complete) return;
+    setDemoProgress(progress => ({ ...progress, [activeStage.id]: { ...activeStage, complete: true } }));
+  }, [phase, contentSource, activeStage, verified.summary?.complete]);
 
   const pick = useCallback((opt) => {
     if (chosen !== null || tried.includes(opt) || answerFeedback.current.isPending() || !verified.canAct()) return;
@@ -823,15 +856,20 @@ export default function LetterCatcherGame() {
   }, [cur, queue, chosen, wordFinished, stopWordAudio, clearCheer, resetAnswerFeedback, verified]);
 
   const restart = () => {
-    // A legacy mixed Places round may finish after its content was split.
-    // Its saved report stays intact; the next game starts from the new groups.
     const category = selectedCategory == null ? null : normalizeLcCategory(selectedCategory);
-    if (category && !gameWords.some(w => w.category === category)) {
+    const stage = activeStage && lcStagesForCategory(gameWords, category, settings.stage_size).find(item => item.id === activeStage.id);
+    if (!category || !stage) {
       setPhase('start'); setPendingCategory(undefined); setQueue([]); setCur(0);
       return;
     }
-    startGame(category);
+    startGame(category, stage);
   };
+
+  const currentStages = selectedCategory ? lcStagesForCategory(gameWords, selectedCategory, settings.stage_size) : [];
+  const currentStageAvailable = activeStage && currentStages.some(stage => stage.id === activeStage.id);
+  const nextStage = currentStageAvailable ? currentStages.find(stage => stage.number === activeStage.number + 1) : null;
+  const stageNavigationBusy = preparingPicture || verified.busy || verified.pending || (!verified.preview && progressLoading);
+  const canAdvanceStage = verified.preview || (currentStageAvailable && lcStageDone(activeStage, progressForStages) && (!nextStage || isLcStageUnlocked(nextStage, currentStages, progressForStages)));
 
   if (phase === 'duel') return <FriendChallenge settings={settings.duel} currentPlayer={duelProfile} onExit={() => {
     setPhase('start'); loadGameWords({ quiet: true });
@@ -841,20 +879,6 @@ export default function LetterCatcherGame() {
   /* ══════════════════════ RENDER: START ══════════════════════ */
   if (phase === 'start') {
     const categories = sortLcCategories(gameWords.map(w => w.category).filter(Boolean));
-
-    /* modal data when a category was tapped */
-    const modalCatLabel = pendingCategory === '__all__' ? 'كل المجموعات' : pendingCategory;
-    const modalWords    = pendingCategory === '__all__' || pendingCategory === undefined
-      ? gameWords
-      : gameWords.filter(w => w.category === pendingCategory);
-    const modalCount    = roundSize(modalWords.length, settings.words_per_round);
-    const modalCatObj   = pendingCategory !== '__all__' ? catMeta[pendingCategory] : null;
-    const modalEmoji    = pendingCategory === '__all__' ? '🌟' : (modalCatObj?.emoji || CAT_META[pendingCategory]?.emoji || null);
-
-    const handleStartFromModal = () => {
-      const catArg = pendingCategory === '__all__' ? null : pendingCategory;
-      startGame(catArg);
-    };
 
     return (
       <div key="start" style={S.stage}>
@@ -884,64 +908,21 @@ export default function LetterCatcherGame() {
           <SettingsPanel cfg={cfg} onChange={setCfg} settings={settings} onSettingsSaved={(st) => { setSettings(st); try { localStorage.setItem(LC_SETTINGS_KEY, JSON.stringify(st)); } catch {} }} onClose={() => setShowCfg(false)} dbWords={dbWords} onRefresh={refreshAfterEdit} catMeta={catMeta} onCatMetaRefresh={loadCatMeta} />
         )}
 
-        {/* ── STEP 2 MODAL: settings + start button ── */}
-        {pendingCategory !== undefined && (
-          <div
-            style={{
-              position:'fixed', inset:0, zIndex:800,
-              background:'rgba(26,43,74,.5)', WebkitBackdropFilter:'blur(4px)', backdropFilter:'blur(4px)',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              padding:20,
-            }}
-            onClick={(e) => { if (e.target === e.currentTarget && !preparingPicture && !verified.busy) setPendingCategory(undefined); }}
-          >
-            <div data-lc-start-modal="" role="dialog" aria-modal="true" aria-label={`ابدأ ${modalCatLabel}`} style={{
-              background:'#fff', borderRadius:28, padding:14, maxWidth:360, width:'100%',
-              textAlign:'center', boxShadow:'0 24px 64px rgba(26,43,74,.4)',
-              animation:'lcModalIn .28s cubic-bezier(.34,1.56,.64,1) both',
-            }}>
-              <div style={{ position:'relative', height:150, borderRadius:20, overflow:'hidden', marginBottom:16 }}>
-                {pendingCategory === '__all__'
-                  ? <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', height:'100%' }}>
-                      {categories.slice(0, 3).map(c => <SceneThumb key={c} category={c} scene={lcCategoryScene(c)} />)}
-                    </div>
-                  : <SceneThumb category={pendingCategory} scene={lcCategoryScene(pendingCategory)} />}
-                <span style={{ position:'absolute', bottom:10, right:10, display:'inline-flex', alignItems:'center', gap:6, background:'#1A2B4A', color:'#fff', borderRadius:999, padding:'6px 14px', fontWeight:800, fontSize:'.95rem' }}>
-                  {modalCatObj?.image_url
-                    ? <img src={modalCatObj.image_url} alt="" style={{ width:24, height:24, borderRadius:6, objectFit:'cover' }} />
-                    : modalEmoji && <span aria-hidden="true">{modalEmoji}</span>}
-                  {modalCatLabel}
-                </span>
-              </div>
-
-              <h3 style={{ margin:'0 0 14px', fontSize:'1.25rem', fontWeight:900, color:'#1A2B4A' }}>
-                جَاهِزٌ لِلصَّيْدِ؟ 🎯
-              </h3>
-
-              <div style={{ ...S.statsRow, marginBottom:16 }}>
-                <div style={S.statBox}>
-                  <span style={S.statNum}>{modalCount}</span>
-                  <span style={S.statLbl}>سؤال</span>
-                </div>
-                <div style={S.statDiv} />
-                <div style={S.statBox}>
-                  <span style={S.statNum}>{settings.options_count}</span>
-                  <span style={S.statLbl}>خيارات</span>
-                </div>
-              </div>
-
-              <button style={{ ...S.goldBtn, marginBottom:6 }} onClick={handleStartFromModal} disabled={preparingPicture || verified.busy || verified.pending} aria-busy={preparingPicture || verified.busy}>
-                {preparingPicture || verified.busy ? 'لَحْظَةٌ… نَسْتَعِدُّ لِلَّعِبِ' : '🚀 ابدأ اللعبة'}
-              </button>
-              <button
-                style={{ background:'none', border:'none', cursor:'pointer', color:'#1A2B4A', fontWeight:800, fontSize:'.95rem', fontFamily:'inherit', minHeight:44, padding:'0 12px' }}
-                onClick={() => setPendingCategory(undefined)}
-                disabled={preparingPicture || verified.busy}
-              >
-                ← رجوع للمجموعات
-              </button>
-            </div>
-          </div>
+        {pendingCategory !== undefined && pendingCategory !== '__all__' && (
+          <LetterCatcherStagePicker
+            category={pendingCategory}
+            stages={lcStagesForCategory(gameWords, pendingCategory, settings.stage_size)}
+            progress={progressForStages}
+            isTeacher={isTeacher}
+            busy={preparingPicture || verified.busy}
+            pending={verified.pending}
+            status={<VerifiedTrainingStatus training={verified} />}
+            progressLoading={contentSource !== 'fallback' && progressLoading}
+            progressError={contentSource !== 'fallback' && progressError}
+            onSelect={stage => startGame(pendingCategory, stage)}
+            onBack={() => setPendingCategory(undefined)}
+            onRetryProgress={loadStageProgress}
+          />
         )}
 
         <LetterCatcherWorldPath
@@ -954,7 +935,12 @@ export default function LetterCatcherGame() {
           totalPoints={totalPoints}
           duelSettings={settings.duel}
           currentPlayer={duelProfile}
-          onCategorySelect={setPendingCategory}
+          stageSize={settings.stage_size}
+          progress={progressForStages}
+          unlockedCategories={contentSource === 'fallback'
+            ? categories.filter(category => isLcStagedCategoryUnlocked(category, categories, gameWords, settings.stage_size, demoProgress, {}))
+            : unlockedCategories}
+          onCategorySelect={category => { if (category && category !== '__all__') setPendingCategory(category); }}
           onDuel={() => { stopWordAudio(); clearCheer(); setPendingCategory(undefined); setPhase('duel'); }}
           onSettings={() => setShowCfg(true)}
         />
@@ -988,9 +974,18 @@ export default function LetterCatcherGame() {
               )}
               <div style={{ fontSize: '3rem', lineHeight: 1 }}>{'⭐'.repeat(stars)}</div>
               <h2 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 900, color: '#1A2B4A' }}>أَحْسَنْتَ!</h2>
+              {activeStage && <p style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#1A2B4A' }}>المرحلة {displayNumber(activeStage.number)} — {displayNumber(selectedCategory)}</p>}
               <div style={{ fontSize: '3.2rem', fontWeight: 900, color: '#1A2B4A', direction: 'ltr' }}>{score} / {queue.length}</div>
               <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#4A5A75', lineHeight: 1.8 }}>{msg}</p>
-              <button style={S.goldBtn} onClick={restart} disabled={preparingPicture || verified.busy || verified.pending}>{preparingPicture ? 'لَحْظَةٌ…' : '🔄 العب مرة أخرى'}</button>
+              {nextStage && <button style={S.goldBtn} onClick={() => startGame(selectedCategory, nextStage)} disabled={stageNavigationBusy || !canAdvanceStage || (!verified.preview && progressError)}>المرحلة التالية ←</button>}
+              {currentStageAvailable && !nextStage && canAdvanceStage && <p style={{ margin: 0, color: '#24734E', fontWeight: 800 }}>أكملت مراحل هذا العالم!</p>}
+              {activeStage && progressError && !verified.preview && <button style={S.whiteBtn} onClick={loadStageProgress} disabled={progressLoading}>نؤكّد حفظ مرحلتك — أعد المحاولة</button>}
+              <button style={nextStage ? S.whiteBtn : S.goldBtn} onClick={restart} disabled={stageNavigationBusy || (!verified.preview && progressError)}>{preparingPicture ? 'لَحْظَةٌ…' : activeStage ? 'إعادة المرحلة' : 'العودة إلى العوالم'}</button>
+              {activeStage && <button style={S.whiteBtn} onClick={() => {
+                resetAnswerFeedback(); pictureTransition.current += 1; nextInFlight.current = false;
+                setPreparingPicture(false); setWordFinished(false); stopWordAudio(); clearCheer();
+                setPhase('start'); setPendingCategory(selectedCategory); setQueue([]); setCur(0);
+              }}>مراحل هذا العالم</button>}
               <button
                 style={S.whiteBtn}
                 onClick={() => {
@@ -999,7 +994,7 @@ export default function LetterCatcherGame() {
                   setPreparingPicture(false); setWordFinished(false); stopWordAudio(); clearCheer();
                   setPhase('start'); setPendingCategory(undefined); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]);
                 }}
-              >🏠 اختر مجموعة أخرى</button>
+              >🏠 اختر عالمًا آخر</button>
               <Link href="/library" style={{ ...S.backLink, color: '#4A5A75', fontWeight: 700 }}>← العودة للمكتبة</Link>
             </div>
           </div>
@@ -1099,7 +1094,7 @@ export default function LetterCatcherGame() {
         }
       `}</style>
 
-      {/* في «العب الكل» يتغير العالم مع مجموعة كل كلمة */}
+      {/* تحتفظ الجولة القديمة المحفوظة بمشهد كلمة السؤال عند استئنافها. */}
       <GameScene category={catLabel} scene={lcCategoryScene(catLabel)} />
 
       <div ref={columnRef} style={S.stageColumn}>
@@ -1111,6 +1106,7 @@ export default function LetterCatcherGame() {
           </div>
         ) : <VerifiedTrainingStatus training={verified} compact />}
         <LetterCatcherProgress
+          title={activeStage ? `المرحلة ${displayNumber(activeStage.number)}` : 'صَيَّادُ الْحُرُوفِ'}
           category={catLabel}
           totalPoints={totalPoints}
           score={score}
@@ -1231,7 +1227,7 @@ export default function LetterCatcherGame() {
           text={buddyText}
           action={chosen !== null && wordFinished && (
             <button style={{ ...S.goldBtn, minHeight: compact ? 50 : 56, flex: 1, opacity: preparingPicture ? .7 : 1 }} onClick={next} disabled={!answerConfirmed || preparingPicture || verified.busy || verified.pending} aria-busy={preparingPicture || !answerConfirmed}>
-              {preparingPicture ? 'لَحْظَةٌ…' : isLast ? '🏁 النَّتِيجَةُ النِّهَائِيَّةُ' : 'التَّالِي ←'}
+              {preparingPicture ? 'لَحْظَةٌ…' : isLast ? activeStage ? 'نتيجة المرحلة' : '🏁 النَّتِيجَةُ النِّهَائِيَّةُ' : 'التَّالِي ←'}
             </button>
           )}
         />

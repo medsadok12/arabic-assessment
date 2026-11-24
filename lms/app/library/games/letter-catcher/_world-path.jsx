@@ -6,6 +6,7 @@ import { SceneThumb } from '../../../../components/GameScene';
 import LetterCatcherPlayerAvatar from '../../../../components/LetterCatcherPlayerAvatar';
 import { isLcCategoryUnlocked, lcCategoryKey, lcCategoryScene } from '../../../../lib/letter-catcher-categories';
 import { displayNumber } from '../../../../lib/display-number';
+import { lcStagesForCategory, lcStageDone } from '../../../../lib/letter-catcher-stages';
 import styles from './_world-path.module.css';
 
 const pointsFormatter = new Intl.NumberFormat('en-US', { numberingSystem: 'latn', maximumFractionDigits: 0 });
@@ -49,7 +50,7 @@ function Friends({ currentPlayer }) {
   </span>;
 }
 
-const WorldIsland = memo(function WorldIsland({ category, count, result, imageUrl, emoji, unlocked, previousCategory, first, onSelect }) {
+const WorldIsland = memo(function WorldIsland({ category, count, result, imageUrl, emoji, unlocked, previousCategory, first, onSelect, stages = [] , progress = {} }) {
   const [imageFailed, setImageFailed] = useState(false);
   useEffect(() => setImageFailed(false), [imageUrl]);
   const showImage = Boolean(imageUrl) && !imageFailed;
@@ -69,6 +70,7 @@ const WorldIsland = memo(function WorldIsland({ category, count, result, imageUr
     </span>
     <span className={styles.namePlate}>
       <span className={styles.categoryName}>{displayNumber(category)}</span>
+      <span className={styles.stageNote}><bdi dir="ltr">{displayNumber(stages.filter(stage => lcStageDone(stage, progress)).length)} / {displayNumber(stages.length)}</bdi> مراحل</span>
       {unlocked ? <Mastery result={result} /> : <span className={styles.lockNote}>أكمل المجموعة السابقة</span>}
       <span className={styles.worldStats}><span className={styles.wordCount}><bdi>{displayNumber(count)}</bdi> {wordLabel(count)}</span><ResultCounts result={result} /></span>
     </span>
@@ -94,7 +96,7 @@ function Trail({ count }) {
   </svg>;
 }
 
-export default function LetterCatcherWorldPath({ categories = [], gameWords = [], catMeta = {}, categoryIcons = {}, catResults = {}, isTeacher = false, totalPoints = 0, duelSettings = {}, currentPlayer = null, onCategorySelect, onDuel, onSettings }) {
+export default function LetterCatcherWorldPath({ categories = [], gameWords = [], catMeta = {}, categoryIcons = {}, catResults = {}, isTeacher = false, totalPoints = 0, duelSettings = {}, currentPlayer = null, onCategorySelect, onDuel, onSettings, stageSize = 5, progress = {}, unlockedCategories = null }) {
   const hasWords = gameWords.length > 0;
   const counts = useMemo(() => {
     const result = new Map();
@@ -102,7 +104,6 @@ export default function LetterCatcherWorldPath({ categories = [], gameWords = []
     return result;
   }, [gameWords]);
   const points = displayNumber(pointsFormatter.format(countValue(totalPoints)));
-  const allResult = catResults.__all__;
 
   return <div className={`${styles.root} game-font`} data-lc-world-path="" dir="rtl">
     <header className={styles.header}>
@@ -123,19 +124,14 @@ export default function LetterCatcherWorldPath({ categories = [], gameWords = []
         <Trail count={categories.length} />
         {categories.map((category, index) => {
           const metadata = catMeta[category] || {};
-          const unlocked = isTeacher || isLcCategoryUnlocked(category, catResults, categories);
+          const unlocked = isTeacher || (Array.isArray(unlockedCategories) ? unlockedCategories.includes(category) : isLcCategoryUnlocked(category, catResults, categories));
           return <li key={category} className={`${styles.worldRow} ${index % 2 ? styles.leftWorld : styles.rightWorld}`}>
             {index === 0 && <img className={styles.fahim} src="/faheem-sm.webp" alt="فهيم يرحّب بك في مسار العوالم" width="240" height="306" decoding="async" />}
-            <WorldIsland category={category} count={counts.get(category) || 0} result={catResults[category]} imageUrl={metadata.image_url} emoji={metadata.emoji || categoryIcons[category]?.emoji} unlocked={unlocked} previousCategory={categories[index - 1]} first={index === 0} onSelect={onCategorySelect} />
+            <WorldIsland category={category} count={counts.get(category) || 0} result={catResults[category]} imageUrl={metadata.image_url} emoji={metadata.emoji || categoryIcons[category]?.emoji} unlocked={unlocked} previousCategory={categories[index - 1]} first={index === 0} onSelect={onCategorySelect} stages={lcStagesForCategory(gameWords, category, stageSize)} progress={progress} />
           </li>;
         })}
       </ol>
     </> : <section className={styles.empty} aria-label="عوالم الكلمات"><img src="/faheem-sm.webp" alt="فهيم" width="240" height="306" decoding="async" /><h2>{isTeacher ? 'لنجهّز عوالم الكلمات!' : 'عوالمك تستعدّ لك!'}</h2><p>{isTeacher ? 'أضف الكلمات من الإعدادات، ثم نبدأ المغامرة.' : 'سيجهّز معلمك الكلمات لنبدأ اللعب معًا.'}</p>{isTeacher && <button type="button" className={styles.addWords} onClick={() => onSettings?.()}>إضافة كلمات</button>}</section>}
 
-    {hasWords && <div className={styles.playAllDock}><button type="button" className={styles.playAll} data-lc-play-all="" onClick={() => { if (hasWords) onCategorySelect?.('__all__'); }}>
-      <span className={styles.playAllStar}><Star /></span><span className={styles.playAllCopy}><strong>العب الكل</strong><span><bdi>{displayNumber(gameWords.length)}</bdi> {wordLabel(gameWords.length)} من كلّ العوالم</span></span>
-      {allResult && <span className={styles.allResult}><Mastery result={allResult} /><span className={styles.allCounts}><ResultCounts result={allResult} /></span></span>}
-      <svg className={styles.playAllArrow} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7" /></svg>
-    </button></div>}
   </div>;
 }

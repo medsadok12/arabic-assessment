@@ -76,32 +76,44 @@ describe('letterCount', () => {
 });
 
 describe('settings', () => {
+  it('adds five-word stages for old settings without changing legacy round values', () => {
+    const old = { words_per_round: 0, options_count: 3 };
+    expect(normalizeLcSettings(old)).toMatchObject({ ...old, stage_size: 5 });
+    expect(validateLcSettings(old)).toMatchObject({ ...old, stage_size: 5 });
+    expect(normalizeLcSettings({ ...old, stage_size: 10 })).toMatchObject({ ...old, stage_size: 10 });
+    expect(validateLcSettings({ ...old, stage_size: '15' })).toMatchObject({ ...old, stage_size: 15 });
+  });
+  it.each([0, 1, 7, 20, null, undefined, false, [5], {}, 'all'])('rejects invalid supplied stage size %j', stage_size => {
+    const raw = { words_per_round: 20, options_count: 5, stage_size };
+    expect(validateLcSettings(raw)).toBeNull();
+    expect(normalizeLcSettings(raw).stage_size).toBe(5);
+  });
   it('roundSize: صفر يعني كل كلمات المجموعة', () => {
     expect(roundSize(31, 0)).toBe(31);
     expect(roundSize(31, 10)).toBe(10);
     expect(roundSize(4, 10)).toBe(4);
   });
   it('normalize يعيد القيم غير المعروفة للافتراضي، وvalidate يرفضها', () => {
-    expect(normalizeLcSettings({ words_per_round: 7, options_count: 9 })).toEqual({ words_per_round: 20, options_count: 5, progress_motion: true, duel: duelDefaults });
-    expect(normalizeLcSettings({ words_per_round: 0, options_count: 3 })).toEqual({ words_per_round: 0, options_count: 3, progress_motion: true, duel: duelDefaults });
+    expect(normalizeLcSettings({ words_per_round: 7, options_count: 9 })).toEqual({ words_per_round: 20, stage_size: 5, options_count: 5, progress_motion: true, duel: duelDefaults });
+    expect(normalizeLcSettings({ words_per_round: 0, options_count: 3 })).toEqual({ words_per_round: 0, stage_size: 5, options_count: 3, progress_motion: true, duel: duelDefaults });
     expect(validateLcSettings({ words_per_round: 7, options_count: 4 })).toBeNull();
-    expect(validateLcSettings({ words_per_round: '15', options_count: '4' })).toEqual({ words_per_round: 15, options_count: 4, progress_motion: true, duel: duelDefaults });
+    expect(validateLcSettings({ words_per_round: '15', options_count: '4' })).toEqual({ words_per_round: 15, stage_size: 5, options_count: 4, progress_motion: true, duel: duelDefaults });
   });
   it('defaults old settings to motion enabled and preserves an explicit disabled state', () => {
     expect(normalizeLcSettings(null).progress_motion).toBe(true);
     const stored = { words_per_round: 0, options_count: 3, progress_motion: false };
-    expect(normalizeLcSettings(stored)).toEqual({ ...stored, duel: duelDefaults });
-    expect(validateLcSettings(stored)).toEqual({ ...stored, duel: duelDefaults });
-    expect(validateLcSettings({ ...stored, progress_motion: true })).toEqual({ ...stored, progress_motion: true, duel: duelDefaults });
+    expect(normalizeLcSettings(stored)).toEqual({ ...stored, stage_size: 5, duel: duelDefaults });
+    expect(validateLcSettings(stored)).toEqual({ ...stored, stage_size: 5, duel: duelDefaults });
+    expect(validateLcSettings({ ...stored, progress_motion: true })).toEqual({ ...stored, stage_size: 5, progress_motion: true, duel: duelDefaults });
   });
   it.each(['false', 0, 1, null, undefined, {}, []])('rejects a supplied non-boolean motion value %j', progress_motion => {
     const raw = { words_per_round: 15, options_count: 4, progress_motion };
     expect(validateLcSettings(raw)).toBeNull();
-    expect(normalizeLcSettings(raw)).toEqual({ words_per_round: 15, options_count: 4, progress_motion: true, duel: duelDefaults });
+    expect(normalizeLcSettings(raw)).toEqual({ words_per_round: 15, stage_size: 5, options_count: 4, progress_motion: true, duel: duelDefaults });
   });
   it('defaults the new challenge to disabled without changing solo-round defaults', () => {
     expect(LC_DEFAULT_SETTINGS).toEqual({
-      words_per_round: 20, options_count: 5, progress_motion: true,
+      words_per_round: 20, stage_size: 5, options_count: 5, progress_motion: true,
       duel: {
         enabled: false, title: 'تحدي صديق', subtitle: 'العب مع صديقك واجمع النجوم', questionCount: 10,
         optionsCount: 3, soundEnabled: true, motionEnabled: true, encouragementEnabled: true,
@@ -111,7 +123,7 @@ describe('settings', () => {
   });
   it('keeps independent challenge controls and configured content when disabled', () => {
     const stored = {
-      words_per_round: 15, options_count: 4, progress_motion: false,
+      words_per_round: 15, stage_size: 10, options_count: 4, progress_motion: false,
       duel: { ...duelDefaults, enabled: false, title: 'تحدي الحيوانات', subtitle: 'هيا نلعب', questionCount: 5, soundEnabled: false, motionEnabled: false, encouragementEnabled: false },
     };
     expect(normalizeLcSettings(stored)).toEqual(stored);

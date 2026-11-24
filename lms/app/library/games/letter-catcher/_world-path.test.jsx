@@ -42,7 +42,8 @@ describe('Letter Catcher world selection path', () => {
       expect(html.indexOf(`data-lc-world-island="${worlds[index]}"`)).toBeGreaterThan(html.indexOf(`data-lc-world-island="${worlds[index - 1]}"`));
     }
     expect(html).toContain('رصيدك 1,353 نجمة');
-    expect(html).toContain('data-lc-play-all=""');
+    expect(html).not.toContain('data-lc-play-all');
+    expect(html).not.toContain('العب الكل');
     expect(html).not.toContain('data-scene=');
   });
 

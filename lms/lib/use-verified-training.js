@@ -40,13 +40,13 @@ export default function useVerifiedTraining(game, { onStart, onPoints, onIdentit
       }
       if (t !== ticket.current || child !== getActiveChildTab()) return null;
       if(j.summary)setSummary(j.summary);
-      const retryable = j.reward === 'pending' || j.result === 'pending' || j.bonus === 'pending' || ['reward', 'result', 'bonus'].some(k => j.confirmation?.[k] === 'pending');
+      const retryable = ['reward', 'result', 'bonus', 'stageProgress'].some(k => j[k] === 'pending' || j.confirmation?.[k] === 'pending');
       if (body.action === 'start' || body.action === 'resume') {
         session.current = j.snapshot; if (!j.preview) remember(j.summary.complete && !retryable ? null : j.roundId);
       }
       if (j.summary?.complete && !j.preview && !retryable) remember(null);
       if (retryable) { setPending(true); setNote('حُفظت الإجابة؛ نحتاج تأكيد مزامنة المكافأة أو التقرير. أعد التأكيد.'); return null; }
-      const review = ['reward', 'result', 'bonus'].some(k => ['working', 'review'].includes(j[k]));
+      const review = ['reward', 'result', 'bonus', 'stageProgress'].some(k => ['working', 'review'].includes(j[k]));
       setNote(session.current?.demo ? 'تدريب تجريبي: بلا نقاط أو نتائج رسمية.' : j.preview || session.current?.preview ? 'معاينة المعلم: بلا نقاط أو نتائج طلاب.' : review ? 'حُفظت إجابتك. بعض المكافآت تنتظر تأكيدًا دون احتسابها مرتين.' : body.action==='start'?'جولتك جاهزة. لنبدأ!':body.action==='resume'?'استعدنا جولتك المحفوظة.':j.summary?.complete?'حُفظت نتيجة الجولة بعد التحقق.':body.action==='answer'?'حُفظت الإجابة بعد التحقق منها.':'جولتك محفوظة.');
       request.current = null; setPending(false);
       const pts = j.points ?? j.confirmation?.points; if (Number.isFinite(pts)) handlers.current.onPoints?.(pts);
@@ -67,9 +67,9 @@ export default function useVerifiedTraining(game, { onStart, onPoints, onIdentit
       return run({ action: 'start', game, roundId: crypto.randomUUID(), ids, category, filters, ...extra }, j => handlers.current.onStart?.(j));
     },
     event, answer: (index, value, callback, extra = {}) => event({ action: 'answer', index, value, ...extra }, callback),
-    demo: (items,category='عام') => {
-      const r={id:crypto.randomUUID(),game,category,preview:true,demo:true,items,questions:items.map(x=>({id:String(x.id),expected:game==='letter_catcher'?x.missing_letter:x.correct_option})),answers:items.map(()=>({done:false,right:false,wrong:0,hints:0,status:'play'})),events:[],closed:false,revision:0,points:0};
-      session.current=r;setNote('تدريب تجريبي: بلا نقاط أو نتائج رسمية.');handlers.current.onStart?.({items,category,preview:true,summary:trainingSummary(r),answers:r.answers,snapshot:r});
+    demo: (items,category='عام',lcStage) => {
+      const r={id:crypto.randomUUID(),game,category,preview:true,demo:true,items,questions:items.map(x=>({id:String(x.id),expected:game==='letter_catcher'?x.missing_letter:x.correct_option})),answers:items.map(()=>({done:false,right:false,wrong:0,hints:0,status:'play'})),events:[],closed:false,revision:0,points:0,...(lcStage ? {lcStage:{id:lcStage.id,number:lcStage.number,category:lcStage.category,wordIds:lcStage.wordIds,total:lcStage.total}} : {})};
+      session.current=r;setNote('تدريب تجريبي: بلا نقاط أو نتائج رسمية.');handlers.current.onStart?.({items,category,preview:true,lcStage:r.lcStage,summary:trainingSummary(r),answers:r.answers,snapshot:r});
     },
     retry: () => request.current ? run(request.current.body, request.current.callback) : null,
     resume: () => saved ? run({ action: 'resume', game, roundId: saved }, j => handlers.current.onStart?.(j)) : null,

@@ -30,7 +30,7 @@ vi.mock('./supabase-admin', () => ({
 }));
 
 const { PUT } = await import('../app/api/games/letter-catcher/settings/route.js');
-const SOLO = { words_per_round: 15, options_count: 4, progress_motion: false };
+const SOLO = { words_per_round: 15, stage_size: 5, options_count: 4, progress_motion: false };
 const DUEL = {
   enabled: false,
   title: 'تحدي صديق',
@@ -91,6 +91,14 @@ describe('PUT /api/games/letter-catcher/settings', () => {
     expect(state.writes[0].settings.duel).toEqual(duel);
   });
 
+  it('preserves saved stage size when an old editor omits it, independently of duel settings', async () => {
+    state.stored = { ...SOLO, stage_size: 15, duel: DUEL };
+    const { stage_size, ...legacy } = { ...SOLO, duel: DUEL };
+    expect(await save(legacy)).toEqual({ status: 200, body: { settings: { ...legacy, stage_size: 15 } } });
+    expect(state.calls).toContainEqual(['select', 'settings']);
+    expect(state.writes[0].settings.words_per_round).toBe(SOLO.words_per_round);
+  });
+
   it('adds disabled duel defaults when the old stored settings have no duel section', async () => {
     state.stored = { words_per_round: 20, options_count: 5 };
     expect(await save(SOLO)).toEqual({ status: 200, body: { settings: { ...SOLO, duel: DUEL } } });
@@ -108,6 +116,10 @@ describe('PUT /api/games/letter-catcher/settings', () => {
 
   it.each([
     { words_per_round: 7 },
+    { stage_size: 0 },
+    { stage_size: 7 },
+    { stage_size: [5] },
+    { stage_size: null },
     { options_count: 9 },
     { progress_motion: 'false' },
     { duel: null },

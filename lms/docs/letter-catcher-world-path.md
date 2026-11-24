@@ -1,5 +1,19 @@
 # Letter Catcher: «مسار العوالم»
 
+## Sequential stages — 2026-11-24
+
+Mohamed requested removal of «العب الكل» and sequential play within each world. This supersedes the older play-all entry and direct whole-world round described below.
+
+- Each world now opens a numbered stage selector. Stages contain 5 words by default; the teacher can set 5, 10 or 15 words per stage independently of the retained legacy round setting. Every playable word appears in exactly one stage, including a shorter final stage. Numbers remain ordered from 0.
+- A completed stage unlocks the next. The following world opens after all stages of its predecessor are complete. Historical world access stays available, without treating earlier random rounds as new stage completions.
+- Stage identity includes its canonical world, position and the exact ordered word IDs. Changed partitions do not inherit unrelated completion; image/audio edits retain progress. Start requests and exact stage membership are checked on the server.
+- Child-scoped progress is stored in private `game_settings` rows under `lc-stage:<effective-user-id>:<stage-id>`. Enrollment never means completion. Completion settles through the existing verified effects and CAS flow; retries cannot duplicate points or completion. Existing `game_results` records remain intact and retain readable world names.
+- New student starts require a valid stage. Already saved legacy and mixed rounds can still resume. Teacher previews and fallback demos do not write official progress or points; demo progress stays in the current component only.
+- The stage dialog includes loading/retry states, keyboard focus handling and save-retry controls. Results offer the next stage, replay and the world's stage selector. The world path, friend duel, word frames, audio and celebrations retain their existing implementations.
+- Service-worker cache advances to `aarem-v16`.
+
+Validation: 1,472 tests across 113 files passed, including stage partitioning, locks, legacy access, verified completion/retries, sibling isolation, teacher settings and stage selector states. The production build passed. The actual Next UI was checked against an isolated local fixture at phone 390×844, tablet 820×1024 and desktop 1280×800: play-all absent, five-word stage completion, reload/resume at the exact unfinished question, next-stage start, subsequent stage/world locks, retained progress after resizing, dialog focus and Escape restoration. The tablet/desktop dialog measured 560px without horizontal overflow. No production learner records were written during QA.
+
 On 2026-11-23, Mohamed selected the third start-screen concept: worlds displayed as islands along a path. This is a change to world selection only. The existing question screen, teaching sequence, animal word rendering and celebrations retain their approved appearance and behavior.
 
 ## Data and interaction contract

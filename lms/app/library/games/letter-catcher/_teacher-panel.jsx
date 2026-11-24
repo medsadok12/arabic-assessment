@@ -3,7 +3,8 @@
 import { useState, useRef, Fragment } from 'react';
 import { keepRowInPlace, returnRow, revealBelow, flashRow } from '../../../../lib/edit-scroll';
 import AudioUploadButton from '../../../../components/AudioUploadButton';
-import { WORDS_PER_ROUND_CHOICES, OPTIONS_COUNT_CHOICES, LEN_NO_LIMIT, normalizeLcSettings } from '../../../../lib/letter-catcher';
+import { OPTIONS_COUNT_CHOICES, LEN_NO_LIMIT, normalizeLcSettings } from '../../../../lib/letter-catcher';
+import { LC_STAGE_SIZE_CHOICES } from '../../../../lib/letter-catcher-stages';
 import { sortLcCategories, sortLcCategoryWords } from '../../../../lib/letter-catcher-categories';
 import { prepareLetterCatcherImageUpload } from '../../../../lib/letter-catcher-image-upload';
 import { childFetch } from '../../../../lib/child-fetch';
@@ -538,7 +539,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
   const [resetting, setResetting] = useState(false);
   const [resetMsg, setResetMsg] = useState(null);
   const savedSettings = normalizeLcSettings(settings);
-  const dirty = draft.words_per_round !== savedSettings.words_per_round || draft.options_count !== savedSettings.options_count || draft.progress_motion !== savedSettings.progress_motion || JSON.stringify(draft.duel) !== JSON.stringify(savedSettings.duel);
+  const dirty = draft.stage_size !== savedSettings.stage_size || draft.words_per_round !== savedSettings.words_per_round || draft.options_count !== savedSettings.options_count || draft.progress_motion !== savedSettings.progress_motion || JSON.stringify(draft.duel) !== JSON.stringify(savedSettings.duel);
 
   const changeDuel = (values) => {
     setDraft(d => ({ ...d, duel: { ...d.duel, ...values } }));
@@ -569,7 +570,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
       if (!res.ok) throw new Error(json.error || 'فشل الحفظ');
       setDraft(normalizeLcSettings(json.settings));
       onSettingsSaved?.(json.settings);
-      setStMsg({ ok: true, text: '✅ حُفظت — تُطبَّق على كل الطلاب من جولتهم القادمة' });
+      setStMsg({ ok: true, text: '✅ حُفظت — تُطبَّق على كل الطلاب عند بدء مرحلة جديدة' });
     } catch (e) { setStMsg({ ok: false, text: `❌ ${e.message}` }); }
     setStSaving(false);
   };
@@ -593,7 +594,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
         <div style={{ marginBottom:16, borderRadius:12, border:'1.5px solid #e5e7eb', overflow:'hidden', flexShrink:0 }}>
           <button onClick={() => setCfgOpen(o => !o)} style={{ width:'100%', background: cfgOpen ? '#f5f3ff' : '#f9fafb', border:'none', padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:'inherit' }}>
             <span style={{ fontWeight:700, color:'#5b4fc4', fontSize:'.9rem' }}>
-              ⚙️ إعدادات الجولة — {savedSettings.words_per_round === 0 ? 'كل كلمات المجموعة' : `${displayNumber(savedSettings.words_per_round)} كلمة`}
+              ⚙️ إعدادات المراحل — {displayNumber(savedSettings.stage_size)} {savedSettings.stage_size <= 10 ? 'كلمات' : 'كلمة'}
             </span>
             <span style={{ color:'#9ca3af', fontSize:'.78rem' }}>{cfgOpen ? '▲ طي' : '▼ توسيع'}</span>
           </button>
@@ -604,12 +605,12 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
               <div style={{ background:'#fffbeb', border:'1.5px solid #E8B84B', borderRadius:12, padding:'12px 12px 14px', marginBottom:14 }}>
                 <div style={{ fontWeight:800, color:'#1A2B4A', fontSize:'.9rem', marginBottom:10 }}>👥 تُطبَّق على كل الطلاب</div>
 
-                <div style={{ fontSize:'.88rem', fontWeight:700, color:'#374151', marginBottom:6 }}>عدد كلمات الجولة</div>
+                <div style={{ fontSize:'.88rem', fontWeight:700, color:'#374151', marginBottom:6 }}>عدد كلمات المرحلة</div>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
-                  {WORDS_PER_ROUND_CHOICES.map(n => (
-                    <button key={n} type="button" style={chip(draft.words_per_round === n)}
-                      onClick={() => { setDraft(d => ({ ...d, words_per_round: n })); setStMsg(null); }}>
-                      {n === 0 ? 'كل كلمات المجموعة' : n}
+                  {LC_STAGE_SIZE_CHOICES.map(n => (
+                    <button key={n} type="button" style={chip(draft.stage_size === n)}
+                      onClick={() => { setDraft(d => ({ ...d, stage_size: n })); setStMsg(null); }}>
+                      {displayNumber(n)}
                     </button>
                   ))}
                 </div>
@@ -632,7 +633,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
                 </label>
 
                 <div style={{ fontSize:'.78rem', color:'#6b7280', marginBottom:10, lineHeight:1.6 }}>
-                  🔄 الكلمات تُختار بالتدوير: لا تتكرر كلمة على الطفل حتى يمرّ على كل كلمات المجموعة، ثم تبدأ دورة جديدة. الأعداد تتقدّم بالترتيب من الصفر.
+                  تُقسَّم كلمات كل عالم إلى مراحل متتابعة بلا تكرار. تُفتح المرحلة التالية بعد إكمال السابقة، وتبدأ الأعداد من 0.
                 </div>
 
                 <div style={{ borderTop:'1px solid #e8d9ad', paddingTop:12, marginTop:12, marginBottom:14 }}>
