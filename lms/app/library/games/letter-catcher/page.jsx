@@ -23,9 +23,7 @@ import { playLetterCatcherWord } from '../../../../lib/letter-catcher-audio';
 import { preloadLetterCatcherImage, warmLetterCatcherImages } from '../../../../lib/letter-catcher-images';
 import { refreshLcRoundImages } from '../../../../lib/letter-catcher-live-images';
 import { refreshLcRoundAudio } from '../../../../lib/letter-catcher-live-audio';
-import { letterCatcherPictureLayout } from '../../../../lib/letter-catcher-picture';
 import { createLetterCatcherAnswerFeedback, letterCatcherAnswerMatches } from '../../../../lib/letter-catcher-answer-feedback';
-import { playCelebrationVideo } from '../../../../lib/celebration-video';
 import { playAnimalFahimCelebration } from '../../../../lib/letter-catcher-animal-celebration';
 import GameScene from '../../../../components/GameScene';
 // بطل الطالب من «عالم الأبطال» يحتفل معه في شاشة النهاية — المكوّن خفيف، وthree.js يُحمَّل عند ظهوره فقط
@@ -118,9 +116,7 @@ const CAT_META = {
 function preloadQuestionPicture(word) {
   return Promise.all([
     preloadLetterCatcherImage(word?.image_url),
-    usesAnimalWordFrame(word)
-      ? preloadLetterCatcherImage('/media/fahim-cheer-frames.webp')
-      : Promise.resolve(),
+    preloadLetterCatcherImage('/media/fahim-cheer-frames.webp'),
   ]);
 }
 
@@ -144,35 +140,6 @@ function WordImage({ imageUrl, emoji, size = 150 }) {
     {!ready && <div style={{ ...S.emojiBox, position: 'absolute', inset: 0, width: '100%', height: '100%', fontSize: size * .45 }}>{emoji || '❓'}</div>}
     <img ref={imageRef} src={imageUrl} alt="" decoding="async" onLoad={loaded} onError={() => setErr(true)} style={{ display: 'block', height: '100%', width: '100%', objectFit: 'contain', borderRadius: 16, opacity: ready ? 1 : 0 }} />
   </div>;
-}
-
-/* سطح الفيديو ثابت المقاس حتى وهو مخفي. الصورة تنزاح بتحويل بصري فقط؛
-   لا يتغير عرض الفيديو ولا يعاد توزيع البطاقة في كل إطار من حركة الدخول. */
-function CelebrationPicture({ word, size, cheer, videoRef }) {
-  const [pictureEl, setPictureEl] = useState(null);
-  const [imageEl, setImageEl] = useState(null);
-  const pictureWidth = useElementWidth(pictureEl);
-  const imageWidth = useElementWidth(imageEl);
-  const available = Math.max(0, pictureWidth - 20);
-  const { videoWidth, imageScale, imageOffset, videoOffset } = letterCatcherPictureLayout({ available, size, imageWidth });
-  const shown = cheer === 'in' || cheer === 'out';
-  return (
-    <div ref={setPictureEl} style={{ ...S.pictureCard, height: size + 20 }}>
-      <div data-cheer={cheer || ''} aria-hidden={!shown} style={{
-        ...S.cheerBox, width: videoWidth, height: videoWidth,
-        opacity: cheer === 'in' ? 1 : 0,
-        transform: `translate3d(calc(-50% + ${videoOffset + (shown ? 0 : 12)}px), -50%, 0)`,
-      }}>
-        <video ref={videoRef} poster="/media/elephant-poster.jpg" playsInline preload="auto" style={S.cheerVideo}>
-          <source src="/media/elephant.mp4" type="video/mp4" />
-          <source src="/media/elephant.webm" type="video/webm" />
-        </video>
-      </div>
-      <div ref={setImageEl} style={{ ...S.wordPicture, transform: shown ? `translate3d(-${imageOffset}px, 0, 0) scale(${imageScale})` : 'translate3d(0, 0, 0) scale(1)' }}>
-        <WordImage key={word.image_url || word.id} imageUrl={word.image_url} emoji={word.emoji} size={size} />
-      </div>
-    </div>
-  );
 }
 
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
@@ -291,8 +258,6 @@ function useViewportHeight() {
    شرائط وبطاقة زجاجية، وألوان الهوية — لكل زر حرف حافة سفلية بدرجة من ألوانها، ولا أحمر عند الخطأ ── */
 const TILE_TINTS = ['#E8B84B', '#A48BE6', '#8798B3', '#6CCFA0', '#D9CCB6'];
 const MAX_TRIES  = 2; // محاولتان لكل كلمة قبل كشف الحرف
-const CHEER_MS   = 3000; // نحافظ على جملة فهيم كاملة؛ لا يؤخر المقطع زر «التالي»
-const CHEER_FADE = 400;  // اختفاء ناعم في آخر المقطع
 const WORD_PAUSE = 120;  // استراحة قصيرة بعد نطق الكلمة، دون انتظار إضافي للانتقال
 
 const fullWordOf = (wd) => (wd.word.includes('_') ? wd.word.replace('_', wd.missing_letter) : wd.word);
@@ -430,16 +395,14 @@ export default function LetterCatcherGame() {
 
   /* يسمع الطفل الكلمة أولاً، ثم يظهر زر «التالي» دون انتظار انتهاء احتفال فهيم.
      يحتفظ فهيم بمقطعه وصوته الحاليين؛ يمكن للطفل متابعة القراءة أو الانتقال بنفسه.
-     الكلمة كاملة ظاهرة طوال الوقت. صوت فهيم مدموج في مقطعه فيبقيان متزامنين.
-     سفاري لا يسمح بصوت يبدأ بعد اللمسة بثوانٍ، فيُفتح صوت المقطع داخل اللمسة نفسها (تشغيل صامت
-     ثم إيقاف فوري)، وإن مُنع رغم ذلك يظهر المقطع صامتاً */
-  const cheerVidRef = useRef(null);
+     الكلمة كاملة ظاهرة طوال الوقت. فهيم طبقة شفافة قرب سطر التشجيع في جميع المواضيع.
+     يُجهَّز تسجيله داخل اللمسة نفسها لسفاري، وتستمر الحركة حتى إن مُنع الصوت. */
+  const cheerMediaRef = useRef(null);
   const cheerTimers = useRef([]);
   const cheerRun    = useRef(0);   // كل احتفال برقم — ما يصل متأخراً من احتفال أُلغي يُهمل
   const fahimOn     = useRef(false);
   const cheerPlayback = useRef(null);
   const cheerPreparation = useRef(null);
-  const animalCheer = useRef(false);
   const [cheer, setCheer] = useState(null); // null | 'word' | 'loading' | 'in' | 'out'
   const clearCheerTimers = () => { cheerTimers.current.forEach(clearTimeout); cheerTimers.current = []; };
   const clearCheer = useCallback(() => {
@@ -449,7 +412,7 @@ export default function LetterCatcherGame() {
     cheerPlayback.current?.();
     cheerPlayback.current = null;
     fahimOn.current = false;
-    try { cheerVidRef.current?.pause(); } catch {}
+    try { cheerMediaRef.current?.pause(); } catch {}
     setCheer(null);
   }, []);
   const startFahim = useCallback((run) => {
@@ -458,30 +421,17 @@ export default function LetterCatcherGame() {
     stopWordAudio();
     fahimOn.current = true;
     cheerPreparation.current = null;
-    const v = cheerVidRef.current;
+    const v = cheerMediaRef.current;
     if (!v) { clearCheer(); return; }
-    if (animalCheer.current) {
-      cheerPlayback.current = playAnimalFahimCelebration(v, {
-        isCurrent: () => run === cheerRun.current,
-        onReady: () => setCheer('in'),
-        onFade: () => setCheer('out'),
-        onFinish: clearCheer,
-      });
-      return;
-    }
-    setCheer('loading');
-    cheerPlayback.current = playCelebrationVideo(v, {
+    cheerPlayback.current = playAnimalFahimCelebration(v, {
       isCurrent: () => run === cheerRun.current,
       onReady: () => setCheer('in'),
       onFade: () => setCheer('out'),
       onFinish: clearCheer,
-      durationMs: CHEER_MS,
-      fadeMs: CHEER_FADE,
     });
   }, [clearCheer, stopWordAudio]);
   const celebrate = useCallback((wd) => {
     const run = ++cheerRun.current;
-    animalCheer.current = usesAnimalWordFrame(wd);
     const text = fullWordOf(wd);
     stopWordAudio();
     clearCheerTimers();
@@ -504,10 +454,10 @@ export default function LetterCatcherGame() {
   }, [stopWordAudio, startFahim]);
   useEffect(() => clearCheer, [clearCheer]);
   useEffect(() => { if (phase !== 'playing') clearCheer(); }, [phase, clearCheer]);
-  // تجهيز البداية بينما السؤال ظاهر، بعيداً عن لحظة دخول فهيم.
+  // تجهيز صوت فهيم بينما السؤال ظاهر، بعيداً عن لحظة دخوله.
   useEffect(() => {
     if (phase !== 'playing') return;
-    const video = cheerVidRef.current;
+    const video = cheerMediaRef.current;
     if (video) { video.pause(); try { video.currentTime = 0; } catch {} }
   }, [phase, cur]);
   /* صوت الكلمة يُجهَّز مع ظهور السؤال — فيُسمع فور الإجابة الصحيحة (يُخزَّن في المتصفح يوماً) */
@@ -776,7 +726,7 @@ export default function LetterCatcherGame() {
       onPreview: attempt => {
         confirmedAnswer.current = false; setAnswerConfirmed(false);
         if (attempt.localRight) {
-          const video = cheerVidRef.current;
+          const video = cheerMediaRef.current;
           if (video) {
             try {
               const preparation = {};
@@ -787,7 +737,7 @@ export default function LetterCatcherGame() {
                 video.pause();
                 try { if (video.currentTime > 0) video.currentTime = 0; } catch {}
               }).catch(() => {});
-            } catch { /* Optional video preparation must not block the word or saving. */ }
+            } catch { /* Optional audio preparation must not block the word or saving. */ }
           }
           setChosen(opt); setCorrect(true);
           // Start the actual word once, inside the original gesture (also on Safari).
@@ -1001,7 +951,7 @@ export default function LetterCatcherGame() {
   // «أحسنت» تظهر مع فهيم وصوته معاً — أثناء نطق الكلمة يقول السطر «اسمع الكلمة» فقط
   const pill = correct === true
     ? fahimShown
-      ? { text: animalWordFrame ? 'أَحْسَنْتَ!' : tried.length ? '✅ أَحْسَنْتَ! وَجَدْتَهُ 🎉' : '✅ أَحْسَنْتَ! 🎉', style: S.pillOk }
+      ? { text: 'أَحْسَنْتَ!', style: S.pillOk }
       : cheer === 'word' || cheer === 'loading'
         ? { text: '🔊 اِسْمَعِ الْكَلِمَةَ', style: null }
         : { text: 'اِقْرَأِ الْكَلِمَةَ', style: S.pillOk }
@@ -1051,13 +1001,10 @@ export default function LetterCatcherGame() {
       <GameScene category={catLabel} scene={lcCategoryScene(catLabel)} />
 
       <div ref={columnRef} style={S.stageColumn}>
-        {animalWordFrame ? (
-          // Reserve both the save message and final summary, so the last answer
-          // cannot push the scene down when its second status line appears.
-          <div style={{ minHeight: 'calc(2.34rem + 12px)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-            <VerifiedTrainingStatus training={verified} compact />
-          </div>
-        ) : <VerifiedTrainingStatus training={verified} compact />}
+        {/* نحجز سطري الحفظ والنتيجة في كل المواضيع حتى تبقى الصورة ثابتة. */}
+        <div style={{ minHeight: 'calc(2.34rem + 12px)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+          <VerifiedTrainingStatus training={verified} compact />
+        </div>
         <LetterCatcherProgress
           category={catLabel}
           totalPoints={totalPoints}
@@ -1081,14 +1028,12 @@ export default function LetterCatcherGame() {
           <div ref={cardRef} style={{ ...S.glassCard, padding: sz.pad, gap: sz.gap }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <h1 aria-live="polite" style={{ ...S.questionPill, ...pill.style, minHeight: sz.pill, fontSize: compact ? '1.12rem' : '1.25rem' }}>{pill.text}</h1>
-              {animalWordFrame && <LetterCatcherFahimOverlay cheer={cheer} mediaRef={cheerVidRef} wordKey={w.id || cur} compact={compact} />}
+              <LetterCatcherFahimOverlay cheer={cheer} mediaRef={cheerMediaRef} wordKey={w.id || cur} compact={compact} />
             </div>
 
-            {animalWordFrame ? (
-              <div data-lc-animal-picture="" style={{ ...S.pictureCard, height: imgH + 20 }}>
-                <WordImage key={w.image_url || w.id} imageUrl={w.image_url} emoji={w.emoji} size={imgH} />
-              </div>
-            ) : <CelebrationPicture word={w} size={imgH} cheer={cheer} videoRef={cheerVidRef} />}
+            <div data-lc-word-picture="" data-lc-animal-picture={animalWordFrame ? '' : undefined} style={{ ...S.pictureCard, height: imgH + 20 }}>
+              <WordImage key={w.image_url || w.id} imageUrl={w.image_url} emoji={w.emoji} size={imgH} />
+            </div>
 
             {/* ── ارتفاع محجوز للحركات قبل الإجابة وبعدها، حتى لا تقفز الصورة أو الأزرار ── */}
             <div ref={setWordControlsEl} style={{ ...S.wordControls, gridTemplateColumns: balanceListenRow ? '48px minmax(0, 1fr) 48px' : '48px minmax(0, 1fr)' }}>
@@ -1175,7 +1120,7 @@ export default function LetterCatcherGame() {
         {/* الأسفل ثابت: فهيم يشجّع، وبعد الإجابة زر «التالي» بجانبه — لا شيء يدفع البطاقة */}
         <FaheemBuddy
           size={sz.foot}
-          hideMascot={animalWordFrame || fahimShown}
+          hideMascot
           text={buddyText}
           action={chosen !== null && wordFinished && (
             <button style={{ ...S.goldBtn, minHeight: compact ? 50 : 56, flex: 1, opacity: preparingPicture ? .7 : 1 }} onClick={next} disabled={!answerConfirmed || preparingPicture || verified.busy || verified.pending} aria-busy={preparingPicture || !answerConfirmed}>
@@ -1308,10 +1253,6 @@ const S = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     isolation: 'isolate',
   },
-  wordPicture: {
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', maxWidth: '100%', minWidth: 0,
-    transition: 'transform .28s ease-out', willChange: 'transform',
-  },
   // زر الاستماع يسار الكلمة، خارج إطارها وبعيداً عن الصورة.
   wordControls: {
     display: 'grid', direction: 'ltr', gap: 8, alignItems: 'center', width: '100%', minWidth: 0,
@@ -1391,13 +1332,6 @@ const S = {
     cursor: 'pointer', fontFamily: 'inherit',
   },
   buddy: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', flexShrink: 0 },
-  // مقطع فهيم بخلفية بيضاء داخل بطاقة الصورة البيضاء — لا إطار ظاهر للفيديو، وتنزاح الصورة بجانبه
-  cheerBox: {
-    position: 'absolute', top: '50%', left: '50%', overflow: 'hidden', borderRadius: 16,
-    transition: 'transform .28s ease-out, opacity .25s ease-out', willChange: 'transform, opacity',
-    contain: 'layout paint', pointerEvents: 'none',
-  },
-  cheerVideo: { display: 'block', width: '100%', height: '100%', objectFit: 'contain', background: '#fff' },
   buddyBubble: {
     maxWidth: 260, background: '#fff', color: '#5A3FBF', borderRadius: '18px 18px 18px 6px',
     padding: '9px 13px', fontSize: '1.02rem', fontWeight: 800, boxShadow: '0 6px 16px rgba(26,43,74,0.16)',
