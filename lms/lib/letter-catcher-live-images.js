@@ -17,3 +17,15 @@ export function refreshLcRoundImages(items, currentWords) {
   });
   return changed ? refreshed : items;
 }
+
+// An unfinished question may no longer be playable after a teacher withdraws
+// or renames its teaching target. Never shift saved answer/event indexes.
+export function lcRoundMatchesCurrentWords(items, currentWords) {
+  if (!Array.isArray(items) || !Array.isArray(currentWords)) return false;
+  const byId = new Map(currentWords.map(word => [String(word.id), word]));
+  return items.every(item => {
+    const current = byId.get(String(item?.id));
+    return current && current.word === item.word && current.missing_letter === item.missing_letter;
+  });
+}
+

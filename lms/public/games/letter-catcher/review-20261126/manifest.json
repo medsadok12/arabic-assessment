@@ -1,0 +1,474 @@
+{
+  "version": "2026-11-26",
+  "words": [
+    {
+      "id": "ed171515-5da7-55b8-80d1-3242d8bc964d",
+      "key": "s001-1",
+      "full_word": "عَشَرَةٌ",
+      "category": "الأعداد",
+      "image_url": "/games/letter-catcher/review-20261126/s001-1.webp"
+    },
+    {
+      "id": "584a18ff-52e3-564d-bfc2-f282c786c3a3",
+      "key": "s002-1",
+      "full_word": "صَيْفٌ",
+      "category": "الجوّ والفصول",
+      "image_url": "/games/letter-catcher/review-20261126/s002-1.webp"
+    },
+    {
+      "id": "2934b2ef-e0d0-56a3-9b2c-323d49911661",
+      "key": "s003-1",
+      "full_word": "شِتَاءٌ",
+      "category": "الجوّ والفصول",
+      "image_url": "/games/letter-catcher/review-20261126/s003-1.webp"
+    },
+    {
+      "id": "ca704e4b-d9a8-53e1-8918-82964428c1ec",
+      "key": "s004-1",
+      "full_word": "ثَلْجٌ",
+      "category": "الجوّ والفصول",
+      "image_url": "/games/letter-catcher/review-20261126/s004-1.webp"
+    },
+    {
+      "id": "a3c845be-c6d2-5a55-a5c4-6d2d4c277335",
+      "key": "s005-1",
+      "full_word": "قَوْسُ قُزَحَ",
+      "category": "الجوّ والفصول",
+      "image_url": "/games/letter-catcher/review-20261126/s005-1.webp"
+    },
+    {
+      "id": "4691a2e7-e876-53e7-9e96-8e614d0c1d70",
+      "key": "s008-1",
+      "full_word": "مُسْتَشْفًى",
+      "category": "أماكن من حولنا",
+      "image_url": "/games/letter-catcher/review-20261126/s008-1.webp"
+    },
+    {
+      "id": "2d730a20-2015-581a-afd1-c78f1204cb91",
+      "key": "s009-1",
+      "full_word": "مَطَارٌ",
+      "category": "أماكن من حولنا",
+      "image_url": "/games/letter-catcher/review-20261126/s009-1.webp"
+    },
+    {
+      "id": "3c6920bb-5e9e-5c4e-9215-4cc592051c12",
+      "key": "s010-1",
+      "full_word": "مَطْعَمٌ",
+      "category": "أماكن من حولنا",
+      "image_url": "/games/letter-catcher/review-20261126/s010-1.webp"
+    },
+    {
+      "id": "31cd8887-81d7-52ef-886d-18b8cab2a97b",
+      "key": "s011-1",
+      "full_word": "فُنْدُقٌ",
+      "category": "أماكن من حولنا",
+      "image_url": "/games/letter-catcher/review-20261126/s011-1.webp"
+    },
+    {
+      "id": "5ab07653-5dcc-5093-8837-9357c4c46c29",
+      "key": "s012-1",
+      "full_word": "صَيْدَلِيَّةٌ",
+      "category": "أماكن من حولنا",
+      "image_url": "/games/letter-catcher/review-20261126/s012-1.webp"
+    },
+    {
+      "id": "981b69fc-22c9-50f6-b585-148c36322dd2",
+      "key": "s013-1",
+      "full_word": "سِرْوَالٌ",
+      "category": "الملابس والزينة",
+      "image_url": "/games/letter-catcher/review-20261126/s013-1.webp"
+    },
+    {
+      "id": "d2f19504-3b4d-55dd-b1d4-fd19f9fc5b4a",
+      "key": "s014-1",
+      "full_word": "تَنُّورَةٌ",
+      "category": "الملابس والزينة",
+      "image_url": "/games/letter-catcher/review-20261126/s014-1.webp"
+    },
+    {
+      "id": "21978337-8b9b-5e6b-8554-4e397eb44840",
+      "key": "s015-1",
+      "full_word": "ثَوْبٌ",
+      "category": "الملابس والزينة",
+      "image_url": "/games/letter-catcher/review-20261126/s015-1.webp"
+    },
+    {
+      "id": "477ab7ad-c6c9-5cd2-9f01-26d0d36919aa",
+      "key": "s016-1",
+      "full_word": "شَجَرَةٌ",
+      "category": "الطبيعة",
+      "image_url": "/games/letter-catcher/review-20261126/s016-1.webp"
+    },
+    {
+      "id": "bbded8d0-3508-5832-9530-c34017036d00",
+      "key": "s017-1",
+      "full_word": "زَهْرَةٌ",
+      "category": "الطبيعة",
+      "image_url": "/games/letter-catcher/review-20261126/s017-1.webp"
+    },
+    {
+      "id": "09a0a933-e2a2-5330-a930-f3e27a762517",
+      "key": "s018-1",
+      "full_word": "نَمْلَةٌ",
+      "category": "الحيوانات",
+      "image_url": "/games/letter-catcher/review-20261126/s018-1.webp"
+    },
+    {
+      "id": "c1486621-d4da-5591-aead-c6faa223fa12",
+      "key": "s019-1",
+      "full_word": "نَحْلَةٌ",
+      "category": "الحيوانات",
+      "image_url": "/games/letter-catcher/review-20261126/s019-1.webp"
+    },
+    {
+      "id": "abfbc1ef-9cb5-5519-823c-13b825805470",
+      "key": "s020-1",
+      "full_word": "فَرَاشَةٌ",
+      "category": "الحيوانات",
+      "image_url": "/games/letter-catcher/review-20261126/s020-1.webp"
+    },
+    {
+      "id": "2afe1c82-5650-50b8-a91a-99220a4bc4bf",
+      "key": "s021-1",
+      "full_word": "تَمْرٌ",
+      "category": "الفواكه",
+      "image_url": "/games/letter-catcher/review-20261126/s021-1.webp"
+    },
+    {
+      "id": "16c78d3a-97d0-506b-85de-c8bba6005eb5",
+      "key": "s022-1",
+      "full_word": "مُمَرِّضَةٌ",
+      "category": "المهن",
+      "image_url": "/games/letter-catcher/review-20261126/s022-1.webp"
+    },
+    {
+      "id": "14245b4c-8da5-5fa2-9b02-48cccbe40506",
+      "key": "s023-1",
+      "full_word": "طَبَّاخٌ",
+      "category": "المهن",
+      "image_url": "/games/letter-catcher/review-20261126/s023-1.webp"
+    },
+    {
+      "id": "62aeef53-e9a2-5c3c-8461-ec800d9df1d2",
+      "key": "s024-1",
+      "full_word": "خَيَّاطٌ",
+      "category": "المهن",
+      "image_url": "/games/letter-catcher/review-20261126/s024-1.webp"
+    },
+    {
+      "id": "95bb256d-14f8-5aab-8fe7-933973450b87",
+      "key": "s025-1",
+      "full_word": "أُسْطُوَانَةٌ",
+      "category": "الأشكال",
+      "image_url": "/games/letter-catcher/review-20261126/s025-1.webp"
+    },
+    {
+      "id": "3ca7ffcd-b614-54a8-a3c2-42bccdc1028c",
+      "key": "s030-1",
+      "full_word": "رَأْسٌ",
+      "category": "أعضاء الجسم",
+      "image_url": "/games/letter-catcher/review-20261126/s030-1.webp"
+    },
+    {
+      "id": "b8b9231b-e2c7-5ff7-9490-0c8086e2c962",
+      "key": "s030-2",
+      "full_word": "عَيْنٌ",
+      "category": "أعضاء الجسم",
+      "image_url": "/games/letter-catcher/review-20261126/s030-2.webp"
+    },
+    {
+      "id": "8a8894ff-d201-567e-b388-d01398b674b8",
+      "key": "s030-3",
+      "full_word": "أُذُنٌ",
+      "category": "أعضاء الجسم",
+      "image_url": "/games/letter-catcher/review-20261126/s030-3.webp"
+    },
+    {
+      "id": "62bad63a-6e85-582b-bd6b-ec345777c2dd",
+      "key": "s030-4",
+      "full_word": "أَنْفٌ",
+      "category": "أعضاء الجسم",
+      "image_url": "/games/letter-catcher/review-20261126/s030-4.webp"
+    },
+    {
+      "id": "6d98539f-1241-50ce-8696-31a7ea3cb49e",
+      "key": "s030-5",
+      "full_word": "فَمٌ",
+      "category": "أعضاء الجسم",
+      "image_url": "/games/letter-catcher/review-20261126/s030-5.webp"
+    },
+    {
+      "id": "a2c200b3-9965-5159-acae-cb985b6a5746",
+      "key": "s030-6",
+      "full_word": "يَدٌ",
+      "category": "أعضاء الجسم",
+      "image_url": "/games/letter-catcher/review-20261126/s030-6.webp"
+    },
+    {
+      "id": "c1411638-6a64-56c6-aeeb-4ac346d2be9c",
+      "key": "s030-7",
+      "full_word": "قَدَمٌ",
+      "category": "أعضاء الجسم",
+      "image_url": "/games/letter-catcher/review-20261126/s030-7.webp"
+    },
+    {
+      "id": "a3673159-8ea0-5998-bfc4-1415d9e9caa2",
+      "key": "s030-8",
+      "full_word": "شَعْرٌ",
+      "category": "أعضاء الجسم",
+      "image_url": "/games/letter-catcher/review-20261126/s030-8.webp"
+    },
+    {
+      "id": "832156d5-c4aa-5e1c-be99-24f716e400df",
+      "key": "s031-1",
+      "full_word": "بَابٌ",
+      "category": "البيت",
+      "image_url": "/games/letter-catcher/review-20261126/s031-1.webp"
+    },
+    {
+      "id": "27175dad-69f9-536d-a430-9c8720b6ffe2",
+      "key": "s031-2",
+      "full_word": "نَافِذَةٌ",
+      "category": "البيت",
+      "image_url": "/games/letter-catcher/review-20261126/s031-2.webp"
+    },
+    {
+      "id": "11bf7074-b87e-58fe-8de0-5fe01967540a",
+      "key": "s031-3",
+      "full_word": "غُرْفَةٌ",
+      "category": "البيت",
+      "image_url": "/games/letter-catcher/review-20261126/s031-3.webp"
+    },
+    {
+      "id": "4cd35105-456e-5912-bd93-ddb974e8d7bf",
+      "key": "s031-4",
+      "full_word": "سَرِيرٌ",
+      "category": "البيت",
+      "image_url": "/games/letter-catcher/review-20261126/s031-4.webp"
+    },
+    {
+      "id": "609e57d3-b627-5f3d-9325-d22cbb297e7e",
+      "key": "s031-5",
+      "full_word": "كُرْسِيٌّ",
+      "category": "البيت",
+      "image_url": "/games/letter-catcher/review-20261126/s031-5.webp"
+    },
+    {
+      "id": "e187d274-81af-57b3-a748-b075770e890d",
+      "key": "s031-6",
+      "full_word": "طَاوِلَةٌ",
+      "category": "البيت",
+      "image_url": "/games/letter-catcher/review-20261126/s031-6.webp"
+    },
+    {
+      "id": "30c1b564-58cf-5f8d-9e70-6deee8f04e23",
+      "key": "s031-7",
+      "full_word": "مَطْبَخٌ",
+      "category": "البيت",
+      "image_url": "/games/letter-catcher/review-20261126/s031-7.webp"
+    },
+    {
+      "id": "46c901e6-c158-5cc1-be2b-7e97a2b5c3ca",
+      "key": "s031-8",
+      "full_word": "حَمَّامٌ",
+      "category": "البيت",
+      "image_url": "/games/letter-catcher/review-20261126/s031-8.webp"
+    },
+    {
+      "id": "a090ac6e-3035-5927-9e8e-c5059eabbd89",
+      "key": "s032-1",
+      "full_word": "مَاءٌ",
+      "category": "الطعام والشراب",
+      "image_url": "/games/letter-catcher/review-20261126/s032-1.webp"
+    },
+    {
+      "id": "403e1da7-f631-502d-b2bc-fb24c4190f1a",
+      "key": "s032-2",
+      "full_word": "حَلِيبٌ",
+      "category": "الطعام والشراب",
+      "image_url": "/games/letter-catcher/review-20261126/s032-2.webp"
+    },
+    {
+      "id": "e2fc7f5d-5678-5f78-8cf0-774b9ee31747",
+      "key": "s032-3",
+      "full_word": "خُبْزٌ",
+      "category": "الطعام والشراب",
+      "image_url": "/games/letter-catcher/review-20261126/s032-3.webp"
+    },
+    {
+      "id": "dfa7d3c6-0d76-5972-9159-a05265fbb308",
+      "key": "s032-4",
+      "full_word": "أُرْزٌ",
+      "category": "الطعام والشراب",
+      "image_url": "/games/letter-catcher/review-20261126/s032-4.webp"
+    },
+    {
+      "id": "1bb72636-f8a0-5163-9c98-234c8d1e25a6",
+      "key": "s032-5",
+      "full_word": "بَيْضٌ",
+      "category": "الطعام والشراب",
+      "image_url": "/games/letter-catcher/review-20261126/s032-5.webp"
+    },
+    {
+      "id": "d1e453c7-7ce8-5f74-90d9-ed8775c95a16",
+      "key": "s032-6",
+      "full_word": "جُبْنٌ",
+      "category": "الطعام والشراب",
+      "image_url": "/games/letter-catcher/review-20261126/s032-6.webp"
+    },
+    {
+      "id": "92cdb68e-0034-551b-b3a0-f6e021e5f94c",
+      "key": "s032-7",
+      "full_word": "عَصِيرٌ",
+      "category": "الطعام والشراب",
+      "image_url": "/games/letter-catcher/review-20261126/s032-7.webp"
+    },
+    {
+      "id": "8857f493-114b-5ef7-bab7-42e2be9174aa",
+      "key": "s032-8",
+      "full_word": "شُورْبَةٌ",
+      "category": "الطعام والشراب",
+      "image_url": "/games/letter-catcher/review-20261126/s032-8.webp"
+    },
+    {
+      "id": "6ddff04b-b420-55df-8291-f404c2ed2eff",
+      "key": "s033-1",
+      "full_word": "سَيَّارَةٌ",
+      "category": "وسائل النقل",
+      "image_url": "/games/letter-catcher/review-20261126/s033-1.webp"
+    },
+    {
+      "id": "6fb89fa4-b21b-5f28-80e4-442d0d31ec00",
+      "key": "s033-2",
+      "full_word": "حَافِلَةٌ",
+      "category": "وسائل النقل",
+      "image_url": "/games/letter-catcher/review-20261126/s033-2.webp"
+    },
+    {
+      "id": "24e11933-b343-5105-9bbf-63315177bc48",
+      "key": "s033-3",
+      "full_word": "طَائِرَةٌ",
+      "category": "وسائل النقل",
+      "image_url": "/games/letter-catcher/review-20261126/s033-3.webp"
+    },
+    {
+      "id": "b9b75189-fe4d-54ba-8c3b-a093f15bc2b4",
+      "key": "s033-4",
+      "full_word": "قِطَارٌ",
+      "category": "وسائل النقل",
+      "image_url": "/games/letter-catcher/review-20261126/s033-4.webp"
+    },
+    {
+      "id": "071f7232-26c2-5406-8f48-c9d49d191b20",
+      "key": "s033-5",
+      "full_word": "سَفِينَةٌ",
+      "category": "وسائل النقل",
+      "image_url": "/games/letter-catcher/review-20261126/s033-5.webp"
+    },
+    {
+      "id": "6a80d125-6d04-578e-b308-069ad820b358",
+      "key": "s033-6",
+      "full_word": "قَارِبٌ",
+      "category": "وسائل النقل",
+      "image_url": "/games/letter-catcher/review-20261126/s033-6.webp"
+    },
+    {
+      "id": "66465d14-3d47-5992-b353-e7547e8bdb64",
+      "key": "s033-7",
+      "full_word": "دَرَّاجَةٌ",
+      "category": "وسائل النقل",
+      "image_url": "/games/letter-catcher/review-20261126/s033-7.webp"
+    },
+    {
+      "id": "9d7a4e5d-ec91-5b70-9deb-611cbeead993",
+      "key": "s033-8",
+      "full_word": "دَرَّاجَةٌ نَارِيَّةٌ",
+      "category": "وسائل النقل",
+      "image_url": "/games/letter-catcher/review-20261126/s033-8.webp"
+    },
+    {
+      "id": "7c851952-43eb-500c-9312-b4b1b9a81a99",
+      "key": "s034-1",
+      "full_word": "سَعِيدٌ",
+      "category": "المشاعر والحالات",
+      "image_url": "/games/letter-catcher/review-20261126/s034-1.webp"
+    },
+    {
+      "id": "9c097714-a6a5-5962-92d0-0552557b2689",
+      "key": "s034-2",
+      "full_word": "حَزِينٌ",
+      "category": "المشاعر والحالات",
+      "image_url": "/games/letter-catcher/review-20261126/s034-2.webp"
+    },
+    {
+      "id": "b6a67256-58d0-5e20-b5bf-115640202d1b",
+      "key": "s034-3",
+      "full_word": "غَاضِبٌ",
+      "category": "المشاعر والحالات",
+      "image_url": "/games/letter-catcher/review-20261126/s034-3.webp"
+    },
+    {
+      "id": "b5316899-51f0-5534-b6d7-4c51269ae10d",
+      "key": "s034-4",
+      "full_word": "خَائِفٌ",
+      "category": "المشاعر والحالات",
+      "image_url": "/games/letter-catcher/review-20261126/s034-4.webp"
+    },
+    {
+      "id": "c24c9052-cade-5c87-b76f-414412fe59fa",
+      "key": "s034-5",
+      "full_word": "مُتَحَمِّسٌ",
+      "category": "المشاعر والحالات",
+      "image_url": "/games/letter-catcher/review-20261126/s034-5.webp"
+    },
+    {
+      "id": "daaceb96-e838-584e-b70c-7e053cf652f9",
+      "key": "s034-6",
+      "full_word": "مُتْعَبٌ",
+      "category": "المشاعر والحالات",
+      "image_url": "/games/letter-catcher/review-20261126/s034-6.webp"
+    },
+    {
+      "id": "730ab9d0-814f-58cd-bc74-96066bf127c5",
+      "key": "s035-1",
+      "full_word": "صَابُونٌ",
+      "category": "العناية والنظافة",
+      "image_url": "/games/letter-catcher/review-20261126/s035-1.webp"
+    },
+    {
+      "id": "d00d91ae-c9da-5592-9971-cb29013f8772",
+      "key": "s035-2",
+      "full_word": "فُرْشَاةُ أَسْنَانٍ",
+      "category": "العناية والنظافة",
+      "image_url": "/games/letter-catcher/review-20261126/s035-2.webp"
+    },
+    {
+      "id": "944b758e-4705-5a52-9a85-62bbcc7f3274",
+      "key": "s035-3",
+      "full_word": "مَعْجُونُ أَسْنَانٍ",
+      "category": "العناية والنظافة",
+      "image_url": "/games/letter-catcher/review-20261126/s035-3.webp"
+    },
+    {
+      "id": "2119ebc1-2474-56a8-9b2c-63d4a205d3ef",
+      "key": "s035-4",
+      "full_word": "مِنْشَفَةٌ",
+      "category": "العناية والنظافة",
+      "image_url": "/games/letter-catcher/review-20261126/s035-4.webp"
+    },
+    {
+      "id": "64eb1240-0f1c-59a7-b6bd-e101a7c36131",
+      "key": "s035-5",
+      "full_word": "مِشْطٌ",
+      "category": "العناية والنظافة",
+      "image_url": "/games/letter-catcher/review-20261126/s035-5.webp"
+    },
+    {
+      "id": "daeec2e3-9e6e-5f78-ae0a-ed6bbe634322",
+      "key": "s035-6",
+      "full_word": "شَامْبُو",
+      "category": "العناية والنظافة",
+      "image_url": "/games/letter-catcher/review-20261126/s035-6.webp"
+    }
+  ]
+}

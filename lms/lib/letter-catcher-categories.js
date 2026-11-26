@@ -23,6 +23,12 @@ export const LC_CATEGORIES = [
   { key: 'nature', name: 'الطبيعة', aliases: [], scene: 'meadow' },
   { key: 'family', name: 'الأسرة', aliases: [], scene: 'family' },
   { key: 'shapes', name: 'الأشكال', aliases: [], scene: 'shapes' },
+  { key: 'body', name: 'أعضاء الجسم', aliases: [], scene: 'family' },
+  { key: 'home', name: 'البيت', aliases: ['المنزل'], scene: 'family' },
+  { key: 'food-drink', name: 'الطعام والشراب', aliases: [], scene: 'orchard' },
+  { key: 'transport', name: 'وسائل النقل', aliases: [], scene: 'city' },
+  { key: 'feelings', name: 'المشاعر والحالات', aliases: [], scene: 'family' },
+  { key: 'hygiene', name: 'العناية والنظافة', aliases: [], scene: 'workshop' },
 ];
 export const LC_CATEGORY_ORDER = LC_CATEGORIES.map(c => c.name);
 export const LC_LEGACY_CATEGORY_ORDER = [
@@ -85,11 +91,11 @@ export function canonicalLcWord(row) {
 
 const numberWords = new Map([
   ['صفر', 0], ['واحد', 1], ['اثنان', 2], ['اثنين', 2], ['اثنتان', 2], ['اثنتين', 2],
-  ['ثلاثة', 3], ['أربعة', 4], ['خمسة', 5], ['ستة', 6], ['سبعة', 7], ['ثمانية', 8], ['تسعة', 9],
+  ['ثلاثة', 3], ['أربعة', 4], ['خمسة', 5], ['ستة', 6], ['سبعة', 7], ['ثمانية', 8], ['تسعة', 9], ['عشرة', 10],
 ].map(([word, n]) => [folded(word), n]));
 export function lcNumberValue(row) {
   const word = folded(typeof row === 'string' ? row : fullWord(row));
-  if (/^[0-9]$/.test(word)) return Number(word);
+  if (/^(?:[0-9]|10)$/.test(word)) return Number(word);
   return numberWords.get(word) ?? null;
 }
 export function sortLcCategoryWords(words, category) {
@@ -98,7 +104,7 @@ export function sortLcCategoryWords(words, category) {
   return result.sort((a, b) => (lcNumberValue(a) ?? Infinity) - (lcNumberValue(b) ?? Infinity));
 }
 
-/* Ordered 0–9 learning rounds use the same rotation contract as other topics,
+/* Ordered 0–10 learning rounds use the same rotation contract as other topics,
    but never shuffle the number sequence or mutate saved IDs. */
 export function pickLcOrderedRound(ids, seenIds, count) {
   const all = [...new Set((ids || []).map(String))];
@@ -202,3 +208,4 @@ export function normalizeLcCategoryMeta(rows) {
   const rank = sortLcCategories([...byName.keys()]);
   return rank.map(name => byName.get(name));
 }
+

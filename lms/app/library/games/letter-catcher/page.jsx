@@ -22,7 +22,7 @@ import { letterCatcherTiles, contextualTile, extendedChoiceLetter } from '../../
 import { usesAnimalWordFrame, withSeparatedDammatan } from '../../../../lib/letter-catcher-word-frame';
 import { playLetterCatcherWord } from '../../../../lib/letter-catcher-audio';
 import { preloadLetterCatcherImage, warmLetterCatcherImages } from '../../../../lib/letter-catcher-images';
-import { refreshLcRoundImages } from '../../../../lib/letter-catcher-live-images';
+import { refreshLcRoundImages, lcRoundMatchesCurrentWords } from '../../../../lib/letter-catcher-live-images';
 import { refreshLcRoundAudio } from '../../../../lib/letter-catcher-live-audio';
 import { createLetterCatcherAnswerFeedback, letterCatcherAnswerMatches } from '../../../../lib/letter-catcher-answer-feedback';
 import { playAnimalFahimCelebration } from '../../../../lib/letter-catcher-animal-celebration';
@@ -111,6 +111,12 @@ const CAT_META = {
   'أماكن من حولنا': { emoji:'🏙️' },
   'بلدان ومدن': { emoji:'🌍' },
   'الطبيعة': { emoji:'🏞️' },
+  'أعضاء الجسم': { emoji:'🧒' },
+  'البيت': { emoji:'🏠' },
+  'الطعام والشراب': { emoji:'🍽️' },
+  'وسائل النقل': { emoji:'🚌' },
+  'المشاعر والحالات': { emoji:'😊' },
+  'العناية والنظافة': { emoji:'🧼' },
 };
 
 /* ────────────────────── image with fallback ─────────────────── */
@@ -310,6 +316,7 @@ export default function LetterCatcherGame() {
   const [artworkError, setArtworkError] = useState(false);
   const [wordsReady, setWordsReady] = useState(false);
   const [wordsError, setWordsError] = useState(false);
+  const [contentNotice, setContentNotice] = useState('');
   const [playerReady, setPlayerReady] = useState(false);
   const [playerError, setPlayerError] = useState(false);
   const artworkRequest = useRef(0);
@@ -591,10 +598,8 @@ export default function LetterCatcherGame() {
         try { localStorage.setItem(LC_SETTINGS_KEY, JSON.stringify(st)); } catch {}
       }
       const fresh = (json.words || []).filter(isValid).map(canonicalLcWord);
-      if (fresh.length > 0) {
-        setGameWords(fresh);
-        setCachedWords(fresh);
-      }
+      setGameWords(fresh);
+      setCachedWords(fresh);
       setWordsReady(true);
     } catch {
       if (ticket === wordsRequest.current) setWordsError(true);
@@ -733,6 +738,13 @@ export default function LetterCatcherGame() {
     },
     onStart: async j => {
       resetAnswerFeedback();
+      if (!j.summary.complete && wordsReady && contentSource === 'database' && !lcRoundMatchesCurrentWords(j.items, gameWords)) {
+        verified.forget(); verified.reset();
+        setQueue([]); setPhase('start');
+        setContentNotice('تم تحديث الكلمات. نقاطك وإنجازاتك محفوظة؛ اختر العالم لتلعب بالكلمات الحالية.');
+        return;
+      }
+      setContentNotice('');
       const transition = ++pictureTransition.current;
       // A resumed round keeps its exact question order and cursor.
       const category = j.category === '__all__' ? '__all__' : normalizeLcCategory(j.category);
@@ -750,10 +762,22 @@ export default function LetterCatcherGame() {
       setChosen(null); setCorrect(null); setTried(j.snapshot.events.filter(e=>e.action==='answer'&&e.command.index===j.summary.cursor&&!e.right).map(e=>e.command.value)); setPhase(j.summary.complete ? 'finished' : 'playing');
     },
   });
+
+  useIsoLayoutEffect(() => {
+    if (phase !== 'playing' || !wordsReady || contentSource !== 'database' || lcRoundMatchesCurrentWords(queue, gameWords)) return;
+    resetAnswerFeedback();
+    pictureTransition.current += 1; nextInFlight.current = false;
+    stopWordAudio(); clearCheer();
+    verified.forget(); verified.reset();
+    setPreparingPicture(false); setWordFinished(false); setQueue([]); setPhase('start');
+    setContentNotice('تم تحديث الكلمات. نقاطك وإنجازاتك محفوظة؛ اختر العالم لتلعب بالكلمات الحالية.');
+  }, [phase, wordsReady, contentSource, gameWords, queue]);
+
   const startGame = catFilter => {
     if (!catFilter || catFilter === '__all__' || preparingPicture || nextInFlight.current || verified.busy || verified.pending) return;
     const filtered = gameWords.filter(w => w.category === catFilter);
     if (!filtered.length) return;
+    setContentNotice('');
     const picked = pickRoundWords(filtered, catFilter);
     if (contentSource === 'fallback') verified.demo(picked, catFilter);
     else verified.start(picked.map(word => word.id), catFilter, cfg);
@@ -871,6 +895,7 @@ export default function LetterCatcherGame() {
       <div key="start" style={S.stage}>
         <div style={{ position: 'relative', zIndex: 2 }}>
           <VerifiedTrainingStatus training={preparingPicture ? { ...verified, busy: true, note: 'لَحْظَةٌ… نَسْتَعِدُّ لِلَّعِبِ' } : verified} />
+          {contentNotice && <p role="status" style={{ textAlign: 'center', padding: 12 }}>{contentNotice}</p>}
           {ready && worldAccessError && contentSource !== 'fallback' && <div style={{ textAlign: 'center', padding: 8 }}><button type="button" style={{ ...S.whiteBtn, minHeight: 48 }} onClick={loadWorldAccess}>لنعرض تقدّمك من جديد — حاول مرة أخرى</button></div>}
         </div>
         {/* non-blocking progress strip */}
@@ -1388,3 +1413,4 @@ const S = {
     padding: '9px 13px', fontSize: '1.02rem', fontWeight: 800, boxShadow: '0 6px 16px rgba(26,43,74,0.16)',
   },
 };
+

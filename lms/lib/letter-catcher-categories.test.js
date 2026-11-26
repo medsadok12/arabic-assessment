@@ -36,7 +36,8 @@ describe('Letter Catcher category identity and word boundaries', () => {
       'الحيوانات', 'المدرسة', 'الأعداد', 'الفواكه', 'المزرعة', 'الأشكال',
     ]);
     expect(LC_CATEGORY_ORDER.slice(11, 14)).toEqual(['أماكن من حولنا', 'بلدان ومدن', 'الطبيعة']);
-    expect(new Set(LC_CATEGORY_ORDER).size).toBe(16);
+    expect(new Set(LC_CATEGORY_ORDER).size).toBe(22);
+    expect(LC_CATEGORY_ORDER.slice(16)).toEqual(['أعضاء الجسم', 'البيت', 'الطعام والشراب', 'وسائل النقل', 'المشاعر والحالات', 'العناية والنظافة']);
   });
 
   it('classifies each mixed old row without changing IDs, words, pictures or recordings', () => {
@@ -90,7 +91,12 @@ describe('Number ordering and progressive rounds', () => {
     rows[9] = { ...rows[9], word: 'صِفْ_ٌ', missing_letter: 'ر' };
     expect(sortLcCategoryWords(rows, 'الأرقام').map(r => r.id)).toEqual(ids);
     expect(rows[0].id).toBe('n9');
-    expect(lcNumberValue('عَشَرَةٌ')).toBeNull();
+    expect(lcNumberValue('عَشَرَةٌ')).toBe(10);
+  });
+  it('extends the ordered bank through ten while preserving the original zero-to-nine order', () => {
+    const rows = [word('عَشَرَةٌ', 'الأعداد', 'ten'), ...numbers.map((text, n) => word(text, 'الأعداد', ids[n])).reverse()];
+    expect(sortLcCategoryWords(rows, 'الأعداد').map(row => row.id)).toEqual([...ids, 'ten']);
+    expect(lcNumberValue('10')).toBe(10);
   });
   it('does not reorder other topics or mix unknown teacher words into the 0–9 sequence', () => {
     const rows = [word('س', 'الحيوانات'), word('أ', 'الحيوانات')];
@@ -179,3 +185,4 @@ describe('Historical reports, access and category artwork', () => {
     expect(lcCategoryScene('بلدان ومدن')).toBe('city');
   });
 });
+
