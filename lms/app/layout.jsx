@@ -1,13 +1,13 @@
 import './globals.css';
-import { Cairo, Tajawal, Noto_Naskh_Arabic } from 'next/font/google';
+import localFont from 'next/font/local';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import PWAInstall           from '../components/PWAInstall';
 import FlashcardReminder    from '../components/FlashcardReminder';
 import HeartbeatPing        from '../components/HeartbeatPing';
 
-const cairo = Cairo({
-  subsets:  ['arabic', 'latin'],
-  weight:   ['400', '500', '600', '700', '800'],
+const cairo = localFont({
+  src: './fonts/Cairo-Variable.woff',
+  weight: '400 800',
   variable: '--font-cairo',
   display:  'swap',
   preload:  true,
@@ -15,17 +15,22 @@ const cairo = Cairo({
 
 /* خط الألعاب: نسخ الكتب المدرسية (اختيار الأستاذ محمد 2026-10-22) — الدال لا تشبه الحاء،
    والحركات واضحة. يُحمَّل فقط في صفحات الألعاب (الصنف .game-font) */
-const naskh = Noto_Naskh_Arabic({
-  subsets:  ['arabic'],
-  weight:   ['400', '500', '600', '700'],
+const naskh = localFont({
+  src: './fonts/NotoNaskhArabic-Variable.woff',
+  weight: '400 700',
   variable: '--font-naskh',
   display:  'swap',
   preload:  false,
 });
 
-const tajawal = Tajawal({
-  subsets:  ['arabic', 'latin'],
-  weight:   ['300', '400', '500', '700', '800'],
+const tajawal = localFont({
+  src: [
+    { path: './fonts/Tajawal-Light.woff', weight: '300', style: 'normal' },
+    { path: './fonts/Tajawal-Regular.woff', weight: '400', style: 'normal' },
+    { path: './fonts/Tajawal-Medium.woff', weight: '500', style: 'normal' },
+    { path: './fonts/Tajawal-Bold.woff', weight: '700', style: 'normal' },
+    { path: './fonts/Tajawal-ExtraBold.woff', weight: '800', style: 'normal' },
+  ],
   variable: '--font-tajawal',
   display:  'swap',
   preload:  false,
@@ -101,3 +106,4 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
+
