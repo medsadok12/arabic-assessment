@@ -3,7 +3,6 @@ import useVerifiedTraining from '../../../../lib/use-verified-training';
 import VerifiedTrainingStatus from '../../../../components/VerifiedTrainingStatus';
 import LetterCatcherProgress from '../../../../components/LetterCatcherProgress';
 import LetterCatcherWordFrame from '../../../../components/LetterCatcherWordFrame';
-import LetterCatcherFahimOverlay from '../../../../components/LetterCatcherFahimOverlay';
 import LetterCatcherWorldLoading from './_world-loading';
 import LetterCatcherWorldPath from './_world-path';
 
@@ -20,12 +19,11 @@ import { fitTileSize, compactTileStyle, compactRowStyle, compactGroupStyle, useE
 import { stripDia, getLetterForm } from '../../../../lib/letter-forms';
 import { letterCatcherTiles, contextualTile, extendedChoiceLetter } from '../../../../lib/letter-catcher-tiles';
 import { usesAnimalWordFrame, withSeparatedDammatan } from '../../../../lib/letter-catcher-word-frame';
-import { playLetterCatcherWord } from '../../../../lib/letter-catcher-audio';
+import { LC_SUCCESS_SOUND, playLetterCatcherSuccess, playLetterCatcherWord } from '../../../../lib/letter-catcher-audio';
 import { preloadLetterCatcherImage, warmLetterCatcherImages } from '../../../../lib/letter-catcher-images';
 import { refreshLcRoundImages, lcRoundMatchesCurrentWords } from '../../../../lib/letter-catcher-live-images';
 import { refreshLcRoundAudio } from '../../../../lib/letter-catcher-live-audio';
 import { createLetterCatcherAnswerFeedback, letterCatcherAnswerMatches } from '../../../../lib/letter-catcher-answer-feedback';
-import { playAnimalFahimCelebration } from '../../../../lib/letter-catcher-animal-celebration';
 import GameScene from '../../../../components/GameScene';
 // بطل الطالب من «عالم الأبطال» يحتفل معه في شاشة النهاية — المكوّن خفيف، وthree.js يُحمَّل عند ظهوره فقط
 // (استيراد مباشر لا dynamic(): نحتاج ref ليقوم البطل بحركته الخاصة)
@@ -120,13 +118,6 @@ const CAT_META = {
 };
 
 /* ────────────────────── image with fallback ─────────────────── */
-function preloadQuestionPicture(word) {
-  return Promise.all([
-    preloadLetterCatcherImage(word?.image_url),
-    preloadLetterCatcherImage('/media/fahim-cheer-frames.webp'),
-  ]);
-}
-
 function WordImage({ imageUrl, emoji, size = 150 }) {
   const [err, setErr] = useState(false);
   const [ready, setReady] = useState(false);
@@ -265,7 +256,6 @@ function useViewportHeight() {
    شرائط وبطاقة زجاجية، وألوان الهوية — لكل زر حرف حافة سفلية بدرجة من ألوانها، ولا أحمر عند الخطأ ── */
 const TILE_TINTS = ['#E8B84B', '#A48BE6', '#8798B3', '#6CCFA0', '#D9CCB6'];
 const MAX_TRIES  = 2; // محاولتان لكل كلمة قبل كشف الحرف
-const WORD_PAUSE = 120;  // استراحة قصيرة بعد نطق الكلمة، دون انتظار إضافي للانتقال
 
 const fullWordOf = (wd) => (wd.word.includes('_') ? wd.word.replace('_', wd.missing_letter) : wd.word);
 const ttsUrl     = (text) => `/api/faheem/tts?c=1&t=${encodeURIComponent(text)}`;
@@ -274,7 +264,9 @@ const ttsUrl     = (text) => `/api/faheem/tts?c=1&t=${encodeURIComponent(text)}`
 function FaheemBuddy({ text, action, size = 66, hideMascot = false }) {
   return (
     <div style={{ ...S.buddy, height: size }}>
-      <img src="/faheem-sm.webp" alt="فهيم" style={{ width: size * 0.82, height: size, objectFit: 'contain', flexShrink: 0, visibility: hideMascot ? 'hidden' : 'visible' }} />
+      {hideMascot
+        ? <span aria-hidden="true" style={{ width: size * 0.82, flexShrink: 0 }} />
+        : <img src="/faheem-sm.webp" alt="فهيم" style={{ width: size * 0.82, height: size, objectFit: 'contain', flexShrink: 0 }} />}
       {action || <div style={S.buddyBubble} aria-live="polite">{text}</div>}
     </div>
   );
@@ -294,7 +286,6 @@ export default function LetterCatcherGame() {
   const [score,      setScore]      = useState(0);
   const [chosen,     setChosen]     = useState(null);
   const [correct,    setCorrect]    = useState(null);
-  const [wordFinished, setWordFinished] = useState(false);
   const [preparingPicture, setPreparingPicture] = useState(false);
   const pictureTransition = useRef(0);
   const nextInFlight = useRef(false);
@@ -410,74 +401,15 @@ export default function LetterCatcherGame() {
   }, [stopWordAudio]);
   useEffect(() => stopWordAudio, [stopWordAudio]);
 
-  /* يسمع الطفل الكلمة أولاً، ثم يظهر زر «التالي» دون انتظار انتهاء احتفال فهيم.
-     يحتفظ فهيم بمقطعه وصوته الحاليين؛ يمكن للطفل متابعة القراءة أو الانتقال بنفسه.
-     الكلمة كاملة ظاهرة طوال الوقت. فهيم طبقة شفافة قرب سطر التشجيع في جميع المواضيع.
-     يُجهَّز تسجيله داخل اللمسة نفسها لسفاري، وتستمر الحركة حتى إن مُنع الصوت. */
-  const cheerMediaRef = useRef(null);
-  const cheerTimers = useRef([]);
-  const cheerRun    = useRef(0);   // كل احتفال برقم — ما يصل متأخراً من احتفال أُلغي يُهمل
-  const fahimOn     = useRef(false);
-  const cheerPlayback = useRef(null);
-  const cheerPreparation = useRef(null);
-  const [cheer, setCheer] = useState(null); // null | 'word' | 'loading' | 'in' | 'out'
-  const clearCheerTimers = () => { cheerTimers.current.forEach(clearTimeout); cheerTimers.current = []; };
-  const clearCheer = useCallback(() => {
-    cheerRun.current += 1;
-    clearCheerTimers();
-    cheerPreparation.current = null;
-    cheerPlayback.current?.();
-    cheerPlayback.current = null;
-    fahimOn.current = false;
-    try { cheerMediaRef.current?.pause(); } catch {}
-    setCheer(null);
-  }, []);
-  const startFahim = useCallback((run) => {
-    if (run !== cheerRun.current || fahimOn.current) return;
-    clearCheerTimers();
-    stopWordAudio();
-    fahimOn.current = true;
-    cheerPreparation.current = null;
-    const v = cheerMediaRef.current;
-    if (!v) { clearCheer(); return; }
-    cheerPlayback.current = playAnimalFahimCelebration(v, {
-      isCurrent: () => run === cheerRun.current,
-      onReady: () => setCheer('in'),
-      onFade: () => setCheer('out'),
-      onFinish: clearCheer,
-    });
-  }, [clearCheer, stopWordAudio]);
+  const victoryAudio = useRef(null);
   const celebrate = useCallback((wd) => {
-    const run = ++cheerRun.current;
-    const text = fullWordOf(wd);
     stopWordAudio();
-    clearCheerTimers();
-    fahimOn.current = false;
-    setWordFinished(false);
-    setCheer('word');
-    let done = false;
-    const afterWord = () => {
-      if (done || run !== cheerRun.current || fahimOn.current) return;
-      done = true;
-      clearCheerTimers();
-      setWordFinished(true);
-      setCheer(null);
-      cheerTimers.current = [setTimeout(() => startFahim(run), WORD_PAUSE)];
-    };
-    wordPlayback.current = playLetterCatcherWord({
-      text, url: wd.audio_url || ttsUrl(text),
-      onEnd: afterWord,
+    const text = fullWordOf(wd);
+    wordPlayback.current = playLetterCatcherSuccess({
+      audio: victoryAudio.current, text, url: wd.audio_url || ttsUrl(text),
     });
-  }, [stopWordAudio, startFahim]);
-  useEffect(() => clearCheer, [clearCheer]);
-  useEffect(() => { if (phase !== 'playing') clearCheer(); }, [phase, clearCheer]);
-  // تجهيز صوت فهيم بينما السؤال ظاهر، بعيداً عن لحظة دخوله.
-  useEffect(() => {
-    if (phase !== 'playing') return;
-    const video = cheerMediaRef.current;
-    if (video) { video.pause(); try { video.currentTime = 0; } catch {} }
-  }, [phase, cur]);
-  /* صوت الكلمة يُجهَّز مع ظهور السؤال — فيُسمع فور الإجابة الصحيحة (يُخزَّن في المتصفح يوماً) */
+  }, [stopWordAudio]);
+  /* نجهّز نطق الكلمة مع ظهور السؤال. */
   useEffect(() => {
     const wd = phase === 'playing' ? queue[cur] : null;
     if (wd && !wd.audio_url) fetch(ttsUrl(fullWordOf(wd))).catch(() => {});
@@ -731,12 +663,13 @@ export default function LetterCatcherGame() {
     onIdentityChange: () => {
       resetAnswerFeedback();
       pictureTransition.current += 1; nextInFlight.current = false;
-      setPreparingPicture(false); setWordFinished(false); stopWordAudio(); clearCheer();
+      setPreparingPicture(false); stopWordAudio();
       setPhase('start'); setQueue([]); setScore(0); setCatResults({});
       setDemoResults({}); setUnlockedCategories(null); loadWorldAccess();
       setPlayerReady(false); loadPlayerState();
     },
     onStart: async j => {
+      stopWordAudio();
       resetAnswerFeedback();
       if (!j.summary.complete && wordsReady && contentSource === 'database' && !lcRoundMatchesCurrentWords(j.items, gameWords)) {
         verified.forget(); verified.reset();
@@ -754,9 +687,9 @@ export default function LetterCatcherGame() {
       roundRef.current = { key, ids: (pool.length ? pool : j.items).map(w => String(w.id)), category };
       const cursor = Math.max(0, j.summary.cursor);
       setPreparingPicture(true);
-      if (!j.summary.complete) await preloadQuestionPicture(nextQueue[cursor]);
+      if (!j.summary.complete) await preloadLetterCatcherImage(nextQueue[cursor]?.image_url);
       if (transition !== pictureTransition.current) return;
-      nextInFlight.current = false; setPreparingPicture(false); setWordFinished(false);
+      nextInFlight.current = false; setPreparingPicture(false);
       setSelectedCategory(j.category === '__all__' ? null : j.category);
       setQueue(nextQueue); setCur(cursor); setScore(j.summary.correct);
       setChosen(null); setCorrect(null); setTried(j.snapshot.events.filter(e=>e.action==='answer'&&e.command.index===j.summary.cursor&&!e.right).map(e=>e.command.value)); setPhase(j.summary.complete ? 'finished' : 'playing');
@@ -767,9 +700,9 @@ export default function LetterCatcherGame() {
     if (phase !== 'playing' || !wordsReady || contentSource !== 'database' || lcRoundMatchesCurrentWords(queue, gameWords)) return;
     resetAnswerFeedback();
     pictureTransition.current += 1; nextInFlight.current = false;
-    stopWordAudio(); clearCheer();
+    stopWordAudio();
     verified.forget(); verified.reset();
-    setPreparingPicture(false); setWordFinished(false); setQueue([]); setPhase('start');
+    setPreparingPicture(false); setQueue([]); setPhase('start');
     setContentNotice('تم تحديث الكلمات. نقاطك وإنجازاتك محفوظة؛ اختر العالم لتلعب بالكلمات الحالية.');
   }, [phase, wordsReady, contentSource, gameWords, queue]);
 
@@ -796,26 +729,13 @@ export default function LetterCatcherGame() {
       onPreview: attempt => {
         confirmedAnswer.current = false; setAnswerConfirmed(false);
         if (attempt.localRight) {
-          const video = cheerMediaRef.current;
-          if (video) {
-            try {
-              const preparation = {};
-              cheerPreparation.current = preparation;
-              video.muted = true;
-              video.play()?.then(() => {
-                if (cheerPreparation.current !== preparation || fahimOn.current) return;
-                video.pause();
-                try { if (video.currentTime > 0) video.currentTime = 0; } catch {}
-              }).catch(() => {});
-            } catch { /* Optional audio preparation must not block the word or saving. */ }
-          }
           setChosen(opt); setCorrect(true);
-          // Start the actual word once, inside the original gesture (also on Safari).
+          // Start the victory sound in the tap that unlocks audio on mobile.
           celebrate(w);
         } else {
           const nextTried = [...attempt.priorTried, opt];
           setTried(nextTried);
-          if (nextTried.length >= MAX_TRIES) { setChosen(opt); setCorrect(false); setWordFinished(true); }
+          if (nextTried.length >= MAX_TRIES) { setChosen(opt); setCorrect(false); }
         }
       },
       submit: (index, option, settle) => verified.answer(index, option, settle),
@@ -840,34 +760,33 @@ export default function LetterCatcherGame() {
           if (!attempt.localRight) celebrate(w);
           return;
         }
-        if (attempt.localRight) { stopWordAudio(); clearCheer(); }
+        if (attempt.localRight) stopWordAudio();
         if (firstTry) {
           childFetch('/api/flashcards/mistake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word_text: fullWord, topic: w.topic, grade_level: w.grade_level }) }).catch(() => {});
         }
         const nextTried = [...attempt.priorTried, opt];
         setTried(nextTried);
         const done = j.questionDone || nextTried.length >= MAX_TRIES;
-        setChosen(done ? opt : null); setCorrect(done ? false : null); setWordFinished(Boolean(done));
+        setChosen(done ? opt : null); setCorrect(done ? false : null);
       },
     });
-  }, [chosen, tried, cur, queue, currentUser, celebrate, stopWordAudio, clearCheer, verified]);
+  }, [chosen, tried, cur, queue, currentUser, celebrate, stopWordAudio, verified]);
 
   const next = useCallback(async () => {
-    if (chosen === null || !wordFinished || !confirmedAnswer.current || nextInFlight.current || verified.busy || verified.pending) return;
+    if (chosen === null || !confirmedAnswer.current || nextInFlight.current || verified.busy || verified.pending) return;
     nextInFlight.current = true;
     const transition = ++pictureTransition.current;
     stopWordAudio();
-    clearCheer();
     const n = cur + 1;
     setPreparingPicture(true);
-    if (n < queue.length) await preloadQuestionPicture(queue[n]);
+    if (n < queue.length) await preloadLetterCatcherImage(queue[n]?.image_url);
     if (transition !== pictureTransition.current) return;
     resetAnswerFeedback();
-    nextInFlight.current = false; setPreparingPicture(false); setWordFinished(false);
+    nextInFlight.current = false; setPreparingPicture(false);
     stopWordAudio();
     if (n >= queue.length) setPhase('finished');
     else { setCur(n); setChosen(null); setCorrect(null); setTried([]); }
-  }, [cur, queue, chosen, wordFinished, stopWordAudio, clearCheer, resetAnswerFeedback, verified]);
+  }, [cur, queue, chosen, stopWordAudio, resetAnswerFeedback, verified]);
 
   const restart = () => {
     // A legacy mixed Places round may finish after its content was split.
@@ -929,7 +848,7 @@ export default function LetterCatcherGame() {
             ? categories.filter(category => isLcCategoryUnlocked(category, demoResults, categories))
             : unlockedCategories || categories.slice(0, 1)}
           onCategorySelect={startGame}
-          onDuel={() => { stopWordAudio(); clearCheer(); setPhase('duel'); }}
+          onDuel={() => { stopWordAudio(); setPhase('duel'); }}
           onSettings={() => setShowCfg(true)}
         />}
       </div>
@@ -970,7 +889,7 @@ export default function LetterCatcherGame() {
                 onClick={() => {
                   resetAnswerFeedback();
                   pictureTransition.current += 1; nextInFlight.current = false;
-                  setPreparingPicture(false); setWordFinished(false); stopWordAudio(); clearCheer();
+                  setPreparingPicture(false); stopWordAudio();
                   setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]);
                 }}
               >🏠 اختر عالمًا آخر</button>
@@ -1012,9 +931,7 @@ export default function LetterCatcherGame() {
 
   const catLabel = selectedCategory ?? w.category ?? '';
   const retrying  = chosen === null && tried.length > 0;
-  const fahimShown = cheer === 'in' || cheer === 'out';
-  const buddyText = cheer === 'word' ? `🔊 ${fullWordDisplay}`
-    : retrying ? 'جَرِّبْ مَرَّةً أُخْرَى، أَنْتَ قَرِيبٌ!' : 'هَيَّا يَا بَطَل، أَنْتَ تَسْتَطِيعُ!';
+  const buddyText = retrying ? 'جَرِّبْ مَرَّةً أُخْرَى، أَنْتَ قَرِيبٌ!' : 'هَيَّا يَا بَطَل، أَنْتَ تَسْتَطِيعُ!';
 
   /* شاشة ثابتة بلا تمرير (طلب الأستاذ محمد: «ثابتاً… وكل شيء موسّطاً وفي مكانه»):
      أحجام ثابتة لكل عنصر، وأصغر قليلاً في الشاشات القصيرة — والصورة تملأ الباقي (imgH) */
@@ -1024,13 +941,8 @@ export default function LetterCatcherGame() {
     : { word: 58, opt: 70, pill: 46, foot: 72, pad: 14, gap: 10 };
 
   // سطر الحالة أعلى البطاقة: السؤال، أو «جرّب حرفاً آخر»، أو «أحسنت»، أو الحرف الصحيح
-  // «أحسنت» تظهر مع فهيم وصوته معاً — أثناء نطق الكلمة يقول السطر «اسمع الكلمة» فقط
   const pill = correct === true
-    ? fahimShown
-      ? { text: 'أَحْسَنْتَ!', style: S.pillOk }
-      : cheer === 'word' || cheer === 'loading'
-        ? { text: '🔊 اِسْمَعِ الْكَلِمَةَ', style: null }
-        : { text: 'اِقْرَأِ الْكَلِمَةَ', style: S.pillOk }
+    ? { text: 'أَحْسَنْتَ!', style: S.pillOk }
     : correct === false
       ? { text: `💡 قَرِيبٌ! الْحَرْفُ النَّاقِصُ هُوَ «${w.missing_letter}»`, style: S.pillSoft }
       : retrying
@@ -1076,6 +988,7 @@ export default function LetterCatcherGame() {
       {/* الجولات القديمة المحفوظة تستأنف بمشهد كلمة السؤال. */}
       <GameScene category={catLabel} scene={lcCategoryScene(catLabel)} />
 
+      {settings.victory_sound && <audio key={cur} ref={victoryAudio} src={LC_SUCCESS_SOUND} preload="auto" hidden />}
       <div ref={columnRef} style={S.stageColumn}>
         {/* نحجز سطري الحفظ والنتيجة في كل المواضيع حتى تبقى الصورة ثابتة. */}
         <div style={{ minHeight: 'calc(2.34rem + 12px)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -1094,8 +1007,8 @@ export default function LetterCatcherGame() {
           onBack={() => {
             resetAnswerFeedback();
             pictureTransition.current += 1; nextInFlight.current = false;
-            setPreparingPicture(false); setWordFinished(false);
-            stopWordAudio(); clearCheer(); setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]);
+            setPreparingPicture(false);
+            stopWordAudio(); setPhase('start'); setQueue([]); setCur(0); setScore(0); setChosen(null); setCorrect(null); setTried([]);
           }}
         />
 
@@ -1104,7 +1017,6 @@ export default function LetterCatcherGame() {
           <div ref={cardRef} style={{ ...S.glassCard, padding: sz.pad, gap: sz.gap }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <h1 aria-live="polite" style={{ ...S.questionPill, ...pill.style, minHeight: sz.pill, fontSize: compact ? '1.12rem' : '1.25rem' }}>{pill.text}</h1>
-              <LetterCatcherFahimOverlay cheer={cheer} mediaRef={cheerMediaRef} wordKey={w.id || cur} compact={compact} />
             </div>
 
             <div data-lc-word-picture="" data-lc-animal-picture={animalWordFrame ? '' : undefined} style={{ ...S.pictureCard, height: imgH + 20 }}>
@@ -1114,8 +1026,8 @@ export default function LetterCatcherGame() {
             {/* ── ارتفاع محجوز للحركات قبل الإجابة وبعدها، حتى لا تقفز الصورة أو الأزرار ── */}
             <div ref={setWordControlsEl} style={{ ...S.wordControls, gridTemplateColumns: balanceListenRow ? '48px minmax(0, 1fr) 48px' : '48px minmax(0, 1fr)' }}>
               <button type="button" style={{ ...S.wordListenBtn, opacity: preparingPicture ? .55 : 1 }}
-                disabled={preparingPicture || cheer === 'word' || cheer === 'loading'}
-                onClick={() => { if (nextInFlight.current) return; clearCheer(); playWord(w); }}
+                disabled={preparingPicture}
+                onClick={() => { if (!nextInFlight.current) playWord(w); }}
                 aria-label="اسمع الكلمة" title="اسمع الكلمة">
                 <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>
               </button>
@@ -1193,12 +1105,12 @@ export default function LetterCatcherGame() {
           </div>
         </div>
 
-        {/* الأسفل ثابت: فهيم يشجّع، وبعد الإجابة زر «التالي» بجانبه — لا شيء يدفع البطاقة */}
+        {/* المساحة السفلية ثابتة عند ظهور زر «التالي». */}
         <FaheemBuddy
           size={sz.foot}
           hideMascot
           text={buddyText}
-          action={chosen !== null && wordFinished && (
+          action={chosen !== null && (
             <button style={{ ...S.goldBtn, minHeight: compact ? 50 : 56, flex: 1, opacity: preparingPicture ? .7 : 1 }} onClick={next} disabled={!answerConfirmed || preparingPicture || verified.busy || verified.pending} aria-busy={preparingPicture || !answerConfirmed}>
               {preparingPicture ? 'لَحْظَةٌ…' : isLast ? '🏁 النَّتِيجَةُ النِّهَائِيَّةُ' : 'التَّالِي ←'}
             </button>

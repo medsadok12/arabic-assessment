@@ -538,7 +538,8 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
   const [resetting, setResetting] = useState(false);
   const [resetMsg, setResetMsg] = useState(null);
   const savedSettings = normalizeLcSettings(settings);
-  const dirty = draft.options_count !== savedSettings.options_count || draft.progress_motion !== savedSettings.progress_motion || draft.loading_welcome !== savedSettings.loading_welcome || draft.loading_welcome_motion !== savedSettings.loading_welcome_motion || JSON.stringify(draft.duel) !== JSON.stringify(savedSettings.duel);
+  const dirty = ['options_count', 'progress_motion', 'victory_sound', 'loading_welcome', 'loading_welcome_motion']
+    .some(key => draft[key] !== savedSettings[key]) || JSON.stringify(draft.duel) !== JSON.stringify(savedSettings.duel);
 
   const changeDuel = (values) => {
     setDraft(d => ({ ...d, duel: { ...d.duel, ...values } }));
@@ -627,6 +628,7 @@ export default function SettingsPanel({ cfg, onChange, settings, onSettingsSaved
                 </label>
 
                 {[
+                  ['victory_sound', 'لحن «كرنفال الفوز» عند الإجابة الصحيحة'],
                   ['loading_welcome', 'ترحيب فهيم أثناء تحميل العوالم'],
                   ['loading_welcome_motion', 'حركة فهيم أثناء الترحيب'],
                 ].map(([key, label]) => <label key={key} style={{ display:'flex', alignItems:'center', gap:10, minHeight:44, marginBottom:12, fontSize:'.88rem', fontWeight:700, color:'#374151', cursor:'pointer' }}>

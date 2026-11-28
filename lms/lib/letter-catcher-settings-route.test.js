@@ -30,7 +30,7 @@ vi.mock('./supabase-admin', () => ({
 }));
 
 const { PUT } = await import('../app/api/games/letter-catcher/settings/route.js');
-const SOLO = { words_per_round: 15, stage_size: 5, options_count: 4, progress_motion: false, loading_welcome: true, loading_welcome_motion: true };
+const SOLO = { words_per_round: 15, stage_size: 5, options_count: 4, progress_motion: false, victory_sound: true, loading_welcome: true, loading_welcome_motion: true };
 const DUEL = {
   enabled: false,
   title: 'تحدي صديق',
@@ -116,6 +116,12 @@ describe('PUT /api/games/letter-catcher/settings', () => {
     expect(state.writes[0].settings).toEqual(state.stored);
   });
 
+  it('preserves a disabled victory sound when an older editor saves unrelated settings', async () => {
+    const { victory_sound, ...legacy } = { ...SOLO, duel: DUEL };
+    state.stored = { ...legacy, victory_sound: false };
+    expect(await save(legacy)).toEqual({ status: 200, body: { settings: state.stored } });
+  });
+
   it.each(['loading_welcome', 'loading_welcome_motion'])('preserves omitted %s independently while updating the other flag', async omitted => {
     const supplied = omitted === 'loading_welcome' ? 'loading_welcome_motion' : 'loading_welcome';
     state.stored = { ...SOLO, [omitted]: false, [supplied]: true, duel: DUEL };
@@ -153,6 +159,7 @@ describe('PUT /api/games/letter-catcher/settings', () => {
     { stage_size: null },
     { options_count: 9 },
     { progress_motion: 'false' },
+    { victory_sound: 'false' },
     { loading_welcome: 'false' },
     { loading_welcome: 0 },
     { loading_welcome_motion: null },

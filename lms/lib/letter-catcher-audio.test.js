@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { playLetterCatcherWord } from './letter-catcher-audio';
+import { LC_SUCCESS_SOUND, playLetterCatcherSuccess, playLetterCatcherWord } from './letter-catcher-audio';
 
 function media() {
   const audio = new EventTarget();
+  audio.getAttribute = key => audio[key];
   audio.currentTime = 2; audio.muted = true; audio.loop = true;
   audio.paused = true; audio.ended = false;
   audio.play = vi.fn(() => { audio.paused = false; return Promise.resolve(); });
@@ -30,6 +31,54 @@ function browser({ voices = [{ lang: 'ar-SA', name: 'Arabic' }] } = {}) {
 let cancel;
 beforeEach(() => { vi.useFakeTimers(); cancel = null; });
 afterEach(() => { cancel?.(); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+
+describe('Letter Catcher correct-answer sound', () => {
+  const word = { text: 'فِيلٌ', url: '/words/elephant.mp3' };
+
+  it('starts Carnival immediately and then reads the word on the same unlocked player', () => {
+    const audio = media(), sources = [];
+    audio.play.mockImplementation(() => { sources.push(audio.src); return Promise.resolve(); });
+    cancel = playLetterCatcherSuccess({ ...word, audio });
+    expect(sources).toEqual([LC_SUCCESS_SOUND]);
+    expect(audio.muted).toBe(false);
+    expect(audio.loop).toBe(false);
+    audio.emit('ended');
+    expect(sources).toEqual([LC_SUCCESS_SOUND, word.url]);
+    audio.emit('ended');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('cancels the cue on Next and ignores a late error or play rejection', async () => {
+    const audio = media();
+    let reject;
+    audio.play.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+    cancel = playLetterCatcherSuccess({ ...word, audio });
+    cancel();
+    audio.emit('ended'); audio.emit('error'); reject(new Error('aborted'));
+    await Promise.resolve();
+    vi.advanceTimersByTime(5000);
+    expect(audio.play).toHaveBeenCalledOnce();
+    expect(audio.paused).toBe(true);
+  });
+
+  it.each(['error', 'timeout', 'blocked'])('still reads once after a cue %s', async failure => {
+    const audio = media();
+    if (failure === 'blocked') audio.play.mockRejectedValueOnce(new Error('blocked'));
+    cancel = playLetterCatcherSuccess({ ...word, audio });
+    if (failure === 'error') audio.emit('error');
+    if (failure === 'timeout') vi.advanceTimersByTime(3500);
+    await Promise.resolve();
+    expect(audio.src).toBe(word.url);
+    expect(audio.play).toHaveBeenCalledTimes(2);
+  });
+
+  it('reads the word directly when the teacher disables the victory sound', () => {
+    const { Audio } = browser();
+    cancel = playLetterCatcherSuccess({ ...word, audio: null });
+    expect(Audio).toHaveBeenCalledOnce();
+    expect(Audio).toHaveBeenCalledWith(word.url);
+  });
+});
 
 describe('Letter Catcher word audio', () => {
   it('plays synchronously, unmutes and rewinds prepared audio, then finishes exactly once', async () => {

@@ -2,6 +2,44 @@
 // cancelled to make room for our fallback; we wait for an idle speech queue.
 let activeWord = null;
 
+export const LC_SUCCESS_SOUND = '/sounds/letter-catcher-carnival-win.mp3';
+
+// Start inside the answer tap. Reuse the unlocked element for pronunciation on
+// mobile. Both parts are optional for navigation and share one cancellation.
+export function playLetterCatcherSuccess({ audio, text, url }) {
+  if (!audio) return playLetterCatcherWord({ text, url });
+
+  let playingCue = true;
+  let stopWord;
+  const timeout = setTimeout(readWord, 3500);
+  function stopCue() {
+    playingCue = false;
+    clearTimeout(timeout);
+    audio.removeEventListener('ended', readWord);
+    audio.removeEventListener('error', readWord);
+    try { audio.pause(); } catch {}
+  }
+  function readWord() {
+    if (!playingCue) return;
+    stopCue();
+    audio.src = url;
+    stopWord = playLetterCatcherWord({ text, url, audio });
+  }
+  audio.addEventListener('ended', readWord);
+  audio.addEventListener('error', readWord);
+  try {
+    if (audio.getAttribute('src') !== LC_SUCCESS_SOUND) audio.src = LC_SUCCESS_SOUND;
+    audio.muted = false;
+    audio.loop = false;
+    try { audio.currentTime = 0; } catch {}
+    audio.play()?.catch(readWord);
+  } catch { readWord(); }
+  return () => {
+    if (playingCue) stopCue();
+    stopWord?.();
+  };
+}
+
 export function playLetterCatcherWord({ text, url, audio: prepared, onEnd, onStart } = {}) {
   activeWord?.();
   let active = true, mode = 'audio', started = false, notified = false;

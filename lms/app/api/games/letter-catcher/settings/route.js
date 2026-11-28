@@ -22,7 +22,7 @@ export async function PUT(request) {
     const admin = createAdminClient();
     // Older editors omit newer settings. Preserve each saved value independently
     // rather than silently re-enabling a welcome effect or resetting a challenge.
-    const missingSettings = ['duel', 'stage_size', 'loading_welcome', 'loading_welcome_motion']
+    const missingSettings = ['duel', 'stage_size', 'victory_sound', 'loading_welcome', 'loading_welcome_motion']
       .filter(key => !Object.prototype.hasOwnProperty.call(raw, key));
     if (missingSettings.length) {
       const { data: current, error: readError } = await admin.from('game_settings')
