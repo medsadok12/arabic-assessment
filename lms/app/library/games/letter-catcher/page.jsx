@@ -390,23 +390,47 @@ export default function LetterCatcherGame() {
   /* «اسمع الكلمة»: تسجيل المعلم إن وُجد، وإلا صوت فهيم البشري (مخزَّن لكل الطلاب c=1)،
      وصوت الجهاز احتياطاً. يُستدعى داخل اللمسة نفسها (شرط سفاري) */
   const wordPlayback = useRef(null);
+  const pronunciationRun = useRef(0);
+  const pronunciationComplete = useRef(false);
+  const [pronunciation, setPronunciation] = useState('idle');
   const stopWordAudio = useCallback(() => {
+    pronunciationRun.current += 1;
+    pronunciationComplete.current = false;
     wordPlayback.current?.();
     wordPlayback.current = null;
+    setPronunciation('idle');
   }, []);
   const playWord = useCallback((wd) => {
     const text = fullWordOf(wd);
     stopWordAudio();
-    wordPlayback.current = playLetterCatcherWord({ text, url: wd.audio_url || ttsUrl(text) });
+    const run = pronunciationRun.current;
+    setPronunciation('playing');
+    wordPlayback.current = playLetterCatcherWord({
+      text, url: wd.audio_url || ttsUrl(text),
+      onComplete: () => {
+        if (run !== pronunciationRun.current) return;
+        pronunciationComplete.current = true;
+        setPronunciation('complete');
+      },
+      onUnavailable: () => { if (run === pronunciationRun.current) setPronunciation('retry'); },
+    });
   }, [stopWordAudio]);
   useEffect(() => stopWordAudio, [stopWordAudio]);
 
   const victoryAudio = useRef(null);
   const celebrate = useCallback((wd) => {
     stopWordAudio();
+    const run = pronunciationRun.current;
+    setPronunciation('playing');
     const text = fullWordOf(wd);
     wordPlayback.current = playLetterCatcherSuccess({
       audio: victoryAudio.current, text, url: wd.audio_url || ttsUrl(text),
+      onComplete: () => {
+        if (run !== pronunciationRun.current) return;
+        pronunciationComplete.current = true;
+        setPronunciation('complete');
+      },
+      onUnavailable: () => { if (run === pronunciationRun.current) setPronunciation('retry'); },
     });
   }, [stopWordAudio]);
   /* نجهّز نطق الكلمة مع ظهور السؤال. */
@@ -773,7 +797,7 @@ export default function LetterCatcherGame() {
   }, [chosen, tried, cur, queue, currentUser, celebrate, stopWordAudio, verified]);
 
   const next = useCallback(async () => {
-    if (chosen === null || !confirmedAnswer.current || nextInFlight.current || verified.busy || verified.pending) return;
+    if (chosen === null || (correct === true && !pronunciationComplete.current) || !confirmedAnswer.current || nextInFlight.current || verified.busy || verified.pending) return;
     nextInFlight.current = true;
     const transition = ++pictureTransition.current;
     stopWordAudio();
@@ -786,7 +810,7 @@ export default function LetterCatcherGame() {
     stopWordAudio();
     if (n >= queue.length) setPhase('finished');
     else { setCur(n); setChosen(null); setCorrect(null); setTried([]); }
-  }, [cur, queue, chosen, stopWordAudio, resetAnswerFeedback, verified]);
+  }, [cur, queue, chosen, correct, stopWordAudio, resetAnswerFeedback, verified]);
 
   const restart = () => {
     // A legacy mixed Places round may finish after its content was split.
@@ -942,7 +966,7 @@ export default function LetterCatcherGame() {
 
   // سطر الحالة أعلى البطاقة: السؤال، أو «جرّب حرفاً آخر»، أو «أحسنت»، أو الحرف الصحيح
   const pill = correct === true
-    ? { text: 'أَحْسَنْتَ!', style: S.pillOk }
+    ? { text: pronunciation === 'retry' ? 'اضغط زر الصوت لسماع الكلمة، ثم تابع.' : 'أَحْسَنْتَ!', style: S.pillOk }
     : correct === false
       ? { text: `💡 قَرِيبٌ! الْحَرْفُ النَّاقِصُ هُوَ «${w.missing_letter}»`, style: S.pillSoft }
       : retrying
@@ -1111,9 +1135,11 @@ export default function LetterCatcherGame() {
           hideMascot
           text={buddyText}
           action={chosen !== null && (
-            <button style={{ ...S.goldBtn, minHeight: compact ? 50 : 56, flex: 1, opacity: preparingPicture ? .7 : 1 }} onClick={next} disabled={!answerConfirmed || preparingPicture || verified.busy || verified.pending} aria-busy={preparingPicture || !answerConfirmed}>
-              {preparingPicture ? 'لَحْظَةٌ…' : isLast ? '🏁 النَّتِيجَةُ النِّهَائِيَّةُ' : 'التَّالِي ←'}
-            </button>
+              <button style={{ ...S.goldBtn, minHeight: compact ? 50 : 56, flex: 1, opacity: preparingPicture || (correct === true && pronunciation !== 'complete') ? .55 : 1 }}
+                onClick={next} disabled={!answerConfirmed || (correct === true && pronunciation !== 'complete') || preparingPicture || verified.busy || verified.pending}
+                aria-busy={preparingPicture || !answerConfirmed || (correct === true && pronunciation === 'playing')}>
+                {preparingPicture ? 'لَحْظَةٌ…' : correct === true && pronunciation !== 'complete' ? 'اِسْتَمِعْ إِلَى الْكَلِمَةِ…' : isLast ? '🏁 النَّتِيجَةُ النِّهَائِيَّةُ' : 'التَّالِي ←'}
+              </button>
           )}
         />
       </div>

@@ -78,6 +78,148 @@ describe('Letter Catcher correct-answer sound', () => {
     expect(Audio).toHaveBeenCalledOnce();
     expect(Audio).toHaveBeenCalledWith(word.url);
   });
+
+  it('does not report pronunciation complete when only the Carnival cue ends', () => {
+    const audio = media(), onComplete = vi.fn(), onUnavailable = vi.fn();
+    cancel = playLetterCatcherSuccess({ ...word, audio, onComplete, onUnavailable });
+    audio.emit('playing');
+    audio.emit('ended');
+    expect(audio.src).toBe(word.url);
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(onUnavailable).not.toHaveBeenCalled();
+    audio.emit('playing');
+    audio.emit('ended');
+    audio.emit('ended');
+    expect(onComplete).toHaveBeenCalledOnce();
+    expect(onUnavailable).not.toHaveBeenCalled();
+  });
+
+  it('forwards completion for the word when the victory cue is disabled', () => {
+    const { Audio } = browser(), onComplete = vi.fn();
+    cancel = playLetterCatcherSuccess({ ...word, audio: null, onComplete });
+    const wordAudio = Audio.mock.results[0].value;
+    expect(onComplete).not.toHaveBeenCalled();
+    wordAudio.emit('playing');
+    wordAudio.emit('ended');
+    expect(onComplete).toHaveBeenCalledOnce();
+  });
+
+  it('keeps blocked pronunciation unavailable after a failed cue without completing', async () => {
+    const audio = media(), onComplete = vi.fn(), onUnavailable = vi.fn();
+    audio.play.mockRejectedValue(new Error('Blocked'));
+    cancel = playLetterCatcherSuccess({ ...word, audio, onComplete, onUnavailable });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(onUnavailable).toHaveBeenCalledOnce();
+    audio.emit('ended');
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+});
+
+describe('Letter Catcher pronunciation completion', () => {
+  it('requires the whole recording to end, including recordings longer than the startup timeout', async () => {
+    const audio = media(), onComplete = vi.fn(), onUnavailable = vi.fn();
+    cancel = playLetterCatcherWord({ text: 'فِيلٌ', audio, onComplete, onUnavailable });
+    await Promise.resolve();
+    vi.advanceTimersByTime(60000);
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(onUnavailable).not.toHaveBeenCalled();
+    audio.emit('ended');
+    expect(onComplete).toHaveBeenCalledOnce();
+    expect(onUnavailable).not.toHaveBeenCalled();
+  });
+
+  it('recognizes complete advancing playback when start notifications are omitted', () => {
+    const audio = media(), onComplete = vi.fn();
+    audio.play.mockImplementationOnce(() => new Promise(() => {}));
+    cancel = playLetterCatcherWord({ text: 'فِيلٌ', audio, onComplete });
+    audio.currentTime = 1.8;
+    audio.emit('ended');
+    expect(onComplete).toHaveBeenCalledOnce();
+  });
+
+  it('does not accept an ended event from media that never started', () => {
+    const audio = media(), onComplete = vi.fn(), onUnavailable = vi.fn();
+    audio.play.mockImplementationOnce(() => new Promise(() => {}));
+    cancel = playLetterCatcherWord({ text: 'فِيلٌ', audio, onComplete, onUnavailable });
+    audio.emit('ended');
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(onUnavailable).toHaveBeenCalledOnce();
+  });
+
+  it('preserves the legacy onEnd callback for unavailable playback without completing', () => {
+    const onEnd = vi.fn(), onComplete = vi.fn(), onUnavailable = vi.fn();
+    cancel = playLetterCatcherWord({ text: 'فِيلٌ', onEnd, onComplete, onUnavailable });
+    expect(onEnd).toHaveBeenCalledOnce();
+    expect(onUnavailable).toHaveBeenCalledOnce();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('does not mark a failed startup timeout as successful pronunciation', () => {
+    const audio = media(), onComplete = vi.fn(), onUnavailable = vi.fn();
+    audio.play.mockImplementationOnce(() => new Promise(() => {}));
+    cancel = playLetterCatcherWord({ text: 'فِيلٌ', audio, onComplete, onUnavailable });
+    vi.advanceTimersByTime(6000);
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(onUnavailable).toHaveBeenCalledOnce();
+  });
+
+  it('completes once after successful full fallback speech', () => {
+    const { synth } = browser(), onComplete = vi.fn(), onUnavailable = vi.fn();
+    cancel = playLetterCatcherWord({ text: 'فِيلٌ', onComplete, onUnavailable });
+    synth.begin();
+    vi.advanceTimersByTime(16000);
+    expect(onComplete).not.toHaveBeenCalled();
+    synth.end();
+    synth.end();
+    expect(onComplete).toHaveBeenCalledOnce();
+    expect(onUnavailable).not.toHaveBeenCalled();
+  });
+
+  it('recognizes speech observed running by the watchdog when onstart is omitted', () => {
+    const { synth } = browser(), onComplete = vi.fn(), onUnavailable = vi.fn();
+    cancel = playLetterCatcherWord({ text: 'فِيلٌ', onComplete, onUnavailable });
+    synth.pending = false;
+    synth.speaking = true;
+    vi.advanceTimersByTime(6000);
+    expect(onComplete).not.toHaveBeenCalled();
+    synth.end();
+    expect(onComplete).toHaveBeenCalledOnce();
+    expect(onUnavailable).not.toHaveBeenCalled();
+  });
+
+  it('does not accept speech ending without having started', () => {
+    const { synth } = browser(), onComplete = vi.fn(), onUnavailable = vi.fn();
+    cancel = playLetterCatcherWord({ text: 'فِيلٌ', onComplete, onUnavailable });
+    synth.end();
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(onUnavailable).toHaveBeenCalledOnce();
+  });
+
+  it('never accepts a speech error after playback has started as completion', () => {
+    const { synth, utterances } = browser(), onComplete = vi.fn(), onUnavailable = vi.fn(), onEnd = vi.fn();
+    cancel = playLetterCatcherWord({ text: 'فِيلٌ', onComplete, onUnavailable, onEnd });
+    synth.begin();
+    const staleEnd = utterances[0].onend;
+    utterances[0].onerror({ error: 'interrupted' });
+    staleEnd();
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(onUnavailable).toHaveBeenCalledOnce();
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it('does not complete or report unavailable after cancellation and late speech events', () => {
+    const { synth, utterances } = browser(), onComplete = vi.fn(), onUnavailable = vi.fn();
+    cancel = playLetterCatcherWord({ text: 'فِيلٌ', onComplete, onUnavailable });
+    synth.begin();
+    const staleEnd = utterances[0].onend, staleError = utterances[0].onerror;
+    cancel();
+    staleEnd();
+    staleError();
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(onUnavailable).not.toHaveBeenCalled();
+  });
 });
 
 describe('Letter Catcher word audio', () => {

@@ -5,9 +5,10 @@ let activeWord = null;
 export const LC_SUCCESS_SOUND = '/sounds/letter-catcher-carnival-win.mp3';
 
 // Start inside the answer tap. Reuse the unlocked element for pronunciation on
-// mobile. Both parts are optional for navigation and share one cancellation.
-export function playLetterCatcherSuccess({ audio, text, url }) {
-  if (!audio) return playLetterCatcherWord({ text, url });
+// mobile. Only completing the word satisfies onComplete; the cue cannot unlock
+// progression. Both parts share one cancellation.
+export function playLetterCatcherSuccess({ audio, text, url, onComplete, onUnavailable }) {
+  if (!audio) return playLetterCatcherWord({ text, url, onComplete, onUnavailable });
 
   let playingCue = true;
   let stopWord;
@@ -23,7 +24,7 @@ export function playLetterCatcherSuccess({ audio, text, url }) {
     if (!playingCue) return;
     stopCue();
     audio.src = url;
-    stopWord = playLetterCatcherWord({ text, url, audio });
+    stopWord = playLetterCatcherWord({ text, url, audio, onComplete, onUnavailable });
   }
   audio.addEventListener('ended', readWord);
   audio.addEventListener('error', readWord);
@@ -40,7 +41,7 @@ export function playLetterCatcherSuccess({ audio, text, url }) {
   };
 }
 
-export function playLetterCatcherWord({ text, url, audio: prepared, onEnd, onStart } = {}) {
+export function playLetterCatcherWord({ text, url, audio: prepared, onEnd, onStart, onComplete, onUnavailable } = {}) {
   activeWord?.();
   let active = true, mode = 'audio', started = false, notified = false;
   let audio = prepared, synth = null, utterance = null, submitted = false;
@@ -75,9 +76,11 @@ export function playLetterCatcherWord({ text, url, audio: prepared, onEnd, onSta
     // its own utterance into an idle queue, never while merely waiting for voices.
     if (submitted) { submitted = false; try { synth?.cancel(); } catch {} }
   }
-  function finish() {
+  function finish(completed = false) {
     if (!active) return;
     cancel();
+    if (completed) onComplete?.();
+    else onUnavailable?.();
     onEnd?.();
   }
   function markStarted() {
@@ -87,7 +90,9 @@ export function playLetterCatcherWord({ text, url, audio: prepared, onEnd, onSta
     if (!notified) { notified = true; onStart?.(); }
   }
   function audioStarted() { if (mode === 'audio') markStarted(); }
-  function audioEnded() { if (active && mode === 'audio') finish(); }
+  function audioEnded() {
+    if (active && mode === 'audio') finish(started || audio.currentTime > 0);
+  }
   function rewind() {
     if (!active || mode !== 'audio' || !needsRewind) return;
     try { audio.currentTime = 0; needsRewind = false; } catch {}
@@ -110,10 +115,14 @@ export function playLetterCatcherWord({ text, url, audio: prepared, onEnd, onSta
       const speechEnded = () => {
         if (!active || mode !== 'speech') return;
         submitted = false; // The queue may already be starting someone else's speech.
-        finish();
+        finish(started);
       };
       utterance.onend = speechEnded;
-      utterance.onerror = speechEnded;
+      utterance.onerror = () => {
+        if (!active || mode !== 'speech') return;
+        submitted = false;
+        finish();
+      };
       submitted = true;
       synth.speak(utterance);
     } catch { submitted = false; finish(); }
